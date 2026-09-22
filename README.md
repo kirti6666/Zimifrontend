@@ -2,14 +2,34 @@
 
 A React Native (Expo) live-streaming frontend prototype with creator discovery, live calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
 
-## Run locally
+## Run on your phone
 
 ```bash
 npm install
-npm start
+npx expo start
 ```
 
-Then open the project in Expo Go, or run `npm run android` / `npm run ios` for a native build.
+Scan the QR code with **Expo Go**. Expo Go only supports one SDK at a time, so it
+must be up to date for SDK 57 — if it refuses to open the project, that is why.
+
+To get an installable app instead of Expo Go (an `.apk` you can sideload, no
+Android Studio needed):
+
+```bash
+npx eas build --platform android --profile preview
+```
+
+With Android Studio or Xcode installed locally, `npm run android` / `npm run ios`
+build directly onto a connected device.
+
+## Run the website
+
+```bash
+npm run build      # writes dist/index.html
+npx serve dist     # or open dist/index.html directly
+```
+
+Vercel runs the same `npm run build` and serves `dist/`, per `vercel.json`.
 
 ## Architecture
 
