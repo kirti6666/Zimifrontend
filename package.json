@@ -4,6 +4,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
+    "build": "node scripts/build-web.mjs",
     "build:web": "node scripts/build-web.mjs",
     "start": "expo start",
     "android": "expo run:android",
