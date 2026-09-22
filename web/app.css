@@ -1,0 +1,17 @@
+#scroll-root {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+#scroll-root::-webkit-scrollbar {
+  display: none;
+}
+
+#scroll-root > #screen {
+  min-height: 100%;
+  overflow: visible !important;
+}

@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Aurora",
+    "slug": "aurora-live-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aurora.liveapp"
+    },
+    "android": {
+      "package": "com.aurora.liveapp",
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize"
+    }
+  }
+}
