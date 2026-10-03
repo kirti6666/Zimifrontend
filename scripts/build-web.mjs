@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
+const waterSticker =
+  "data:image/webp;base64," + readFileSync(join(root, "web/water-flowing.webp")).toString("base64");
 
 const HEAD = `<!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -79,7 +81,7 @@ const html =
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
-  read("web/aurora-runtime.js") +
+  read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +
   TAIL;
 
 mkdirSync(join(root, "assets"), { recursive: true });

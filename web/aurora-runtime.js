@@ -13,7 +13,9 @@ const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","goi
  ["meher","recording the folk set tonight","2:47 pm",0],["dev","you: form check tomorrow?","Yesterday",0]];
 const TH=[["t","hey, you caught the end of the set?","5:48 pm"],["m","only the last two songs","5:49 pm"],
  ["t","wrote it last week, bridge still rough","5:50 pm"],["m","bridge was the best part honestly","5:52 pm"]];
+const WATER_STICKER="__WATER_FLOWING_STICKER__";
 const GIFTS=[
+ ["Rose waterfall","&#127801;",9999,"water"],
  ["Rose","&#127801;",99],["Kiss","&#128139;",199],["Berry","&#127827;",299],["Bear","&#128059;",399],
  ["Cheers","&#129346;",499],["Party","&#127881;",699],["Tulip","&#127799;",899],["Bunny","&#128048;",999],
  ["Blossom","&#127800;",1299],["Bouquet","&#128144;",1599],["Hibiscus","&#127802;",1999],["Champagne","&#127870;",2499],
@@ -62,8 +64,10 @@ function boardRows(){
   .sort((a,b)=>b.c-a.c);
 }
 
-const S={v:"home",tab:"explore",ht:"posts",pi:0,likes:{},pack:2,meth:"UPI",mic:1,cam:1,bt:"creators",per:"weekly",rmsgs:[],h:null,bal:52400,sec:0,t:null,msgs:null,tray:0,
- title:"",goal:1000000,fav:21,favn:10,favGot:0,gifted:0,
+const previewMode=new URLSearchParams(location.search).get("preview");
+const callPreview=previewMode==="call"||previewMode==="gifts";
+const S={v:callPreview?"call":"home",tab:"explore",ht:"posts",pi:0,likes:{},pack:2,meth:"UPI",mic:1,cam:1,bt:"creators",per:"weekly",rmsgs:callPreview?[["host","Aanya","hey, you made it"]]:[],h:callPreview?"aanya":null,bal:52400,sec:0,t:null,msgs:null,tray:previewMode==="gifts"?1:0,
+ title:"",goal:1000000,fav:22,favn:10,favGot:0,gifted:0,
  sh:0,cmp:0,cache:{},btab:"Beauty",bsel:{Beauty:1,Makeup:0,Sticker:0,Filters:0,"Image quality":0},lvmode:"Live",
  txf:"all",faq:-1,safe:{discover:1,requests:1,activity:0},blocked:[],
  editName:me.n,editCity:me.c,editAbout:me.about,coverData:"",avatarData:"",postData:[],following:{}};
@@ -400,8 +404,8 @@ function vCall(){const h=g(S.h);
  <div class="fx" id="fl"></div>
  <div id="wn" style="position:relative;margin-top:auto;padding:0 14px"></div>
  <div class="lvfeed" id="rfeed"></div>
- <div class="lvstrip">${GIFTS.map(([l,e,v])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
-   onclick="sendGift('${l}','${e}',${v})"><span class="em">${e}</span><span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+   onclick="sendGift('${l}','${e}',${v},'${k||""}')">${k==="water"?`<span class="em media"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
 
  ${S.cmp?"":`<div class="lvbar">
   <button class="rndb" aria-label="Chat" onclick="S.cmp=!S.cmp;r()">${I("chat",21)}</button>
@@ -475,28 +479,28 @@ function giftTray(){
     <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to the host</span></span>
     <button class="addc" onclick="go('coins')">${gem}${n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
-   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v])=>`<button class="gi ${tier(v)}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v})">
+   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${k==="water"?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
-     <span class="gl">${e}</span><span class="gn">${l}</span><span class="gc">${gem}${n(v)}</span></button>`).join("")}</div>`}
+     ${k==="water"?`<span class="gl"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gn">${l}</span><span class="gc">${gem}${n(v)}</span></button>`).join("")}</div>`}
   </div></div>`}
 
-function sendGift(l,e,v){
+function sendGift(l,e,v,k){
  if(S.bal<v)return;
  S.bal-=v; S.tray=0; S.sh=0;
  if(S.v==="thread"){
   S.msgs.push(["g",e,n(v),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);
-  r(); paint(); playGift(l,e,v); return}
+  r(); paint(); playGift(l,e,v,k); return}
  S.gifted=(S.gifted||0)+v;
  if(GIFTS[S.fav] && GIFTS[S.fav][0]===l)S.favGot=(S.favGot||0)+1;
  S.rmsgs.push(["gift","You",`sent ${e} ${l} &middot; ${n(v)}`]);
- r(); playGift(l,e,v); hostReply();
+ r(); playGift(l,e,v,k); hostReply();
 }
 
 /* Centre-stage gift animation. Cheap gifts get a quick rise; the top tiers
    take over the frame with a flash, rotating rays and a spark burst. */
-function playGift(l,e,v){
+function playGift(l,e,v,k){
  const f=document.getElementById("fl"); if(!f)return;
- const big=v>=19999, mid=v>=5999, life=big?3000:2000;
+ const water=k==="water",big=water||v>=19999,mid=water||v>=5999,life=water?5200:big?3000:2000;
  const frag=document.createElement("div");
  frag.style.cssText="position:absolute;inset:0";
  const add=(cls,style)=>{const d=document.createElement("div");d.className=cls;
@@ -523,13 +527,13 @@ function playGift(l,e,v){
  }
 
  const gl=document.createElement("div");
- gl.className="fxg"+(big?" big":"");
- gl.innerHTML=`<span class="em">${e}</span>`;
+ gl.className="fxg"+(big?" big":"")+(water?" water":"");
+ gl.innerHTML=water?`<img src="${WATER_STICKER}" alt="Animated rose waterfall">`:`<span class="em">${e}</span>`;
  frag.appendChild(gl);
 
  const tag=document.createElement("div");
  tag.className="fxtag";
- tag.innerHTML=`You sent ${l} &middot; ${n(v)}`;
+ tag.innerHTML=water?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} &middot; ${n(v)}`;
  if(big){tag.style.animationDuration="3s, 2.2s";tag.style.fontSize="13px"}
  frag.appendChild(tag);
 
@@ -599,9 +603,9 @@ function vThread(){const h=g(S.h);
   <button onclick="go('setup','${h.id}')" aria-label="Video call" style="color:var(--muted);display:flex">${I("vid",21)}</button></div>
  <div class="pat" id="tf"></div>
  <div class="fx" id="fl"></div>
- <div class="qs">${GIFTS.slice(0,8).map(([l,e,v])=>`
-   <button onclick="sendGift('${l}','${e}',${v})" ${S.bal<v?"disabled":""} aria-label="Send ${l}">
-    <span class="gl">${e}</span><span class="gc">${n(v)}</span></button>`).join("")}</div>
+ <div class="qs">${GIFTS.slice(0,8).map(([l,e,v,k])=>`
+   <button onclick="sendGift('${l}','${e}',${v},'${k||""}')" ${S.bal<v?"disabled":""} aria-label="Send ${l}">
+    ${k==="water"?`<span class="gl media"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gc">${n(v)}</span></button>`).join("")}</div>
  <div class="comp">
   <button class="send" style="background:var(--raised);color:var(--accent-ink)" onclick="S.tray=1;r()" aria-label="Open gifts">${I("gift",20)}</button>
   <span class="field"><input id="ti" placeholder="Message" onkeydown="if(event.key==='Enter')snd()"></span>

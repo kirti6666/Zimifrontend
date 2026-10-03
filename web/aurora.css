@@ -185,6 +185,7 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .gi:disabled{opacity:.32}
 .gi .gl{position:relative;height:42px;display:flex;align-items:center;justify-content:center;
  font-size:33px;line-height:1;filter:drop-shadow(0 5px 12px color-mix(in srgb,var(--deep) 55%,transparent))}
+.gi.media .gl img{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 6px 12px rgba(0,0,0,.65))}
 .gi.rare .gl{filter:drop-shadow(0 0 12px rgba(255,46,147,.55)) drop-shadow(0 5px 12px rgba(0,0,0,.7))}
 .gi.epic .gl{filter:drop-shadow(0 0 18px rgba(255,192,46,.8)) drop-shadow(0 6px 14px rgba(0,0,0,.75))}
 .gi .gn{position:relative;width:100%;padding:0 1px;text-align:center;font-size:10px;font-weight:600;
@@ -202,6 +203,7 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .qs button{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:1px;width:52px;
  border-radius:11px;padding:5px 2px;background:var(--raised)}
 .qs .gl{font-size:20px;line-height:1}
+.qs .gl.media img,.lvstrip .em.media img{width:32px;height:32px;object-fit:contain}
 .qs .gc{font-size:9.5px;font-weight:700;color:var(--accent-ink);font-variant-numeric:tabular-nums}
 .gbub{position:relative;align-self:flex-end;display:flex;flex-direction:column;align-items:center;gap:6px;
  margin:14px 8px 16px 0;padding:10px 18px 8px;border:0;background:none;isolation:isolate}
@@ -338,6 +340,10 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .fxg .em{font-size:74px;line-height:1;display:block;filter:drop-shadow(0 10px 26px rgba(0,0,0,.75))}
 .fxg.big .em{font-size:118px;
  filter:drop-shadow(0 0 16px rgba(255,255,255,.6)) drop-shadow(0 0 40px rgba(255,192,46,.9)) drop-shadow(0 12px 30px rgba(0,0,0,.8))}
+.fxg.water{top:50%;animation:waterGiftIn 5.2s cubic-bezier(.2,.8,.25,1) forwards}
+.fxg.water img{display:block;width:min(62vw,360px);max-height:68vh;object-fit:contain;
+ filter:drop-shadow(0 0 18px rgba(255,255,255,.4)) drop-shadow(0 16px 30px rgba(0,0,0,.75))}
+.fxg.water ~ .fxtag{top:78%;animation-duration:5.2s,2.2s}
 .fxtag{position:absolute;left:50%;top:62%;transform:translate(-50%,0);display:flex;align-items:center;gap:6px;
  padding:5px 14px;border-radius:99px;font-size:12px;font-weight:800;color:#ffffff;white-space:nowrap;
  background:linear-gradient(110deg,#ffc02e 0%,#fff6da 22%,#ff2e93 48%,#ffc02e 72%,#fff6da 100%);
@@ -468,6 +474,11 @@ html{scroll-behavior:smooth}
  34%{transform:translate(-50%,0) scale(1) rotate(0deg)}
  72%{transform:translate(-50%,0) scale(1.04);opacity:1}
  100%{transform:translate(-50%,-90px) scale(.9);opacity:0}}
+@keyframes waterGiftIn{
+ 0%{transform:translate(-50%,calc(-50% + 55px)) scale(.68);opacity:0}
+ 14%{transform:translate(-50%,calc(-50% - 8px)) scale(1.04);opacity:1}
+ 24%,82%{transform:translate(-50%,-50%) scale(1);opacity:1}
+ 100%{transform:translate(-50%,calc(-50% - 40px)) scale(.94);opacity:0}}
 @keyframes giftFlash{0%{opacity:0}14%{opacity:.5}100%{opacity:0}}
 @keyframes giftRing{0%{transform:translate(-50%,-50%) scale(.15);opacity:.95}
  100%{transform:translate(-50%,-50%) scale(2.7);opacity:0}}
