@@ -42,7 +42,7 @@ export default function App() {
 
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {
-    setFailure(event.nativeEvent.description || "The Aurora bundle failed to load.");
+    setFailure(event.nativeEvent.description || "The Zimi Live bundle failed to load.");
   }, []);
 
   // The WebView's renderer can be killed under memory pressure; reload instead
@@ -62,7 +62,7 @@ export default function App() {
         <StatusBar style={theme === "dark" ? "light" : "dark"} />
         {failure || !html ? (
           <View style={styles.center}>
-            <Text style={[styles.failTitle, { color: ink }]}>Aurora could not start</Text>
+            <Text style={[styles.failTitle, { color: ink }]}>Zimi Live could not start</Text>
             <Text style={[styles.failBody, { color: ink }]}>
               {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
             </Text>

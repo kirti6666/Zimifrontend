@@ -10,6 +10,10 @@ keeps it identical to the original Next.js version.
   safe-area handling, and the `data-theme` bridge to the native status bar.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
+- `web/admin.html` — the desktop-only admin console. Self-contained; never part
+  of the phone app. `npm run build:web` also copies it to `dist/admin/` for
+  previews (skip with `INCLUDE_ADMIN=0`); `npm run build:admin` builds the
+  production copy into `admin-site/dist/`. See `docs/ADMIN.md`.
 - `assets/aurora.html` and `assets/aurora-bundle.js` — **generated**. Never edit
   them; edit `web/` and run `npm run build:web`.
 
