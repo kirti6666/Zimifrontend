@@ -1120,6 +1120,7 @@ button.acctrow:active{background:var(--raised)}
 .pcgo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;margin-top:12px;border-radius:99px;color:#fff;font-size:15px;font-weight:800;
  background:linear-gradient(120deg,#ff2e93,#ff5cae 60%,#ff8a5b);box-shadow:0 14px 28px -14px rgba(255,46,147,.95)}
 .pcfine{margin-top:9px;text-align:center;font-size:10.5px;color:rgba(255,255,255,.45)}
+.pcerr{margin-top:9px;padding:9px 12px;border-radius:12px;background:rgba(255,77,109,.14);color:#ffb3c1;font-size:12px;text-align:center}
 
 /* ---- sender summary ---- */
 .ssum{padding-top:34px}
