@@ -263,13 +263,13 @@ const NAMES=["Aanya Kapoor","Ishaan Verma","Meher Singh","Rehan Qureshi","Tara I
 const CITY=["Mumbai","Bengaluru","Chandigarh","Lucknow","Chennai","Hyderabad","Kolkata","Ludhiana","Indore","Delhi","Pune","Jaipur"];
 const D={
  kyc:[
-  {id:"K-1042",n:"Rohit Sharma",role:"Host",ph:"+91 98765 43210",dob:"14 Mar 1995",idt:"PAN",idno:"ABCPS1234F",sub:"10 min ago",photos:3,flags:[],st:"pending"},
-  {id:"K-1041",n:"Mehak Dhillon",role:"Host",ph:"+91 99881 22113",dob:"02 Jan 2001",idt:"Aadhaar",idno:"XXXX XXXX 4417",sub:"34 min ago",photos:2,flags:["Name differs slightly from ID"],st:"pending"},
-  {id:"K-1040",n:"Apsara Rao",role:"Host",ph:"+91 90011 55667",dob:"19 Aug 2009",idt:"Aadhaar",idno:"XXXX XXXX 9021",sub:"1 hr ago",photos:4,flags:["Under 18 by date of birth"],st:"pending"},
-  {id:"K-1039",n:"Sahil Bhatt",role:"Sender",ph:"+91 97000 33445",dob:"30 Nov 1992",idt:"PAN",idno:"BHTPS7781K",sub:"2 hr ago",photos:0,flags:[],st:"pending"},
-  {id:"K-1038",n:"Zoya Khan",role:"Host",ph:"+91 98200 11009",dob:"07 Jul 1999",idt:"PAN",idno:"KHAPZ0912M",sub:"3 hr ago",photos:3,flags:["ID number used on another account"],st:"pending"},
-  {id:"K-1031",n:"Tara Iyer",role:"Host",ph:"+91 94440 87650",dob:"21 Apr 1987",idt:"Aadhaar",idno:"XXXX XXXX 1180",sub:"Yesterday",photos:3,flags:[],st:"approved"},
-  {id:"K-1027",n:"Imran Qazi",role:"Host",ph:"+91 93300 21212",dob:"11 Feb 1998",idt:"PAN",idno:"QAZPI4410L",sub:"Yesterday",photos:1,flags:["Blurry ID photo"],st:"rejected",reason:"ID photo is blurry"}],
+  {id:"K-1042",n:"Rohit Sharma",role:"Host",ph:"+91 98765 43210",dob:"14 Mar 1995",email:"rohit.sharma@gmail.com",mailOk:1,sub:"10 min ago",photos:3,flags:[],st:"pending"},
+  {id:"K-1041",n:"Mehak Dhillon",role:"Host",ph:"+91 99881 22113",dob:"02 Jan 2001",email:"mehak.d@gmail.com",mailOk:0,sub:"34 min ago",photos:3,flags:["Email not confirmed yet"],st:"pending"},
+  {id:"K-1040",n:"Apsara Rao",role:"Host",ph:"+91 90011 55667",dob:"19 Aug 2009",email:"apsara.rao@yahoo.com",mailOk:1,sub:"1 hr ago",photos:4,flags:["Under 18 by date of birth"],st:"pending"},
+  {id:"K-1039",n:"Sahil Bhatt",role:"Sender",ph:"+91 97000 33445",dob:"30 Nov 1992",email:"sahil.b@outlook.com",mailOk:1,sub:"2 hr ago",photos:3,flags:[],st:"pending"},
+  {id:"K-1038",n:"Zoya Khan",role:"Host",ph:"+91 98200 11009",dob:"07 Jul 1999",email:"zoyak@gmail.com",mailOk:1,sub:"3 hr ago",photos:3,flags:["Email used on another account"],st:"pending"},
+  {id:"K-1031",n:"Tara Iyer",role:"Host",ph:"+91 94440 87650",dob:"21 Apr 1987",email:"tara.iyer@gmail.com",mailOk:1,sub:"Yesterday",photos:3,flags:[],st:"approved"},
+  {id:"K-1027",n:"Imran Qazi",role:"Host",ph:"+91 93300 21212",dob:"11 Feb 1998",email:"imranq@gmail.com",mailOk:1,sub:"Yesterday",photos:1,flags:["Fewer than 3 clear photos"],st:"rejected",reason:"Photos are blurry"}],
  rewards:[
   {id:1,name:"Call marathon",desc:"Spend 60 minutes on calls",metric:"Minutes on calls",goal:60,coins:5000,aud:"Hosts",reset:"Daily",on:1,claims:142},
   {id:2,name:"Gift magnet",desc:"Receive 20 gifts from callers",metric:"Gifts received",goal:20,coins:2000,aud:"Hosts",reset:"Daily",on:1,claims:318},
@@ -378,30 +378,29 @@ function penaltyLabel(){const r=D.rules;return r.penalty.v==="pause"?`Paused ${r
 const stPill=s=>s==="pending"?`<span class="pill p-warn"><i></i>Pending</span>`:s==="approved"?`<span class="pill p-ok"><i></i>Approved</span>`:s==="reupload"?`<span class="pill p-acc"><i></i>Re-upload asked</span>`:`<span class="pill p-bad"><i></i>Rejected</span>`;
 function kycTable(L,compact){
  if(!L.length)return `<div class="empty">Nothing here.</div>`;
- return `<div class="tblwrap"><table class="tbl"><thead><tr><th>Applicant</th>${compact?"":"<th>Account</th><th>ID</th>"}<th>Checks</th><th>Submitted</th>${compact?"":"<th>Status</th>"}</tr></thead><tbody>
+ return `<div class="tblwrap"><table class="tbl"><thead><tr><th>Applicant</th>${compact?"":"<th>Account</th><th>Email</th>"}<th>Checks</th><th>Submitted</th>${compact?"":"<th>Status</th>"}</tr></thead><tbody>
  ${L.map((k,i)=>`<tr class="click" onclick="openKyc('${k.id}')"><td><div class="who">${avatar(k.n,i)}<div><b>${esc(k.n)}</b><span>${k.id} · ${k.ph}</span></div></div></td>
-  ${compact?"":`<td>${k.role}</td><td>${k.idt}</td>`}
+  ${compact?"":`<td>${k.role}</td><td>${esc(k.email)}${k.mailOk?"":` <span class="pill p-mute">unconfirmed</span>`}</td>`}
   <td>${k.flags.length?`<span class="pill p-bad"><i></i>${k.flags.length} flag${k.flags.length>1?"s":""}</span>`:`<span class="pill p-ok"><i></i>Clear</span>`}</td>
   <td style="color:var(--muted)">${k.sub}</td>${compact?"":`<td>${stPill(k.st)}</td>`}</tr>`).join("")}</tbody></table></div>`}
 function vKyc(){
  const L=D.kyc.filter(k=>k.st===S.kycTab||(S.kycTab==="rejected"&&k.st==="reupload"));
- return head("KYC review","Hosts verify to go live and get the verified badge. Senders verify only to withdraw. Check every flag before approving.")+
+ return head("KYC review","New accounts give an email address and at least 3 photos; no ID documents. Hosts are reviewed before going live. Check every flag before approving.")+
  `<div class="card"><div class="bar"><div class="tabs">${[["pending","Pending"],["approved","Approved"],["rejected","Rejected"]].map(([k,l])=>`<button class="${S.kycTab===k?"on":""}" onclick="S.kycTab='${k}';render()">${l} <span class="tab">(${D.kyc.filter(x=>x.st===k||(k==="rejected"&&x.st==="reupload")).length})</span></button>`).join("")}</div>
   <span style="font-size:12.5px;color:var(--muted)">Target: review within 15 minutes</span></div>${kycTable(L)}</div>`}
 function openKyc(id){S.drawer=()=>kycDrawer(id);S.reason="";render()}
 function kycDrawer(id){const k=D.kyc.find(x=>x.id===id),host=k.role==="Host";
  const age=new Date().getFullYear()-parseInt(k.dob.slice(-4)),minor=age<18;
- const chk=[["Name on ID matches the account",!k.flags.some(f=>f.startsWith("Name"))?"y":"q"],["18 or older ("+age+" by date of birth)",minor?"n":"y"],
-  ["ID number not used on another account",k.flags.some(f=>f.startsWith("ID number"))?"n":"y"],["ID photo is readable",k.flags.some(f=>f.startsWith("Blurry"))?"n":"y"]];
- if(host)chk.push(["Face in photos matches the ID",k.photos?"q":"n"]);
+ const chk=[["18 or older ("+age+" by date of birth)",minor?"n":"y"],["Email address confirmed",k.mailOk?"y":"q"],
+  ["Email not used on another account",k.flags.some(f=>f.startsWith("Email used"))?"n":"y"],["At least 3 clear photos ("+k.photos+" uploaded)",k.photos>=3?"y":"n"],
+  ["Same face in every photo",k.photos?"q":"n"]];
  return `<aside class="drawer" role="dialog" aria-label="KYC ${k.id}"><header>${avatar(k.n,1)}<div><h2>${esc(k.n)}</h2><span style="font-size:12.5px;color:var(--muted)">${k.id} · ${k.role} · submitted ${k.sub}</span></div><button class="x" onclick="S.drawer=null;render()" aria-label="Close">&times;</button></header>
  <div class="body">
   ${k.flags.length?`<div class="note" style="background:var(--bad-wash);color:var(--bad)"><b style="color:var(--bad)">Flags:</b> ${k.flags.map(esc).join(" · ")}</div>`:""}
-  <div><div class="h4" style="margin-bottom:8px">Details</div><dl class="facts"><dt>Phone</dt><dd>${k.ph}</dd><dt>Date of birth</dt><dd>${k.dob}</dd><dt>ID type</dt><dd>${k.idt}</dd><dt>ID number</dt><dd class="tab">${k.idno}</dd><dt>Purpose</dt><dd>${host?"Go live, verified badge, payouts":"Payouts only"}</dd></dl></div>
-  <div><div class="h4" style="margin-bottom:8px">ID document</div><div class="docs"><div class="doc">Front · ${k.idt}</div><div class="doc">${k.idt==="PAN"?"Back (optional)":"Back"}</div></div></div>
-  ${host?`<div><div class="h4" style="margin-bottom:8px">Uploaded photos (${k.photos})</div>${k.photos?`<div class="docs ph">${Array.from({length:k.photos},(_,i)=>`<div class="doc ph">Photo ${i+1}</div>`).join("")}</div>`:`<div class="note">No photos uploaded.</div>`}</div>`:""}
+  <div><div class="h4" style="margin-bottom:8px">Details</div><dl class="facts"><dt>Phone</dt><dd>${k.ph}</dd><dt>Date of birth</dt><dd>${k.dob}</dd><dt>Email</dt><dd>${esc(k.email)} ${k.mailOk?"":`<span class="pill p-mute">not confirmed</span>`}</dd><dt>Purpose</dt><dd>${host?"Go live, verified badge, payouts":"Account and payouts"}</dd></dl></div>
+  ${true?`<div><div class="h4" style="margin-bottom:8px">Uploaded photos (${k.photos})</div>${k.photos?`<div class="docs ph">${Array.from({length:k.photos},(_,i)=>`<div class="doc ph">Photo ${i+1}</div>`).join("")}</div>`:`<div class="note">No photos uploaded.</div>`}</div>`:""}
   <div><div class="h4" style="margin-bottom:8px">Checks</div><div class="checks">${chk.map(([t,s])=>`<div class="${s}">${I(s==="y"?"check":s==="n"?"x":"srch",15)}<span>${t}</span></div>`).join("")}</div></div>
-  ${k.st==="pending"?`<label class="f">Reason (required to reject or ask for re-upload)<select class="in" id="rsn" onchange="S.reason=this.value"><option value="">Choose a reason</option>${["ID photo is blurry","Face does not match ID","Under 18","ID already used on another account","Name does not match","Document expired or invalid"].map(r=>`<option ${S.reason===r?"selected":""}>${r}</option>`).join("")}</select></label>`:k.reason?`<div class="note"><b>Reason:</b> ${esc(k.reason)}</div>`:""}
+  ${k.st==="pending"?`<label class="f">Reason (required to reject or ask for re-upload)<select class="in" id="rsn" onchange="S.reason=this.value"><option value="">Choose a reason</option>${["Photos are blurry","Fewer than 3 photos","Faces don't match across photos","Under 18","Email already used on another account","Email not confirmed"].map(r=>`<option ${S.reason===r?"selected":""}>${r}</option>`).join("")}</select></label>`:k.reason?`<div class="note"><b>Reason:</b> ${esc(k.reason)}</div>`:""}
  </div>
  ${k.st==="pending"?`<footer><button class="btn ok" ${minor?"disabled title='Applicant is under 18'":""} onclick="kycAct('${k.id}','approved')">${I("check",15)} Approve</button>
   <button class="btn ghost" onclick="kycAct('${k.id}','reupload')">Ask to re-upload</button>

@@ -2709,9 +2709,9 @@ function signedIn(){
 const CATS=["Dance","Music","Talk","Gaming","Astrology","Fitness","Comedy"],LANGS=["Hindi","English","Tamil","Telugu","Bengali","Marathi","Punjabi"];
 function toggleLang(l){const a=S.auth.langs;a.includes(l)?a.splice(a.indexOf(l),1):a.push(l);r()}
 /* New senders: a name and the 18+ confirmation, then straight to Home. */
-function finishSender(){const a=S.auth,nm=(document.getElementById("pn")||{}).value||"";
- a.name=nm;
- if(!nm.trim()||!document.getElementById("p18").checked){a.err="Add a display name and confirm you're 18 or older.";return r()}
+function finishSender(){const a=S.auth,nm=(document.getElementById("pn")||{}).value||"",em=(document.getElementById("pe")||{}).value||"";
+ a.name=nm;a.email=em;
+ if(!nm.trim()||!okEmail(em)||(a.photos||[]).length<MIN_PHOTOS||!document.getElementById("p18").checked){a.err=`Add your name, a valid email address, at least ${MIN_PHOTOS} photos, and confirm you're 18 or older.`;return r()}
  me.n=nm.trim();S.editName=me.n;S.loggedIn=1;S.auth={step:"phone"};go("home")}
 function finishProfile(){const a=S.auth,nm=(document.getElementById("pn")||{}).value||"";
  a.name=nm;
@@ -2731,14 +2731,16 @@ function vLogin(){const a=S.auth||{step:"phone"},host=isHost(),signup=a.mode==="
     ${row("hostMode('login')","user","Log in",host?"I already have a host account":"I already have an account")}
     ${row("hostMode('signup')","plus",host?"Create a host account":"Create an account",host?"Sign up and verify in a few minutes":"New here? It takes less than a minute")}
    </div>
-   <p class="lgnote">${host?"New accounts complete a short identity check before going live.":"Your coins and wallet stay safe with one-time code login."}</p>`;
+   <p class="lgnote">${host?"New accounts add an email address and photos before going live.":"Your coins and wallet stay safe with one-time code login."}</p>`;
  else if(a.step==="sprofile")body=`
    <span class="lgstep2">Step 2 of 2</span>
    <h1 class="lgh">Create your profile</h1>
    <p class="lgp">This is how creators will see you. You can change it later.</p>
    <div class="editgroup" style="margin:0"><label class="editlabel" for="pn">Display name</label><input class="editinput" id="pn" maxlength="32" placeholder="Your name" value="${esc(a.name||"")}"></div>
-   <div class="lgform"><div><span class="editlabel">Languages you speak <span style="text-transform:none;letter-spacing:0;font-weight:500">(optional)</span></span><div class="lgchips">${LANGS.map(l=>`<button class="${a.langs.includes(l)?"on":""}" aria-pressed="${a.langs.includes(l)}" onclick="S.auth.name=document.getElementById('pn').value;toggleLang('${l}')">${l}</button>`).join("")}</div></div></div>
-   <label class="lg18"><input type="checkbox" id="p18"> I confirm I am 18 or older.</label>
+   <div class="editgroup" style="margin:0"><label class="editlabel" for="pe">Email address</label><input class="editinput" id="pe" type="email" autocomplete="email" maxlength="80" placeholder="name@example.com" value="${esc(a.email||"")}"></div>
+   <div><span class="editlabel">Your photos</span>${photoGrid(a.photos||[],"signPhotos","dropSignPhoto")}</div>
+   <div class="lgform"><div><span class="editlabel">Languages you speak <span style="text-transform:none;letter-spacing:0;font-weight:500">(optional)</span></span><div class="lgchips">${LANGS.map(l=>`<button class="${a.langs.includes(l)?"on":""}" aria-pressed="${a.langs.includes(l)}" onclick="S.auth.name=document.getElementById('pn').value;S.auth.email=document.getElementById('pe').value;toggleLang('${l}')">${l}</button>`).join("")}</div></div></div>
+   <label class="lg18"><input type="checkbox" id="p18" ${a.adult?"checked":""} onchange="S.auth.adult=this.checked"> I confirm I am 18 or older.</label>
    ${a.err?`<div class="lgerr">${a.err}</div>`:""}
    <button class="lgbtn" onclick="finishSender()">Start exploring</button>`;
  else if(a.step==="profile")body=`<div class="lgform">
@@ -2747,7 +2749,7 @@ function vLogin(){const a=S.auth||{step:"phone"},host=isHost(),signup=a.mode==="
   <div class="editgroup" style="margin:0"><label class="editlabel" for="pn">Display name</label><input class="editinput" id="pn" maxlength="32" placeholder="Your stage or display name" value="${esc(a.name||"")}"></div>
   <div><span class="editlabel">What do you do on calls?</span><div class="lgchips">${CATS.map(c=>`<button class="${a.cat===c?"on":""}" aria-pressed="${a.cat===c}" onclick="S.auth.name=document.getElementById('pn').value;S.auth.cat='${c}';r()">${c}</button>`).join("")}</div></div>
   <div><span class="editlabel">Languages you speak</span><div class="lgchips">${LANGS.map(l=>`<button class="${a.langs.includes(l)?"on":""}" aria-pressed="${a.langs.includes(l)}" onclick="S.auth.name=document.getElementById('pn').value;toggleLang('${l}')">${l}</button>`).join("")}</div></div>
-  <label class="lg18"><input type="checkbox" id="p18"> I confirm I am 18 or older and agree to the Creator Payout Policy.</label>
+  <label class="lg18"><input type="checkbox" id="p18" ${a.adult?"checked":""} onchange="S.auth.adult=this.checked"> I confirm I am 18 or older and agree to the Creator Payout Policy.</label>
   ${a.err?`<div class="lgerr">${a.err}</div>`:""}
   <button class="lgbtn" onclick="finishProfile()">Continue to verification</button></div>`;
  else if(a.step==="otp")body=`
@@ -3159,13 +3161,22 @@ function kf(k,ph,label,type){return `<div class="editgroup"><label class="editla
 function readImgs(e,cb){
  Promise.all(Array.from(e.target.files||[]).map(f=>new Promise(res=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.readAsDataURL(f)})))
   .then(cb)}
-function kycId(e,side){readImgs(e,d=>{if(d[0]){S.kf[side]=d[0];S.kerr=0;r()}})}
-function kycPhotos(e){readImgs(e,d=>{S.kerr=0;S.kf.photos=(S.kf.photos||[]).concat(d).slice(0,4);r()})}
+/* Accounts are verified with an email address and at least MIN_PHOTOS photos; no ID documents. */
+const MIN_PHOTOS=3, MAX_PHOTOS=6;
+const okEmail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((v||"").trim());
+function photoGrid(list,addFn,dropFn){
+ return `<div class="kphotos">${list.map((src,i)=>`<span class="kph"><img src="${src}" alt="Photo ${i+1}"><button aria-label="Remove photo ${i+1}" onclick="${dropFn}(${i})">&times;</button></span>`).join("")}
+  ${list.length<MAX_PHOTOS?`<label class="kph add">${I("flip",18)}<span>${list.length?"Add":"Upload"}</span><input class="hiddenfile" type="file" accept="image/*" multiple onchange="${addFn}(event)"></label>`:""}</div>
+  <div class="khint">${list.length<MIN_PHOTOS?`Add at least ${MIN_PHOTOS} clear photos of your face (${list.length} of ${MIN_PHOTOS})`:`${list.length} photos added. You can add up to ${MAX_PHOTOS}.`}</div>`}
+function signPhotos(e){S.auth.name=(document.getElementById("pn")||{}).value||S.auth.name;S.auth.email=(document.getElementById("pe")||{}).value||S.auth.email;
+ readImgs(e,d=>{S.auth.err="";S.auth.photos=(S.auth.photos||[]).concat(d).slice(0,MAX_PHOTOS);r()})}
+function dropSignPhoto(i){S.auth.photos.splice(i,1);r()}
+function kycPhotos(e){readImgs(e,d=>{S.kerr=0;S.kf.photos=(S.kf.photos||[]).concat(d).slice(0,MAX_PHOTOS);r()})}
 function dropPhoto(i){S.kf.photos.splice(i,1);r()}
 function submitKyc(){
- const need=isHost()?["name","dob","idno"]:["name","pan"];
+ const need=isHost()?["name","dob","email"]:["name","pan"];
  if(need.some(k=>!(S.kf[k]||"").trim()))return S.kerr=1,r();
- if(isHost()&&(!S.kf.idf||!(S.kf.photos||[]).length))return S.kerr=1,r();
+ if(isHost()&&(!okEmail(S.kf.email)||(S.kf.photos||[]).length<MIN_PHOTOS))return S.kerr=1,r();
  S.kerr=0;A().kyc="pending";r()}
 function approveKyc(){A().kyc="verified";r()}
 function kycStatus(host){
@@ -3191,24 +3202,18 @@ function vKyc(){
   ${host?`<button class="editsave" onclick="go('setup')">Go live now</button>`:""}
   <button class="${host?"kdemo":"editsave"}" onclick="S.pdone=0;go('payout')">Withdraw earnings</button></div></div>`;
  const ph=S.kf.photos||[];
- const idBox=(side,lab)=>`<label class="${S.kf[side]?"has":""}">${S.kf[side]?`<img src="${S.kf[side]}" alt="ID ${lab}">`:`${I("doc",18)}<span>${lab}</span>`}
-   <input class="hiddenfile" type="file" accept="image/*" onchange="kycId(event,'${side}')"></label>`;
  return `<div class="acct kyc">
   ${host&&S.fromSignup?`<span class="lgstep">Step 3 of 3 &middot; Verify your identity</span>`:""}
-  ${host?`<div class="kycsteps"><span class="on">1 Details</span><span class="${S.kf.idf?"on":""}">2 ID</span><span class="${ph.length?"on":""}">3 Photos</span></div>
-   <div class="kycnote">${I("shield",15)}<span>Verify once to go live, get the <b>verified badge</b> and take payouts. Your documents are only used for verification.</span></div>
-   ${kf("name","As on your ID","Full legal name")}
+  ${host?`<div class="kycsteps"><span class="on">1 Details</span><span class="${ph.length>=MIN_PHOTOS?"on":""}">2 Photos</span></div>
+   <div class="kycnote">${I("shield",15)}<span>Verify once to go live, get the <b>verified badge</b> and take payouts. No ID documents needed; we'll email you a link to confirm your address.</span></div>
+   ${kf("name","Your full name","Full name")}
    ${kf("dob","DD / MM / YYYY","Date of birth")}
-   ${kf("idno","Aadhaar or PAN number","ID number")}
-   <div class="editgroup"><span class="editlabel">ID document</span><div class="kycup">${idBox("idf","Front")}${idBox("idb","Back")}</div></div>
-   <div class="editgroup"><span class="editlabel">Your photos</span>
-    <div class="kphotos">${ph.map((src,i)=>`<span class="kph"><img src="${src}" alt="Photo ${i+1}"><button aria-label="Remove photo ${i+1}" onclick="dropPhoto(${i})">&times;</button></span>`).join("")}
-     ${ph.length<4?`<label class="kph add">${I("flip",18)}<span>Upload</span><input class="hiddenfile" type="file" accept="image/*" multiple onchange="kycPhotos(event)"></label>`:""}</div>
-    <div class="khint">Upload 1 to 4 clear photos of your face, matching your ID.</div></div>`
+   ${kf("email","name@example.com","Email address","email")}
+   <div class="editgroup"><span class="editlabel">Your photos</span>${photoGrid(ph,"kycPhotos","dropPhoto")}</div>`
   :`<div class="kycnote">${I("doc",15)}<span><b>Quick payout check.</b> Only needed to send money to you. It takes about a minute and doesn't change your profile.</span></div>
    ${kf("name","As on your PAN card","Full name")}
    ${kf("pan","ABCDE1234F","PAN number")}`}
-  ${S.kerr?`<div class="kycerr">${host?"Please fill in every field, upload the front of your ID and at least one photo.":"Please fill in every field to continue."}</div>`:""}
+  ${S.kerr?`<div class="kycerr">${host?`Please fill in every field, use a valid email address and add at least ${MIN_PHOTOS} photos.`:"Please fill in every field to continue."}</div>`:""}
   <button class="editsave" onclick="submitKyc()">Submit for verification</button></div>`}
 
 function vPayout(){
@@ -3253,7 +3258,7 @@ function topFor(){
    <button aria-label="Back" onclick="go('settings')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
-  kyc:isHost()?"KYC verification":"Payout verification",payout:"Withdraw",awards:"Awards"};
+  kyc:isHost()?"Account verification":"Payout verification",payout:"Withdraw",awards:"Awards"};
  const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
    <button aria-label="Back" onclick="go('${backTo}')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>

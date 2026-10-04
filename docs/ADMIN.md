@@ -41,7 +41,7 @@ The console is a front end with demo data. Every button maps to an API call that
 - **Roles on the server:** the same map as `ROLES` in `web/admin.html` (Super admin, KYC reviewer, Finance, Moderator, Support). The server rejects any action outside the admin's role; hiding buttons is not security.
 - **Two-person approval:** rule changes and payouts above ₹50,000 are saved as requests. The server applies them only after a different admin approves.
 - **Audit log:** every write records who, what, when, before and after. Nobody can edit or delete entries.
-- **Data protection:** KYC images are stored encrypted with short-lived signed URLs, ID numbers are masked except to KYC reviewers, and payouts go through the payment provider's API (not manual transfers).
+- **Data protection:** accounts are verified with an email address (confirmed by a link) and at least 3 photos, no ID documents. Photos are stored encrypted with short-lived signed URLs, email addresses are shown only to KYC reviewers, and payouts go through the payment provider's API (not manual transfers).
 - **Rules the app reads:** entry fee hold, early-ending limit and penalty, payout unlock, minimum withdrawal, payout rate, host share, coin packs, gifts, rewards and promo codes all come from the API. The app no longer hard-codes them.
 
 ## Suggested path from prototype to production
