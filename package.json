@@ -9,7 +9,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:admin": "node scripts/build-admin.mjs"
   },
   "dependencies": {
     "expo": "~57.0.24",

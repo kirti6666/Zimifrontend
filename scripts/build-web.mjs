@@ -21,7 +21,7 @@ const HEAD = `<!DOCTYPE html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <meta name="description" content="A two-sided live streaming experience for hosts and supporters." />
-<title>Aurora</title>
+<title>Zimi Live</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -97,6 +97,16 @@ writeFileSync(
 mkdirSync(join(root, "dist"), { recursive: true });
 writeFileSync(join(root, "dist/index.html"), html);
 
+/* The admin console is a separate, desktop-only page. It is never part of the
+   phone app bundle. For previews it is also served at /admin on this site;
+   production builds of the public site set INCLUDE_ADMIN=0 and deploy the
+   console on its own domain with scripts/build-admin.mjs (see docs/ADMIN.md). */
+const withAdmin = process.env.INCLUDE_ADMIN !== "0";
+if (withAdmin) {
+  mkdirSync(join(root, "dist/admin"), { recursive: true });
+  writeFileSync(join(root, "dist/admin/index.html"), read("web/admin.html"));
+}
+
 console.log(
-  `built assets/aurora.html, assets/aurora-bundle.js and dist/index.html (${html.length} chars)`
+  `built assets/aurora.html, assets/aurora-bundle.js and dist/index.html${withAdmin ? " (+ dist/admin)" : ""} (${html.length} chars)`
 );

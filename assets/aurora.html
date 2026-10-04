@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <meta name="description" content="A two-sided live streaming experience for hosts and supporters." />
-<title>Aurora</title>
+<title>Zimi Live</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -967,6 +967,668 @@ button.acctrow:active{background:var(--raised)}
 [data-theme="light"] .cpack .pr{background:#f1e8bd;color:#574812}
 @media(max-width:350px){.cwrap{padding-left:8px;padding-right:8px}.cgrid{gap:4px}.cpack{height:145px;padding-left:3px;padding-right:3px}.cpack .amt{font-size:14px}.cpack .pr{font-size:10.5px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+
+/* ---- roles: welcome, host strip, call flows, summaries, KYC ------------- */
+.hoststrip{display:flex;align-items:center;gap:11px;max-width:1280px;margin:12px 10px 0;padding:12px 12px 12px 14px;
+ border-radius:16px;background:#17171a;color:#fff;position:relative;overflow:hidden}
+.hoststrip:after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;right:-40px;top:-60px;background:var(--accent);opacity:.22}
+.hsdot{width:9px;height:9px;border-radius:50%;background:#6a6a75;flex:0 0 auto;box-shadow:0 0 0 4px rgba(255,255,255,.08)}
+.hstx{flex:1;min-width:0;display:flex;flex-direction:column}
+.hstx b{font-size:13.5px}.hstx span{font-size:11px;color:rgba(255,255,255,.6)}
+.hoststrip button{position:relative;z-index:1;flex:0 0 auto;padding:9px 15px;border-radius:99px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:800}
+.kycnudge{display:flex;align-items:center;gap:8px;width:calc(100% - 20px);max-width:1280px;margin:8px 10px 0;padding:9px 12px;
+ border-radius:12px;background:color-mix(in srgb,#087ee8 12%,transparent);color:#0a6bc4;font-size:11.5px;font-weight:650;text-align:left}
+[data-theme="dark"] .kycnudge{color:#59b8ff}
+.kycnudge span:nth-child(2){flex:1}.kycnudge .ch{font-size:16px}
+
+.visrow{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);text-align:left}
+.visrow .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.visrow b{font-size:12.5px;font-weight:750}.visrow .tx span{font-size:10.5px;color:var(--muted);line-height:1.35}
+
+.pccard .pchost{display:flex;align-items:center;gap:10px}
+.pccard .pchost b{display:block;font-size:14.5px;font-weight:800}
+.pcst{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-top:1px}
+.pcst i{width:7px;height:7px;border-radius:50%;background:var(--online)}
+.pcrates{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:11px}
+.pcrates span{display:flex;flex-direction:column;gap:2px;padding:8px 9px;border-radius:11px;background:var(--raised);
+ font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.pcrates span svg{width:14px;height:14px;vertical-align:-2px;margin-right:2px}
+.pcrates em{font-style:normal;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.pcnote{margin-top:9px;font-size:11.5px;color:var(--muted);line-height:1.45}
+.pcnote .warn{color:var(--live)}
+.actbar .gb{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+
+.ringscr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ background:#0c0c0e;color:#fff;overflow:hidden;padding:24px;text-align:center}
+.ringbg{position:absolute;inset:-30px;filter:blur(26px) brightness(.45);transform:scale(1.1)}
+.ringscr>*:not(.ringbg){position:relative}
+.ringorb{border-radius:50%;box-shadow:0 0 0 10px rgba(255,46,147,.14),0 0 0 22px rgba(255,46,147,.07);animation:ringPulse 1.6s ease-in-out infinite}
+.ringscr h2{margin-top:26px;font-size:22px;font-weight:800}
+.ringscr p{margin-top:4px;font-size:12.5px;color:rgba(255,255,255,.65)}
+.waitnote{max-width:300px;margin-top:16px;padding:10px 13px;border-radius:13px;background:rgba(255,255,255,.08);font-size:11.5px;line-height:1.45;color:rgba(255,255,255,.75)}
+.ringact{display:flex;gap:56px;margin-top:64px}
+.ringact .accept{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
+ background:#1bc5a4;box-shadow:0 10px 24px -8px rgba(27,197,164,.8);animation:ringPulse 1.2s ease-in-out infinite}
+@keyframes ringPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.ringorb,.ringact .accept,.incban{animation:none}}
+
+.hcwho{display:flex;align-items:center;gap:7px;padding:3px 11px 3px 3px;border-radius:99px;background:rgba(0,0,0,.45);backdrop-filter:blur(10px);color:#fff}
+.hcwho>span:last-child{display:flex;flex-direction:column;line-height:1.2}
+.hcwho b{font-size:12px}.hcwho>span>span{font-size:10px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums}
+.pip{position:relative;width:74px;height:100px;border-radius:13px;overflow:hidden;border:2px solid rgba(255,255,255,.4);box-shadow:0 8px 20px -8px rgba(0,0,0,.8)}
+.pip span{position:absolute;left:6px;bottom:4px;font-size:9.5px;font-weight:700;color:#fff}
+.hcchips{position:relative;z-index:6;display:flex;gap:7px;padding:9px 14px 0;flex-wrap:wrap}
+.earnchip{display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border-radius:99px;background:rgba(0,0,0,.5);
+ border:1px solid rgba(255,192,46,.35);color:#ffc02e;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;backdrop-filter:blur(10px)}
+.earnchip svg{width:15px;height:15px}
+.earnchip em{font-style:normal;font-size:10px;font-weight:600;color:rgba(255,255,255,.55)}
+.vischip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:rgba(0,0,0,.5);
+ color:rgba(255,255,255,.8);font-size:11.5px;font-weight:700;backdrop-filter:blur(10px)}
+.vischip i{width:7px;height:7px;border-radius:50%;background:#6a6a75}
+.vischip.on i{background:var(--online);box-shadow:0 0 8px var(--online)}
+.rndb.endb{background:#ef3154}
+.rndb.endb svg{transform:rotate(135deg)}
+.incban{position:absolute;z-index:30;left:12px;right:12px;top:124px;display:flex;align-items:center;gap:10px;padding:10px;
+ border-radius:18px;background:rgba(23,23,26,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,46,147,.45);
+ box-shadow:0 14px 34px -12px rgba(0,0,0,.9);color:#fff;animation:incIn .35s cubic-bezier(.22,.8,.3,1) both,incRing 1.3s ease-in-out .4s infinite}
+.incban .tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.incban b{font-size:13.5px}.incban .tx span{font-size:11px;color:rgba(255,255,255,.65)}
+.incban button{width:40px;height:40px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff}
+.incban .no{background:#ef3154}.incban .no svg{transform:rotate(135deg)}
+.incban .yes{background:#1bc5a4}
+@keyframes incIn{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes incRing{0%,100%{box-shadow:0 14px 34px -12px rgba(0,0,0,.9),0 0 0 0 rgba(255,46,147,.5)}50%{box-shadow:0 14px 34px -12px rgba(0,0,0,.9),0 0 0 7px rgba(255,46,147,0)}}
+
+.sum{max-width:460px;margin:0 auto;padding:46px 18px 30px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.sumhero{position:relative}
+.sumbadge{position:absolute;right:-6px;bottom:-4px;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+ font-size:19px;background:var(--surface);box-shadow:var(--shadow)}
+.sum h1{margin-top:18px;font-size:clamp(24px,7vw,29px);line-height:1.15}
+.sum>p{margin-top:8px;font-size:13.5px;line-height:1.5;color:var(--muted);max-width:340px}
+.sum>p b{color:var(--accent-ink)}
+.sumstats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;width:100%;margin-top:20px}
+.sumstats div{display:flex;flex-direction:column;gap:3px;padding:12px 6px;border-radius:14px;background:var(--raised)}
+.sumstats b{display:flex;align-items:center;justify-content:center;gap:4px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.sumstats span{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+.sumfollow{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:8px 14px;border-radius:99px;background:var(--accent-wash);color:var(--accent-ink);font-size:12.5px;font-weight:750}
+.sumbtns{display:flex;gap:8px;width:100%;margin-top:18px}
+.sumbtns button{flex:1;height:46px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px;font-weight:800}
+.sumbtns .pri{background:var(--accent);color:#fff;box-shadow:0 8px 18px -10px var(--accent)}
+.sumbtns .sec{background:var(--raised);color:var(--ink)}
+.sumhome{margin-top:14px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.awardcard{width:100%;margin-top:16px;padding:14px;border-radius:16px;text-align:left;
+ background:linear-gradient(135deg,color-mix(in srgb,#ffc02e 22%,var(--surface)),var(--surface));border:1px solid color-mix(in srgb,#ffc02e 45%,transparent)}
+.awardcard.soft{background:var(--surface);border-color:var(--line)}
+.awt{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.awardcard.soft .awt{color:var(--faint)}
+.awrow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px;font-weight:600}
+.awrow span{flex:1}.awrow b{display:inline-flex;align-items:center;gap:3px;color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.awardcard button{width:100%;margin-top:10px;height:42px;border-radius:99px;background:linear-gradient(120deg,#ffc02e,#ff2e93);color:#fff;font-size:13px;font-weight:800}
+.claim{flex:0 0 auto;padding:7px 11px;border-radius:99px;background:linear-gradient(120deg,#ffc02e,#ff2e93);color:#fff;font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums}
+.claimed{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;font-size:11px;font-weight:750;color:var(--online)}
+
+.mvpempty{margin-top:4px}
+.mvphid{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:12px;background:var(--raised);font-size:11.5px;color:var(--muted)}
+.mvphid span{flex:1}.mvphid button{font-weight:800;color:var(--accent-ink);font-size:12px}
+
+.vtag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;background:#087ee8;color:#fff;letter-spacing:.04em}
+.earncard .earnbig{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.earnfoot{display:flex;flex-direction:column;gap:9px;padding:0 12px 13px 57px;font-size:11.5px;color:var(--muted);line-height:1.45}
+.earnfoot .pbar{margin-top:0}.earnfoot .pnum{margin-top:-4px}
+.cta2{align-self:flex-start;padding:8px 14px;border-radius:99px;background:var(--accent);color:#fff;font-size:12px;font-weight:800}
+.cta2.ghost{background:var(--accent-wash);color:var(--accent-ink)}
+.acctico.ok{background:color-mix(in srgb,var(--online) 18%,transparent);color:var(--online)}
+
+.kycsteps{display:flex;gap:5px;margin-bottom:12px}
+.kycsteps span{flex:1;text-align:center;padding:6px 0;border-radius:9px;background:var(--raised);font-size:10.5px;font-weight:750;color:var(--muted)}
+.kycsteps span.on{background:var(--accent-wash);color:var(--accent-ink)}
+.kycnote{display:flex;gap:9px;align-items:flex-start;padding:11px 12px;border-radius:13px;background:var(--raised);font-size:11.5px;line-height:1.5;color:var(--muted)}
+.kycnote svg{flex:0 0 auto;margin-top:1px;color:var(--accent-ink)}.kycnote b{color:var(--ink)}
+.kycup{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kycup label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;height:80px;border-radius:12px;
+ border:1px dashed var(--line);background:var(--surface);color:var(--muted);font-size:11.5px;font-weight:650;cursor:pointer}
+.kycself{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border-radius:12px;border:1px dashed var(--line);
+ background:var(--surface);color:var(--muted);font-size:12.5px;font-weight:650;text-align:left}
+.kycself.on{border-style:solid;border-color:var(--online);color:var(--online)}
+.kycerr{margin-top:12px;font-size:12px;font-weight:650;color:var(--live)}
+.editsave:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---- welcome: pick an account type ---- */
+.welc{max-width:480px;min-height:100dvh;margin:0 auto;padding:22px 16px 24px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.wbrandrow{display:flex;align-items:center;gap:8px}
+.wmark{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;
+ background:linear-gradient(140deg,#ff2e93,#ffc02e)}
+.wbrand{font-size:18px;letter-spacing:-.02em}
+.wcopy{margin-top:6px}
+.wcopy h1{font-size:clamp(22px,6vw,25px);line-height:1.15}
+.welsub{margin-top:3px;font-size:13px;color:var(--muted)}
+.wopts{display:grid;gap:8px}
+.wopt{display:flex;align-items:flex-start;gap:11px;padding:12px;border-radius:16px;text-align:left;
+ background:var(--surface);border:1.5px solid var(--line);transition:border-color .18s,box-shadow .18s,transform .14s}
+.wopt:active{transform:scale(.99)}
+.wopt.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+.wico{width:38px;height:38px;flex:0 0 auto;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--accent-wash);color:var(--accent-ink)}
+.wopt.host .wico{background:linear-gradient(140deg,#ffc02e,#ff2e93);color:#fff}
+.wtx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.wopt b{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.wbody{font-size:12px;line-height:1.4;color:var(--muted)}
+.wpts{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.wpts span{font-size:10.5px;font-weight:650;padding:2px 8px;border-radius:99px;background:var(--raised);color:var(--ink)}
+.wradio{width:20px;height:20px;flex:0 0 auto;margin-top:2px;border-radius:50%;border:2px solid var(--line);transition:.18s}
+.wopt.on .wradio{border:6px solid var(--accent)}
+.wgo{height:46px;margin-top:2px;border-radius:99px;background:var(--accent);color:#fff;font-size:14px;font-weight:800;box-shadow:0 10px 22px -14px var(--accent)}
+.wgo:disabled{background:var(--raised);color:var(--faint);box-shadow:none;cursor:default}
+.welfoot{font-size:10.5px;line-height:1.5;color:var(--faint);text-align:center}
+
+/* ---- pre-call (sender): dark in both themes, like the call itself ---- */
+.pcall{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:#0b0a0c;color:#fff}
+.pcbg{position:absolute;inset:-40px;filter:blur(30px) saturate(1.2);transform:scale(1.15)}
+.pcshade{position:absolute;inset:0;background:radial-gradient(90% 60% at 50% 22%,rgba(255,46,147,.22),transparent 70%),linear-gradient(to bottom,rgba(0,0,0,.35),rgba(0,0,0,.82) 62%)}
+.pctop{position:relative;z-index:2;display:flex;align-items:center;gap:8px;padding:12px 14px}
+.pcic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);color:#fff;backdrop-filter:blur(10px)}
+.pctitle{flex:1;text-align:center;font-size:13px;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.75)}
+.pcself{position:absolute;z-index:2;top:60px;right:14px;width:78px;height:104px;border-radius:14px;overflow:hidden;border:1.5px solid rgba(255,255,255,.35);
+ box-shadow:0 10px 24px -10px rgba(0,0,0,.9);background:#1d1b20;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6)}
+.pcself i{position:absolute;left:7px;bottom:5px;font-style:normal;font-size:9.5px;font-weight:700;color:#fff}
+.pcmain{position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px 20px}
+.pcav{position:relative;border-radius:50%;padding:4px;background:conic-gradient(from 200deg,#ff2e93,#ffc02e,#ff2e93)}
+.pcav .av{border:3px solid #0b0a0c}
+.pcon{position:absolute;right:8px;bottom:8px;width:16px;height:16px;border-radius:50%;background:#1bc5a4;border:3px solid #0b0a0c}
+.pcmain h2{margin-top:14px;font-size:clamp(23px,6.5vw,27px);color:#fff}
+.pcsub{margin-top:2px;font-size:12.5px;color:rgba(255,255,255,.62)}
+.pcbadge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:6px 12px;border-radius:99px;background:rgba(27,197,164,.14);
+ color:#7ff0d8;font-size:11.5px;font-weight:650}
+.pcbadge i{width:7px;height:7px;border-radius:50%;background:#1bc5a4;box-shadow:0 0 8px #1bc5a4}
+.pcsheet{position:relative;z-index:2;margin:0 10px calc(10px + env(safe-area-inset-bottom));padding:14px;border-radius:24px;
+ background:rgba(24,22,27,.82);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.08)}
+.pcprice{display:grid;grid-template-columns:repeat(3,1fr);border-radius:16px;background:rgba(255,255,255,.05)}
+.pcprice div{display:flex;flex-direction:column;gap:3px;padding:10px 11px}
+.pcprice div+div{border-left:1px solid rgba(255,255,255,.08)}
+.pcprice .k{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+.pcprice .v{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.pcprice .v svg{width:15px;height:15px}
+.pcprice .v.low{color:#ff6b8a}
+.pcmeta{margin-top:10px;font-size:12px;color:rgba(255,255,255,.7)}
+.pcmeta span{display:flex;align-items:center;gap:7px}
+.pcmeta .warn{color:#ff8aa3;font-weight:650}
+.pcctl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.pcctl button{display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border-radius:13px;background:rgba(255,255,255,.08);color:#fff;font-size:12.5px;font-weight:700}
+.pcctl button.off{background:rgba(255,255,255,.03);color:rgba(255,255,255,.5)}
+.pcgo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;margin-top:12px;border-radius:99px;color:#fff;font-size:15px;font-weight:800;
+ background:linear-gradient(120deg,#ff2e93,#ff5cae 60%,#ff8a5b);box-shadow:0 14px 28px -14px rgba(255,46,147,.95)}
+.pcfine{margin-top:9px;text-align:center;font-size:10.5px;color:rgba(255,255,255,.45)}
+
+/* ---- sender summary ---- */
+.ssum{padding-top:34px}
+.ssduo{display:flex;align-items:center}
+.ssduo .av{border:3px solid var(--canvas);box-shadow:var(--shadow)}
+.ssduo .av+.sslink+.av{margin-left:-14px}
+.ssduo>.av:first-child{margin-right:-14px}
+.sslink{position:relative;z-index:1;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+ background:var(--accent);color:#fff;border:3px solid var(--canvas)}
+.sseye{margin-top:14px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.ssum h1{margin-top:6px}
+.ssmeter{width:100%;margin-top:16px;padding:12px 14px;border-radius:16px;text-align:left;
+ background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--surface)),var(--surface));border:1px solid var(--accent-line)}
+.ssml{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted)}
+.ssml b{font-size:15px;color:var(--accent-ink)}
+.ssbar{height:6px;margin-top:8px;border-radius:99px;background:var(--raised);overflow:hidden}
+.ssbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#ff2e93,#ffc02e)}
+.ssreceipt{width:100%;margin-top:14px;padding:4px 14px;border-radius:16px;background:var(--surface);border:1px solid var(--line);text-align:left}
+.ssreceipt div{display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:13px;color:var(--muted)}
+.ssreceipt div+div{border-top:1px dashed var(--line)}
+.ssreceipt b{display:flex;align-items:center;gap:4px;color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.ssreceipt b svg{width:15px;height:15px}
+.ssreceipt .tot{border-top:1px solid var(--line)!important}
+.ssreceipt .tot span{color:var(--ink);font-weight:800}.ssreceipt .tot b{font-size:15px;font-weight:800}
+.ssrate{width:100%;margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12.5px;font-weight:650;color:var(--muted)}
+.ssrate div{display:flex;gap:4px}
+.ssrate button{font-size:27px;line-height:1;color:var(--line);transition:color .15s,transform .12s}
+.ssrate button.on{color:#ffc02e}
+.ssrate button:active{transform:scale(.88)}
+.ssrate em{font-style:normal;font-size:11.5px;color:var(--online)}
+.sumbtns.two{margin-top:8px}
+.sumbtns .sec.done{color:var(--accent-ink)}
+.ssum .sumbtns:first-of-type{margin-top:16px}
+
+/* ---- missed calls on the chats page ---- */
+.msec{max-width:720px;margin:0 auto;padding:10px 14px 0}
+.mhead{display:flex;align-items:center;gap:7px;padding:4px 2px 8px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.mhead b{min-width:18px;height:18px;padding:0 5px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;
+ background:color-mix(in srgb,#ef3154 14%,transparent);color:#ef3154;font-size:10.5px;letter-spacing:0}
+.mhead button{margin-left:auto;color:var(--accent-ink);font-size:11.5px;font-weight:750;letter-spacing:0;text-transform:none}
+.mhead.msg{max-width:720px;margin:6px auto 0;padding:10px 16px 0}
+.mhead .unr{background:var(--accent-wash);color:var(--accent-ink);text-transform:none;letter-spacing:0;padding:0 7px}
+.mcard{border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden}
+.mcrow{display:flex;align-items:center;gap:11px;padding:10px 12px}
+.mcrow+.mcrow{border-top:1px solid var(--line)}
+.callav .badge.miss{background:#ef3154}
+.mctx{flex:1;min-width:0;display:flex;flex-direction:column}
+.mctx b{font-size:14px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mctx span{font-size:11.5px;color:#ef3154;margin-top:1px}
+.mcback{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:99px;background:var(--accent-wash);color:var(--accent-ink);font-size:12px;font-weight:750}
+
+/* ---- verification: photos, review status ---- */
+.kycup label{position:relative;overflow:hidden}
+.kycup label.has{border-style:solid;border-color:var(--online)}
+.kycup img,.kph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.kphotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kph{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--raised)}
+.kph button{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:15px;line-height:1}
+.kph.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px dashed var(--line);background:var(--surface);
+ color:var(--muted);font-size:11px;font-weight:650;cursor:pointer}
+.khint{margin-top:7px;font-size:11px;color:var(--faint)}
+.kpend{display:flex;flex-direction:column;align-items:center;text-align:center;padding:30px 6px 10px}
+.kspin{width:64px;height:64px;border-radius:20px;display:flex;align-items:center;justify-content:center;background:var(--accent-wash);color:var(--accent-ink);
+ box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 7%,transparent)}
+.kspin.ok{background:color-mix(in srgb,var(--online) 16%,transparent);color:var(--online);box-shadow:0 0 0 8px color-mix(in srgb,var(--online) 7%,transparent)}
+.kpend h2{margin-top:18px;font-size:22px;line-height:1.2}
+.kpend>p{margin-top:8px;max-width:340px;font-size:13px;line-height:1.55;color:var(--muted)}
+.ktrack{width:100%;max-width:340px;margin-top:20px;padding:6px 14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);text-align:left}
+.kst{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13px;color:var(--faint);font-weight:600}
+.kst+.kst{border-top:1px solid var(--line)}
+.kdot{width:20px;height:20px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border:2px solid var(--line);color:#fff}
+.kst.done{color:var(--ink)}.kst.done .kdot{background:var(--online);border-color:var(--online)}
+.kst.on{color:var(--ink)}.kst.on .kdot{border-color:var(--accent);border-top-color:transparent;animation:kspin 1s linear infinite}
+@keyframes kspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.kst.on .kdot{animation:none;border-top-color:var(--accent)}}
+.kpend .editsave{max-width:340px}
+.kdemo{margin-top:12px;font-size:12px;font-weight:700;color:var(--muted)}
+.hoststrip.none .hsdot,.hoststrip.pending .hsdot{background:#ffc02e}
+.pyamt{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--raised);font-size:13px;color:var(--muted)}
+.pyamt b{font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* ---- chats: Messages | Missed calls ---- */
+.ctabs{display:flex;gap:4px;max-width:720px;margin:10px auto 0;padding:3px;border-radius:13px;background:var(--raised);width:calc(100% - 28px)}
+.ctabs button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;border-radius:10px;font-size:13px;font-weight:700;color:var(--muted)}
+.ctabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ctabs b{min-width:18px;height:18px;padding:0 5px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;
+ font-size:10.5px;background:var(--accent);color:#fff}
+.ctabs b.miss{background:#ef3154}
+
+/* ---- daily awards ---- */
+.awhero{position:relative;overflow:hidden;border-radius:18px;padding:16px;background:#17171a;color:#fff}
+.awhero:after{content:"";position:absolute;width:160px;height:160px;border-radius:50%;right:-50px;top:-80px;background:#ffc02e;opacity:.16}
+.awtop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.awhero .eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.awreset{position:relative;z-index:1;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,.1);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.awnums{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.awnums div{display:flex;flex-direction:column;gap:2px}
+.awnums b{display:flex;align-items:center;gap:5px;font-size:23px;font-weight:800;font-variant-numeric:tabular-nums}
+.awnums div:last-child b{color:#ffc02e}
+.awnums span{font-size:11px;color:rgba(255,255,255,.55)}
+.awbar{height:5px;margin-top:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.awbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#ff2e93,#ffc02e)}
+.awhero p{margin-top:10px;font-size:11.5px;line-height:1.45;color:rgba(255,255,255,.62)}
+.awall{position:relative;z-index:1;width:100%;height:42px;margin-top:12px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ background:linear-gradient(120deg,#ffc02e,#ff2e93);color:#fff;font-size:13px;font-weight:800}
+.awlist{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.awitem{display:flex;align-items:center;gap:11px;padding:12px;border-radius:15px;background:var(--surface);border:1px solid var(--line)}
+.awitem.ready{border-color:color-mix(in srgb,#ffc02e 55%,transparent);background:linear-gradient(110deg,color-mix(in srgb,#ffc02e 12%,var(--surface)),var(--surface) 60%)}
+.awitem.got{opacity:.62}
+.awico{width:38px;height:38px;flex:0 0 auto;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--raised);color:var(--muted)}
+.awitem.ready .awico{background:linear-gradient(140deg,#ffc02e,#ff2e93);color:#fff}
+.awtx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.awname{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:750}
+.awname em{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:99px;
+ background:color-mix(in srgb,var(--online) 16%,transparent);color:var(--online)}
+.awdesc{font-size:11.5px;color:var(--muted)}
+.awprog{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.awprog .tb{flex:1;height:4px;border-radius:99px;background:var(--raised);overflow:hidden}
+.awprog .tb i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#ff2e93,#ffc02e)}
+.awend{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.awcoin{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:800;color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.awlock{font-size:10.5px;font-weight:650;color:var(--faint)}
+.awnote{display:flex;align-items:center;gap:6px;margin-top:12px;padding:0 4px;font-size:11px;color:var(--faint)}
+
+/* go-online card is dark in both themes */
+.scard .visrow{border-top-color:rgba(255,255,255,.1)}
+.scard .visrow b{color:#fff}
+.scard .visrow .tx span{color:rgba(255,255,255,.55)}
+.scard .switch:not(.on){background:rgba(255,255,255,.2)}
+/* incoming ring */
+.ringeye{display:inline-flex;align-items:center;gap:7px;margin-bottom:28px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.1);
+ font-size:11.5px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.85)}
+.ringeye i{width:7px;height:7px;border-radius:50%;background:#1bc5a4;animation:ringPulse 1s ease-in-out infinite}
+.ringearn{display:inline-flex;align-items:center;gap:5px;margin-top:14px;padding:6px 12px;border-radius:99px;background:rgba(255,192,46,.14);
+ border:1px solid rgba(255,192,46,.3);color:#ffc02e;font-size:12px;font-weight:750}
+.ringearn svg{width:15px;height:15px}
+.rbtn{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;font-weight:650;color:rgba(255,255,255,.75)}
+.ring .ringact{margin-top:56px}
+
+/* ---- call layout: tile on the left, mission + gift target on the right ---- */
+.pip{position:absolute;z-index:8;top:50px;left:14px;width:86px;height:118px;padding:0;border-radius:14px;overflow:hidden;
+ border:2px solid rgba(255,255,255,.45);box-shadow:0 10px 24px -10px rgba(0,0,0,.9);background:#1d1b20;cursor:pointer}
+.pip span{position:absolute;left:7px;bottom:5px;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.pip:active{transform:scale(.97)}
+.ckchip{display:inline-flex;align-items:center;gap:5px;margin-left:4px;padding:3px 9px;border-radius:99px;background:rgba(0,0,0,.45);
+ backdrop-filter:blur(8px);color:#fff;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;align-self:flex-start}
+.ckchip i{width:6px;height:6px;border-radius:50%;background:#ff2e93;animation:ringPulse 1.2s ease-in-out infinite}
+.lvrow .goalchip{margin-left:auto}
+.hcchips{padding:0 14px 8px}
+.ringact.col{flex-direction:column;align-items:center;gap:10px;margin-top:40px}
+.ringact.col .pcgo{width:220px;height:46px;margin:0;font-size:14px}
+.hoststrip.online .hsdot{background:#1bc5a4;box-shadow:0 0 0 4px rgba(27,197,164,.18)}
+.card.mine{outline:2px solid var(--online);outline-offset:-2px}
+.card.mine .cat{background:var(--online);color:#fff;padding:2px 8px;border-radius:99px;text-shadow:none}
+
+/* ---- call screen, premium pass ---- */
+.lvrow{align-items:flex-start}
+.tlchips{display:flex;align-items:center;gap:5px;min-width:0}
+.tlchips .vischip{padding:4px 9px;font-size:10.5px;gap:5px}
+.tlchips .ckchip{margin-left:0}
+.ckchip{padding:4px 8px;font-size:10.5px}
+.pip{top:54px}
+.vcoff{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#141216;color:rgba(255,255,255,.55);font-size:11px;font-weight:600}
+
+.goalchip{gap:7px}
+.askcard,.gpill{width:104px;min-width:104px;font:inherit;color:inherit;text-align:center;border-radius:16px;padding:8px 9px 9px;
+ background:linear-gradient(160deg,rgba(28,22,30,.78),rgba(10,8,12,.62));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+ box-shadow:0 10px 26px -14px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.08)}
+.askcard{border:1px solid rgba(255,46,147,.4);gap:4px}
+.askcard .ttl{font-size:8px;letter-spacing:.09em}
+.askcard .em{font-size:30px}
+.askcard .pr{font-size:10.5px}
+.askcard .bar,.gpill .bar{height:4px;margin-top:2px}
+.askcard .ct{font-size:9.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.askcard.done{border-color:rgba(27,197,164,.6)}
+.askcard.done .bar i{background:#1bc5a4}.askcard.done .ct{color:#7ff0d8}
+.gpill{display:flex;flex-direction:column;align-items:stretch;gap:5px;border:1px solid rgba(255,192,46,.38);text-align:left;cursor:default}
+button.gpill[onclick]{cursor:pointer}
+.mtop{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.gpill .ttl{font-size:8px;letter-spacing:.09em;color:rgba(255,192,46,.8)}
+.mgoal{padding:1px 6px;border-radius:99px;background:rgba(255,192,46,.16);color:#ffc02e;font-size:10px;font-weight:800;letter-spacing:.02em}
+.gpill .amt{font-size:13px}
+.gpill .amt svg{width:14px;height:14px}
+.gpill .bar i{transition:width .6s cubic-bezier(.22,.8,.3,1)}
+.mfoot{font-size:9px;font-weight:700;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums;white-space:nowrap}
+.gpill.done{border-color:rgba(255,192,46,.85);box-shadow:0 0 22px -6px rgba(255,192,46,.7),inset 0 1px 0 rgba(255,255,255,.1)}
+.gpill.done .bar i{width:100%!important;background:linear-gradient(90deg,#ffc02e,#fff1a8,#ffc02e)}
+.gpill.done .mfoot{color:#ffc02e}
+.hcchips{padding:0 14px 8px}
+.askcard .ttl{white-space:nowrap;font-size:7.5px;letter-spacing:.06em}
+.mnext{font-size:8.5px;font-weight:700;color:rgba(255,255,255,.5)}
+
+/* ---- ⋯ menu under the video tile ---- */
+.more{position:absolute;z-index:12;left:14px;top:182px}
+.morebtn{position:relative;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
+ background:rgba(0,0,0,.45);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.14);transition:background .15s}
+.morebtn.open{background:rgba(255,255,255,.92);color:#141216}
+.morebtn i{position:absolute;top:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#ef3154;border:2px solid #111}
+.moreveil{position:fixed;inset:0;z-index:-1}
+.moremenu{position:absolute;left:0;top:46px;width:236px;padding:6px;border-radius:16px;display:flex;flex-direction:column;
+ background:rgba(22,20,25,.93);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 40px -16px rgba(0,0,0,.95);
+ animation:incIn .18s cubic-bezier(.22,.8,.3,1) both}
+.moremenu button{display:flex;align-items:center;gap:10px;padding:10px;border-radius:11px;color:#fff;font-size:13px;font-weight:650;text-align:left}
+.moremenu button+button{margin-top:1px}
+.moremenu button:active,.moremenu button:hover{background:rgba(255,255,255,.07)}
+.moremenu span{flex:1}
+.moremenu em{font-style:normal;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6)}
+.moremenu em.on{background:rgba(27,197,164,.16);color:#7ff0d8}
+.moremenu em.off{background:rgba(239,49,84,.18);color:#ff8aa3}
+/* host-only earnings card under Mission */
+.earncard{width:104px;padding:7px 9px 8px;border-radius:14px;display:flex;flex-direction:column;gap:2px;text-align:left;
+ background:linear-gradient(160deg,rgba(28,22,30,.78),rgba(10,8,12,.62));backdrop-filter:blur(14px);border:1px solid rgba(255,192,46,.25)}
+.earncard .ttl{font-size:8px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.earncard b{display:flex;align-items:center;gap:3px;font-size:12.5px;font-weight:800;color:#ffc02e;font-variant-numeric:tabular-nums;white-space:nowrap}
+.earncard b svg{width:13px;height:13px;flex:0 0 auto}
+.earncard .only{font-size:8.5px;color:rgba(255,255,255,.4)}
+.moremenu span{white-space:nowrap}
+.pip .vcoff span{display:none}
+
+/* ---- call layout v3: tile, session card and ⋯ in one row ---- */
+.lcol{position:absolute;z-index:8;top:54px;left:14px;display:flex;align-items:flex-start;gap:8px}
+.lcol .pip{position:relative;top:auto;left:auto;flex:0 0 auto}
+.lcol .more{position:relative;top:auto;left:auto}
+.lcol .moremenu{top:126px;left:0}
+.lcol .earncard{width:auto;min-width:86px;padding:8px 10px}
+.earncard b{font-size:14px}
+.earncard b svg{width:14px;height:14px}
+/* incoming second caller: top of the screen */
+.incban{top:calc(8px + env(safe-area-inset-top,0px))}
+/* gift panel opens to half the screen and scrolls */
+.tray .panel{max-height:52%;min-height:52%}
+.tray .ggrid{flex:1;min-height:0}
+/* completion pop-up, both sides of the call */
+.app{position:relative}
+.celeb{position:absolute;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;pointer-events:none;
+ background:radial-gradient(60% 40% at 50% 50%,rgba(255,192,46,.22),transparent 70%);animation:celIn .35s ease both}
+.celeb.out{animation:celOut .4s ease both}
+.celcard{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:300px;padding:22px 22px 20px;border-radius:24px;text-align:center;color:#fff;
+ background:linear-gradient(160deg,rgba(40,30,20,.94),rgba(18,14,20,.94));border:1px solid rgba(255,192,46,.7);
+ box-shadow:0 0 50px -10px rgba(255,192,46,.75),0 24px 50px -20px rgba(0,0,0,.9);animation:celPop .5s cubic-bezier(.2,1.4,.4,1) both}
+.celico{font-size:44px;line-height:1;filter:drop-shadow(0 0 16px rgba(255,192,46,.8))}
+.celcard b{margin-top:4px;font-family:"Poppins",Inter,sans-serif;font-size:21px;font-weight:800;letter-spacing:-.02em;
+ background:linear-gradient(90deg,#ffc02e,#fff1a8,#ffc02e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.celcard span{font-size:13px;line-height:1.45;color:rgba(255,255,255,.85)}
+@keyframes celIn{from{opacity:0}to{opacity:1}}
+@keyframes celOut{to{opacity:0;transform:scale(.96)}}
+@keyframes celPop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.celeb,.celcard,.celeb.out{animation:none}}
+.celcard .celico{font-size:46px;line-height:1;color:inherit}
+.lcol .more{margin-top:3px}
+
+/* ---- call screen, top half v4 ----
+   bar: back · timer(+visibility) ········ earnings · ⋯
+   goals: [gift target][mission] side by side; video tile on the right below */
+.vshade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,.08) 26%,transparent 45%,rgba(0,0,0,.85))}
+.ctop{position:relative;z-index:9;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 0}
+.cback,.ctop .morebtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
+ background:rgba(0,0,0,.38);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12)}
+.ctop .more{position:relative;top:auto;left:auto;margin:0}
+.ctop .morebtn.open{background:rgba(255,255,255,.92);color:#141216}
+.cstat{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:99px;color:#fff;
+ background:rgba(0,0,0,.38);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);
+ font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.cstat .rec{width:7px;height:7px;border-radius:50%;background:#ff2e93;box-shadow:0 0 8px #ff2e93;animation:ringPulse 1.4s ease-in-out infinite}
+.csep{width:1px;height:14px;background:rgba(255,255,255,.2)}
+.cvis{display:inline-flex;align-items:center;gap:5px;color:rgba(255,255,255,.6);font-size:11.5px;font-weight:700}
+.cvis.on{color:#7ff0d8}
+.cearn{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;padding:0 2px}
+.cearn span{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.cearn b{display:flex;align-items:center;gap:3px;font-size:14px;font-weight:800;color:#ffc02e;font-variant-numeric:tabular-nums;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.cearn b svg{width:14px;height:14px}
+.ctop .moremenu{left:auto;right:12px;top:calc(54px + env(safe-area-inset-top,0px));width:236px}
+
+.goalrow{position:relative;z-index:8;display:flex;gap:8px;padding:10px 12px 0}
+.gcard{flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:15px;text-align:left;font:inherit;color:#fff;
+ background:rgba(12,10,14,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.1);
+ transition:flex .4s ease}
+.gcard.ask{border-color:rgba(255,46,147,.35)}
+.gcard.mission{border-color:rgba(255,192,46,.32)}
+.gcard .gem{font-size:26px;line-height:1;flex:0 0 auto;filter:drop-shadow(0 0 8px rgba(255,92,174,.45))}
+.gbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.gtop{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.glab{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.62)}
+.glab em{font-style:normal;padding:1px 6px;border-radius:99px;background:rgba(255,192,46,.18);color:#ffc02e;letter-spacing:.02em}
+.gval{font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.gsub{display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.gsub svg{width:13px;height:13px;flex:0 0 auto}
+.gsub i{font-style:normal;font-weight:600;color:rgba(255,255,255,.5)}
+.gcard.ask .gsub{color:#ff8cc6}
+.gcard.mission .gsub{color:#ffc02e}
+.gbar{height:4px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+.gbar i{display:block;height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,.8,.3,1)}
+.gcard.ask .gbar i{background:linear-gradient(90deg,#ff2e93,#ff8cc6)}
+.gcard.mission .gbar i{background:linear-gradient(90deg,#ff2e93,#ffc02e)}
+.gcard.done{border-color:rgba(255,192,46,.85);box-shadow:0 0 20px -6px rgba(255,192,46,.7)}
+.gcard.done .gbar i{width:100%!important;background:linear-gradient(90deg,#ffc02e,#fff1a8,#ffc02e)}
+.gcard.done .gval{color:#ffc02e}
+
+.pip{position:absolute;z-index:8;top:calc(128px + env(safe-area-inset-top,0px));right:12px;left:auto;width:84px;height:116px}
+.glab{white-space:nowrap}
+.gname{overflow:hidden;text-overflow:ellipsis;margin-right:2px}
+@media (max-width:370px){.gname{display:none}.gcard{padding:8px 9px;gap:7px}.gcard .gem{font-size:22px}.glab{letter-spacing:.05em}}
+
+/* ---- summaries: centred on the screen, nothing wraps ---- */
+.sum{min-height:100dvh;justify-content:center;padding:28px 16px 32px}
+.hsum h1{margin-top:14px}
+.hsum>p{margin-top:6px}
+.hstats{display:grid;grid-template-columns:1.5fr 1fr 1fr;width:100%;margin-top:18px;border-radius:16px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.hstats div{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 6px;min-width:0}
+.hstats div+div{border-left:1px solid var(--line)}
+.hstats span{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.hstats b{display:flex;align-items:center;gap:4px;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hstats b svg{width:16px;height:16px;flex:0 0 auto}
+.hstats .big{background:linear-gradient(135deg,color-mix(in srgb,#ffc02e 16%,var(--surface)),var(--surface))}
+.hstats .big b{color:var(--gold)}
+.awhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.awhead .awt{margin:0}
+.awhead b{display:inline-flex;align-items:center;gap:3px;font-size:13px;color:var(--gold);font-variant-numeric:tabular-nums}
+.awhead b svg{width:14px;height:14px}
+.hsum .awardcard{margin-top:12px}
+.hgo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:50px;margin-top:16px;border-radius:99px;
+ background:var(--accent);color:#fff;font-size:14.5px;font-weight:800;white-space:nowrap;box-shadow:0 10px 22px -14px var(--accent)}
+.hsec{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:8px}
+.hsec button{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:99px;background:var(--raised);color:var(--ink);font-size:13px;font-weight:750}
+@media (max-width:370px){.hstats b{font-size:15px}.hstats span{font-size:9px}}
+
+/* host-only "Connecting to …" while switching to a second caller */
+.conn{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;
+ color:#fff;background:#0b0a0c;animation:celIn .25s ease both}
+.connbg{position:absolute;inset:-40px;filter:blur(30px) brightness(.4);transform:scale(1.1)}
+.conn>*:not(.connbg){position:relative}
+.connorb{position:relative;border-radius:50%}
+.connring{position:absolute;inset:-8px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#1bc5a4;animation:kspin 1s linear infinite}
+.conneye{margin-top:22px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7ff0d8}
+.conn h2{margin-top:6px;font-family:"Poppins",Inter,sans-serif;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.conn p{margin-top:3px;font-size:12.5px;color:rgba(255,255,255,.6)}
+.connbar{width:180px;height:4px;margin-top:20px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.connbar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#1bc5a4,#7ff0d8);animation:connFill 2.2s linear forwards}
+.connnote{max-width:280px;margin-top:16px;font-size:11.5px;line-height:1.45;color:rgba(255,255,255,.55)}
+@keyframes connFill{to{width:100%}}
+@media (prefers-reduced-motion:reduce){.connring{animation:none}.connbar i{animation:none;width:100%}}
+
+/* ---- wallet: earnings ---- */
+.earnbox{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:12px}
+.ehead{display:flex;align-items:center;gap:10px}
+.ehead .acctico{background:color-mix(in srgb,#ffc02e 18%,transparent);color:var(--gold)}
+.etx{display:flex;flex-direction:column;min-width:0}
+.etx b{font-size:14px;font-weight:700}
+.etx span{font-size:11.5px;color:var(--muted)}
+.eamt{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.eamt b{display:flex;align-items:center;gap:6px;font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--gold);font-variant-numeric:tabular-nums}
+.eamt b svg{width:22px;height:22px}
+.eamt span{font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.estat{display:flex;flex-direction:column;gap:10px;padding:11px 12px;border-radius:13px;background:var(--raised)}
+.emsg{font-size:12px;line-height:1.45;color:var(--muted)}
+.estat.verified .emsg{color:var(--ink)}
+.ebtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;border-radius:99px;background:var(--accent);color:#fff;font-size:13px;font-weight:800}
+.ebtn.ghost{background:var(--accent-wash);color:var(--accent-ink)}
+.ebar{height:6px;border-radius:99px;background:color-mix(in srgb,var(--ink) 10%,transparent);overflow:hidden}
+.ebar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#ff2e93,#ffc02e)}
+.enums{display:flex;justify-content:space-between;margin-top:-4px;font-size:11px;font-weight:700;color:var(--faint);font-variant-numeric:tabular-nums}
+.accthero+.acctsec{margin-top:14px}
+/* connecting screen in the brand pink → gold */
+.connring{border-top-color:#ff2e93;border-right-color:#ffc02e}
+.conneye{color:#ff8cc6}
+.connbar i{background:linear-gradient(90deg,#ff2e93,#ffc02e)}
+
+/* ---- entry fee hold ---- */
+.feechip{position:relative;z-index:8;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;margin:8px 12px 0;padding:5px 10px;border-radius:99px;
+ background:rgba(0,0,0,.42);backdrop-filter:blur(12px);border:1px solid rgba(255,192,46,.3);color:rgba(255,255,255,.8);font-size:11px;font-weight:650}
+.feechip svg{flex:0 0 auto;color:#ffc02e}
+.feechip span{display:inline-flex;align-items:center;gap:3px}
+.feechip span svg{width:12px;height:12px}
+.feechip b{color:#ffc02e;font-variant-numeric:tabular-nums}
+.feechip.ok{border-color:rgba(27,197,164,.45);color:#7ff0d8}
+.feechip.ok>svg{color:#1bc5a4}
+.tray .panel.cfm{min-height:0;max-height:none;align-items:center;text-align:center;padding:22px 20px calc(18px + env(safe-area-inset-bottom,0px));gap:8px;color:#fff}
+.cfmico{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:rgba(255,192,46,.15);color:#ffc02e}
+.cfm>b{font-family:"Poppins",Inter,sans-serif;font-size:19px;font-weight:800;margin-top:4px}
+.cfm p{font-size:13px;line-height:1.5;color:rgba(255,255,255,.75);max-width:340px}
+.cfm p b{color:#ffc02e}
+.cfm p.warn{font-size:11.5px;color:#ff8aa3;padding:8px 10px;border-radius:12px;background:rgba(239,49,84,.12)}
+.cfm .keep{width:100%;max-width:340px;height:48px;margin-top:6px;border-radius:99px;background:#fff;color:#141216;font-size:14px;font-weight:800}
+.cfm .anyway{width:100%;max-width:340px;height:44px;border-radius:99px;color:#ff8aa3;font-size:13.5px;font-weight:750}
+.ringfee{margin-top:8px;font-size:11.5px;color:rgba(255,255,255,.6)}
+.dialnote{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.08);font-size:11.5px;color:rgba(255,255,255,.75)}
+.ssreceipt .nr{font-style:normal;font-size:10px;font-weight:700;margin-left:4px;padding:1px 6px;border-radius:99px;background:var(--raised);color:var(--faint)}
+.feesum{width:100%;margin-top:12px;padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);text-align:left}
+.fshead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.fshead span{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.fshead b{display:inline-flex;align-items:center;gap:3px;font-size:13px;color:var(--gold);font-variant-numeric:tabular-nums}
+.fshead b svg{width:14px;height:14px}
+.fsrow{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;font-weight:650}
+.fsrow span{flex:0 0 auto}
+.fsrow em{margin-left:auto;font-style:normal;font-size:11.5px;font-weight:650;text-align:right}
+.fsrow.ok svg,.fsrow.ok em{color:var(--online)}
+.fsrow.no svg,.fsrow.no em{color:var(--live)}
+.fswarn{margin-top:6px;padding:8px 10px;border-radius:11px;background:color-mix(in srgb,var(--live) 10%,transparent);font-size:11.5px;line-height:1.45;color:var(--live)}
+/* borderless call overlays: goal cards, entry fee chip, timer/visibility pill */
+.gcard,.gcard.ask,.gcard.mission,.feechip,.feechip.ok,.cstat{border:0}
+.gcard.done{box-shadow:0 0 0 1.5px rgba(255,192,46,.85),0 0 20px -6px rgba(255,192,46,.7)}
+
+/* ---- login ---- */
+.login .wbrandrow{justify-content:flex-start}
+.lgback{margin-left:auto;display:inline-flex;align-items:center;gap:3px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.lgfield{display:flex;align-items:center;gap:10px;height:52px;padding:0 14px;border-radius:15px;border:1.5px solid var(--line);background:var(--surface);cursor:text}
+.lgfield:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+.lgfield .cc{flex:0 0 auto;font-size:14px;font-weight:700;padding-right:10px;border-right:1px solid var(--line)}
+.lgfield input{font-size:17px;font-weight:650;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.lgor{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:11.5px;font-weight:700}
+.lgor::before,.lgor::after{content:"";flex:1;height:1px;background:var(--line)}
+.lggoogle{display:flex;align-items:center;justify-content:center;gap:10px;height:48px;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);font-size:14px;font-weight:700}
+.lggoogle b{font-size:17px;font-weight:800;background:conic-gradient(from -45deg,#ea4335 0 25%,#4285f4 0 50%,#34a853 0 75%,#fbbc05 0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lgsafe{display:flex;align-items:flex-start;gap:8px;padding:11px 12px;border-radius:13px;background:var(--raised);font-size:11.5px;line-height:1.45;color:var(--muted)}
+.lgsafe svg{flex:0 0 auto;color:var(--online);margin-top:1px}
+.otp{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.otp input{height:54px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);text-align:center;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.otp input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+.lgresend{text-align:center;font-size:12.5px;font-weight:650;color:var(--muted);font-variant-numeric:tabular-nums}
+.lgresend button,.lglink{color:var(--accent-ink);font-weight:800}
+.lgstep{display:inline-block;margin-bottom:6px;padding:2px 9px;border-radius:99px;background:var(--accent-wash);color:var(--accent-ink);font-size:11px;font-weight:800;letter-spacing:.04em}
+.lgchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.lgchips button{padding:7px 13px;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:700;color:var(--ink)}
+.lgchips button.on{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-ink)}
+.lg18{display:flex;align-items:flex-start;gap:9px;font-size:12px;line-height:1.45;color:var(--muted)}
+.lg18 input{margin-top:2px;accent-color:var(--accent)}
+.login .wopt .ch{align-self:center}
+.lg18 input{width:auto;flex:0 0 auto}
+
+/* ---- login, sober pass: one column, neutral surfaces, one accent button ---- */
+.lgwrap{min-height:100dvh;max-width:440px;margin:0 auto;display:flex;flex-direction:column;padding:0 20px calc(16px + env(safe-area-inset-bottom,0px))}
+.lghead{display:flex;align-items:center;justify-content:space-between;height:56px;padding-top:env(safe-area-inset-top,0px)}
+.lgbk{width:36px;height:36px;margin-left:-8px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.lgbk:active{background:var(--raised)}
+.lglogo{display:inline-flex;align-items:center;gap:7px;font-family:"Poppins",Inter,sans-serif;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+.lglogo .wmark{width:24px;height:24px;border-radius:7px}
+.lgsp{width:36px}
+.lgbody{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:16px 0 24px}
+.lgbody.top{justify-content:flex-start;padding-top:8px}
+.lgh{font-family:"Poppins",Inter,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.lgp{margin-top:-8px;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.lgstep2{font-size:11.5px;font-weight:600;color:var(--faint);margin-bottom:-8px}
+.lglist{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.lgrow{display:flex;align-items:center;gap:12px;width:100%;padding:15px 14px;text-align:left}
+.lgrow+.lgrow{border-top:1px solid var(--line)}
+.lgrow:active{background:var(--raised)}
+.lgri{width:36px;height:36px;flex:0 0 auto;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--raised);color:var(--ink)}
+.lgrt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.lgrt b{font-size:14.5px;font-weight:650}
+.lgrt span{font-size:12.5px;color:var(--muted)}
+.lgchev{font-size:20px;color:var(--faint)}
+.lgnote{font-size:12px;line-height:1.5;color:var(--faint);text-align:center}
+.lgwrap .lgfield{height:50px;border-width:1px;border-radius:12px;box-shadow:none}
+.lgwrap .lgfield .cc{font-size:14px;font-weight:600;color:var(--muted)}
+.lgwrap .lgfield input{font-size:16px;font-weight:500;letter-spacing:.02em}
+.lgwrap .lgfield:focus-within{border-color:var(--ink);box-shadow:none}
+.lgbtn{height:50px;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:700}
+.lgbtn:active{opacity:.9}
+.lgwrap .lgor{font-weight:500}
+.lgwrap .lggoogle{height:50px;border-width:1px;border-radius:12px;font-weight:600}
+.lgsecure{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--faint)}
+.lgerr{margin-top:-4px;font-size:12.5px;font-weight:600;color:var(--live)}
+.lgwrap .otp input{height:52px;border-width:1px;border-radius:12px;font-size:20px;font-weight:700}
+.lgwrap .otp input:focus{border-color:var(--ink);box-shadow:none}
+.lgwrap .lgresend{font-weight:500}
+.lgfoot{font-size:11px;line-height:1.5;color:var(--faint);text-align:center}
+.lgform{display:flex;flex-direction:column;gap:16px}
+.lgform .wcopy{display:flex;flex-direction:column;gap:8px;margin:0}
+.lgform .lgchips button{border-width:1px;font-weight:600}
+.lgform .lgchips button.on{border-color:var(--ink);background:var(--ink);color:var(--canvas)}
+.lgform .editinput:focus{border-color:var(--ink);box-shadow:none}
+.lgform .lgstep2,.lgform .lgp{margin:0}.lgform .wcopy{gap:6px}
 #scroll-root {
   position: relative;
   flex: 1;
@@ -1025,11 +1687,11 @@ const H=[
  {id:"aanya",n:"Aanya Kapoor",c:"Mumbai",cat:"Dance",tag:"Dancing",age:26,rate:34,fee:60,on:1,live:1,seed:12,v:"2.4K",pk:1,top:0,fol:1,nw:0},
  {id:"ishaan",n:"Ishaan Verma",c:"Bengaluru",cat:"Gaming",tag:"Esports",age:24,rate:22,fee:40,on:1,live:1,seed:47,v:"1.1K",pk:0,top:1,fol:1,nw:0},
  {id:"meher",n:"Meher Singh",c:"Chandigarh",cat:"Music",tag:"Singing",age:29,rate:45,fee:80,on:1,live:0,seed:91,v:"4.7K",pk:1,top:0,fol:1,nw:0},
- {id:"rehan",n:"Rehan Qureshi",c:"Lucknow",cat:"Talk",tag:"Chatting",age:31,rate:18,fee:30,on:1,live:0,seed:23,v:"1.3K",pk:0,top:0,fol:0,nw:1},
+ {id:"rehan",n:"Rehan Qureshi",c:"Lucknow",cat:"Talk",tag:"Chatting",age:31,rate:18,fee:30,on:1,live:0,seed:23,v:"1.3K",pk:0,top:0,fol:0,nw:1,fresh:1},
  {id:"tara",n:"Tara Iyer",c:"Chennai",cat:"Astrology",tag:"Readings",age:38,rate:60,fee:120,on:1,live:1,seed:68,v:"3.2K",pk:0,top:1,fol:1,nw:0},
  {id:"dev",n:"Dev Malhotra",c:"Delhi",cat:"Fitness",tag:"Training",age:27,rate:28,fee:50,on:1,live:0,seed:34,v:"860",pk:0,top:0,fol:0,nw:1},
  {id:"noor",n:"Noor Sheikh",c:"Hyderabad",cat:"Comedy",tag:"Make Friends",age:25,rate:26,fee:45,on:1,live:1,seed:55,v:"5.1K",pk:1,top:1,fol:1,nw:0},
- {id:"kabir",n:"Kabir Das",c:"Kolkata",cat:"Music",tag:"Chatting",age:33,rate:38,fee:70,on:0,live:0,seed:79,v:"640",pk:0,top:0,fol:0,nw:1}
+ {id:"kabir",n:"Kabir Das",c:"Kolkata",cat:"Music",tag:"Chatting",age:33,rate:38,fee:70,on:0,live:0,seed:79,v:"640",pk:0,top:0,fol:0,nw:1,hideMvp:1}
 ];
 const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","going live in ten","5:54 pm",1],
  ["tara","send your birth time when you can","5:31 pm",0],["ishaan","you: gg, rough last round","4:12 pm",0],
@@ -1089,7 +1751,20 @@ function boardRows(){
 
 const previewMode=new URLSearchParams(location.search).get("preview");
 const callPreview=previewMode==="call"||previewMode==="gifts";
-const S={v:callPreview?"call":"home",tab:"explore",ht:"posts",pi:0,likes:{},pack:2,meth:"UPI",mic:1,cam:1,bt:"creators",per:"weekly",rmsgs:callPreview?[["host","Aanya","hey, you made it"]]:[],h:callPreview?"aanya":null,bal:52400,sec:0,t:null,msgs:null,tray:previewMode==="gifts"?1:0,
+const roleParam=new URLSearchParams(location.search).get("role");
+const S={v:callPreview?"call":roleParam?"home":"welcome",role:roleParam==="host"?"host":"sender",
+ acct:{sender:{earn:0,kyc:"none",mvp:0},host:{earn:184250,kyc:"none",mvp:1}},
+ vis:1,kf:{},giftedTo:{},loggedIn:roleParam?1:0,auth:{step:"phone"},early:0,feeLog:[],cel:{ask:0,mission:0},hcel:{ask:0,mission:0},celq:[],mall:0,
+ missed:{sender:[{id:"meher",when:"Today, 5:40 pm",kind:"video"},{id:"tara",when:"Today, 1:12 pm",kind:"voice"},{id:"noor",when:"Yesterday, 9:05 pm",kind:"video"}],
+  host:[{id:"u_zoyak",when:"Today, 6:10 pm",kind:"video"},{id:"u_sahilb",when:"Today, 2:31 pm",kind:"video"},{id:"u_imranq",when:"Yesterday, 11:48 pm",kind:"voice"}]},
+kerr:0,ci:0,spent:0,giftN:0,
+ tasks:[
+  {k:"mins",ico:"ph",t:"Call marathon",d:"Spend 60 minutes on calls",goal:60,p:59,u:"min",rw:5000},
+  {k:"gifts",ico:"gift",t:"Gift magnet",d:"Receive 20 gifts from callers",goal:20,p:17,u:"gifts",rw:2000},
+  {k:"callers",ico:"user",t:"Social star",d:"Talk to 10 different callers",goal:10,p:8,u:"callers",rw:1500},
+  {k:"sessions",ico:"vid",t:"Show up",d:"Go online three times today",goal:3,p:3,u:"sessions",rw:800},
+  {k:"earn",ico:"cup",t:"Big earner",d:"Earn 5,000 coins from calls",goal:5000,p:3400,u:"coins",rw:2500}],
+tab:"explore",ht:"posts",pi:0,likes:{},pack:2,meth:"UPI",mic:1,cam:1,bt:"creators",per:"weekly",rmsgs:callPreview?[["host","Aanya","hey, you made it"]]:[],h:callPreview?"aanya":null,bal:52400,sec:0,t:null,msgs:null,tray:previewMode==="gifts"?1:0,
  title:"",goal:1000000,fav:22,favn:10,favGot:0,gifted:0,
  sh:0,cmp:0,cache:{},btab:"Beauty",bsel:{Beauty:1,Makeup:0,Sticker:0,Filters:0,"Image quality":0},lvmode:"Live",
  txf:"all",faq:-1,safe:{discover:1,requests:1,activity:0},blocked:[],
@@ -1161,6 +1836,12 @@ const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>'
  check:'<path d="M6.8 12.3l3.2 3.2 7.2-7.2" stroke-linecap="round" stroke-linejoin="round"/>',
  set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0015 19.4a1.7 1.7 0 00-1 .6 1.7 1.7 0 00-.4 1.1H9.6a1.7 1.7 0 00-.4-1.1 1.7 1.7 0 00-1-.6 1.7 1.7 0 00-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 003.8 15a1.7 1.7 0 00-.6-1 1.7 1.7 0 00-1.1-.4V9.6A1.7 1.7 0 003.2 9a1.7 1.7 0 00.6-1 1.7 1.7 0 00-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 008.2 3.6a1.7 1.7 0 001-.6 1.7 1.7 0 00.4-1.1h4a1.7 1.7 0 00.4 1.1 1.7 1.7 0 001 .6 1.7 1.7 0 001.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0019.4 8c.13.39.34.73.6 1 .3.29.67.43 1.1.4v4c-.43-.03-.8.11-1.1.4-.26.27-.47.61-.6 1.2z" stroke-linejoin="round"/>',
  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4" stroke-linecap="round"/>',
+ dots:'<circle cx="12" cy="5.5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="18.5" r="1.6" fill="currentColor"/>',
+ eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/>',
+ eyeoff:'<path d="M9.9 5.8A9.5 9.5 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 01-2.6 3.4M6.3 7.4C3.9 9.1 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1.1M9.9 9.9a3 3 0 004.2 4.2M4 4l16 16" stroke-linecap="round" stroke-linejoin="round"/>',
+ lock:'<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 018 0v2.5"/>',
+ plus:'<path d="M12 5v14M5 12h14" stroke-linecap="round"/>',
+ clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/>',
  moon:'<path d="M20 14.2A8.2 8.2 0 019.8 4a8.4 8.4 0 102 10.4 8.2 8.2 0 008.2-.2z" stroke-linejoin="round"/>'};
 const I=(k,s)=>`<svg viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6">${P[k]}</svg>`;
 const coin=`<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc400" stroke="#ef9f00" stroke-width="1.3"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#fff178" stroke-width="1.2"/><path d="M12 7.4l1.35 2.73 3.02.44-2.18 2.12.52 3-2.71-1.43-2.71 1.43.52-3-2.18-2.12 3.02-.44z" fill="#fff3a1"/></svg>`;
@@ -1171,13 +1852,31 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];r()}
 function go(v,id){if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
+ clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
+ if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
+ if(v==="kyc")S.kerr=0;
+ if(v==="precall")S.scam=0;
+ /* targets are set before going online; a fresh setup brings both cards back */
+ if(v==="setup")S.hcel={ask:0,mission:0};
+ if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
+ if(v==="hcall")S.cel=S.hcel;
+ S.more=0;
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
  if(v==='editprofile')S.editBack=S.v==='settings'?'settings':'profile';
  S.v=v;if(id)S.h=id;S.tray=0;
- if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;
-  S.rmsgs=[["host",g(S.h).n.split(" ")[0],"hey, you made it"]];S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(S.sec%60===0)S.bal=Math.max(0,S.bal-g(S.h).rate);tick()},1000)}
+ if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
+  S.rmsgs=[["sys","",`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`],["host",g(S.h).n.split(" ")[0],"hey, you made it"]];S.giftN=0;S.spent=g(S.h).fee;
+  S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
+ if(v==="dial")S.wt=setTimeout(()=>go("call",S.h),2600);
+ if(v==="dialback")S.wt=setTimeout(()=>go("hcall"),2600);
+ if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1}
+ if(v==="waiting")S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200);
+ if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
+  S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
+  S.rmsgs=[["sys","",`Connected with ${S.caller.n}`],["host",first(S.caller.n),"hi! finally got through"]];
+  S.t=setInterval(hostTick,1000)}
  if(v==="thread")S.msgs=TH.map(m=>m.slice());
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"))}
 
@@ -1196,7 +1895,7 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
  `<div class="sk dark" style="height:78px;border-radius:15px"></div>`).join("")}</div>`}
 
 function nav(){const el=document.getElementById("nav");
- if(["host","call","voice","thread","setup","board","search","post","user","coins","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
+ if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chats","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
@@ -1214,7 +1913,8 @@ function vHome(){
  else if(S.tab==="foryou")L=L.sort((a,b)=>parseFloat(b.v)-parseFloat(a.v));
  L=L.sort((a,b)=>b.live-a.live||b.on-a.on);
  const cards=L.map(card);
- return ` ${loading("home")?skCards(8):cards.length?`<div class="grid fade">${cards.join("")}</div>`:
+ if(isHost()&&S.online&&S.vis&&S.tab!=="following")cards.unshift(myCard());
+ return ` ${hostStrip()}${loading("home")?skCards(8):cards.length?`<div class="grid fade">${cards.join("")}</div>`:
   `<div class="s13 muted" style="text-align:center;padding:48px 20px">Nobody here yet. Try another tab or filter.</div>`}
  <div style="height:10px"></div>`}
 function setTab(t){S.tab=t;r()}
@@ -1273,7 +1973,7 @@ function profilePage(p,raw,self){
  const t=S.ht||"posts";
  let posts=postsFor(raw);
  if(self&&S.postData.length)posts=S.postData.map((src,i)=>({i,custom:src,vid:0,likes:0})).concat(posts).slice(0,12);
- const list=p.host?mvpsFor(raw):backedFor(raw);
+ const list=self?myMvps():p.host?(raw.fresh?(p.recv?[{id:"me",n:"You",seed:me.seed,c:p.recv}]:[]):mvpsFor(raw)):backedFor(raw);
  const back=p.host?"go('home')":"history_back()";
  const followed=!!S.following[p.id];
  const cover=self&&S.coverData?`<img src="${S.coverData}" alt="Your cover">`:artC(p.seed);
@@ -1290,7 +1990,7 @@ function profilePage(p,raw,self){
    <span class="hpav">${avatar}</span>
 
    <div class="hpname"><span class="nm">${p.n}</span>
-    ${p.host?`<span class="hpverified" role="img" aria-label="Verified user" title="Verified user">${I("check",13)}</span>`:""}
+    ${(self?p.verified:p.host)?`<span class="hpverified" role="img" aria-label="Verified user" title="Verified user">${I("check",13)}</span>`:""}
     ${self?`<button class="hpfollow" onclick="go('editprofile')">Edit profile</button>`:p.host?`<button class="hpfollow ${followed?'on':''}" onclick="toggleFollow('${p.id}',event)">${followed?'Following':'+ Follow'}</button>`:""}</div>
 
    <div class="hpmeta">
@@ -1311,10 +2011,10 @@ function profilePage(p,raw,self){
   </div>
 
   <div class="hptabs">
-   ${[["posts","grid","Posts"],["mvp","cup",p.host?"MVPs":"Backing"]].map(([k,ic,lb])=>
+   ${[["posts","grid","Posts"],["mvp","cup",p.host||self?"MVPs":"Backing"]].map(([k,ic,lb])=>
     `<button class="${t===k?"on":""}" onclick="S.ht='${k}';r()">${I(ic,17)}<span>${lb}</span></button>`).join("")}</div>
 
-  ${t==="mvp"
+  ${t==="mvp"&&(p.host||self)?mvpBlock(p,raw,self,list):t==="mvp"
    ? `<div class="mvp">${list.map((m,i)=>`<button class="mrow ${i<3?"p"+(i+1):""}" onclick="${m.host?`go('host','${m.id}')`:`go('user','${m.id}')`}">
        <span class="mrank r${i<3?i+1:0}">${i+1}</span>
        <span class="bav">${avc(m,40)}</span>
@@ -1330,7 +2030,7 @@ function profilePage(p,raw,self){
   <button class="msg" aria-label="Message" onclick="go('thread','${p.host?p.id:S.backId||"aanya"}')">${I("chat",20)}</button>
   ${p.host
    ? `<button class="msg" aria-label="Start voice call" onclick="go('voice','${p.id}')">${I("ph",20)}</button>
-      <button class="cta" onclick="go('setup','${p.id}')">${I("vid",19)} Start video call</button>`
+      <button class="cta" onclick="go('precall','${p.id}')">${I("vid",19)} Start video call</button>`
    : `<button class="cta" style="background:var(--raised);color:var(--ink)">${I("heart",18)} Follow</button>`}
  </div>`}`}
 
@@ -1342,14 +2042,14 @@ function backedFor(u){
 }
 
 function vSetup(){
- const h=g(S.h), tierIdx=1;
+ const h=me, tierIdx=1;
  return `<div class="setup">
  <div class="stage">
   ${S.cam?art(h.seed):`<div class="camoff"><span>${I("camoff",26)}</span><b>Camera is off</b>
     <i>Viewers will see your profile photo</i></div>`}
   <div class="guide"></div>
   <div class="stopbar">
-   <button class="sicon" aria-label="Cancel" onclick="go('host','${h.id}')">${I("back",19)}</button>
+   <button class="sicon" aria-label="Cancel" onclick="go('home')">${I("back",19)}</button>
    <span style="flex:1"></span>
    <button class="sicon ${S.mic?"":"off"}" aria-pressed="${S.mic?"false":"true"}"
     aria-label="${S.mic?"Mute microphone":"Unmute microphone"}"
@@ -1363,6 +2063,10 @@ function vSetup(){
     <span style="font-size:12.5px;font-weight:700;color:#ff5cae;font-variant-numeric:tabular-nums">${n(TIERS[tierIdx])}/h</span>
     <span style="font-size:10.5px;color:rgba(255,255,255,.45)">${n(150000)} left to upgrade</span></div>
    <div class="gchip" style="margin-top:7px">${TIERS.map((t,i)=>`<button class="${i===tierIdx?"on":""}">${n(t)}/h</button>`).join("")}</div>
+   <button class="visrow" onclick="S.vis=S.vis?0:1;r()" aria-pressed="${!!S.vis}">
+    <span class="tx"><b>${S.vis?"Online":"Offline"} on Home during calls</b>
+     <span>${S.vis?"Others can still find you and call while you're on a call.":"You disappear from Home while on a call. Incoming calls still ring."}</span></span>
+    <span class="switch ${S.vis?"on":""}"></span></button>
   </div>
 
   <div class="hint">Keep centred, head and shoulders in frame</div>
@@ -1370,7 +2074,7 @@ function vSetup(){
 
  <div class="actbar">
   <button class="rnd" aria-label="Beauty and effects" onclick="S.sh='fx';r()">${I("star",19)}</button>
-  <button class="gb" onclick="go('call','${h.id}')">${S.cam?"Go live":"Go live · camera off"}</button>
+  <button class="gb" onclick="go('waiting')">${S.cam?"Go online":"Go online · camera off"}</button>
   <button class="rnd" aria-label="Mission" onclick="S.sh='mission';r()">${I("cup",19)}</button>
   <button class="rnd" aria-label="Gift target" onclick="S.sh='gift';r()">${I("gift",19)}</button></div>
  ${S.sh==="fx"?fxSheet():S.sh==="mission"?missionSheet():S.sh==="gift"?giftSheet():""}
@@ -1385,7 +2089,7 @@ function shWrap(title,sub,inner){
 
 function fxSheet(){
  const opts=BEAUTY[S.btab], sel=S.bsel[S.btab], adj=opts[sel]&&opts[sel][2];
- return shWrap("Beauty and effects","Applies to your camera before you go live",
+ return shWrap("Beauty and effects",S.v==="setup"?"Applies to your camera before you go live":"Changes apply now and stay on for your next calls",
  `<div class="dtabs">${Object.keys(BEAUTY).map(k=>`<button class="${S.btab===k?"on":""}" onclick="S.btab='${k}';r()">${k}</button>`).join("")}
    <button class="rst" onclick="resetFx()">Reset</button></div>
   <div class="dopts">${opts.map(([l,e],i)=>`<button class="dopt ${sel===i?"on":""}" onclick="pickFx(${i})">
@@ -1418,12 +2122,54 @@ function giftSheet(){
 function pickFx(i){S.bsel[S.btab]=i;r()}
 function resetFx(){S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,"Image quality":0};r()}
 
+/* A rough on-screen stand-in for the chosen beauty filter, so changes are visible. */
+function fxCss(){
+ const f=["","saturate(1.25) contrast(1.05)","sepia(.35) saturate(1.3)","hue-rotate(-12deg) saturate(1.2)","grayscale(.35) contrast(1.15)","hue-rotate(25deg) saturate(1.1)"][S.bsel.Filters]||"";
+ return (S.bsel.Beauty?"brightness(1.08) ":"")+f}
+function camOn(){return isHost()?S.cam:S.scam}
+function toggleCam(){if(isHost())S.cam=S.cam?0:1;else S.scam=S.scam?0:1;r()}
+function video(p){
+ if(p===me&&!camOn())return `<div class="vcoff">${I("camoff",22)}<span>Camera off</span></div>`;
+ return p===me?`<div style="position:absolute;inset:0;filter:${fxCss()||"none"}">${art(p.seed)}</div>`:art(p.seed)}
+function fxOn(){return Object.values(S.bsel).some(Boolean)}
+/* One ⋯ button under the video tile; beauty, mute and camera live in its menu. */
+function more(){
+ const warn=!S.mic||!camOn();
+ return `<div class="more">
+  <button class="morebtn ${S.more?"open":""}" aria-label="More options" aria-expanded="${!!S.more}" onclick="S.more=!S.more;r()">${I("dots",18)}${warn?`<i></i>`:""}</button>
+  </div>
+  ${S.more?`<div class="moreveil" onclick="S.more=0;r()"></div><div class="moremenu" role="menu">
+   <button role="menuitem" onclick="S.more=0;S.btab=S.btab||'Beauty';S.sh='fx';r()">${I("star",17)}<span>Beauty &amp; filters</span><em class="${fxOn()?"on":""}">${fxOn()?"On":"Off"}</em></button>
+   <button role="menuitem" onclick="S.mic=S.mic?0:1;r()">${I(S.mic?"mic":"micoff",17)}<span>${S.mic?"Mute":"Unmute"}</span><em class="${S.mic?"on":"off"}">${S.mic?"Mic on":"Muted"}</em></button>
+   <button role="menuitem" onclick="toggleCam()">${I(camOn()?"flip":"camoff",17)}<span>${camOn()?"Turn camera off":"Turn camera on"}</span><em class="${camOn()?"on":"off"}">${camOn()?"On":"Off"}</em></button>
+  </div>`:""}`}
+/* Main video plus a small tile; tapping the tile swaps who is in the middle. */
+function stage(main,tile){
+ const [a,b]=S.swap?[tile,main]:[main,tile];
+ return `<div style="position:absolute;inset:0">${video(a)}<div class="vshade"></div></div>
+ <button class="pip" aria-label="Swap videos" onclick="S.swap=!S.swap;r()">${video(b)}<span>${b===me?"You":first(b.n)}</span></button>`}
+/* One slim bar: back, timer (+ Home visibility for hosts), then earnings (hosts) and ⋯. */
+function topBar(host){
+ return `<div class="ctop">
+  <button class="cback" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${I("back",17)}</button>
+  <span class="cstat"><i class="rec"></i><span id="ck">${clock(S.sec)}</span>
+   ${host?`<span class="csep"></span><button class="cvis ${S.vis?"on":""}" aria-pressed="${!!S.vis}" aria-label="${S.vis?"Visible on Home, tap to hide":"Hidden from Home, tap to show"}" onclick="S.vis=S.vis?0:1;r()">${I(S.vis?"eye":"eyeoff",14)}${S.vis?"Visible":"Hidden"}</button>`:""}</span>
+  <span style="flex:1"></span>
+  ${host?`<span class="cearn" title="${n(Math.round(S.earned))} coins this session"><span>This session</span><b id="earn">${gem}+${kfmt(Math.round(S.earned))}</b></span>`:""}
+  ${more()}</div>
+ <div class="goalrow" id="gch"></div>
+ ${host&&feeShown()?`<div class="feechip ${S.feeOk?"ok":""}" id="fee">${feeChip()}</div>`:""}`}
+function idPill(p,coins){
+ return `<div class="idpill">
+   ${avc(p,38)}
+   <span class="tx"><span class="nm">${p.n}</span>
+    <span class="co ${coins?"coins":""}">${coins?gem+n(lifetime(p)):`ID ${66200000+p.seed*137}`}</span></span>
+   <button class="quickfollow ${S.following[p.id]?'on':''}" aria-label="${S.following[p.id]?'Unfollow':'Follow'} ${p.n}" onclick="toggleFollow('${p.id}',event)">${S.following[p.id]?'✓':'+'}</button></div>`}
+
 function vCall(){const h=g(S.h);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
- <div style="position:absolute;inset:0">${art(h.seed)}<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.5),transparent 40%,rgba(0,0,0,.9))"></div></div>
- <div class="lvrow">
-  <button class="lvback" aria-label="Leave call" onclick="go('host','${h.id}')">${I("back",14)}</button>
-  <div class="goalchip" id="gch"></div></div>
+ ${stage(h,me)}
+ ${topBar(0)}
  <div class="fx" id="fl"></div>
  <div id="wn" style="position:relative;margin-top:auto;padding:0 14px"></div>
  <div class="lvfeed" id="rfeed"></div>
@@ -1432,36 +2178,32 @@ function vCall(){const h=g(S.h);
 
  ${S.cmp?"":`<div class="lvbar">
   <button class="rndb" aria-label="Chat" onclick="S.cmp=!S.cmp;r()">${I("chat",21)}</button>
-  <div class="idpill" role="button" tabindex="0" aria-label="Open ${h.n}'s profile" onclick="go('host','${h.id}')" onkeydown="if(event.key==='Enter')go('host','${h.id}')">
-   ${av(h,38,"none")}
-   <span class="tx"><span class="nm">${h.n}</span>
-    <span class="co">${gem}${n(lifetime(h))}</span></span>
-   <button class="quickfollow ${S.following[h.id]?'on':''}" aria-label="${S.following[h.id]?'Unfollow':'Follow'} ${h.n}" onclick="toggleFollow('${h.id}',event)">${S.following[h.id]?'✓':'+'}</button>
-   <span style="color:rgba(255,255,255,.35);font-size:17px">&rsaquo;</span></div>
+  ${idPill(h,1)}
+  <button class="rndb endb" aria-label="End call" onclick="endCall()">${I("ph",21)}</button>
   <button class="rndb giftb" aria-label="All gifts" onclick="S.tray=1;r()">${I("gift",21)}</button></div>`}
  ${S.cmp?`<div class="lvcomp">
    ${av(me,34,"none")}
    <input id="rmsg" placeholder="Say something..." onkeydown="if(event.key==='Enter')rsay()">
    <button class="csend" onclick="rsay()" aria-label="Send">${I("send",19)}</button>
    <button class="cclose" onclick="S.cmp=0;r()" aria-label="Close">&times;</button></div>`:""}
- ${S.tray?giftTray():S.sh==="gift"?giftSheet():""}</div>`}
+ ${S.tray?giftTray():S.sh==="fx"?fxSheet():""}</div>`}
 
 function vVoice(){const h=g(S.h);
  return `<div class="voicecall">
-  <button class="voiceback" aria-label="Back to ${h.n}'s profile" onclick="go('host','${h.id}')">${I("back",18)}</button>
+  <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
   <div class="voiceorb">${avc(h,104)}</div>
   <h2>${h.n}</h2>
   <p>Voice call</p>
   <strong id="ck">00:00</strong>
   <div class="voiceactions">
    <button class="voiceaction ${S.spk?'on':''}" aria-label="${S.spk?'Turn speaker off':'Turn speaker on'}" onclick="S.spk=S.spk?0:1;r()">${I("vol",22)}<span>Speaker</span></button>
-   <button class="voiceend" aria-label="End voice call" onclick="go('host','${h.id}')">${I("ph",25)}</button>
+   <button class="voiceend" aria-label="End voice call" onclick="endCall()">${I("ph",25)}</button>
    <button class="voiceaction ${S.mic?'':'on'}" aria-label="${S.mic?'Mute microphone':'Unmute microphone'}" onclick="S.mic=S.mic?0:1;r()">${I(S.mic?"mic":"micoff",22)}<span>Mute</span></button>
   </div>
  </div>`}
 
 /* coins the host has taken in, all time */
-function lifetime(h){return ((h.seed*97531)%8600000)+920000+(S.gifted||0)}
+function lifetime(h){if(h.fresh)return S.giftedTo[h.id]||0;return ((h.seed*97531)%8600000)+920000+(S.gifted||0)}
 
 /* Room chat. Painted on its own so typing never loses focus. */
 const REPLIES=["haha okay","yes, one second","tell me more","that's a good one",
@@ -1479,8 +2221,8 @@ function rsay(){
 function hostReply(){
  clearTimeout(S.rt);
  S.rt=setTimeout(()=>{
-  if(S.v!=="call")return;
-  const h=g(S.h);
+  if(S.v!=="call"&&S.v!=="hcall")return;
+  const h=S.v==="hcall"?S.caller:g(S.h);
   S.rmsgs.push(["host",h.n.split(" ")[0],REPLIES[Math.floor(Math.random()*REPLIES.length)]]);
   paintFeed();
  },1100+Math.random()*900);
@@ -1499,7 +2241,7 @@ function giftTray(){
  return `<div class="tray"><div class="veil" onclick="S.tray=0;r()"></div>
   <div class="panel">
    <div class="thead">
-    <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to the host</span></span>
+    <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?first(S.caller.n):"the host"}</span></span>
     <button class="addc" onclick="go('coins')">${gem}${n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
    ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${k==="water"?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
@@ -1513,7 +2255,10 @@ function sendGift(l,e,v,k){
  if(S.v==="thread"){
   S.msgs.push(["g",e,n(v),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);
   r(); paint(); playGift(l,e,v,k); return}
- S.gifted=(S.gifted||0)+v;
+ if(S.v==="hcall"){
+  S.rmsgs.push(["gift","You",`sent ${e} ${l} to ${first(S.caller.n)}`]);
+  r(); playGift(l,e,v,k,`You sent ${first(S.caller.n)} ${l} &middot; ${n(v)}`); hostReply(); return}
+ S.gifted=(S.gifted||0)+v; S.giftN=(S.giftN||0)+1; S.giftedTo[S.h]=(S.giftedTo[S.h]||0)+v;
  if(GIFTS[S.fav] && GIFTS[S.fav][0]===l)S.favGot=(S.favGot||0)+1;
  S.rmsgs.push(["gift","You",`sent ${e} ${l} &middot; ${n(v)}`]);
  r(); playGift(l,e,v,k); hostReply();
@@ -1521,7 +2266,7 @@ function sendGift(l,e,v,k){
 
 /* Centre-stage gift animation. Cheap gifts get a quick rise; the top tiers
    take over the frame with a flash, rotating rays and a spark burst. */
-function playGift(l,e,v,k){
+function playGift(l,e,v,k,label){
  const f=document.getElementById("fl"); if(!f)return;
  const water=k==="water",big=water||v>=19999,mid=water||v>=5999,life=water?5200:big?3000:2000;
  const frag=document.createElement("div");
@@ -1556,7 +2301,7 @@ function playGift(l,e,v,k){
 
  const tag=document.createElement("div");
  tag.className="fxtag";
- tag.innerHTML=water?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} &middot; ${n(v)}`;
+ tag.innerHTML=label?label:water?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} &middot; ${n(v)}`;
  if(big){tag.style.animationDuration="3s, 2.2s";tag.style.fontSize="13px"}
  frag.appendChild(tag);
 
@@ -1567,36 +2312,80 @@ function playGift(l,e,v,k){
 function tick(){if(!["call","voice"].includes(S.v))return;const h=g(S.h);
  const c=document.getElementById("ck");if(c)c.textContent=String(Math.floor(S.sec/60)).padStart(2,"0")+":"+String(S.sec%60).padStart(2,"0");
  const b=document.getElementById("bl");if(b)b.innerHTML=gem+n(S.bal);
- const gc=document.getElementById("gch");
- if(gc){const goal=S.goal,prog=S.gifted||0,pct=Math.min(100,goal?prog/goal*100:0),f=GIFTS[S.fav];
-  const gl=GOALS.find(x=>x[0]===goal)[1];
-  const fpct=Math.min(100,(S.favGot||0)/S.favn*100);
-  const lc=document.querySelector(".idpill .co");
-  if(lc)lc.innerHTML=gem+n(lifetime(g(S.h)));
-  gc.innerHTML=`<span class="askcard" onclick="S.sh='gift';r()">
-    <span class="ttl">Ask what<br>u want</span>
-    <span class="em">${f[1]}</span>
-    <span class="pr">${gem}${n(f[2])}</span>
-    <span class="bar"><i style="width:${fpct}%"></i></span>
-    <span class="ct">${S.favGot||0} / ${S.favn}</span></span>
-   <span class="gpill">
-    <span class="ttl">Coin target</span>
-    <span class="amt">${gem}${n(prog)}<em>/ ${gl}</em></span>
-    <span class="bar"><i style="width:${pct}%;background-position:${100-pct}% 0;
-     box-shadow:0 0 ${(6+pct*0.16).toFixed(0)}px rgba(255,192,46,${(0.25+pct*0.006).toFixed(2)})"></i></span></span>`}
+ const lc=document.querySelector(".idpill .co.coins");
+ if(lc)lc.innerHTML=gem+n(lifetime(h));
+ paintGoal();
  const w=document.getElementById("wn");
  if(w)w.innerHTML=S.bal<h.rate?`<div style="background:rgba(0,0,0,.65);border:1px solid var(--live);border-radius:16px;padding:12px;margin-bottom:10px">
   <div style="color:#fff;font-size:13.5px;font-weight:600">Balance runs out next minute</div>
   <div class="s12" style="color:rgba(255,255,255,.65);margin-top:2px">The line drops automatically at zero.</div></div>`:""}
 
+/* The host's mission (coin target) and the gift they ask for. Shown on both sides of a call. */
+function paintGoal(){
+ const gc=document.getElementById("gch");if(!gc)return;
+ const host=S.v==="hcall",goal=S.goal,h=host?null:g(S.h),who=host?"Your":`${first(h.n)}'s`;
+ /* senders see the host's whole mission, including gifts from the host's other supporters */
+ const base=h?Math.round(((h.seed*7919)%1000)/1000*goal*.6):0,baseAsk=h?h.seed%Math.max(1,S.favn-2):0;
+ const prog=(S.gifted||0)+base,pct=Math.min(100,goal?prog/goal*100:0),f=GIFTS[S.fav];
+ const gl=GOALS.find(x=>x[0]===goal)[1],done=pct>=100;
+ const got=(S.favGot||0)+baseAsk,fpct=Math.min(100,got/S.favn*100),fdone=fpct>=100;
+ const C=S.cel;
+ if(fdone&&!C.ask){C.ask=1;celebrate("ask",host?`Gift target complete! You received ${S.favn} &times; ${f[0]}.`:`${who} gift target is complete. Thanks for being part of it!`)}
+ if(done&&!C.mission){C.mission=1;celebrate("mission",host?`Mission accomplished! You reached ${gl} coins.`:`${who} mission is accomplished: ${gl} coins reached!`)}
+ gc.innerHTML=`${C.ask===2?"":`<button class="gcard ask ${fdone?"done":""}" ${host?"":`onclick="sendAsk()"`} aria-label="Gift target: ${f[0]}, ${Math.min(got,S.favn)} of ${S.favn}">
+   <span class="gem">${f[1]}</span>
+   <span class="gbody"><span class="gtop"><span class="glab">Gift target</span><span class="gval">${fdone?"&#10003;":`${Math.min(got,S.favn)}/${S.favn}`}</span></span>
+    <span class="gsub">${gem}${kfmt(f[2])}</span>
+    <span class="gbar"><i style="width:${fpct}%"></i></span></span></button>`}
+  ${C.mission===2?"":`<div class="gcard mission ${done?"done":""}" aria-label="Mission ${gl}, ${pct.toFixed(0)} percent">
+   <span class="gbody"><span class="gtop"><span class="glab">Mission <em>${gl}</em></span><span class="gval">${done?"&#10003;":`${pct<1&&pct>0?"<1":pct.toFixed(0)}%`}</span></span>
+    <span class="gsub">${gem}${n(prog)} <i>/ ${gl}</i></span>
+    <span class="gbar"><i style="width:${pct}%"></i></span></span></div>`}`}
+
+/* Completion pop-ups. They live outside #screen so re-renders don't restart them;
+   after 3 seconds the finished card is removed and the other one moves up. */
+function celebrate(kind,text){S.celq.push({kind,text});if(S.celq.length===1)nextCeleb()}
+function nextCeleb(){
+ const c=S.celq[0];if(!c)return;
+ const el=document.createElement("div");
+ el.className="celeb";el.setAttribute("role","status");
+ el.innerHTML=`<div class="celcard"><span class="celico">${c.kind==="ask"?"&#127873;":"&#127942;"}</span>
+  <b>Congratulations!</b><span>${c.text}</span></div>`;
+ document.querySelector(".app").appendChild(el);
+ if(navigator.vibrate)try{navigator.vibrate(120)}catch(e){}
+ setTimeout(()=>{el.classList.add("out")},2600);
+ setTimeout(()=>{el.remove();S.cel[c.kind]=2;S.celq.shift();
+  if(S.v==="call"||S.v==="hcall")paintGoal();nextCeleb()},3000)}
+/* A sender tapping the asked-for gift sends it. */
+function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return go("coins");sendGift(l,e,v,k||"")}
+
+/* Compact coin count for tight spots, in the same K / M style as the mission goals. */
+function kfmt(v){return v>=1e6?(v/1e6).toFixed(v>=1e7?1:2).replace(/\.0+$/,"")+"M":v>=1e5?(v/1e3).toFixed(1).replace(/\.0$/,"")+"K":n(v)}
+/* Missed calls, per role: senders miss hosts, hosts miss senders. */
+function missedRows(){
+ return S.missed[S.role].map(m=>{const p=isHost()?sender(m.id):g(m.id);return p&&{...m,p}}).filter(Boolean)}
+function callBack(id){
+ S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
+ if(isHost()){S.caller=sender(id);go("dialback")}else go("precall",id)}
+function missedList(){
+ const L=missedRows();
+ if(!L.length)return `<div class="acctcard emptycompact" style="margin:14px"><span class="acctico">${I("ph",22)}</span>
+  <h3>No missed calls</h3><p>Calls you miss will show up here so you can call back.</p></div>`;
+ return `<div class="msec"><div class="mcard">${L.map(m=>`<div class="mcrow">
+   <span class="callav">${avc(m.p,42)}<span class="badge miss">${I(m.kind==="voice"?"ph":"vid",9)}</span></span>
+   <span class="mctx"><b>${m.p.n}</b><span>${m.kind==="voice"?"Voice":"Video"} &middot; ${m.when}</span></span>
+   <button class="mcback" aria-label="Call ${m.p.n} back" onclick="callBack('${m.id}')">${I(m.kind==="voice"?"ph":"vid",16)}<span>Call back</span></button></div>`).join("")}</div></div>`}
+
 function vChats(){
- const q=(S.q||"").toLowerCase();
+ const q=(S.q||"").toLowerCase(), tab=S.ctab||"msgs", miss=missedRows().length;
  const L=CH.filter(([id,l])=>{const h=g(id);return !q||h.n.toLowerCase().includes(q)||l.toLowerCase().includes(q)});
  const unread=CH.reduce((a,c)=>a+c[3],0);
- return `<div class="srch"><div>${I("srch",17)}<input id="cq" placeholder="Search conversations" value="${S.q||""}" oninput="S.q=this.value;paintList()"></div></div>
- ${unread?`<div class="s12 muted" style="max-width:720px;margin:0 auto;padding:8px 16px 2px">${unread} unread</div>`:""}
+ return `<div class="ctabs" role="tablist">
+   <button role="tab" aria-selected="${tab==="msgs"}" class="${tab==="msgs"?"on":""}" onclick="S.ctab='msgs';r()">Messages${unread?`<b>${unread}</b>`:""}</button>
+   <button role="tab" aria-selected="${tab==="missed"}" class="${tab==="missed"?"on":""}" onclick="S.ctab='missed';r()">Missed calls${miss?`<b class="miss">${miss}</b>`:""}</button></div>
+ ${tab==="missed"?missedList():`<div class="srch"><div>${I("srch",17)}<input id="cq" placeholder="Search conversations" value="${S.q||""}" oninput="S.q=this.value;paintList()"></div></div>
  <div class="clist" id="clist">${loading("chats")?skRows(6):
-   L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`}</div>
+   L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`}</div>`}
  <div style="height:12px"></div>`}
 function row([id,l,t,u]){const h=g(id);
  return `<button class="rowlink" onclick="go('thread','${id}')">
@@ -1623,7 +2412,7 @@ function vThread(){const h=g(S.h);
    <span style="min-width:0"><span class="s15" style="display:block;font-weight:600;line-height:1.2">${h.n}</span>
    <span class="s11 muted" style="display:flex;align-items:center;gap:5px">${h.on?"Online":"Away"} · ${h.c}</span></span>
   </button>
-  <button onclick="go('setup','${h.id}')" aria-label="Video call" style="color:var(--muted);display:flex">${I("vid",21)}</button></div>
+  <button onclick="go('precall','${h.id}')" aria-label="Video call" style="color:var(--muted);display:flex">${I("vid",21)}</button></div>
  <div class="pat" id="tf"></div>
  <div class="fx" id="fl"></div>
  <div class="qs">${GIFTS.slice(0,8).map(([l,e,v,k])=>`
@@ -1730,8 +2519,9 @@ const TXNS=[
 
 function vWallet(){return `<div class="acct">
  <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${n(S.bal)}</div>
-  <div class="sub">Use coins for calls and gifts. Your balance is ready across Aurora.</div>
+  <div class="sub">Use coins for calls and gifts. Your balance is ready across Zimi Live.</div>
   <button class="cta" onclick="go('coins')">Add coins</button></div>
+ ${earnCard()}
  <div class="acctsec"><div class="accttitle"><span>Quick actions</span></div>
   <div class="support"><button onclick="go('coins')"><b>Recharge</b><span>Choose a coin pack</span></button>
    <button onclick="go('transactions')"><b>History</b><span>See every movement</span></button></div></div>
@@ -1756,7 +2546,7 @@ const CALLS=[
 function vCalls(){return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
  <span class="callav">${av(h,38,'none')}<span class="badge">${I('ph',9)}</span></span>
  <span style="flex:1;min-width:0"><span class="main">${h.n}</span><span class="meta">${time} · ${dur}</span></span>
- <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('setup','${id}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
+ <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('precall','${id}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
 
 function vBlocked(){return `<div class="acct">${S.blocked.length?`<div class="acctcard">${S.blocked.map(id=>{const h=g(id);return `<div class="acctrow">${av(h,38,'none')}<span style="flex:1"><span class="main">${h.n}</span><span class="meta">Blocked host</span></span><button class="softbtn" style="margin:0" onclick="S.blocked=S.blocked.filter(x=>x!=='${id}');r()">Unblock</button></div>`}).join('')}</div>`:`<div class="acctcard emptycompact"><span class="acctico">${I('shield',22)}</span><h3>No blocked hosts</h3><p>People you block can’t call or message you. You can manage them here anytime.</p><button class="softbtn" onclick="go('home')">Browse creators</button></div>`}</div>`}
 
@@ -1766,13 +2556,13 @@ function vSafety(){const prefs=[['discover','Discoverable profile','Let people f
  <div class="acctsec"><div class="accttitle"><span>Safety center</span></div><div class="acctcard">
   <button class="acctrow" onclick="go('blocked')"><span class="acctico">${I('user',16)}</span><span style="flex:1"><span class="main">Blocked accounts</span><span class="meta">Review people you blocked</span></span><span class="ch">›</span></button>
   <button class="acctrow" onclick="S.faq=3;go('help')"><span class="acctico">${I('shield',16)}</span><span style="flex:1"><span class="main">Child safety</span><span class="meta">Age rules and family resources</span></span><span class="ch">›</span></button>
-  <button class="acctrow" onclick="S.faq=2;go('help')"><span class="acctico">${I('doc',16)}</span><span style="flex:1"><span class="main">Terms & privacy</span><span class="meta">How Aurora protects your information</span></span><span class="ch">›</span></button></div></div></div>`}
+  <button class="acctrow" onclick="S.faq=2;go('help')"><span class="acctico">${I('doc',16)}</span><span style="flex:1"><span class="main">Terms & privacy</span><span class="meta">How Zimi Live protects your information</span></span><span class="ch">›</span></button></div></div></div>`}
 
 const FAQ=[
  ['How do refunds work?','If a recharge fails, coins are not deducted. Completed coin purchases are final in this demo.'],
  ['Why was I charged for a call?','A connection fee starts the call, then coins are deducted per minute at the host’s displayed rate.'],
- ['Terms & privacy','Aurora only uses the profile and activity information needed to run this prototype. No real account data is collected.'],
- ['Child safety','Aurora is designed for adults. Report suspected underage use immediately and avoid sharing personal information.']];
+ ['Terms & privacy','Zimi Live only uses the profile and activity information needed to run this prototype. No real account data is collected.'],
+ ['Child safety','Zimi Live is designed for adults. Report suspected underage use immediately and avoid sharing personal information.']];
 function vHelp(){return `<div class="acct">
  <div class="acctsec" style="margin-top:0"><div class="accttitle"><span>Popular questions</span></div><div class="acctcard">${FAQ.map(([q,a],i)=>`<div><button class="acctrow" onclick="S.faq=S.faq===${i}?-1:${i};r()"><span class="acctico">${I(i<2?'wal':'shield',16)}</span><span class="main" style="flex:1">${q}</span><span class="ch">${S.faq===i?'⌃':'›'}</span></button>${S.faq===i?`<div class="faqbody">${a}</div>`:''}</div>`).join('')}</div></div>
  <div class="acctsec"><div class="accttitle"><span>Contact us</span></div><div class="support"><button onclick="S.faq=0;r()"><b>Billing help</b><span>Refunds and recharges</span></button><button onclick="S.faq=1;r()"><b>Call support</b><span>Charges and connections</span></button></div></div>
@@ -1800,9 +2590,17 @@ function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]
  <button class="editsave" onclick="saveProfile()">Save profile</button></div>`}
 
 function vProfile(){
- const p={id:"me",n:me.n,seed:me.seed,on:1,host:1,lvl:7,tag:me.tag,c:me.c,
-  recv:2090372+(S.gifted||0),sent:246000,fol:"2.4K",following:181};
+ const host=isHost();
+ const p={id:"me",n:me.n,seed:me.seed,on:1,host,lvl:7,tag:host?"Host":"Supporter",c:me.c,
+  verified:host&&A().kyc==="verified",
+  recv:host?2090372+A().earn-184250:A().earn,sent:246000+(S.gifted||0),fol:host?"2.4K":"38",following:181};
  return profilePage(p,me,true)}
+
+function kycLabel(){const a=A(),k=a.kyc;
+ if(k==="verified")return isHost()?"Verified · badge active":"Verified · payouts on";
+ if(k==="pending")return "Under review";
+ if(!isHost()&&a.earn<PAYOUT_MIN)return `Unlocks at ${n(PAYOUT_MIN)} earned coins`;
+ return isHost()?"Not started · needed to go live":"Ready · needed before your first payout"}
 
 function vSettings(){
  const rows=[
@@ -1819,7 +2617,7 @@ function vSettings(){
    <div style="min-width:0">
     <div class="disp nm">${me.n}</div>
     <div class="id">ID 858350921 ${I("copy",13)}</div>
-    <div class="lvlchip">LEVEL 7</div></div><span class="ch" style="margin-left:auto;color:var(--faint);font-size:22px">&rsaquo;</span></button>
+    <div class="lvlchip">LEVEL 7 &middot; ${isHost()?"HOST":"SENDER"}</div></div><span class="ch" style="margin-left:auto;color:var(--faint);font-size:22px">&rsaquo;</span></button>
 
   <div class="pstats">
    <div><div class="v tab">${n(S.bal)}</div><div class="k">Coins</div></div>
@@ -1835,6 +2633,15 @@ function vSettings(){
   <div class="psec"><h3>Your profile</h3><div class="plist">
    <button class="pitem" onclick="go('editprofile')"><span class="pico">${I('user',17)}</span>
     <span class="tx"><span class="t1" style="display:block">Edit profile</span><span class="t2" style="display:block">Cover, photo, posts and about</span></span><span class="ch">&rsaquo;</span></button>
+   <button class="pitem" onclick="toggleMvp()" aria-pressed="${!!A().mvp}"><span class="pico">${I('cup',17)}</span>
+    <span class="tx"><span class="t1" style="display:block">Show MVPs on my profile</span><span class="t2" style="display:block">${A().mvp?"Everyone can see your top supporters":"Only you can see your top supporters"}</span></span><span class="switch ${A().mvp?'on':''}"></span></button>
+  </div></div>
+
+  <div class="psec"><h3>Earnings</h3><div class="plist">
+   <button class="pitem" onclick="go('kyc')"><span class="pico">${I('shield',17)}</span>
+    <span class="tx"><span class="t1" style="display:block">${isHost()?"KYC and blue tick":"Payout verification"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
+   ${isHost()?`<button class="pitem" onclick="go('awards')"><span class="pico">${I('star',17)}</span>
+    <span class="tx"><span class="t1" style="display:block">Awards</span><span class="t2" style="display:block">${S.tasks.filter(t=>t.p>=t.goal&&!t.claimed).length||"No"} reward(s) ready to receive</span></span><span class="ch">&rsaquo;</span></button>`:""}
   </div></div>
 
   <div class="psec"><h3>Appearance</h3>
@@ -1849,9 +2656,583 @@ function vSettings(){
      <span class="tx"><span class="t1" style="display:block">${t1}</span><span class="t2" style="display:block">${t2}</span></span>
      <span class="ch">&rsaquo;</span></button>`).join("")}</div></div>
 
-  <button class="pout">Log out</button>
-  <div class="s12 faint" style="text-align:center;padding:16px 0 0">Aurora v0.1</div>
+  <button class="pout" onclick="logout()">Log out</button>
+  <div class="s12 faint" style="text-align:center;padding:16px 0 0">Zimi Live v0.1</div>
  </div>`}
+
+
+/* ---- Roles -------------------------------------------------------------
+   Two kinds of account share one app. A sender calls hosts and gifts them;
+   a host goes online, takes calls and earns. Both can buy coins and gift,
+   both have a wallet; payouts need KYC (full for hosts, light for senders). */
+const A=()=>S.acct[S.role];
+const isHost=()=>S.role==="host";
+const MY_RATE=TIERS[1]/60;              /* host per-minute rate: 3,000/h tier */
+/* Entry fee rules. The sender pays when the host picks up and it is not refundable.
+   The host is only paid the fee once the call passes FEE_HOLD seconds; a call that
+   ends sooner sends the fee to Zimi Live. Ending calls early is counted toward a
+   penalty whose terms are still to be decided (EARLY_LIMIT is the warning line). */
+const MY_FEE=60, FEE_HOLD=60, EARLY_LIMIT=2;
+const PAYOUT_MIN=10000;                 /* senders unlock payouts past this */
+const WITHDRAW_MIN=1000;
+const INR_PER_COIN=0.25;
+const inr=c=>"&#8377;"+(c*INR_PER_COIN).toLocaleString("en-IN",{maximumFractionDigits:0});
+const first=nm=>nm.split(" ")[0];
+function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+ return h?`${h} hr ${m} min`:m?`${m} min${x?` ${x} sec`:""}`:`${x} sec`}
+function clock(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function pickRole(k){S.role=k;S.auth={step:"choose",mode:"login"};go(S.loggedIn?"home":"login")}
+function hostMode(m){S.auth={step:"phone",mode:m};r()}
+/* Phone + one-time code. The preview accepts any 6 digits; the real check is server-side. */
+function sendOtp(){const i=document.getElementById("ph"),v=(i?i.value:"").replace(/\D/g,"");
+ if(v.length!==10||!/^[6-9]/.test(v)){S.auth.err="Enter a valid 10-digit mobile number.";return r()}
+ S.auth={step:"otp",phone:v,left:30,mode:S.auth.mode};clearInterval(S.otpT);
+ S.otpT=setInterval(()=>{if(S.v!=="login"||S.auth.step!=="otp"||S.auth.left<=0)return clearInterval(S.otpT);
+  S.auth.left--;const t=document.getElementById("rs");if(t)t.innerHTML=resendTxt()},1000);
+ r();setTimeout(()=>{const f=document.getElementById("o0");if(f)f.focus()},50)}
+function resendTxt(){return S.auth.left>0?`Resend code in 0:${String(S.auth.left).padStart(2,"0")}`:`<button onclick="sendOtpAgain()">Resend code</button>`}
+function sendOtpAgain(){const ph=S.auth.phone;S.auth={step:"phone",mode:S.auth.mode};r();const i=document.getElementById("ph");if(i){i.value=ph;sendOtp()}}
+function otpIn(el,k){el.value=el.value.replace(/\D/g,"").slice(-1);
+ if(el.value&&k<5)document.getElementById("o"+(k+1)).focus();
+ if(Array.from({length:6},(_,i)=>document.getElementById("o"+i).value).join("").length===6)verifyOtp()}
+function otpKey(e,k){if(e.key==="Backspace"&&!e.target.value&&k>0)document.getElementById("o"+(k-1)).focus()}
+function otpPaste(e){const d=(e.clipboardData.getData("text")||"").replace(/\D/g,"").slice(0,6);if(d.length<6)return;
+ e.preventDefault();d.split("").forEach((c,i)=>{document.getElementById("o"+i).value=c});verifyOtp()}
+function verifyOtp(){const code=Array.from({length:6},(_,i)=>(document.getElementById("o"+i)||{}).value||"").join("");
+ if(code.length!==6){S.auth.err="Enter the 6-digit code.";return r()}
+ clearInterval(S.otpT);signedIn()}
+/* New creators set up a profile, then verify; existing ones go straight in. */
+function signedIn(){
+ if(S.auth.mode==="signup"){S.auth={step:isHost()?"profile":"sprofile",mode:"signup",cat:"",langs:[]};return r()}
+ if(isHost())A().kyc="verified";
+ S.loggedIn=1;S.auth={step:"phone"};go("home")}
+const CATS=["Dance","Music","Talk","Gaming","Astrology","Fitness","Comedy"],LANGS=["Hindi","English","Tamil","Telugu","Bengali","Marathi","Punjabi"];
+function toggleLang(l){const a=S.auth.langs;a.includes(l)?a.splice(a.indexOf(l),1):a.push(l);r()}
+/* New senders: a name and the 18+ confirmation, then straight to Home. */
+function finishSender(){const a=S.auth,nm=(document.getElementById("pn")||{}).value||"";
+ a.name=nm;
+ if(!nm.trim()||!document.getElementById("p18").checked){a.err="Add a display name and confirm you're 18 or older.";return r()}
+ me.n=nm.trim();S.editName=me.n;S.loggedIn=1;S.auth={step:"phone"};go("home")}
+function finishProfile(){const a=S.auth,nm=(document.getElementById("pn")||{}).value||"";
+ a.name=nm;
+ if(!nm.trim()||!a.cat||!a.langs.length||!document.getElementById("p18").checked){a.err="Add your name, a category, at least one language and confirm you're 18 or older.";return r()}
+ me.n=nm.trim();S.editName=me.n;me.tag=a.cat;A().kyc="none";S.fromSignup=1;
+ S.loggedIn=1;S.auth={step:"phone"};go("kyc")}
+function logout(){S.loggedIn=0;S.online=0;go("welcome")}
+function vLogin(){const a=S.auth||{step:"phone"},host=isHost(),signup=a.mode==="signup",of=host?3:2;
+ const fmt=p=>p.slice(0,5)+" "+p.slice(5);
+ const back=a.step==="otp"?`S.auth={step:'phone',mode:'${a.mode}'};r()`:a.step==="phone"||a.step==="profile"||a.step==="sprofile"?"S.auth={step:'choose'};r()":"go('welcome')";
+ const row=(fn,ic,t,d)=>`<button class="lgrow" onclick="${fn}"><span class="lgri">${I(ic,18)}</span><span class="lgrt"><b>${t}</b><span>${d}</span></span><span class="lgchev">&rsaquo;</span></button>`;
+ let body;
+ if(a.step==="choose")body=`
+   <h1 class="lgh">${host?"Welcome, creator":"Welcome to Zimi Live"}</h1>
+   <p class="lgp">How would you like to continue?</p>
+   <div class="lglist">
+    ${row("hostMode('login')","user","Log in",host?"I already have a host account":"I already have an account")}
+    ${row("hostMode('signup')","plus",host?"Create a host account":"Create an account",host?"Sign up and verify in a few minutes":"New here? It takes less than a minute")}
+   </div>
+   <p class="lgnote">${host?"New accounts complete a short identity check before going live.":"Your coins and wallet stay safe with one-time code login."}</p>`;
+ else if(a.step==="sprofile")body=`
+   <span class="lgstep2">Step 2 of 2</span>
+   <h1 class="lgh">Create your profile</h1>
+   <p class="lgp">This is how creators will see you. You can change it later.</p>
+   <div class="editgroup" style="margin:0"><label class="editlabel" for="pn">Display name</label><input class="editinput" id="pn" maxlength="32" placeholder="Your name" value="${esc(a.name||"")}"></div>
+   <div class="lgform"><div><span class="editlabel">Languages you speak <span style="text-transform:none;letter-spacing:0;font-weight:500">(optional)</span></span><div class="lgchips">${LANGS.map(l=>`<button class="${a.langs.includes(l)?"on":""}" aria-pressed="${a.langs.includes(l)}" onclick="S.auth.name=document.getElementById('pn').value;toggleLang('${l}')">${l}</button>`).join("")}</div></div></div>
+   <label class="lg18"><input type="checkbox" id="p18"> I confirm I am 18 or older.</label>
+   ${a.err?`<div class="lgerr">${a.err}</div>`:""}
+   <button class="lgbtn" onclick="finishSender()">Start exploring</button>`;
+ else if(a.step==="profile")body=`<div class="lgform">
+  <div class="wcopy"><span class="lgstep2">Step 2 of 3</span><h1 class="lgh">Set up your profile</h1>
+   <p class="lgp">This is what callers see. You can change it later.</p></div>
+  <div class="editgroup" style="margin:0"><label class="editlabel" for="pn">Display name</label><input class="editinput" id="pn" maxlength="32" placeholder="Your stage or display name" value="${esc(a.name||"")}"></div>
+  <div><span class="editlabel">What do you do on calls?</span><div class="lgchips">${CATS.map(c=>`<button class="${a.cat===c?"on":""}" aria-pressed="${a.cat===c}" onclick="S.auth.name=document.getElementById('pn').value;S.auth.cat='${c}';r()">${c}</button>`).join("")}</div></div>
+  <div><span class="editlabel">Languages you speak</span><div class="lgchips">${LANGS.map(l=>`<button class="${a.langs.includes(l)?"on":""}" aria-pressed="${a.langs.includes(l)}" onclick="S.auth.name=document.getElementById('pn').value;toggleLang('${l}')">${l}</button>`).join("")}</div></div>
+  <label class="lg18"><input type="checkbox" id="p18"> I confirm I am 18 or older and agree to the Creator Payout Policy.</label>
+  ${a.err?`<div class="lgerr">${a.err}</div>`:""}
+  <button class="lgbtn" onclick="finishProfile()">Continue to verification</button></div>`;
+ else if(a.step==="otp")body=`
+   ${signup?`<span class="lgstep2">Step 1 of ${of}</span>`:""}
+   <h1 class="lgh">Enter the code</h1>
+   <p class="lgp">Sent to +91 ${fmt(a.phone)} &middot; <button class="lglink" onclick="S.auth={step:'phone',mode:'${a.mode}'};r()">Change</button></p>
+   <div class="otp" onpaste="otpPaste(event)">${Array.from({length:6},(_,k)=>`<input id="o${k}" inputmode="numeric" autocomplete="${k?"off":"one-time-code"}" maxlength="1" aria-label="Digit ${k+1}" oninput="otpIn(this,${k})" onkeydown="otpKey(event,${k})">`).join("")}</div>
+   ${a.err?`<div class="lgerr">${a.err}</div>`:""}
+   <button class="lgbtn" onclick="verifyOtp()">Verify</button>
+   <div class="lgresend" id="rs">${resendTxt()}</div>`;
+ else body=`
+   ${signup?`<span class="lgstep2">Step 1 of ${of}</span>`:""}
+   <h1 class="lgh">${signup?"Create your account":"Log in"}</h1>
+   <p class="lgp">Enter your mobile number. We'll send you a 6-digit code.</p>
+   <label class="lgfield"><span class="cc">+91</span>
+    <input id="ph" inputmode="numeric" autocomplete="tel-national" maxlength="11" placeholder="Mobile number" aria-label="Mobile number" onkeydown="if(event.key==='Enter')sendOtp()"></label>
+   ${a.err?`<div class="lgerr">${a.err}</div>`:""}
+   <button class="lgbtn" onclick="sendOtp()">Continue</button>
+   <div class="lgor"><span>or</span></div>
+   <button class="lggoogle" onclick="signedIn()"><b>G</b> Continue with Google</button>
+   <p class="lgsecure">${I("lock",13)} Secured with one-time code login</p>`;
+ return `<div class="lgwrap">
+  <header class="lghead"><button class="lgbk" aria-label="Back" onclick="${back}">${I("back",20)}</button>
+   <span class="lglogo"><span class="wmark">${I("vid",13)}</span>Zimi Live</span><span class="lgsp"></span></header>
+  <div class="lgbody ${a.step==="profile"||a.step==="sprofile"?"top":""}">${body}</div>
+  <p class="lgfoot">By continuing you agree to the Terms of Service and Privacy Policy. 18+ only.</p>
+ </div>`}
+
+/* ---- Welcome: the first screen, where an account picks its side ---- */
+function vWelcome(){
+ const sel=S.wsel||"";
+ const opt=(k,ico,title,body,pts)=>`<button class="wopt ${sel===k?"on":""} ${k}" role="radio" aria-checked="${sel===k}" onclick="S.wsel='${k}';r()">
+   <span class="wico">${I(ico,19)}</span>
+   <span class="wtx"><b>${title}</b><span class="wbody">${body}</span>
+    <span class="wpts">${pts.map(x=>`<span>${x}</span>`).join("")}</span></span>
+   <span class="wradio"></span></button>`;
+ return `<div class="welc">
+  <div class="wbrandrow"><span class="wmark">${I("vid",16)}</span><span class="wbrand disp">Zimi Live</span></div>
+  <div class="wcopy">
+   <h1 class="disp">Welcome to Zimi Live</h1>
+   <p class="welsub">Choose how you'd like to get started.</p></div>
+  <div class="wopts" role="radiogroup" aria-label="Account type">
+   ${opt("sender","heart","Connect with creators","Connect one-on-one with creators and engage by sending exclusive gifts.",["Private 1-on-1 calls","Exclusive gifts","Secure wallet"])}
+   ${opt("host","vid","Earn as a creator","Host paid video calls and grow your earnings.",["Per-minute & gift earnings","Verified badge","Instant payouts"])}
+  </div>
+  <button class="wgo" ${sel?"":"disabled"} onclick="pickRole(S.wsel)">${sel==="host"?"Continue as a creator":sel==="sender"?"Continue":"Select an option to continue"}</button>
+  <div class="welfoot">By continuing you agree to the Terms of Service and Privacy Policy. 18+ only.</div>
+ </div>`}
+
+/* ---- Host strip on Home: go-online entry point and KYC nudge ---- */
+function hostStrip(){
+ if(!isHost())return "";
+ const k=A().kyc;
+ if(k==="verified"&&S.online)return `<div class="hoststrip online">
+  <span class="hsdot"></span>
+  <span class="hstx"><b>You're online</b><span>Receiving calls${S.vis?" &middot; shown on Home":""}. You can leave the app.</span></span>
+  <button onclick="goOffline()">Go offline</button></div>`;
+ const [t,d,b,go_]=k==="verified"?["You're offline","Go online to start receiving video calls","Go online","setup"]
+  :k==="pending"?["Verification in progress","You can go live as soon as your account is approved","View status","kyc"]
+  :["Verify your account to go live","A quick check gets you the verified badge and payouts","Verify now","kyc"];
+ return `<div class="hoststrip ${k}">
+  <span class="hsdot"></span>
+  <span class="hstx"><b>${t}</b><span>${d}</span></span>
+  <button onclick="go('${go_}')">${b}</button></div>`}
+function myCard(){
+ return `<div class="card mine" role="button" tabindex="0" onclick="go('profile')">${art(me.seed)}<span class="scrim"></span>
+  <span class="cat">You &middot; Online</span>
+  <span class="cbot"><span class="cnm">${me.n} &#127470;&#127475;</span></span></div>`}
+
+/* ---- Sender: before the call ---- */
+function talkTime(m){return m>=120?`about ${n(Math.floor(m/60))} hr`:`about ${n(m)} min`}
+function vPrecall(){
+ const h=g(S.h), need=h.fee+h.rate, mins=Math.floor(Math.max(0,S.bal-h.fee)/h.rate), low=S.bal<need;
+ return `<div class="pcall">
+ <div class="pcbg">${art(h.seed)}</div><span class="pcshade"></span>
+ <div class="pctop">
+  <button class="pcic" aria-label="Back" onclick="go('host','${h.id}')">${I("back",19)}</button>
+  <span class="pctitle">Video call</span>
+  <span style="width:38px"></span></div>
+
+ <div class="pcself ${S.scam?"":"off"}">${S.scam?art(me.seed+2):`<span>${I("camoff",18)}</span>`}<i>You</i></div>
+
+ <div class="pcmain">
+  <div class="pcav">${avc(h,96)}<span class="pcon"></span></div>
+  <h2 class="disp">${h.n}</h2>
+  <p class="pcsub">${h.tag} &middot; ${h.c}</p>
+  <span class="pcbadge"><i></i>Online now &middot; usually answers in seconds</span>
+ </div>
+
+ <div class="pcsheet">
+  <div class="pcprice">
+   <div><span class="k">Entry fee</span><span class="v">${gem}${n(h.fee)}</span></div>
+   <div><span class="k">Per minute</span><span class="v">${gem}${n(h.rate)}</span></div>
+   <div><span class="k">Your balance</span><span class="v ${low?"low":""}">${gem}${n(S.bal)}</span></div></div>
+  <div class="pcmeta">${low
+   ?`<span class="warn">${I("wal",14)} You need at least ${n(need)} coins to start this call.</span>`
+   :`<span>${I("ph",14)} Your balance covers ${talkTime(mins)} of talk time</span>`}</div>
+  <div class="pcctl">
+   <button class="${S.mic?"":"off"}" aria-pressed="${!S.mic}" onclick="S.mic=S.mic?0:1;r()">${I(S.mic?"mic":"micoff",18)}<span>${S.mic?"Mic on":"Mic off"}</span></button>
+   <button class="${S.scam?"":"off"}" aria-pressed="${!S.scam}" onclick="S.scam=S.scam?0:1;r()">${I(S.scam?"flip":"camoff",18)}<span>${S.scam?"Camera on":"Camera off"}</span></button></div>
+  ${low?`<button class="pcgo" onclick="go('coins')">${gem} Add coins</button>`
+   :`<button class="pcgo" onclick="go('dial','${h.id}')">${I("vid",19)} Start video call</button>`}
+  <div class="pcfine">The entry fee is charged only when ${first(h.n)} picks up and is non-refundable. Your camera starts off; turn it on from &#8942; in the call.</div>
+ </div></div>`}
+
+/* ringing out: no "busy" state, a host on another call still gets the ring */
+function vDial(){
+ const out=S.v==="dialback",p=out?S.caller:g(S.h);
+ return `<div class="ringscr">
+  <div class="ringbg">${art(p.seed)}</div>
+  <div class="ringorb">${avc(p,104)}</div>
+  <h2>${p.n}</h2><p>Calling&hellip;</p>
+  ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${first(p.n)} picks up</span>`}
+  <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="${out?"go('chats')":`go('precall','${p.id}')`}">${I("ph",25)}</button></div>
+ </div>`}
+
+/* ---- Host: going online, waiting, and the incoming ring ---- */
+function vWaiting(){
+ return `<div class="ringscr host">
+  <div class="ringorb">${avc(me,104)}</div>
+  <h2>You're online</h2>
+  <p>Waiting for callers&hellip; ${S.vis?"you're visible on Home.":"you're hidden from Home."}</p>
+  <div class="waitnote">You stay online even if you leave this screen, close the app or lock your phone. Incoming calls ring as notifications, and nobody sees you as busy.</div>
+  <div class="ringact col"><button class="pcgo" onclick="go('home')">Browse the app</button>
+   <button class="softbtn" onclick="goOffline()">Go offline</button></div>
+ </div>`}
+function goOffline(){S.online=0;go("home")}
+/* While online and not in a call, a caller rings wherever the host is in the app. */
+setInterval(()=>{
+ if(!isHost()||!S.online||["ring","hcall","dialback","waiting"].includes(S.v)){S.idle=0;return}
+ if((S.idle=(S.idle||0)+1)>=25){S.idle=0;S.ringBack=S.v;S.caller=nextCaller();go("ring")}},1000);
+
+function nextCaller(){
+ const nm=SENDERS[(S.ci=(S.ci||0)+1)%SENDERS.length];
+ return sender(sid(nm))}
+
+function vRing(){const c=S.caller;
+ return `<div class="ringscr host ring">
+  <div class="ringbg">${art(c.seed)}</div>
+  <span class="ringeye"><i></i>Incoming video call</span>
+  <div class="ringorb pulse">${avc(c,112)}</div>
+  <h2>${c.n}</h2><p>Lv ${c.lvl} &middot; ${c.c} &middot; ${c.v} followers</p>
+  <span class="ringearn">${gem}You earn ${n(MY_RATE)} coins/min</span>
+  <span class="ringfee">+${MY_FEE} entry fee once the call passes 1 minute</span>
+  <div class="ringact two">
+   <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="addMissed(S.caller);go(S.ringBack||'waiting')">${I("ph",25)}</button><span>Decline</span></span>
+   <span class="rbtn"><button class="accept" aria-label="Accept" onclick="go('hcall')">${I("vid",25)}</button><span>Accept</span></span></div>
+ </div>`}
+
+/* ---- Host: in the call ---- */
+function vHostCall(){const c=S.caller;
+ return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
+ ${stage(me,c)}
+ ${topBar(1)}
+ <div class="fx" id="fl"></div>
+ <div style="margin-top:auto"></div>
+
+ <div class="lvfeed" id="rfeed"></div>
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+   onclick="sendGift('${l}','${e}',${v},'${k||""}')">${k==="water"?`<span class="em media"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
+ ${S.cmp?`<div class="lvcomp">
+   ${av(me,34,"none")}
+   <input id="rmsg" placeholder="Say something..." onkeydown="if(event.key==='Enter')rsay()">
+   <button class="csend" onclick="rsay()" aria-label="Send">${I("send",19)}</button>
+   <button class="cclose" onclick="S.cmp=0;r()" aria-label="Close">&times;</button></div>`
+ :`<div class="lvbar">
+  <button class="rndb" aria-label="Chat" onclick="S.cmp=1;r()">${I("chat",21)}</button>
+  ${idPill(c,0)}
+  <button class="rndb endb" aria-label="End call" onclick="hostEnd('end')">${I("ph",21)}</button>
+  <button class="rndb giftb" aria-label="All gifts" onclick="S.tray=1;r()">${I("gift",21)}</button></div>`}
+ ${S.inc?incBanner():""}
+ ${S.tray?giftTray():S.sh==="gift"?giftSheet():S.sh==="mission"?missionSheet():S.sh==="fx"?fxSheet():""}
+ ${S.confirm?confirmEnd():""}
+ ${S.connecting?connectingScreen():""}</div>`}
+
+function incBanner(){const c=S.inc;
+ return `<div class="incban">${avc(c,40)}
+  <span class="tx"><b>${c.n}</b><span>is calling you &middot; Lv ${c.lvl}</span></span>
+  <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
+  <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
+
+function ringIncoming(){
+ S.inc=nextCaller();
+ if(navigator.vibrate)try{navigator.vibrate([300,200,300])}catch(e){}
+ r();
+ clearTimeout(S.it);
+ S.it=setTimeout(()=>{if(S.inc&&S.v==="hcall"){
+  S.rmsgs.push(["sys","",`Missed call from ${S.inc.n}`]);addMissed(S.inc);S.inc=null;if(S.confirm==="switch")S.confirm=0;r()}},12000)}
+function addMissed(c){S.missed.host=[{id:c.id,when:"Just now",kind:"video"}].concat(S.missed.host.filter(m=>m.id!==c.id))}
+function declineInc(){clearTimeout(S.it);S.rmsgs.push(["sys","",`Declined ${S.inc.n}`]);addMissed(S.inc);S.inc=null;r()}
+/* Switching keeps one session: earnings and time carry over to the summary. */
+function logFee(){
+ const early=!S.feeOk;if(early)S.early++;
+ S.feeLog.push({n:S.caller.n,ok:!!S.feeOk,early});return early}
+function hostEnd(kind){
+ if(!S.feeOk){S.confirm=kind;S.more=0;S.tray=0;return r()}
+ kind==="switch"?acceptInc():endCall()}
+function confirmEnd(){
+ const k=S.confirm,left=Math.max(0,FEE_HOLD-(S.sec-S.cstart)),nth=S.early+1;
+ return `<div class="tray"><div class="veil" onclick="S.confirm=0;r()"></div>
+  <div class="panel cfm">
+   <span class="cfmico">${I("clock",22)}</span>
+   <b>${k==="switch"?`Switch before 1 minute?`:`End call before 1 minute?`}</b>
+   <p>${first(S.caller.n)}'s ${MY_FEE}-coin entry fee unlocks in <b>${clock(left)}</b>. If you ${k==="switch"?"switch":"end"} now, you won't receive it and it goes to Zimi Live.</p>
+   <p class="warn">This would be early ending ${nth} today. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</p>
+   <button class="keep" onclick="S.confirm=0;r()">Keep talking</button>
+   <button class="anyway" onclick="S.confirm=0;${k==="switch"?"acceptInc()":"endCall()"}">${k==="switch"?"Switch anyway":"End call anyway"}</button></div></div>`}
+function acceptInc(){clearTimeout(S.it);
+ if(!S.inc)return r();
+ logFee();
+ const from=S.caller,to=S.inc;
+ S.inc=null;S.tray=0;S.more=0;S.connecting={from,to};r();
+ S.ct=setTimeout(()=>{if(S.v!=="hcall"||!S.connecting)return;
+  S.rmsgs.push(["sys","",`Switched from ${first(from.n)} to ${first(to.n)}${fxOn()?" &middot; your beauty and filter settings are kept":""}`]);
+  S.caller=to;S.connecting=null;S.callersN++;S.swap=0;S.cstart=S.sec;S.feeOk=0;r()},2200)}
+function connectingScreen(){const {from,to}=S.connecting;
+ return `<div class="conn" role="status" aria-live="polite">
+  <div class="connbg">${art(to.seed)}</div>
+  <div class="connorb">${avc(to,96)}<span class="connring"></span></div>
+  <span class="conneye">Connecting</span>
+  <h2>Connecting to ${to.n}</h2>
+  <p>Lv ${to.lvl} &middot; ${to.c}</p>
+  <div class="connbar"><i></i></div>
+  <span class="connnote">Your call with ${first(from.n)} has ended. Your camera, mic and beauty settings stay the same.</span>
+ </div>`}
+
+const IN_GIFTS=[1,2,3,4,5,6,8];
+function hostTick(){
+ S.sec++;S.earned+=MY_RATE/60;
+ if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
+  S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
+ if(S.sec%9===0){
+  const ask=(S.sec/9)%3===0;
+  const [l,e,v]=ask?GIFTS[S.fav]:GIFTS[IN_GIFTS[(S.sec/9+S.ci)%IN_GIFTS.length]];
+  S.earned+=v;S.recvN++;S.gifted+=v;if(ask)S.favGot++;
+  S.rmsgs.push(["gift",first(S.caller.n),`sent ${e} ${l} &middot; ${n(v)}`]);
+  paintFeed();playGift(l,e,v,"",`${first(S.caller.n)} sent ${l} &middot; +${n(v)}`)}
+ if(S.sec===16&&!S.inc)ringIncoming();
+ paintHostTick()}
+function feeShown(){return !S.feeOk||S.sec<S.feeHide}
+function feeChip(){
+ const left=Math.max(0,FEE_HOLD-(S.sec-S.cstart));
+ return S.feeOk?`${I("check",13)}<span>Entry fee ${gem}${MY_FEE} received</span>`
+  :`${I("clock",13)}<span>Entry fee ${gem}${MY_FEE} unlocks in <b>${clock(left)}</b></span>`}
+function paintHostTick(){
+ const c=document.getElementById("ck");if(c)c.textContent=clock(S.sec);
+ const fc=document.getElementById("fee");if(fc){if(feeShown()){fc.innerHTML=feeChip();fc.classList.toggle("ok",!!S.feeOk)}else fc.remove()}
+ const e=document.getElementById("earn");if(e)e.innerHTML=`${gem}+${kfmt(Math.round(S.earned))}`
+ paintGoal();}
+
+/* ---- Ending a call: both sides land on a summary ---- */
+function endCall(){
+ if(S.v==="hcall"){
+  logFee();
+  const mins=Math.max(1,Math.ceil(S.sec/60)),earned=Math.round(S.earned);
+  const before=S.tasks.map(t=>t.p>=t.goal);
+  const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
+  S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
+  A().earn+=earned;
+  S.sum={k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
+   done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
+ } else {
+  const h=g(S.h);
+  S.rate=0;
+  S.sum={k:"sender",h:h.id,sec:S.sec,spent:S.spent+(S.gifted||0),giftV:S.gifted||0,gifts:S.giftN||0};
+ }
+ go("summary")}
+
+/* Where this session's spend sits among the host's recent callers. */
+function supportPct(h,spent){
+ const xs=Array.from({length:40},(_,i)=>h.fee+h.rate*(1+(h.seed*7+i*5)%9)+((h.seed+i*13)%5===0?(i*331)%2400:0));
+ return Math.min(99,Math.round(xs.filter(x=>x<spent).length/xs.length*100))}
+
+function vSummary(){const s=S.sum;
+ if(!s)return "";
+ if(s.k==="sender"){
+  const h=g(s.h),f=first(h.n),pct=supportPct(h,s.spent),big=pct>=50;
+  const fee=Math.min(s.spent,h.fee),mins=Math.max(0,s.spent-fee-s.giftV),stars=S.rate||0;
+  return `<div class="sum ssum">
+   <div class="ssduo">${avc(me,64)}<span class="sslink">${I("heart",14)}</span>${avc(h,64)}</div>
+   <span class="sseye">Call ended &middot; ${fmtDur(s.sec)}</span>
+   <h1 class="disp">${big?`Bravo, ${first(me.n)}!`:`Great call with ${f}`}</h1>
+   <p>${big?`You supported ${f} more than <b>${pct}%</b> of their callers this week.`
+    :`Thanks for spending time with ${f}. A gift next time puts you on ${f}'s MVP board.`}</p>
+   ${big?`<div class="ssmeter"><div class="ssml"><span>Your support this week</span><b>Top ${Math.max(1,100-pct)}%</b></div>
+     <div class="ssbar"><i style="width:${pct}%"></i></div></div>`:""}
+   <div class="ssreceipt">
+    <div><span>Call time</span><b>${fmtDur(s.sec)}</b></div>
+    <div><span>Entry fee</span><b>${gem}${n(fee)}</b></div>
+    <div><span>Minutes billed</span><b>${gem}${n(mins)}</b></div>
+    <div><span>Gifts${s.gifts?` (${s.gifts})`:""}</span><b>${gem}${n(s.giftV)}</b></div>
+    <div class="tot"><span>Total spent</span><b>${gem}${n(s.spent)}</b></div></div>
+   <div class="sumbtns">
+    <button class="pri" onclick="go('precall','${h.id}')">${I("vid",17)} Call again</button></div>
+   <div class="sumbtns two">
+    <button class="sec" onclick="go('thread','${h.id}')">${I("chat",16)} Message</button>
+    <button class="sec ${S.following[h.id]?"done":""}" onclick="toggleFollow('${h.id}')">${I(S.following[h.id]?"check":"heart",16)} ${S.following[h.id]?"Following":"Follow"}</button></div>
+   <button class="sumhome" onclick="go('home')">Back to Home</button></div>`}
+ const next=S.tasks.find(t=>t.p<t.goal),awardSum=s.done.reduce((a,t)=>a+t.rw,0);
+ return `<div class="sum hsum">
+  <div class="sumhero">${avc(me,80)}<span class="sumbadge">&#127942;</span></div>
+  <h1 class="disp">Congratulations!</h1>
+  <p>You earned <b>${n(s.earned)} coins</b> in this session and completed <b>${fmtDur(s.sec)}</b> on calls.</p>
+  <div class="hstats">
+   <div class="big"><span>Earned</span><b>${gem}${n(s.earned)}</b></div>
+   <div><span>Gifts</span><b>${n(s.gifts)}</b></div>
+   <div><span>${s.callers===1?"Caller":"Callers"}</span><b>${s.callers}</b></div></div>
+  ${s.done.length?`<div class="awardcard">
+    <div class="awhead"><span class="awt">${s.done.length} award${s.done.length>1?"s":""} unlocked</span><b>${gem}+${n(awardSum)}</b></div>
+    ${s.done.map(t=>`<div class="awrow">${I(t.ico,15)}<span>${t.t}</span><b>${gem}${n(t.rw)}</b></div>`).join("")}
+    <button onclick="go('awards')">Go receive your awards</button></div>`
+  :next?`<div class="awardcard soft"><div class="awt">Next award</div>
+    <div class="awrow">${I(next.ico,15)}<span>${t_left(next)}</span><b>${gem}${n(next.rw)}</b></div></div>`:""}
+  ${feeSummary(s.fees)}
+  <button class="hgo" onclick="go('setup')">${I("vid",18)}<span>${S.online?"Set targets &amp; continue":"Go online again"}</span></button>
+  <div class="hsec">
+   <button onclick="go('wallet')">${I("wal",16)} Wallet</button>
+   <button onclick="go('home')">${I("home",16)} Home</button></div></div>`}
+function feeSummary(F){
+ if(!F||!F.length)return "";
+ const lost=F.filter(f=>!f.ok);
+ return `<div class="feesum">
+  <div class="fshead"><span>Entry fees</span><b>${gem}+${n(F.filter(f=>f.ok).length*MY_FEE)}</b></div>
+  ${F.map(f=>`<div class="fsrow ${f.ok?"ok":"no"}">${I(f.ok?"check":"clock",14)}<span>${first(f.n)}</span>
+   <em>${f.ok?`+${MY_FEE} received`:"Ended before 1 min, went to Zimi Live"}</em></div>`).join("")}
+  ${lost.length?`<div class="fswarn">Early endings today: <b>${S.early}</b>. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</div>`:""}</div>`}
+function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
+
+/* ---- Awards (host tasks) ---- */
+function claimAward(i){const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;t.claimed=1;A().earn+=t.rw;r()}
+function resetIn(){const now=new Date(),mid=new Date(now);mid.setHours(24,0,0,0);
+ const m=Math.floor((mid-now)/60000);return `${Math.floor(m/60)}h ${m%60}m`}
+function vAwards(){
+ const T=S.tasks, ready=T.filter(t=>t.p>=t.goal&&!t.claimed), done=T.filter(t=>t.p>=t.goal).length;
+ const readyCoins=ready.reduce((a,t)=>a+t.rw,0);
+ const order=t=>t.claimed?2:t.p>=t.goal?0:1;
+ return `<div class="acct awd">
+  <div class="awhero">
+   <div class="awtop"><span class="eyebrow">Daily awards</span><span class="awreset">${I("clock",12)} Resets in ${resetIn()}</span></div>
+   <div class="awnums">
+    <div><b>${done}/${T.length}</b><span>Tasks completed</span></div>
+    <div><b>${gem}${n(readyCoins)}</b><span>Ready to receive</span></div></div>
+   <div class="awbar"><i style="width:${(done/T.length*100).toFixed(0)}%"></i></div>
+   <p>Receive your coins before the daily reset. Unclaimed rewards expire and tasks restart every 24 hours.</p>
+   ${ready.length>1?`<button class="awall" onclick="claimAll()">Receive all &middot; ${gem}${n(readyCoins)}</button>`:""}</div>
+  <div class="awlist">${T.map((t,i)=>({t,i})).sort((a,b)=>order(a.t)-order(b.t)).map(({t,i})=>{
+   const comp=t.p>=t.goal, pct=Math.min(100,t.p/t.goal*100);
+   return `<div class="awitem ${t.claimed?"got":comp?"ready":""}">
+    <span class="awico">${I(t.ico,18)}</span>
+    <span class="awtx"><span class="awname">${t.t}${comp&&!t.claimed?`<em>Completed</em>`:""}</span>
+     <span class="awdesc">${t.d}</span>
+     ${comp?"":`<span class="awprog"><span class="tb"><i style="width:${pct.toFixed(0)}%"></i></span><span>${n(t.p)}/${n(t.goal)}</span></span>`}</span>
+    <span class="awend"><span class="awcoin">${gem}${n(t.rw)}</span>
+     ${t.claimed?`<span class="claimed">${I("check",13)} Received</span>`
+      :comp?`<button class="claim" onclick="claimAward(${i})">Receive</button>`
+      :`<span class="awlock">In progress</span>`}</span></div>`}).join("")}</div>
+  <div class="awnote">${I("shield",13)} Received coins go to your earnings and can be withdrawn once you're verified.</div></div>`}
+function claimAll(){S.tasks.forEach((t,i)=>claimAward(i))}
+
+/* ---- MVPs on profiles ---- */
+function myMvps(){
+ if(isHost())return mvpsFor(me).filter(m=>m.n!=="Rohit S.");
+ const e=A().earn;if(!e)return [];
+ return mvpsFor({seed:me.seed+9}).slice(0,5).map((m,i)=>({...m,c:Math.round(e*[.38,.24,.16,.12,.1][i])}))}
+function mvpEmpty(p,self){
+ return `<div class="acctcard emptycompact mvpempty"><span class="acctico">${I("cup",22)}</span>
+  <h3>${self?"Your MVPs are on their way":"MVP spots are still open"}</h3>
+  <p>${self?(isHost()?"The first person to send you a gift takes the #1 spot. Go online, say hi, and your board starts filling up."
+    :"When someone sends you a gift, your top supporters will show up here.")
+   :`Nobody has gifted ${first(p.n)} yet. Send the first gift and claim the #1 spot.`}</p>
+  ${self&&isHost()?`<button class="softbtn" onclick="go('setup')">Go online</button>`:""}</div>`}
+function mvpBlock(p,raw,self,list){
+ if(!self&&raw.hideMvp)return `<div class="mvp"><div class="acctcard emptycompact"><span class="acctico">${I("shield",22)}</span>
+  <h3>MVPs are private</h3><p>${first(p.n)} has chosen to keep their top supporters private.</p></div></div>`;
+ if(!list.length)return `<div class="mvp">${mvpEmpty(p,self)}</div>`;
+ const hidden=self&&!A().mvp;
+ return `<div class="mvp">${hidden?`<div class="mvphid">${I("shield",14)}<span>Hidden from your profile. Only you can see this list.</span>
+   <button onclick="toggleMvp()">Show</button></div>`:""}
+  ${list.map((m,i)=>`<button class="mrow ${i<3?"p"+(i+1):""}" onclick="${m.id==="me"?"go('profile')":m.host?`go('host','${m.id}')`:`go('user','${m.id}')`}">
+   <span class="mrank r${i<3?i+1:0}">${i+1}</span>
+   <span class="bav">${avc(m,40)}</span>
+   <span class="mname">${m.n}${i===0?`<span class="mtag">${p.host||self?"TOP MVP":"TOP HOST"}</span>`:""}</span>
+   <span class="mcoin">${gem}${n(m.c)}</span></button>`).join("")}</div>`}
+function toggleMvp(){A().mvp=A().mvp?0:1;r()}
+
+/* ---- Wallet earnings, KYC and payouts ---- */
+function earnCard(){
+ const a=A(),k=a.kyc,host=isHost(),locked=!host&&a.earn<PAYOUT_MIN;
+ let msg,act="";
+ if(locked){msg=`Earn ${n(PAYOUT_MIN)} coins from gifts to unlock payouts.`;
+  act=`<div class="ebar"><i style="width:${Math.min(100,a.earn/PAYOUT_MIN*100).toFixed(0)}%"></i></div>
+   <div class="enums"><span>${n(a.earn)}</span><span>${n(PAYOUT_MIN)}</span></div>`}
+ else if(k==="none"){msg=host?"Verify your account to get the verified badge and withdraw.":"Payouts unlocked. A quick check is needed before your first withdrawal.";
+  act=`<button class="ebtn" onclick="go('kyc')">${host?"Start KYC":"Verify for payouts"}</button>`}
+ else if(k==="pending"){msg="Verification in progress. This usually takes a few minutes.";
+  act=`<button class="ebtn ghost" onclick="go('kyc')">View status</button>`}
+ else{msg=`1,000 coins = ${inr(1000)}. Payouts to UPI are usually instant.`;
+  act=`<button class="ebtn" onclick="S.pdone=0;go('payout')">${I("wal",15)} Withdraw</button>`}
+ return `<div class="acctsec"><div class="accttitle"><span>Earnings</span>${k==="verified"?`<span class="vtag">${I("check",11)} Verified</span>`:""}</div>
+  <div class="earnbox">
+   <div class="ehead"><span class="acctico">${I("cup",16)}</span>
+    <span class="etx"><b>Earned coins</b><span>From ${host?"calls, gifts and awards":"gifts you received"}</span></span></div>
+   <div class="eamt"><b>${gem}${n(a.earn)}</b><span>&asymp; ${inr(a.earn)}</span></div>
+   <div class="estat ${locked?"lock":k}"><span class="emsg">${msg}</span>${act}</div>
+  </div></div>`}
+
+function kf(k,ph,label,type){return `<div class="editgroup"><label class="editlabel" for="kf_${k}">${label}</label>
+ <input class="editinput" id="kf_${k}" ${type?`type="${type}"`:""} placeholder="${ph}" value="${esc(S.kf[k]||"")}" oninput="S.kf['${k}']=this.value"></div>`}
+function readImgs(e,cb){
+ Promise.all(Array.from(e.target.files||[]).map(f=>new Promise(res=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.readAsDataURL(f)})))
+  .then(cb)}
+function kycId(e,side){readImgs(e,d=>{if(d[0]){S.kf[side]=d[0];S.kerr=0;r()}})}
+function kycPhotos(e){readImgs(e,d=>{S.kerr=0;S.kf.photos=(S.kf.photos||[]).concat(d).slice(0,4);r()})}
+function dropPhoto(i){S.kf.photos.splice(i,1);r()}
+function submitKyc(){
+ const need=isHost()?["name","dob","idno"]:["name","pan"];
+ if(need.some(k=>!(S.kf[k]||"").trim()))return S.kerr=1,r();
+ if(isHost()&&(!S.kf.idf||!(S.kf.photos||[]).length))return S.kerr=1,r();
+ S.kerr=0;A().kyc="pending";r()}
+function approveKyc(){A().kyc="verified";r()}
+function kycStatus(host){
+ const step=(done,on,t)=>`<div class="kst ${done?"done":on?"on":""}"><span class="kdot">${done?I("check",12):""}</span><span>${t}</span></div>`;
+ return `<div class="ktrack">${step(1,0,"Details submitted")}${step(0,1,"Verification in progress")}${step(0,0,host?"Ready to go live":"Payouts unlocked")}</div>`}
+function vKyc(){
+ const a=A(),host=isHost();
+ if(!host&&a.earn<PAYOUT_MIN)return `<div class="acct"><div class="acctcard emptycompact"><span class="acctico">${I("wal",22)}</span>
+  <h3>Payouts unlock at ${n(PAYOUT_MIN)} coins</h3><p>Senders who receive gifts can withdraw once they pass ${n(PAYOUT_MIN)} earned coins. You have ${n(a.earn)} so far.</p>
+  <button class="softbtn" onclick="go('wallet')">Back to wallet</button></div></div>`;
+ if(a.kyc==="pending")return `<div class="acct"><div class="kpend">
+  <span class="kspin">${I("shield",26)}</span>
+  <h2 class="disp">Your account is under review</h2>
+  <p>${host?"Thank you for submitting your details. Our team is verifying your documents, which usually takes just a few minutes. Once your account is approved, you'll be notified and can start going live straight away."
+   :"Thank you for submitting your details. We're verifying them now, which usually takes just a few minutes. Once approved, you can withdraw your earnings."}</p>
+  ${kycStatus(host)}
+  <button class="editsave" onclick="go('home')">Back to Home</button>
+  <button class="kdemo" onclick="approveKyc()">Approve now (preview only)</button></div></div>`;
+ if(a.kyc==="verified")return `<div class="acct"><div class="kpend">
+  <span class="kspin ok">${I("check",26)}</span>
+  <h2 class="disp">${host?"You're verified":"Payouts verified"}</h2>
+  <p>${host?"Your verified badge is now on your profile. You can start going live and withdraw your earnings anytime.":"You can withdraw your earnings anytime."}</p>
+  ${host?`<button class="editsave" onclick="go('setup')">Go live now</button>`:""}
+  <button class="${host?"kdemo":"editsave"}" onclick="S.pdone=0;go('payout')">Withdraw earnings</button></div></div>`;
+ const ph=S.kf.photos||[];
+ const idBox=(side,lab)=>`<label class="${S.kf[side]?"has":""}">${S.kf[side]?`<img src="${S.kf[side]}" alt="ID ${lab}">`:`${I("doc",18)}<span>${lab}</span>`}
+   <input class="hiddenfile" type="file" accept="image/*" onchange="kycId(event,'${side}')"></label>`;
+ return `<div class="acct kyc">
+  ${host&&S.fromSignup?`<span class="lgstep">Step 3 of 3 &middot; Verify your identity</span>`:""}
+  ${host?`<div class="kycsteps"><span class="on">1 Details</span><span class="${S.kf.idf?"on":""}">2 ID</span><span class="${ph.length?"on":""}">3 Photos</span></div>
+   <div class="kycnote">${I("shield",15)}<span>Verify once to go live, get the <b>verified badge</b> and take payouts. Your documents are only used for verification.</span></div>
+   ${kf("name","As on your ID","Full legal name")}
+   ${kf("dob","DD / MM / YYYY","Date of birth")}
+   ${kf("idno","Aadhaar or PAN number","ID number")}
+   <div class="editgroup"><span class="editlabel">ID document</span><div class="kycup">${idBox("idf","Front")}${idBox("idb","Back")}</div></div>
+   <div class="editgroup"><span class="editlabel">Your photos</span>
+    <div class="kphotos">${ph.map((src,i)=>`<span class="kph"><img src="${src}" alt="Photo ${i+1}"><button aria-label="Remove photo ${i+1}" onclick="dropPhoto(${i})">&times;</button></span>`).join("")}
+     ${ph.length<4?`<label class="kph add">${I("flip",18)}<span>Upload</span><input class="hiddenfile" type="file" accept="image/*" multiple onchange="kycPhotos(event)"></label>`:""}</div>
+    <div class="khint">Upload 1 to 4 clear photos of your face, matching your ID.</div></div>`
+  :`<div class="kycnote">${I("doc",15)}<span><b>Quick payout check.</b> Only needed to send money to you. It takes about a minute and doesn't change your profile.</span></div>
+   ${kf("name","As on your PAN card","Full name")}
+   ${kf("pan","ABCDE1234F","PAN number")}`}
+  ${S.kerr?`<div class="kycerr">${host?"Please fill in every field, upload the front of your ID and at least one photo.":"Please fill in every field to continue."}</div>`:""}
+  <button class="editsave" onclick="submitKyc()">Submit for verification</button></div>`}
+
+function vPayout(){
+ const a=A(),amt=Math.min(a.earn,Math.max(0,parseInt(S.pamt||a.earn,10)||0));
+ if(a.kyc!=="verified")return vKyc();
+ if(S.pdone)return `<div class="acct"><div class="acctcard emptycompact"><span class="acctico ok">${I("check",22)}</span>
+  <h3>Withdrawal requested</h3><p>${inr(S.pdone)} is on its way to ${esc(S.kf.payout||"your account")}. Payouts to UPI are usually instant.</p>
+  <button class="softbtn" onclick="go('wallet')">Back to wallet</button></div></div>`;
+ const ok=amt>=WITHDRAW_MIN;
+ return `<div class="acct">
+  <div class="accthero"><div class="eyebrow">Available to withdraw</div><div class="big">${gem}${n(a.earn)}</div>
+   <div class="sub">1,000 coins = ${inr(1000)}. Minimum ${n(WITHDRAW_MIN)} coins.</div></div>
+  <div class="editgroup"><label class="editlabel" for="pamt">Coins to withdraw</label>
+   <input class="editinput" id="pamt" inputmode="numeric" value="${amt}" oninput="S.pamt=this.value" onchange="r()"></div>
+  <div class="editgroup"><label class="editlabel" for="kf_payout">UPI ID</label>
+   <input class="editinput" id="kf_payout" placeholder="name@upi" value="${esc(S.kf.payout||"")}" oninput="S.kf.payout=this.value"></div>
+  ${S.perr?`<div class="kycerr">Enter the UPI ID to send your money to.</div>`:""}
+  <div class="pyamt"><span>You receive</span><b>${inr(amt)}</b></div>
+  <button class="editsave" ${ok?"":"disabled"} onclick="withdraw()">Withdraw ${inr(amt)}</button></div>`}
+function withdraw(){const i=document.getElementById("pamt"),a=A();
+ if(!(S.kf.payout||"").trim()){S.perr=1;S.pamt=i?i.value:S.pamt;return r()}S.perr=0;
+ const amt=Math.min(a.earn,parseInt(i?i.value:S.pamt,10)||0);
+ if(amt<WITHDRAW_MIN){S.pamt=String(amt);return r()}
+ a.earn-=amt;S.pdone=amt;S.pamt="";r()}
 
 /* Chrome lives outside the scroller, so it cannot drift while scrolling. */
 function topFor(){
@@ -1871,9 +3252,11 @@ function topFor(){
  if(S.v==="coins")return `<div class="hdr" style="gap:8px">
    <button aria-label="Back" onclick="go('settings')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
    <span class="disp title">Add coins</span></div>`;
- const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile"};
+ const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
+  kyc:isHost()?"KYC verification":"Payout verification",payout:"Withdraw",awards:"Awards"};
+ const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('${S.v==='editprofile'?(S.editBack||'profile'):'settings'}')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   <button aria-label="Back" onclick="go('${backTo}')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
@@ -1885,26 +3268,33 @@ function topFor(){
      `<button class="btab ${S.bt===k?"on":""}" onclick="S.bt='${k}';r()">${l}</button>`).join("")}</div>
   <div class="bctl">
    <span class="seg3">${PERIODS.map(([k,l])=>
-     `<button class="${S.per===k?"on":""}" onclick="S.per='${k}';r()">${l}</button>`).join("")}</span>
-   <button class="globe" aria-label="Region">${I("globe",17)}<span style="font-size:15px">&rsaquo;</span></button></div></div>`;
+     `<button class="${S.per===k?"on":""}" onclick="S.per='${k}';r()">${l}</button>`).join("")}</span></div></div>`;
  return ""}
 
 function r(){
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
- el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,thread:vThread,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile}[S.v]();
- el.style.overflowY=["call","voice","thread","setup","post"].includes(S.v)?"hidden":"auto";
+ el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,thread:vThread,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards}[S.v]();
+ el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
  nav();
  if(S.v==="call"){tick();paintFeed();
   if(S.cmp){const i=document.getElementById("rmsg");
    if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}}
  if(S.v==="voice")tick();
+ /* a redraw while the code screen is open must not leave the boxes unfocused */
+ if(S.v==="login"&&S.auth&&S.auth.step==="otp"){const e=Array.from({length:6},(_,k)=>document.getElementById("o"+k)).find(x=>x&&!x.value);if(e)e.focus()}
+ if(S.v==="call"&&!S.cmp)paintGoal();
+ if(S.v==="hcall"){paintHostTick();paintFeed();
+  if(S.cmp){const i=document.getElementById("rmsg");if(i)i.focus()}}
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint()}
 const st=document.createElement("style");
 st.textContent="@keyframes up{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{transform:translateY(-180px);opacity:0}}";
 document.head.appendChild(st);
+/* const globals are not window properties; expose state so the design preview can drive the app. */
+window.S=S;window.A=A;
 r();
 </script>
 </body>

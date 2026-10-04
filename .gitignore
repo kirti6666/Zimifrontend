@@ -6,3 +6,4 @@ ios/
 *.log
 .DS_Store
 dist/
+admin-site/dist/
