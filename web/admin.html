@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Zimi Live Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Desktop admin console: fixed sidebar, content column, side drawer for detail. */
+/* Plain light admin: white surfaces, slate grey lines, text and actions.
+   The only colour is a muted red for destructive actions and warnings. */
+:root{
+ --bg:#f8fafc;--surface:#ffffff;--raised:#f1f5f9;--line:#e2e8f0;--ink:#0f172a;--muted:#475569;--faint:#64748b;
+ --brand:#334155;--brand-wash:#e9eef5;
+ --accent:var(--brand);--accent-ink:var(--brand);--accent-wash:var(--brand-wash);--gold:#0f172a;--gold-wash:#f8fafc;
+ --ok:#0f172a;--ok-wash:#f1f5f9;--bad:#b42318;--bad-wash:#fdf2f1;--warn:#334155;--warn-wash:#f1f5f9;
+ --side:#ffffff;--side-ink:#334155;--side-faint:#64748b;
+ --display:Inter,system-ui,sans-serif;--body:Inter,system-ui,sans-serif;
+ --shadow:none;color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%}
+body{font-family:var(--body);font-size:14px;line-height:1.5;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.02em;line-height:1.2;text-wrap:balance}
+.tab{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* desktop only */
+.mobile-block{display:none}
+@media (max-width:1023px){.app,.gate{display:none!important}.mobile-block{display:flex;min-height:100%;align-items:center;justify-content:center;padding:32px 16px;text-align:center}
+ .mobile-block div{max-width:340px}.mobile-block h1{font-size:22px;margin:14px 0 6px}.mobile-block p{color:var(--muted)}}
+.mark{display:inline-flex;width:36px;height:36px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:var(--brand);font-weight:600;font-size:12px}
+
+/* sign-in gate */
+.gate{min-height:100vh;display:grid;grid-template-columns:1fr;place-items:center}
+.gate .pane{display:flex;flex-direction:column;justify-content:center;padding:48px clamp(32px,6vw,96px)}
+.gate .art{display:none}
+.gate .art h2{font-size:34px;max-width:420px}
+.gate .art p{margin-top:12px;max-width:420px;color:rgba(255,255,255,.7)}
+.gate form{max-width:380px;width:100%;display:flex;flex-direction:column;gap:14px}
+.gate h1{font-size:26px;margin-top:18px}
+.gate .sub{color:var(--muted);margin-top:-6px}
+
+/* form bits */
+label.f{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+.in{height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:14px;width:100%}
+textarea.in{height:auto;min-height:220px;padding:12px;line-height:1.55;resize:vertical}
+select.in{padding-right:8px}
+.in:focus{outline:none;border-color:var(--brand);box-shadow:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px;border-radius:10px;font-size:13px;font-weight:600;background:var(--raised);color:var(--ink);white-space:nowrap}
+.btn.pri{background:var(--accent);color:#fff}
+.btn.ok{background:var(--ok);color:#fff}
+.btn.bad{background:var(--bad-wash);color:var(--bad)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.sm{height:30px;padding:0 10px;font-size:12px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.lg{height:46px;font-size:14px}
+
+/* shell */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;padding:18px 12px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}
+.brand .mark{width:32px;height:32px;border-radius:10px}
+.brand b{font-family:var(--display);font-size:16px;color:#fff}
+.brand span{display:block;font-size:11px;color:var(--side-faint)}
+.brand .mark{display:inline-flex;color:#fff;font-size:13px}
+.side nav{display:flex;flex-direction:column;gap:2px}
+.side .grp{margin:14px 10px 6px;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--side-faint)}
+.side nav button{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--side-ink);font-size:13px;font-weight:600;text-align:left}
+.side nav button:hover{background:rgba(255,255,255,.05)}
+.side nav button.on{background:rgba(255,46,147,.16);color:#fff}
+.side nav button.on svg{color:#ff5cae}
+.side nav .cnt{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:6px;background:#f1f5f9;color:#334155;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.side .me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}
+.side .me .av{width:30px;height:30px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#334155;font-weight:600;font-size:11px}
+.side .me b{display:block;font-size:13px;color:#fff}.side .me span{font-size:11px;color:var(--side-faint)}
+.side .me button{margin-left:auto;color:var(--side-faint);font-size:12px;font-weight:600}
+.side{overflow-y:auto}
+.viewas{display:flex;flex-direction:column;gap:4px;margin-top:8px;padding:0 4px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--side-faint)}
+.viewas select{height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--side-ink);font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;padding:0 6px}
+
+.main{min-width:0;padding:26px 32px 48px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+.top h1{font-size:24px}
+.top p{color:var(--muted);margin-top:3px;max-width:70ch}
+.top .acts{display:flex;gap:8px}
+
+/* cards, kpis, tables */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.kpi{padding:14px 16px}
+.kpi span{font-size:12px;font-weight:600;color:var(--muted)}
+.kpi b{display:block;margin-top:4px;font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums}
+.kpi em{font-style:normal;font-size:12px;font-weight:600}
+.up{color:var(--ok)}.down{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.sec{padding:16px 18px}
+.sec h3{font-size:15px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.sec h3 button{font-family:var(--body);font-size:12px;font-weight:600;color:var(--accent-ink)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{position:sticky;top:0;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover{background:var(--raised)}
+.tbl tr.click{cursor:pointer}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+.tbl .chk{width:36px}
+.tblwrap{overflow-x:auto}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who .av{width:30px;height:30px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff}
+.who b{display:block;font-weight:600;white-space:nowrap}
+.who span{display:block;font-size:12px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.p-ok{background:var(--ok-wash);color:var(--ok)}
+.p-bad{background:var(--bad-wash);color:var(--bad)}
+.p-warn{background:var(--warn-wash);color:var(--warn)}
+.p-mute{background:var(--raised);color:var(--muted)}
+.p-acc{background:var(--accent-wash);color:var(--accent-ink)}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:11px;background:var(--raised);width:max-content}
+.tabs button{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.search{display:flex;align-items:center;gap:8px;height:36px;padding:0 11px;border-radius:9px;border:1px solid var(--line);background:var(--surface);min-width:260px;color:var(--muted)}
+.search input{border:0;outline:0;background:none;width:100%;font-size:13px;color:var(--ink)}
+.bulk{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--accent-wash);border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--accent-ink)}
+.bulk .sp{flex:1}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+
+/* switch */
+.sw{position:relative;width:38px;height:22px;border-radius:99px;background:var(--line);transition:.2s;flex:0 0 auto}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{transform:translateX(16px)}
+
+/* drawer + modal */
+.veil{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;animation:fade .15s ease both}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,92vw);z-index:41;background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;animation:slide .22s cubic-bezier(.22,.8,.3,1) both}
+.drawer header{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.drawer header h2{font-size:18px}
+.drawer header .av{width:40px;height:40px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff}
+.drawer .x{margin-left:auto;width:32px;height:32px;border-radius:8px;font-size:20px;color:var(--muted)}
+.drawer .body{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+.drawer footer{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface)}
+.modal{position:fixed;z-index:41;top:50%;left:50%;transform:translate(-50%,-50%);width:min(620px,92vw);max-height:88vh;overflow-y:auto;background:var(--surface);border-radius:16px;box-shadow:0 30px 80px -20px rgba(0,0,0,.5);animation:pop .2s ease both}
+.modal header{display:flex;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}
+.modal header h2{font-size:18px}
+.modal .body{padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal .full{grid-column:1/-1}
+.modal footer{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
+@keyframes fade{from{opacity:0}}@keyframes slide{from{transform:translateX(30px);opacity:0}}@keyframes pop{from{opacity:0;transform:translate(-50%,-48%)}}
+@media (prefers-reduced-motion:reduce){.veil,.drawer,.modal{animation:none}}
+.docs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.doc{position:relative;aspect-ratio:3/2;border-radius:11px;overflow:hidden;background:#e2e8f0;display:flex;align-items:flex-end;padding:8px;color:#475569;font-size:12px;font-weight:600}
+.doc.ph{aspect-ratio:3/4}
+.docs.ph{grid-template-columns:repeat(4,1fr)}
+.facts{display:grid;grid-template-columns:140px 1fr;gap:8px 12px;font-size:13px}
+.facts dt{color:var(--muted)}.facts dd{font-weight:600}
+.checks{display:flex;flex-direction:column;gap:6px}
+.checks div{display:flex;align-items:center;gap:8px;font-size:13px}
+.checks .y{color:var(--ok)}.checks .n{color:var(--bad)}.checks .q{color:var(--warn)}
+.h4{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+
+/* rules */
+.rules{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;align-items:start}
+.rrow{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:14px;align-items:center;padding:13px 18px;border-top:1px solid var(--line)}
+.rrow b{display:block;font-size:13px}.rrow span{display:block;font-size:12px;color:var(--muted)}
+.unit{display:flex;align-items:center;gap:6px}
+.unit em{font-style:normal;font-size:12px;color:var(--muted);white-space:nowrap}
+.changed{background:var(--gold-wash)}
+.ver{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line);font-size:13px}
+.ver:first-child{border-top:0}
+.ver b{font-variant-numeric:tabular-nums}
+.ver span{color:var(--muted);font-size:12px}
+.ver .pill{margin-left:auto}
+.tl .ver .pill{margin-left:0;flex:0 0 auto}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;background:#0f172a;color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);animation:pop2 .2s ease both}
+@keyframes pop2{from{opacity:0;transform:translate(-50%,8px)}}
+.note{display:flex;gap:10px;padding:12px 14px;border-radius:12px;background:var(--raised);font-size:13px;color:var(--muted)}
+.note b{color:var(--ink)}
+
+/* ---- plain light pass ---- */
+h1,h2,h3{font-family:var(--body);letter-spacing:-.01em;font-weight:600}
+.side{background:#fff;border-right:1px solid var(--line);color:var(--side-ink)}
+.brand b{color:var(--ink);font-family:var(--body);font-weight:600}
+.brand .mark{background:var(--brand);color:#fff}
+.side .grp{color:var(--faint);font-weight:600;letter-spacing:.06em}
+.side nav button{color:var(--side-ink);font-weight:500}
+.side nav button:hover{background:#f1f5f9}
+.side nav button.on{background:var(--brand-wash);color:var(--brand);font-weight:600}
+.side nav button.on svg{color:var(--brand)}
+.side .me{background:#f8fafc;border:1px solid var(--line)}
+.side .me b{color:var(--ink)}
+.side .me button{color:var(--muted)}
+.viewas select{border-color:var(--line);background:#fff;color:var(--ink)}
+.main{padding:28px 36px 48px}
+.top h1{font-size:22px}
+.card{border-radius:10px;box-shadow:none}
+.kpi b{font-family:var(--body);font-weight:600;font-size:22px}
+.kpi em,.up,.down{color:var(--muted)!important;font-weight:500}
+.btn{border-radius:8px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--ink)}
+.btn.pri,.btn.ok{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.bad{background:#fff;border-color:var(--line);color:var(--bad)}
+.btn.ghost{background:#fff}
+.who .av,.drawer header .av{color:#334155!important;font-weight:600}
+.pill{border-radius:6px;font-weight:600;background:#f1f5f9;color:#334155}
+.pill i{display:none}
+.p-ok,.p-warn,.p-mute,.p-acc{background:#f1f5f9;color:#334155}
+.p-bad{background:var(--bad-wash);color:var(--bad)}
+.tabs{border-radius:8px}
+.tabs button{border-radius:6px;font-weight:600}
+.tabs button.on{box-shadow:0 0 0 1px var(--line);color:var(--brand)}
+.bulk{background:var(--brand-wash);color:var(--brand)}
+.sw.on{background:var(--brand)}
+.sec h3 button{color:var(--brand);text-decoration:underline;text-underline-offset:3px}
+.tbl th{color:var(--faint);font-weight:600;letter-spacing:.04em}
+.changed{background:#f8fafc}
+.gate .pane{width:100%;max-width:420px;padding:40px 24px}
+.gate form{padding:28px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.gate h1{font-size:22px;margin-top:12px}
+.checks .y,.checks .q{color:var(--ink)}
+.toast{background:var(--brand)}
+.mobile-block .mark{background:var(--brand)}
+
+/* ---- type: Inter only, three weights (400 text, 500 labels and actions, 600 headings and figures) ---- */
+body{font-size:14px;line-height:1.5;font-feature-settings:"cv11"}
+b,strong{font-weight:600}
+h1,h2,h3{font-weight:600;letter-spacing:-.011em}
+.top h1{font-size:20px}
+.top p{font-size:13px;margin-top:4px}
+.sec h3{font-size:14px}
+.sec h3 button{font-size:13px;font-weight:500;text-decoration:none;color:var(--brand)}
+.sec h3 button:hover{text-decoration:underline}
+.drawer header h2,.modal header h2{font-size:16px}
+.brand b{font-size:15px}
+.brand span{font-size:12px}
+.mark{font-weight:600;font-size:12px}
+.side .grp{font-size:11px;font-weight:500;letter-spacing:.05em}
+.side nav button{font-size:13px;font-weight:500}
+.side nav button.on{font-weight:500}
+.side nav .cnt{font-weight:500}
+.side .me b{font-size:13px;font-weight:600}
+.side .me span{font-size:12px}
+.side .me button{font-size:12px;font-weight:500}
+.viewas{font-size:11px;font-weight:500;letter-spacing:.05em}
+.viewas select{font-weight:500}
+.btn{font-size:13px;font-weight:500}
+.btn.sm{font-size:12px}
+.btn.lg{font-size:14px}
+label.f{font-size:12px;font-weight:500;color:var(--muted)}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpi span{font-size:12px;font-weight:500;color:var(--muted)}
+.kpi b{font-size:22px;font-weight:600;letter-spacing:-.015em}
+.kpi em,.kpi em.up,.kpi em.down{font-size:12px;font-weight:400}
+.tbl{font-size:13px}
+.tbl th{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)}
+.tbl td{font-variant-numeric:tabular-nums}
+.who b{font-weight:500}
+.who span{font-size:12px}
+.who .av,.drawer header .av{font-weight:500}
+.pill{font-size:12px;font-weight:500}
+.tabs button{font-size:13px;font-weight:500}
+.bulk{font-size:13px;font-weight:500}
+.h4{font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink)}
+.facts{font-size:13px}.facts dd{font-weight:500}
+.checks div{font-size:13px}
+.rrow b{font-size:13px;font-weight:500}.rrow span{font-size:12px}
+.ver{font-size:13px}.ver b{font-weight:500}
+.doc{font-weight:500;font-size:12px}
+.toast{font-size:13px;font-weight:500}
+.gate h1{font-size:20px}
+.mobile-block h1{font-size:20px}
+.in,.search input{font-size:13px}
+textarea.in{font-size:13px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="mobile-block"><div><span class="mark">ZL</span><h1>Open on a desktop</h1><p>The Zimi Live admin panel is built for screens 1024px and wider. Please sign in from a laptop or desktop computer.</p></div></div>
+<div id="root"></div>
+<script>
+/* Zimi Live admin console. Front-end prototype with demo data; every action here
+   maps to a backend endpoint that must check the admin's role and write the audit log. */
+const IC={
+ dash:'<rect x="3.5" y="3.5" width="7" height="9" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.6"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.6"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.6"/>',
+ kyc:'<path d="M12 3.5l7 2.5v5.5c0 4.2-2.8 7.4-7 9-4.2-1.6-7-4.8-7-9V6z" stroke-linejoin="round"/><path d="M9 12l2.2 2.2L15.5 10" stroke-linecap="round" stroke-linejoin="round"/>',
+ gift:'<rect x="3.5" y="9" width="17" height="11" rx="2.5"/><path d="M3.5 13h17M12 9v11M12 9c-1.5-3-5-3.5-5-1s5 1 5 1zm0 0c1.5-3 5-3.5 5-1s-5 1-5 1z"/>',
+ rule:'<rect x="4.5" y="3.5" width="15" height="17" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+ pay:'<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h3"/>',
+ user:'<circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 19.5c1.3-3.8 4-5.7 7.5-5.7s6.2 1.9 7.5 5.7" stroke-linecap="round"/>',
+ flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5" stroke-linejoin="round" stroke-linecap="round"/>',
+ log:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round"/>',
+ team:'<circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.6"/><path d="M3.5 19c1-3.2 3.1-4.8 5.5-4.8s4.5 1.6 5.5 4.8M15 14.5c2.3.1 4 1.5 5 4" stroke-linecap="round"/>',
+ srch:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4" stroke-linecap="round"/>',
+ plus:'<path d="M12 5v14M5 12h14" stroke-linecap="round"/>',
+ check:'<path d="M6.8 12.3l3.2 3.2 7.2-7.2" stroke-linecap="round" stroke-linejoin="round"/>',
+ x:'<path d="M7 7l10 10M17 7L7 17" stroke-linecap="round"/>',
+ pause:'<path d="M9 6v12M15 6v12" stroke-linecap="round"/>',
+ play:'<path d="M8 5.5v13l10-6.5z" stroke-linejoin="round"/>',
+ lock:'<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 018 0v2.5"/>',
+ coin:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.5 10a2.5 2 0 015 0c0 2.5-5 1.5-5 4a2.5 2 0 005 0" stroke-linecap="round"/>'};
+const I=(k,s)=>`<svg viewBox="0 0 24 24" width="${s||17}" height="${s||17}" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">${IC[k]}</svg>`;
+const n=v=>Number(v).toLocaleString("en-IN");
+const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const HUE=["#e2e8f0"];
+const avatar=(nm,i)=>`<span class="av" style="background:${HUE[i%HUE.length]}">${nm.split(" ").map(w=>w[0]).slice(0,2).join("")}</span>`;
+const now=()=>new Date().toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+
+/* ---------- demo data ---------- */
+const NAMES=["Aanya Kapoor","Ishaan Verma","Meher Singh","Rehan Qureshi","Tara Iyer","Noor Sheikh","Kabir Das","Mehak Dhillon","Apsara Rao","Zoya Khan","Sahil Bhatt","Imran Qazi"];
+const CITY=["Mumbai","Bengaluru","Chandigarh","Lucknow","Chennai","Hyderabad","Kolkata","Ludhiana","Indore","Delhi","Pune","Jaipur"];
+const D={
+ kyc:[
+  {id:"K-1042",n:"Rohit Sharma",role:"Host",ph:"+91 98765 43210",dob:"14 Mar 1995",email:"rohit.sharma@gmail.com",mailOk:1,sub:"10 min ago",photos:3,flags:[],st:"pending"},
+  {id:"K-1041",n:"Mehak Dhillon",role:"Host",ph:"+91 99881 22113",dob:"02 Jan 2001",email:"mehak.d@gmail.com",mailOk:0,sub:"34 min ago",photos:3,flags:["Email not confirmed yet"],st:"pending"},
+  {id:"K-1040",n:"Apsara Rao",role:"Host",ph:"+91 90011 55667",dob:"19 Aug 2009",email:"apsara.rao@yahoo.com",mailOk:1,sub:"1 hr ago",photos:4,flags:["Under 18 by date of birth"],st:"pending"},
+  {id:"K-1039",n:"Sahil Bhatt",role:"Sender",ph:"+91 97000 33445",dob:"30 Nov 1992",email:"sahil.b@outlook.com",mailOk:1,sub:"2 hr ago",photos:3,flags:[],st:"pending"},
+  {id:"K-1038",n:"Zoya Khan",role:"Host",ph:"+91 98200 11009",dob:"07 Jul 1999",email:"zoyak@gmail.com",mailOk:1,sub:"3 hr ago",photos:3,flags:["Email used on another account"],st:"pending"},
+  {id:"K-1031",n:"Tara Iyer",role:"Host",ph:"+91 94440 87650",dob:"21 Apr 1987",email:"tara.iyer@gmail.com",mailOk:1,sub:"Yesterday",photos:3,flags:[],st:"approved"},
+  {id:"K-1027",n:"Imran Qazi",role:"Host",ph:"+91 93300 21212",dob:"11 Feb 1998",email:"imranq@gmail.com",mailOk:1,sub:"Yesterday",photos:1,flags:["Fewer than 3 clear photos"],st:"rejected",reason:"Photos are blurry"}],
+ rewards:[
+  {id:1,name:"Call marathon",desc:"Spend 60 minutes on calls",metric:"Minutes on calls",goal:60,coins:5000,aud:"Hosts",reset:"Daily",on:1,claims:142},
+  {id:2,name:"Gift magnet",desc:"Receive 20 gifts from callers",metric:"Gifts received",goal:20,coins:2000,aud:"Hosts",reset:"Daily",on:1,claims:318},
+  {id:3,name:"Social star",desc:"Talk to 10 different callers",metric:"Unique callers",goal:10,coins:1500,aud:"Hosts",reset:"Daily",on:1,claims:207},
+  {id:4,name:"Show up",desc:"Go online three times today",metric:"Online sessions",goal:3,coins:800,aud:"Hosts",reset:"Daily",on:1,claims:611},
+  {id:5,name:"Big earner",desc:"Earn 5,000 coins from calls",metric:"Coins earned",goal:5000,coins:2500,aud:"Hosts",reset:"Daily",on:0,claims:0},
+  {id:6,name:"First call bonus",desc:"Make your first video call",metric:"Calls made",goal:1,coins:100,aud:"Senders",reset:"One-time",on:1,claims:1290},
+  {id:7,name:"Weekend supporter",desc:"Send 10 gifts this weekend",metric:"Gifts sent",goal:10,coins:300,aud:"Senders",reset:"Weekly",on:0,claims:0}],
+ rules:{
+  holdSec:{v:60,label:"Entry fee hold",help:"Seconds a call must last before the host receives the entry fee",unit:"seconds"},
+  earlyLimit:{v:2,label:"Early endings allowed",help:"Calls a host may end before the hold, per day, before a penalty",unit:"per day"},
+  penalty:{v:"pause",label:"Penalty after the limit",help:"What happens when a host goes over the limit",opts:[["warn","Warning only"],["pause","Pause incoming calls"],["forfeit","Forfeit entry fees"]]},
+  pauseMin:{v:10,label:"Pause length",help:"Used when the penalty is a pause",unit:"minutes"},
+  forfeitCalls:{v:5,label:"Calls without entry fee",help:"Used when the penalty is forfeiting entry fees",unit:"calls"},
+  senderUnlock:{v:10000,label:"Sender payout unlock",help:"Coins a sender must receive before payouts open",unit:"coins"},
+  minWithdraw:{v:1000,label:"Minimum withdrawal",help:"Smallest payout a user can request",unit:"coins"},
+  inrPer1000:{v:250,label:"Payout rate",help:"Rupees paid out per 1,000 coins",unit:"₹ / 1,000 coins"},
+  hostShare:{v:60,label:"Host revenue share",help:"Share of call charges and gifts credited to the host",unit:"%"}},
+ ruleVers:[{v:"v3",by:"Priya (Super admin)",at:"2 Oct, 6:10 pm",note:"Entry fee hold set to 60 s",live:1},{v:"v2",by:"Priya (Super admin)",at:"21 Sep, 11:02 am",note:"Minimum withdrawal 1,000 coins"},{v:"v1",by:"System",at:"1 Sep, 9:00 am",note:"Launch values"}],
+ policies:[
+  {id:"terms",t:"Terms of Service",v:"v4",at:"28 Sep",reaccept:1,text:"1. Zimi Live is for adults 18 and over.\n2. Coins are purchased for calls and gifts and are not legal tender.\n3. Entry fees are charged when a call connects and are non-refundable.\n4. Accounts that break the Community Guidelines may be suspended or banned."},
+  {id:"guide",t:"Community Guidelines",v:"v6",at:"2 Oct",reaccept:0,text:"Be respectful. No nudity or sexual content, no harassment, no hate speech, no sharing of personal contact details during calls, and no attempts to move payments off the platform."},
+  {id:"refund",t:"Refund Policy",v:"v2",at:"12 Sep",reaccept:0,text:"Failed recharges are refunded automatically within 5 to 7 working days. Entry fees, per-minute charges and gifts are final once a call connects."},
+  {id:"payout",t:"Creator Payout Policy",v:"v3",at:"2 Oct",reaccept:1,text:"Hosts must complete KYC before withdrawing. Entry fees are released after a call passes the hold period. Payouts to UPI are processed within minutes; bank transfers within 2 working days."}],
+ payouts:[
+  {id:"P-8812",n:"Tara Iyer",amt:84000,upi:"tara@okhdfc",kyc:"Verified",risk:"Low",st:"pending",at:"12 min ago"},
+  {id:"P-8811",n:"Noor Sheikh",amt:126500,upi:"noor.s@ybl",kyc:"Verified",risk:"Low",st:"pending",at:"40 min ago"},
+  {id:"P-8810",n:"Ishaan Verma",amt:22000,upi:"ishaanv@paytm",kyc:"Verified",risk:"Medium",st:"pending",at:"1 hr ago",why:"3 early endings today"},
+  {id:"P-8809",n:"Aanya Kapoor",amt:310000,upi:"aanya@okicici",kyc:"Verified",risk:"High",st:"pending",at:"2 hr ago",why:"Payout 4x above weekly average"},
+  {id:"P-8801",n:"Meher Singh",amt:45000,upi:"meher@ybl",kyc:"Verified",risk:"Low",st:"paid",at:"Yesterday"}],
+ users:NAMES.map((nm,i)=>({id:"U-"+(20410+i*37),n:nm,city:CITY[i],role:i%3===2?"Sender":"Host",kyc:i%4===0?"Pending":"Verified",
+  coins:((i*7919)%90000)+1200,early:i===1?3:i===5?1:0,reports:i===6?2:0,st:i===6?"Suspended":"Active",joined:["Jan","Mar","May","Aug"][i%4]+" 2026"})),
+ reports:[
+  {id:"R-311",by:"Sahil Bhatt",on:"Kabir Das",why:"Asked for payment outside the app",when:"25 min ago",call:"C-99812",st:"open"},
+  {id:"R-310",by:"Mehak Dhillon",on:"Imran Qazi",why:"Harassment during call",when:"1 hr ago",call:"C-99790",st:"open"},
+  {id:"R-309",by:"Noor Sheikh",on:"Zoya Khan",why:"Ended call within seconds, repeatedly",when:"3 hr ago",call:"C-99702",st:"open"},
+  {id:"R-301",by:"Tara Iyer",on:"Rehan Qureshi",why:"Spam messages",when:"Yesterday",call:"—",st:"resolved"}],
+ team:[["Priya Nair","Super admin","All areas"],["Arjun Mehta","KYC reviewer","KYC queue"],["Fatima Ali","Finance","Payouts, rules (view)"],["Dev Joshi","Moderator","Reports, users"],["Neha Rao","Support","Users (view), reports"]],
+ audit:[
+  {at:"2 Oct, 6:10 pm",by:"Priya Nair",what:"Published rules v3",obj:"Entry fee hold 60 s"},
+  {at:"2 Oct, 5:42 pm",by:"Arjun Mehta",what:"Approved KYC",obj:"Tara Iyer (K-1031)"},
+  {at:"2 Oct, 4:15 pm",by:"Fatima Ali",what:"Paid payout",obj:"Meher Singh · 45,000 coins"}]};
+
+/* ---------- state ---------- */
+const S={auth:0,me:0,view:"dash",kycTab:"pending",sel:{},drawer:null,modal:null,q:"",userTab:"all",policy:"terms",draft:{},toast:"",rwDraft:null,reason:""};
+const go=v=>{S.view=v;S.sel={};S.drawer=null;S.modal=null;S.q="";render();window.scrollTo(0,0)};
+function toast(t){S.toast=t;render();clearTimeout(S.tt);S.tt=setTimeout(()=>{S.toast="";render()},2600)}
+function audit(what,obj){D.audit.unshift({at:now(),by:ME()[0],what,obj})}
+const pend=()=>D.kyc.filter(k=>k.st==="pending").length;
+
+/* ---------- sign in ---------- */
+function vGate(){
+ return `<div class="gate">
+  <div class="pane"><form onsubmit="event.preventDefault();signIn()">
+   <span class="mark">${I("lock",20)}</span>
+   <h1>Zimi Live Admin</h1>
+   <p class="sub">Sign in with your work account. Access is limited to approved team members.</p>
+   <label class="f">Work email<input class="in" id="ae" type="email" autocomplete="username" value="priya@zimilive.in" required></label>
+   <label class="f">Password<input class="in" id="ap" type="password" autocomplete="current-password" value="demo-password" required></label>
+   <label class="f">6-digit code from your authenticator app<input class="in tab" id="ac" inputmode="numeric" maxlength="6" placeholder="123 456" required></label>
+   <button class="btn pri lg" type="submit">Sign in</button>
+   <p class="sub" style="font-size:12px">Preview: any 6-digit code works. Sign-ins are logged with device and IP.</p>
+  </form></div>
+  <div class="pane art"><h2>Keep Zimi Live safe, fair and paid on time.</h2>
+   <p>Review creator verification, run rewards, set the rules for entry fees and payouts, and handle reports, all with a full audit trail.</p></div></div>`}
+function signIn(){const c=document.getElementById("ac").value.replace(/\D/g,"");if(c.length!==6){toast("Enter the 6-digit code");return}S.auth=1;render()}
+
+/* ---------- shell ---------- */
+const NAV=[["Overview",[["dash","dash","Dashboard"],["live","play","Live calls",()=>D.live.filter(c=>c.flag).length]]],
+ ["Trust & safety",[["kyc","kyc","KYC review",()=>pend()],["reports","flag","Reports",()=>D.reports.filter(r=>r.st==="open").length],["users","user","Users"]]],
+ ["Money",[["approvals","check","Approvals",()=>D.approvals.filter(a=>a.st==="pending").length],["payouts","pay","Payouts",()=>D.payouts.filter(p=>p.st==="pending").length],["refunds","coin","Refunds",()=>D.refunds.filter(r=>r.st==="open").length],["recon","rule","Reconciliation"],["packs","coin","Coin packs"],["gifts","gift","Gift catalogue"]]],
+ ["Growth",[["rewards","gift","Rewards"],["campaigns","flag","Campaigns"],["featured","user","Featured hosts"],["promos","coin","Promo codes"],["levels","dash","Levels & VIP"]]],
+ ["Support",[["tickets","team","Tickets",()=>D.tickets.filter(t=>t.st==="Open").length]]],
+ ["Platform",[["rules","rule","Rules & policies"],["team","team","Team & roles"],["audit","log","Audit log"]]]];
+function shell(inner){
+ return `<div class="app"><aside class="side">
+  <div class="brand"><span class="mark">ZL</span><div><b>Zimi Live</b><span>Admin console</span></div></div>
+  <nav>${NAV.map(([g,items])=>{items=items.filter(([k])=>can(k));return items.length?`<div class="grp">${g}</div>${items.map(([k,ic,l,c])=>{const cn=c?c():0;
+   return `<button class="${S.view===k?"on":""}" onclick="go('${k}')">${I(ic)}<span>${l}</span>${cn?`<span class="cnt">${cn}</span>`:""}</button>`}).join("")}`:""}).join("")}</nav>
+  <div class="me"><span class="av">${ME()[0].split(" ").map(w=>w[0]).join("")}</span><div style="min-width:0"><b>${ME()[0]}</b><span>${ME()[1]}</span></div><button onclick="S.auth=0;render()">Sign out</button></div>
+  <label class="viewas">Preview as<select onchange="S.me=+this.value;S.view='dash';S.drawer=null;render()">${D.team.map((t,i)=>`<option value="${i}" ${S.me===i?"selected":""}>${t[0]} · ${t[1]}</option>`).join("")}</select></label>
+ </aside><main class="main">${inner}</main></div>
+ ${S.drawer?`<div class="veil" onclick="S.drawer=null;render()"></div>${S.drawer()}`:""}
+ ${S.modal?`<div class="veil" onclick="S.modal=null;render()"></div>${S.modal()}`:""}
+ ${S.toast?`<div class="toast" role="status">${S.toast}</div>`:""}`}
+const head=(t,p,acts)=>`<div class="top"><div><h1>${t}</h1>${p?`<p>${p}</p>`:""}</div>${acts?`<div class="acts">${acts}</div>`:""}</div>`;
+
+/* ---------- dashboard ---------- */
+function vDash(){
+ const k=[["Hosts online now","1,284","+8% vs last hour","up"],["Calls today","38,920","+12% vs yesterday","up"],["Coins bought today","₹14.6L","+5% vs yesterday","up"],
+  ["Entry fees to company","₹21,340","Calls ended under 60 s","down"],["Pending payouts","₹5.4L",`${D.payouts.filter(p=>p.st==="pending").length} requests`,""],["KYC waiting",String(pend()),"Oldest: 3 hr","down"]];
+ return head("Dashboard","Today across Zimi Live. Figures are demo data.")+
+ `<div class="kpis">${k.map(([l,v,s,c])=>`<div class="card kpi"><span>${l}</span><b>${v}</b><em class="${c}">${s}</em></div>`).join("")}</div>
+ <div class="grid2">
+  <div class="card sec"><h3>KYC waiting <button onclick="go('kyc')">Open queue</button></h3>${kycTable(D.kyc.filter(x=>x.st==="pending").slice(0,4),1)}</div>
+  <div class="card sec"><h3>Open reports <button onclick="go('reports')">See all</button></h3>
+   <table class="tbl"><tbody>${D.reports.filter(r=>r.st==="open").map(r=>`<tr><td><b>${esc(r.on)}</b><div style="font-size:12px;color:var(--muted)">${esc(r.why)}</div></td><td class="num" style="color:var(--muted);font-size:12px">${r.when}</td></tr>`).join("")}</tbody></table></div>
+  <div class="card sec"><h3>Payouts flagged for review <button onclick="go('payouts')">Review</button></h3>
+   <table class="tbl"><tbody>${D.payouts.filter(p=>p.st==="pending"&&p.risk!=="Low").map(p=>`<tr><td><b>${esc(p.n)}</b><div style="font-size:12px;color:var(--muted)">${esc(p.why||"")}</div></td><td class="num tab">${n(p.amt)} coins</td><td>${riskPill(p.risk)}</td></tr>`).join("")}</tbody></table></div>
+  <div class="card sec"><h3>Hosts over the early-ending limit <button onclick="go('users')">Users</button></h3>
+   <table class="tbl"><tbody>${D.users.filter(u=>u.early>D.rules.earlyLimit.v).map(u=>`<tr><td><b>${esc(u.n)}</b></td><td class="num tab">${u.early} early endings today</td><td><span class="pill p-warn"><i></i>${penaltyLabel()}</span></td></tr>`).join("")||`<tr><td class="empty">Nobody is over the limit today.</td></tr>`}</tbody></table></div>
+ </div>`}
+function penaltyLabel(){const r=D.rules;return r.penalty.v==="pause"?`Paused ${r.pauseMin.v} min`:r.penalty.v==="forfeit"?`No entry fee, ${r.forfeitCalls.v} calls`:"Warning sent"}
+
+/* ---------- KYC ---------- */
+const stPill=s=>s==="pending"?`<span class="pill p-warn"><i></i>Pending</span>`:s==="approved"?`<span class="pill p-ok"><i></i>Approved</span>`:s==="reupload"?`<span class="pill p-acc"><i></i>Re-upload asked</span>`:`<span class="pill p-bad"><i></i>Rejected</span>`;
+function kycTable(L,compact){
+ if(!L.length)return `<div class="empty">Nothing here.</div>`;
+ return `<div class="tblwrap"><table class="tbl"><thead><tr><th>Applicant</th>${compact?"":"<th>Account</th><th>Email</th>"}<th>Checks</th><th>Submitted</th>${compact?"":"<th>Status</th>"}</tr></thead><tbody>
+ ${L.map((k,i)=>`<tr class="click" onclick="openKyc('${k.id}')"><td><div class="who">${avatar(k.n,i)}<div><b>${esc(k.n)}</b><span>${k.id} · ${k.ph}</span></div></div></td>
+  ${compact?"":`<td>${k.role}</td><td>${esc(k.email)}${k.mailOk?"":` <span class="pill p-mute">unconfirmed</span>`}</td>`}
+  <td>${k.flags.length?`<span class="pill p-bad"><i></i>${k.flags.length} flag${k.flags.length>1?"s":""}</span>`:`<span class="pill p-ok"><i></i>Clear</span>`}</td>
+  <td style="color:var(--muted)">${k.sub}</td>${compact?"":`<td>${stPill(k.st)}</td>`}</tr>`).join("")}</tbody></table></div>`}
+function vKyc(){
+ const L=D.kyc.filter(k=>k.st===S.kycTab||(S.kycTab==="rejected"&&k.st==="reupload"));
+ return head("KYC review","New accounts give an email address and at least 3 photos; no ID documents. Hosts are reviewed before going live. Check every flag before approving.")+
+ `<div class="card"><div class="bar"><div class="tabs">${[["pending","Pending"],["approved","Approved"],["rejected","Rejected"]].map(([k,l])=>`<button class="${S.kycTab===k?"on":""}" onclick="S.kycTab='${k}';render()">${l} <span class="tab">(${D.kyc.filter(x=>x.st===k||(k==="rejected"&&x.st==="reupload")).length})</span></button>`).join("")}</div>
+  <span style="font-size:13px;color:var(--muted)">Target: review within 15 minutes</span></div>${kycTable(L)}</div>`}
+function openKyc(id){S.drawer=()=>kycDrawer(id);S.reason="";render()}
+function kycDrawer(id){const k=D.kyc.find(x=>x.id===id),host=k.role==="Host";
+ const age=new Date().getFullYear()-parseInt(k.dob.slice(-4)),minor=age<18;
+ const chk=[["18 or older ("+age+" by date of birth)",minor?"n":"y"],["Email address confirmed",k.mailOk?"y":"q"],
+  ["Email not used on another account",k.flags.some(f=>f.startsWith("Email used"))?"n":"y"],["At least 3 clear photos ("+k.photos+" uploaded)",k.photos>=3?"y":"n"],
+  ["Same face in every photo",k.photos?"q":"n"]];
+ return `<aside class="drawer" role="dialog" aria-label="KYC ${k.id}"><header>${avatar(k.n,1)}<div><h2>${esc(k.n)}</h2><span style="font-size:13px;color:var(--muted)">${k.id} · ${k.role} · submitted ${k.sub}</span></div><button class="x" onclick="S.drawer=null;render()" aria-label="Close">&times;</button></header>
+ <div class="body">
+  ${k.flags.length?`<div class="note" style="background:var(--bad-wash);color:var(--bad)"><b style="color:var(--bad)">Flags:</b> ${k.flags.map(esc).join(" · ")}</div>`:""}
+  <div><div class="h4" style="margin-bottom:8px">Details</div><dl class="facts"><dt>Phone</dt><dd>${k.ph}</dd><dt>Date of birth</dt><dd>${k.dob}</dd><dt>Email</dt><dd>${esc(k.email)} ${k.mailOk?"":`<span class="pill p-mute">not confirmed</span>`}</dd><dt>Purpose</dt><dd>${host?"Go live, verified badge, payouts":"Account and payouts"}</dd></dl></div>
+  ${true?`<div><div class="h4" style="margin-bottom:8px">Uploaded photos (${k.photos})</div>${k.photos?`<div class="docs ph">${Array.from({length:k.photos},(_,i)=>`<div class="doc ph">Photo ${i+1}</div>`).join("")}</div>`:`<div class="note">No photos uploaded.</div>`}</div>`:""}
+  <div><div class="h4" style="margin-bottom:8px">Checks</div><div class="checks">${chk.map(([t,s])=>`<div class="${s}">${I(s==="y"?"check":s==="n"?"x":"srch",15)}<span>${t}</span></div>`).join("")}</div></div>
+  ${k.st==="pending"?`<label class="f">Reason (required to reject or ask for re-upload)<select class="in" id="rsn" onchange="S.reason=this.value"><option value="">Choose a reason</option>${["Photos are blurry","Fewer than 3 photos","Faces don't match across photos","Under 18","Email already used on another account","Email not confirmed"].map(r=>`<option ${S.reason===r?"selected":""}>${r}</option>`).join("")}</select></label>`:k.reason?`<div class="note"><b>Reason:</b> ${esc(k.reason)}</div>`:""}
+ </div>
+ ${k.st==="pending"?`<footer><button class="btn ok" ${minor?"disabled title='Applicant is under 18'":""} onclick="kycAct('${k.id}','approved')">${I("check",15)} Approve</button>
+  <button class="btn ghost" onclick="kycAct('${k.id}','reupload')">Ask to re-upload</button>
+  <button class="btn bad" onclick="kycAct('${k.id}','rejected')">${I("x",15)} Reject</button></footer>`:""}
+ </aside>`}
+function kycAct(id,st){const k=D.kyc.find(x=>x.id===id);
+ if(st!=="approved"&&!S.reason){toast("Choose a reason first");return}
+ k.st=st;if(st!=="approved")k.reason=S.reason;
+ audit(st==="approved"?"Approved KYC":st==="reupload"?"Asked for KYC re-upload":"Rejected KYC",`${k.n} (${k.id})${st!=="approved"?" · "+S.reason:""}`);
+ S.drawer=null;toast(st==="approved"?`${k.n} approved. ${k.role==="Host"?"Verified badge is live.":"Payouts unlocked."}`:st==="reupload"?`${k.n} was asked to re-upload`:`${k.n} rejected`)}
+
+/* ---------- rewards ---------- */
+function vRewards(){
+ const sel=Object.keys(S.sel).filter(k=>S.sel[k]).map(Number),L=D.rewards,all=sel.length===L.length;
+ return head("Rewards","Daily, weekly and one-time tasks shown on the Awards page. Pause a reward to hide it instantly; unclaimed coins on paused rewards expire at the next reset.",
+  `<button class="btn pri" onclick="newReward()">${I("plus",15)} New reward</button>`)+
+ `<div class="card">${sel.length?`<div class="bulk">${sel.length} selected<span class="sp"></span>
+   <button class="btn sm ok" onclick="bulk(1)">${I("play",13)} Activate</button><button class="btn sm" onclick="bulk(0)">${I("pause",13)} Pause</button><button class="btn sm ghost" onclick="S.sel={};render()">Clear</button></div>`:""}
+ <div class="tblwrap"><table class="tbl"><thead><tr><th class="chk"><input type="checkbox" aria-label="Select all" ${all?"checked":""} onchange="L_all(this.checked)"></th><th>Reward</th><th>Goal</th><th class="num">Coins</th><th>For</th><th>Resets</th><th class="num">Claims today</th><th>Status</th><th></th></tr></thead><tbody>
+ ${L.map(r=>`<tr><td class="chk"><input type="checkbox" aria-label="Select ${esc(r.name)}" ${S.sel[r.id]?"checked":""} onchange="S.sel[${r.id}]=this.checked;render()"></td>
+  <td><b>${esc(r.name)}</b><div style="font-size:12px;color:var(--muted)">${esc(r.desc)}</div></td>
+  <td class="tab">${n(r.goal)} <span style="color:var(--muted)">${esc(r.metric.toLowerCase())}</span></td><td class="num tab"><b>${n(r.coins)}</b></td>
+  <td>${r.aud}</td><td>${r.reset}</td><td class="num tab">${n(r.claims)}</td>
+  <td><button class="sw ${r.on?"on":""}" role="switch" aria-checked="${!!r.on}" aria-label="${r.on?"Pause":"Activate"} ${esc(r.name)}" onclick="toggleRw(${r.id})"></button></td>
+  <td><button class="btn sm ghost" onclick="editReward(${r.id})">Edit</button></td></tr>`).join("")}</tbody></table></div></div>`}
+function L_all(v){S.sel={};if(v)D.rewards.forEach(r=>S.sel[r.id]=true);render()}
+function toggleRw(id){const r=D.rewards.find(x=>x.id===id);r.on=r.on?0:1;audit(r.on?"Activated reward":"Paused reward",r.name);toast(`${r.name} ${r.on?"activated":"paused"}`)}
+function bulk(on){const ids=Object.keys(S.sel).filter(k=>S.sel[k]).map(Number);
+ D.rewards.forEach(r=>{if(ids.includes(r.id))r.on=on});audit(on?"Activated rewards":"Paused rewards",ids.length+" rewards");S.sel={};toast(`${ids.length} reward${ids.length>1?"s":""} ${on?"activated":"paused"}`)}
+const METRICS=["Minutes on calls","Gifts received","Unique callers","Online sessions","Coins earned","Calls made","Gifts sent","Coins spent"];
+function newReward(){S.rwDraft={id:0,name:"",desc:"",metric:METRICS[0],goal:10,coins:500,aud:"Hosts",reset:"Daily",on:1,claims:0};S.modal=rwModal;render()}
+function editReward(id){S.rwDraft={...D.rewards.find(r=>r.id===id)};S.modal=rwModal;render()}
+function rwModal(){const d=S.rwDraft,set=k=>`oninput="S.rwDraft.${k}=this.value"`;
+ return `<div class="modal" role="dialog" aria-label="Reward"><header><h2>${d.id?"Edit reward":"New reward"}</h2></header>
+ <div class="body">
+  <label class="f">Name<input class="in" maxlength="24" value="${esc(d.name)}" ${set("name")} placeholder="Gift magnet"></label>
+  <label class="f">Short description (4 to 6 words)<input class="in" maxlength="40" value="${esc(d.desc)}" ${set("desc")} placeholder="Receive 20 gifts from callers"></label>
+  <label class="f">What counts<select class="in" onchange="S.rwDraft.metric=this.value">${METRICS.map(m=>`<option ${d.metric===m?"selected":""}>${m}</option>`).join("")}</select></label>
+  <label class="f">Goal<input class="in tab" type="number" min="1" value="${d.goal}" ${set("goal")}></label>
+  <label class="f">Reward (coins)<input class="in tab" type="number" min="1" value="${d.coins}" ${set("coins")}></label>
+  <label class="f">Who sees it<select class="in" onchange="S.rwDraft.aud=this.value">${["Hosts","Senders","Everyone"].map(m=>`<option ${d.aud===m?"selected":""}>${m}</option>`).join("")}</select></label>
+  <label class="f">Resets<select class="in" onchange="S.rwDraft.reset=this.value">${["Daily","Weekly","One-time"].map(m=>`<option ${d.reset===m?"selected":""}>${m}</option>`).join("")}</select></label>
+  <label class="f">Runs<select class="in"><option>From now, no end date</option><option>Pick dates…</option></select></label>
+  <div class="note full">Unclaimed coins expire at each reset. Rewards are paid into earnings and follow the payout rules.</div>
+ </div>
+ <footer><button class="btn ghost" onclick="S.modal=null;render()">Cancel</button>
+  <button class="btn" onclick="saveReward(0)">Save as paused</button><button class="btn pri" onclick="saveReward(1)">Save and activate</button></footer></div>`}
+function saveReward(on){const d=S.rwDraft;if(!d.name.trim()||!d.desc.trim()){toast("Add a name and a short description");return}
+ d.goal=+d.goal||1;d.coins=+d.coins||1;d.on=on;
+ if(d.id){Object.assign(D.rewards.find(r=>r.id===d.id),d);audit("Edited reward",d.name)}
+ else{d.id=Math.max(...D.rewards.map(r=>r.id))+1;D.rewards.push(d);audit("Created reward",d.name)}
+ S.modal=null;toast(`${d.name} saved${on?" and active":" as paused"}`)}
+
+/* ---------- rules & policies ---------- */
+function vRules(){const R=D.rules,dr=S.draft,changed=Object.keys(dr).length;
+ const field=(k)=>{const r=R[k],v=k in dr?dr[k]:r.v;
+  return `<div class="rrow ${k in dr?"changed":""}"><div><b>${r.label}</b><span>${r.help}</span></div>
+   ${r.opts?`<select class="in" onchange="setRule('${k}',this.value)">${r.opts.map(([o,l])=>`<option value="${o}" ${v===o?"selected":""}>${l}</option>`).join("")}</select>`
+   :`<div class="unit"><input class="in tab" type="number" min="0" value="${v}" onchange="setRule('${k}',+this.value)"><em>${r.unit}</em></div>`}</div>`};
+ const pol=D.policies.find(p=>p.id===S.policy);
+ return head("Rules & policies","Numbers the app enforces and the documents users agree to. Changes are versioned, take effect when published and are recorded in the audit log.")+
+ `<div class="rules"><div class="card">
+   <div class="sec" style="padding-bottom:6px"><h3>Call and payout rules <span class="pill p-ok"><i></i>Live: ${D.ruleVers[0].v}</span></h3></div>
+   <div class="h4" style="padding:4px 18px 6px">Entry fee and early endings</div>${["holdSec","earlyLimit","penalty","pauseMin","forfeitCalls"].map(field).join("")}
+   <div class="h4" style="padding:14px 18px 6px;border-top:1px solid var(--line)">Payouts</div>${["senderUnlock","minWithdraw","inrPer1000","hostShare"].map(field).join("")}
+   <div class="bar" style="border-top:1px solid var(--line);border-bottom:0"><span style="font-size:13px;color:var(--muted)">${changed?`${changed} unpublished change${changed>1?"s":""}`:"No unpublished changes"}</span>
+    <div style="display:flex;gap:8px"><button class="btn ghost" ${changed?"":"disabled"} onclick="S.draft={};render()">Discard</button><button class="btn pri" ${changed&&isSuper()?"":"disabled"} onclick="publishRules()">Send for approval</button></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card sec"><h3>Version history</h3>${D.ruleVers.map(v=>`<div class="ver"><b>${v.v}</b><div><div>${esc(v.note)}</div><span>${esc(v.by)} · ${v.at}</span></div>${v.live?`<span class="pill p-ok"><i></i>Live</span>`:`<button class="btn sm ghost" onclick="toast('Rolling back needs a second admin to approve')">Roll back</button>`}</div>`).join("")}</div>
+   <div class="card sec"><h3>Policies</h3>
+    <div class="tabs" style="flex-wrap:wrap;width:auto;margin-bottom:12px">${D.policies.map(p=>`<button class="${S.policy===p.id?"on":""}" onclick="S.policy='${p.id}';render()">${p.t}</button>`).join("")}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">${pol.v} · published ${pol.at}</div>
+    <textarea class="in" id="poltext" aria-label="${pol.t} text">${esc(pol.text)}</textarea>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px"><input type="checkbox" id="reacc" ${pol.reaccept?"checked":""}> Ask every user to accept this version on next app open</label>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn pri" onclick="publishPolicy()">Publish ${pol.t}</button></div></div>
+  </div></div>`}
+function setRule(k,v){if(D.rules[k].v===v)delete S.draft[k];else S.draft[k]=v;render()}
+function publishRules(){if(!isSuper()){toast("Only a Super admin can publish rule changes");return}
+ const ch=Object.entries(S.draft),who=ME()[0];
+ const note=ch.map(([k,v])=>`${D.rules[k].label}: ${D.rules[k].opts?D.rules[k].opts.find(o=>o[0]===v)[1]:n(v)}`).join(", ");
+ requestApproval("Rules","Publish new call and payout rules",note,()=>{ch.forEach(([k,v])=>D.rules[k].v=v);
+  const ver="v"+(D.ruleVers.length+1);D.ruleVers.forEach(x=>x.live=0);D.ruleVers.unshift({v:ver,by:who,at:now(),note,live:1})});
+ S.draft={};toast("Sent for approval. Another Super admin must approve before the rules go live.")}
+function publishPolicy(){const p=D.policies.find(x=>x.id===S.policy);p.text=document.getElementById("poltext").value;p.reaccept=document.getElementById("reacc").checked?1:0;
+ p.v="v"+(parseInt(p.v.slice(1))+1);p.at="Today";audit("Published policy",`${p.t} ${p.v}`);toast(`${p.t} ${p.v} published${p.reaccept?"; users will be asked to accept it":""}`)}
+
+/* ---------- payouts ---------- */
+const riskPill=r=>`<span class="pill ${r==="High"?"p-bad":r==="Medium"?"p-warn":"p-ok"}"><i></i>${r}</span>`;
+function vPayouts(){const L=D.payouts,sel=Object.keys(S.sel).filter(k=>S.sel[k]);
+ return head("Payouts","Withdrawal requests from verified users. Low-risk requests can be approved in bulk; review medium and high risk one by one.")+
+ `<div class="card">${sel.length?`<div class="bulk">${sel.length} selected<span class="sp"></span><button class="btn sm ok" onclick="payBulk()">${I("check",13)} Approve and pay</button><button class="btn sm ghost" onclick="S.sel={};render()">Clear</button></div>`:""}
+ <div class="tblwrap"><table class="tbl"><thead><tr><th class="chk"></th><th>Request</th><th class="num">Coins</th><th class="num">Amount</th><th>UPI</th><th>Risk</th><th>Status</th><th></th></tr></thead><tbody>
+ ${L.map((p,i)=>`<tr><td class="chk">${p.st==="pending"?`<input type="checkbox" aria-label="Select ${p.id}" ${S.sel[p.id]?"checked":""} onchange="S.sel['${p.id}']=this.checked;render()">`:""}</td>
+  <td><div class="who">${avatar(p.n,i)}<div><b>${esc(p.n)}</b><span>${p.id} · ${p.at}</span></div></div></td>
+  <td class="num tab">${n(p.amt)}</td><td class="num tab"><b>₹${n(p.amt*D.rules.inrPer1000.v/1000)}</b></td><td>${p.upi}</td>
+  <td>${riskPill(p.risk)}${p.why?`<div style="font-size:12px;color:var(--muted);margin-top:3px">${esc(p.why)}</div>`:""}</td>
+  <td>${p.st==="pending"?`<span class="pill p-warn"><i></i>Pending</span>`:p.st==="paid"?`<span class="pill p-ok"><i></i>Paid</span>`:p.st==="approval"?`<span class="pill p-acc"><i></i>Awaiting 2nd approval</span>`:`<span class="pill p-mute"><i></i>On hold</span>`}</td>
+  <td>${p.st==="pending"?`<div style="display:flex;gap:6px"><button class="btn sm ok" onclick="payOne('${p.id}','paid')">Pay</button><button class="btn sm ghost" onclick="payOne('${p.id}','hold')">Hold</button></div>`:""}</td></tr>`).join("")}</tbody></table></div></div>`}
+function payOne(id,st){const p=D.payouts.find(x=>x.id===id),amt=p.amt*D.rules.inrPer1000.v/1000;
+ if(st==="paid"&&amt>LIMITS.payoutInr){p.st="approval";requestApproval("Payout",`Payout to ${p.n} · ₹${n(amt)}`,p.why||"",null,p.id);toast(`Over ₹${n(LIMITS.payoutInr)}: sent to a second admin for approval`);return}
+ p.st=st;audit(st==="paid"?"Paid payout":"Held payout",`${p.n} · ${n(p.amt)} coins`);toast(st==="paid"?`₹${n(p.amt*D.rules.inrPer1000.v/1000)} sent to ${p.upi}`:`${p.n}'s payout is on hold`)}
+function payBulk(){const ids=Object.keys(S.sel).filter(k=>S.sel[k]),risky=ids.filter(id=>D.payouts.find(p=>p.id===id).risk!=="Low");
+ if(risky.length){toast("Bulk approval is for low-risk requests only. Review the others one by one.");return}
+ if(ids.some(id=>{const p=D.payouts.find(x=>x.id===id);return p.amt*D.rules.inrPer1000.v/1000>LIMITS.payoutInr})){toast(`Payouts over ₹${n(LIMITS.payoutInr)} need a second admin; pay them one by one`);return}
+ ids.forEach(id=>{D.payouts.find(p=>p.id===id).st="paid"});audit("Paid payouts in bulk",ids.length+" requests");S.sel={};toast(`${ids.length} payouts sent`)}
+
+/* ---------- users ---------- */
+function vUsers(){const q=S.q.toLowerCase(),L=D.users.filter(u=>(S.userTab==="all"||u.role.toLowerCase()===S.userTab)&&(!q||u.n.toLowerCase().includes(q)||u.id.toLowerCase().includes(q)));
+ return head("Users","Search any account, see its standing and take action. Suspensions are timed; bans need a reason and are reversible by a Super admin.")+
+ `<div class="card"><div class="bar"><div class="tabs">${[["all","All"],["host","Hosts"],["sender","Senders"]].map(([k,l])=>`<button class="${S.userTab===k?"on":""}" onclick="S.userTab='${k}';render()">${l}</button>`).join("")}</div>
+  <label class="search">${I("srch",15)}<input placeholder="Search by name or user ID" value="${esc(S.q)}" oninput="S.q=this.value;render();const i=document.querySelector('.search input');i.focus();i.setSelectionRange(i.value.length,i.value.length)" aria-label="Search users"></label></div>
+ <div class="tblwrap"><table class="tbl"><thead><tr><th>User</th><th>Role</th><th>KYC</th><th class="num">Coins</th><th class="num">Early endings today</th><th class="num">Reports</th><th>Status</th><th></th></tr></thead><tbody>
+ ${L.map((u,i)=>`<tr><td class="click" style="cursor:pointer" onclick="openUser('${esc(u.n)}')"><div class="who">${avatar(u.n,i)}<div><b>${esc(u.n)}</b><span>${u.id} · ${u.city} · joined ${u.joined}</span></div></div></td><td>${u.role}</td>
+  <td>${u.kyc==="Verified"?`<span class="pill p-ok"><i></i>Verified</span>`:`<span class="pill p-warn"><i></i>Pending</span>`}</td>
+  <td class="num tab">${n(u.coins)}</td><td class="num tab" style="${u.early>D.rules.earlyLimit.v?"color:var(--bad);font-weight:600":""}">${u.role==="Host"?u.early:"—"}</td><td class="num tab">${u.reports}</td>
+  <td>${u.st==="Active"?`<span class="pill p-ok"><i></i>Active</span>`:`<span class="pill p-bad"><i></i>${u.st}</span>`}</td>
+  <td>${u.st==="Active"?`<button class="btn sm ghost" onclick="userAct('${u.id}','Suspended')">Suspend 24 h</button>`:`<button class="btn sm ghost" onclick="userAct('${u.id}','Active')">Restore</button>`}</td></tr>`).join("")||`<tr><td colspan="8" class="empty">No users match.</td></tr>`}</tbody></table></div></div>`}
+function userAct(id,st){const u=D.users.find(x=>x.id===id);u.st=st;audit(st==="Active"?"Restored user":"Suspended user",`${u.n} (${u.id})`);toast(`${u.n} ${st==="Active"?"restored":"suspended for 24 hours"}`)}
+
+/* ---------- reports ---------- */
+function vReports(){
+ return head("Reports","Reports raised from calls and chats. Each links to the call record, so moderators can check durations, charges and early endings.")+
+ `<div class="card"><div class="tblwrap"><table class="tbl"><thead><tr><th>Report</th><th>Reported user</th><th>Reason</th><th>Call</th><th>When</th><th>Status</th><th></th></tr></thead><tbody>
+ ${D.reports.map(r=>`<tr><td>${r.id}<div style="font-size:12px;color:var(--muted)">by ${esc(r.by)}</div></td><td><b>${esc(r.on)}</b></td><td>${esc(r.why)}</td><td class="tab">${r.call}</td><td style="color:var(--muted)">${r.when}</td>
+  <td>${r.st==="open"?`<span class="pill p-warn"><i></i>Open</span>`:`<span class="pill p-ok"><i></i>Resolved</span>`}</td>
+  <td>${r.st==="open"?`<div style="display:flex;gap:6px"><button class="btn sm bad" onclick="repAct('${r.id}','warn')">Warn user</button><button class="btn sm ghost" onclick="repAct('${r.id}','dismiss')">Dismiss</button></div>`:""}</td></tr>`).join("")}</tbody></table></div></div>`}
+function repAct(id,a){const r=D.reports.find(x=>x.id===id);r.st="resolved";audit(a==="warn"?"Warned user":"Dismissed report",`${r.on} · ${r.id}`);toast(a==="warn"?`${r.on} has been warned`:"Report dismissed")}
+
+/* ---------- team & audit ---------- */
+function vTeam(){
+ return head("Team & roles","Each admin gets only the areas their job needs. Money and rule changes above set limits need a second admin's approval.",`<button class="btn pri" onclick="toast('Invites are sent by email and expire in 48 hours')">${I("plus",15)} Invite admin</button>`)+
+ `<div class="card"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Can access</th><th>Two-factor</th></tr></thead><tbody>
+ ${D.team.map(([nm,role,acc],i)=>`<tr><td><div class="who">${avatar(nm,i)}<div><b>${nm}</b><span>${nm.split(" ")[0].toLowerCase()}@zimilive.in</span></div></div></td><td><span class="pill ${role==="Super admin"?"p-acc":"p-mute"}">${role}</span></td><td>${acc}</td><td><span class="pill p-ok"><i></i>On</span></td></tr>`).join("")}</tbody></table></div>`}
+function vAudit(){
+ return head("Audit log","Every admin action, newest first. Entries cannot be edited or deleted.")+
+ `<div class="card"><table class="tbl"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Details</th></tr></thead><tbody>
+ ${D.audit.map(a=>`<tr><td class="tab" style="color:var(--muted);white-space:nowrap">${a.at}</td><td>${esc(a.by)}</td><td><b>${esc(a.what)}</b></td><td>${esc(a.obj)}</td></tr>`).join("")}</tbody></table></div>`}
+
+/* ---------- access control ----------
+   Each admin role sees only its areas. The server must enforce the same map;
+   hiding a button here is a convenience, not a security control. */
+const ROLES={
+ "Super admin":"*",
+ "KYC reviewer":["dash","kyc","users","audit"],
+ "Finance":["dash","approvals","payouts","refunds","recon","packs","rules","audit"],
+ "Moderator":["dash","live","reports","users","tickets","audit"],
+ "Support":["dash","users","tickets","refunds","reports"]};
+const ME=()=>D.team[S.me];
+const can=v=>{const r=ROLES[ME()[1]];return r==="*"||r.includes(v)};
+const isSuper=()=>ME()[1]==="Super admin";
+/* Money and rule changes above these limits need a second admin. */
+const LIMITS={payoutInr:50000};
+
+/* ---------- extra demo data ---------- */
+Object.assign(D,{
+ approvals:[
+  {id:"A-207",kind:"Payout",title:"Payout to Aanya Kapoor · ₹77,500",by:"Fatima Ali",at:"2 hr ago",st:"pending",ref:"P-8809"}],
+ live:[
+  {id:"C-99871",host:"Noor Sheikh",sender:"Arnav M.",min:14,coins:1820,flag:""},
+  {id:"C-99869",host:"Tara Iyer",sender:"Devika N.",min:6,coins:780,flag:""},
+  {id:"C-99866",host:"Zoya Khan",sender:"Yash P.",min:0,coins:60,flag:"Ended and re-accepted 4 calls in 10 min"},
+  {id:"C-99861",host:"Kabir Das",sender:"Sahil B.",min:3,coins:330,flag:"Reported during call: asked for UPI"},
+  {id:"C-99858",host:"Meher Singh",sender:"Kunal T.",min:22,coins:3460,flag:""},
+  {id:"C-99850",host:"Ishaan Verma",sender:"Faisal R.",min:9,coins:1040,flag:""}],
+ refunds:[
+  {id:"ORD-55120",n:"Arnav M.",inr:499.99,coins:1125,gw:"Payment captured, coins not credited",age:"20 min",st:"open"},
+  {id:"ORD-55102",n:"Devika N.",inr:249.99,coins:625,gw:"Bank debited, gateway timeout",age:"1 hr",st:"open"},
+  {id:"ORD-55077",n:"Yash P.",inr:989.99,coins:2500,gw:"Duplicate charge",age:"3 hr",st:"open"},
+  {id:"ORD-54980",n:"Zoya K.",inr:97.99,coins:200,gw:"Payment captured, coins not credited",age:"Yesterday",st:"refunded"}],
+ recon:Array.from({length:7},(_,i)=>{const sold=1460000-i*83000+((i*37)%5)*21000;return{day:["Today","Yesterday","1 Oct","30 Sep","29 Sep","28 Sep","27 Sep"][i],
+  sold,calls:Math.round(sold*.52),gifts:Math.round(sold*.31),fees:21340-i*1100,paid:Math.round(sold*.44),diff:i===3?1240:0}}),
+ packs:[[200,97.99,100,"",1],[625,249.99,150,"",1],[1125,499.99,125,"",1],[2500,989.99,150,"Hot",1],[3750,1499.99,150,"",1],[5000,1999.99,150,"Popular",1]].map(([c,p,b,t,on],i)=>({id:i+1,coins:c,price:p,bonus:b,tag:t,on})),
+ gifts:[["Rose","🌹",99,"Common"],["Kiss","💋",199,"Common"],["Bear","🐻",399,"Common"],["Party","🎉",699,"Common"],["Bouquet","💐",1599,"Common"],["Perfume","🧴",7999,"Rare"],["Crown","👑",9999,"Rare"],["Sports car","🚗",19999,"Legendary"],["Yacht","🛥️",24999,"Legendary"],["Castle","🏯",39999,"Legendary"]].map(([nm,e,p,t],i)=>({id:i+1,nm,e,p,t,on:1})),
+ campaigns:[
+  {id:1,type:"Push",title:"Your favourite host is live",aud:"Senders who follow a live host",when:"Automatic",st:"Running",sent:"18,204"},
+  {id:2,type:"Banner",title:"First recharge: 50% extra coins",aud:"New senders, no recharge yet",when:"Until 15 Oct",st:"Running",sent:"—"},
+  {id:3,type:"Push",title:"We miss you, 200 bonus coins inside",aud:"Inactive for 7 days",when:"Sat, 7:00 pm",st:"Scheduled",sent:"—"}],
+ featured:["Noor Sheikh","Tara Iyer","Aanya Kapoor"],
+ promos:[
+  {code:"WELCOME50",bonus:50,max:10000,used:4210,exp:"31 Dec",on:1},
+  {code:"DIWALI100",bonus:100,max:2000,used:0,exp:"5 Nov",on:0},
+  {code:"CREATOR10",bonus:10,max:500,used:212,exp:"30 Oct",on:1}],
+ levels:[[1,0,"Basic chat badge"],[5,5000,"Coloured name in chats"],[10,25000,"Entry animation on calls"],[20,100000,"Priority in host queue"],[30,500000,"Exclusive gift pack"]],
+ vip:[["Silver",499,"5% bonus coins, VIP badge"],["Gold",1499,"10% bonus coins, entry animation, priority support"],["Diamond",4999,"20% bonus coins, exclusive gifts, dedicated manager"]],
+ tickets:[
+  {id:"T-4410",n:"Arnav M.",sub:"Coins not added after payment",st:"Open",who:"",at:"15 min ago"},
+  {id:"T-4408",n:"Zoya Khan",sub:"Why was my calling paused?",st:"Open",who:"Neha Rao",at:"40 min ago"},
+  {id:"T-4401",n:"Tara Iyer",sub:"Payout not received",st:"Waiting on user",who:"Fatima Ali",at:"2 hr ago"},
+  {id:"T-4390",n:"Kunal T.",sub:"Host ended call early, want refund",st:"Resolved",who:"Neha Rao",at:"Yesterday"}]});
+D.team.splice(1,0,["Rahul Sen","Super admin","All areas"]);
+const CANNED=["We're sorry about this. We've refunded the coins to your wallet; they should show within a few minutes.",
+ "Your account was paused for 10 minutes because more than 2 calls ended before 1 minute today. Calls work again now.",
+ "We've escalated your payout to our finance team. You'll get an update within 24 hours.",
+ "Entry fees are non-refundable once a call connects, as shown before the call starts."];
+
+/* ---------- two-person approval ---------- */
+function vApprovals(){const L=D.approvals;
+ return head("Approvals","Rule changes and payouts above ₹"+n(LIMITS.payoutInr)+" need a second admin. You can't approve a request you made yourself.")+
+ `<div class="card"><div class="tblwrap"><table class="tbl"><thead><tr><th>Request</th><th>Type</th><th>Requested by</th><th>When</th><th>Status</th><th></th></tr></thead><tbody>
+ ${L.map(a=>{const mine=a.by===ME()[0],ok=a.kind==="Rules"?isSuper():(isSuper()||ME()[1]==="Finance");
+  return `<tr><td><b>${esc(a.title)}</b>${a.detail?`<div style="font-size:12px;color:var(--muted)">${esc(a.detail)}</div>`:""}</td><td>${a.kind}</td><td>${esc(a.by)}</td><td style="color:var(--muted)">${a.at}</td>
+  <td>${a.st==="pending"?`<span class="pill p-warn"><i></i>Waiting</span>`:a.st==="approved"?`<span class="pill p-ok"><i></i>Approved</span>`:`<span class="pill p-bad"><i></i>Declined</span>`}</td>
+  <td>${a.st==="pending"?(mine?`<span style="font-size:12px;color:var(--muted)">Needs another admin</span>`:ok?`<div style="display:flex;gap:6px"><button class="btn sm ok" onclick="decide('${a.id}',1)">Approve</button><button class="btn sm ghost" onclick="decide('${a.id}',0)">Decline</button></div>`:`<span style="font-size:12px;color:var(--muted)">Your role can't approve this</span>`):""}</td></tr>`}).join("")||`<tr><td colspan="6" class="empty">Nothing waiting for approval.</td></tr>`}</tbody></table></div></div>`}
+function requestApproval(kind,title,detail,apply,ref){
+ D.approvals.unshift({id:"A-"+(208+D.approvals.length),kind,title,detail,by:ME()[0],at:now(),st:"pending",apply,ref});
+ audit("Requested approval",title)}
+function decide(id,yes){const a=D.approvals.find(x=>x.id===id);a.st=yes?"approved":"declined";
+ if(yes){if(a.apply)a.apply();else if(a.ref){const p=D.payouts.find(x=>x.id===a.ref);if(p)p.st="paid"}}
+ else if(a.ref){const p=D.payouts.find(x=>x.id===a.ref);if(p)p.st="pending"}
+ audit(yes?"Approved request":"Declined request",a.title);toast(yes?`${a.title}: approved and applied`:`${a.title}: declined`)}
+
+/* ---------- live calls ---------- */
+function vLive(){
+ return head("Live calls","Calls happening right now. Moderators can end a call or suspend either person on the spot. Video is never recorded; only reported calls keep a short snapshot.")+
+ `<div class="kpis"><div class="card kpi"><span>Calls live now</span><b>${n(4120+D.live.length)}</b></div><div class="card kpi"><span>Flagged right now</span><b>${D.live.filter(c=>c.flag).length}</b><em class="down">Needs a look</em></div><div class="card kpi"><span>Average call</span><b>8m 40s</b></div></div>
+ <div class="card"><div class="tblwrap"><table class="tbl"><thead><tr><th>Call</th><th>Host</th><th>Sender</th><th class="num">Duration</th><th class="num">Charged</th><th>Flag</th><th></th></tr></thead><tbody>
+ ${D.live.map(c=>`<tr><td class="tab">${c.id}</td><td><b>${esc(c.host)}</b></td><td>${esc(c.sender)}</td><td class="num tab">${c.min} min</td><td class="num tab">${n(c.coins)}</td>
+  <td>${c.flag?`<span class="pill p-bad"><i></i>${esc(c.flag)}</span>`:`<span class="pill p-mute">None</span>`}</td>
+  <td><div style="display:flex;gap:6px"><button class="btn sm bad" onclick="endLive('${c.id}')">End call</button><button class="btn sm ghost" onclick="openUser('${esc(c.host)}')">Host</button></div></td></tr>`).join("")||`<tr><td colspan="7" class="empty">No live calls.</td></tr>`}</tbody></table></div></div>`}
+function endLive(id){const c=D.live.find(x=>x.id===id);D.live=D.live.filter(x=>x.id!==id);audit("Ended live call",`${c.id} · ${c.host} and ${c.sender}`);toast(`Call ${c.id} ended. Both people see "This call was ended by Zimi Live".`)}
+
+/* ---------- refunds ---------- */
+function vRefunds(){
+ return head("Refunds","Failed or duplicate recharges. Refunds go back to the original payment method; coins are removed if they were credited.")+
+ `<div class="card"><div class="bar"><label class="search">${I("srch",15)}<input id="ordq" placeholder="Look up an order ID, e.g. ORD-55120" aria-label="Order ID" onkeydown="if(event.key==='Enter')findOrder()"></label><button class="btn" onclick="findOrder()">Find order</button></div>
+ <div class="tblwrap"><table class="tbl"><thead><tr><th>Order</th><th>User</th><th class="num">Amount</th><th class="num">Coins</th><th>What happened</th><th>Age</th><th></th></tr></thead><tbody>
+ ${D.refunds.map(r=>`<tr id="row-${r.id}"><td class="tab">${r.id}</td><td>${esc(r.n)}</td><td class="num tab"><b>₹${r.inr.toFixed(2)}</b></td><td class="num tab">${n(r.coins)}</td><td>${esc(r.gw)}</td><td style="color:var(--muted)">${r.age}</td>
+  <td>${r.st==="open"?`<button class="btn sm ok" onclick="refund('${r.id}')">Refund</button>`:`<span class="pill p-ok"><i></i>Refunded</span>`}</td></tr>`).join("")}</tbody></table></div></div>`}
+function findOrder(){const q=(document.getElementById("ordq").value||"").trim().toUpperCase(),r=D.refunds.find(x=>x.id===q);
+ if(!r){toast(q?`No order ${q} found`:"Enter an order ID");return}const el=document.getElementById("row-"+r.id);el.scrollIntoView({block:"center"});el.style.background="var(--gold-wash)"}
+function refund(id){const r=D.refunds.find(x=>x.id===id);r.st="refunded";audit("Refunded order",`${r.id} · ₹${r.inr} to ${r.n}`);toast(`₹${r.inr.toFixed(2)} refunded to ${r.n}`)}
+
+/* ---------- reconciliation ---------- */
+const inr=v=>"₹"+n(Math.round(v));
+function csv(name,rows){const t=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+ try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download=name;a.click();toast(`${name} downloaded`)}catch(e){toast("Download blocked in this preview")}}
+function vRecon(){const R=D.recon;
+ return head("Reconciliation","Money in and out per day. Every rupee of coins sold should equal call charges, gifts and fees kept, plus coins still in wallets. Any gap is flagged.",
+  `<button class="btn" onclick="csv('reconciliation.csv',[['Day','Coins sold','Call charges','Gifts','Entry fees kept','Payouts','Gap']].concat(D.recon.map(r=>[r.day,r.sold,r.calls,r.gifts,r.fees,r.paid,r.diff])))">Export CSV</button>`)+
+ `<div class="card"><div class="tblwrap"><table class="tbl"><thead><tr><th>Day</th><th class="num">Coins sold</th><th class="num">Call charges</th><th class="num">Gifts</th><th class="num">Entry fees kept</th><th class="num">Payouts</th><th>Check</th></tr></thead><tbody>
+ ${R.map(r=>`<tr><td><b>${r.day}</b></td><td class="num tab">${inr(r.sold)}</td><td class="num tab">${inr(r.calls)}</td><td class="num tab">${inr(r.gifts)}</td><td class="num tab">${inr(r.fees)}</td><td class="num tab">${inr(r.paid)}</td>
+  <td>${r.diff?`<span class="pill p-bad"><i></i>Gap ${inr(r.diff)}</span>`:`<span class="pill p-ok"><i></i>Balanced</span>`}</td></tr>`).join("")}</tbody></table></div></div>`}
+/* ---------- coin packs & gift catalogue ---------- */
+function vPacks(){
+ return head("Coin packs","What senders see on the Add coins page. Price changes apply to new purchases only.",`<button class="btn pri" onclick="D.packs.push({id:D.packs.length+1,coins:1000,price:399,bonus:100,tag:'',on:0});audit('Added coin pack','1,000 coins');render()">${I("plus",15)} Add pack</button>`)+
+ `<div class="card"><table class="tbl"><thead><tr><th class="num">Coins</th><th class="num">Price (₹)</th><th class="num">Bonus %</th><th>Tag</th><th>Live</th></tr></thead><tbody>
+ ${D.packs.map(p=>`<tr><td class="num"><input class="in tab" style="width:110px;height:34px;text-align:right" type="number" value="${p.coins}" onchange="setPack(${p.id},'coins',+this.value)" aria-label="Coins"></td>
+  <td class="num"><input class="in tab" style="width:110px;height:34px;text-align:right" type="number" step="0.01" value="${p.price}" onchange="setPack(${p.id},'price',+this.value)" aria-label="Price"></td>
+  <td class="num"><input class="in tab" style="width:80px;height:34px;text-align:right" type="number" value="${p.bonus}" onchange="setPack(${p.id},'bonus',+this.value)" aria-label="Bonus"></td>
+  <td><select class="in" style="width:130px;height:34px" onchange="setPack(${p.id},'tag',this.value)">${["","Hot","Popular","Best value"].map(t=>`<option ${p.tag===t?"selected":""} value="${t}">${t||"None"}</option>`).join("")}</select></td>
+  <td><button class="sw ${p.on?"on":""}" role="switch" aria-checked="${!!p.on}" aria-label="Pack live" onclick="setPack(${p.id},'on',${p.on?0:1})"></button></td></tr>`).join("")}</tbody></table></div>`}
+function setPack(id,k,v){const p=D.packs.find(x=>x.id===id);p[k]=v;audit("Edited coin pack",`${n(p.coins)} coins · ${k}`);toast("Coin pack updated");}
+function vGifts(){
+ return head("Gift catalogue","Gifts in the call tray and chat. Turning a gift off hides it immediately; its price stays on past receipts.",`<button class="btn pri" onclick="D.gifts.push({id:D.gifts.length+1,nm:'New gift',e:'🎁',p:499,t:'Common',on:0});audit('Added gift','New gift');render()">${I("plus",15)} Add gift</button>`)+
+ `<div class="card"><table class="tbl"><thead><tr><th>Gift</th><th>Name</th><th class="num">Price (coins)</th><th>Tier</th><th>Live</th></tr></thead><tbody>
+ ${D.gifts.map(gf=>`<tr><td style="font-size:26px">${gf.e}</td><td><input class="in" style="width:180px;height:34px" value="${esc(gf.nm)}" onchange="setGift(${gf.id},'nm',this.value)" aria-label="Gift name"></td>
+  <td class="num"><input class="in tab" style="width:120px;height:34px;text-align:right" type="number" value="${gf.p}" onchange="setGift(${gf.id},'p',+this.value)" aria-label="Price"></td>
+  <td><select class="in" style="width:140px;height:34px" onchange="setGift(${gf.id},'t',this.value)">${["Common","Rare","Legendary"].map(t=>`<option ${gf.t===t?"selected":""}>${t}</option>`).join("")}</select></td>
+  <td><button class="sw ${gf.on?"on":""}" role="switch" aria-checked="${!!gf.on}" aria-label="Gift live" onclick="setGift(${gf.id},'on',${gf.on?0:1})"></button></td></tr>`).join("")}</tbody></table></div>`}
+function setGift(id,k,v){const gf=D.gifts.find(x=>x.id===id);gf[k]=v;audit("Edited gift",`${gf.nm} · ${k}`);toast("Gift updated")}
+
+/* ---------- growth: campaigns, featured, promos, levels & VIP ---------- */
+function vCampaigns(){
+ return head("Campaigns","Push notifications and in-app banners. Pick an audience, write the message and schedule it.",`<button class="btn pri" onclick="S.modal=campModal;render()">${I("plus",15)} New campaign</button>`)+
+ `<div class="card"><table class="tbl"><thead><tr><th>Campaign</th><th>Type</th><th>Audience</th><th>When</th><th class="num">Sent</th><th>Status</th></tr></thead><tbody>
+ ${D.campaigns.map(c=>`<tr><td><b>${esc(c.title)}</b></td><td>${c.type}</td><td>${esc(c.aud)}</td><td>${c.when}</td><td class="num tab">${c.sent}</td>
+  <td><button class="pill ${c.st==="Running"?"p-ok":c.st==="Paused"?"p-mute":"p-acc"}" onclick="campToggle(${c.id})" title="Pause or resume"><i></i>${c.st}</button></td></tr>`).join("")}</tbody></table></div>`}
+function campToggle(id){const c=D.campaigns.find(x=>x.id===id);c.st=c.st==="Paused"?"Running":"Paused";audit(c.st==="Paused"?"Paused campaign":"Resumed campaign",c.title);render()}
+function campModal(){
+ return `<div class="modal" role="dialog" aria-label="New campaign"><header><h2>New campaign</h2></header><div class="body">
+  <label class="f">Type<select class="in" id="cty"><option>Push</option><option>Banner</option></select></label>
+  <label class="f">Audience<select class="in" id="cau"><option>All senders</option><option>All hosts</option><option>Inactive for 7 days</option><option>Low balance (under 100 coins)</option><option>New senders, no recharge yet</option></select></label>
+  <label class="f full">Title<input class="in" id="cti" maxlength="50" placeholder="Your favourite host is live"></label>
+  <label class="f full">Message<input class="in" id="cms" maxlength="120" placeholder="Tap to join before the queue fills up"></label>
+  <label class="f">Send<select class="in" id="cwh"><option>Now</option><option>Tonight, 8:00 pm</option><option>Saturday, 7:00 pm</option></select></label>
+  <div class="note">Push messages respect each user's notification settings and quiet hours.</div></div>
+  <footer><button class="btn ghost" onclick="S.modal=null;render()">Cancel</button><button class="btn pri" onclick="saveCamp()">Schedule</button></footer></div>`}
+function saveCamp(){const v=id=>document.getElementById(id).value;if(!v("cti").trim()){toast("Add a title");return}
+ D.campaigns.unshift({id:D.campaigns.length+1,type:v("cty"),title:v("cti"),aud:v("cau"),when:v("cwh"),st:v("cwh")==="Now"?"Running":"Scheduled",sent:v("cwh")==="Now"?"Sending…":"—"});
+ audit("Created campaign",v("cti"));S.modal=null;toast("Campaign saved")}
+function vFeatured(){const others=D.users.filter(u=>u.role==="Host"&&!D.featured.includes(u.n));
+ return head("Featured hosts","Hosts pinned to the top of Home, in this order. Only verified hosts can be featured.")+
+ `<div class="grid2"><div class="card sec"><h3>On Home now</h3>${D.featured.map((nm,i)=>`<div class="ver"><b>${i+1}</b><div><div><b>${esc(nm)}</b></div></div>
+  <div style="margin-left:auto;display:flex;gap:6px"><button class="btn sm ghost" ${i?"":"disabled"} onclick="moveF(${i},-1)" aria-label="Move up">↑</button><button class="btn sm ghost" ${i<D.featured.length-1?"":"disabled"} onclick="moveF(${i},1)" aria-label="Move down">↓</button><button class="btn sm bad" onclick="D.featured.splice(${i},1);audit('Removed featured host','${esc(nm)}');render()">Remove</button></div></div>`).join("")||`<div class="empty">No featured hosts.</div>`}</div>
+ <div class="card sec"><h3>Add a host</h3>${others.map(u=>`<div class="ver"><div><b>${esc(u.n)}</b><span> · ${u.city}</span></div><button class="btn sm" style="margin-left:auto" onclick="D.featured.push('${esc(u.n)}');audit('Featured host','${esc(u.n)}');render()">Feature</button></div>`).join("")}</div></div>`}
+function moveF(i,d){const f=D.featured;[f[i],f[i+d]]=[f[i+d],f[i]];render()}
+function vPromos(){
+ return head("Promo codes","Bonus coins on recharge. Codes stop working at their use limit or expiry date.",`<button class="btn pri" onclick="newPromo()">${I("plus",15)} New code</button>`)+
+ `<div class="card"><table class="tbl"><thead><tr><th>Code</th><th class="num">Bonus</th><th class="num">Used</th><th>Expires</th><th>Live</th></tr></thead><tbody>
+ ${D.promos.map((p,i)=>`<tr><td class="tab"><b>${p.code}</b></td><td class="num tab">${p.bonus}%</td><td class="num tab">${n(p.used)} / ${n(p.max)}</td><td>${p.exp}</td>
+  <td><button class="sw ${p.on?"on":""}" role="switch" aria-checked="${!!p.on}" aria-label="Code live" onclick="D.promos[${i}].on=D.promos[${i}].on?0:1;audit('Toggled promo code','${p.code}');render()"></button></td></tr>`).join("")}</tbody></table></div>`}
+function newPromo(){const code="ZIMI"+Math.floor(100+Math.random()*900);D.promos.unshift({code,bonus:25,max:1000,used:0,exp:"30 Nov",on:0});audit("Created promo code",code);toast(`${code} created as paused. Edit it, then switch it on.`)}
+function vLevels(){
+ return head("Levels & VIP","Draft settings for the next phase. Nothing here is visible in the app until you launch it.",`<span class="pill p-acc" style="height:30px">Draft</span>`)+
+ `<div class="grid2"><div class="card"><div class="sec" style="padding-bottom:4px"><h3>Levels</h3></div><table class="tbl"><thead><tr><th>Level</th><th class="num">Coins spent to reach</th><th>Perk</th></tr></thead><tbody>
+  ${D.levels.map(([l,c,p])=>`<tr><td><b>Lv ${l}</b></td><td class="num tab">${n(c)}</td><td>${p}</td></tr>`).join("")}</tbody></table></div>
+ <div class="card"><div class="sec" style="padding-bottom:4px"><h3>VIP plans</h3></div><table class="tbl"><thead><tr><th>Plan</th><th class="num">Monthly</th><th>Includes</th></tr></thead><tbody>
+  ${D.vip.map(([nm,p,inc])=>`<tr><td><b>${nm}</b></td><td class="num tab">₹${n(p)}</td><td>${inc}</td></tr>`).join("")}</tbody></table></div></div>`}
+
+/* ---------- support ---------- */
+function vTickets(){const agents=D.team.filter(t=>["Support","Moderator","Super admin","Finance"].includes(t[1])).map(t=>t[0]);
+ return head("Support tickets","Every ticket opens the user's full timeline, so one screen answers most questions.")+
+ `<div class="card"><table class="tbl"><thead><tr><th>Ticket</th><th>User</th><th>Subject</th><th>Assigned to</th><th>Status</th><th></th></tr></thead><tbody>
+ ${D.tickets.map((t,i)=>`<tr><td class="tab">${t.id}<div style="font-size:12px;color:var(--muted)">${t.at}</div></td><td><b>${esc(t.n)}</b></td><td>${esc(t.sub)}</td>
+  <td><select class="in" style="height:32px;width:150px" onchange="D.tickets[${i}].who=this.value;audit('Assigned ticket','${t.id} to '+this.value);render()" aria-label="Assign"><option value="">Unassigned</option>${agents.map(a=>`<option ${t.who===a?"selected":""}>${a}</option>`).join("")}</select></td>
+  <td><span class="pill ${t.st==="Resolved"?"p-ok":t.st==="Open"?"p-warn":"p-mute"}"><i></i>${t.st}</span></td>
+  <td><button class="btn sm" onclick="openTicket(${i})">Open</button></td></tr>`).join("")}</tbody></table></div>`}
+function openTicket(i){S.ticket=i;S.drawer=()=>userDrawer(D.tickets[i].n,i);render()}
+function openUser(nm){S.ticket=null;S.drawer=()=>userDrawer(nm);render()}
+function userDrawer(nm,ti){const u=D.users.find(x=>x.n===nm)||{n:nm,id:"U-"+(30000+nm.length*91),city:"—",role:"Sender",kyc:"—",coins:3200,early:0,reports:0,st:"Active",joined:"2026"};
+ const T=[["Today, 6:02 pm","Call","Video call with Noor Sheikh · 14 min · 1,820 coins"],["Today, 5:40 pm","Payment","Recharge ₹499.99 · 1,125 coins"],["Today, 1:12 pm","Gift","Sent Crown (9,999) to Tara Iyer"],
+  ["Yesterday","Penalty",u.early>2?"Calls paused 10 min: 3 early endings":"None"],["2 Oct","KYC",u.kyc==="Verified"?"Approved by Arjun Mehta":"Pending review"],["28 Sep","Report",u.reports?"Reported for asking for UPI":"No reports"]];
+ const t=ti!=null?D.tickets[ti]:null;
+ return `<aside class="drawer" role="dialog" aria-label="${esc(u.n)}"><header>${avatar(u.n,2)}<div><h2>${esc(u.n)}</h2><span style="font-size:13px;color:var(--muted)">${u.id} · ${u.role} · ${u.city} · ${u.st}</span></div><button class="x" onclick="S.drawer=null;render()" aria-label="Close">&times;</button></header>
+ <div class="body">${t?`<div class="note"><b>${t.id}:</b>&nbsp;${esc(t.sub)}</div>`:""}
+  <div class="kpis" style="margin:0"><div class="card kpi"><span>Coins</span><b>${n(u.coins)}</b></div><div class="card kpi"><span>Early endings</span><b>${u.early}</b></div><div class="card kpi"><span>Reports</span><b>${u.reports}</b></div></div>
+  <div class="tl"><div class="h4" style="margin-bottom:6px">Timeline</div>${T.map(([w,k,d])=>`<div class="ver"><span class="pill p-mute" style="width:78px;justify-content:center">${k}</span><div><div>${esc(d)}</div><span>${w}</span></div></div>`).join("")}</div>
+  ${t?`<label class="f">Reply<select class="in" onchange="document.getElementById('rep').value=this.value"><option value="">Use a saved reply…</option>${CANNED.map(c=>`<option>${esc(c)}</option>`).join("")}</select></label>
+   <textarea class="in" id="rep" style="min-height:110px" placeholder="Write a reply" aria-label="Reply"></textarea>`:""}
+ </div>
+ <footer>${t?`<button class="btn pri" onclick="replyTicket(${ti})">Send and resolve</button><button class="btn ghost" onclick="replyTicket(${ti},1)">Send, keep open</button>`
+  :`<button class="btn bad" onclick="banUser('${esc(u.n)}')">Ban account</button><button class="btn ghost" onclick="S.drawer=null;render()">Close</button>`}</footer></aside>`}
+function replyTicket(i,keep){const v=(document.getElementById("rep").value||"").trim();if(!v){toast("Write a reply first");return}
+ const t=D.tickets[i];t.st=keep?"Waiting on user":"Resolved";if(!t.who)t.who=ME()[0];audit("Replied to ticket",t.id);S.drawer=null;toast(`Reply sent to ${t.n}`)}
+function banUser(nm){const u=D.users.find(x=>x.n===nm);if(u)u.st="Banned";audit("Banned user",nm);S.drawer=null;toast(`${nm} banned. Pending payouts are on hold.`)}
+
+function noAccess(){return head("No access",`Your role (${ME()[1]}) can't open this area. Ask a Super admin if you need it.`)}
+
+/* ---------- render ---------- */
+const VIEWS={dash:vDash,kyc:vKyc,rewards:vRewards,rules:vRules,payouts:vPayouts,users:vUsers,reports:vReports,team:vTeam,audit:vAudit,
+ approvals:vApprovals,live:vLive,refunds:vRefunds,recon:vRecon,packs:vPacks,gifts:vGifts,campaigns:vCampaigns,featured:vFeatured,promos:vPromos,levels:vLevels,tickets:vTickets};
+function render(){
+ const root=document.getElementById("root");
+ if(!VIEWS[S.view])S.view="dash";   /* unknown or removed section: back to the dashboard */
+ root.innerHTML=S.auth?shell((can(S.view)?VIEWS[S.view]:noAccess)()):vGate()+(S.toast?`<div class="toast" role="status">${S.toast}</div>`:"");
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&(S.drawer||S.modal)){S.drawer=null;S.modal=null;render()}});
+render();
+</script>
+</body>
+</html>

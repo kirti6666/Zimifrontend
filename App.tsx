@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import html from "./assets/aurora-bundle";
+import { createBridge, postToWeb, type WebMessage } from "./src/bridge";
 
 /* Matches --canvas in web/aurora.css for each theme. */
 const CANVAS = { light: "#ffffff", dark: "#000000" } as const;
@@ -17,9 +18,10 @@ type Theme = keyof typeof CANVAS;
 const THEME_BRIDGE = `
 (function () {
   var post = function () {
-    window.ReactNativeWebView.postMessage(
-      document.documentElement.dataset.theme || "light"
-    );
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: "theme",
+      data: { theme: document.documentElement.dataset.theme || "light" }
+    }));
   };
   new MutationObserver(post).observe(document.documentElement, {
     attributes: true,
@@ -35,14 +37,24 @@ export default function App() {
   const [failure, setFailure] = useState<string | null>(null);
   const webRef = useRef<WebView>(null);
 
+  // Everything the screens ask of the server goes through src/bridge.ts.
+  const bridge = useMemo(() => createBridge((msg) => postToWeb(webRef, msg)), []);
+  useEffect(() => bridge.close, [bridge]);
+
   const onMessage = useCallback((event: WebViewMessageEvent) => {
-    const next = event.nativeEvent.data;
-    if (next === "light" || next === "dark") setTheme(next);
-  }, []);
+    let msg: WebMessage;
+    try {
+      msg = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return;
+    }
+    if (msg.type === "theme") setTheme(msg.data.theme);
+    else bridge.handle(msg);
+  }, [bridge]);
 
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {
-    setFailure(event.nativeEvent.description || "The Aurora bundle failed to load.");
+    setFailure(event.nativeEvent.description || "The Zimi Live bundle failed to load.");
   }, []);
 
   // The WebView's renderer can be killed under memory pressure; reload instead
@@ -62,7 +74,7 @@ export default function App() {
         <StatusBar style={theme === "dark" ? "light" : "dark"} />
         {failure || !html ? (
           <View style={styles.center}>
-            <Text style={[styles.failTitle, { color: ink }]}>Aurora could not start</Text>
+            <Text style={[styles.failTitle, { color: ink }]}>Zimi Live could not start</Text>
             <Text style={[styles.failBody, { color: ink }]}>
               {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
             </Text>

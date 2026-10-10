@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Aurora",
+    "name": "Zimi Live",
     "slug": "aurora-live-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,6 +14,9 @@
       "package": "com.aurora.liveapp",
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }
