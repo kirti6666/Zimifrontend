@@ -8,7 +8,15 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aurora.liveapp"
+      "bundleIdentifier": "com.aurora.liveapp",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": false
+        },
+        "NSCameraUsageDescription": "Zimi Live uses your camera when you choose to take a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Zimi Live lets you choose photos from your library for your profile."
+      }
     },
     "android": {
       "package": "com.aurora.liveapp",
@@ -16,7 +24,9 @@
       "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/with-onboarding-camera",
+      "./plugins/with-development-network"
     ]
   }
 }

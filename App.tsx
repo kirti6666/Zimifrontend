@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import html from "./assets/aurora-bundle";
-import { createBridge, postToWeb, type WebMessage } from "./src/bridge";
+import { createBridge, postToWeb } from "./src/bridge";
+import { isTrustedDocument, parseWebMessage } from "./src/web-message";
 
 /* Matches --canvas in web/aurora.css for each theme. */
 const CANVAS = { light: "#ffffff", dark: "#000000" } as const;
@@ -20,12 +22,15 @@ const THEME_BRIDGE = `
   var post = function () {
     window.ReactNativeWebView.postMessage(JSON.stringify({
       type: "theme",
-      data: { theme: document.documentElement.dataset.theme || "light" }
+      data: {
+        theme: document.documentElement.dataset.theme || "light",
+        canvas: document.documentElement.dataset.canvas || ""
+      }
     }));
   };
   new MutationObserver(post).observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-theme"],
+    attributeFilter: ["data-theme", "data-canvas"],
   });
   post();
 })();
@@ -33,23 +38,41 @@ true;
 `;
 
 export default function App() {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
+  const [canvasOverride, setCanvasOverride] = useState<string | null>("#190d19");
   const [failure, setFailure] = useState<string | null>(null);
   const webRef = useRef<WebView>(null);
+  const lastHapticAt = useRef(0);
 
   // Everything the screens ask of the server goes through src/bridge.ts.
   const bridge = useMemo(() => createBridge((msg) => postToWeb(webRef, msg)), []);
   useEffect(() => bridge.close, [bridge]);
 
   const onMessage = useCallback((event: WebViewMessageEvent) => {
-    let msg: WebMessage;
-    try {
-      msg = JSON.parse(event.nativeEvent.data);
-    } catch {
-      return;
-    }
-    if (msg.type === "theme") setTheme(msg.data.theme);
-    else bridge.handle(msg);
+    if (!isTrustedDocument(event.nativeEvent.url)) return;
+    const msg = parseWebMessage(event.nativeEvent.data);
+    if (!msg) return;
+    if (msg.type === "theme") {
+      if (msg.data.theme === "light" || msg.data.theme === "dark") setTheme(msg.data.theme);
+      const color = msg.data.canvas;
+      setCanvasOverride(typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : null);
+    } else if (msg.type === "ui.haptic") {
+      // Guard against bursts of pointer events; OS settings still decide if
+      // tactile feedback is available on this device.
+      const now = Date.now();
+      if ((msg.data.kind === "selection" || msg.data.kind === "light") && now - lastHapticAt.current < 45) return;
+      lastHapticAt.current = now;
+      let feedback: Promise<void>;
+      switch (msg.data.kind) {
+        case "selection": feedback = Haptics.selectionAsync(); break;
+        case "success": feedback = Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); break;
+        case "error": feedback = Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); break;
+        case "light": feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); break;
+        default: return;
+      }
+      // Unavailable haptics must never interrupt the UI or network actions.
+      void feedback.catch(() => {});
+    } else bridge.handle(msg);
   }, [bridge]);
 
   // Without this a failed load is just a white screen with nothing in the logs.
@@ -65,7 +88,7 @@ export default function App() {
     return true;
   }, []);
 
-  const canvas = CANVAS[theme];
+  const canvas = canvasOverride ?? CANVAS[theme];
   const ink = INK[theme];
 
   return (
@@ -86,8 +109,14 @@ export default function App() {
           <WebView
             ref={webRef}
             style={[styles.web, { backgroundColor: canvas }]}
-            originWhitelist={["*"]}
+            originWhitelist={["https://aurora.localhost", "about:blank"]}
             source={{ html, baseUrl: "https://aurora.localhost/" }}
+            onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
+            setSupportMultipleWindows={false}
+            allowFileAccess={false}
+            allowFileAccessFromFileURLs={false}
+            allowUniversalAccessFromFileURLs={false}
+            mixedContentMode="never"
             injectedJavaScript={THEME_BRIDGE}
             onMessage={onMessage}
             onError={onError}
@@ -103,6 +132,7 @@ export default function App() {
             // containers, so the WebView's outer scroll view is left alone:
             // disabling it is an iOS-only no-op here that can block inner scroll.
             javaScriptEnabled
+            webviewDebuggingEnabled={typeof __DEV__ !== "undefined" && __DEV__}
             domStorageEnabled
             bounces={false}
             overScrollMode="never"

@@ -51,13 +51,14 @@ const INIT = `</script>
 (function () {
   var wrapper = document.getElementById("scroll-root");
   var content = document.getElementById("screen");
+  var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var lenis = new Lenis({
     wrapper: wrapper,
     content: content,
     eventsTarget: wrapper,
     autoRaf: true,
-    duration: 0.9,
-    smoothWheel: true,
+    duration: reducedMotion ? 0 : 0.9,
+    smoothWheel: !reducedMotion,
     syncTouch: false,
     wheelMultiplier: 0.9,
   });
@@ -82,11 +83,14 @@ const page = (demo) =>
   read("web/vendor/lenis.css") +
   read("web/aurora.css") +
   read("web/app.css") +
+  read("web/onboarding.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
   `window.ZIMI_DEMO = ${demo};\n` +
   read("web/bridge.js") +
+  read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
+    "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
   read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +
   TAIL;
 

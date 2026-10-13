@@ -11,19 +11,39 @@ export interface User {
   role: Role;
   city?: string;
   about?: string;
+  email?: string;
+  avatarUrl?: string;
+  avatarKey?: string;
+  coverUrl?: string;
+  coverKey?: string;
+  photos?: { key: string; url: string }[];
+  languages?: string[];
+  interests?: string[];
+  category?: string;
+  adultConfirmed?: boolean;
+  onboardingPreference?: "creator" | "member";
+  hostStatus?: string;
 }
 
 /* Returned by login and by GET /me. */
 export interface Account {
   user: User;
-  balance: number; // coins available to spend
-  earned: number; // coins earned from calls and gifts
+  balance?: number; // Omitted until the wallet has loaded.
+  earned?: number;
   verification: Verification;
+  requiresOnboarding: boolean;
 }
 
 export interface Session extends Account {
-  token: string;
+  tokens: import("../session").SessionTokens;
   isNew: boolean;
+}
+
+export interface UserPost {
+  id: string;
+  mediaUrl: string;
+  kind: "photo" | "video";
+  caption: string;
 }
 
 export interface Host {
@@ -34,11 +54,13 @@ export interface Host {
   tag?: string;
   languages?: string[];
   age?: number;
-  ratePerMin: number;
-  entryFee: number;
-  online: boolean;
-  live: boolean;
-  followers: number;
+  avatarUrl?: string;
+  coverUrl?: string;
+  ratePerMin?: number;
+  entryFee?: number;
+  online?: boolean;
+  live?: boolean;
+  followers?: number;
   top?: boolean;
   isNew?: boolean;
   following?: boolean;
@@ -48,6 +70,8 @@ export interface Host {
 export interface Person {
   id: string;
   name: string;
+  avatarUrl?: string;
+  coverUrl?: string;
   city?: string;
   level?: number;
   followers?: number;
@@ -79,17 +103,20 @@ export interface CallRecord {
   user: Host;
   time: string;
   duration: string;
-  coins: number;
+  coins?: number;
 }
 
 export interface Transaction {
   title: string;
   time: string;
   coins: number; // positive for coins in, negative for coins out
-  kind: "call" | "gift" | "topup";
+  kind: "call" | "gift" | "topup" | "withdrawal" | "reward";
+  amountPaise?: number;
 }
 
 export interface Wallet {
   coins: number;
-  earned: number;
+  earningsPaise: number;
+  reservedPaise?: number;
+  earned?: number;
 }
