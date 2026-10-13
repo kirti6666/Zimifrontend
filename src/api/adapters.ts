@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, CallRecord, Catalog, ChatSummary, HomeData, HomeStream, Host, Message, Mission, MissedCall, Purchase, StreamChat, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, Purchase, StreamChat, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -33,6 +33,7 @@ export function accountFrom(value: unknown): Account {
       languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), adultConfirmed: user.adultConfirmed === true,
       ...(user.onboardingPreference === "creator" || user.onboardingPreference === "member" ? { onboardingPreference: user.onboardingPreference } : {}),
       hostStatus: string(user.hostStatus),
+      isVerifiedHost: user.isVerifiedHost === true,
     },
     verification: verificationOf(user.hostStatus), requiresOnboarding: user.onboardingStatus === "pending" || data.requiresOnboarding === true,
   };
@@ -49,6 +50,7 @@ export function hostFrom(value: unknown): Host {
     id: idOf(host), name: string(host.name), city: string(host.city), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
     languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.entryFee), followers: finite(host.followers),
     about: string(host.bio), verified: host.isVerifiedHost === true,
+    ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
     ...(typeof (host.isOnline ?? host.online) === "boolean" ? { online: (host.isOnline ?? host.online) as boolean } : {}), ...(typeof host.live === "boolean" ? { live: host.live } : {}),
     ...(typeof host.availableForCall === "boolean" ? { availableForCall: host.availableForCall } : {}),
     ...(host.stream && typeof host.stream === "object" ? { stream: streamFrom(host.stream, idOf(host)), live: true } : host.stream === null ? { stream: null, live: false } : {}),
@@ -97,15 +99,25 @@ export function timeOf(value: unknown): string {
   const date = new Date(string(value));
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
-export function chatsFrom(value: unknown, userId: string): { chats: ChatSummary[] } {
-  return { chats: items(value).map(record).map(chat => {
+export function chatsFrom(value: unknown, userId: string): ChatsData {
+  const data = record(value);
+  const chats = items(data).map(record).map(chat => {
     const peer = (Array.isArray(chat.participants) ? chat.participants : []).find(person => idOf(person) !== userId);
     const last = chat.lastMessage && typeof chat.lastMessage === "object" ? record(chat.lastMessage) : {};
-    return { user: hostFrom(peer), last: string(last.text), time: timeOf(chat.lastMessageAt), unread: finite(chat.unread) ?? 0 };
-  }) };
+    if (!peer || !idOf(peer)) throw new ApiError("A conversation could not be loaded. Try again.", 502);
+    const lastAt = string(chat.lastMessageAt) || string(last.createdAt);
+    return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
+      lastKind: "text" as const, lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
+  });
+  return { chats, total: typeof data.total === "number" ? count(data.total) : chats.length, page: count(data.page) || 1, limit: count(data.limit) || 20,
+    unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : chats.reduce((sum, chat) => sum + chat.unread, 0),
+    unreadConversations: typeof data.unreadConversations === "number" ? count(data.unreadConversations) : chats.filter(chat => chat.unread > 0).length };
 }
-export function messagesFrom(value: unknown, userId: string): { messages: Message[] } {
-  return { messages: items(value).map(record).reverse().map(message => ({ mine: idOf(message.senderId) === userId, text: string(message.text), time: timeOf(message.createdAt) })) };
+export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string } {
+  const data = record(value);
+  return { messages: items(data).map(record).reverse().map(message => ({ id: idOf(message), mine: idOf(message.senderId) === userId, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt), kind: "text" })),
+    ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
 export function callsFrom(value: unknown, userId: string): { calls: CallRecord[] } {
   return { calls: items(value).map(record).map(call => {

@@ -172,6 +172,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
  if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
   homeRequestStreamClose(Home.stream.id,Home.hosting);
   window.ZimiMedia?.stop();Home.stream=null;Home.messages=[];
@@ -183,7 +184,7 @@ function go(v,id){
  if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
- if(v==="kyc")S.kerr=0;
+ if(v==="kyc"){S.kerr=0;S.creatorSetup=true}
  if(v==="precall"){S.scam=0;S.nextCallVoice=false}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
@@ -194,6 +195,7 @@ function go(v,id){
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
  if(v==='editprofile')S.editBack=S.v==='settings'?'settings':'profile';
+ const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
@@ -212,7 +214,7 @@ function go(v,id){
  if(v==="thread"){S.msgs=DEMO?TH.map(m=>m.slice()):[];Native.send("chat.open",{with:S.h})}
  if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
- r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"))}
+ r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"));window.ZimiNavigation?.after(navigationChange)}
 
 /* Content loading follows bridge requests; cached previews are already ready. */
 function loading(key){return !DEMO&&!!window.contentPending?.(key)}
@@ -935,7 +937,7 @@ let mediaSequence=0;
 async function pickMedia(e,k){
  const files=Array.from(e.target.files||[]);e.target.value="";
  if(!files.length||S.profileSaving||S.mediaPreparing||S.postPublishing||!["avatar","cover","posts"].includes(k))return;
- if(k==="posts"&&!isHost()&&!DEMO)return appNotice("Your creator profile must be approved before you can publish posts.");
+ if(k==="posts"&&!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
  const owner=S.user;S.mediaPreparing=true;S.mediaError="";r();
  try{
   const image=await obReadPhoto(files[0]);
@@ -949,7 +951,7 @@ async function pickMedia(e,k){
 }
 function publishPost(){
  if(S.postPublishing||S.profileSaving||S.mediaPreparing||!S.postDraftData)return;
- if(!DEMO&&!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
+ if(!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
  if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";r();return appNotice("Preview post added.")}
  S.postPublishing=true;S.postError="";S.postRequestId=++mediaSequence;
  Native.send("media.post.create",{photo:S.postDraftData,caption:S.postCaption||"",requestId:S.postRequestId});r();
@@ -972,7 +974,7 @@ function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
- ${isHost()||DEMO?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
+ ${isHost()?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
   <label class="editpost add">${I('grid',18)} Add photo<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'posts')" ${disabled}></label>
   ${(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
   ${!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
@@ -985,11 +987,13 @@ function vProfile(){
   recv:host?2090372+A().earn-184250:A().earn,sent:246000+(S.gifted||0),fol:host?"2.4K":"38",following:181};
  return profilePage(p,me,true)}
 
-function kycLabel(){const a=A(),k=a.kyc;
- if(k==="verified")return isHost()?"Verified · badge active":"Verified · payouts on";
- if(k==="pending")return "Under review";
- if(!isHost()&&a.earn<PAYOUT_MIN)return `Unlocks at ${n(PAYOUT_MIN)} earned coins`;
- return isHost()?"Not started · needed to go live":"Ready · needed before your first payout"}
+function kycLabel(){
+ if(isHost())return "Admin approved";
+ const status=S.hostAccess?.hostStatus||S.user?.hostStatus;
+ if(status==="pending"||A().kyc==="pending")return "Under admin review";
+ if(status==="suspended")return "Host access suspended";
+ if(status==="rejected")return "Update your application";
+ return "Apply for admin approval"}
 
 function vSettings(){
  const rows=[
@@ -1026,9 +1030,9 @@ function vSettings(){
     <span class="tx"><span class="t1" style="display:block">Show MVPs on my profile</span><span class="t2" style="display:block">${A().mvp?"Everyone can see your top supporters":"Only you can see your top supporters"}</span></span><span class="switch ${A().mvp?'on':''}"></span></button>
   </div></div>
 
-  <div class="psec"><h3>Earnings</h3><div class="plist">
+  <div class="psec"><h3>Creator account</h3><div class="plist">
    <button class="pitem" onclick="go('kyc')"><span class="pico">${I('shield',17)}</span>
-    <span class="tx"><span class="t1" style="display:block">${isHost()?"KYC and blue tick":"Payout verification"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
+    <span class="tx"><span class="t1" style="display:block">${isHost()?"Host approval":"Creator application"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
    ${isHost()?`<button class="pitem" onclick="go('awards')"><span class="pico">${I('star',17)}</span>
     <span class="tx"><span class="t1" style="display:block">Awards</span><span class="t2" style="display:block">${S.tasks.filter(t=>t.p>=t.goal&&!t.claimed).length||"No"} reward(s) ready to receive</span></span><span class="ch">&rsaquo;</span></button>`:""}
   </div></div>
@@ -1053,9 +1057,9 @@ function vSettings(){
 /* ---- Roles -------------------------------------------------------------
    Two kinds of account share one app. A sender calls hosts and gifts them;
    a host goes online, takes calls and earns. Both can buy coins and gift,
-   both have a wallet; payouts need KYC (full for hosts, light for senders). */
+   both have a wallet; only admin-approved hosts can withdraw earnings. */
 const A=()=>S.acct[S.role];
-const isHost=()=>S.role==="host";
+const isHost=()=>S.role==="host"&&(!window.ZimiHostAccess||isApprovedHost());
 const MY_RATE=TIERS[1]/60;              /* host per-minute rate: 3,000/h tier */
 /* Entry fee rules. The sender pays when the host picks up and it is not refundable.
    The host is only paid the fee once the call passes FEE_HOLD seconds; a call that
@@ -1222,7 +1226,7 @@ function incBanner(){const c=S.inc;
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
 function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting")}
-function acceptRing(){if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
+function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
  S.inc=c||nextCaller();
@@ -1253,7 +1257,7 @@ function confirmEnd(){
    <p class="warn">This would be early ending ${nth} today. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</p>
    <button class="keep" onclick="S.confirm=0;r()">Keep talking</button>
    <button class="anyway" onclick="S.confirm=0;${k==="switch"?"acceptInc()":"endCall()"}">${k==="switch"?"Switch anyway":"End call anyway"}</button></div></div>`}
-function acceptInc(){clearTimeout(S.it);
+function acceptInc(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;clearTimeout(S.it);
  if(!S.inc)return r();
  logFee();
  const from=S.caller,to=S.inc;
@@ -1386,7 +1390,7 @@ function feeSummary(F){
 function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
 
 /* ---- Awards (host tasks) ---- */
-function claimAward(i){const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;if(!DEMO){Native.send("awards.claim",{task:t.k});return}t.claimed=1;A().earn+=t.rw;r()}
+function claimAward(i){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;if(!DEMO){Native.send("awards.claim",{task:t.k});return}t.claimed=1;A().earn+=t.rw;r()}
 function resetIn(){const now=new Date(),mid=new Date(now);mid.setHours(24,0,0,0);
  const m=Math.floor((mid-now)/60000);return `${Math.floor(m/60)}h ${m%60}m`}
 function vAwards(){
@@ -1444,6 +1448,7 @@ function toggleMvp(){A().mvp=A().mvp?0:1;Native.send("settings.set",{showMvps:!!
 
 /* ---- Wallet earnings, KYC and payouts ---- */
 function earnCard(){
+ if(!isHost())return "";
  const a=A(),k=a.kyc,host=isHost(),locked=!host&&a.earn<PAYOUT_MIN;
  let msg,act="";
  if(locked){msg=`Earn ${n(PAYOUT_MIN)} coins from gifts to unlock payouts.`;
@@ -1509,8 +1514,8 @@ function vKyc(){
    :"Thank you for submitting your details. We're verifying them now, which usually takes just a few minutes. Once approved, you can withdraw your earnings."}</p>
   ${kycStatus(host)}
   <button class="editsave" onclick="go('home')">Back to Home</button>
-  ${DEMO?`<button class="kdemo" onclick="approveKyc()">Approve now (preview only)</button>`:""}</div></div>`;
- if(a.kyc==="verified")return `<div class="acct"><div class="kpend">
+</div></div>`;
+ if(a.kyc==="verified"&&isHost())return `<div class="acct"><div class="kpend">
   <span class="kspin ok">${I("check",26)}</span>
   <h2 class="disp">${host?"You're verified":"Payouts verified"}</h2>
   <p>${host?"Your verified badge is now on your profile. You can start going live and withdraw your earnings anytime.":"You can withdraw your earnings anytime."}</p>
@@ -1554,7 +1559,7 @@ function vPayout(){
   ${S.perr?`<div class="kycerr">Enter the UPI ID to send your money to.</div>`:""}
   <div class="pyamt"><span>You receive</span><b>${inr(amt)}</b></div>
   <button class="editsave" ${ok?"":"disabled"} onclick="withdraw()">Withdraw ${inr(amt)}</button></div>`}
-function withdraw(){const i=document.getElementById("pamt"),a=A();
+function withdraw(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const i=document.getElementById("pamt"),a=A();
  if(!(S.kf.payout||"").trim()){S.perr=1;S.pamt=i?i.value:S.pamt;return r()}S.perr=0;
  const amt=Math.min(a.earn,parseInt(i?i.value:S.pamt,10)||0);
  if(amt<WITHDRAW_MIN){S.pamt=String(amt);return r()}
@@ -1608,6 +1613,8 @@ function appNotice(message){
  clearTimeout(appNoticeTimer);appNoticeTimer=setTimeout(()=>notice.remove(),7000);
 }
 function r(){
+ if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
+ const inboxFocus=window.zcCaptureFocus?.();
  obSyncTheme();
  if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
@@ -1629,7 +1636,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus)}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1705,7 +1712,7 @@ Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")go("chats")});
-Native.on("call.incoming",d=>{const c=personFrom({...d.from,callId:d.callId});
+Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;
  if(S.v==="hcall")return ringIncoming(c);

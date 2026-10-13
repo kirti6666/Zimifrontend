@@ -62,6 +62,7 @@ const INIT = `</script>
     syncTouch: false,
     wheelMultiplier: 0.9,
   });
+  window.zimiScrollTo = function (top) { lenis.resize(); lenis.scrollTo(top, { immediate: true }); };
   new MutationObserver(function () { lenis.resize(); })
     .observe(content, { childList: true, subtree: true });
   document.addEventListener("aurora:navigate", function () {
@@ -85,6 +86,8 @@ const page = (demo) =>
   read("web/app.css") +
   read("web/onboarding.css") +
   read("web/home.css") +
+  read("web/chats.css") +
+  read("web/navigation.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -93,9 +96,12 @@ const page = (demo) =>
   read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
     "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
   read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +
+  "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/home.js") +
   "\n" + read("web/media.js") +
+  "\n" + read("web/chats.js") +
+  "\n" + read("web/navigation.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

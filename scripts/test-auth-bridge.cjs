@@ -10,6 +10,7 @@ const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(resol
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const tokenPair = (id = 'alice') => ({ accessToken: `${id}.access.${'a'.repeat(30)}`, refreshToken: `${id}.refresh.${'r'.repeat(30)}`, expiresIn: 900, refreshExpiresIn: 86400 });
 const account = (id = 'alice') => ({ user: { id, name: id, role: 'sender' }, verification: 'none', requiresOnboarding: true });
+const approvedAccount = (id = 'alice') => ({ ...account(id), user: { ...account(id).user, role: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified', requiresOnboarding: false });
 const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phone: '+919876543210', code: '123456', role: 'sender', signup: true, requestId } });
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
 
@@ -454,6 +455,7 @@ test('checkout opens provider outside WebView once and session changes cancel la
 
 test('mission and gift rejection never credit or acknowledge success', async () => {
   const h = harness();
+  h.overrides.me = () => approvedAccount();
   h.overrides.claimAward = () => { throw new h.ApiError('Mission target has not been reached', 409); };
   h.overrides.sendGift = () => { throw new h.ApiError('Not enough coins', 409); };
   h.bridge.handle({ type: 'awards.claim', data: { task: 'mission-id' } });
@@ -568,14 +570,215 @@ test('logout during call creation retires the result without using a replacement
 test('ending while accept is pending cannot reconnect after the accept response', async () => {
   const h = harness(), accepted = deferred();
   await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => approvedAccount();
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.acceptCall = () => accepted.promise;
   h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming-id' } });
+  await settle(); assert.equal(h.count('acceptCall'), 1);
   h.bridge.handle({ type: 'call.end', data: {} });
   accepted.resolve({ peerId: 'member-id', voice: true }); await settle();
   h.live[0].onEvent({ type: 'call.connected', data: { callId: 'incoming-id', initiator: false, peerId: 'member-id', voice: true } }); await settle();
   assert.equal(h.find('call.connected').length, 0);
   assert.ok(h.count('endCall') >= 1);
+  h.bridge.close();
+});
+
+test('host capability requires the complete approved server tuple', async () => {
+  const h = harness(), { approvedHost } = h.load('src/host-access.ts');
+  assert.equal(approvedHost(undefined), false);
+  assert.equal(approvedHost(approvedAccount()), true);
+  for (const patch of [{ role: 'sender' }, { hostStatus: undefined }, { hostStatus: 'pending' }, { hostStatus: 'rejected' }, { hostStatus: 'suspended' }, { isVerifiedHost: undefined }, { isVerifiedHost: false }]) {
+    assert.equal(approvedHost({ ...approvedAccount(), user: { ...approvedAccount().user, ...patch } }), false);
+  }
+  assert.equal(approvedHost({ ...approvedAccount(), verification: 'pending' }), false);
+  h.bridge.close();
+});
+
+test('unapproved native host actions cannot reach stream, online presence, call accept or publishing endpoints', async () => {
+  const cases = [account(), ...['pending','rejected','suspended','approved'].map(status => ({ ...approvedAccount(), user: { ...approvedAccount().user, hostStatus: status, isVerifiedHost: status !== 'approved' } }))];
+  for (const denied of cases) {
+    const h = harness(); h.overrides.me = () => denied;
+    h.bridge.handle({ type: 'stream.start', data: { title: 'Blocked broadcast', category: 'Music' } });
+    h.bridge.handle({ type: 'presence.set', data: { online: true, visible: true } });
+    h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming' } });
+    h.bridge.handle({ type: 'media.post.create', data: { photo: 'data:image/png;base64,AAAA', caption: 'Blocked post', requestId: 2 } });
+    h.bridge.handle({ type: 'awards.claim', data: { task: 'mission-id' } });
+    h.bridge.handle({ type: 'payout.request', data: { coins: 100, upi: 'member@upi' } });
+    await settle();
+    for (const name of ['startStream', 'setPresence', 'acceptCall', 'createPost', 'claimAward', 'requestPayout']) assert.equal(h.count(name), 0, `${denied.user.hostStatus || 'member'} cannot invoke ${name}`);
+    assert.ok(h.find('host.access').every(event => event.data.approved === false));
+    assert.equal(h.find('stream.opened').length, 0); assert.equal(h.find('post.saved').length, 0); assert.equal(h.find('call.connected').length, 0);
+    h.bridge.handle({ type: 'presence.set', data: { online: false, visible: false } });
+    h.bridge.handle({ type: 'stream.end', data: { streamId: 'owned-cleanup' } }); await settle();
+    assert.equal(h.count('setPresence'), 1, 'Going offline remains available for cleanup');
+    assert.equal(h.count('endStream'), 1, 'Ending an existing broadcast remains available');
+    h.bridge.close();
+  }
+});
+
+test('approved native host actions revalidate server approval before execution', async () => {
+  const h = harness(); h.overrides.me = () => approvedAccount();
+  h.overrides.startStream = () => ({ id: 'stream-id' }); h.overrides.streamMessages = () => [];
+  h.overrides.setPresence = (online, visible) => ({ online, visible });
+  h.overrides.acceptCall = () => ({ peerId: 'member', voice: false });
+  h.overrides.createPost = () => ({ id: 'post-id' });
+  h.bridge.handle({ type: 'stream.start', data: { title: 'Approved broadcast', category: 'Music' } });
+  h.bridge.handle({ type: 'presence.set', data: { online: true, visible: true } });
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming' } });
+  h.bridge.handle({ type: 'media.post.create', data: { photo: 'data:image/png;base64,AAAA', caption: 'Approved post', requestId: 2 } }); await settle();
+  for (const name of ['startStream','setPresence','acceptCall','createPost']) assert.equal(h.count(name), 1);
+  assert.equal(h.count('me'), 4); assert.ok(h.calls.filter(call => call.name === 'me').every(call => call.args[0] === true), 'Each host action bypasses older cached account reads');
+  assert.equal(h.find('stream.opened').length, 1); assert.equal(h.find('call.connected').length, 1); assert.equal(h.find('post.saved').length, 1);
+  h.bridge.close();
+});
+
+test('admin revocation retires hosted activity and cannot be undone by a pending approval response', async () => {
+  const h = harness(), permission = deferred(), revoked = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startStream = () => ({ id: 'hosted' }); h.overrides.streamMessages = () => [];
+  h.bridge.handle({ type: 'stream.start', data: { title: 'Session', category: 'Music' } }); await settle();
+  h.overrides.me = () => permission.promise;
+  h.bridge.handle({ type: 'presence.set', data: { online: true, visible: true } });
+  h.overrides.me = () => revoked.promise;
+  h.live[0].onEvent({ type: 'verification.status', data: { status: 'rejected', hostStatus: 'suspended' } });
+  assert.equal(h.find('host.access').at(-1).data.approved, false, 'Revocation is immediate before the account refetch completes');
+  assert.equal(h.find('stream.ended').at(-1).data.streamId, 'hosted');
+  permission.resolve(approvedAccount()); await settle();
+  assert.equal(h.count('setPresence'), 0, 'An older positive approval cannot authorize after revocation');
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
+  revoked.resolve({ ...account(), user: { ...account().user, hostStatus: 'suspended', isVerifiedHost: false } }); await settle();
+  assert.equal(h.count('endStream'), 1);
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'denied-incoming', from: { id: 'member' } } }); await settle();
+  assert.equal(h.find('call.incoming').length, 0); assert.equal(h.count('declineCall'), 1);
+  h.bridge.close();
+});
+
+test('a stream created while approval is revoked is ended without opening the camera room', async () => {
+  const h = harness(), pending = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startStream = () => pending.promise;
+  h.bridge.handle({ type: 'stream.start', data: { title: 'Session', category: 'Music' } }); await settle();
+  assert.equal(h.count('startStream'), 1);
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, hostStatus: 'suspended', isVerifiedHost: false } });
+  h.live[0].onEvent({ type: 'verification.status', data: { status: 'rejected', hostStatus: 'suspended' } });
+  pending.resolve({ id: 'late-hosted' }); await settle();
+  assert.equal(h.find('stream.opened').length, 0); assert.equal(h.count('endStream'), 1);
+  assert.equal(h.calls.find(call => call.name === 'endStream').args[0], 'late-hosted');
+  h.bridge.close();
+});
+
+test('a newer denial from the account API invalidates an older positive check even without a socket review', async () => {
+  const h = harness(), older = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => older.promise;
+  h.bridge.handle({ type: 'presence.set', data: { online: true, visible: true } });
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, hostStatus: 'suspended', isVerifiedHost: false } });
+  h.bridge.handle({ type: 'stream.start', data: { title: 'Denied', category: 'Music' } }); await settle();
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
+  older.resolve(approvedAccount()); await settle();
+  assert.equal(h.count('startStream'), 0); assert.equal(h.count('setPresence'), 0);
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
+  h.bridge.close();
+});
+
+test('an approval notification alone never grants host capability without confirmed account metadata', async () => {
+  const h = harness(), refresh = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => refresh.promise;
+  h.live[0].onEvent({ type: 'verification.status', data: { status: 'verified', hostStatus: 'approved' } });
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
+  refresh.resolve({ ...approvedAccount(), user: { ...approvedAccount().user, isVerifiedHost: false } }); await settle();
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
+  h.bridge.close();
+});
+
+test('reconnect revalidates approval while preserving an established host call until a confirmed denial', async () => {
+  const h = harness(), reconnect = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.acceptCall = () => ({ peerId: 'member', voice: false });
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'active-host-call' } }); await settle();
+  h.overrides.me = () => reconnect.promise;
+  const before = h.count('me');
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: false } });
+  let access = h.find('host.access').at(-1).data;
+  assert.equal(access.approved, false); assert.equal(access.checking, true); assert.equal(access.role, 'host');
+  assert.equal(h.count('endCall'), 0, 'Temporary transport loss does not terminate an authorized active call');
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } }); await settle();
+  assert.equal(h.count('me'), before + 1, 'Reconnect must fetch the current account even when no review event was received');
+  assert.equal(h.calls.filter(call => call.name === 'me').at(-1).args[0], true);
+  assert.equal(h.find('host.access').at(-1).data.approved, false, 'New hosting remains unavailable while approval is unknown');
+  reconnect.resolve(approvedAccount()); await settle();
+  access = h.find('host.access').at(-1).data;
+  assert.equal(access.approved, true); assert.equal(access.checking, false); assert.equal(h.count('endCall'), 0);
+  const denied = deferred(); h.overrides.me = () => denied.promise;
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: false } });
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } });
+  assert.equal(h.count('endCall'), 0);
+  denied.resolve({ ...account(), user: { ...account().user, hostStatus: 'suspended', isVerifiedHost: false } }); await settle();
+  access = h.find('host.access').at(-1).data;
+  assert.equal(access.approved, false); assert.equal(access.checking, false); assert.equal(access.hostStatus, 'suspended');
+  assert.equal(h.find('call.ended').at(-1).data.callId, 'active-host-call'); assert.equal(h.count('endCall'), 1);
+  h.bridge.close();
+});
+
+test('a failed reconnect approval check stays closed to new hosting without ending the existing broadcast', async () => {
+  const h = harness(), checking = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startStream = () => ({ id: 'existing-live' }); h.overrides.streamMessages = () => [];
+  h.bridge.handle({ type: 'stream.start', data: { title: 'Live', category: 'Music' } }); await settle();
+  h.overrides.me = () => checking.promise;
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } });
+  checking.reject(new h.ApiError('Connection unavailable', 503)); await settle();
+  const access = h.find('host.access').at(-1).data;
+  assert.equal(access.approved, false); assert.equal(access.checking, true);
+  assert.equal(h.count('endStream'), 0); assert.equal(h.find('stream.ended').length, 0);
+  assert.equal(h.find('operation.error').at(-1).data.action, 'host.refresh');
+  h.bridge.close();
+});
+
+test('profile responses crossing an admin review refetch authority before acknowledging the saved profile', async () => {
+  for (const approved of [false, true]) {
+    const h = harness(), saved = deferred();
+    const initial = approved ? { ...account(), requiresOnboarding: false } : approvedAccount();
+    await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => initial;
+    h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.overrides.saveProfile = () => saved.promise;
+    h.bridge.handle({ type: 'profile.save', data: { name: 'Saved Name', requestId: 27 } });
+    const latest = approved ? approvedAccount() : { ...account(), user: { ...account().user, hostStatus: 'suspended', isVerifiedHost: false }, requiresOnboarding: false };
+    latest.user.name = 'Saved Name'; h.overrides.me = () => latest;
+    h.live[0].onEvent({ type: 'verification.status', data: { status: approved ? 'verified' : 'rejected', hostStatus: approved ? 'approved' : 'suspended' } }); await settle();
+    const readsAfterReview = h.count('me');
+    saved.resolve(initial); await settle();
+    const delivered = h.find('profile.saved').at(-1).data;
+    assert.equal(delivered.requestId, 27); assert.equal(delivered.account.user.name, 'Saved Name', 'Ordinary profile data is retained from the current saved account');
+    assert.equal(delivered.account.user.role, approved ? 'host' : 'sender');
+    assert.equal(delivered.account.user.isVerifiedHost, approved);
+    assert.equal(delivered.account.user.hostStatus, approved ? 'approved' : 'suspended');
+    assert.equal(h.count('me'), readsAfterReview + 1, 'A stale save response is replaced by a fresh account read');
+    h.bridge.close();
+  }
+});
+
+test('a delayed session restore cannot regrant an approval revoked while the account request was pending', async () => {
+  const h = harness(), older = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => older.promise;
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, hostStatus: 'rejected', isVerifiedHost: false }, requiresOnboarding: false });
+  h.live[0].onEvent({ type: 'verification.status', data: { status: 'rejected', hostStatus: 'rejected' } }); await settle();
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
+  older.resolve(approvedAccount()); await settle();
+  const restored = h.find('session').at(-1).data;
+  assert.equal(restored.user.role, 'sender'); assert.equal(restored.user.hostStatus, 'rejected'); assert.equal(restored.user.isVerifiedHost, false);
+  assert.equal(h.find('session').length, 2, 'Restore completes normally using current account state');
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
   h.bridge.close();
 });
 
@@ -631,6 +834,113 @@ test('thread loading follows the newest conversation and ends after its messages
   const thread = h.find('data.thread')[0]; assert.equal(thread.data.with, 'new-peer');
   const done = h.find('data.loading').filter(event => event.data.resource === 'thread').at(-1);
   assert.equal(done.data.loading, false); assert.ok(h.posts.indexOf(done) > h.posts.indexOf(thread));
+  h.bridge.close();
+});
+
+test('conversation reload validates page requests and keeps the latest response authoritative', async () => {
+  const h = harness(), old = deferred(), latest = deferred();
+  for (const page of [0, -1, 1.5, '2', 10001]) {
+    const message = { type: 'chats.reload', data: { page } };
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null);
+    h.bridge.handle(message);
+  }
+  assert.equal(h.count('chats'), 0);
+  h.overrides.chats = page => page === 1 ? old.promise : latest.promise;
+  h.bridge.handle({ type: 'chats.reload', data: {} });
+  h.bridge.handle({ type: 'chats.reload', data: { page: 2 } });
+  old.resolve({ chats: [{ last: 'Stale first page' }], page: 1 }); await settle();
+  assert.equal(h.find('data.chats').length, 0);
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'chats' && !event.data.loading).length, 0);
+  latest.resolve({ chats: [{ last: 'Current second page' }], page: 2, unreadCount: 8 }); await settle();
+  assert.equal(h.find('data.chats')[0].data.page, 2);
+  assert.equal(h.find('data.chats')[0].data.unreadCount, 8);
+  assert.equal(h.find('data.loading').at(-1).data.page, 2);
+  assert.equal(h.find('data.loading').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('mark all read waits for the server, rejects duplicate submissions and reloads real unread counts', async () => {
+  const h = harness(), write = deferred(), reload = deferred();
+  h.overrides.readAllChats = () => write.promise;
+  h.overrides.chats = () => reload.promise;
+  h.bridge.handle({ type: 'chats.readAll', data: {} });
+  h.bridge.handle({ type: 'chats.readAll', data: {} });
+  await settle();
+  assert.equal(h.count('readAllChats'), 1);
+  assert.equal(h.find('chats.readAll').length, 0, 'A tap is not a read acknowledgment');
+  assert.equal(h.find('data.chats').length, 0);
+  write.resolve({ updated: 9, readAt: '2026-10-13T09:00:00.000Z' }); await settle();
+  assert.equal(h.find('chats.readAll')[0].data.updated, 9);
+  assert.equal(h.count('chats'), 1);
+  assert.equal(h.find('data.chats').length, 0, 'Do not fabricate zero unread after acknowledgment');
+  reload.resolve({ chats: [{ unread: 1 }], unreadCount: 1, unreadConversations: 1 }); await settle();
+  assert.equal(h.find('data.chats')[0].data.unreadCount, 1, 'A message arriving during read-all stays unread');
+  assert.equal(h.find('data.loading').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('failed or retired read-all work cannot acknowledge or clear unread conversations', async () => {
+  const h = harness();
+  h.overrides.readAllChats = () => { throw new h.ApiError('Read status could not be saved', 503); };
+  h.bridge.handle({ type: 'chats.readAll', data: {} }); await settle();
+  assert.equal(h.find('chats.readAll').length, 0);
+  assert.equal(h.count('chats'), 0);
+  assert.equal(h.find('operation.error')[0].data.action, 'chats.readAll');
+  const pending = deferred(); h.overrides.readAllChats = () => pending.promise;
+  h.bridge.handle({ type: 'chats.readAll', data: {} });
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  pending.resolve({ updated: 3, readAt: '2026-10-13T09:00:00.000Z' }); await settle();
+  assert.equal(h.find('chats.readAll').length, 0);
+  assert.equal(h.count('chats'), 0);
+  h.bridge.close();
+});
+
+test('thread reads acknowledge only server success and preserve unread messages outside the fetched page', async () => {
+  const h = harness(), pending = deferred();
+  h.overrides.thread = () => pending.promise;
+  h.overrides.chats = () => ({ chats: [{ user: { id: 'peer' }, unread: 7 }], unreadCount: 7 });
+  h.bridge.handle({ type: 'chat.open', data: { with: 'peer' } });
+  assert.equal(h.count('chats'), 0, 'Opening a thread must not optimistically reset counts');
+  pending.resolve({ messages: [{ id: 'message-id', text: 'Fetched message', mine: false }], readAt: '2026-10-13T09:00:00.000Z' }); await settle();
+  assert.equal(h.find('data.thread')[0].data.readAt, '2026-10-13T09:00:00.000Z');
+  assert.equal(h.find('data.chats')[0].data.unreadCount, 7);
+  h.overrides.thread = () => { throw new h.ApiError('Messages unavailable', 503); };
+  h.bridge.handle({ type: 'chat.open', data: { with: 'other-peer' } }); await settle();
+  assert.equal(h.find('data.thread').length, 1);
+  assert.equal(h.count('chats'), 1, 'Failed history does not announce a read');
+  h.bridge.close();
+});
+
+test('read receipt and reconnect invalidations reload conversations and stop after logout', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const initial = h.count('chats');
+  h.overrides.chats = () => ({ chats: [], unreadCount: 4, unreadConversations: 2 });
+  h.live[0].onEvent({ type: 'chats.updated', data: {} }); await settle();
+  assert.equal(h.count('chats'), initial + 1);
+  assert.equal(h.find('data.chats').at(-1).data.unreadCount, 4);
+  assert.equal(h.find('chats.updated').length, 0, 'Internal invalidations are consumed by the native bridge');
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } }); await settle();
+  assert.equal(h.count('chats'), initial + 2);
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'chats.updated', data: {} }); await settle();
+  assert.equal(h.count('chats'), initial + 2);
+  h.bridge.close();
+});
+
+test('a successful message send refreshes conversations while failed sends leave server unread state intact', async () => {
+  const h = harness(), pending = deferred();
+  h.overrides.sendMessage = () => pending.promise;
+  h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Hello' } });
+  assert.equal(h.count('chats'), 0);
+  pending.resolve({}); await settle();
+  assert.equal(h.count('chats'), 1);
+  h.overrides.sendMessage = () => { throw new h.ApiError('Message could not be sent', 503); };
+  h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Try again' } }); await settle();
+  assert.equal(h.count('chats'), 1);
+  assert.equal(h.find('operation.error').at(-1).data.action, 'chat.send');
   h.bridge.close();
 });
 

@@ -23,6 +23,7 @@ export interface User {
   adultConfirmed?: boolean;
   onboardingPreference?: "creator" | "member";
   hostStatus?: string;
+  isVerifiedHost?: boolean;
 }
 
 /* Returned by login and by GET /me. */
@@ -49,6 +50,7 @@ export interface UserPost {
 export interface Host {
   id: string;
   name: string;
+  role?: Role;
   city?: string;
   category?: string;
   tag?: string;
@@ -134,16 +136,34 @@ export interface Person {
 }
 
 export interface ChatSummary {
+  id: string;
   user: Host;
   last: string;
   time: string;
   unread: number;
+  lastKind: "text";
+  lastMine: boolean;
+  lastAt: string;
+  lastStatus: "sent" | "read";
+  hasCalls: boolean;
+}
+
+export interface ChatsData {
+  chats: ChatSummary[];
+  total: number;
+  page: number;
+  limit: number;
+  unreadCount: number;
+  unreadConversations: number;
 }
 
 export interface Message {
+  id?: string;
   mine: boolean;
   text: string;
   time: string;
+  createdAt?: string;
+  kind?: "text";
 }
 
 export interface MissedCall {

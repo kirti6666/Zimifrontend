@@ -17,6 +17,8 @@
     "test:render-security": "node scripts/test-render-security.cjs",
     "test:home": "npm run build:web && node scripts/test-home.cjs && node scripts/test-home-media.cjs",
     "test:loading": "npm run build:web && node scripts/test-loading.cjs",
+    "test:chats": "npm run build:web && node scripts/test-chats.cjs",
+    "test:navigation": "npm run build:web && node scripts/test-navigation.cjs",
     "build:admin": "node scripts/build-admin.mjs"
   },
   "dependencies": {

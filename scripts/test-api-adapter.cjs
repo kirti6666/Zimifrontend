@@ -81,7 +81,21 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(signedIn.balance, undefined); assert.equal(signedIn.earned, undefined); assert.equal(signedIn.requiresOnboarding, true);
   for (const status of ['none', 'pending', 'rejected', 'suspended']) assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: status, isVerifiedHost: true } }).user.role, 'sender');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.role, 'host');
+  assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.isVerifiedHost, true);
+  assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved' } }).user.isVerifiedHost, false);
   await assert.rejects(api.verifyOtp('9876543210', '123', 'sender', false), /6-digit/);
+  finished();
+
+  reset();
+  let resolveOlderProfile;
+  const olderProfile = new Promise(resolve => { resolveOlderProfile = resolve; });
+  expect('GET', '/auth/me', olderProfile);
+  const olderAccount = api.me();
+  expect('GET', '/auth/me', { user: { ...user, hostStatus: 'suspended', isVerifiedHost: false } });
+  const currentAuthority = await api.me(true);
+  assert.equal(currentAuthority.user.hostStatus, 'suspended', 'A fresh approval check must bypass an older in-flight account request');
+  resolveOlderProfile({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } });
+  assert.equal((await olderAccount).user.role, 'host');
   finished();
 
   reset();
@@ -184,8 +198,23 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(hosts.hosts[0].avatarUrl, 'https://cdn.example.test/creator.jpg'); assert.equal(hosts.hosts[0].coverUrl, 'https://cdn.example.test/cover.jpg');
   expect('GET', '/chats', { items: [{ participants: [{ _id: 'member-id', name: 'Asha' }, { _id: 'host-id', name: 'Creator' }], lastMessage: { text: 'Hello' }, unread: 2 }] });
   assert.equal((await api.chats()).chats[0].user.id, 'host-id');
-  expect('GET', '/chats/host-id', { items: [{ senderId: 'member-id', text: 'Second' }, { senderId: 'host-id', text: 'First' }] });
-  assert.deepEqual(plain((await api.thread('host-id')).messages.map(message => [message.text,message.mine])), [['First',false],['Second',true]]);
+  const chatAt = '2026-10-13T09:00:00.000Z';
+  expect('GET', '/chats?page=2', { items: [{ _id: 'conversation-id', participants: [{ _id: 'member-id' }, { _id: 'host-id', name: 'Creator', role: 'host', hostStatus: 'approved', isVerifiedHost: true, isOnline: true, availableForCall: true }],
+    lastMessage: { text: 'A real reply', senderId: 'member-id', createdAt: chatAt, kind: 'text', mine: true, status: 'read' }, lastMessageAt: chatAt, unread: 2, hasCalls: true }], total: 31, page: 2, limit: 20, unreadCount: 12, unreadConversations: 4 });
+  const chatPage = await api.chats(2), chat = chatPage.chats[0];
+  assert.equal(chatPage.unreadCount, 12, 'Total unread comes from all server conversations, not only this page');
+  assert.equal(chatPage.unreadConversations, 4); assert.equal(chatPage.page, 2); assert.equal(chatPage.total, 31);
+  assert.equal(chat.id, 'conversation-id'); assert.equal(chat.lastAt, chatAt); assert.equal(chat.lastMine, true); assert.equal(chat.lastStatus, 'read'); assert.equal(chat.lastKind, 'text'); assert.equal(chat.hasCalls, true);
+  assert.equal(chat.user.role, 'host'); assert.equal(chat.user.online, true); assert.equal(chat.user.verified, true); assert.equal(chat.user.availableForCall, true);
+  assert.equal(adapters.hostFrom({ _id: 'pending', role: 'host', hostStatus: 'pending', isVerifiedHost: true }).role, 'sender', 'Role labels require an approved host');
+  expect('POST', '/chats/read-all', { updated: 12, readAt: chatAt }, body => assert.deepEqual(plain(body), {}));
+  assert.deepEqual(plain(await api.readAllChats()), { updated: 12, readAt: chatAt });
+  expect('POST', '/chats/read-all', { updated: '12', readAt: chatAt });
+  await assert.rejects(api.readAllChats(), /read status could not be confirmed/);
+  expect('GET', '/chats/host-id', { items: [{ _id: 'second', senderId: 'member-id', text: 'Second', createdAt: chatAt }, { _id: 'first', senderId: 'host-id', text: 'First' }], readAt: chatAt });
+  const thread = await api.thread('host-id');
+  assert.deepEqual(plain(thread.messages.map(message => [message.text,message.mine])), [['First',false],['Second',true]]);
+  assert.equal(thread.readAt, chatAt); assert.equal(thread.messages[1].id, 'second'); assert.equal(thread.messages[1].createdAt, chatAt);
   expect('GET', '/calls?limit=100', { items: [{ callerId: { _id: 'host-id' }, calleeId: { _id: 'member-id' }, status: 'missed', kind: 'audio' }, { callerId: 'member-id', calleeId: 'host-id', status: 'missed' }] });
   const missed = await api.missedCalls(); assert.equal(missed.calls.length, 1); assert.equal(missed.calls[0].kind, 'voice');
   expect('GET', '/wallet', { coins: 200, earningsPaise: 12345, reservedPaise: 2000 });
@@ -258,12 +287,16 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   let handshake; socketOptions.auth(value => { handshake = value; }); await Promise.resolve();
   assert.deepEqual(plain(handshake), { token });
   socket.emitServer('chat:message', { senderId: 'member-id', recipientId: 'host-id', text: 'Own echo' });
-  socket.emitServer('chat:message', { senderId: 'host-id', recipientId: 'member-id', text: 'Hello' });
+  socket.emitServer('chat:message', { _id: 'message-id', senderId: 'host-id', recipientId: 'member-id', text: 'Hello', createdAt: chatAt });
+  socket.emitServer('chat:message', { senderId: 'stranger', recipientId: 'other-user', text: 'Private unrelated message' });
+  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], readAt: chatAt });
+  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: 'malformed', readAt: chatAt });
   socket.emitServer('call:updated', { _id: 'incoming', callerId: 'host-id', calleeId: 'member-id', status: 'ringing' });
   socket.emitServer('host:reviewed', { status: 'approved' });
-  assert.deepEqual(events.map(event => event.type), ['chat.message','call.incoming','verification.status']);
+  assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
+  assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   token = 'rotated-token'; tokenListeners.forEach(listener => listener()); await Promise.resolve();
   assert.equal(socket.connects, 2);
-  stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 3);
+  stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 6);
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

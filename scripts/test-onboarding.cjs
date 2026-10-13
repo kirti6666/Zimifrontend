@@ -435,9 +435,13 @@ async function accountRouting() {
   await enterPhone(native);
   await receive(native, 'auth.otpSent', { phone: '+919876543210' });
   await enterCode(native);
-  await receive(native, 'auth.ok', { isNew: false, requiresOnboarding: false, user: { id: 'returning-creator', name: 'Returning Creator', role: 'host', hostStatus: 'approved' } });
+  await receive(native, 'auth.ok', { isNew: false, requiresOnboarding: false, verification: 'verified', user: { id: 'returning-creator', name: 'Returning Creator', role: 'host', hostStatus: 'approved', isVerifiedHost: true } });
   await native.waitForFunction(() => S.v === 'home');
-  assert.equal(await native.evaluate(() => S.role), 'host', 'Returning accounts must use the role returned by the server');
+  assert.equal(await native.evaluate(() => S.role), 'host', 'A fully approved returning creator receives the server-authorized host role');
+  assert.equal(await native.evaluate(() => isApprovedHost()), true);
+  await receive(native, 'session', { requiresOnboarding: false, verification: 'verified', user: { id: 'returning-creator', name: 'Returning Creator', role: 'host', hostStatus: 'approved' } });
+  assert.equal(await native.evaluate(() => S.role), 'sender', 'A host role without the verified-host flag must not grant creator capability');
+  assert.equal(await native.evaluate(() => isApprovedHost()), false);
   await native.evaluate(() => logout());
   await native.locator('button[onclick="obStart(\'login\')"]').click();
   await enterPhone(native);

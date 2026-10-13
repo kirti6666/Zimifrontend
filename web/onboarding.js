@@ -53,6 +53,7 @@ function obApplyAccount(account) {
   if (account.balance != null) S.bal = account.balance;
   if (account.earned != null) A().earn = account.earned;
   if (account.verification) A().kyc = account.verification;
+  window.ZimiHostAccess?.apply(account);
 }
 function obResumeOnboarding(account, desiredCreator) {
   const u = account.user || {};
@@ -60,6 +61,7 @@ function obResumeOnboarding(account, desiredCreator) {
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
+  window.ZimiHostAccess?.reset();
   if(window.ZimiHome)homeReset();
   clearInterval(obRateTimer); clearInterval(S.otpT); clearTimeout(obRequestTimer);
   S.loggedIn = 0; S.online = 0; S.sessionState = ""; S.sessionError = ""; S.notice = message; S.creatorSetup = false; S.user = null;
@@ -282,7 +284,6 @@ function obSignedIn() {
     Object.assign(S.auth, { step: "profile", busy: false, err: "", verified: true, cat: S.auth.cat || "", langs: S.auth.langs || [], photos: S.auth.photos || [], interests: S.auth.interests || [] });
     return r();
   }
-  if (DEMO && isHost()) A().kyc = "verified";
   const creator = S.creatorSetup || S.auth.creatorIntent;
   S.loggedIn = 1; S.auth = { step: "phone" };
   if (creator && !isHost()) { S.creatorSetup = true; S.kf = { name: me.n, bio: me.about, langs: (S.user || {}).languages || [] }; }

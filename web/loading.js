@@ -38,7 +38,7 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
-  const views={home:['home','explore'],catalog:['coins'],notifications:['notifications','home','explore'],chats:['chats'],missed:['chats'],wallet:['home','explore','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile'],thread:['thread']};
+  const views={home:['home','explore','chats'],catalog:['coins'],notifications:['notifications','home','explore','chats'],chats:['chats'],missed:['chats'],wallet:['home','explore','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile'],thread:['thread']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
   if(views[key]?.includes(S.v)||(key==='catalog'&&Home.giftTo))r();
 }

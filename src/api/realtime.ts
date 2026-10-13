@@ -61,10 +61,18 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   });
   socket.on("chat:message", payload => {
     try {
-      const message = record(payload), from = idOf(message.senderId);
-      if (!from || !userId || from === userId || idOf(message.recipientId) !== userId || typeof message.text !== "string") return;
-      emit("chat.message", { from, name: "", text: message.text.slice(0, 2000), id: idOf(message) });
+      const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
+      if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
+      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text" });
+      // Sender echoes also update the list, including messages sent on another device.
+      emit("chats.updated", {});
     } catch { /* Ignore malformed events. */ }
+  });
+  socket.on("chat:read", payload => {
+    try {
+      const receipt = record(payload);
+      if (idOf(receipt.userId) && Array.isArray(receipt.conversationIds) && receipt.conversationIds.length > 0 && receipt.conversationIds.every(id => typeof id === "string" && id.length > 0) && typeof receipt.readAt === "string") emit("chats.updated", {});
+    } catch { /* Ignore malformed read receipts. */ }
   });
   socket.on("gift:received", payload => {
     try {
@@ -75,7 +83,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     } catch { /* Ignore malformed events. */ }
   });
   socket.on("host:reviewed", payload => {
-    try { emit("verification.status", { status: verificationOf(record(payload).status) }); } catch { /* Ignore malformed events. */ }
+    try { const hostStatus = string(record(payload).status); emit("verification.status", { status: verificationOf(hostStatus), hostStatus }); } catch { /* Ignore malformed events. */ }
   });
   socket.on("webrtc:signal", payload => {
     try { const signal = record(payload); if (idOf(signal.callId) && idOf(signal.from)) emit("rtc.signal", signal); } catch { /* Invalid peer payload. */ }

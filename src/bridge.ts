@@ -5,9 +5,10 @@ import { AppState, Linking } from "react-native";
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
 import { connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, Catalog, HomeData, HomeQuery, HomeStream, Host, Message, Purchase, Role, RtcConfig, RtcPayload, StreamChat, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, Purchase, Role, RtcConfig, RtcPayload, StreamChat, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { parseWebMessage } from "./web-message";
+import { approvedHost } from "./host-access";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -45,6 +46,8 @@ export type WebMessage =
   | { type: "settings.set"; data: Record<string, unknown> }
   | { type: "follow.set"; data: { id: string; on: boolean } }
   | { type: "chat.open"; data: { with: string } }
+  | { type: "chats.reload"; data: { page?: number } }
+  | { type: "chats.readAll"; data: Record<string, never> }
   | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean } }
   | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
   | { type: "call.start"; data: { to: string; voice?: boolean } }
@@ -82,6 +85,7 @@ export type AppMessage =
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> }
   | { type: "data.catalog"; data: Catalog }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
+  | { type: "host.access"; data: { approved: boolean; role: Role; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string } }
   | { type: "rtc.config"; data: RtcConfig }
@@ -97,18 +101,19 @@ export type AppMessage =
   | { type: "call.created"; data: { callId: string; to: string; voice: boolean } }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
-  | { type: "data.thread"; data: { with: string; messages: Message[] } }
+  | { type: "chats.readAll"; data: { updated: number; readAt: string } }
+  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string } }
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
-  | { type: "verification.status"; data: { status: Verification; message?: string } }
+  | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean } }
   | { type: "call.failed"; data: { message: string } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
   | { type: "call.ended"; data: { callId: string } }
   | { type: "gift.received"; data: { gift: string; coins: number; from: string } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; inCall?: boolean } };
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -127,6 +132,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let restoring = false;
   let accountId: string | undefined;
   let hostStatus: string | undefined;
+  let hostAccount: Account | undefined;
+  let hostRevision = 0;
+  let hostChecking = false;
+  let activeHostCall = false;
   let publishingAt: number | undefined;
   let homeQuery: HomeQuery = {};
   const readRequests = new Map<DataResource, number>();
@@ -157,6 +166,49 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (getSessionVersion() !== sessionVersion) return;
     await api.endCall(callId, "cancelled");
   };
+  const hasHostAccess = () => !hostChecking && approvedHost(hostAccount);
+  const publishHostAccess = () => {
+    const approved = hasHostAccess();
+    emit({ type: "host.access", data: { approved, role: approved || (hostChecking && hostAccount?.user.role === "host") ? "host" : "sender", hostStatus: hostStatus || "", verified: approved || (hostChecking && hostAccount?.user.isVerifiedHost === true), checking: hostChecking } });
+    if (!approved && !hostChecking) {
+      if (activeStream?.hosting) {
+        const streamId = activeStream.id; activeStream = undefined;
+        emit({ type: "stream.ended", data: { streamId } });
+        void api.endStream(streamId).catch(() => {});
+      }
+      if (activeHostCall && activeCall) {
+        const callId = activeCall; activeCall = undefined; activeHostCall = false; callGeneration++;
+        rememberCancelledCall(callId); emit({ type: "call.ended", data: { callId } });
+        void api.endCall(callId, "host approval changed").catch(() => {});
+      }
+    }
+  };
+  const applyHostAccount = (account: Account, publish = true) => {
+    if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
+    accountId = account.user.id; hostStatus = account.user.hostStatus; hostAccount = account;
+    hostChecking = false;
+    if (publish) publishHostAccess();
+  };
+  const invalidateHostAccess = (checking: boolean) => {
+    hostRevision++; hostChecking = checking;
+    if (!checking) hostAccount = undefined;
+    publishHostAccess();
+  };
+  const refreshHostAccount = async () => {
+    const version = epoch, sessionVersion = getSessionVersion(), revision = hostRevision;
+    const account = await api.me(true);
+    if (!current(version) || sessionVersion !== getSessionVersion() || revision !== hostRevision) return;
+    applyHostAccount(account);
+  };
+  const requireApprovedHost = async () => {
+    const version = epoch, sessionVersion = getSessionVersion(), revision = hostRevision;
+    const account = await api.me(true);
+    if (!current(version) || sessionVersion !== getSessionVersion()) throw new ApiError("Your sign-in changed. Please try again.", 409);
+    if (revision !== hostRevision) throw new ApiError("Your creator approval changed. Please try again.", 403);
+    applyHostAccount(account);
+    if (!approvedHost(account)) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
+    return revision;
+  };
   const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
@@ -179,6 +231,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const loadNotifications = () => readResource("notifications", () => api.notifications(), data => emit({ type: "data.notifications", data }));
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
+  const loadChats = (page = 1) => readResource<ChatsData>("chats", () => ["pending", "rejected", "suspended"].includes(hostStatus || "")
+    ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => emit({ type: "data.chats", data }), { page });
   const verifyPurchase = async (orderId: string) => {
     if (verifyingPurchase) return;
     verifyingPurchase = true;
@@ -208,12 +262,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
     const results = await Promise.allSettled([
       loadHome(), loadNotifications(), loadCatalog(),
-      api.presence().then(data => deliver({ type: "presence.saved", data })),
-      readResource("chats", () => ["pending", "rejected", "suspended"].includes(hostStatus || "") ? Promise.resolve({ chats: [] }) : api.chats(), data => deliver({ type: "data.chats", data })),
+      api.presence().then(data => deliver({ type: "presence.saved", data: { ...data, online: hasHostAccess() && data.online } })),
+      loadChats(),
       readResource("missed", () => api.missedCalls(), data => deliver({ type: "data.missed", data })),
       readResource("calls", () => api.callHistory(), data => deliver({ type: "data.calls", data })),
       readResource("transactions", () => api.transactions(), data => deliver({ type: "data.transactions", data })),
-      readResource("posts", () => hostStatus === "approved" ? api.myPosts() : Promise.resolve({ posts: [] }), data => deliver({ type: "data.posts", data })),
+      readResource("posts", () => hasHostAccess() ? api.myPosts() : Promise.resolve({ posts: [] }), data => deliver({ type: "data.posts", data })),
       refreshWallet(),
     ]);
     if (!current(version)) return;
@@ -227,43 +281,71 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
+      if (event.type === "verification.status") {
+        hostStatus = typeof event.data?.hostStatus === "string" ? event.data.hostStatus : event.data?.status === "verified" ? "approved" : String(event.data?.status || "none");
+        invalidateHostAccess(false);
+        quietly(refreshHostAccount(), "host.refresh");
+      }
+      if (event.type === "realtime.status") {
+        if (event.data?.connected === true) {
+          invalidateHostAccess(true);
+          quietly(refreshHostAccount(), "host.refresh");
+        } else if (!hostChecking) invalidateHostAccess(true);
+      }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
+      if (event.type === "chats.updated") { if (!onboarding) quietly(loadChats(), "chats.reload"); return; }
       const callId = event.data?.callId;
+      if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
+        void api.declineCall(callId).catch(() => {}); return;
+      }
       if (event.type === "call.ended" && typeof callId === "string") {
         rememberCancelledCall(callId);
-        if (callId === activeCall) { activeCall = undefined; callGeneration++; }
+        if (callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
       }
       if (event.type === "call.connected" && typeof callId === "string") {
+        if (event.data?.initiator === false && !hasHostAccess() && !(hostChecking && activeHostCall && activeCall === callId)) {
+          quietly(endCancelledCall(callId, getSessionVersion()), "call.end");
+          emit({ type: "call.ended", data: { callId } }); return;
+        }
         if (cancelledCalls.has(callId) || (event.data?.initiator === true && pendingOutgoing && pendingOutgoing.generation !== callGeneration)) {
           quietly(endCancelledCall(callId, getSessionVersion()), "call.end");
           return;
         }
         if (event.data?.initiator === true && pendingOutgoing) pendingOutgoing.callId = callId;
         activeCall = callId;
+        activeHostCall = event.data?.initiator === false;
       }
       if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
       if (event.type === "home.updated") quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
-      if (event.type === "realtime.status" && event.data?.connected === true && !onboarding) quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+      if (event.type === "realtime.status" && event.data?.connected === true && !onboarding) {
+        quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+        quietly(loadChats(), "chats.reload");
+      }
       emit(event as AppMessage);
     }, accountId);
     if (!onboarding) void loadLists();
   };
   const unsubscribe = onSessionExpired(() => {
     epoch++; callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchase = undefined;
+    hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
   });
   const restoreSession = async () => {
     if (restoring) return;
     restoring = true;
-    const version = epoch;
+    const version = epoch, sessionVersion = getSessionVersion();
     emit({ type: "session.restoring", data: {} });
     try {
       const token = await getToken();
       if (!current(version)) return;
       if (!token) { emit({ type: "session.none", data: {} }); return; }
-      const account = await api.me();
-      if (!current(version)) return;
-      accountId = account.user.id; hostStatus = account.user.hostStatus;
+      let revision = hostRevision;
+      let account = await api.me();
+      while (current(version) && sessionVersion === getSessionVersion() && revision !== hostRevision) {
+        revision = hostRevision; account = await api.me(true);
+      }
+      if (!current(version) || sessionVersion !== getSessionVersion()) return;
+      applyHostAccount(account, false);
       emit({ type: "session", data: account });
       const renewed = await getToken();
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
@@ -299,8 +381,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "stream.start": case "stream.join": {
         if (activeStream) throw new ApiError("Leave your current live room before opening another.", 409);
         const hosting = msg.type === "stream.start";
+        const approval = hosting ? await requireApprovedHost() : hostRevision;
         const stream = msg.type === "stream.start" ? await api.startStream(msg.data) : await api.joinStream(msg.data.streamId);
         if (!current(version)) return;
+        if (hosting && (approval !== hostRevision || !hasHostAccess())) { await api.endStream(stream.id); return; }
         activeStream = { id: stream.id, hosting };
         const messages = await api.streamMessages(stream.id).catch(() => []);
         if (current(version) && activeStream?.id === stream.id) emit({ type: "stream.opened", data: { stream, hosting, messages } });
@@ -350,7 +434,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           epoch++; callGeneration++; pendingOutgoing = undefined; activeCall = undefined; // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
-          accountId = user.id; hostStatus = user.hostStatus;
+          applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
           emit({ type: "auth.ok", data: { user, balance, earned, verification, requiresOnboarding, isNew, requestId: msg.data.requestId } });
           startSession(session.tokens.accessToken, requiresOnboarding);
         } catch (error) {
@@ -366,6 +450,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
         accountId = undefined; hostStatus = undefined;
+        hostRevision++; hostChecking = false; hostAccount = undefined; activeHostCall = false;
         // Revocation must still run if secure-storage deletion fails. Local
         // invalidation is synchronous; this captured credential cannot revoke
         // a newer login, and network completion never clears its session.
@@ -379,11 +464,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "profile.save": {
         const { onboarding, requestId, ...profile } = msg.data;
         const id = typeof requestId === "number" ? requestId : undefined;
+        const sessionVersion = getSessionVersion();
+        let revision = hostRevision;
         try {
-          const account = await api.saveProfile(profile, (done, total) => {
+          let account = await api.saveProfile(profile, (done, total) => {
             if (current(version)) emit({ type: "profile.progress", data: { done, total, requestId: id } });
           });
-          if (current(version)) {
+          while (current(version) && sessionVersion === getSessionVersion() && revision !== hostRevision) {
+            revision = hostRevision; account = await api.me(true);
+          }
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            applyHostAccount(account, false);
             emit({ type: "profile.saved", data: { onboarding: onboarding === true, account, requestId: id } });
             if (onboarding) void loadLists();
           }
@@ -396,8 +487,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (publishingAt === version) return;
         publishingAt = version;
         try {
+          const approval = await requireApprovedHost();
           const post = await api.createPost(msg.data.photo, msg.data.caption);
-          if (current(version)) emit({ type: "post.saved", data: { post, requestId: msg.data.requestId } });
+          if (current(version) && approval === hostRevision && hasHostAccess()) emit({ type: "post.saved", data: { post, requestId: msg.data.requestId } });
         } catch (error) {
           if (current(version)) emit({ type: "post.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
         } finally { if (publishingAt === version) publishingAt = undefined; }
@@ -412,17 +504,36 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       case "presence.set": {
+        const approval = msg.data.online ? await requireApprovedHost() : hostRevision;
         const data = await api.setPresence(msg.data.online, msg.data.visible);
-        if (current(version)) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
+        if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
         return;
       }
       case "settings.set": return quietly(api.saveSettings(msg.data), msg.type);
       case "follow.set": return quietly(api.follow(msg.data.id, msg.data.on), msg.type);
+      case "chats.reload": return loadChats(msg.data.page);
+      case "chats.readAll": {
+        const data = await api.readAllChats();
+        if (current(version)) {
+          emit({ type: "chats.readAll", data });
+          quietly(loadChats(), "chats.reload");
+        }
+        return;
+      }
       case "chat.open": {
         const withId = msg.data.with;
-        return readResource("thread", () => api.thread(withId), ({ messages }) => emit({ type: "data.thread", data: { with: withId, messages } }));
+        return readResource("thread", () => api.thread(withId), data => {
+          emit({ type: "data.thread", data: { with: withId, ...data } });
+          // Only the messages returned by this page are marked read by the server.
+          // Reload its counts instead of incorrectly clearing the entire conversation.
+          quietly(loadChats(), "chats.reload");
+        });
       }
-      case "chat.send": return quietly(api.sendMessage(msg.data.to, msg.data.text, msg.data.inCall ? activeCall : undefined), msg.type);
+      case "chat.send": {
+        await api.sendMessage(msg.data.to, msg.data.text, msg.data.inCall ? activeCall : undefined);
+        if (current(version)) quietly(loadChats(), "chats.reload");
+        return;
+      }
       case "gift.send": {
         const wallet = await api.sendGift(msg.data.to, msg.data.gift, msg.data.coins, msg.data.inCall ? activeCall : undefined, msg.data.streamId, msg.data.idempotencyKey);
         if (current(version)) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey } }); }
@@ -446,17 +557,19 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "call.accept": {
         if (cancelledCalls.has(msg.data.callId)) return;
         const generation = ++callGeneration, sessionVersion = getSessionVersion();
-        activeCall = msg.data.callId;
+        activeCall = msg.data.callId; activeHostCall = true;
         try {
+          const approval = await requireApprovedHost();
+          if (generation !== callGeneration || cancelledCalls.has(msg.data.callId)) return;
           const details = await api.acceptCall(msg.data.callId);
-          if (!current(version) || generation !== callGeneration || cancelledCalls.has(msg.data.callId)) {
+          if (!current(version) || generation !== callGeneration || cancelledCalls.has(msg.data.callId) || approval !== hostRevision || !hasHostAccess()) {
             await endCancelledCall(msg.data.callId, sessionVersion);
             return;
           }
           emit({ type: "call.connected", data: { callId: msg.data.callId, initiator: false, ...details } });
         } catch {
           if (current(version) && generation === callGeneration) {
-            activeCall = undefined; rememberCancelledCall(msg.data.callId);
+            activeCall = undefined; activeHostCall = false; rememberCancelledCall(msg.data.callId);
             emit({ type: "call.ended", data: { callId: msg.data.callId } });
           }
         }
@@ -464,22 +577,26 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "call.decline": {
         rememberCancelledCall(msg.data.callId);
-        if (activeCall === msg.data.callId) { activeCall = undefined; callGeneration++; }
+        if (activeCall === msg.data.callId) { activeCall = undefined; activeHostCall = false; callGeneration++; }
         return quietly(api.declineCall(msg.data.callId), msg.type);
       }
       case "call.end": {
         const callId = msg.data.callId ?? activeCall;
         if (!msg.data.callId || callId === activeCall || callId === pendingOutgoing?.callId) callGeneration++;
         if (callId) rememberCancelledCall(callId);
-        if (callId === activeCall) activeCall = undefined;
+        if (callId === activeCall) { activeCall = undefined; activeHostCall = false; }
         if (callId) quietly(api.endCall(callId, msg.data.reason), msg.type);
         return;
       }
       case "wallet.recharge": return sendWallet(api.recharge(msg.data), msg.type);
-      case "payout.request": return sendWallet(api.requestPayout(msg.data.coins, msg.data.upi), msg.type);
+      case "payout.request": {
+        await requireApprovedHost();
+        return sendWallet(api.requestPayout(msg.data.coins, msg.data.upi), msg.type);
+      }
       case "awards.claim": {
+        const approval = await requireApprovedHost();
         const wallet = await api.claimAward(msg.data.task);
-        if (current(version)) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome(), "home.reload"); }
+        if (current(version) && approval === hostRevision && hasHostAccess()) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome(), "home.reload"); }
         return;
       }
       case "theme": case "ui.haptic": return;
@@ -490,7 +607,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "gift.send", "awards.claim"].includes(msg.type);
+      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "gift.send", "awards.claim", "chats.readAll"].includes(msg.type);
       const key = `${version}:${msg.type}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);

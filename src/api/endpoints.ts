@@ -3,6 +3,7 @@ import { getSessionVersion, isSessionTokens, type SessionTokens } from "../sessi
 import { accountFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, purchaseFrom, record, streamChatFrom, streamFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, HomeQuery, Role, RtcConfig, Session, Verification, Wallet } from "./types";
+import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -39,9 +40,9 @@ export const api = {
     identity = undefined;
     return request<void>("POST", "/auth/logout", undefined, token ? { auth: false, bearerToken: token, refresh: false } : undefined);
   },
-  async me(): Promise<Account> {
+  async me(fresh = false): Promise<Account> {
     const version = getSessionVersion();
-    if (pendingProfile?.version === version) return pendingProfile.promise;
+    if (!fresh && pendingProfile?.version === version) return pendingProfile.promise;
     const promise = request("GET", "/auth/me").then(response => { ensureSession(version); return remember(accountFrom(response)); });
     pendingProfile = { version, promise };
     try { return await promise; } finally { if (pendingProfile?.promise === promise) pendingProfile = undefined; }
@@ -102,7 +103,7 @@ export const api = {
     decodePhoto(photo);
     const account = await api.me();
     ensureSession(version);
-    if (account.user.role !== "host") throw new ApiError("Your creator profile must be approved before you can publish posts.", 403);
+    if (!approvedHost(account)) throw new ApiError("Your creator profile must be approved before you can publish posts.", 403);
     const mediaKey = await uploadMedia(photo, "post", version);
     ensureSession(version);
     const response = await request("POST", "/posts", { caption: caption.trim(), kind: "photo", mediaKey });
@@ -165,7 +166,12 @@ export const api = {
   },
   async sendStreamMessage(streamId: string, text: string) { return streamChatFrom(await request("POST", `/streams/${encodeURIComponent(streamId)}/messages`, { text })); },
   async hosts() { return { hosts: items(await request("GET", "/hosts?limit=100")).map(hostFrom) }; },
-  async chats() { const id = await selfId(); return chatsFrom(await request("GET", "/chats"), id); },
+  async chats(page = 1) { const id = await selfId(); return chatsFrom(await request("GET", page === 1 ? "/chats" : `/chats?page=${page}`), id); },
+  async readAllChats() {
+    const data = record(await request("POST", "/chats/read-all", {}));
+    if (!Number.isSafeInteger(data.updated) || Number(data.updated) < 0 || typeof data.readAt !== "string") throw new ApiError("The read status could not be confirmed. Refresh your conversations.", 502);
+    return { updated: data.updated as number, readAt: data.readAt };
+  },
   async thread(withId: string) { const id = await selfId(); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}`), id); },
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
