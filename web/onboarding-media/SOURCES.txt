@@ -1,0 +1,13 @@
+Onboarding promotional portrait assets, downloaded 2026-10-13.
+
+portrait-1.jpg
+https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=720&h=980&q=85
+
+portrait-2.jpg
+https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=640&h=880&q=82
+
+portrait-3.jpg
+https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&h=880&q=82
+
+Unsplash license: https://unsplash.com/license
+These images illustrate the welcome screen; they do not represent live users.

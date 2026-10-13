@@ -1,0 +1,15 @@
+/* Shared chrome has one geometry on every main tab. Screen CSS owns only content. */
+.zh-app .nav.zh-nav{display:grid;grid-template-columns:repeat(var(--nav-count,4),minmax(0,1fr));align-items:end;justify-items:center;gap:0;width:100%;max-width:none;height:74px;min-height:74px;flex-shrink:0;margin:0;padding:8px max(14px,calc((100vw - 640px)/2)) 11px;border:0;border-radius:0;background:#210f1c;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
+.zh-app .zh-nav>button{display:flex;position:relative;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;max-width:120px;height:49px;padding:0;color:#d8b8ca;font-size:10px;line-height:13px;font-weight:600;transition:color 180ms ease,background-color 180ms ease;isolation:isolate}
+.zh-app .zh-nav>button>svg{width:23px;height:23px;flex:none;transition:filter 180ms ease}
+.zh-app .zh-nav>button.on{color:#ffb6d5;font-weight:600}
+.zh-app .zh-nav>button.on>svg{filter:drop-shadow(0 1px 5px #ef17883b)}
+.zh-app .zh-nav>button[data-tab]::before{content:"";position:absolute;top:0;width:43px;height:30px;border-radius:17px;background:#fb27851a;opacity:0;transition:opacity 180ms ease;z-index:-1}
+.zh-app .zh-nav>button[data-tab].on::before{opacity:1}
+.zh-app .zh-nav>.zh-create{align-self:center;flex:none;width:55px;height:55px;max-width:none;margin:-12px 0 0;border-radius:50%;background:linear-gradient(145deg,#ff0c8d,#cf086b);border:2px solid #f03292;color:white;box-shadow:0 4px 17px #e4088063}
+.zh-app .zh-nav>.zh-create>svg{width:26px;height:26px}
+.zh-nav-dot{position:absolute;top:2px;right:calc(50% - 17px);width:6px;height:6px;border-radius:50%;background:#ef1187}
+.zh-app #scroll-root{overflow-x:hidden;overscroll-behavior-x:none}
+@media(prefers-reduced-motion:reduce){.zh-app .zh-nav>button,.zh-app .zh-nav>button>svg,.zh-app .zh-nav>button::before{transition:none!important}}
+
+.zh-app .zh-nav>.zh-create-pending{align-self:center;width:55px;height:55px;margin:-12px 0 0;border-radius:50%;pointer-events:none}

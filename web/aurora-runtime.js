@@ -85,7 +85,7 @@ tab:"explore",ht:"posts",pi:0,likes:{},pack:2,meth:"UPI",mic:1,cam:1,bt:"creator
  txf:"all",faq:-1,safe:{discover:1,requests:1,activity:0},blocked:[],
  editName:me.n,editCity:me.c,editAbout:me.about,coverData:"",avatarData:"",postData:[],following:{}};
 const g=id=>H.find(x=>x.id===id)||EXTRA.find(x=>x.id===id);
-const n=v=>v.toLocaleString("en-IN");
+const n=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("en-IN"):"0";
 
 function art(s,r){const[a,b]=PAL[s%6];
  return `<svg class="art" viewBox="0 0 300 400" preserveAspectRatio="none" style="border-radius:${r||0}">
@@ -114,15 +114,20 @@ function artC(sd,r){const[a,b,c]=HUES[sd%HUES.length],x=25+(sd%5)*12,y=20+(sd%4)
   <ellipse cx="150" cy="200" rx="104" ry="38" fill="none" stroke="#fff" stroke-opacity=".35"/></g></svg>`}
 
 /* Colour-forward avatar, for lists where the faces carry the page. */
+function avatarSource(h){return imageSrc(h===me?S.avatarData:h.avatarUrl)}
+function portrait(h,colored=false){const src=avatarSource(h);
+ return src?`<img class="art" src="${src}" alt="${esc(h.n||"Profile photo")}" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:colored?artC(h.seed):art(h.seed)}
 function avc(h,s){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
+ if(avatarSource(h))return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h,true)}</span>`;
  return `<span class="av" style="width:${s}px;height:${s}px">${artC(h.seed,"99px")}
  <span class="disp" style="position:relative;color:#fff;font-weight:700;font-size:${Math.round(s*.36)}px;
-  text-shadow:0 1px 4px rgba(0,0,0,.5)">${i}</span></span>`}
+  text-shadow:0 1px 4px rgba(0,0,0,.5)">${esc(i)}</span></span>`}
 
 function av(h,s,ring){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
  const pres=ring==="none"?"":`<span class="pres ${h.live?"live":h.on?"on":""}"></span>`;
+ if(avatarSource(h))return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`;
  return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${art(h.seed,"99px")}
- <span class="disp" style="position:relative;color:rgba(255,255,255,.92);font-weight:600;font-size:${Math.round(s*.36)}px">${i}</span></span>${pres}</span>`}
+ <span class="disp" style="position:relative;color:rgba(255,255,255,.92);font-weight:600;font-size:${Math.round(s*.36)}px">${esc(i)}</span></span>${pres}</span>`}
 const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>',
  chat:'<path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v7a2.5 2.5 0 01-2.5 2.5H10l-4.4 3.3A1 1 0 014 18.5z" stroke-linejoin="round"/>',
  user:'<circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 19.5c1.3-3.8 4-5.7 7.5-5.7s6.2 1.9 7.5 5.7" stroke-linecap="round"/>',
@@ -166,11 +171,21 @@ const th=()=>"";
 function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
-function go(v,id){if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
+function go(v,id){
+ if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
+ if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
+  homeRequestStreamClose(Home.stream.id,Home.hosting);
+  window.ZimiMedia?.stop();Home.stream=null;Home.messages=[];
+ }
+ if(!DEMO&&window.ZimiHome){
+  if(v==='voice'&&!S.callId){S.nextCallVoice=true;v='dial'}
+  if(['dial','dialback'].includes(v)&&!S.allowPreparedCall)return homePrepareCall(v,id);
+ }
+ if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
- if(v==="kyc")S.kerr=0;
- if(v==="precall")S.scam=0;
+ if(v==="kyc"){S.kerr=0;S.creatorSetup=true}
+ if(v==="precall"){S.scam=0;S.nextCallVoice=false}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -180,30 +195,29 @@ function go(v,id){if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
  if(v==='editprofile')S.editBack=S.v==='settings'?'settings':'profile';
+ const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
+ if(window.contentBeforeNavigate)contentBeforeNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
-  S.rmsgs=[["sys","",`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`]].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=g(S.h).fee;
-  S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
+  S.rmsgs=[["sys","",DEMO?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO?g(S.h).fee:0;
+  if(DEMO)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
  if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
-  Native.send("presence.set",{online:true,visible:!!S.vis});
+  if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
   S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
  if(v==="thread"){S.msgs=DEMO?TH.map(m=>m.slice()):[];Native.send("chat.open",{with:S.h})}
- if(v==="voice")Native.send("call.start",{to:S.h,voice:true});
+ if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
- r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"))}
+ r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"));window.ZimiNavigation?.after(navigationChange)}
 
-/* Each surface shimmers once, then is remembered for the session. */
-function loading(key,ms){
- if(S.cache[key])return false;
- setTimeout(()=>{S.cache[key]=1;r()},ms||480);
- return true}
+/* Content loading follows bridge requests; cached previews are already ready. */
+function loading(key){return !DEMO&&!!window.contentPending?.(key)}
 function skCards(k){return `<div class="grid">${Array.from({length:k},()=>
  `<div class="sk skcard"></div>`).join("")}</div>`}
 function skRows(k){return Array.from({length:k},()=>
@@ -214,17 +228,21 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
  `<div class="sk dark" style="height:78px;border-radius:15px"></div>`).join("")}</div>`}
 
 function nav(){const el=document.getElementById("nav");
+ if(window.ZimiHome&&window.ZimiHome.nav())return;
+ if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
  if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chats","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
 function card(h){
- return `<div class="card" role="button" tabindex="0" aria-label="Open ${h.n} profile" onclick="go('host','${h.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('host','${h.id}')} ">${art(h.seed)}<span class="scrim"></span>
- ${h.top?`<span class="top10">TOP 10 &middot; Hourly</span>`:`<span class="cat">${h.tag}</span>`}
- <button class="lv" aria-label="Join ${h.n} live" onclick="event.stopPropagation();go('call','${h.id}')">${I("vid",11)}LIVE</button>
- <span class="cbot"><span class="cnm">${h.n} &#127470;&#127475;</span></span></div>`}
+ if(window.ZimiHome)return homeTile(h);
+ return `<div class="card" role="button" tabindex="0" aria-label="Open ${esc(h.n)} profile" onclick="go('host','${domId(h.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('host','${domId(h.id)}')} ">${portrait(h)}<span class="scrim"></span>
+ ${h.top?`<span class="top10">TOP 10 &middot; Hourly</span>`:`<span class="cat">${esc(h.tag)}</span>`}
+ <button class="lv" aria-label="Join ${esc(h.n)} live" onclick="event.stopPropagation();go('call','${domId(h.id)}')">${I("vid",11)}LIVE</button>
+ <span class="cbot"><span class="cnm">${esc(h.n)} &#127470;&#127475;</span></span></div>`}
 
 function vHome(){
+ if(window.ZimiHome)return window.ZimiHome.render();
  const T=[["following","Following"],["explore","Explore"],["foryou","For You"],["new","New"]];
  let L=H.slice();
  if(S.tab==="following")L=L.filter(h=>h.fol);
@@ -260,10 +278,10 @@ function sender(id){
 /* Hosts and senders render through the same profile shape. */
 function asProfile(x,isHost){
  return isHost
-  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,
+  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
      lvl:(x.seed%40)+8,recv:lifetime(x),sent:((x.seed*409)%260+18)*1000,
      fol:x.v,following:(x.seed%400)+90}
-  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,
+  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
      lvl:x.lvl,recv:x.recv,sent:x.sent,fol:x.v,following:x.hosts*7};
 }
 function mvpsFor(h){
@@ -273,6 +291,7 @@ function mvpsFor(h){
 }
 
 function postsFor(h){
+ if(!DEMO)return [];
  return Array.from({length:12},(_,i)=>({
   i,
   seed:(h.seed*7+i*13)%42+i,
@@ -296,8 +315,9 @@ function profilePage(p,raw,self){
  const list=self?myMvps():p.host?(raw.fresh?(p.recv?[{id:"me",n:"You",seed:me.seed,c:p.recv}]:[]):mvpsFor(raw)):backedFor(raw);
  const back=p.host?"go('home')":"history_back()";
  const followed=!!S.following[p.id];
- const cover=self&&S.coverData?`<img src="${S.coverData}" alt="Your cover">`:artC(p.seed);
- const avatar=self&&S.avatarData?`<span class="av" style="width:54px;height:54px"><img src="${S.avatarData}" alt="Your profile photo"></span>`:av(p,54,"none");
+ const coverSource=imageSrc(self?S.coverData:p.coverUrl||raw.coverUrl);
+ const cover=coverSource?`<img src="${coverSource}" alt="${self?"Your cover":esc(p.n+"'s cover")}">`:artC(p.seed);
+ const avatar=self&&S.avatarData?`<span class="av" style="width:54px;height:54px"><img src="${imageSrc(S.avatarData)}" alt="Your profile photo"></span>`:av(p,54,"none");
 
  return `<div class="hp">
   <div class="hpcover">
@@ -309,17 +329,17 @@ function profilePage(p,raw,self){
   <div class="hpid">
    <span class="hpav">${avatar}</span>
 
-   <div class="hpname"><span class="nm">${p.n}</span>
+   <div class="hpname"><span class="nm">${esc(p.n)}</span>
     ${(self?p.verified:p.host)?`<span class="hpverified" role="img" aria-label="Verified user" title="Verified user">${I("check",13)}</span>`:""}
-    ${self?`<button class="hpfollow" onclick="go('editprofile')">Edit profile</button>`:p.host?`<button class="hpfollow ${followed?'on':''}" onclick="toggleFollow('${p.id}',event)">${followed?'Following':'+ Follow'}</button>`:""}</div>
+    ${self?`<button class="hpfollow" onclick="go('editprofile')">Edit profile</button>`:p.host?`<button class="hpfollow ${followed?'on':''}" onclick="toggleFollow('${domId(p.id)}',event)">${followed?'Following':'+ Follow'}</button>`:""}</div>
 
    <div class="hpmeta">
-    <span class="hpchip">Lv ${p.lvl}</span>
-    <span class="hpchip">${p.tag}</span>
+    <span class="hpchip">Lv ${esc(p.lvl)}</span>
+    <span class="hpchip">${esc(p.tag)}</span>
     <span class="hpchip">ID ${66200000+p.seed*137} ${I("copy",11)}</span></div>
 
-   <div class="hpfol"><b>${p.following}</b> Following <span class="faint">&middot;</span>
-    <b>${p.fol}</b> Followers <span class="faint">&middot;</span> ${p.c}</div>
+   <div class="hpfol"><b>${esc(p.following)}</b> Following <span class="faint">&middot;</span>
+    <b>${esc(p.fol)}</b> Followers <span class="faint">&middot;</span> ${esc(p.c)}</div>
 
    <div class="hpcards">
     <button class="hpcard"><span class="t">${I("gift",13)} Gift gallery</span>
@@ -327,7 +347,7 @@ function profilePage(p,raw,self){
     <button class="hpcard"><span class="t">${I("send",13)} Coins sent</span>
      <span class="v">${gem}${n(p.sent)}</span></button>
     <button class="hpcard"><span class="t">${I("heart",13)} Followers</span>
-     <span class="v">${p.fol}</span></button></div>
+     <span class="v">${esc(p.fol)}</span></button></div>
   </div>
 
   <div class="hptabs">
@@ -335,33 +355,34 @@ function profilePage(p,raw,self){
     `<button class="${t===k?"on":""}" onclick="S.ht='${k}';r()">${I(ic,17)}<span>${lb}</span></button>`).join("")}</div>
 
   ${t==="mvp"&&(p.host||self)?mvpBlock(p,raw,self,list):t==="mvp"
-   ? `<div class="mvp">${list.map((m,i)=>`<button class="mrow ${i<3?"p"+(i+1):""}" onclick="${m.host?`go('host','${m.id}')`:`go('user','${m.id}')`}">
+   ? `<div class="mvp">${list.map((m,i)=>`<button class="mrow ${i<3?"p"+(i+1):""}" onclick="${m.host?`go('host','${domId(m.id)}')`:`go('user','${domId(m.id)}')`}">
        <span class="mrank r${i<3?i+1:0}">${i+1}</span>
        <span class="bav">${avc(m,40)}</span>
-       <span class="mname">${m.n}${i===0?`<span class="mtag">${p.host?"TOP MVP":"TOP HOST"}</span>`:""}</span>
+       <span class="mname">${esc(m.n)}${i===0?`<span class="mtag">${p.host?"TOP MVP":"TOP HOST"}</span>`:""}</span>
        <span class="mcoin">${gem}${n(m.c)}</span></button>`).join("")}</div>`
-   : `<div class="hpgrid">${posts.map(x=>`<button class="post" ${self?'':`onclick="openPost(${x.i})"`}>
-       ${x.custom?`<img src="${x.custom}" alt="Your post">`:artC(x.seed)}
+   : self&&window.contentSurface?.('posts','posts','Loading your posts')?contentSurface('posts','posts','Loading your posts') : `<div class="hpgrid">${posts.map(x=>`<button class="post" ${self?'':`onclick="openPost(${x.i})"`}>
+       ${x.custom?`<img src="${imageSrc(x.custom)}" alt="Your post">`:artC(x.seed)}
        ${x.vid?`<span class="pl">&#9654;</span>`:""}
        <span class="lk">${I("heart",11)}${x.likes}</span></button>`).join("")}</div>`}
  </div>
 
  ${self?'':`<div class="hpbar">
-  <button class="msg" aria-label="Message" onclick="go('thread','${p.host?p.id:S.backId||"aanya"}')">${I("chat",20)}</button>
+  <button class="msg" aria-label="Message" onclick="go('thread','${domId(p.host?p.id:S.backId||"aanya")}')">${I("chat",20)}</button>
   ${p.host
-   ? `<button class="msg" aria-label="Start voice call" onclick="go('voice','${p.id}')">${I("ph",20)}</button>
-      <button class="cta" onclick="go('precall','${p.id}')">${I("vid",19)} Start video call</button>`
+   ? `<button class="msg" aria-label="Start voice call" onclick="go('voice','${domId(p.id)}')">${I("ph",20)}</button>
+      <button class="cta" onclick="go('precall','${domId(p.id)}')">${I("vid",19)} Start video call</button>`
    : `<button class="cta" style="background:var(--raised);color:var(--ink)">${I("heart",18)} Follow</button>`}
  </div>`}`}
 
 /* The hosts a sender backs, biggest first. */
 function backedFor(u){
- return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,
+ return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,
   c:Math.round(((u.seed*173+i*577)%420+60)*1000/(i*0.4+1))}))
   .sort((a,b)=>b.c-a.c).slice(0,8);
 }
 
 function vSetup(){
+ if(window.ZimiHome&&!DEMO)return homeCallSetup();
  const h=me, tierIdx=1;
  return `<div class="setup">
  <div class="stage">
@@ -403,7 +424,7 @@ function vSetup(){
 function shWrap(title,sub,inner){
  return `<div class="tray"><div class="veil" onclick="S.sh=0;r()"></div>
   <div class="panel">
-   <div class="thead"><span><span class="tt">${title}</span><br><span class="sub">${sub}</span></span>
+   <div class="thead"><span><span class="tt">${esc(title)}</span><br><span class="sub">${esc(sub)}</span></span>
     <button class="xbtn" aria-label="Close" onclick="S.sh=0;r()">&times;</button></div>
    <div class="shbody">${inner}</div></div></div>`}
 
@@ -450,6 +471,7 @@ function camOn(){return isHost()?S.cam:S.scam}
 function toggleCam(){if(isHost())S.cam=S.cam?0:1;else S.scam=S.scam?0:1;r()}
 function video(p){
  if(p===me&&!camOn())return `<div class="vcoff">${I("camoff",22)}<span>Camera off</span></div>`;
+ if(!DEMO&&window.ZimiMedia)return `<video class="zh-call-video ${p===me?'zh-call-local':''}" ${p===me?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`;
  return p===me?`<div style="position:absolute;inset:0;filter:${fxCss()||"none"}">${art(p.seed)}</div>`:art(p.seed)}
 function fxOn(){return Object.values(S.bsel).some(Boolean)}
 /* One ⋯ button under the video tile; beauty, mute and camera live in its menu. */
@@ -467,7 +489,7 @@ function more(){
 function stage(main,tile){
  const [a,b]=S.swap?[tile,main]:[main,tile];
  return `<div style="position:absolute;inset:0">${video(a)}<div class="vshade"></div></div>
- <button class="pip" aria-label="Swap videos" onclick="S.swap=!S.swap;r()">${video(b)}<span>${b===me?"You":first(b.n)}</span></button>`}
+ <button class="pip" aria-label="Swap videos" onclick="S.swap=!S.swap;r()">${video(b)}<span>${b===me?"You":esc(first(b.n))}</span></button>`}
 /* One slim bar: back, timer (+ Home visibility for hosts), then earnings (hosts) and ⋯. */
 function topBar(host){
  return `<div class="ctop">
@@ -482,11 +504,12 @@ function topBar(host){
 function idPill(p,coins){
  return `<div class="idpill">
    ${avc(p,38)}
-   <span class="tx"><span class="nm">${p.n}</span>
+   <span class="tx"><span class="nm">${esc(p.n)}</span>
     <span class="co ${coins?"coins":""}">${coins?gem+n(lifetime(p)):`ID ${66200000+p.seed*137}`}</span></span>
-   <button class="quickfollow ${S.following[p.id]?'on':''}" aria-label="${S.following[p.id]?'Unfollow':'Follow'} ${p.n}" onclick="toggleFollow('${p.id}',event)">${S.following[p.id]?'✓':'+'}</button></div>`}
+   <button class="quickfollow ${S.following[p.id]?'on':''}" aria-label="${S.following[p.id]?'Unfollow':'Follow'} ${esc(p.n)}" onclick="toggleFollow('${domId(p.id)}',event)">${S.following[p.id]?'✓':'+'}</button></div>`}
 
 function vCall(){const h=g(S.h);
+ if(window.ZimiHome)return homeCallView(false);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(h,me)}
  ${topBar(0)}
@@ -509,10 +532,11 @@ function vCall(){const h=g(S.h);
  ${S.tray?giftTray():S.sh==="fx"?fxSheet():""}</div>`}
 
 function vVoice(){const h=g(S.h);
+ if(window.ZimiHome&&!DEMO)return homeCallView(false);
  return `<div class="voicecall">
   <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
   <div class="voiceorb">${avc(h,104)}</div>
-  <h2>${h.n}</h2>
+  <h2>${esc(h.n)}</h2>
   <p>Voice call</p>
   <strong id="ck">00:00</strong>
   <div class="voiceactions">
@@ -553,19 +577,20 @@ function hostReply(){
 function paintFeed(){
  const f=document.getElementById("rfeed");
  if(!f)return;
- f.innerHTML=S.rmsgs.map(([k,w,t])=>`<div class="lvmsg ${k}">
-  ${w?`<span class="who">${w}</span>`:""}<span class="txt">${t}</span></div>`).join("");
+ f.innerHTML=S.rmsgs.map(([k,w,t])=>`<div class="lvmsg ${["me","host","sys","gift"].includes(k)?k:"host"}">
+  ${w?`<span class="who">${esc(w)}</span>`:""}<span class="txt">${esc(t)}</span></div>`).join("");
  f.scrollTop=f.scrollHeight;
 }
 
 function giftTray(){
+ if(window.ZimiHome){Home.giftTo=S.v==='hcall'?S.caller.id:S.h;return homeGiftSheet()}
  const tier=v=>v>=19999?"epic":v>=5999?"rare":"";
  const lab=v=>v>=19999?"LGD":v>=5999?"RARE":"";
  return `<div class="tray"><div class="veil" onclick="S.tray=0;r()"></div>
   <div class="panel">
    <div class="thead">
-    <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?first(S.caller.n):"the host"}</span></span>
-    <button class="addc" onclick="go('coins')">${gem}${n(S.bal)} &nbsp;+</button>
+    <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?esc(first(S.caller.n)):"the host"}</span></span>
+    <button class="addc" onclick="go('coins')">${gem}${window.contentBalance?contentBalance():n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
    ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${k==="water"?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
@@ -574,6 +599,7 @@ function giftTray(){
 
 function sendGift(l,e,v,k){
  if(S.bal<v)return;
+ if(!DEMO){Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});return}
  S.bal-=v; S.tray=0; S.sh=0;
  Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});
  if(S.v==="thread"){
@@ -620,12 +646,12 @@ function playGift(l,e,v,k,label){
 
  const gl=document.createElement("div");
  gl.className="fxg"+(big?" big":"")+(water?" water":"");
- gl.innerHTML=water?`<img src="${WATER_STICKER}" alt="Animated rose waterfall">`:`<span class="em">${e}</span>`;
+ gl.innerHTML=water?`<img src="${WATER_STICKER}" alt="Animated rose waterfall">`:`<span class="em">${giftGlyph(e)}</span>`;
  frag.appendChild(gl);
 
  const tag=document.createElement("div");
  tag.className="fxtag";
- tag.innerHTML=label?label:water?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} &middot; ${n(v)}`;
+ tag.textContent=String(label||(water?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} · ${n(v)}`)).replace(/&middot;/g,"·");
  if(big){tag.style.animationDuration="3s, 2.2s";tag.style.fontSize="13px"}
  frag.appendChild(tag);
 
@@ -674,7 +700,7 @@ function nextCeleb(){
  const el=document.createElement("div");
  el.className="celeb";el.setAttribute("role","status");
  el.innerHTML=`<div class="celcard"><span class="celico">${c.kind==="ask"?"&#127873;":"&#127942;"}</span>
-  <b>Congratulations!</b><span>${c.text}</span></div>`;
+  <b>Congratulations!</b><span>${esc(c.text)}</span></div>`;
  document.querySelector(".app").appendChild(el);
  if(navigator.vibrate)try{navigator.vibrate(120)}catch(e){}
  setTimeout(()=>{el.classList.add("out")},2600);
@@ -692,13 +718,14 @@ function callBack(id){
  S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
  if(isHost()){S.caller=sender(id);go("dialback")}else go("precall",id)}
 function missedList(){
+ const pending=window.contentSurface?.('missed','rows','Loading missed calls');if(pending)return pending;
  const L=missedRows();
  if(!L.length)return `<div class="acctcard emptycompact" style="margin:14px"><span class="acctico">${I("ph",22)}</span>
   <h3>No missed calls</h3><p>Calls you miss will show up here so you can call back.</p></div>`;
  return `<div class="msec"><div class="mcard">${L.map(m=>`<div class="mcrow">
    <span class="callav">${avc(m.p,42)}<span class="badge miss">${I(m.kind==="voice"?"ph":"vid",9)}</span></span>
-   <span class="mctx"><b>${m.p.n}</b><span>${m.kind==="voice"?"Voice":"Video"} &middot; ${m.when}</span></span>
-   <button class="mcback" aria-label="Call ${m.p.n} back" onclick="callBack('${m.id}')">${I(m.kind==="voice"?"ph":"vid",16)}<span>Call back</span></button></div>`).join("")}</div></div>`}
+   <span class="mctx"><b>${esc(m.p.n)}</b><span>${m.kind==="voice"?"Voice":"Video"} &middot; ${esc(m.when)}</span></span>
+   <button class="mcback" aria-label="Call ${esc(m.p.n)} back" onclick="callBack('${domId(m.id)}')">${I(m.kind==="voice"?"ph":"vid",16)}<span>Call back</span></button></div>`).join("")}</div></div>`}
 
 function vChats(){
  const q=(S.q||"").toLowerCase(), tab=S.ctab||"msgs", miss=missedRows().length;
@@ -707,22 +734,22 @@ function vChats(){
  return `<div class="ctabs" role="tablist">
    <button role="tab" aria-selected="${tab==="msgs"}" class="${tab==="msgs"?"on":""}" onclick="S.ctab='msgs';r()">Messages${unread?`<b>${unread}</b>`:""}</button>
    <button role="tab" aria-selected="${tab==="missed"}" class="${tab==="missed"?"on":""}" onclick="S.ctab='missed';r()">Missed calls${miss?`<b class="miss">${miss}</b>`:""}</button></div>
- ${tab==="missed"?missedList():`<div class="srch"><div>${I("srch",17)}<input id="cq" placeholder="Search conversations" value="${S.q||""}" oninput="S.q=this.value;paintList()"></div></div>
- <div class="clist" id="clist">${loading("chats")?skRows(6):
-   L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`}</div>`}
+ ${tab==="missed"?missedList():`<div class="srch"><div>${I("srch",17)}<input id="cq" placeholder="Search conversations" value="${esc(S.q||"")}" oninput="S.q=this.value;paintList()"></div></div>
+ <div class="clist" id="clist">${window.contentSurface?.('chats','rows','Loading conversations')||
+   (L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`)}</div>`}
  <div style="height:12px"></div>`}
 function row([id,l,t,u]){const h=g(id);
- return `<button class="rowlink" onclick="go('thread','${id}')">
+ return `<button class="rowlink" onclick="go('thread','${domId(id)}')">
   ${av(h,44)}
   <span style="flex:1;min-width:0">
    <span style="display:flex;align-items:baseline;gap:8px">
-    <span class="s15" style="flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.n}</span>
-    <span class="s11" style="color:${u?"var(--accent-ink)":"var(--faint)"};font-weight:${u?600:400}">${t}</span></span>
+    <span class="s15" style="flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.n)}</span>
+    <span class="s11" style="color:${u?"var(--accent-ink)":"var(--faint)"};font-weight:${u?600:400}">${esc(t)}</span></span>
    <span style="display:flex;align-items:center;gap:8px;margin-top:2px">
-    <span class="s13" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${u?"var(--ink)":"var(--muted)"};font-weight:${u?500:400}">${l}</span>
-    ${u?`<span class="tab" style="background:var(--accent);color:var(--cta-ink);border-radius:99px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;padding:0 5px">${u}</span>`:""}</span>
+    <span class="s13" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${u?"var(--ink)":"var(--muted)"};font-weight:${u?500:400}">${esc(l)}</span>
+    ${u?`<span class="tab" style="background:var(--accent);color:var(--cta-ink);border-radius:99px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;padding:0 5px">${esc(u)}</span>`:""}</span>
   </span></button>`}
-function paintList(){S.cache.chats=1;const q=(S.q||"").toLowerCase();
+function paintList(){const pending=window.contentSurface?.('chats','rows','Loading conversations');if(pending){const el=document.getElementById('clist');if(el)el.innerHTML=pending;return}const q=(S.q||"").toLowerCase();
  const L=CH.filter(([id,l])=>{const h=g(id);return !q||h.n.toLowerCase().includes(q)||l.toLowerCase().includes(q)});
  const el=document.getElementById("clist");
  if(el)el.innerHTML=L.length?L.map(row).join(""):`<div class="empty">No conversations match that search.</div>`}
@@ -731,12 +758,12 @@ function vThread(){const h=g(S.h);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden">
  <div class="hdr" style="padding:10px 12px">
   <button onclick="go('chats')" aria-label="Back" style="color:var(--muted);display:flex">${I("back",21)}</button>
-  <button class="threadperson" onclick="go('host','${h.id}')" aria-label="Open ${h.n} profile">
+  <button class="threadperson" onclick="go('host','${domId(h.id)}')" aria-label="Open ${esc(h.n)} profile">
    ${av(h,34)}
-   <span style="min-width:0"><span class="s15" style="display:block;font-weight:600;line-height:1.2">${h.n}</span>
-   <span class="s11 muted" style="display:flex;align-items:center;gap:5px">${h.on?"Online":"Away"} · ${h.c}</span></span>
+   <span style="min-width:0"><span class="s15" style="display:block;font-weight:600;line-height:1.2">${esc(h.n)}</span>
+   <span class="s11 muted" style="display:flex;align-items:center;gap:5px">${h.on?"Online":"Away"} · ${esc(h.c)}</span></span>
   </button>
-  <button onclick="go('precall','${h.id}')" aria-label="Video call" style="color:var(--muted);display:flex">${I("vid",21)}</button></div>
+  <button onclick="go('precall','${domId(h.id)}')" aria-label="Video call" style="color:var(--muted);display:flex">${I("vid",21)}</button></div>
  <div class="pat" id="tf"></div>
  <div class="fx" id="fl"></div>
  <div class="qs">${GIFTS.slice(0,8).map(([l,e,v,k])=>`
@@ -753,20 +780,21 @@ function snd(){const i=document.getElementById("ti");if(!i||!i.value.trim())retu
  Native.send("chat.send",{to:S.h,text:i.value.trim()});
  S.msgs.push(["m",i.value.trim(),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);i.value="";paint()}
 function paint(){const f=document.getElementById("tf");if(!f)return;
+ const pending=window.contentSurface?.('thread','thread','Loading messages');if(pending){f.innerHTML=pending;return}
  f.innerHTML=S.msgs.map(([w,t,a,tm])=>w==="g"
-  ?`<div class="gbub"><span class="gl">${t}</span><span class="gc">${gem}${a}</span>
-     <span class="gt2">${tm||""}</span></div>`
-  :`<div class="bub ${w==="m"?"me":"them"}">${t}<span style="font-size:10.5px;margin-left:7px;opacity:.6">${a}</span></div>`).join("");
+  ?`<div class="gbub"><span class="gl">${giftGlyph(t)}</span><span class="gc">${gem}${esc(a)}</span>
+     <span class="gt2">${esc(tm||"")}</span></div>`
+  :`<div class="bub ${w==="m"?"me":"them"}">${esc(t)}<span style="font-size:10.5px;margin-left:7px;opacity:.6">${esc(a)}</span></div>`).join("");
  f.scrollTop=f.scrollHeight}
 
 function vBoard(){
  const rows=boardRows();
  return `  ${S.bt==="family"
    ? `<div class="empty">Family boards start once you join or create one.</div>`
-   : `<div class="blist">${rows.map((x,i)=>`<button class="brow ${i<3?"top":""}" onclick="go('host','${x.id}')">
+   : `<div class="blist">${rows.map((x,i)=>`<button class="brow ${i<3?"top":""}" onclick="go('host','${domId(x.id)}')">
       <span class="brank">${i+1}</span>
       <span class="bav">${x.live?`<span class="blive">LIVE</span>`:""}${av(x,42,"none")}<span class="flag">&#127470;&#127475;</span></span>
-      <span class="bname">${x.n}</span>
+      <span class="bname">${esc(x.n)}</span>
       <span class="bcoin">${gem}${n(x.c)}</span></button>`).join("")}</div>`}
   <div style="height:10px"></div>`}
 
@@ -777,15 +805,15 @@ function searchRows(){
  const all=H.concat(EXTRA);
  const L=q?all.filter(h=>h.n.toLowerCase().includes(q)||h.tag.toLowerCase().includes(q)
    ||h.c.toLowerCase().includes(q)):all;
- if(!L.length)return `<div class="empty">No creator matches &ldquo;${S.sq}&rdquo;.</div>`;
+ if(!L.length)return `<div class="empty">No creator matches &ldquo;${esc(S.sq)}&rdquo;.</div>`;
  return (q?"":`<div class="s12 muted" style="padding:12px 16px 4px">Suggested creators</div>`)+
-  L.map(h=>`<button class="rowlink" onclick="go('host','${h.id}')">
+  L.map(h=>`<button class="rowlink" onclick="go('host','${domId(h.id)}')">
    ${av(h,44)}
    <span style="flex:1;min-width:0">
     <span style="display:flex;align-items:center;gap:6px">
-     <span class="s15" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.n}</span>
+     <span class="s15" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.n)}</span>
      ${h.live?`<span class="blive" style="position:static;transform:none">LIVE</span>`:""}</span>
-    <span class="s12 muted" style="display:block;margin-top:1px">${h.tag} &middot; ${h.c} &middot; ${h.v} followers</span></span>
+    <span class="s12 muted" style="display:block;margin-top:1px">${esc(h.tag)} &middot; ${esc(h.c)} &middot; ${esc(h.v)} followers</span></span>
    <span class="s12" style="color:var(--accent-ink);font-weight:700">${n(h.rate)}/min</span></button>`).join("")}
 
 function paintSearch(){const el=document.getElementById("sres");if(el)el.innerHTML=searchRows()}
@@ -799,7 +827,7 @@ function vPost(){
   </div>`).join("")}
  </div>
  <div class="pvtop">
-  <button class="pvclose" aria-label="Close" onclick="go('host','${h.id}')">${I("back",19)}</button>
+  <button class="pvclose" aria-label="Close" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
   <span class="pvcount" id="pvc">${(S.pi||0)+1} / ${posts.length}</span></div>
  `}
 
@@ -818,9 +846,10 @@ function scrollPost(){
 function history_back(){go(S.back||"home",S.backId)}
 
 function vCoins(){
+ if(window.ZimiHome)return window.ZimiHome.coins();
  const sel=S.pack==null?2:S.pack, pk=PACKS[sel], money=v=>v.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
  return `<div class="cwrap">
-  <div class="ctools"><span class="cbal">${coin}${n(S.bal)}</span><button class="ccurrency">₹ INR ${I('chev',14)}</button></div>
+  <div class="ctools"><span class="cbal">${coin}${window.contentBalance?contentBalance():n(S.bal)}</span><button class="ccurrency">₹ INR ${I('chev',14)}</button></div>
   <div class="ctitle">Welcome Bonus for You!</div>
   <div class="cgrid">${PACKS.map(([c,pr,bonus],i)=>`<button class="cpack ${sel===i?"on":""}" onclick="S.pack=${i};r()">
     ${i===3?`<span class="cbest">🔥 Hot</span>`:i===5?`<span class="cbest">★ Popular</span>`:""}
@@ -835,7 +864,8 @@ function vCoins(){
 
 /* The app hands the purchase to the store; the new balance arrives as wallet.balance. */
 function buyPack(i){const [c,price]=PACKS[i];
- if(DEMO)S.bal+=c;else Native.send("wallet.recharge",{pack:i,coins:c,price,method:S.meth});
+ if(!DEMO){Native.send("wallet.recharge",{pack:i,coins:c,price,method:S.meth});return}
+ S.bal+=c;
  go("profile")}
 
 const TXNS=[
@@ -845,8 +875,8 @@ const TXNS=[
  ["Call with Ananya","2 Sep, 10:24 PM",-285,"call"],
  ["Bonus coins","1 Sep, 9:00 AM",250,"topup"]];
 
-function vWallet(){return `<div class="acct">
- <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${n(S.bal)}</div>
+function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct">
+ <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div>
   <div class="sub">Use coins for calls and gifts. Your balance is ready across Zimi Live.</div>
   <button class="cta" onclick="go('coins')">Add coins</button></div>
  ${earnCard()}
@@ -854,14 +884,14 @@ function vWallet(){return `<div class="acct">
   <div class="support"><button onclick="go('coins')"><b>Recharge</b><span>Choose a coin pack</span></button>
    <button onclick="go('transactions')"><b>History</b><span>See every movement</span></button></div></div>
  <div class="acctsec"><div class="accttitle"><span>Recent activity</span><button onclick="go('transactions')" style="color:var(--accent-ink)">View all</button></div>
-  <div class="acctcard">${TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
+  <div class="acctcard">${window.contentSurface?.('transactions','rows','Loading recent transactions')||TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
 
 function txRow(x){const [title,time,amount,type]=x;return `<div class="acctrow">
  <span class="acctico">${I(type==='call'?'ph':type==='gift'?'gift':'wal',16)}</span>
- <span style="flex:1;min-width:0"><span class="main">${title}</span><span class="meta">${time}</span></span>
+ <span style="flex:1;min-width:0"><span class="main">${esc(title)}</span><span class="meta">${esc(time)}</span></span>
  <span class="end ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${n(Math.abs(amount))}</span></div>`}
 
-function vTransactions(){const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?x[2]>0:x[2]<0));return `<div class="acct">
+function vTransactions(){const pending=window.contentSurface?.('transactions','rows','Loading transactions');if(pending)return '<div class="acct">'+pending+'</div>';const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?x[2]>0:x[2]<0));return `<div class="acct">
  <div class="accttabs">${[['all','All'],['in','Added'],['out','Spent']].map(([k,l])=>`<button class="${S.txf===k?'on':''}" onclick="S.txf='${k}';r()">${l}</button>`).join('')}</div>
  <div class="acctcard">${L.map(txRow).join('')}</div>
  ${L.length?"":`<div class="s13 muted" style="text-align:center;padding:36px 20px">No activity yet.</div>`}
@@ -872,12 +902,12 @@ const CALLS=[
  ["noor","2 Sep, 10:24 PM","5m 42s",285],
  ["tara","31 Aug, 9:08 PM","3m 16s",156],
  ["meher","29 Aug, 8:31 PM","11m 04s",552]];
-function vCalls(){return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
+function vCalls(){const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
  <span class="callav">${av(h,38,'none')}<span class="badge">${I('ph',9)}</span></span>
- <span style="flex:1;min-width:0"><span class="main">${h.n}</span><span class="meta">${time} · ${dur}</span></span>
- <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('precall','${id}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
+ <span style="flex:1;min-width:0"><span class="main">${esc(h.n)}</span><span class="meta">${esc(time)} · ${esc(dur)}</span></span>
+ <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('precall','${domId(id)}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
 
-function vBlocked(){return `<div class="acct">${S.blocked.length?`<div class="acctcard">${S.blocked.map(id=>{const h=g(id);return `<div class="acctrow">${av(h,38,'none')}<span style="flex:1"><span class="main">${h.n}</span><span class="meta">Blocked host</span></span><button class="softbtn" style="margin:0" onclick="S.blocked=S.blocked.filter(x=>x!=='${id}');r()">Unblock</button></div>`}).join('')}</div>`:`<div class="acctcard emptycompact"><span class="acctico">${I('shield',22)}</span><h3>No blocked hosts</h3><p>People you block can’t call or message you. You can manage them here anytime.</p><button class="softbtn" onclick="go('home')">Browse creators</button></div>`}</div>`}
+function vBlocked(){return `<div class="acct">${S.blocked.length?`<div class="acctcard">${S.blocked.map(id=>{const h=g(id);return `<div class="acctrow">${av(h,38,'none')}<span style="flex:1"><span class="main">${esc(h.n)}</span><span class="meta">Blocked host</span></span><button class="softbtn" style="margin:0" onclick="S.blocked=S.blocked.filter(x=>x!=='${domId(id)}');r()">Unblock</button></div>`}).join('')}</div>`:`<div class="acctcard emptycompact"><span class="acctico">${I('shield',22)}</span><h3>No blocked hosts</h3><p>People you block can’t call or message you. You can manage them here anytime.</p><button class="softbtn" onclick="go('home')">Browse creators</button></div>`}</div>`}
 
 function flipSafe(k){S.safe[k]=S.safe[k]?0:1;r()}
 function vSafety(){const prefs=[['discover','Discoverable profile','Let people find you in search'],['requests','Message requests','Allow new people to send requests'],['activity','Activity status','Show when you are online']];return `<div class="acct">
@@ -890,34 +920,65 @@ function vSafety(){const prefs=[['discover','Discoverable profile','Let people f
 const FAQ=[
  ['How do refunds work?','If a recharge fails, coins are not deducted. Completed coin purchases are final in this demo.'],
  ['Why was I charged for a call?','A connection fee starts the call, then coins are deducted per minute at the host’s displayed rate.'],
- ['Terms & privacy','Zimi Live only uses the profile and activity information needed to run this prototype. No real account data is collected.'],
+ ['Your account','You can edit your profile from Settings. Logging out removes this device’s saved sign-in session.'],
  ['Child safety','Zimi Live is designed for adults. Report suspected underage use immediately and avoid sharing personal information.']];
 function vHelp(){return `<div class="acct">
  <div class="acctsec" style="margin-top:0"><div class="accttitle"><span>Popular questions</span></div><div class="acctcard">${FAQ.map(([q,a],i)=>`<div><button class="acctrow" onclick="S.faq=S.faq===${i}?-1:${i};r()"><span class="acctico">${I(i<2?'wal':'shield',16)}</span><span class="main" style="flex:1">${q}</span><span class="ch">${S.faq===i?'⌃':'›'}</span></button>${S.faq===i?`<div class="faqbody">${a}</div>`:''}</div>`).join('')}</div></div>
  <div class="acctsec"><div class="accttitle"><span>Contact us</span></div><div class="support"><button onclick="S.faq=0;r()"><b>Billing help</b><span>Refunds and recharges</span></button><button onclick="S.faq=1;r()"><b>Call support</b><span>Charges and connections</span></button></div></div>
  <div class="s11 muted" style="padding:14px 3px;text-align:center">Typical reply time: under 24 hours</div></div>`}
 
-const esc=v=>String(v||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-function pickMedia(e,k){
- const files=Array.from(e.target.files||[]);if(!files.length)return;
- Promise.all(files.map(file=>new Promise(resolve=>{const rd=new FileReader();rd.onload=()=>resolve(rd.result);rd.readAsDataURL(file)})))
-  .then(data=>{if(k==='posts')S.postData=(S.postData||[]).concat(data).slice(0,7);else S[k+'Data']=data[0];r()})}
-function saveProfile(){me.n=(S.editName||me.n).trim()||me.n;me.c=(S.editCity||me.c).trim()||me.c;me.about=(S.editAbout||"").trim();
- Native.send("profile.save",{name:me.n,city:me.c,about:me.about});go(S.editBack||'profile')}
-function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]).slice(0,2).join("");return `<div class="editwrap">
- <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${S.coverData}" alt="Cover preview">`:artC(me.seed+17)}
-  <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')"></label></div>
-  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${S.avatarData}" alt="Profile preview">`:initials}</span>
-   <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')"></label></div></div>
- <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value"></div>
- <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value"></div>
- <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value">${esc(S.editAbout)}</textarea></div>
- <div class="editgroup"><span class="editlabel">Posts</span><div class="editposts">
-  <label class="editpost add">${I('grid',18)} Add posts<input class="hiddenfile" type="file" accept="image/*" multiple onchange="pickMedia(event,'posts')"></label>
-  ${(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${src}" alt="New post ${i+1}"></span>`).join('')}
+const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+// IDs enter inline handlers, so accept only identifier characters rather than
+// relying on HTML escaping (which is decoded before JavaScript runs).
+const domId=v=>/^[a-zA-Z0-9_-]{1,128}$/.test(String(v??""))?String(v):"";
+const imageSrc=v=>typeof v==="string"&&(/^https:\/\/[^\s"'<>]+$/.test(v)||/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(v))?esc(v):"";
+const giftGlyph=v=>GIFTS.some(g=>g[1]===v)?v:esc(v);
+let mediaSequence=0;
+async function pickMedia(e,k){
+ const files=Array.from(e.target.files||[]);e.target.value="";
+ if(!files.length||S.profileSaving||S.mediaPreparing||S.postPublishing||!["avatar","cover","posts"].includes(k))return;
+ if(k==="posts"&&!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
+ const owner=S.user;S.mediaPreparing=true;S.mediaError="";r();
+ try{
+  const image=await obReadPhoto(files[0]);
+  if(S.user!==owner)return;
+  if(image.length>2*1024*1024)throw new Error("This photo is still too large. Choose a smaller image.");
+  if(k==="posts"){S.postDraftData=image;S.postError=""}
+  else{S[k+"Data"]=image;S.mediaDirty={...(S.mediaDirty||{}),[k]:true}}
+  obHaptic("selection");
+ }catch(error){if(S.user===owner){S.mediaError=error.message||"This image could not be prepared. Please choose another photo.";obHaptic("error")}}
+ finally{if(S.user===owner){S.mediaPreparing=false;r()}}
+}
+function publishPost(){
+ if(S.postPublishing||S.profileSaving||S.mediaPreparing||!S.postDraftData)return;
+ if(!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
+ if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";r();return appNotice("Preview post added.")}
+ S.postPublishing=true;S.postError="";S.postRequestId=++mediaSequence;
+ Native.send("media.post.create",{photo:S.postDraftData,caption:S.postCaption||"",requestId:S.postRequestId});r();
+}
+function saveProfile(){
+ if(S.profileSaving||S.mediaPreparing||S.postPublishing)return;
+ const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim()};
+ if(profile.name.length<2)return appNotice("Use at least two characters for your name.");
+ if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;return go(S.editBack||"profile")}
+ if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
+ if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
+ S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
+function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]).slice(0,2).join(""),busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
+ <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:artC(me.seed+17)}
+  <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
+  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview">`:esc(initials)}</span>
+   <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></div>
+ ${S.mediaPreparing?'<p role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error" role="alert">${esc(S.mediaError)}</div>`:""}
+ <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
+ <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
+ <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
+ <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
+ ${isHost()?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
+  <label class="editpost add">${I('grid',18)} Add photo<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'posts')" ${disabled}></label>
+  ${(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
   ${!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
- </div></div>
- <button class="editsave" onclick="saveProfile()">Save profile</button></div>`}
+ </div>${S.postDraftData?`<div class="editposts"><span class="editpost"><img src="${imageSrc(S.postDraftData)}" alt="Photo ready to publish"></span></div><label class="editlabel" for="postcaption">Caption</label><textarea id="postcaption" class="editinput" maxlength="2000" placeholder="Say something about this moment" oninput="S.postCaption=this.value" ${disabled}>${esc(S.postCaption||"")}</textarea>${S.postError?`<div class="ob-error" role="alert">${esc(S.postError)}</div>`:""}<button class="editsave" onclick="publishPost()" ${disabled}>${S.postPublishing?"Publishing photo…":"Publish photo"}</button>`:""}</div>`:""}</div>`}
 
 function vProfile(){
  const host=isHost();
@@ -926,11 +987,13 @@ function vProfile(){
   recv:host?2090372+A().earn-184250:A().earn,sent:246000+(S.gifted||0),fol:host?"2.4K":"38",following:181};
  return profilePage(p,me,true)}
 
-function kycLabel(){const a=A(),k=a.kyc;
- if(k==="verified")return isHost()?"Verified · badge active":"Verified · payouts on";
- if(k==="pending")return "Under review";
- if(!isHost()&&a.earn<PAYOUT_MIN)return `Unlocks at ${n(PAYOUT_MIN)} earned coins`;
- return isHost()?"Not started · needed to go live":"Ready · needed before your first payout"}
+function kycLabel(){
+ if(isHost())return "Admin approved";
+ const status=S.hostAccess?.hostStatus||S.user?.hostStatus;
+ if(status==="pending"||A().kyc==="pending")return "Under admin review";
+ if(status==="suspended")return "Host access suspended";
+ if(status==="rejected")return "Update your application";
+ return "Apply for admin approval"}
 
 function vSettings(){
  const rows=[
@@ -945,19 +1008,19 @@ function vSettings(){
   <button class="phero" onclick="go('editprofile')" style="width:100%;text-align:left">
    ${av(me,64,"none")}
    <div style="min-width:0">
-    <div class="disp nm">${me.n}</div>
+    <div class="disp nm">${esc(me.n)}</div>
     <div class="id">ID 858350921 ${I("copy",13)}</div>
     <div class="lvlchip">LEVEL 7 &middot; ${isHost()?"HOST":"SENDER"}</div></div><span class="ch" style="margin-left:auto;color:var(--faint);font-size:22px">&rsaquo;</span></button>
 
   <div class="pstats">
-   <div><div class="v tab">${n(S.bal)}</div><div class="k">Coins</div></div>
+   <div><div class="v tab">${window.contentBalance?contentBalance():n(S.bal)}</div><div class="k">Coins</div></div>
    <div><div class="v tab">${n(S.gifted||0)}</div><div class="k">Gifted</div></div>
    <div><div class="v tab">${CH.length}</div><div class="k">Chats</div></div></div>
 
   <div class="pbal">
    <span class="orb"></span>
    <div class="amt"><div class="k">Balance</div>
-    <div class="v">${gem}${n(S.bal)}</div></div>
+    <div class="v">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div></div>
    <button class="go" onclick="go('coins')">Add coins</button></div>
 
   <div class="psec"><h3>Your profile</h3><div class="plist">
@@ -967,9 +1030,9 @@ function vSettings(){
     <span class="tx"><span class="t1" style="display:block">Show MVPs on my profile</span><span class="t2" style="display:block">${A().mvp?"Everyone can see your top supporters":"Only you can see your top supporters"}</span></span><span class="switch ${A().mvp?'on':''}"></span></button>
   </div></div>
 
-  <div class="psec"><h3>Earnings</h3><div class="plist">
+  <div class="psec"><h3>Creator account</h3><div class="plist">
    <button class="pitem" onclick="go('kyc')"><span class="pico">${I('shield',17)}</span>
-    <span class="tx"><span class="t1" style="display:block">${isHost()?"KYC and blue tick":"Payout verification"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
+    <span class="tx"><span class="t1" style="display:block">${isHost()?"Host approval":"Creator application"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
    ${isHost()?`<button class="pitem" onclick="go('awards')"><span class="pico">${I('star',17)}</span>
     <span class="tx"><span class="t1" style="display:block">Awards</span><span class="t2" style="display:block">${S.tasks.filter(t=>t.p>=t.goal&&!t.claimed).length||"No"} reward(s) ready to receive</span></span><span class="ch">&rsaquo;</span></button>`:""}
   </div></div>
@@ -994,9 +1057,9 @@ function vSettings(){
 /* ---- Roles -------------------------------------------------------------
    Two kinds of account share one app. A sender calls hosts and gifts them;
    a host goes online, takes calls and earns. Both can buy coins and gift,
-   both have a wallet; payouts need KYC (full for hosts, light for senders). */
+   both have a wallet; only admin-approved hosts can withdraw earnings. */
 const A=()=>S.acct[S.role];
-const isHost=()=>S.role==="host";
+const isHost=()=>S.role==="host"&&(!window.ZimiHostAccess||isApprovedHost());
 const MY_RATE=TIERS[1]/60;              /* host per-minute rate: 3,000/h tier */
 /* Entry fee rules. The sender pays when the host picks up and it is not refundable.
    The host is only paid the fee once the call passes FEE_HOLD seconds; a call that
@@ -1011,134 +1074,21 @@ const first=nm=>nm.split(" ")[0];
 function fmtDur(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
  return h?`${h} hr ${m} min`:m?`${m} min${x?` ${x} sec`:""}`:`${x} sec`}
 function clock(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function pickRole(k){S.role=k;S.auth={step:"choose",mode:"login"};go(S.loggedIn?"home":"login")}
-function hostMode(m){S.auth={step:"phone",mode:m};r()}
-/* Phone + one-time code. The preview accepts any 6 digits; the app asks the server. */
-function sendOtp(){const i=document.getElementById("ph"),v=(i?i.value:"").replace(/\D/g,"");
- if(v.length!==10||!/^[6-9]/.test(v)){S.auth.err="Enter a valid 10-digit mobile number.";return r()}
- Native.send("auth.sendOtp",{phone:"+91"+v,role:S.role});
- S.auth={step:"otp",phone:v,left:30,mode:S.auth.mode};clearInterval(S.otpT);
- S.otpT=setInterval(()=>{if(S.v!=="login"||S.auth.step!=="otp"||S.auth.left<=0)return clearInterval(S.otpT);
-  S.auth.left--;const t=document.getElementById("rs");if(t)t.innerHTML=resendTxt()},1000);
- r();setTimeout(()=>{const f=document.getElementById("o0");if(f)f.focus()},50)}
-function resendTxt(){return S.auth.left>0?`Resend code in 0:${String(S.auth.left).padStart(2,"0")}`:`<button onclick="sendOtpAgain()">Resend code</button>`}
-function sendOtpAgain(){const ph=S.auth.phone;S.auth={step:"phone",mode:S.auth.mode};r();const i=document.getElementById("ph");if(i){i.value=ph;sendOtp()}}
-function otpIn(el,k){el.value=el.value.replace(/\D/g,"").slice(-1);
- if(el.value&&k<5)document.getElementById("o"+(k+1)).focus();
- if(Array.from({length:6},(_,i)=>document.getElementById("o"+i).value).join("").length===6)verifyOtp()}
-function otpKey(e,k){if(e.key==="Backspace"&&!e.target.value&&k>0)document.getElementById("o"+(k-1)).focus()}
-function otpPaste(e){const d=(e.clipboardData.getData("text")||"").replace(/\D/g,"").slice(0,6);if(d.length<6)return;
- e.preventDefault();d.split("").forEach((c,i)=>{document.getElementById("o"+i).value=c});verifyOtp()}
-function verifyOtp(){const code=Array.from({length:6},(_,i)=>(document.getElementById("o"+i)||{}).value||"").join("");
- if(code.length!==6){S.auth.err="Enter the 6-digit code.";return r()}
- if(!DEMO){if(S.auth.busy)return;S.auth.busy=1;S.auth.err="";
-  return Native.send("auth.verifyOtp",{phone:"+91"+S.auth.phone,code,role:S.role,signup:S.auth.mode==="signup"})}
- clearInterval(S.otpT);signedIn()}
-function googleIn(){if(DEMO)return signedIn();Native.send("auth.google",{role:S.role,signup:S.auth.mode==="signup"})}
-/* New creators set up a profile, then verify; existing ones go straight in. */
-function signedIn(){
- if(S.auth.mode==="signup"){S.auth={step:isHost()?"profile":"sprofile",mode:"signup",cat:"",langs:[]};return r()}
- if(DEMO&&isHost())A().kyc="verified";
- S.loggedIn=1;S.auth={step:"phone"};go("home")}
+function pickRole(k){S.wsel=k;if(S.loggedIn){if(DEMO)S.role=k;go("home")}else obStart("login")}
+function hostMode(mode){obStart(mode)}
+function sendOtp(){obSendOtp()}
+function verifyOtp(){obVerifyOtp()}
+function signedIn(){obSignedIn()}
 const CATS=["Dance","Music","Talk","Gaming","Astrology","Fitness","Comedy"],LANGS=["Hindi","English","Tamil","Telugu","Bengali","Marathi","Punjabi"];
-function toggleLang(l){const a=S.auth.langs;a.includes(l)?a.splice(a.indexOf(l),1):a.push(l);r()}
-/* New senders: a name and the 18+ confirmation, then straight to Home. */
-function finishSender(){const a=S.auth,nm=(document.getElementById("pn")||{}).value||"",em=(document.getElementById("pe")||{}).value||"";
- a.name=nm;a.email=em;
- if(!nm.trim()||!okEmail(em)||(a.photos||[]).length<MIN_PHOTOS||!document.getElementById("p18").checked){a.err=`Add your name, a valid email address, at least ${MIN_PHOTOS} photos, and confirm you're 18 or older.`;return r()}
- me.n=nm.trim();S.editName=me.n;
- Native.send("profile.save",{role:"sender",name:me.n,email:em.trim(),photos:a.photos,langs:a.langs||[]});
- S.loggedIn=1;S.auth={step:"phone"};go("home")}
-function finishProfile(){const a=S.auth,nm=(document.getElementById("pn")||{}).value||"";
- a.name=nm;
- if(!nm.trim()||!a.cat||!a.langs.length||!document.getElementById("p18").checked){a.err="Add your name, a category, at least one language and confirm you're 18 or older.";return r()}
- me.n=nm.trim();S.editName=me.n;me.tag=a.cat;A().kyc="none";S.fromSignup=1;
- Native.send("profile.save",{role:"host",name:me.n,category:a.cat,langs:a.langs});
- S.loggedIn=1;S.auth={step:"phone"};go("kyc")}
-function logout(){Native.send("auth.logout");S.loggedIn=0;S.online=0;go("welcome")}
-function vLogin(){const a=S.auth||{step:"phone"},host=isHost(),signup=a.mode==="signup",of=host?3:2;
- const fmt=p=>p.slice(0,5)+" "+p.slice(5);
- const back=a.step==="otp"?`S.auth={step:'phone',mode:'${a.mode}'};r()`:a.step==="phone"||a.step==="profile"||a.step==="sprofile"?"S.auth={step:'choose'};r()":"go('welcome')";
- const row=(fn,ic,t,d)=>`<button class="lgrow" onclick="${fn}"><span class="lgri">${I(ic,18)}</span><span class="lgrt"><b>${t}</b><span>${d}</span></span><span class="lgchev">&rsaquo;</span></button>`;
- let body;
- if(a.step==="choose")body=`
-   <h1 class="lgh">${host?"Welcome, creator":"Welcome to Zimi Live"}</h1>
-   <p class="lgp">How would you like to continue?</p>
-   <div class="lglist">
-    ${row("hostMode('login')","user","Log in",host?"I already have a host account":"I already have an account")}
-    ${row("hostMode('signup')","plus",host?"Create a host account":"Create an account",host?"Sign up and verify in a few minutes":"New here? It takes less than a minute")}
-   </div>
-   <p class="lgnote">${host?"New accounts add an email address and photos before going live.":"Your coins and wallet stay safe with one-time code login."}</p>`;
- else if(a.step==="sprofile")body=`
-   <span class="lgstep2">Step 2 of 2</span>
-   <h1 class="lgh">Create your profile</h1>
-   <p class="lgp">This is how creators will see you. You can change it later.</p>
-   <div class="editgroup" style="margin:0"><label class="editlabel" for="pn">Display name</label><input class="editinput" id="pn" maxlength="32" placeholder="Your name" value="${esc(a.name||"")}"></div>
-   <div class="editgroup" style="margin:0"><label class="editlabel" for="pe">Email address</label><input class="editinput" id="pe" type="email" autocomplete="email" maxlength="80" placeholder="name@example.com" value="${esc(a.email||"")}"></div>
-   <div><span class="editlabel">Your photos</span>${photoGrid(a.photos||[],"signPhotos","dropSignPhoto")}</div>
-   <div class="lgform"><div><span class="editlabel">Languages you speak <span style="text-transform:none;letter-spacing:0;font-weight:500">(optional)</span></span><div class="lgchips">${LANGS.map(l=>`<button class="${a.langs.includes(l)?"on":""}" aria-pressed="${a.langs.includes(l)}" onclick="S.auth.name=document.getElementById('pn').value;S.auth.email=document.getElementById('pe').value;toggleLang('${l}')">${l}</button>`).join("")}</div></div></div>
-   <label class="lg18"><input type="checkbox" id="p18" ${a.adult?"checked":""} onchange="S.auth.adult=this.checked"> I confirm I am 18 or older.</label>
-   ${a.err?`<div class="lgerr">${a.err}</div>`:""}
-   <button class="lgbtn" onclick="finishSender()">Start exploring</button>`;
- else if(a.step==="profile")body=`<div class="lgform">
-  <div class="wcopy"><span class="lgstep2">Step 2 of 3</span><h1 class="lgh">Set up your profile</h1>
-   <p class="lgp">This is what callers see. You can change it later.</p></div>
-  <div class="editgroup" style="margin:0"><label class="editlabel" for="pn">Display name</label><input class="editinput" id="pn" maxlength="32" placeholder="Your stage or display name" value="${esc(a.name||"")}"></div>
-  <div><span class="editlabel">What do you do on calls?</span><div class="lgchips">${CATS.map(c=>`<button class="${a.cat===c?"on":""}" aria-pressed="${a.cat===c}" onclick="S.auth.name=document.getElementById('pn').value;S.auth.cat='${c}';r()">${c}</button>`).join("")}</div></div>
-  <div><span class="editlabel">Languages you speak</span><div class="lgchips">${LANGS.map(l=>`<button class="${a.langs.includes(l)?"on":""}" aria-pressed="${a.langs.includes(l)}" onclick="S.auth.name=document.getElementById('pn').value;toggleLang('${l}')">${l}</button>`).join("")}</div></div>
-  <label class="lg18"><input type="checkbox" id="p18" ${a.adult?"checked":""} onchange="S.auth.adult=this.checked"> I confirm I am 18 or older and agree to the Creator Payout Policy.</label>
-  ${a.err?`<div class="lgerr">${a.err}</div>`:""}
-  <button class="lgbtn" onclick="finishProfile()">Continue to verification</button></div>`;
- else if(a.step==="otp")body=`
-   ${signup?`<span class="lgstep2">Step 1 of ${of}</span>`:""}
-   <h1 class="lgh">Enter the code</h1>
-   <p class="lgp">Sent to +91 ${fmt(a.phone)} &middot; <button class="lglink" onclick="S.auth={step:'phone',mode:'${a.mode}'};r()">Change</button></p>
-   <div class="otp" onpaste="otpPaste(event)">${Array.from({length:6},(_,k)=>`<input id="o${k}" inputmode="numeric" autocomplete="${k?"off":"one-time-code"}" maxlength="1" aria-label="Digit ${k+1}" oninput="otpIn(this,${k})" onkeydown="otpKey(event,${k})">`).join("")}</div>
-   ${a.err?`<div class="lgerr">${a.err}</div>`:""}
-   <button class="lgbtn" onclick="verifyOtp()">Verify</button>
-   <div class="lgresend" id="rs">${resendTxt()}</div>`;
- else body=`
-   ${signup?`<span class="lgstep2">Step 1 of ${of}</span>`:""}
-   <h1 class="lgh">${signup?"Create your account":"Log in"}</h1>
-   <p class="lgp">Enter your mobile number. We'll send you a 6-digit code.</p>
-   <label class="lgfield"><span class="cc">+91</span>
-    <input id="ph" inputmode="numeric" autocomplete="tel-national" maxlength="11" placeholder="Mobile number" aria-label="Mobile number" onkeydown="if(event.key==='Enter')sendOtp()"></label>
-   ${a.err?`<div class="lgerr">${a.err}</div>`:""}
-   <button class="lgbtn" onclick="sendOtp()">Continue</button>
-   <div class="lgor"><span>or</span></div>
-   <button class="lggoogle" onclick="googleIn()"><b>G</b> Continue with Google</button>
-   <p class="lgsecure">${I("lock",13)} Secured with one-time code login</p>`;
- return `<div class="lgwrap">
-  <header class="lghead"><button class="lgbk" aria-label="Back" onclick="${back}">${I("back",20)}</button>
-   <span class="lglogo"><span class="wmark">${I("vid",13)}</span>Zimi Live</span><span class="lgsp"></span></header>
-  <div class="lgbody ${a.step==="profile"||a.step==="sprofile"?"top":""}">${body}</div>
-  <p class="lgfoot">By continuing you agree to the Terms of Service and Privacy Policy. 18+ only.</p>
- </div>`}
+function logout(){Native.send("auth.logout");obResetSession()}
+function vLogin(){return obLogin()}
 
 /* ---- Welcome: the first screen, where an account picks its side ---- */
-function vWelcome(){
- const sel=S.wsel||"";
- const opt=(k,ico,title,body,pts)=>`<button class="wopt ${sel===k?"on":""} ${k}" role="radio" aria-checked="${sel===k}" onclick="S.wsel='${k}';r()">
-   <span class="wico">${I(ico,19)}</span>
-   <span class="wtx"><b>${title}</b><span class="wbody">${body}</span>
-    <span class="wpts">${pts.map(x=>`<span>${x}</span>`).join("")}</span></span>
-   <span class="wradio"></span></button>`;
- return `<div class="welc">
-  <div class="wbrandrow"><span class="wmark">${I("vid",16)}</span><span class="wbrand disp">Zimi Live</span></div>
-  <div class="wcopy">
-   <h1 class="disp">Welcome to Zimi Live</h1>
-   <p class="welsub">Choose how you'd like to get started.</p></div>
-  <div class="wopts" role="radiogroup" aria-label="Account type">
-   ${opt("sender","heart","Connect with creators","Connect one-on-one with creators and engage by sending exclusive gifts.",["Private 1-on-1 calls","Exclusive gifts","Secure wallet"])}
-   ${opt("host","vid","Earn as a creator","Host paid video calls and grow your earnings.",["Per-minute & gift earnings","Verified badge","Instant payouts"])}
-  </div>
-  <button class="wgo" ${sel?"":"disabled"} onclick="pickRole(S.wsel)">${sel==="host"?"Continue as a creator":sel==="sender"?"Continue":"Select an option to continue"}</button>
-  <div class="welfoot">By continuing you agree to the Terms of Service and Privacy Policy. 18+ only.</div>
- </div>`}
+function vWelcome(){return obWelcome()}
 
 /* ---- Host strip on Home: go-online entry point and KYC nudge ---- */
 function hostStrip(){
- if(!isHost())return "";
+ if(!isHost()&&!S.creatorSetup)return "";
  const k=A().kyc;
  if(k==="verified"&&S.online)return `<div class="hoststrip online">
   <span class="hsdot"></span>
@@ -1152,18 +1102,19 @@ function hostStrip(){
   <span class="hstx"><b>${t}</b><span>${d}</span></span>
   <button onclick="go('${go_}')">${b}</button></div>`}
 function myCard(){
- return `<div class="card mine" role="button" tabindex="0" onclick="go('profile')">${art(me.seed)}<span class="scrim"></span>
+ return `<div class="card mine" role="button" tabindex="0" onclick="go('profile')">${portrait(me)}<span class="scrim"></span>
   <span class="cat">You &middot; Online</span>
-  <span class="cbot"><span class="cnm">${me.n} &#127470;&#127475;</span></span></div>`}
+  <span class="cbot"><span class="cnm">${esc(me.n)} &#127470;&#127475;</span></span></div>`}
 
 /* ---- Sender: before the call ---- */
 function talkTime(m){return m>=120?`about ${n(Math.floor(m/60))} hr`:`about ${n(m)} min`}
 function vPrecall(){
+ if(window.ZimiHome)return homePrecall();
  const h=g(S.h), need=h.fee+h.rate, mins=Math.floor(Math.max(0,S.bal-h.fee)/h.rate), low=S.bal<need;
  return `<div class="pcall">
  <div class="pcbg">${art(h.seed)}</div><span class="pcshade"></span>
  <div class="pctop">
-  <button class="pcic" aria-label="Back" onclick="go('host','${h.id}')">${I("back",19)}</button>
+  <button class="pcic" aria-label="Back" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
   <span class="pctitle">Video call</span>
   <span style="width:38px"></span></div>
 
@@ -1171,8 +1122,8 @@ function vPrecall(){
 
  <div class="pcmain">
   <div class="pcav">${avc(h,96)}<span class="pcon"></span></div>
-  <h2 class="disp">${h.n}</h2>
-  <p class="pcsub">${h.tag} &middot; ${h.c}</p>
+  <h2 class="disp">${esc(h.n)}</h2>
+  <p class="pcsub">${esc(h.tag)} &middot; ${esc(h.c)}</p>
   <span class="pcbadge"><i></i>Online now &middot; usually answers in seconds</span>
  </div>
 
@@ -1180,7 +1131,7 @@ function vPrecall(){
   <div class="pcprice">
    <div><span class="k">Entry fee</span><span class="v">${gem}${n(h.fee)}</span></div>
    <div><span class="k">Per minute</span><span class="v">${gem}${n(h.rate)}</span></div>
-   <div><span class="k">Your balance</span><span class="v ${low?"low":""}">${gem}${n(S.bal)}</span></div></div>
+   <div><span class="k">Your balance</span><span class="v ${low?"low":""}">${gem}${window.contentBalance?contentBalance():n(S.bal)}</span></div></div>
   <div class="pcmeta">${low
    ?`<span class="warn">${I("wal",14)} You need at least ${n(need)} coins to start this call.</span>`
    :`<span>${I("ph",14)} Your balance covers ${talkTime(mins)} of talk time</span>`}</div>
@@ -1188,9 +1139,9 @@ function vPrecall(){
    <button class="${S.mic?"":"off"}" aria-pressed="${!S.mic}" onclick="S.mic=S.mic?0:1;r()">${I(S.mic?"mic":"micoff",18)}<span>${S.mic?"Mic on":"Mic off"}</span></button>
    <button class="${S.scam?"":"off"}" aria-pressed="${!S.scam}" onclick="S.scam=S.scam?0:1;r()">${I(S.scam?"flip":"camoff",18)}<span>${S.scam?"Camera on":"Camera off"}</span></button></div>
   ${low?`<button class="pcgo" onclick="go('coins')">${gem} Add coins</button>`
-   :`<button class="pcgo" onclick="go('dial','${h.id}')">${I("vid",19)} Start video call</button>`}
-  ${S.pcerr?`<div class="pcerr" role="alert">${S.pcerr}</div>`:""}
-  <div class="pcfine">The entry fee is charged only when ${first(h.n)} picks up and is non-refundable. Your camera starts off; turn it on from &#8942; in the call.</div>
+   :`<button class="pcgo" onclick="go('dial','${domId(h.id)}')">${I("vid",19)} Start video call</button>`}
+  ${S.pcerr?`<div class="pcerr" role="alert">${esc(S.pcerr)}</div>`:""}
+  <div class="pcfine">The entry fee is charged only when ${esc(first(h.n))} picks up and is non-refundable. Your camera starts off; turn it on from &#8942; in the call.</div>
  </div></div>`}
 
 /* ringing out: no "busy" state, a host on another call still gets the ring */
@@ -1199,15 +1150,16 @@ function vDial(){
  return `<div class="ringscr">
   <div class="ringbg">${art(p.seed)}</div>
   <div class="ringorb">${avc(p,104)}</div>
-  <h2>${p.n}</h2><p>Calling&hellip;</p>
-  ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${first(p.n)} picks up</span>`}
+  <h2>${esc(p.n)}</h2><p>Calling&hellip;</p>
+  ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
   <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
  </div>`}
 
-function cancelDial(){Native.send("call.end",{reason:"cancelled"});if(S.v==="dialback")go("chats");else go("precall",S.h)}
+function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")go("chats");else go("precall",S.h)}
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
+ if(window.ZimiHome&&!DEMO)return homeWaiting();
  return `<div class="ringscr host">
   <div class="ringorb">${avc(me,104)}</div>
   <h2>You're online</h2>
@@ -1232,7 +1184,7 @@ function vRing(){const c=S.caller;
   <div class="ringbg">${art(c.seed)}</div>
   <span class="ringeye"><i></i>Incoming video call</span>
   <div class="ringorb pulse">${avc(c,112)}</div>
-  <h2>${c.n}</h2><p>Lv ${c.lvl} &middot; ${c.c} &middot; ${c.v} followers</p>
+  <h2>${esc(c.n)}</h2><p>Lv ${esc(c.lvl)} &middot; ${esc(c.c)} &middot; ${esc(c.v)} followers</p>
   <span class="ringearn">${gem}You earn ${n(MY_RATE)} coins/min</span>
   <span class="ringfee">+${MY_FEE} entry fee once the call passes 1 minute</span>
   <div class="ringact two">
@@ -1242,6 +1194,7 @@ function vRing(){const c=S.caller;
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
+ if(window.ZimiHome&&!DEMO)return homeCallView(true);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(me,c)}
  ${topBar(1)}
@@ -1268,12 +1221,12 @@ function vHostCall(){const c=S.caller;
 
 function incBanner(){const c=S.inc;
  return `<div class="incban">${avc(c,40)}
-  <span class="tx"><b>${c.n}</b><span>is calling you &middot; Lv ${c.lvl}</span></span>
+  <span class="tx"><b>${esc(c.n)}</b><span>is calling you &middot; Lv ${esc(c.lvl)}</span></span>
   <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
 function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting")}
-function acceptRing(){Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
+function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
  S.inc=c||nextCaller();
@@ -1291,6 +1244,7 @@ function logFee(){
  const early=!S.feeOk;if(early)S.early++;
  S.feeLog.push({n:S.caller.n,ok:!!S.feeOk,early});return early}
 function hostEnd(kind){
+ if(!DEMO){if(kind==='switch')return appNotice('Finish this call before accepting another.');return endCall()}
  if(!S.feeOk){S.confirm=kind;S.more=0;S.tray=0;return r()}
  kind==="switch"?acceptInc():endCall()}
 function confirmEnd(){
@@ -1299,11 +1253,11 @@ function confirmEnd(){
   <div class="panel cfm">
    <span class="cfmico">${I("clock",22)}</span>
    <b>${k==="switch"?`Switch before 1 minute?`:`End call before 1 minute?`}</b>
-   <p>${first(S.caller.n)}'s ${MY_FEE}-coin entry fee unlocks in <b>${clock(left)}</b>. If you ${k==="switch"?"switch":"end"} now, you won't receive it and it goes to Zimi Live.</p>
+   <p>${esc(first(S.caller.n))}'s ${MY_FEE}-coin entry fee unlocks in <b>${clock(left)}</b>. If you ${k==="switch"?"switch":"end"} now, you won't receive it and it goes to Zimi Live.</p>
    <p class="warn">This would be early ending ${nth} today. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</p>
    <button class="keep" onclick="S.confirm=0;r()">Keep talking</button>
    <button class="anyway" onclick="S.confirm=0;${k==="switch"?"acceptInc()":"endCall()"}">${k==="switch"?"Switch anyway":"End call anyway"}</button></div></div>`}
-function acceptInc(){clearTimeout(S.it);
+function acceptInc(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;clearTimeout(S.it);
  if(!S.inc)return r();
  logFee();
  const from=S.caller,to=S.inc;
@@ -1320,14 +1274,15 @@ function connectingScreen(){const {from,to}=S.connecting;
   <div class="connbg">${art(to.seed)}</div>
   <div class="connorb">${avc(to,96)}<span class="connring"></span></div>
   <span class="conneye">Connecting</span>
-  <h2>Connecting to ${to.n}</h2>
-  <p>Lv ${to.lvl} &middot; ${to.c}</p>
+  <h2>Connecting to ${esc(to.n)}</h2>
+  <p>Lv ${esc(to.lvl)} &middot; ${esc(to.c)}</p>
   <div class="connbar"><i></i></div>
-  <span class="connnote">Your call with ${first(from.n)} has ended. Your camera, mic and beauty settings stay the same.</span>
+  <span class="connnote">Your call with ${esc(first(from.n))} has ended. Your camera, mic and beauty settings stay the same.</span>
  </div>`}
 
 const IN_GIFTS=[1,2,3,4,5,6,8];
 function hostTick(){
+ if(!DEMO){S.sec++;paintHostTick();return}
  S.sec++;S.earned+=MY_RATE/60;
  if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
   S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
@@ -1355,6 +1310,7 @@ function paintHostTick(){
 /* ---- Ending a call: both sides land on a summary ---- */
 /* remote: the other side hung up, so there is nothing to tell the server */
 function endCall(remote){
+ if(window.ZimiMedia)window.ZimiMedia.stop();
  if(!remote)Native.send("call.end",{callId:S.v==="hcall"?S.caller.callId:S.callId});
  if(S.v==="hcall"){
   logFee();
@@ -1362,7 +1318,7 @@ function endCall(remote){
   const before=S.tasks.map(t=>t.p>=t.goal);
   const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
   S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
-  A().earn+=earned;
+  if(DEMO)A().earn+=earned;
   S.sum={k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
    done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
  } else {
@@ -1378,6 +1334,7 @@ function supportPct(h,spent){
  return Math.min(99,Math.round(xs.filter(x=>x<spent).length/xs.length*100))}
 
 function vSummary(){const s=S.sum;
+ if(window.ZimiHome&&!DEMO)return homeCallSummary();
  if(!s)return "";
  if(s.k==="sender"){
   const h=g(s.h),f=first(h.n),pct=supportPct(h,s.spent),big=pct>=50;
@@ -1385,9 +1342,9 @@ function vSummary(){const s=S.sum;
   return `<div class="sum ssum">
    <div class="ssduo">${avc(me,64)}<span class="sslink">${I("heart",14)}</span>${avc(h,64)}</div>
    <span class="sseye">Call ended &middot; ${fmtDur(s.sec)}</span>
-   <h1 class="disp">${big?`Bravo, ${first(me.n)}!`:`Great call with ${f}`}</h1>
-   <p>${big?`You supported ${f} more than <b>${pct}%</b> of their callers this week.`
-    :`Thanks for spending time with ${f}. A gift next time puts you on ${f}'s MVP board.`}</p>
+   <h1 class="disp">${big?`Bravo, ${esc(first(me.n))}!`:`Great call with ${esc(f)}`}</h1>
+   <p>${big?`You supported ${esc(f)} more than <b>${pct}%</b> of their callers this week.`
+    :`Thanks for spending time with ${esc(f)}. A gift next time puts you on ${esc(f)}'s MVP board.`}</p>
    ${big?`<div class="ssmeter"><div class="ssml"><span>Your support this week</span><b>Top ${Math.max(1,100-pct)}%</b></div>
      <div class="ssbar"><i style="width:${pct}%"></i></div></div>`:""}
    <div class="ssreceipt">
@@ -1397,10 +1354,10 @@ function vSummary(){const s=S.sum;
     <div><span>Gifts${s.gifts?` (${s.gifts})`:""}</span><b>${gem}${n(s.giftV)}</b></div>
     <div class="tot"><span>Total spent</span><b>${gem}${n(s.spent)}</b></div></div>
    <div class="sumbtns">
-    <button class="pri" onclick="go('precall','${h.id}')">${I("vid",17)} Call again</button></div>
+    <button class="pri" onclick="go('precall','${domId(h.id)}')">${I("vid",17)} Call again</button></div>
    <div class="sumbtns two">
-    <button class="sec" onclick="go('thread','${h.id}')">${I("chat",16)} Message</button>
-    <button class="sec ${S.following[h.id]?"done":""}" onclick="toggleFollow('${h.id}')">${I(S.following[h.id]?"check":"heart",16)} ${S.following[h.id]?"Following":"Follow"}</button></div>
+    <button class="sec" onclick="go('thread','${domId(h.id)}')">${I("chat",16)} Message</button>
+    <button class="sec ${S.following[h.id]?"done":""}" onclick="toggleFollow('${domId(h.id)}')">${I(S.following[h.id]?"check":"heart",16)} ${S.following[h.id]?"Following":"Follow"}</button></div>
    <button class="sumhome" onclick="go('home')">Back to Home</button></div>`}
  const next=S.tasks.find(t=>t.p<t.goal),awardSum=s.done.reduce((a,t)=>a+t.rw,0);
  return `<div class="sum hsum">
@@ -1427,13 +1384,13 @@ function feeSummary(F){
  const lost=F.filter(f=>!f.ok);
  return `<div class="feesum">
   <div class="fshead"><span>Entry fees</span><b>${gem}+${n(F.filter(f=>f.ok).length*MY_FEE)}</b></div>
-  ${F.map(f=>`<div class="fsrow ${f.ok?"ok":"no"}">${I(f.ok?"check":"clock",14)}<span>${first(f.n)}</span>
+  ${F.map(f=>`<div class="fsrow ${f.ok?"ok":"no"}">${I(f.ok?"check":"clock",14)}<span>${esc(first(f.n))}</span>
    <em>${f.ok?`+${MY_FEE} received`:"Ended before 1 min, went to Zimi Live"}</em></div>`).join("")}
   ${lost.length?`<div class="fswarn">Early endings today: <b>${S.early}</b>. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</div>`:""}</div>`}
 function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
 
 /* ---- Awards (host tasks) ---- */
-function claimAward(i){const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;t.claimed=1;A().earn+=t.rw;Native.send("awards.claim",{task:t.k});r()}
+function claimAward(i){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;if(!DEMO){Native.send("awards.claim",{task:t.k});return}t.claimed=1;A().earn+=t.rw;r()}
 function resetIn(){const now=new Date(),mid=new Date(now);mid.setHours(24,0,0,0);
  const m=Math.floor((mid-now)/60000);return `${Math.floor(m/60)}h ${m%60}m`}
 function vAwards(){
@@ -1473,24 +1430,25 @@ function mvpEmpty(p,self){
   <h3>${self?"Your MVPs are on their way":"MVP spots are still open"}</h3>
   <p>${self?(isHost()?"The first person to send you a gift takes the #1 spot. Go online, say hi, and your board starts filling up."
     :"When someone sends you a gift, your top supporters will show up here.")
-   :`Nobody has gifted ${first(p.n)} yet. Send the first gift and claim the #1 spot.`}</p>
+   :`Nobody has gifted ${esc(first(p.n))} yet. Send the first gift and claim the #1 spot.`}</p>
   ${self&&isHost()?`<button class="softbtn" onclick="go('setup')">Go online</button>`:""}</div>`}
 function mvpBlock(p,raw,self,list){
  if(!self&&raw.hideMvp)return `<div class="mvp"><div class="acctcard emptycompact"><span class="acctico">${I("shield",22)}</span>
-  <h3>MVPs are private</h3><p>${first(p.n)} has chosen to keep their top supporters private.</p></div></div>`;
+  <h3>MVPs are private</h3><p>${esc(first(p.n))} has chosen to keep their top supporters private.</p></div></div>`;
  if(!list.length)return `<div class="mvp">${mvpEmpty(p,self)}</div>`;
  const hidden=self&&!A().mvp;
  return `<div class="mvp">${hidden?`<div class="mvphid">${I("shield",14)}<span>Hidden from your profile. Only you can see this list.</span>
    <button onclick="toggleMvp()">Show</button></div>`:""}
-  ${list.map((m,i)=>`<button class="mrow ${i<3?"p"+(i+1):""}" onclick="${m.id==="me"?"go('profile')":m.host?`go('host','${m.id}')`:`go('user','${m.id}')`}">
+  ${list.map((m,i)=>`<button class="mrow ${i<3?"p"+(i+1):""}" onclick="${m.id==="me"?"go('profile')":m.host?`go('host','${domId(m.id)}')`:`go('user','${domId(m.id)}')`}">
    <span class="mrank r${i<3?i+1:0}">${i+1}</span>
    <span class="bav">${avc(m,40)}</span>
-   <span class="mname">${m.n}${i===0?`<span class="mtag">${p.host||self?"TOP MVP":"TOP HOST"}</span>`:""}</span>
+   <span class="mname">${esc(m.n)}${i===0?`<span class="mtag">${p.host||self?"TOP MVP":"TOP HOST"}</span>`:""}</span>
    <span class="mcoin">${gem}${n(m.c)}</span></button>`).join("")}</div>`}
 function toggleMvp(){A().mvp=A().mvp?0:1;Native.send("settings.set",{showMvps:!!A().mvp});r()}
 
 /* ---- Wallet earnings, KYC and payouts ---- */
 function earnCard(){
+ if(!isHost())return "";
  const a=A(),k=a.kyc,host=isHost(),locked=!host&&a.earn<PAYOUT_MIN;
  let msg,act="";
  if(locked){msg=`Earn ${n(PAYOUT_MIN)} coins from gifts to unlock payouts.`;
@@ -1519,7 +1477,7 @@ function readImgs(e,cb){
 const MIN_PHOTOS=3, MAX_PHOTOS=6;
 const okEmail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((v||"").trim());
 function photoGrid(list,addFn,dropFn){
- return `<div class="kphotos">${list.map((src,i)=>`<span class="kph"><img src="${src}" alt="Photo ${i+1}"><button aria-label="Remove photo ${i+1}" onclick="${dropFn}(${i})">&times;</button></span>`).join("")}
+ return `<div class="kphotos">${list.map((src,i)=>`<span class="kph"><img src="${imageSrc(src)}" alt="Photo ${i+1}"><button aria-label="Remove photo ${i+1}" onclick="${dropFn}(${i})">&times;</button></span>`).join("")}
   ${list.length<MAX_PHOTOS?`<label class="kph add">${I("flip",18)}<span>${list.length?"Add":"Upload"}</span><input class="hiddenfile" type="file" accept="image/*" multiple onchange="${addFn}(event)"></label>`:""}</div>
   <div class="khint">${list.length<MIN_PHOTOS?`Add at least ${MIN_PHOTOS} clear photos of your face (${list.length} of ${MIN_PHOTOS})`:`${list.length} photos added. You can add up to ${MAX_PHOTOS}.`}</div>`}
 function signPhotos(e){S.auth.name=(document.getElementById("pn")||{}).value||S.auth.name;S.auth.email=(document.getElementById("pe")||{}).value||S.auth.email;
@@ -1528,34 +1486,47 @@ function dropSignPhoto(i){S.auth.photos.splice(i,1);r()}
 function kycPhotos(e){readImgs(e,d=>{S.kerr=0;S.kf.photos=(S.kf.photos||[]).concat(d).slice(0,MAX_PHOTOS);r()})}
 function dropPhoto(i){S.kf.photos.splice(i,1);r()}
 function submitKyc(){
- const need=isHost()?["name","dob","email"]:["name","pan"];
- if(need.some(k=>!(S.kf[k]||"").trim()))return S.kerr=1,r();
- if(isHost()&&(!okEmail(S.kf.email)||(S.kf.photos||[]).length<MIN_PHOTOS))return S.kerr=1,r();
- S.kerr=0;A().kyc="pending";
- Native.send("verification.submit",{role:S.role,...S.kf});r()}
+ if(S.kycBusy)return;
+ if(!isHost()&&!S.creatorSetup){
+  if(!DEMO)return appNotice("Payout verification is not available in this version.");
+  if(!String(S.kf.name||"").trim()||!String(S.kf.pan||"").trim()){S.kerr="Please fill in every field to continue.";return r()}
+  S.kerr="";A().kyc="pending";return r();
+ }
+ if((S.kf.name||"").trim().length<2||(S.kf.bio||"").trim().length<20||!(S.kf.langs||[]).length){S.kerr="Add your name, a bio of at least 20 characters, and a language.";return r()}
+ S.kerr="";S.kycBusy=true;
+ if(DEMO){S.kycBusy=false;A().kyc="pending";return r()}
+ Native.send("verification.submit",{name:S.kf.name.trim(),bio:S.kf.bio.trim(),langs:S.kf.langs});r()}
+function toggleKycLang(index){const lang=LANGS[index];if(!lang||S.kycBusy)return;
+ const langs=S.kf.langs||(S.kf.langs=[]);langs.includes(lang)?langs.splice(langs.indexOf(lang),1):langs.push(lang);r()}
 function approveKyc(){A().kyc="verified";r()}
 function kycStatus(host){
  const step=(done,on,t)=>`<div class="kst ${done?"done":on?"on":""}"><span class="kdot">${done?I("check",12):""}</span><span>${t}</span></div>`;
  return `<div class="ktrack">${step(1,0,"Details submitted")}${step(0,1,"Verification in progress")}${step(0,0,host?"Ready to go live":"Payouts unlocked")}</div>`}
 function vKyc(){
- const a=A(),host=isHost();
+ const a=A(),host=isHost()||S.creatorSetup;
  if(!host&&a.earn<PAYOUT_MIN)return `<div class="acct"><div class="acctcard emptycompact"><span class="acctico">${I("wal",22)}</span>
   <h3>Payouts unlock at ${n(PAYOUT_MIN)} coins</h3><p>Senders who receive gifts can withdraw once they pass ${n(PAYOUT_MIN)} earned coins. You have ${n(a.earn)} so far.</p>
   <button class="softbtn" onclick="go('wallet')">Back to wallet</button></div></div>`;
  if(a.kyc==="pending")return `<div class="acct"><div class="kpend">
   <span class="kspin">${I("shield",26)}</span>
   <h2 class="disp">Your account is under review</h2>
-  <p>${host?"Thank you for submitting your details. Our team is verifying your documents, which usually takes just a few minutes. Once your account is approved, you'll be notified and can start going live straight away."
+  <p>${host?"Your creator application has been submitted. Your profile will be reviewed before you can receive calls. You can return here to check its status."
    :"Thank you for submitting your details. We're verifying them now, which usually takes just a few minutes. Once approved, you can withdraw your earnings."}</p>
   ${kycStatus(host)}
   <button class="editsave" onclick="go('home')">Back to Home</button>
-  ${DEMO?`<button class="kdemo" onclick="approveKyc()">Approve now (preview only)</button>`:""}</div></div>`;
- if(a.kyc==="verified")return `<div class="acct"><div class="kpend">
+</div></div>`;
+ if(a.kyc==="verified"&&isHost())return `<div class="acct"><div class="kpend">
   <span class="kspin ok">${I("check",26)}</span>
   <h2 class="disp">${host?"You're verified":"Payouts verified"}</h2>
   <p>${host?"Your verified badge is now on your profile. You can start going live and withdraw your earnings anytime.":"You can withdraw your earnings anytime."}</p>
   ${host?`<button class="editsave" onclick="go('setup')">Go live now</button>`:""}
   <button class="${host?"kdemo":"editsave"}" onclick="S.pdone=0;go('payout')">Withdraw earnings</button></div></div>`;
+ if(host)return `<div class="acct kyc"><div class="kycnote">${I("shield",15)}<span>Introduce yourself to the Zimi team. You can receive calls once your creator application is approved.</span></div>
+  ${kf("name","Your creator name","Creator name")}
+  <div class="editgroup"><label class="editlabel" for="kf_bio">A little about you</label><textarea class="editinput" id="kf_bio" rows="4" minlength="20" maxlength="1000" placeholder="Tell us what you love and the conversations you want to share." oninput="S.kf.bio=this.value" ${S.kycBusy?"disabled":""}>${esc(S.kf.bio||"")}</textarea><div class="khint">At least 20 characters.</div></div>
+  <div class="editgroup"><span class="editlabel">Languages you speak</span><div class="ob-options">${LANGS.map((lang,i)=>`<button class="${(S.kf.langs||[]).includes(lang)?"selected":""}" aria-pressed="${(S.kf.langs||[]).includes(lang)}" onclick="toggleKycLang(${i})" ${S.kycBusy?"disabled":""}>${esc(lang)}</button>`).join("")}</div></div>
+  ${S.kerr?`<div class="kycerr" role="alert">${esc(S.kerr)}</div>`:""}<button class="editsave" onclick="submitKyc()" ${S.kycBusy?"disabled":""}>${S.kycBusy?"Submitting…":"Submit for review"}</button></div>`;
+ if(!DEMO)return `<div class="acct"><div class="kycnote">Payout verification is not available in this version.</div><button class="editsave" onclick="go('wallet')">Back to wallet</button></div>`;
  const ph=S.kf.photos||[];
  return `<div class="acct kyc">
   ${host&&S.fromSignup?`<span class="lgstep">Step 3 of 3 &middot; Verify your identity</span>`:""}
@@ -1588,15 +1559,17 @@ function vPayout(){
   ${S.perr?`<div class="kycerr">Enter the UPI ID to send your money to.</div>`:""}
   <div class="pyamt"><span>You receive</span><b>${inr(amt)}</b></div>
   <button class="editsave" ${ok?"":"disabled"} onclick="withdraw()">Withdraw ${inr(amt)}</button></div>`}
-function withdraw(){const i=document.getElementById("pamt"),a=A();
+function withdraw(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const i=document.getElementById("pamt"),a=A();
  if(!(S.kf.payout||"").trim()){S.perr=1;S.pamt=i?i.value:S.pamt;return r()}S.perr=0;
  const amt=Math.min(a.earn,parseInt(i?i.value:S.pamt,10)||0);
  if(amt<WITHDRAW_MIN){S.pamt=String(amt);return r()}
  Native.send("payout.request",{coins:amt,upi:S.kf.payout.trim()});
+ if(!DEMO)return;
  a.earn-=amt;S.pdone=amt;S.pamt="";r()}
 
 /* Chrome lives outside the scroller, so it cannot drift while scrolling. */
 function topFor(){
+ if(window.ZimiHome){const chrome=window.ZimiHome.header();if(chrome!==null)return chrome}
  if(S.v==="home"){
   const T=[["following","Following"],["explore","Explore"],["foryou","For You"],["new","New"]];
   return `<div class="stabs">
@@ -1607,21 +1580,21 @@ function topFor(){
  if(S.v==="search")return `<div class="hdr" style="gap:8px">
    <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
    <span class="sfield">${I("srch",17)}
-    <input id="sq" placeholder="Search creators by name" value="${S.sq||""}" oninput="S.sq=this.value;paintSearch()">
+    <input id="sq" placeholder="Search creators by name" value="${esc(S.sq||"")}" oninput="S.sq=this.value;paintSearch()">
     ${S.sq?`<button aria-label="Clear" onclick="S.sq='';r()" style="color:var(--faint);font-size:16px">&times;</button>`:""}
    </span></div>`;
  if(S.v==="coins")return `<div class="hdr" style="gap:8px">
    <button aria-label="Back" onclick="go('settings')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
-  kyc:isHost()?"Account verification":"Payout verification",payout:"Withdraw",awards:"Awards"};
+  kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
  const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
    <button aria-label="Back" onclick="go('${backTo}')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
-   <button class="bal" onclick="go('profile')">${gem}${n(S.bal)}</button></div>`;
+   <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
  if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
    <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
@@ -1632,11 +1605,23 @@ function topFor(){
      `<button class="${S.per===k?"on":""}" onclick="S.per='${k}';r()">${l}</button>`).join("")}</span></div></div>`;
  return ""}
 
+let appNoticeTimer;
+function appNotice(message){
+ let notice=document.getElementById("app-notice");
+ if(!notice){notice=document.createElement("div");notice.id="app-notice";notice.className="ob-toast";notice.setAttribute("role","status");document.body.appendChild(notice)}
+ notice.textContent=message||"That action could not be completed. Please try again.";
+ clearTimeout(appNoticeTimer);appNoticeTimer=setTimeout(()=>notice.remove(),7000);
+}
 function r(){
+ if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
+ const inboxFocus=window.zcCaptureFocus?.();
+ obSyncTheme();
+ if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
  el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,thread:vThread,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
-  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards}[S.v]();
+  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
+ if(S.loggedIn&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
  nav();
  if(S.v==="call"){tick();paintFeed();
@@ -1650,7 +1635,8 @@ function r(){
   if(S.cmp){const i=document.getElementById("rmsg");if(i)i.focus()}}
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
- if(S.v==="thread")paint()}
+ if(S.v==="thread")paint();
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus)}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1660,14 +1646,16 @@ const PEOPLE={};
 const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997;return x};
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
  return PEOPLE[id]={id,n:p.name||"Zimi user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */
 function knowHost(p){const h=hostFrom(p);if(!g(h.id))EXTRA.push(h);return h}
-const LIST_VIEWS=["home","board","search","chats","calls","wallet","transactions","profile","awards","kyc","payout"];
+const LIST_VIEWS=["home","explore","board","search","chats","calls","wallet","coins","transactions","profile","awards","kyc","payout"];
 function refresh(){if(LIST_VIEWS.includes(S.v))r()}
 
 if(!DEMO){
@@ -1676,17 +1664,34 @@ if(!DEMO){
  S.tasks.forEach(t=>t.p=0);me.n="";S.editName="";
 }
 
-Native.on("session",d=>{const u=d.user||{};
- if(u.name){me.n=u.name;S.editName=u.name}if(u.city)me.c=u.city;if(u.about!=null)me.about=u.about;
- if(u.role==="host"||u.role==="sender")S.role=u.role;
- if(d.balance!=null)S.bal=d.balance;if(d.earned!=null)A().earn=d.earned;if(d.verification)A().kyc=d.verification;
- if(!S.loggedIn){S.loggedIn=1;go("home")}else r()});
-Native.on("auth.ok",d=>{clearInterval(S.otpT);S.auth.busy=0;
- const u=d.user||{};if(u.name){me.n=u.name;S.editName=u.name}
- if(d.balance!=null)S.bal=d.balance;if(d.verification)A().kyc=d.verification;
- signedIn()});
-Native.on("auth.error",d=>{S.auth.busy=0;S.auth.err=d.message||"That code didn't work. Try again.";
- for(let k=0;k<6;k++){const o=document.getElementById("o"+k);if(o)o.value=""}r()});
+Native.on("session.restoring",()=>{S.sessionState="restoring";go("welcome")});
+Native.on("session.none",()=>{S.sessionState="";r()});
+Native.on("session.error",d=>{S.sessionState="error";S.sessionError=d.message;go("welcome")});
+Native.on("session.expired",d=>obResetSession(d.message||"Your session has expired. Please log in again."));
+Native.on("session",d=>{
+ S.sessionState="";obApplyAccount(d);
+ if(d.requiresOnboarding)return obResumeOnboarding(d);
+ S.loggedIn=1;S.kf={name:me.n,bio:me.about,langs:(d.user||{}).languages||[]};
+ go(S.creatorSetup&&!isHost()?"kyc":"home");
+});
+Native.on("auth.ok",d=>{
+ if(S.v!=="login"||!obMatches(d))return;
+ clearInterval(S.otpT);clearTimeout(obRequestTimer);S.auth.busy=false;S.sessionState="";
+ const creator=S.auth.creatorIntent;obApplyAccount(d);
+ if(d.requiresOnboarding){obResumeOnboarding(d,creator);obHaptic("success");return}
+ S.auth.mode="login";S.auth.creatorIntent=creator;signedIn();
+});
+Native.on("auth.error",obAuthError);
+Native.on("data.error",d=>{S.dataError=d.message;refresh()});
+Native.on("data.loaded",()=>{S.dataError="";refresh()});
+Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
+Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set"){S.online=0;refresh()}});
+Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);go(S.editBack||"profile");appNotice("Profile saved.");obHaptic("success")});
+Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
+Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
+Native.on("data.posts",d=>{S.postData=(d.posts||[]).filter(p=>p.kind==="photo").map(p=>obPhotoUrl(p.mediaUrl)).filter(Boolean);refresh()});
+Native.on("post.saved",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError="";S.postDraftData="";S.postCaption="";const url=obPhotoUrl(d.post?.mediaUrl);if(url)S.postData=[url,...S.postData.filter(src=>src!==url)];r();appNotice("Your photo is published.");obHaptic("success")});
+Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError=d.message||"Your photo could not be published. Please try again.";r();obHaptic("error")});
 
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});
 Native.on("data.chats",d=>{CH.splice(0,CH.length,...(d.chats||[]).map(c=>[knowHost(c.user).id,c.last||"",c.time||"",c.unread||0]));refresh()});
@@ -1696,21 +1701,26 @@ Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>[
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
  S.msgs=(d.messages||[]).map(m=>[m.mine?"m":"t",m.text,m.time||""]);paint()});
 Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)A().earn=d.earned;refresh()});
-Native.on("verification.status",d=>{A().kyc=d.status==="rejected"?"none":d.status;if(d.status==="rejected")S.kerr=1;refresh()});
+Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
- if(S.v==="dial"){S.callId=d.callId;go("call",S.h)}
+ if(S.v==="dial"){S.callId=d.callId;go(d.voice?'voice':"call",S.h)}
  else if(S.v==="dialback"){S.caller.callId=d.callId;go("hcall")}
+ else if(S.v==="ring"&&S.caller.callId===d.callId){S.callId=d.callId;S.acceptingCall=false;go('hcall')}
  else if(S.v==="hcall"&&S.connecting)finishSwitch()});
 Native.on("call.failed",d=>{
+ S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")go("chats")});
-Native.on("call.incoming",d=>{const c=personFrom({...d.from,callId:d.callId});
+Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
+ if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
+ c.voice=!!d.voice;
  if(S.v==="hcall")return ringIncoming(c);
  if(S.v==="ring")return;
  S.ringBack=S.v;S.caller=c;go("ring")});
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
+ if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
@@ -1723,11 +1733,9 @@ Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour
  if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push(["t",d.text,t]);return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
-/* tells the app the screens are listening */
-Native.send("ready",{demo:DEMO});
 const st=document.createElement("style");
 st.textContent="@keyframes up{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{transform:translateY(-180px);opacity:0}}";
 document.head.appendChild(st);
 /* const globals are not window properties; expose state so the design preview can drive the app. */
 if(DEMO){window.S=S;window.A=A}
-r();
+/* build-web initializes after all screen and loading handlers are registered. */

@@ -23,6 +23,16 @@ keeps it identical to the original Next.js version.
 
 ## Rules that matter
 
+- Keep the shared header and primary tabs the same size across Home, Explore,
+  Chats and Profile. Animate only page content on tab changes and respect
+  reduced-motion preferences.
+- Go Live and creator capabilities require current admin-approved host access.
+  Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
+  and backend; local role or verification presentation state grants no access.
+- Always use layout-shaped skeletons for asynchronous content loading, including
+  initial loads, refreshes and pagination. Tie them to actual request state;
+  never use artificial loading timers. Keep empty and error states separate,
+  label skeletons for accessibility, and respect reduced-motion settings.
 - `web/aurora-runtime.js` must stay a top-level classic script. Its inline
   `onclick` handlers resolve globals (`S`, `r`, ...) through the global scope
   chain, so wrapping it in an IIFE or loading it as a module breaks navigation.

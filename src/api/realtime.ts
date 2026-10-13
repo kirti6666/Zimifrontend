@@ -1,48 +1,115 @@
+import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
+import { getToken, onTokenChanged } from "../session";
+import { api } from "./endpoints";
+import { idOf, record, streamChatFrom, string, verificationOf } from "./adapters";
+import type { RtcPayload } from "./types";
+import { ApiError } from "./client";
 
-/* Live events pushed by the server, already in the form the screens take:
-   { "type": "call.incoming", "data": { ... } }. See AppMessage in src/bridge.ts. */
-export interface ServerEvent {
-  type: string;
-  data?: Record<string, unknown>;
-}
+export interface ServerEvent { type: string; data?: Record<string, unknown> }
+export type RealtimeConnection = (() => void) & { send?: (event: "webrtc:signal" | "stream:signal" | "stream:ready", data: RtcPayload & { callId?: string; streamId?: string; to?: string }) => Promise<void> };
 
-const LIVE_TYPES = new Set([
-  "call.incoming", "call.connected", "call.ended", "gift.received", "chat.message",
-  "wallet.balance", "verification.status",
-]);
-
-/* One socket for the signed-in user. Reconnects with a growing delay (1s up to 30s).
-   Returns a function that closes it for good. */
-export function connectRealtime(token: string, onEvent: (event: ServerEvent) => void): () => void {
+// Socket.IO authentication lives in its handshake, never in a URL or the WebView.
+export function connectRealtime(_initialToken: string, onEvent: (event: ServerEvent) => void, initialUserId?: string): RealtimeConnection {
   if (!SOCKET_URL) return () => {};
-  let socket: WebSocket | null = null;
-  let retry: ReturnType<typeof setTimeout> | undefined;
-  let delay = 1000;
-  let closed = false;
-
-  const open = () => {
-    socket = new WebSocket(`${SOCKET_URL}?token=${encodeURIComponent(token)}`);
-    socket.onopen = () => { delay = 1000; };
-    socket.onmessage = (msg) => {
-      try {
-        const event = JSON.parse(String(msg.data)) as ServerEvent;
-        if (LIVE_TYPES.has(event.type)) onEvent(event);
-      } catch {
-        // Ignore anything that is not a JSON event.
-      }
-    };
-    socket.onclose = () => {
+  let closed = false, recovering = false, userId = initialUserId, lastRecovery = 0;
+  let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
+  const socket = io(SOCKET_URL, {
+    autoConnect: false, forceNew: true, transports: ["websocket", "polling"], tryAllTransports: true,
+    reconnection: true, reconnectionDelay: 1000, reconnectionDelayMax: 30000, timeout: 15000,
+    auth: callback => {
+      void getToken().then(token => { if (!closed && token) callback({ token }); else socket.disconnect(); }).catch(() => socket.disconnect());
+    },
+  });
+  const emit = (type: string, data: Record<string, unknown>) => { if (!closed) onEvent({ type, data }); };
+  const refreshWallet = () => emit("wallet.refresh", {});
+  const recover = async () => {
+    if (closed || recovering) return;
+    if (Date.now() - lastRecovery < 30000) {
+      if (!recoveryTimer) recoveryTimer = setTimeout(() => { recoveryTimer = undefined; void recover(); }, 30000 - (Date.now() - lastRecovery));
+      return;
+    }
+    lastRecovery = Date.now();
+    recovering = true;
+    try {
+      const account = await api.me(); // A revoked/expired session follows the same refresh policy as HTTP.
       if (closed) return;
-      retry = setTimeout(open, delay);
-      delay = Math.min(delay * 2, 30000);
-    };
+      userId = account.user.id;
+      socket.connect();
+    } catch { emit("realtime.status", { connected: false, message: "Live updates are unavailable. Check your connection." }); }
+    finally { recovering = false; }
   };
-
-  open();
-  return () => {
-    closed = true;
-    clearTimeout(retry);
-    socket?.close();
-  };
+  socket.on("connect", () => emit("realtime.status", { connected: true }));
+  socket.on("disconnect", reason => {
+    emit("realtime.status", { connected: false });
+    // The backend closes sockets when access tokens expire. Normal transport failures
+    // are retried by the Socket.IO manager; server disconnects need fresh auth.
+    if (reason === "io server disconnect") void recover();
+  });
+  socket.on("connect_error", () => {
+    emit("realtime.status", { connected: false, message: "Reconnecting to live updates…" });
+    if (!socket.active) void recover();
+  });
+  socket.on("call:updated", payload => {
+    try {
+      const call = record(payload), callId = idOf(call);
+      if (!callId || !userId) return;
+      if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: { id: idOf(call.callerId), name: "" }, kind: call.kind, voice: call.kind === "audio" });
+      else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio" });
+      else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId });
+    } catch { /* Ignore malformed events instead of corrupting screen state. */ }
+  });
+  socket.on("chat:message", payload => {
+    try {
+      const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
+      if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
+      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text" });
+      // Sender echoes also update the list, including messages sent on another device.
+      emit("chats.updated", {});
+    } catch { /* Ignore malformed events. */ }
+  });
+  socket.on("chat:read", payload => {
+    try {
+      const receipt = record(payload);
+      if (idOf(receipt.userId) && Array.isArray(receipt.conversationIds) && receipt.conversationIds.length > 0 && receipt.conversationIds.every(id => typeof id === "string" && id.length > 0) && typeof receipt.readAt === "string") emit("chats.updated", {});
+    } catch { /* Ignore malformed read receipts. */ }
+  });
+  socket.on("gift:received", payload => {
+    try {
+      const gift = record(payload);
+      if (idOf(gift.recipientId) !== userId) return;
+      if (typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins > 0) emit("gift.received", { gift: "Gift", coins: gift.coins, from: idOf(gift.senderId) });
+      refreshWallet();
+    } catch { /* Ignore malformed events. */ }
+  });
+  socket.on("host:reviewed", payload => {
+    try { const hostStatus = string(record(payload).status); emit("verification.status", { status: verificationOf(hostStatus), hostStatus }); } catch { /* Ignore malformed events. */ }
+  });
+  socket.on("webrtc:signal", payload => {
+    try { const signal = record(payload); if (idOf(signal.callId) && idOf(signal.from)) emit("rtc.signal", signal); } catch { /* Invalid peer payload. */ }
+  });
+  socket.on("stream:signal", payload => {
+    try { const signal = record(payload); if (idOf(signal.streamId) && idOf(signal.from)) emit("stream.signal", signal); } catch { /* Invalid peer payload. */ }
+  });
+  for (const [serverName, appName] of [["stream:peer", "stream.peer"], ["stream:peer-left", "stream.peerLeft"], ["stream:viewers", "stream.viewers"], ["stream:gift", "stream.gift"]]) {
+    socket.on(serverName, payload => { try { const data = record(payload); if (idOf(data.streamId)) emit(appName, data); } catch { /* Invalid room payload. */ } });
+  }
+  socket.on("stream:ended", payload => { try { const data = record(payload), streamId = idOf(data.streamId) || idOf(data); if (streamId) emit("stream.ended", { streamId }); } catch { /* Invalid room payload. */ } });
+  socket.on("stream:message", payload => { try { emit("stream.message", { ...streamChatFrom(payload) }); } catch { /* Invalid room message. */ } });
+  socket.on("wallet:updated", refreshWallet);
+  socket.on("home:updated", () => emit("home.updated", {}));
+  const unsubscribe = onTokenChanged(() => {
+    if (closed) return;
+    socket.disconnect();
+    void getToken().then(token => { if (!closed && token) socket.connect(); }).catch(() => {});
+  });
+  if (userId) socket.connect(); else void recover();
+  const stop: RealtimeConnection = () => { closed = true; clearTimeout(recoveryTimer); unsubscribe(); socket.removeAllListeners(); socket.disconnect(); };
+  stop.send = (event, data) => new Promise<void>((resolve, reject) => {
+    if (closed || !socket.connected) { reject(new ApiError("Live connection is unavailable. Reconnect and try again.", 503)); return; }
+    socket.timeout(10000).emit(event, data, (error: Error | null, reply: { success?: boolean; message?: string } | undefined) => {
+      if (error || reply?.success !== true) reject(new ApiError(reply?.message || "The media connection could not be established.", 503)); else resolve();
+    });
+  });
+  return stop;
 }

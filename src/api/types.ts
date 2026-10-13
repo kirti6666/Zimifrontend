@@ -11,43 +11,122 @@ export interface User {
   role: Role;
   city?: string;
   about?: string;
+  email?: string;
+  avatarUrl?: string;
+  avatarKey?: string;
+  coverUrl?: string;
+  coverKey?: string;
+  photos?: { key: string; url: string }[];
+  languages?: string[];
+  interests?: string[];
+  category?: string;
+  adultConfirmed?: boolean;
+  onboardingPreference?: "creator" | "member";
+  hostStatus?: string;
+  isVerifiedHost?: boolean;
 }
 
 /* Returned by login and by GET /me. */
 export interface Account {
   user: User;
-  balance: number; // coins available to spend
-  earned: number; // coins earned from calls and gifts
+  balance?: number; // Omitted until the wallet has loaded.
+  earned?: number;
   verification: Verification;
+  requiresOnboarding: boolean;
 }
 
 export interface Session extends Account {
-  token: string;
+  tokens: import("../session").SessionTokens;
   isNew: boolean;
+}
+
+export interface UserPost {
+  id: string;
+  mediaUrl: string;
+  kind: "photo" | "video";
+  caption: string;
 }
 
 export interface Host {
   id: string;
   name: string;
+  role?: Role;
   city?: string;
   category?: string;
   tag?: string;
   languages?: string[];
   age?: number;
-  ratePerMin: number;
-  entryFee: number;
-  online: boolean;
-  live: boolean;
-  followers: number;
+  avatarUrl?: string;
+  coverUrl?: string;
+  ratePerMin?: number;
+  entryFee?: number;
+  online?: boolean;
+  live?: boolean;
+  followers?: number;
   top?: boolean;
   isNew?: boolean;
   following?: boolean;
+  about?: string;
+  verified?: boolean;
+  availableForCall?: boolean;
+  stream?: HomeStream | null;
 }
+
+export interface HomeStream {
+  id: string;
+  hostId: string;
+  host?: Host;
+  title: string;
+  category: string;
+  kind: "video" | "audio";
+  viewers: number;
+  createdAt: string;
+  status: string;
+}
+export interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  metric: string;
+  target: number;
+  progress: number;
+  rewardCoins: number;
+  claimed: boolean;
+  endsAt: string;
+}
+export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant"; page?: number; }
+export interface HomeData {
+  hosts: Host[];
+  stage: Host[];
+  featured: Host | null;
+  total: number;
+  page: number;
+  limit: number;
+  categories: string[];
+  broadcasterCount: number;
+  availableCount: number;
+  speedMatchEnabled: boolean;
+  bonus: Mission | null;
+  unreadCount: number;
+}
+export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; }
+export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
+export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
+export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
+export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
+export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; }
+export interface RtcPayload {
+  description?: { type: "offer" | "answer"; sdp: string };
+  candidate?: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string };
+}
+export interface RtcConfig { iceServers: { urls: string[]; username?: string; credential?: string }[]; }
 
 /* Anyone on the other end of a call, chat or missed call. */
 export interface Person {
   id: string;
   name: string;
+  avatarUrl?: string;
+  coverUrl?: string;
   city?: string;
   level?: number;
   followers?: number;
@@ -57,16 +136,34 @@ export interface Person {
 }
 
 export interface ChatSummary {
+  id: string;
   user: Host;
   last: string;
   time: string;
   unread: number;
+  lastKind: "text";
+  lastMine: boolean;
+  lastAt: string;
+  lastStatus: "sent" | "read";
+  hasCalls: boolean;
+}
+
+export interface ChatsData {
+  chats: ChatSummary[];
+  total: number;
+  page: number;
+  limit: number;
+  unreadCount: number;
+  unreadConversations: number;
 }
 
 export interface Message {
+  id?: string;
   mine: boolean;
   text: string;
   time: string;
+  createdAt?: string;
+  kind?: "text";
 }
 
 export interface MissedCall {
@@ -79,17 +176,20 @@ export interface CallRecord {
   user: Host;
   time: string;
   duration: string;
-  coins: number;
+  coins?: number;
 }
 
 export interface Transaction {
   title: string;
   time: string;
   coins: number; // positive for coins in, negative for coins out
-  kind: "call" | "gift" | "topup";
+  kind: "call" | "gift" | "topup" | "withdrawal" | "reward";
+  amountPaise?: number;
 }
 
 export interface Wallet {
   coins: number;
-  earned: number;
+  earningsPaise: number;
+  reservedPaise?: number;
+  earned?: number;
 }

@@ -1,52 +1,196 @@
-import { request } from "./client";
-import type {
-  Account, CallRecord, ChatSummary, Host, Message, MissedCall, Role, Session, Transaction, Verification, Wallet,
-} from "./types";
+import { ApiError, request } from "./client";
+import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
+import { accountFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, purchaseFrom, record, streamChatFrom, streamFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
+import type { Account, HomeQuery, Role, RtcConfig, Session, Verification, Wallet } from "./types";
+import { approvedHost } from "../host-access";
 
-/* Every server call the app makes, in one place. Paths are relative to API_URL. */
+let identity: { id: string; version: number } | undefined;
+let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
+const remember = (account: Account) => { identity = { id: account.user.id, version: getSessionVersion() }; return account; };
+async function selfId(): Promise<string> {
+  return identity?.version === getSessionVersion() ? identity.id : (await api.me()).user.id;
+}
+export function phonePayload(phone: string): { country_code: string; phone: string } {
+  const digits = phone.replace(/[\s()-]/g, "");
+  const local = digits.startsWith("+91") ? digits.slice(3) : digits;
+  if (!/^[6-9]\d{9}$/.test(local)) throw new ApiError("Enter a valid 10-digit Indian mobile number.", 400);
+  return { country_code: "+91", phone: local };
+}
+function boundedStrings(value: unknown, label: string, min: number, max: number): string[] {
+  if (!Array.isArray(value) || value.length < min || value.length > max || value.some(item => typeof item !== "string" || !item.trim() || item.length > 80)) throw new ApiError(`Check your ${label} and try again.`, 400);
+  return [...new Set(value.map(item => (item as string).trim()))];
+}
+const unavailable = async <T>(message: string): Promise<T> => { throw new ApiError(message, 501); };
+const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
+
 export const api = {
-  /* Sign-in: a one-time code to an Indian mobile number (+91...). */
-  sendOtp: (phone: string, role: Role) => request<void>("POST", "/auth/otp", { phone, role }),
-  verifyOtp: (phone: string, code: string, role: Role, signup: boolean) =>
-    request<Session>("POST", "/auth/verify", { phone, code, role, signup }),
-  logout: () => request<void>("POST", "/auth/logout"),
-
-  /* The signed-in account. */
-  me: () => request<Account>("GET", "/me"),
-  saveProfile: (profile: Record<string, unknown>) => request<void>("PUT", "/me/profile", profile),
-  submitVerification: (details: Record<string, unknown>) =>
-    request<{ status: Verification }>("POST", "/me/verification", details),
-  setPresence: (online: boolean, visible: boolean) => request<void>("PUT", "/me/presence", { online, visible }),
-  saveSettings: (settings: Record<string, unknown>) => request<void>("PUT", "/me/settings", settings),
-
-  /* Lists shown on Home, Chats, Calls and Wallet. */
-  hosts: () => request<{ hosts: Host[] }>("GET", "/hosts"),
-  chats: () => request<{ chats: ChatSummary[] }>("GET", "/chats"),
-  thread: (withId: string) =>
-    request<{ messages: Message[] }>("GET", `/chats/${encodeURIComponent(withId)}/messages`),
-  missedCalls: () => request<{ calls: MissedCall[] }>("GET", "/calls/missed"),
-  callHistory: () => request<{ calls: CallRecord[] }>("GET", "/calls"),
-  transactions: () => request<{ items: Transaction[] }>("GET", "/wallet/transactions"),
-  wallet: () => request<Wallet>("GET", "/wallet"),
-
-  /* Calls. The other side's answer arrives as a live event (call.connected). */
-  startCall: (to: string, voice: boolean) => request<{ callId: string }>("POST", "/calls", { to, voice }),
-  acceptCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/accept`),
-  declineCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/decline`),
-  endCall: (callId: string, reason?: string) =>
-    request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`, { reason }),
-
-  /* Gifts, chat and follows. */
-  sendGift: (to: string, gift: string, coins: number, callId?: string) =>
-    request<Wallet>("POST", "/gifts", { to, gift, coins, callId }),
-  sendMessage: (to: string, text: string, callId?: string) =>
-    request<void>("POST", `/chats/${encodeURIComponent(to)}/messages`, { text, callId }),
-  follow: (id: string, on: boolean) => request<void>("PUT", `/follows/${encodeURIComponent(id)}`, { on }),
-
-  /* Money. Coin purchases on Android have to go through Google Play Billing;
-     this records the purchase once the store has confirmed it. */
-  recharge: (purchase: { pack: number; coins: number; price: number; method: string }) =>
-    request<Wallet>("POST", "/wallet/recharge", purchase),
-  requestPayout: (coins: number, upi: string) => request<Wallet>("POST", "/payouts", { coins, upi }),
-  claimAward: (task: string) => request<Wallet>("POST", `/awards/${encodeURIComponent(task)}/claim`),
+  async sendOtp(phone: string, _role?: Role): Promise<{ expiresIn: number; resendAfter: number }> {
+    const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number }>("POST", "/auth/otp/request", phonePayload(phone), { auth: false });
+    return { expiresIn: result.expiresIn, resendAfter: result.resendAfter ?? result.retryAfterSeconds ?? 60 };
+  },
+  async verifyOtp(phone: string, code: string, _role?: Role, _signup?: boolean): Promise<Session> {
+    if (!/^\d{6}$/.test(code)) throw new ApiError("Enter the 6-digit verification code.", 400);
+    const response = await request<{ tokens: SessionTokens; user: unknown; isNewUser: boolean; requiresOnboarding: boolean }>("POST", "/auth/otp/verify", { ...phonePayload(phone), otp: code, client: "native" }, { auth: false });
+    const data = record(response), tokens = data.tokens;
+    if (!isSessionTokens(tokens)) throw new ApiError("Sign-in could not be completed. Request a new code and try again.", 502);
+    return { ...accountFrom(data), tokens, isNew: response.isNewUser === true };
+  },
+  logout: (token?: string) => {
+    identity = undefined;
+    return request<void>("POST", "/auth/logout", undefined, token ? { auth: false, bearerToken: token, refresh: false } : undefined);
+  },
+  async me(fresh = false): Promise<Account> {
+    const version = getSessionVersion();
+    if (!fresh && pendingProfile?.version === version) return pendingProfile.promise;
+    const promise = request("GET", "/auth/me").then(response => { ensureSession(version); return remember(accountFrom(response)); });
+    pendingProfile = { version, promise };
+    try { return await promise; } finally { if (pendingProfile?.promise === promise) pendingProfile = undefined; }
+  },
+  async saveProfile(profile: Record<string, unknown>, onProgress?: (done: number, total: number) => void): Promise<Account> {
+    const version = getSessionVersion();
+    if (typeof profile.name !== "string" || profile.name.trim().length < 2 || profile.name.trim().length > 100) throw new ApiError("Your name must be between 2 and 100 characters.", 400);
+    if (profile.photos !== undefined && (!Array.isArray(profile.photos) || profile.photos.some(photo => typeof photo !== "string"))) throw new ApiError("Choose valid photos to continue.", 400);
+    if (Array.isArray(profile.photos)) {
+      const languages = boundedStrings(profile.langs ?? profile.languages ?? [], "languages", profile.preferredRole === "creator" ? 1 : 0, 8);
+      const interests = boundedStrings(profile.interests ?? [], "interests", 0, 20);
+      if (profile.adultConfirmed !== true) throw new ApiError("Confirm that you are 18 or older to continue.", 400);
+      const email = typeof profile.email === "string" ? profile.email.trim() : "";
+      if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw new ApiError("Enter a valid email address.", 400);
+      const sources = profile.photos as string[];
+      const existingPhotos = sources.some(source => !source.startsWith("data:")) ? (await api.me()).user.photos ?? [] : [];
+      ensureSession(version);
+      const photoKeys = await uploadPhotos(sources, version, onProgress, existingPhotos);
+      ensureSession(version);
+      const response = await request("PATCH", "/auth/profile", {
+        name: profile.name.trim(), onboarding: {
+          ...(email ? { email } : {}), photoKeys, languages, interests,
+          ...(typeof profile.category === "string" && profile.category ? { category: profile.category } : {}),
+          ...(profile.preferredRole === "creator" || profile.preferredRole === "member" ? { preferredRole: profile.preferredRole } : {}), adultConfirmed: true,
+        },
+      });
+      ensureSession(version);
+      return remember(accountFrom(response));
+    }
+    if (profile.avatar !== undefined) decodePhoto(profile.avatar as string);
+    if (profile.cover !== undefined && profile.cover !== null) decodePhoto(profile.cover as string);
+    if (profile.city !== undefined && (typeof profile.city !== "string" || profile.city.length > 100)) throw new ApiError("Keep your location under 100 characters.", 400);
+    if (profile.about !== undefined && (typeof profile.about !== "string" || profile.about.length > 500)) throw new ApiError("Keep your introduction under 500 characters.", 400);
+    const media: { avatarKey?: string; coverKey?: string | null } = {};
+    const total = Number(profile.avatar !== undefined) + Number(profile.cover !== undefined && profile.cover !== null);
+    let done = 0;
+    if (total) onProgress?.(done, total);
+    if (profile.avatar !== undefined) { media.avatarKey = await uploadMedia(profile.avatar as string, "avatar", version); onProgress?.(++done, total); }
+    if (profile.cover === null) media.coverKey = null;
+    else if (profile.cover !== undefined) { media.coverKey = await uploadMedia(profile.cover as string, "cover", version); onProgress?.(++done, total); }
+    ensureSession(version);
+    await request("PATCH", "/profile", { name: profile.name.trim(), ...(typeof profile.city === "string" ? { city: profile.city.trim() } : {}), ...(typeof profile.about === "string" ? { bio: profile.about.trim() } : {}), ...media });
+    ensureSession(version);
+    // A /me read started before this mutation must not hide the saved media.
+    pendingProfile = undefined;
+    return api.me();
+  },
+  async myPosts() {
+    const version = getSessionVersion(), id = await selfId();
+    ensureSession(version);
+    const response = await request("GET", `/users/${encodeURIComponent(id)}/posts`);
+    ensureSession(version);
+    return { posts: items(response).map(postFrom) };
+  },
+  async createPost(photo: string, caption: string) {
+    const version = getSessionVersion();
+    if (typeof caption !== "string" || caption.length > 2000) throw new ApiError("Keep your caption under 2,000 characters.", 400);
+    decodePhoto(photo);
+    const account = await api.me();
+    ensureSession(version);
+    if (!approvedHost(account)) throw new ApiError("Your creator profile must be approved before you can publish posts.", 403);
+    const mediaKey = await uploadMedia(photo, "post", version);
+    ensureSession(version);
+    const response = await request("POST", "/posts", { caption: caption.trim(), kind: "photo", mediaKey });
+    ensureSession(version);
+    return postFrom(response);
+  },
+  async submitVerification(details: Record<string, unknown>): Promise<{ status: Verification }> {
+    const displayName = typeof details.name === "string" ? details.name.trim() : "";
+    const bio = typeof details.bio === "string" ? details.bio.trim() : "";
+    if (displayName.length < 2 || bio.length < 20) throw new ApiError("Add your display name and an introduction of at least 20 characters to apply as a creator.", 400);
+    const languages = boundedStrings(details.languages ?? details.langs, "languages", 1, 10);
+    const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages });
+    return { status: verificationOf(application.status) };
+  },
+  async setPresence(online: boolean, visible: boolean) { await request("PATCH", "/safety", { allowRequests: online, showActivity: online, discoverable: visible }); return { online, visible }; },
+  async presence() { const data = record(await request("GET", "/safety")); return { online: data.allowRequests !== false && data.showActivity !== false, visible: data.discoverable !== false }; },
+  saveSettings: (_settings: Record<string, unknown>) => unavailable<void>("This setting is not available yet."),
+  async home(query: HomeQuery = {}) { return homeFrom(await request("GET", `/home?${queryString({ ...query, limit: 20 })}`)); },
+  async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
+  async notifications() { return notificationsFrom(await request("GET", "/notifications?limit=100")); },
+  async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
+  async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
+  rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
+  async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
+  async streamMessages(streamId: string) { return items(await request("GET", `/streams/${encodeURIComponent(streamId)}/messages?limit=50`)).map(streamChatFrom).reverse(); },
+  async startStream(input: { title: string; category: string; kind?: "video" | "audio" }) {
+    const version = getSessionVersion();
+    const stream = streamFrom(await request("POST", "/streams", input));
+    try {
+      ensureSession(version);
+      await request("POST", `/streams/${encodeURIComponent(stream.id)}/join`);
+      return await api.stream(stream.id);
+    } catch (error) {
+      if (getSessionVersion() === version) await api.endStream(stream.id).catch(() => {});
+      throw error;
+    }
+  },
+  async joinStream(streamId: string) {
+    const version = getSessionVersion();
+    try { await request("POST", `/streams/${encodeURIComponent(streamId)}/join`); ensureSession(version); return await api.stream(streamId); }
+    catch (error) { if (getSessionVersion() === version) await api.leaveStream(streamId).catch(() => {}); throw error; }
+  },
+  leaveStream: (streamId: string) => request<void>("POST", `/streams/${encodeURIComponent(streamId)}/leave`),
+  async endStream(streamId: string): Promise<void> {
+    const version = getSessionVersion();
+    try { await request<void>("PUT", `/streams/${encodeURIComponent(streamId)}/end`); }
+    catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 409) throw error;
+      ensureSession(version);
+      // A lost success response may leave the host retrying an already ended room.
+      // Confirm ownership and terminal status; permission errors still propagate.
+      const stream = await api.stream(streamId);
+      if (stream.status === "ended" || stream.status === "terminated") {
+        const userId = await selfId();
+        ensureSession(version);
+        if (stream.hostId === userId) return;
+      }
+      throw error;
+    }
+  },
+  async sendStreamMessage(streamId: string, text: string) { return streamChatFrom(await request("POST", `/streams/${encodeURIComponent(streamId)}/messages`, { text })); },
+  async hosts() { return { hosts: items(await request("GET", "/hosts?limit=100")).map(hostFrom) }; },
+  async chats(page = 1) { const id = await selfId(); return chatsFrom(await request("GET", page === 1 ? "/chats" : `/chats?page=${page}`), id); },
+  async readAllChats() {
+    const data = record(await request("POST", "/chats/read-all", {}));
+    if (!Number.isSafeInteger(data.updated) || Number(data.updated) < 0 || typeof data.readAt !== "string") throw new ApiError("The read status could not be confirmed. Refresh your conversations.", 502);
+    return { updated: data.updated as number, readAt: data.readAt };
+  },
+  async thread(withId: string) { const id = await selfId(); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}`), id); },
+  async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
+  async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
+  async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
+  async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
+  async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
+  async acceptCall(callId: string) { const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)); return { peerId: idOf(call.callerId), voice: call.kind === "audio" }; },
+  declineCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
+  endCall: (callId: string, _reason?: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
+  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<Wallet> {
+    if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
+    await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });
+    return api.wallet();
+  },
+  sendMessage: (to: string, text: string, _callId?: string) => request<void>("POST", `/chats/${encodeURIComponent(to)}`, { text }),
+  follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
+  recharge: (_purchase: { pack: number; coins: number; price: number; method: string }) => unavailable<Wallet>("Secure checkout is not available in this build yet. No payment was taken."),
+  async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
+  async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
+  requestPayout: (_coins: number, _upi: string) => unavailable<Wallet>("Withdrawals require the earnings balance in your account currency. This withdrawal screen is not available yet."),
+  async claimAward(task: string): Promise<Wallet> { await request("POST", `/missions/${encodeURIComponent(task)}/claim`); return api.wallet(); },
 };

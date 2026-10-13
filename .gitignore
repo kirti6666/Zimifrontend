@@ -6,5 +6,7 @@ ios/
 *.log
 .DS_Store
 dist/
+*.env
 admin-site/dist/
-.env
+/home-preview-*.png
+/home-production-state.png
