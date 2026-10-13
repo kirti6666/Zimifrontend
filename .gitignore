@@ -8,3 +8,5 @@ ios/
 dist/
 *.env
 admin-site/dist/
+/home-preview-*.png
+/home-production-state.png

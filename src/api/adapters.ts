@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, CallRecord, ChatSummary, Host, Message, MissedCall, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, CallRecord, Catalog, ChatSummary, HomeData, HomeStream, Host, Message, Mission, MissedCall, Purchase, StreamChat, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -47,10 +47,51 @@ export function hostFrom(value: unknown): Host {
   const avatar = host.avatar && typeof host.avatar === "object" ? record(host.avatar) : {};
   return {
     id: idOf(host), name: string(host.name), city: string(host.city), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
-    languages: stringList(host.languages), ratePerMin: finite(host.ratePerMin), entryFee: finite(host.entryFee), followers: finite(host.followers),
-    ...(typeof host.online === "boolean" ? { online: host.online } : {}), ...(typeof host.live === "boolean" ? { live: host.live } : {}),
+    languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.entryFee), followers: finite(host.followers),
+    about: string(host.bio), verified: host.isVerifiedHost === true,
+    ...(typeof (host.isOnline ?? host.online) === "boolean" ? { online: (host.isOnline ?? host.online) as boolean } : {}), ...(typeof host.live === "boolean" ? { live: host.live } : {}),
+    ...(typeof host.availableForCall === "boolean" ? { availableForCall: host.availableForCall } : {}),
+    ...(host.stream && typeof host.stream === "object" ? { stream: streamFrom(host.stream, idOf(host)), live: true } : host.stream === null ? { stream: null, live: false } : {}),
     ...(typeof host.isFollowing === "boolean" ? { following: host.isFollowing } : {}),
   };
+}
+
+const count = (value: unknown) => Math.max(0, Math.floor(finite(value) ?? 0));
+export function streamFrom(value: unknown, fallbackHost = ""): HomeStream {
+  const stream = record(value), hostId = idOf(stream.hostId) || fallbackHost;
+  return { id: idOf(stream), hostId, ...(stream.host && typeof stream.host === "object" ? { host: hostFrom(stream.host) } : stream.hostId && typeof stream.hostId === "object" ? { host: hostFrom(stream.hostId) } : {}),
+    title: string(stream.title), category: string(stream.category), kind: stream.kind === "audio" ? "audio" : "video",
+    viewers: count(stream.viewers), createdAt: string(stream.createdAt), status: string(stream.status) || "live" };
+}
+export function missionFrom(value: unknown): Mission {
+  const mission = record(value);
+  return { id: idOf(mission), title: string(mission.title), description: string(mission.description), metric: string(mission.metric),
+    target: count(mission.target), progress: count(mission.progress), rewardCoins: count(mission.rewardCoins), claimed: mission.claimed === true, endsAt: string(mission.endsAt) };
+}
+export function homeFrom(value: unknown): HomeData {
+  const data = record(value);
+  return { hosts: items(data).map(hostFrom), stage: Array.isArray(data.stage) ? data.stage.map(hostFrom) : [],
+    featured: data.featured ? hostFrom(data.featured) : null, total: count(data.total), page: count(data.page) || 1, limit: count(data.limit),
+    categories: stringList(data.categories), broadcasterCount: count(data.broadcasterCount), availableCount: count(data.availableCount),
+    speedMatchEnabled: data.speedMatchEnabled === true, bonus: data.bonus ? missionFrom(data.bonus) : null, unreadCount: count(data.unreadNotifications) };
+}
+export function notificationsFrom(value: unknown): { items: AppNotification[]; unreadCount: number } {
+  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt) }));
+  return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length };
+}
+export function streamChatFrom(value: unknown): StreamChat {
+  const message = record(value), user = message.userId && typeof message.userId === "object" ? record(message.userId) : {};
+  return { id: idOf(message), streamId: idOf(message.streamId), userId: idOf(message.userId), name: string(user.name), text: string(message.text), createdAt: string(message.createdAt) };
+}
+export function catalogFrom(giftData: unknown, packData: unknown): Catalog {
+  return { gifts: items(giftData).map(record).map(gift => ({ id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: gift.media && typeof gift.media === "object" ? string(record(gift.media).url) : "" })),
+    packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise) })), paymentsAvailable: record(packData).paymentsAvailable === true };
+}
+export function purchaseFrom(value: unknown): Purchase {
+  const data = record(value), paymentUrl = string(data.paymentUrl);
+  if (paymentUrl && !/^https:\/\/[^\s"'<>]+$/.test(paymentUrl)) throw new ApiError("Checkout did not return a secure payment address.", 502);
+  const status = string(data.status);
+  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}) };
 }
 export function timeOf(value: unknown): string {
   const date = new Date(string(value));

@@ -1,10 +1,11 @@
 import type { RefObject } from "react";
 import type WebView from "react-native-webview";
+import { AppState, Linking } from "react-native";
 
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
-import { connectRealtime } from "./api/realtime";
-import type { Account, Host, Message, Role, UserPost, Verification, Wallet } from "./api/types";
+import { connectRealtime, type RealtimeConnection } from "./api/realtime";
+import type { Account, Catalog, HomeData, HomeQuery, HomeStream, Host, Message, Purchase, Role, RtcConfig, RtcPayload, StreamChat, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { parseWebMessage } from "./web-message";
 
@@ -19,6 +20,18 @@ export type WebMessage =
   | { type: "ready"; data: { demo: boolean } }
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
+  | { type: "home.reload"; data: HomeQuery }
+  | { type: "hosts.search"; data: { q: string; page?: number } }
+  | { type: "notifications.load" | "catalog.load" | "rtc.config"; data: Record<string, never> }
+  | { type: "notifications.read"; data: { ids: string[] } }
+  | { type: "call.match"; data: { category?: string } }
+  | { type: "rtc.signal"; data: RtcPayload & { callId: string } }
+  | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string } }
+  | { type: "stream.start"; data: { title: string; category: string; kind?: "video" | "audio" } }
+  | { type: "stream.join" | "stream.leave" | "stream.end" | "stream.ready"; data: { streamId: string } }
+  | { type: "stream.message"; data: { streamId: string; text: string } }
+  | { type: "wallet.checkout"; data: { packId: string; idempotencyKey: string } }
+  | { type: "wallet.verify"; data: { merchantOrderId: string } }
   | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string } }
   | { type: "ui.haptic"; data: { kind: "selection" | "success" | "error" | "light" } }
   | { type: "auth.sendOtp"; data: { phone: string; role: Role; requestId?: number } }
@@ -33,7 +46,7 @@ export type WebMessage =
   | { type: "follow.set"; data: { id: string; on: boolean } }
   | { type: "chat.open"; data: { with: string } }
   | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean } }
-  | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean } }
+  | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
   | { type: "call.start"; data: { to: string; voice?: boolean } }
   | { type: "call.accept"; data: { callId: string } }
   | { type: "call.decline"; data: { callId: string } }
@@ -44,6 +57,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed";
 export type AppMessage =
   | { type: "session"; data: Account }
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
@@ -59,8 +73,29 @@ export type AppMessage =
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string } }
   | { type: "data.loaded"; data: Record<string, never> }
+  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; error?: string } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
+  | { type: "data.home"; data: HomeData }
+  | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
+  | { type: "home.updated"; data: Record<string, never> }
+  | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> }
+  | { type: "data.catalog"; data: Catalog }
+  | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
+  | { type: "awards.claimed"; data: { task: string } }
+  | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string } }
+  | { type: "rtc.config"; data: RtcConfig }
+  | { type: "rtc.signal"; data: RtcPayload & { callId: string; from: string } }
+  | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string; from: string } }
+  | { type: "stream.peer" | "stream.peerLeft"; data: { streamId: string; userId: string } }
+  | { type: "stream.opened"; data: { stream: HomeStream; hosting: boolean; messages: StreamChat[] } }
+  | { type: "stream.closed" | "stream.ended"; data: { streamId: string } }
+  | { type: "stream.viewers"; data: { streamId: string; count: number } }
+  | { type: "stream.message"; data: StreamChat }
+  | { type: "stream.gift"; data: Record<string, unknown> }
+  | { type: "call.matched"; data: { host: Host } }
+  | { type: "call.created"; data: { callId: string; to: string; voice: boolean } }
+  | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "data.thread"; data: { with: string; messages: Message[] } }
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
@@ -68,9 +103,9 @@ export type AppMessage =
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "verification.status"; data: { status: Verification; message?: string } }
-  | { type: "call.connected"; data: { callId: string } }
+  | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean } }
   | { type: "call.failed"; data: { message: string } }
-  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown> } }
+  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
   | { type: "call.ended"; data: { callId: string } }
   | { type: "gift.received"; data: { gift: string; coins: number; from: string } }
   | { type: "chat.message"; data: { from: string; name: string; text: string; inCall?: boolean } };
@@ -82,14 +117,23 @@ export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
 }
 
 export function createBridge(post: (msg: AppMessage) => void) {
-  let stopLive = () => {};
+  let stopLive: RealtimeConnection = () => {};
   let activeCall: string | undefined;
+  let callGeneration = 0;
+  let pendingOutgoing: { generation: number; callId?: string } | undefined;
+  const cancelledCalls = new Set<string>();
   let epoch = 0;
   let closed = false;
   let restoring = false;
   let accountId: string | undefined;
   let hostStatus: string | undefined;
   let publishingAt: number | undefined;
+  let homeQuery: HomeQuery = {};
+  const readRequests = new Map<DataResource, number>();
+  let activeStream: { id: string; hosting: boolean } | undefined;
+  let pendingPurchase: { orderId: string; epoch: number } | undefined;
+  let verifyingPurchase = false;
+  const operations = new Set<string>();
   const authWork = new Set<string>();
   const current = (version: number) => !closed && version === epoch;
   const emit = (message: AppMessage) => { if (!closed) post(message); };
@@ -102,10 +146,55 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     void work.catch(error => { if (current(version)) operationError(error, action); });
   };
-  const refreshWallet = () => {
-    const version = epoch;
-    return api.wallet().then(wallet => { if (current(version)) emit({ type: "wallet.balance", data: wallet }); });
+  const rememberCancelledCall = (callId: string) => {
+    cancelledCalls.add(callId);
+    if (cancelledCalls.size > 128) cancelledCalls.delete(cancelledCalls.values().next().value!);
   };
+  const endCancelledCall = async (callId: string, sessionVersion: number) => {
+    rememberCancelledCall(callId);
+    // Never borrow credentials from a replacement login to clean up an old call.
+    // Revocation/socket cleanup handles the old identity after a session change.
+    if (getSessionVersion() !== sessionVersion) return;
+    await api.endCall(callId, "cancelled");
+  };
+  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string } = {}) => {
+    const version = epoch, sessionVersion = getSessionVersion(), requestId = (readRequests.get(resource) ?? 0) + 1;
+    readRequests.set(resource, requestId);
+    const latest = () => current(version) && getSessionVersion() === sessionVersion && readRequests.get(resource) === requestId;
+    let failure: string | undefined;
+    emit({ type: "data.loading", data: { resource, loading: true, ...context } });
+    try {
+      const data = await read();
+      if (latest()) deliver(data);
+    } catch (error) {
+      if (latest()) { failure = errorMessage(error); throw error; }
+    } finally {
+      if (latest()) emit({ type: "data.loading", data: { resource, loading: false, ...context, ...(failure ? { error: failure } : {}) } });
+    }
+  };
+  const refreshWallet = () => readResource("wallet", () => api.wallet(), data => emit({ type: "wallet.balance", data }));
+  const loadHome = (query = homeQuery) => {
+    homeQuery = query;
+    return readResource("home", () => api.home(query), data => emit({ type: "data.home", data }), { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}) });
+  };
+  const loadNotifications = () => readResource("notifications", () => api.notifications(), data => emit({ type: "data.notifications", data }));
+  const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
+  const verifyPurchase = async (orderId: string) => {
+    if (verifyingPurchase) return;
+    verifyingPurchase = true;
+    const version = epoch;
+    try {
+      const purchase = await api.verifyPurchase(orderId);
+      if (current(version)) {
+        emit({ type: "wallet.purchase", data: purchase });
+        if (purchase.status !== "PENDING" && pendingPurchase?.orderId === orderId) pendingPurchase = undefined;
+        await refreshWallet();
+      }
+    } finally { verifyingPurchase = false; }
+  };
+  const activity = AppState?.addEventListener("change", state => {
+    if (state === "active" && pendingPurchase?.epoch === epoch && !closed) quietly(verifyPurchase(pendingPurchase.orderId), "wallet.verify");
+  });
   const sendWallet = (work: Promise<Wallet>, action: string) => {
     const version = epoch;
     return work.then(wallet => { if (current(version)) emit({ type: "wallet.balance", data: wallet }); }).catch(error => {
@@ -118,12 +207,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
     const results = await Promise.allSettled([
-      api.hosts().then(data => deliver({ type: "data.hosts", data })),
-      (["pending", "rejected", "suspended"].includes(hostStatus || "") ? Promise.resolve({ chats: [] }) : api.chats()).then(data => deliver({ type: "data.chats", data })),
-      api.missedCalls().then(data => deliver({ type: "data.missed", data })),
-      api.callHistory().then(data => deliver({ type: "data.calls", data })),
-      api.transactions().then(data => deliver({ type: "data.transactions", data })),
-      (hostStatus === "approved" ? api.myPosts() : Promise.resolve({ posts: [] })).then(data => deliver({ type: "data.posts", data })),
+      loadHome(), loadNotifications(), loadCatalog(),
+      api.presence().then(data => deliver({ type: "presence.saved", data })),
+      readResource("chats", () => ["pending", "rejected", "suspended"].includes(hostStatus || "") ? Promise.resolve({ chats: [] }) : api.chats(), data => deliver({ type: "data.chats", data })),
+      readResource("missed", () => api.missedCalls(), data => deliver({ type: "data.missed", data })),
+      readResource("calls", () => api.callHistory(), data => deliver({ type: "data.calls", data })),
+      readResource("transactions", () => api.transactions(), data => deliver({ type: "data.transactions", data })),
+      readResource("posts", () => hostStatus === "approved" ? api.myPosts() : Promise.resolve({ posts: [] }), data => deliver({ type: "data.posts", data })),
       refreshWallet(),
     ]);
     if (!current(version)) return;
@@ -137,14 +227,29 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
+      if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
       const callId = event.data?.callId;
-      if (event.type === "call.ended" && callId === activeCall) activeCall = undefined;
+      if (event.type === "call.ended" && typeof callId === "string") {
+        rememberCancelledCall(callId);
+        if (callId === activeCall) { activeCall = undefined; callGeneration++; }
+      }
+      if (event.type === "call.connected" && typeof callId === "string") {
+        if (cancelledCalls.has(callId) || (event.data?.initiator === true && pendingOutgoing && pendingOutgoing.generation !== callGeneration)) {
+          quietly(endCancelledCall(callId, getSessionVersion()), "call.end");
+          return;
+        }
+        if (event.data?.initiator === true && pendingOutgoing) pendingOutgoing.callId = callId;
+        activeCall = callId;
+      }
+      if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
+      if (event.type === "home.updated") quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+      if (event.type === "realtime.status" && event.data?.connected === true && !onboarding) quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
       emit(event as AppMessage);
     }, accountId);
     if (!onboarding) void loadLists();
   };
   const unsubscribe = onSessionExpired(() => {
-    epoch++; stopLive(); activeCall = undefined;
+    epoch++; callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchase = undefined;
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
   });
   const restoreSession = async () => {
@@ -173,6 +278,55 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "ready": if (!msg.data.demo) await restoreSession(); return;
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
+      case "home.reload": return loadHome(msg.data);
+      case "hosts.search": {
+        const q = msg.data.q, page = msg.data.page ?? 1;
+        return readResource("search", () => api.home({ q, mode: "popular", page }), data => emit({ type: "data.search", data: { q, hosts: data.hosts, total: data.total, page: data.page } }), { q, page });
+      }
+      case "notifications.load": return loadNotifications();
+      case "notifications.read": return readResource("notifications", () => api.readNotifications(msg.data.ids), data => emit({ type: "data.notifications", data }));
+      case "catalog.load": return loadCatalog();
+      case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
+      case "rtc.signal": case "stream.signal": case "stream.ready": {
+        if (!stopLive.send) throw new ApiError("Live connection is unavailable. Reconnect and try again.", 503);
+        return stopLive.send(msg.type === "rtc.signal" ? "webrtc:signal" : msg.type === "stream.ready" ? "stream:ready" : "stream:signal", msg.data);
+      }
+      case "call.match": {
+        try { const data = await api.matchHost(msg.data.category); if (current(version)) emit({ type: "call.matched", data }); }
+        catch (error) { if (current(version)) operationError(error, msg.type); }
+        return;
+      }
+      case "stream.start": case "stream.join": {
+        if (activeStream) throw new ApiError("Leave your current live room before opening another.", 409);
+        const hosting = msg.type === "stream.start";
+        const stream = msg.type === "stream.start" ? await api.startStream(msg.data) : await api.joinStream(msg.data.streamId);
+        if (!current(version)) return;
+        activeStream = { id: stream.id, hosting };
+        const messages = await api.streamMessages(stream.id).catch(() => []);
+        if (current(version) && activeStream?.id === stream.id) emit({ type: "stream.opened", data: { stream, hosting, messages } });
+        quietly(loadHome(), "home.reload");
+        return;
+      }
+      case "stream.leave": case "stream.end": {
+        if (msg.type === "stream.end") await api.endStream(msg.data.streamId); else await api.leaveStream(msg.data.streamId);
+        if (current(version)) {
+          if (activeStream?.id === msg.data.streamId) activeStream = undefined;
+          emit({ type: "stream.closed", data: { streamId: msg.data.streamId } });
+          quietly(loadHome(), "home.reload");
+        }
+        return;
+      }
+      case "stream.message": { const data = await api.sendStreamMessage(msg.data.streamId, msg.data.text); if (current(version)) emit({ type: "stream.message", data }); return; }
+      case "wallet.checkout": {
+        const purchase = await api.checkout(msg.data.packId, msg.data.idempotencyKey);
+        if (!current(version)) return;
+        pendingPurchase = purchase.status === "PENDING" && purchase.merchantOrderId ? { orderId: purchase.merchantOrderId, epoch: version } : undefined;
+        // Payment pages stay outside the privileged application WebView.
+        if (purchase.paymentUrl) await Linking.openURL(purchase.paymentUrl);
+        if (current(version)) emit({ type: "wallet.checkout", data: purchase });
+        return;
+      }
+      case "wallet.verify": return verifyPurchase(msg.data.merchantOrderId);
       case "auth.sendOtp": {
         if (authWork.has("send")) return;
         authWork.add("send");
@@ -193,7 +347,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; // Retire work and socket callbacks owned by the previous identity.
+          epoch++; callGeneration++; pendingOutgoing = undefined; activeCall = undefined; // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           accountId = user.id; hostStatus = user.hostStatus;
@@ -207,7 +361,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "auth.google": return emit({ type: "auth.error", data: { message: "Use your mobile number to sign in.", code: "UNSUPPORTED_PROVIDER" } });
       case "auth.logout": {
         const logoutEpoch = ++epoch;
-        stopLive(); activeCall = undefined;
+        callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchase = undefined;
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -257,33 +411,77 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (current(version)) emit({ type: "verification.status", data: { status: "none", message: errorMessage(error) } });
         }
         return;
-      case "presence.set": return quietly(api.setPresence(msg.data.online, msg.data.visible), msg.type);
+      case "presence.set": {
+        const data = await api.setPresence(msg.data.online, msg.data.visible);
+        if (current(version)) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
+        return;
+      }
       case "settings.set": return quietly(api.saveSettings(msg.data), msg.type);
       case "follow.set": return quietly(api.follow(msg.data.id, msg.data.on), msg.type);
       case "chat.open": {
         const withId = msg.data.with;
-        return quietly(api.thread(withId).then(({ messages }) => { if (current(version)) emit({ type: "data.thread", data: { with: withId, messages } }); }), msg.type);
+        return readResource("thread", () => api.thread(withId), ({ messages }) => emit({ type: "data.thread", data: { with: withId, messages } }));
       }
       case "chat.send": return quietly(api.sendMessage(msg.data.to, msg.data.text, msg.data.inCall ? activeCall : undefined), msg.type);
-      case "gift.send": return sendWallet(api.sendGift(msg.data.to, msg.data.gift, msg.data.coins, msg.data.inCall ? activeCall : undefined), msg.type);
-      case "call.start":
-        try { const result = await api.startCall(msg.data.to, !!msg.data.voice); if (current(version)) activeCall = result.callId; }
-        catch (error) { if (current(version)) emit({ type: "call.failed", data: { message: errorMessage(error) } }); }
+      case "gift.send": {
+        const wallet = await api.sendGift(msg.data.to, msg.data.gift, msg.data.coins, msg.data.inCall ? activeCall : undefined, msg.data.streamId, msg.data.idempotencyKey);
+        if (current(version)) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey } }); }
         return;
-      case "call.accept":
-        try { await api.acceptCall(msg.data.callId); if (current(version)) { activeCall = msg.data.callId; emit({ type: "call.connected", data: { callId: activeCall } }); } }
-        catch { if (current(version)) emit({ type: "call.ended", data: { callId: msg.data.callId } }); }
+      }
+      case "call.start": {
+        const intent = { generation: ++callGeneration, callId: undefined as string | undefined }, sessionVersion = getSessionVersion();
+        pendingOutgoing = intent;
+        try {
+          const result = await api.startCall(msg.data.to, !!msg.data.voice);
+          if (!current(version) || intent.generation !== callGeneration || cancelledCalls.has(result.callId)) {
+            await endCancelledCall(result.callId, sessionVersion);
+            return;
+          }
+          activeCall = result.callId;
+          emit({ type: "call.created", data: { callId: activeCall, to: msg.data.to, voice: !!msg.data.voice } });
+        } catch (error) { if (current(version) && intent.generation === callGeneration) emit({ type: "call.failed", data: { message: errorMessage(error) } }); }
+        finally { if (pendingOutgoing === intent) pendingOutgoing = undefined; }
         return;
-      case "call.decline": return quietly(api.declineCall(msg.data.callId), msg.type);
+      }
+      case "call.accept": {
+        if (cancelledCalls.has(msg.data.callId)) return;
+        const generation = ++callGeneration, sessionVersion = getSessionVersion();
+        activeCall = msg.data.callId;
+        try {
+          const details = await api.acceptCall(msg.data.callId);
+          if (!current(version) || generation !== callGeneration || cancelledCalls.has(msg.data.callId)) {
+            await endCancelledCall(msg.data.callId, sessionVersion);
+            return;
+          }
+          emit({ type: "call.connected", data: { callId: msg.data.callId, initiator: false, ...details } });
+        } catch {
+          if (current(version) && generation === callGeneration) {
+            activeCall = undefined; rememberCancelledCall(msg.data.callId);
+            emit({ type: "call.ended", data: { callId: msg.data.callId } });
+          }
+        }
+        return;
+      }
+      case "call.decline": {
+        rememberCancelledCall(msg.data.callId);
+        if (activeCall === msg.data.callId) { activeCall = undefined; callGeneration++; }
+        return quietly(api.declineCall(msg.data.callId), msg.type);
+      }
       case "call.end": {
         const callId = msg.data.callId ?? activeCall;
+        if (!msg.data.callId || callId === activeCall || callId === pendingOutgoing?.callId) callGeneration++;
+        if (callId) rememberCancelledCall(callId);
         if (callId === activeCall) activeCall = undefined;
         if (callId) quietly(api.endCall(callId, msg.data.reason), msg.type);
         return;
       }
       case "wallet.recharge": return sendWallet(api.recharge(msg.data), msg.type);
       case "payout.request": return sendWallet(api.requestPayout(msg.data.coins, msg.data.upi), msg.type);
-      case "awards.claim": return sendWallet(api.claimAward(msg.data.task), msg.type);
+      case "awards.claim": {
+        const wallet = await api.claimAward(msg.data.task);
+        if (current(version)) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome(), "home.reload"); }
+        return;
+      }
       case "theme": case "ui.haptic": return;
     }
   }
@@ -292,8 +490,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      void handle(msg).catch(error => { if (current(version)) operationError(error, msg.type); });
+      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "gift.send", "awards.claim"].includes(msg.type);
+      const key = `${version}:${msg.type}`;
+      if (serialized && operations.has(key)) return;
+      if (serialized) operations.add(key);
+      void handle(msg).catch(error => { if (current(version)) operationError(error, msg.type); }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; unsubscribe(); stopLive(); },
+    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); activity?.remove(); stopLive(); },
   };
 }

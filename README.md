@@ -172,13 +172,43 @@ These checks use isolated mocks and do not send real SMS, create real accounts,
 or charge payments. Browser tests also exercise native bridge acknowledgements,
 rate limits, session recovery, and creator setup using mocked server responses.
 
+## Home screen and admin controls
+
+The reference-based home lives in `web/home.js` and `web/home.css`. It includes
+live creator stories, category filters, a featured creator, matching, creator
+search, notifications, a reward banner, server-priced gifts, and PayPlus coin
+checkout. `web/media.js` handles camera/microphone capture and WebRTC media;
+authenticated HTTP and Socket.IO still run through `src/`.
+
+In the sibling **admin-dashboard**, open **Settings → Home screen** to choose
+the featured creator and reward mission or enable/disable matching. Creator
+approval, account status, gifts, coin packs, announcements, and stream moderation
+use the existing dashboard tools. Changes refresh the connected home feed.
+Mission eligibility and wallet credits are checked by the server.
+
+Run `npm run build:web` after changing web sources. Run `npm run test:home`
+for responsive interaction checks and real browser WebRTC tests using test
+devices. It also writes `home-preview-mobile.png`, `home-preview-phone.png`,
+and `home-preview-desktop.png` for review. Preview portraits/activity are demo
+fixtures only; the phone build starts empty and displays server data.
+
+Rebuild/install the native app (`npm run android` or `npm run ios`) to include
+the new microphone permissions. Test calls and broadcasts on two physical
+devices with the deployed API and configured TURN service. Broadcasting uses
+one WebRTC connection per viewer and is intended for small rooms; large
+broadcasts need a dedicated media relay/SFU. Calls currently show **Free**,
+matching the backend; paid minute metering is not implemented.
+
+PayPlus checkout opens the provider's HTTPS payment page and checks the payment
+when the app becomes active again. The backend's signed webhook and payment
+verification remain authoritative. Configure the provider and confirm a real
+device checkout before using payments live.
+
 ## Notes
 
-In the app build, authentication, onboarding, lists, chat, follow actions, and
-wallet reads go through the native API layer in `src/`. Socket.IO carries live
-account, call-status, and chat events. Video media, incoming-call push
-notifications, store billing, and the remaining commerce screens still require
-their own integrations. Unsupported money actions return explicit errors instead
-of pretending a purchase, gift, withdrawal, or award succeeded. The browser
-website remains a demo. `docs/API.md` describes the older screen-facing contract;
-the implemented native adapters and sibling backend routes are authoritative.
+Authentication, onboarding, discovery, chat, follows, gifts, mission claims,
+wallet reads, calls, and live stream rooms use the native API layer. Withdrawals,
+some legacy account settings, and incoming-call push delivery while the app is
+closed still need their respective integrations. The browser preview remains
+a demo. `docs/API.md` describes the older screen-facing contract; the implemented
+native adapters and sibling backend routes are authoritative.

@@ -23,6 +23,10 @@ keeps it identical to the original Next.js version.
 
 ## Rules that matter
 
+- Always use layout-shaped skeletons for asynchronous content loading, including
+  initial loads, refreshes and pagination. Tie them to actual request state;
+  never use artificial loading timers. Keep empty and error states separate,
+  label skeletons for accessibility, and respect reduced-motion settings.
 - `web/aurora-runtime.js` must stay a top-level classic script. Its inline
   `onclick` handlers resolve globals (`S`, `r`, ...) through the global scope
   chain, so wrapping it in an IIFE or loading it as a module breaks navigation.

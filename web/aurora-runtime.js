@@ -171,11 +171,20 @@ const th=()=>"";
 function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
-function go(v,id){if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
+function go(v,id){
+ if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
+  homeRequestStreamClose(Home.stream.id,Home.hosting);
+  window.ZimiMedia?.stop();Home.stream=null;Home.messages=[];
+ }
+ if(!DEMO&&window.ZimiHome){
+  if(v==='voice'&&!S.callId){S.nextCallVoice=true;v='dial'}
+  if(['dial','dialback'].includes(v)&&!S.allowPreparedCall)return homePrepareCall(v,id);
+ }
+ if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
  if(v==="kyc")S.kerr=0;
- if(v==="precall")S.scam=0;
+ if(v==="precall"){S.scam=0;S.nextCallVoice=false}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -186,29 +195,27 @@ function go(v,id){if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt
  if(v==='search')S.sq='';
  if(v==='editprofile')S.editBack=S.v==='settings'?'settings':'profile';
  S.v=v;if(id)S.h=id;S.tray=0;
+ if(window.contentBeforeNavigate)contentBeforeNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
-  S.rmsgs=[["sys","",`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`]].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=g(S.h).fee;
-  S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
+  S.rmsgs=[["sys","",DEMO?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO?g(S.h).fee:0;
+  if(DEMO)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
  if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
-  Native.send("presence.set",{online:true,visible:!!S.vis});
+  if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
   S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
  if(v==="thread"){S.msgs=DEMO?TH.map(m=>m.slice()):[];Native.send("chat.open",{with:S.h})}
- if(v==="voice")Native.send("call.start",{to:S.h,voice:true});
+ if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"))}
 
-/* Each surface shimmers once, then is remembered for the session. */
-function loading(key,ms){
- if(S.cache[key])return false;
- setTimeout(()=>{S.cache[key]=1;r()},ms||480);
- return true}
+/* Content loading follows bridge requests; cached previews are already ready. */
+function loading(key){return !DEMO&&!!window.contentPending?.(key)}
 function skCards(k){return `<div class="grid">${Array.from({length:k},()=>
  `<div class="sk skcard"></div>`).join("")}</div>`}
 function skRows(k){return Array.from({length:k},()=>
@@ -219,17 +226,21 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
  `<div class="sk dark" style="height:78px;border-radius:15px"></div>`).join("")}</div>`}
 
 function nav(){const el=document.getElementById("nav");
+ if(window.ZimiHome&&window.ZimiHome.nav())return;
+ if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
  if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chats","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
 function card(h){
+ if(window.ZimiHome)return homeTile(h);
  return `<div class="card" role="button" tabindex="0" aria-label="Open ${esc(h.n)} profile" onclick="go('host','${domId(h.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('host','${domId(h.id)}')} ">${portrait(h)}<span class="scrim"></span>
  ${h.top?`<span class="top10">TOP 10 &middot; Hourly</span>`:`<span class="cat">${esc(h.tag)}</span>`}
  <button class="lv" aria-label="Join ${esc(h.n)} live" onclick="event.stopPropagation();go('call','${domId(h.id)}')">${I("vid",11)}LIVE</button>
  <span class="cbot"><span class="cnm">${esc(h.n)} &#127470;&#127475;</span></span></div>`}
 
 function vHome(){
+ if(window.ZimiHome)return window.ZimiHome.render();
  const T=[["following","Following"],["explore","Explore"],["foryou","For You"],["new","New"]];
  let L=H.slice();
  if(S.tab==="following")L=L.filter(h=>h.fol);
@@ -347,7 +358,7 @@ function profilePage(p,raw,self){
        <span class="bav">${avc(m,40)}</span>
        <span class="mname">${esc(m.n)}${i===0?`<span class="mtag">${p.host?"TOP MVP":"TOP HOST"}</span>`:""}</span>
        <span class="mcoin">${gem}${n(m.c)}</span></button>`).join("")}</div>`
-   : `<div class="hpgrid">${posts.map(x=>`<button class="post" ${self?'':`onclick="openPost(${x.i})"`}>
+   : self&&window.contentSurface?.('posts','posts','Loading your posts')?contentSurface('posts','posts','Loading your posts') : `<div class="hpgrid">${posts.map(x=>`<button class="post" ${self?'':`onclick="openPost(${x.i})"`}>
        ${x.custom?`<img src="${imageSrc(x.custom)}" alt="Your post">`:artC(x.seed)}
        ${x.vid?`<span class="pl">&#9654;</span>`:""}
        <span class="lk">${I("heart",11)}${x.likes}</span></button>`).join("")}</div>`}
@@ -369,6 +380,7 @@ function backedFor(u){
 }
 
 function vSetup(){
+ if(window.ZimiHome&&!DEMO)return homeCallSetup();
  const h=me, tierIdx=1;
  return `<div class="setup">
  <div class="stage">
@@ -457,6 +469,7 @@ function camOn(){return isHost()?S.cam:S.scam}
 function toggleCam(){if(isHost())S.cam=S.cam?0:1;else S.scam=S.scam?0:1;r()}
 function video(p){
  if(p===me&&!camOn())return `<div class="vcoff">${I("camoff",22)}<span>Camera off</span></div>`;
+ if(!DEMO&&window.ZimiMedia)return `<video class="zh-call-video ${p===me?'zh-call-local':''}" ${p===me?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`;
  return p===me?`<div style="position:absolute;inset:0;filter:${fxCss()||"none"}">${art(p.seed)}</div>`:art(p.seed)}
 function fxOn(){return Object.values(S.bsel).some(Boolean)}
 /* One ⋯ button under the video tile; beauty, mute and camera live in its menu. */
@@ -494,6 +507,7 @@ function idPill(p,coins){
    <button class="quickfollow ${S.following[p.id]?'on':''}" aria-label="${S.following[p.id]?'Unfollow':'Follow'} ${esc(p.n)}" onclick="toggleFollow('${domId(p.id)}',event)">${S.following[p.id]?'✓':'+'}</button></div>`}
 
 function vCall(){const h=g(S.h);
+ if(window.ZimiHome)return homeCallView(false);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(h,me)}
  ${topBar(0)}
@@ -516,6 +530,7 @@ function vCall(){const h=g(S.h);
  ${S.tray?giftTray():S.sh==="fx"?fxSheet():""}</div>`}
 
 function vVoice(){const h=g(S.h);
+ if(window.ZimiHome&&!DEMO)return homeCallView(false);
  return `<div class="voicecall">
   <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
   <div class="voiceorb">${avc(h,104)}</div>
@@ -566,13 +581,14 @@ function paintFeed(){
 }
 
 function giftTray(){
+ if(window.ZimiHome){Home.giftTo=S.v==='hcall'?S.caller.id:S.h;return homeGiftSheet()}
  const tier=v=>v>=19999?"epic":v>=5999?"rare":"";
  const lab=v=>v>=19999?"LGD":v>=5999?"RARE":"";
  return `<div class="tray"><div class="veil" onclick="S.tray=0;r()"></div>
   <div class="panel">
    <div class="thead">
     <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?esc(first(S.caller.n)):"the host"}</span></span>
-    <button class="addc" onclick="go('coins')">${gem}${n(S.bal)} &nbsp;+</button>
+    <button class="addc" onclick="go('coins')">${gem}${window.contentBalance?contentBalance():n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
    ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${k==="water"?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
@@ -700,6 +716,7 @@ function callBack(id){
  S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
  if(isHost()){S.caller=sender(id);go("dialback")}else go("precall",id)}
 function missedList(){
+ const pending=window.contentSurface?.('missed','rows','Loading missed calls');if(pending)return pending;
  const L=missedRows();
  if(!L.length)return `<div class="acctcard emptycompact" style="margin:14px"><span class="acctico">${I("ph",22)}</span>
   <h3>No missed calls</h3><p>Calls you miss will show up here so you can call back.</p></div>`;
@@ -716,8 +733,8 @@ function vChats(){
    <button role="tab" aria-selected="${tab==="msgs"}" class="${tab==="msgs"?"on":""}" onclick="S.ctab='msgs';r()">Messages${unread?`<b>${unread}</b>`:""}</button>
    <button role="tab" aria-selected="${tab==="missed"}" class="${tab==="missed"?"on":""}" onclick="S.ctab='missed';r()">Missed calls${miss?`<b class="miss">${miss}</b>`:""}</button></div>
  ${tab==="missed"?missedList():`<div class="srch"><div>${I("srch",17)}<input id="cq" placeholder="Search conversations" value="${esc(S.q||"")}" oninput="S.q=this.value;paintList()"></div></div>
- <div class="clist" id="clist">${loading("chats")?skRows(6):
-   L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`}</div>`}
+ <div class="clist" id="clist">${window.contentSurface?.('chats','rows','Loading conversations')||
+   (L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`)}</div>`}
  <div style="height:12px"></div>`}
 function row([id,l,t,u]){const h=g(id);
  return `<button class="rowlink" onclick="go('thread','${domId(id)}')">
@@ -730,7 +747,7 @@ function row([id,l,t,u]){const h=g(id);
     <span class="s13" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${u?"var(--ink)":"var(--muted)"};font-weight:${u?500:400}">${esc(l)}</span>
     ${u?`<span class="tab" style="background:var(--accent);color:var(--cta-ink);border-radius:99px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;padding:0 5px">${esc(u)}</span>`:""}</span>
   </span></button>`}
-function paintList(){S.cache.chats=1;const q=(S.q||"").toLowerCase();
+function paintList(){const pending=window.contentSurface?.('chats','rows','Loading conversations');if(pending){const el=document.getElementById('clist');if(el)el.innerHTML=pending;return}const q=(S.q||"").toLowerCase();
  const L=CH.filter(([id,l])=>{const h=g(id);return !q||h.n.toLowerCase().includes(q)||l.toLowerCase().includes(q)});
  const el=document.getElementById("clist");
  if(el)el.innerHTML=L.length?L.map(row).join(""):`<div class="empty">No conversations match that search.</div>`}
@@ -761,6 +778,7 @@ function snd(){const i=document.getElementById("ti");if(!i||!i.value.trim())retu
  Native.send("chat.send",{to:S.h,text:i.value.trim()});
  S.msgs.push(["m",i.value.trim(),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);i.value="";paint()}
 function paint(){const f=document.getElementById("tf");if(!f)return;
+ const pending=window.contentSurface?.('thread','thread','Loading messages');if(pending){f.innerHTML=pending;return}
  f.innerHTML=S.msgs.map(([w,t,a,tm])=>w==="g"
   ?`<div class="gbub"><span class="gl">${giftGlyph(t)}</span><span class="gc">${gem}${esc(a)}</span>
      <span class="gt2">${esc(tm||"")}</span></div>`
@@ -826,9 +844,10 @@ function scrollPost(){
 function history_back(){go(S.back||"home",S.backId)}
 
 function vCoins(){
+ if(window.ZimiHome)return window.ZimiHome.coins();
  const sel=S.pack==null?2:S.pack, pk=PACKS[sel], money=v=>v.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
  return `<div class="cwrap">
-  <div class="ctools"><span class="cbal">${coin}${n(S.bal)}</span><button class="ccurrency">₹ INR ${I('chev',14)}</button></div>
+  <div class="ctools"><span class="cbal">${coin}${window.contentBalance?contentBalance():n(S.bal)}</span><button class="ccurrency">₹ INR ${I('chev',14)}</button></div>
   <div class="ctitle">Welcome Bonus for You!</div>
   <div class="cgrid">${PACKS.map(([c,pr,bonus],i)=>`<button class="cpack ${sel===i?"on":""}" onclick="S.pack=${i};r()">
     ${i===3?`<span class="cbest">🔥 Hot</span>`:i===5?`<span class="cbest">★ Popular</span>`:""}
@@ -854,8 +873,8 @@ const TXNS=[
  ["Call with Ananya","2 Sep, 10:24 PM",-285,"call"],
  ["Bonus coins","1 Sep, 9:00 AM",250,"topup"]];
 
-function vWallet(){return `<div class="acct">
- <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${n(S.bal)}</div>
+function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct">
+ <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div>
   <div class="sub">Use coins for calls and gifts. Your balance is ready across Zimi Live.</div>
   <button class="cta" onclick="go('coins')">Add coins</button></div>
  ${earnCard()}
@@ -863,14 +882,14 @@ function vWallet(){return `<div class="acct">
   <div class="support"><button onclick="go('coins')"><b>Recharge</b><span>Choose a coin pack</span></button>
    <button onclick="go('transactions')"><b>History</b><span>See every movement</span></button></div></div>
  <div class="acctsec"><div class="accttitle"><span>Recent activity</span><button onclick="go('transactions')" style="color:var(--accent-ink)">View all</button></div>
-  <div class="acctcard">${TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
+  <div class="acctcard">${window.contentSurface?.('transactions','rows','Loading recent transactions')||TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
 
 function txRow(x){const [title,time,amount,type]=x;return `<div class="acctrow">
  <span class="acctico">${I(type==='call'?'ph':type==='gift'?'gift':'wal',16)}</span>
  <span style="flex:1;min-width:0"><span class="main">${esc(title)}</span><span class="meta">${esc(time)}</span></span>
  <span class="end ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${n(Math.abs(amount))}</span></div>`}
 
-function vTransactions(){const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?x[2]>0:x[2]<0));return `<div class="acct">
+function vTransactions(){const pending=window.contentSurface?.('transactions','rows','Loading transactions');if(pending)return '<div class="acct">'+pending+'</div>';const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?x[2]>0:x[2]<0));return `<div class="acct">
  <div class="accttabs">${[['all','All'],['in','Added'],['out','Spent']].map(([k,l])=>`<button class="${S.txf===k?'on':''}" onclick="S.txf='${k}';r()">${l}</button>`).join('')}</div>
  <div class="acctcard">${L.map(txRow).join('')}</div>
  ${L.length?"":`<div class="s13 muted" style="text-align:center;padding:36px 20px">No activity yet.</div>`}
@@ -881,7 +900,7 @@ const CALLS=[
  ["noor","2 Sep, 10:24 PM","5m 42s",285],
  ["tara","31 Aug, 9:08 PM","3m 16s",156],
  ["meher","29 Aug, 8:31 PM","11m 04s",552]];
-function vCalls(){return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
+function vCalls(){const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
  <span class="callav">${av(h,38,'none')}<span class="badge">${I('ph',9)}</span></span>
  <span style="flex:1;min-width:0"><span class="main">${esc(h.n)}</span><span class="meta">${esc(time)} · ${esc(dur)}</span></span>
  <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('precall','${domId(id)}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
@@ -990,14 +1009,14 @@ function vSettings(){
     <div class="lvlchip">LEVEL 7 &middot; ${isHost()?"HOST":"SENDER"}</div></div><span class="ch" style="margin-left:auto;color:var(--faint);font-size:22px">&rsaquo;</span></button>
 
   <div class="pstats">
-   <div><div class="v tab">${n(S.bal)}</div><div class="k">Coins</div></div>
+   <div><div class="v tab">${window.contentBalance?contentBalance():n(S.bal)}</div><div class="k">Coins</div></div>
    <div><div class="v tab">${n(S.gifted||0)}</div><div class="k">Gifted</div></div>
    <div><div class="v tab">${CH.length}</div><div class="k">Chats</div></div></div>
 
   <div class="pbal">
    <span class="orb"></span>
    <div class="amt"><div class="k">Balance</div>
-    <div class="v">${gem}${n(S.bal)}</div></div>
+    <div class="v">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div></div>
    <button class="go" onclick="go('coins')">Add coins</button></div>
 
   <div class="psec"><h3>Your profile</h3><div class="plist">
@@ -1086,6 +1105,7 @@ function myCard(){
 /* ---- Sender: before the call ---- */
 function talkTime(m){return m>=120?`about ${n(Math.floor(m/60))} hr`:`about ${n(m)} min`}
 function vPrecall(){
+ if(window.ZimiHome)return homePrecall();
  const h=g(S.h), need=h.fee+h.rate, mins=Math.floor(Math.max(0,S.bal-h.fee)/h.rate), low=S.bal<need;
  return `<div class="pcall">
  <div class="pcbg">${art(h.seed)}</div><span class="pcshade"></span>
@@ -1107,7 +1127,7 @@ function vPrecall(){
   <div class="pcprice">
    <div><span class="k">Entry fee</span><span class="v">${gem}${n(h.fee)}</span></div>
    <div><span class="k">Per minute</span><span class="v">${gem}${n(h.rate)}</span></div>
-   <div><span class="k">Your balance</span><span class="v ${low?"low":""}">${gem}${n(S.bal)}</span></div></div>
+   <div><span class="k">Your balance</span><span class="v ${low?"low":""}">${gem}${window.contentBalance?contentBalance():n(S.bal)}</span></div></div>
   <div class="pcmeta">${low
    ?`<span class="warn">${I("wal",14)} You need at least ${n(need)} coins to start this call.</span>`
    :`<span>${I("ph",14)} Your balance covers ${talkTime(mins)} of talk time</span>`}</div>
@@ -1131,10 +1151,11 @@ function vDial(){
   <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
  </div>`}
 
-function cancelDial(){Native.send("call.end",{reason:"cancelled"});if(S.v==="dialback")go("chats");else go("precall",S.h)}
+function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")go("chats");else go("precall",S.h)}
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
+ if(window.ZimiHome&&!DEMO)return homeWaiting();
  return `<div class="ringscr host">
   <div class="ringorb">${avc(me,104)}</div>
   <h2>You're online</h2>
@@ -1169,6 +1190,7 @@ function vRing(){const c=S.caller;
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
+ if(window.ZimiHome&&!DEMO)return homeCallView(true);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(me,c)}
  ${topBar(1)}
@@ -1200,7 +1222,7 @@ function incBanner(){const c=S.inc;
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
 function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting")}
-function acceptRing(){Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
+function acceptRing(){if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
  S.inc=c||nextCaller();
@@ -1218,6 +1240,7 @@ function logFee(){
  const early=!S.feeOk;if(early)S.early++;
  S.feeLog.push({n:S.caller.n,ok:!!S.feeOk,early});return early}
 function hostEnd(kind){
+ if(!DEMO){if(kind==='switch')return appNotice('Finish this call before accepting another.');return endCall()}
  if(!S.feeOk){S.confirm=kind;S.more=0;S.tray=0;return r()}
  kind==="switch"?acceptInc():endCall()}
 function confirmEnd(){
@@ -1255,6 +1278,7 @@ function connectingScreen(){const {from,to}=S.connecting;
 
 const IN_GIFTS=[1,2,3,4,5,6,8];
 function hostTick(){
+ if(!DEMO){S.sec++;paintHostTick();return}
  S.sec++;S.earned+=MY_RATE/60;
  if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
   S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
@@ -1282,6 +1306,7 @@ function paintHostTick(){
 /* ---- Ending a call: both sides land on a summary ---- */
 /* remote: the other side hung up, so there is nothing to tell the server */
 function endCall(remote){
+ if(window.ZimiMedia)window.ZimiMedia.stop();
  if(!remote)Native.send("call.end",{callId:S.v==="hcall"?S.caller.callId:S.callId});
  if(S.v==="hcall"){
   logFee();
@@ -1289,7 +1314,7 @@ function endCall(remote){
   const before=S.tasks.map(t=>t.p>=t.goal);
   const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
   S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
-  A().earn+=earned;
+  if(DEMO)A().earn+=earned;
   S.sum={k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
    done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
  } else {
@@ -1305,6 +1330,7 @@ function supportPct(h,spent){
  return Math.min(99,Math.round(xs.filter(x=>x<spent).length/xs.length*100))}
 
 function vSummary(){const s=S.sum;
+ if(window.ZimiHome&&!DEMO)return homeCallSummary();
  if(!s)return "";
  if(s.k==="sender"){
   const h=g(s.h),f=first(h.n),pct=supportPct(h,s.spent),big=pct>=50;
@@ -1538,6 +1564,7 @@ function withdraw(){const i=document.getElementById("pamt"),a=A();
 
 /* Chrome lives outside the scroller, so it cannot drift while scrolling. */
 function topFor(){
+ if(window.ZimiHome){const chrome=window.ZimiHome.header();if(chrome!==null)return chrome}
  if(S.v==="home"){
   const T=[["following","Following"],["explore","Explore"],["foryou","For You"],["new","New"]];
   return `<div class="stabs">
@@ -1562,7 +1589,7 @@ function topFor(){
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
-   <button class="bal" onclick="go('profile')">${gem}${n(S.bal)}</button></div>`;
+   <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
  if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
    <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
@@ -1582,10 +1609,11 @@ function appNotice(message){
 }
 function r(){
  obSyncTheme();
+ if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
  el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,thread:vThread,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
-  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards}[S.v]();
+  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
  nav();
@@ -1601,7 +1629,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1620,7 +1648,7 @@ function personFrom(p){const id=String(p.id);
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */
 function knowHost(p){const h=hostFrom(p);if(!g(h.id))EXTRA.push(h);return h}
-const LIST_VIEWS=["home","board","search","chats","calls","wallet","transactions","profile","awards","kyc","payout"];
+const LIST_VIEWS=["home","explore","board","search","chats","calls","wallet","coins","transactions","profile","awards","kyc","payout"];
 function refresh(){if(LIST_VIEWS.includes(S.v))r()}
 
 if(!DEMO){
@@ -1669,18 +1697,23 @@ Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
- if(S.v==="dial"){S.callId=d.callId;go("call",S.h)}
+ if(S.v==="dial"){S.callId=d.callId;go(d.voice?'voice':"call",S.h)}
  else if(S.v==="dialback"){S.caller.callId=d.callId;go("hcall")}
+ else if(S.v==="ring"&&S.caller.callId===d.callId){S.callId=d.callId;S.acceptingCall=false;go('hcall')}
  else if(S.v==="hcall"&&S.connecting)finishSwitch()});
 Native.on("call.failed",d=>{
+ S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")go("chats")});
 Native.on("call.incoming",d=>{const c=personFrom({...d.from,callId:d.callId});
+ if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
+ c.voice=!!d.voice;
  if(S.v==="hcall")return ringIncoming(c);
  if(S.v==="ring")return;
  S.ringBack=S.v;S.caller=c;go("ring")});
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
+ if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
@@ -1693,11 +1726,9 @@ Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour
  if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push(["t",d.text,t]);return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
-/* tells the app the screens are listening */
-Native.send("ready",{demo:DEMO});
 const st=document.createElement("style");
 st.textContent="@keyframes up{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{transform:translateY(-180px);opacity:0}}";
 document.head.appendChild(st);
 /* const globals are not window properties; expose state so the design preview can drive the app. */
 if(DEMO){window.S=S;window.A=A}
-r();
+/* build-web initializes after all screen and loading handlers are registered. */

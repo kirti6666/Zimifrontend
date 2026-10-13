@@ -84,6 +84,7 @@ const page = (demo) =>
   read("web/aurora.css") +
   read("web/app.css") +
   read("web/onboarding.css") +
+  read("web/home.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -92,6 +93,10 @@ const page = (demo) =>
   read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
     "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
   read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +
+  "\n" + read("web/loading.js") +
+  "\n" + read("web/home.js") +
+  "\n" + read("web/media.js") +
+  "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 
 const appDemo = process.env.ZIMI_DEMO === "1";

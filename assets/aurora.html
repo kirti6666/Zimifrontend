@@ -2084,6 +2084,13 @@ button.gpill[onclick]{cursor:pointer}
 }
 .ob-recovery { display: flex; align-items: center; min-height: 85dvh; }
 .ob-recovery .ob-main { width: 100%; max-width: 480px; margin: auto; }
+.ob-session-skeleton { width: 100%; }
+.ob-session-stories { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+.ob-session-stories span { display: block; flex: 1; max-width: 58px; aspect-ratio: 1; border-radius: 50%; background: var(--ob-raised); }
+.ob-session-card { display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; min-height: 190px; padding: 20px; border-radius: 20px; background: var(--ob-surface); }
+.ob-session-line { display: block; width: 72%; height: 16px; border-radius: 6px; background: var(--ob-raised); }
+.ob-session-line.short { width: 46%; height: 10px; }
+.ob-session-action { display: block; height: 38px; margin-top: 4px; border-radius: 12px; background: var(--ob-raised); }
 .ob-session-notice { padding: 12px 16px; border: 1px solid #ed49934a; border-radius: 16px; background: #ed499318; color: #f4cddd; line-height: 1.5; font-size: 13px; }
 .app-network-note { display: flex; gap: 12px; align-items: center; padding: 12px 16px; margin: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.5; }
 .app-network-note span { flex: 1; overflow-wrap: anywhere; }
@@ -2097,6 +2104,171 @@ button.gpill[onclick]{cursor:pointer}
   .ob-shell button:active:not(:disabled), .ob-dialog button:active:not(:disabled), .ob-upload:active { transform: none; opacity: .8; }
   .ob-spinner { border-color: currentColor; border-style: dotted; }
 }
+.zh-app{--canvas:#210f1d;--deep:#190c16;--surface:#321e2c;--raised:#3c2635;--line:#513045;--ink:#fce8f2;--muted:#c5a9bc;--faint:#a37b96;--accent:#f10983;--accent-ink:#ff9ccc;--accent-wash:#381429;--accent-line:#64203f;--btn:#eb087c;--cta:#eb087c;--cta-ink:#fff;--btn-ink:#fff;color-scheme:dark}
+.zh-app .app{background:radial-gradient(ellipse at 95% 40%,#331331 0%,transparent 47%),linear-gradient(145deg,#290d20,#210f1d 44%,#270e21)}
+.zh-app #top{background:#210e1c}
+.zh-app button:focus-visible,.zh-app input:focus-visible,.zh-app select:focus-visible{outline:2px solid #ffb2d7;outline-offset:4px}
+.zh-app button:disabled{cursor:default;opacity:.48;box-shadow:none}
+.zh-header{height:63px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:12px;border-bottom:1px solid #4e19372e}
+.zh-brand{display:flex;align-items:center;gap:5px;font-size:18px;font-weight:750;letter-spacing:-.7px;white-space:nowrap}
+.zh-brand>svg{color:#ffbbd9}.zh-brand>span>span{color:#ff168e}
+.zh-header-actions{display:flex;align-items:center;gap:12px}
+.zh-balance{display:flex;align-items:center;gap:3px;border-radius:20px;background:#392232;font-size:10px;font-weight:650;padding:8px 9px;white-space:nowrap}
+.zh-balance svg{color:#ffc5de}
+.zh-icon{display:flex;align-items:center;justify-content:center;width:28px;height:36px}
+.zh-bell{position:relative}.zh-bell>i{width:7px;height:7px;position:absolute;right:4px;top:5px;background:#ef0b85;border-radius:50%;outline:1px solid #210e1c}
+.zh-profile{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;color:#301725;background:#ffaccf;overflow:hidden}
+.zh-profile img{width:100%;height:100%;object-fit:cover}
+.zh-home{padding:8px 15px 28px;max-width:1040px;margin:0 auto}
+.zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.zh-section-title h2{font-size:18px;line-height:1.3;letter-spacing:-.55px;font-weight:680;display:flex;align-items:center;gap:6px}
+.zh-section-title h2>i{width:8px;height:8px;border-radius:50%;background:#ee1186}
+.zh-section-title>span{font-size:9px;font-weight:650;letter-spacing:.7px;white-space:nowrap}
+.zh-section-title>button{font-size:12px;color:#ffbedb;white-space:nowrap;display:flex;gap:5px;align-items:center}
+.zh-section-title>button span{font-size:19px;line-height:13px}
+.zh-stage .zh-section-title{margin-bottom:13px}
+.zh-stories{display:flex;gap:14px;overflow:auto;padding:0 2px 9px;scrollbar-width:none;align-items:flex-start}
+.zh-stories::-webkit-scrollbar,.zh-filters::-webkit-scrollbar{display:none}
+.zh-story{width:58px;flex:0 0 58px;text-align:center;font-size:12px;line-height:17px}
+.zh-story-ring{position:relative;display:block;width:58px;height:58px;border:2px solid #f91791;border-radius:50%;padding:3px;margin-bottom:7px;box-shadow:0 0 10px #f50e8c1a}
+.zh-story-ring>.zh-photo,.zh-story-ring>.zh-fallback{position:absolute;inset:3px;width:calc(100% - 6px);height:calc(100% - 6px);border-radius:50%}
+.zh-story-ring>b{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:#eb087b;color:white;border-radius:4px;padding:0 5px;font-size:9px;font-weight:800;line-height:13px;white-space:nowrap;display:flex;gap:2px;align-items:center}
+.zh-story-call{border-color:#b357f6}.zh-story-call>b{background:#a635f3}
+.zh-story-create .zh-story-ring{display:grid;place-items:center;color:#ff1594;border-color:#492239;background:#2d1727;box-shadow:none}
+.zh-story-create .zh-story-ring>i{position:absolute;bottom:-1px;right:-3px;background:#f01685;color:white;border-radius:50%;width:17px;height:17px;display:grid;place-items:center;border:1.5px solid #321526}
+.zh-story>span:last-child{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zh-stage-empty{font-size:12px;line-height:1.7;color:#c8a4bc;max-width:190px;padding-top:15px}
+.zh-filters{display:flex;gap:8px;overflow:auto;scrollbar-width:none;margin:24px -15px 27px;padding:0 15px 2px}
+.zh-filters button{display:flex;align-items:center;gap:7px;white-space:nowrap;border-radius:30px;background:#3b2534;padding:10px 16px;font-size:12px;line-height:15px;font-weight:450;transition:background .18s,box-shadow .18s}
+.zh-filters button.selected{background:#e90c7e;box-shadow:0 5px 17px #ed07852e;color:#fff;font-weight:650}
+.zh-photo{width:100%;height:100%;object-fit:cover;display:block}
+.zh-fallback{position:relative;width:100%;height:100%;display:grid;place-items:center;overflow:hidden}
+.zh-fallback>.art{position:absolute;inset:0;width:100%;height:100%}
+.zh-fallback>span{position:relative;font-size:60px;font-weight:750;color:#ffcee1bb}
+.zh-featured{position:relative;height:392px;border-radius:19px;overflow:hidden;background:#140d14;isolation:isolate}
+.zh-featured>.zh-photo,.zh-featured>.zh-fallback{position:absolute;inset:0;object-position:center 36%}
+.zh-featured-shade{position:absolute;inset:0;background:linear-gradient(180deg,#07050a48,transparent 27%,#1a071631 46%,#200a1ae8 77%,#200a1a 100%)}
+.zh-featured-top{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;gap:6px;z-index:2;pointer-events:none}
+.zh-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;line-height:13px;letter-spacing:.1px;font-weight:750;border-radius:20px;padding:3px 9px;color:#fff;white-space:nowrap}
+.zh-live{background:#ed0784;box-shadow:0 2px 12px #e40e7540}.zh-live>i{width:7px;height:7px;border-radius:50%;background:#fff}
+.zh-ready{background:linear-gradient(120deg,#9c55f9,#c14cef)}.zh-offline{background:#3a2636}
+.zh-viewers{display:inline-flex;align-items:center;gap:3px;background:#210817ba;border-radius:20px;font-size:9px;font-weight:650;white-space:nowrap;padding:3px 7px;color:#ffe7f3}
+.zh-featured-open{margin-left:auto;background:#33232fb3;border-radius:20px;display:flex;gap:4px;align-items:center;font-size:9px;padding:4px 7px;pointer-events:auto}
+.zh-featured-hit{position:absolute;inset:0;width:100%;height:100%}
+.zh-featured-bottom{position:absolute;bottom:14px;left:15px;right:15px}
+.zh-featured-identity{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.zh-featured-identity>button:first-child{text-align:left;min-width:0}
+.zh-featured h1{font-size:23px;font-weight:750;letter-spacing:-.65px;display:flex;align-items:center;gap:5px;line-height:1.25}
+.zh-verified{display:inline-flex;color:#ffbedb;vertical-align:middle;flex:none}
+.zh-featured p{font-size:11.5px;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zh-gift{display:grid;place-items:center;flex:0 0 45px;width:45px;height:45px;border-radius:50%;background:#4c3342ba;color:#ffc3df;box-shadow:0 6px 22px #12071140}
+.zh-live-note{display:flex;align-items:center;gap:7px;background:#290d2199;border-radius:8px;font-size:11px;line-height:17px;padding:6px 10px;margin-bottom:10px}
+.zh-live-note>i{width:7px;height:7px;background:#ffa9cb;border-radius:50%;flex:none}
+.zh-featured-actions{display:flex;gap:8px}
+.zh-primary{display:inline-flex;justify-content:center;align-items:center;gap:7px;border-radius:12px;background:#e8097d;color:#fff;font-weight:700;font-size:13px;min-height:47px;padding:12px 16px;box-shadow:0 5px 20px #e9087d36;transition:transform .15s,background .15s}
+.zh-primary:active{transform:scale(.97)}.zh-primary:hover{background:#f31a8a}
+.zh-featured-actions>.zh-primary{flex:1;padding-left:10px;padding-right:10px;white-space:nowrap}
+.zh-rate{border-radius:12px;background:#3b2637;width:121px;flex:0 0 37%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.zh-rate>span{font-size:9px;letter-spacing:.4px}.zh-rate>b{display:flex;align-items:center;gap:3px;font-size:12px;line-height:18px}
+.zh-match{background:linear-gradient(115deg,#382331 45%,#57223f);border:1px solid #75324c0d;border-radius:17px;margin:24px 0;display:flex;align-items:center;gap:16px;padding:17px 15px 14px}
+.zh-match>div{flex:1;min-width:0}.zh-match h2{font-size:18px;letter-spacing:-.65px;font-weight:700;display:flex;align-items:center;gap:7px;line-height:25px}.zh-match h2>svg{color:#ff158e;flex:none}
+.zh-match p{font-size:12px;line-height:16px;margin:3px 0 9px;max-width:206px}
+.zh-match>.zh-primary{font-size:12px;min-width:88px;background:linear-gradient(135deg,#ff369d,#f21489);box-shadow:0 6px 24px #f20b8559;border-radius:13px;padding:12px 15px}
+.zh-available{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:550}
+.zh-wave{height:20px;display:flex;align-items:flex-end;gap:3px}.zh-wave i{width:4px;border-radius:4px;background:#ffc3dc;height:9px}.zh-wave i:nth-child(2){height:15px;background:#f34ca2}.zh-wave i:nth-child(3){height:20px;background:#ff82c0}.zh-wave i:nth-child(4){height:14px;background:#ef4c9c}.zh-wave i:nth-child(5){height:10px}
+.zh-trending{margin-top:21px}.zh-trending .zh-section-title{margin-bottom:8px}
+.zh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 8px}
+.zh-tile{border-radius:13px;overflow:hidden;background:#331e2d;min-width:0}
+.zh-tile-media{position:relative;height:210px;background:#1b111a;overflow:hidden}
+.zh-tile-media>.zh-photo{object-position:50% 30%;transition:transform .35s}.zh-tile:hover .zh-tile-media>.zh-photo{transform:scale(1.035)}
+.zh-tile-shade{position:absolute;inset:0;background:linear-gradient(180deg,#12071055,transparent 35%,transparent 60%,#210d22a6)}
+.zh-tile-hit{position:absolute;inset:0;width:100%;height:100%}
+.zh-tile-top{position:absolute;left:8px;right:7px;top:8px;display:flex;align-items:center;justify-content:space-between;gap:2px;pointer-events:none}
+.zh-tile-top .zh-badge{font-size:8px;padding:2px 7px;gap:3px}.zh-tile-top .zh-viewers{font-size:8px;padding:2px 4px;gap:2px}.zh-tile-top .zh-live>i{width:6px;height:6px}
+.zh-online-dot{width:6px;height:6px;border-radius:50%;background:#36d59c}
+.zh-tile-rate{position:absolute;bottom:9px;left:8px;display:flex;align-items:center;gap:2px;background:#493044b3;backdrop-filter:blur(9px);border-radius:5px;padding:3px 6px;font-size:10px;font-weight:600}
+.zh-tile-action{position:absolute;right:9px;bottom:9px;width:35px;height:35px;border-radius:50%;display:grid;place-items:center;background:#45273ccf;color:#ffd6e7;box-shadow:0 4px 16px #15081144}
+.zh-tile-action.zh-hot{background:#ee087f;color:white;box-shadow:0 3px 16px #f007817a}
+.zh-tile-caption{display:block;width:100%;padding:11px 10px 10px;text-align:left;min-width:0}
+.zh-tile h3{font-size:13px;font-weight:650;letter-spacing:-.2px;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.zh-tile h3 svg{width:13px;height:13px}
+.zh-tile p{font-size:11.5px;line-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.zh-bonus{display:flex;align-items:center;gap:10px;background:#331c2b;border-radius:14px;padding:12px;margin:24px 0 0}
+.zh-bonus-icon{display:grid;place-items:center;width:31px;height:31px;border-radius:50%;background:#594051;color:#ffc2de;flex:none}
+.zh-bonus>div{min-width:0;flex:1}.zh-bonus h3{font-size:11px;line-height:16px;font-weight:650}.zh-bonus p{font-size:10px;line-height:15px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.zh-bonus>button{border-radius:25px;background:#452c3b;padding:8px 12px;font-size:10px;font-weight:650;color:#ffc0dc}
+.zh-preview-note{font-size:9px;color:#a47c94;text-align:center;margin:23px 0 3px}
+.zh-app .nav.zh-nav{display:flex;justify-content:space-around;align-items:flex-end;gap:0;width:100%;max-width:none;min-height:69px;height:69px;padding:6px 14px 10px;margin:0;flex-shrink:0;border:0;border-radius:0;background:#210b1b;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
+.zh-app .zh-nav>button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;flex:1;max-width:120px;height:45px;padding:0;color:#d8b8ca;font-weight:600;font-size:9px}
+.zh-app .zh-nav>button.on{color:#ffb6d5}.zh-app .zh-nav>button.on svg{filter:drop-shadow(0 1px 5px #ef17883b)}
+.zh-app .zh-nav>.zh-create{flex:none;align-self:center;width:55px;height:55px;max-width:none;border-radius:50%;margin:-15px 15px 0;color:white;background:linear-gradient(145deg,#ff0c8d,#cf086b);border:2px solid #f03292;box-shadow:0 4px 17px #e4088063}
+.zh-nav-dot{position:absolute;top:2px;right:calc(50% - 17px);width:6px;height:6px;background:#ef1187;border-radius:50%}
+.zh-explore-heading{padding:25px 5px 0}.zh-explore-heading>span,.zh-eyebrow{font-size:10px;letter-spacing:1.7px;color:#ff91c5;font-weight:650}.zh-explore-heading h1{font-size:33px;letter-spacing:-1.5px;line-height:1.3;margin:7px 0}.zh-explore-heading p{font-size:13px;line-height:1.7;color:#c6a6ba;max-width:290px}
+.zh-explore .zh-filters{margin-bottom:8px}.zh-explore .zh-trending{margin-top:13px}
+.zh-empty{text-align:center;padding:45px 20px;color:#c4a2b8}.zh-empty>svg{color:#ed308c;margin-bottom:15px}.zh-empty h3{font-size:18px;color:#f7dfea;margin-bottom:9px;letter-spacing:-.5px}.zh-empty p{font-size:12px;line-height:1.8;max-width:330px;margin:0 auto 18px}
+.zh-soft,.zh-load-more{border-radius:25px;padding:10px 17px;background:#422b3b;font-size:12px;font-weight:600;display:inline-flex;gap:6px;align-items:center;justify-content:center}.zh-load-more{display:flex;margin:25px auto 5px}
+.zh-error{padding:12px;border:1px solid #b64169;border-radius:12px;font-size:12px;line-height:1.7;margin-bottom:15px}.zh-error button{color:#ffafd3;margin-left:8px;text-decoration:underline}
+.zh-subheader{display:flex;align-items:center;gap:12px;height:63px;padding:0 17px}.zh-subheader h1{font-size:19px;letter-spacing:-.6px;font-weight:650}.zh-subheader>button{display:flex;width:28px;height:35px;align-items:center}.zh-subheader>span{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px}
+.zh-notifications{padding:18px 17px;max-width:720px;margin:auto}.zh-notifications .zh-section-title h2{font-size:16px}
+.zh-notification{display:flex;position:relative;gap:12px;width:100%;text-align:left;padding:18px 12px;border-radius:14px;background:#2d1827;margin-bottom:9px}.zh-notification.unread{background:#412039}.zh-notification>span{color:#ff9cc9;padding-top:3px}.zh-notification>div{flex:1;min-width:0}.zh-notification h3{font-size:13px;margin-bottom:5px}.zh-notification p{font-size:12px;line-height:1.7;color:#dbbfd0;overflow-wrap:anywhere}.zh-notification time{display:block;font-size:10px;color:#ac809c;margin-top:9px}.zh-notification>i{background:#f4148c;border-radius:50%;width:6px;height:6px;flex:none;margin-top:7px}
+.zh-sheet-backdrop{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;background:#09030aba;backdrop-filter:blur(5px)}
+.zh-sheet{border-radius:25px 25px 0 0;background:#301a29;padding:23px 20px 25px;width:100%;max-width:520px;max-height:80dvh;overflow:auto;box-shadow:0 -10px 45px #0006}
+.zh-sheet-heading{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:22px}.zh-sheet-heading h2{font-size:18px;letter-spacing:-.4px}.zh-sheet-heading p{font-size:12px;color:#caa6bd;margin-top:6px}.zh-sheet-heading>button{font-size:26px;width:32px;height:32px;background:#492d40;border-radius:50%;flex:none;display:grid;place-items:center;line-height:1}
+.zh-gifts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px;margin:0 0 22px}.zh-gifts>button{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;border-radius:12px;padding:10px 2px;background:#402136}.zh-gifts>button>img{width:45px;height:45px;object-fit:contain}.zh-gifts>button>span{font-size:32px;height:45px}.zh-gifts b{font-size:10px;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.zh-gifts small{display:flex;align-items:center;gap:2px;font-size:10px;color:#ffc7e1}
+.zh-empty-small{font-size:13px;color:#c7a7bd;text-align:center;padding:30px 12px;line-height:1.8}.zh-full{width:100%}
+.zh-search-header{display:flex;align-items:center;gap:10px;padding:15px}.zh-search-header>button{display:flex;align-items:center;justify-content:center;width:27px;height:37px}.zh-search-header>div{display:flex;align-items:center;gap:9px;background:#392131;border:1px solid #593148;border-radius:25px;padding:11px 14px;flex:1}.zh-search-header input{font-size:12px;min-width:0}.zh-search-header input::placeholder{color:#bb8ca8}.zh-search{padding-top:15px}.zh-search-status{font-size:12px;color:#d3a4c0;margin:12px 0 19px}
+.zh-coins{padding:14px 20px 32px;max-width:720px;margin:0 auto}.zh-wallet-card{border-radius:20px;background:radial-gradient(ellipse at 90% 0,#6a2350,transparent 65%),#371d30;padding:25px;margin-bottom:30px;border:1px solid #54243f}.zh-wallet-card>span{font-size:12px;color:#e3bcd3}.zh-wallet-card h1{display:flex;gap:9px;align-items:center;font-size:39px;letter-spacing:-1px;margin:7px 0 12px}.zh-wallet-card p{font-size:12px;color:#dbb3cc}.zh-coins h2{font-size:23px;letter-spacing:-.7px}.zh-muted{font-size:12px;color:#c8a5bd;margin-top:7px}
+.zh-packs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:22px 0}.zh-packs>button{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 6px 14px;background:#372030;border:1px solid #4f2f43;border-radius:16px}.zh-packs>button.selected{border-color:#f42891;background:#51223e;box-shadow:0 0 0 1px #f4289130}.zh-packs svg{color:#ffbddc}.zh-packs strong{font-size:21px;letter-spacing:-.5px}.zh-packs span{font-size:9px;min-height:22px;color:#e7bed5;text-align:center}.zh-packs b{font-size:13px}
+.zh-payment-status{margin-top:20px;background:#361d2e;border-radius:14px;padding:16px}.zh-payment-status p{font-size:12px;line-height:1.7;margin-bottom:12px}.zh-coins-note{font-size:10px;color:#b38ea6;text-align:center;margin:16px 5px;line-height:1.7}
+.zh-broadcast{max-width:560px;margin:0 auto;padding:25px 22px 35px}.zh-broadcast h1{font-size:32px;letter-spacing:-1.2px;margin:10px 0 7px}.zh-broadcast>p{font-size:12px;color:#c6a0b8;line-height:1.8}.zh-camera-preview{height:220px;position:relative;background:radial-gradient(ellipse at center,#512440,#281322);border-radius:18px;overflow:hidden;margin:25px 0}.zh-camera-preview>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);z-index:1}.zh-camera-preview>span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;color:#ae6f94}.zh-camera-preview b{font-size:12px;max-width:85%;text-align:center}
+.zh-broadcast label{display:block;font-size:12px;font-weight:600;margin:16px 0}.zh-broadcast input,.zh-broadcast select{width:100%;margin-top:9px;border:1px solid #59344b;border-radius:11px;padding:13px 14px;font-size:13px;background:#321c2b;color:#fae4f0;outline:none}.zh-broadcast input::placeholder{color:#a27c94}.zh-broadcast>.zh-soft{margin-top:14px;background:transparent;color:#f4aecf}
+.zh-room{position:absolute;inset:0;display:flex;flex-direction:column;background:#120911;overflow:hidden;min-height:100%}.zh-room-video{position:absolute;inset:0}.zh-room-video>.zh-photo{opacity:.3}.zh-room-video>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.zh-room-video>video[data-zimi-local]{transform:scaleX(-1)}.zh-room-shade{position:absolute;inset:0;background:linear-gradient(180deg,#1c071975,transparent 30%,transparent 40%,#1c091ddb)}
+.zh-room-top{position:relative;display:flex;align-items:center;gap:7px;padding:17px 13px}.zh-room-top-title{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.zh-room-icon{height:32px;width:28px;display:grid;place-items:center}.zh-media-status{position:relative;text-align:center;font-size:12px;color:#fad5e8;max-width:90%;margin:6px auto 0;padding:5px 10px;background:#270c2080;border-radius:20px}.zh-media-status:empty{display:none}
+.zh-room-bottom{position:relative;margin-top:auto;padding:15px 17px 25px}.zh-room-bottom>h2{font-size:22px;letter-spacing:-.7px}.zh-room-bottom>p{font-size:12px;line-height:1.8}.zh-room-messages{max-height:170px;overflow:auto;margin:17px 0;font-size:12px;line-height:1.8;scrollbar-width:none}.zh-room-messages>p{margin-top:5px;overflow-wrap:anywhere}.zh-room-messages b{color:#ff9bcc;margin-right:5px}.zh-room-chat{display:flex;align-items:center;gap:9px}.zh-room-chat>input{background:#48233b9e;border:1px solid #8c537470;border-radius:25px;padding:13px;font-size:12px}.zh-room-chat>button{flex:none;color:#ffabd1}.zh-room-chat .zh-gift{width:41px;height:41px;flex-basis:41px}
+.zh-call-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.zh-call-local{transform:scaleX(-1)}
+.zh-precall{position:relative;min-height:100%;display:flex;flex-direction:column;padding:28px 23px 32px;overflow:hidden;background:#1b0b18;isolation:isolate}.zh-precall-photo{position:absolute;inset:0;z-index:-1}.zh-precall-photo>.zh-photo{opacity:.45}.zh-precall-shade{position:absolute;inset:0;background:linear-gradient(180deg,#160b2040,#251222b8 35%,#251020 60%,#210e1d 100%)}.zh-precall-back{width:32px;height:32px;display:grid;place-items:center;margin-bottom:40px}.zh-precall-content{width:100%;max-width:480px;margin:0 auto;text-align:center}.zh-precall-avatar{width:101px;height:101px;border:3px solid #f63294;border-radius:50%;overflow:hidden;margin:0 auto 20px;box-shadow:0 0 32px #f9329233}.zh-precall h1{font-size:29px;letter-spacing:-1px;margin-bottom:8px}.zh-precall h1 .zh-verified svg{width:21px;height:21px}.zh-precall-content>p{font-size:12px;color:#dcbad0;line-height:1.8}.zh-precall-status{display:inline-block;font-size:10px;margin:15px 0;color:#88edb3;background:#2451374f;border-radius:20px;padding:6px 12px}.zh-precall-details{background:#3b2033bb;border:1px solid #6c365328;border-radius:16px;padding:10px 17px;margin:21px 0;display:flex;flex-direction:column;gap:4px}.zh-precall-details>span{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:10px 0;color:#d6adc6}.zh-precall-details b{display:flex;align-items:center;color:#ffdeee;font-size:13px;gap:4px}.zh-precall-note{margin:0 0 20px}.zh-precall-content>.zh-soft{margin-top:13px;background:#38202f}.zh-call-pip{position:absolute;right:17px;top:80px;width:95px;height:140px;border:1px solid #a2758f66;border-radius:15px;overflow:hidden;background:#321528}.zh-call-pip video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.zh-call-pip>span{position:absolute;bottom:8px;left:10px;font-size:10px}.zh-call-controls{display:flex;justify-content:center;gap:18px}.zh-call-controls button{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:10px}.zh-call-controls button>svg{box-sizing:content-box;background:#5c3b53b5;padding:17px;border-radius:50%;width:22px;height:22px}.zh-call-controls .zh-end-call>svg{background:#ed3465}.zh-free-call{text-align:center;font-size:10px;margin-top:20px!important;color:#cba3bc}.zh-voice-person{position:absolute;inset:0;display:flex;flex-direction:column;gap:24px;align-items:center;justify-content:center}.zh-voice-person h2{font-size:25px;letter-spacing:-.7px}.zh-ready-illustration{height:180px;display:grid;place-items:center;color:#ff84bd}.zh-ready-illustration>svg{box-sizing:content-box;padding:35px;border:1px solid #61334e;border-radius:50%;background:radial-gradient(circle,#622441,#371d30);box-shadow:0 0 75px #f32c8e14}.zh-summary{text-align:center}.zh-summary .zh-precall-details{text-align:left}
+@media(min-width:600px){.zh-header{padding:0 max(24px,calc((100vw - 1040px)/2));height:74px}.zh-brand{font-size:22px}.zh-header-actions{gap:20px}.zh-home{padding:22px 24px 35px}.zh-stories{gap:22px}.zh-story{width:66px;flex-basis:66px}.zh-story-ring{width:66px;height:66px}.zh-filters{margin-top:24px;padding:0 24px;margin-left:-24px;margin-right:-24px}.zh-featured{height:470px}.zh-featured>.zh-photo{object-position:50% 31%}.zh-featured-bottom{left:25px;right:25px;bottom:23px}.zh-featured h1{font-size:32px}.zh-featured p{font-size:14px}.zh-featured-actions .zh-primary{flex:0 1 300px}.zh-rate{flex:0 0 140px}.zh-match{padding:22px 25px}.zh-match p{max-width:none}.zh-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.zh-tile-media{height:260px}.zh-bonus{padding:17px 22px}.zh-bonus h3{font-size:13px}.zh-bonus p{font-size:12px}.zh-bonus>button{font-size:12px}.zh-nav{justify-content:center!important}.zh-room{max-width:700px;left:50%;transform:translateX(-50%);width:100%}.zh-tile h3{font-size:15px}.zh-tile p{font-size:12px}.zh-balance{font-size:12px}}
+@media(min-width:900px){.zh-home:not(.zh-explore){display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:0 28px}.zh-stage,.zh-filters,.zh-preview-note{grid-column:1/-1}.zh-featured{grid-column:1;grid-row:3 / span 2;height:490px}.zh-match{grid-column:1;margin:22px 0 0}.zh-trending{grid-column:2;grid-row:3 / span 3;margin-top:0}.zh-home:not(.zh-explore) .zh-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.zh-home:not(.zh-explore) .zh-tile-media{height:218px}.zh-bonus{grid-column:1/-1}.zh-explore .zh-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.zh-match h2{font-size:21px}}
+@media(max-width:350px){.zh-header{padding:0 12px;gap:6px}.zh-header-actions{gap:5px}.zh-brand{font-size:16px}.zh-brand>svg{width:22px}.zh-home{padding-left:12px;padding-right:12px}.zh-section-title h2{font-size:16px}.zh-section-title>span{font-size:8px}.zh-story{width:53px;flex-basis:53px}.zh-story-ring{width:53px;height:53px}.zh-stories{gap:12px}.zh-match{padding:16px 12px;gap:10px}.zh-match h2{font-size:16px}.zh-match>.zh-primary{min-width:74px;padding:10px}.zh-featured-actions>.zh-primary{font-size:11px}.zh-rate{flex-basis:32%}.zh-tile-media{height:188px}.zh-tile h3{font-size:12px}.zh-app .zh-nav>.zh-create{margin-left:9px;margin-right:9px}}
+@media(prefers-reduced-motion:reduce){.zh-app *{scroll-behavior:auto!important}.zh-photo,.zh-primary,.zh-filters button{transition:none!important}}
+
+/* Quiet, layout-shaped placeholders share the same rhythm as loaded content. */
+.zh-skeleton{width:100%;pointer-events:none;user-select:none}
+.zh-skeleton-shape{display:block;flex-shrink:0;max-width:100%;border-radius:7px;background:linear-gradient(100deg,#ffffff08 20%,#ffffff13 45%,#ffffff08 70%);background-size:220% 100%;animation:zh-skeleton-shimmer 1.8s ease-in-out infinite}
+.zh-skeleton-caption{display:flex;flex-direction:column;gap:9px;padding:14px 10px 17px}
+.zh-skeleton-tile{border-radius:14px;overflow:hidden;background:#ffffff04}
+.zh-skeleton-tile>.zh-tile-media{border-radius:0;width:100%}
+.zh-skeleton-story-list{display:flex;gap:15px;width:max-content}
+.zh-skeleton-story-list .zh-story{display:flex;flex-direction:column;align-items:center;gap:12px}
+.zh-stories>.zh-skeleton{width:auto;flex-shrink:0}
+.zh-skeleton-story-list .zh-story-ring{border:0;border-radius:50%}
+.zh-skeleton-featured,.zh-skeleton-featured>div,.zh-skeleton-hero{height:100%}
+.zh-skeleton-hero{display:flex;flex-direction:column;justify-content:space-between;padding:14px 15px;background:linear-gradient(155deg,#50273c3b,#281321 60%)}
+.zh-skeleton-hero-top{display:flex;gap:9px}
+.zh-skeleton-hero-bottom{display:flex;flex-direction:column;gap:12px}
+.zh-skeleton-actions{display:flex;justify-content:space-between;margin-top:3px}
+.zh-skeleton-match-layout{display:flex;align-items:center;gap:20px;width:100%}
+.zh-skeleton-match-layout>div{flex:1;display:flex;flex-direction:column;gap:12px}
+.zh-skeleton-row{display:flex;gap:13px;align-items:center;padding:17px 5px;border-bottom:1px solid #ffffff06}
+.zh-skeleton-row>.zh-skeleton-avatar{width:44px;height:44px;border-radius:50%}
+.zh-skeleton-row>div{flex:1;display:flex;flex-direction:column;gap:9px}
+.zh-skeleton-catalog>div{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 8px;border-radius:16px;background:#ffffff04;border:1px solid #ffffff06}
+.zh-skeleton-gifts .zh-skeleton-catalog{margin:20px 0}
+.zh-skeleton-post{aspect-ratio:1/1.2;border-radius:0}
+.zh-skeleton-thread-list{padding:18px 14px;display:flex;flex-direction:column;gap:20px}
+.zh-skeleton-thread-list .outgoing{display:flex;justify-content:flex-end}
+.zh-skeleton-thread-list .zh-skeleton-shape{border-radius:17px}
+.zh-skeleton-cards+.zh-load-more{margin-top:18px}
+.zh-trending>.zh-skeleton-cards+.zh-skeleton-cards,.zh-trending>.zh-grid+.zh-skeleton-cards,#home-search-results>.zh-grid+.zh-skeleton-cards{margin-top:12px}
+.zh-loading-content{padding:16px;max-width:760px;margin:auto}
+.zh-loading-wallet{height:187px;border-radius:20px;background:#ffffff04;padding:28px;margin-bottom:20px;display:flex;flex-direction:column;gap:18px}
+.zh-balance .zh-skeleton-shape{width:32px!important;height:11px!important}
+.zh-wallet-card h1 [role="status"] .zh-skeleton-shape{width:105px!important;height:38px!important}
+.zh-home>.zh-skeleton-rows{grid-column:1/-1;margin-top:22px}
+.zh-photo-pending{background:linear-gradient(100deg,#33202e 20%,#493043 45%,#33202e 70%);background-size:220% 100%;animation:zh-skeleton-shimmer 1.8s ease-in-out infinite}
+.zh-photo-failed{background:#392131;color:#d5aec4;font-size:12px}
+@keyframes zh-skeleton-shimmer{0%{background-position:180% 0}100%{background-position:-40% 0}}
+@media(min-width:600px){.zh-skeleton-story-list{gap:22px}}
+@media(prefers-reduced-motion:reduce){.zh-skeleton-shape,.zh-photo-pending,.sk{animation:none!important}}
 </style>
 </head>
 <body>
@@ -2230,6 +2402,7 @@ function obResumeOnboarding(account, desiredCreator) {
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
+  if(window.ZimiHome)homeReset();
   clearInterval(obRateTimer); clearInterval(S.otpT); clearTimeout(obRequestTimer);
   S.loggedIn = 0; S.online = 0; S.sessionState = ""; S.sessionError = ""; S.notice = message; S.creatorSetup = false; S.user = null;
   S.auth = { step: "phone" }; S.avatarData = ""; S.coverData = ""; S.kf = {}; S.postData = []; S.interests = []; S.msgs = null; S.rmsgs = [];
@@ -2244,7 +2417,8 @@ function obResetSession(message = "") {
 }
 function obRestoreScreen() {
   const busy = S.sessionState === "restoring";
-  return `<section class="ob-shell ob-recovery"><div class="ob-main"><span class="ob-eyebrow">ZIMI LIVE</span><h1 class="ob-heading" tabindex="-1">${busy ? "Picking up where you left off." : "Let’s reconnect."}</h1><p class="ob-description">${busy ? "Checking your saved session…" : esc(S.sessionError || "Check your connection and try again.")}</p><div class="ob-actions">${busy ? '<span class="ob-spinner" role="status" aria-label="Restoring session"></span>' : '<button class="ob-primary" onclick="Native.send(\'session.resume\')">Try again</button><button class="ob-secondary" onclick="logout()">Use another account</button>'}</div></div></section>`;
+  const skeleton = `<div class="ob-session-skeleton" role="status" aria-label="Restoring session" aria-busy="true"><div aria-hidden="true"><div class="ob-session-stories">${Array.from({ length: 5 }, () => '<span></span>').join('')}</div><div class="ob-session-card"><span class="ob-session-line"></span><span class="ob-session-line short"></span><span class="ob-session-action"></span></div></div></div>`;
+  return `<section class="ob-shell ob-recovery"><div class="ob-main"><span class="ob-eyebrow">ZIMI LIVE</span><h1 class="ob-heading" tabindex="-1">${busy ? "Picking up where you left off." : "Let’s reconnect."}</h1><p class="ob-description">${busy ? "Checking your saved session…" : esc(S.sessionError || "Check your connection and try again.")}</p><div class="ob-actions">${busy ? skeleton : '<button class="ob-primary" onclick="Native.send(\'session.resume\')">Try again</button><button class="ob-secondary" onclick="logout()">Use another account</button>'}</div></div></section>`;
 }
 const obArrow = () => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function obHaptic(kind = "selection") { Native.send("ui.haptic", { kind }); }
@@ -2830,11 +3004,20 @@ const th=()=>"";
 function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
-function go(v,id){if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
+function go(v,id){
+ if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
+  homeRequestStreamClose(Home.stream.id,Home.hosting);
+  window.ZimiMedia?.stop();Home.stream=null;Home.messages=[];
+ }
+ if(!DEMO&&window.ZimiHome){
+  if(v==='voice'&&!S.callId){S.nextCallVoice=true;v='dial'}
+  if(['dial','dialback'].includes(v)&&!S.allowPreparedCall)return homePrepareCall(v,id);
+ }
+ if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
  if(v==="kyc")S.kerr=0;
- if(v==="precall")S.scam=0;
+ if(v==="precall"){S.scam=0;S.nextCallVoice=false}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -2845,29 +3028,27 @@ function go(v,id){if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt
  if(v==='search')S.sq='';
  if(v==='editprofile')S.editBack=S.v==='settings'?'settings':'profile';
  S.v=v;if(id)S.h=id;S.tray=0;
+ if(window.contentBeforeNavigate)contentBeforeNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
-  S.rmsgs=[["sys","",`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`]].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=g(S.h).fee;
-  S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
+  S.rmsgs=[["sys","",DEMO?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO?g(S.h).fee:0;
+  if(DEMO)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
  if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
-  Native.send("presence.set",{online:true,visible:!!S.vis});
+  if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
   S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
  if(v==="thread"){S.msgs=DEMO?TH.map(m=>m.slice()):[];Native.send("chat.open",{with:S.h})}
- if(v==="voice")Native.send("call.start",{to:S.h,voice:true});
+ if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"))}
 
-/* Each surface shimmers once, then is remembered for the session. */
-function loading(key,ms){
- if(S.cache[key])return false;
- setTimeout(()=>{S.cache[key]=1;r()},ms||480);
- return true}
+/* Content loading follows bridge requests; cached previews are already ready. */
+function loading(key){return !DEMO&&!!window.contentPending?.(key)}
 function skCards(k){return `<div class="grid">${Array.from({length:k},()=>
  `<div class="sk skcard"></div>`).join("")}</div>`}
 function skRows(k){return Array.from({length:k},()=>
@@ -2878,17 +3059,21 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
  `<div class="sk dark" style="height:78px;border-radius:15px"></div>`).join("")}</div>`}
 
 function nav(){const el=document.getElementById("nav");
+ if(window.ZimiHome&&window.ZimiHome.nav())return;
+ if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
  if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chats","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
 function card(h){
+ if(window.ZimiHome)return homeTile(h);
  return `<div class="card" role="button" tabindex="0" aria-label="Open ${esc(h.n)} profile" onclick="go('host','${domId(h.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go('host','${domId(h.id)}')} ">${portrait(h)}<span class="scrim"></span>
  ${h.top?`<span class="top10">TOP 10 &middot; Hourly</span>`:`<span class="cat">${esc(h.tag)}</span>`}
  <button class="lv" aria-label="Join ${esc(h.n)} live" onclick="event.stopPropagation();go('call','${domId(h.id)}')">${I("vid",11)}LIVE</button>
  <span class="cbot"><span class="cnm">${esc(h.n)} &#127470;&#127475;</span></span></div>`}
 
 function vHome(){
+ if(window.ZimiHome)return window.ZimiHome.render();
  const T=[["following","Following"],["explore","Explore"],["foryou","For You"],["new","New"]];
  let L=H.slice();
  if(S.tab==="following")L=L.filter(h=>h.fol);
@@ -3006,7 +3191,7 @@ function profilePage(p,raw,self){
        <span class="bav">${avc(m,40)}</span>
        <span class="mname">${esc(m.n)}${i===0?`<span class="mtag">${p.host?"TOP MVP":"TOP HOST"}</span>`:""}</span>
        <span class="mcoin">${gem}${n(m.c)}</span></button>`).join("")}</div>`
-   : `<div class="hpgrid">${posts.map(x=>`<button class="post" ${self?'':`onclick="openPost(${x.i})"`}>
+   : self&&window.contentSurface?.('posts','posts','Loading your posts')?contentSurface('posts','posts','Loading your posts') : `<div class="hpgrid">${posts.map(x=>`<button class="post" ${self?'':`onclick="openPost(${x.i})"`}>
        ${x.custom?`<img src="${imageSrc(x.custom)}" alt="Your post">`:artC(x.seed)}
        ${x.vid?`<span class="pl">&#9654;</span>`:""}
        <span class="lk">${I("heart",11)}${x.likes}</span></button>`).join("")}</div>`}
@@ -3028,6 +3213,7 @@ function backedFor(u){
 }
 
 function vSetup(){
+ if(window.ZimiHome&&!DEMO)return homeCallSetup();
  const h=me, tierIdx=1;
  return `<div class="setup">
  <div class="stage">
@@ -3116,6 +3302,7 @@ function camOn(){return isHost()?S.cam:S.scam}
 function toggleCam(){if(isHost())S.cam=S.cam?0:1;else S.scam=S.scam?0:1;r()}
 function video(p){
  if(p===me&&!camOn())return `<div class="vcoff">${I("camoff",22)}<span>Camera off</span></div>`;
+ if(!DEMO&&window.ZimiMedia)return `<video class="zh-call-video ${p===me?'zh-call-local':''}" ${p===me?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`;
  return p===me?`<div style="position:absolute;inset:0;filter:${fxCss()||"none"}">${art(p.seed)}</div>`:art(p.seed)}
 function fxOn(){return Object.values(S.bsel).some(Boolean)}
 /* One ⋯ button under the video tile; beauty, mute and camera live in its menu. */
@@ -3153,6 +3340,7 @@ function idPill(p,coins){
    <button class="quickfollow ${S.following[p.id]?'on':''}" aria-label="${S.following[p.id]?'Unfollow':'Follow'} ${esc(p.n)}" onclick="toggleFollow('${domId(p.id)}',event)">${S.following[p.id]?'✓':'+'}</button></div>`}
 
 function vCall(){const h=g(S.h);
+ if(window.ZimiHome)return homeCallView(false);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(h,me)}
  ${topBar(0)}
@@ -3175,6 +3363,7 @@ function vCall(){const h=g(S.h);
  ${S.tray?giftTray():S.sh==="fx"?fxSheet():""}</div>`}
 
 function vVoice(){const h=g(S.h);
+ if(window.ZimiHome&&!DEMO)return homeCallView(false);
  return `<div class="voicecall">
   <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
   <div class="voiceorb">${avc(h,104)}</div>
@@ -3225,13 +3414,14 @@ function paintFeed(){
 }
 
 function giftTray(){
+ if(window.ZimiHome){Home.giftTo=S.v==='hcall'?S.caller.id:S.h;return homeGiftSheet()}
  const tier=v=>v>=19999?"epic":v>=5999?"rare":"";
  const lab=v=>v>=19999?"LGD":v>=5999?"RARE":"";
  return `<div class="tray"><div class="veil" onclick="S.tray=0;r()"></div>
   <div class="panel">
    <div class="thead">
     <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?esc(first(S.caller.n)):"the host"}</span></span>
-    <button class="addc" onclick="go('coins')">${gem}${n(S.bal)} &nbsp;+</button>
+    <button class="addc" onclick="go('coins')">${gem}${window.contentBalance?contentBalance():n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
    ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${k==="water"?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
@@ -3359,6 +3549,7 @@ function callBack(id){
  S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
  if(isHost()){S.caller=sender(id);go("dialback")}else go("precall",id)}
 function missedList(){
+ const pending=window.contentSurface?.('missed','rows','Loading missed calls');if(pending)return pending;
  const L=missedRows();
  if(!L.length)return `<div class="acctcard emptycompact" style="margin:14px"><span class="acctico">${I("ph",22)}</span>
   <h3>No missed calls</h3><p>Calls you miss will show up here so you can call back.</p></div>`;
@@ -3375,8 +3566,8 @@ function vChats(){
    <button role="tab" aria-selected="${tab==="msgs"}" class="${tab==="msgs"?"on":""}" onclick="S.ctab='msgs';r()">Messages${unread?`<b>${unread}</b>`:""}</button>
    <button role="tab" aria-selected="${tab==="missed"}" class="${tab==="missed"?"on":""}" onclick="S.ctab='missed';r()">Missed calls${miss?`<b class="miss">${miss}</b>`:""}</button></div>
  ${tab==="missed"?missedList():`<div class="srch"><div>${I("srch",17)}<input id="cq" placeholder="Search conversations" value="${esc(S.q||"")}" oninput="S.q=this.value;paintList()"></div></div>
- <div class="clist" id="clist">${loading("chats")?skRows(6):
-   L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`}</div>`}
+ <div class="clist" id="clist">${window.contentSurface?.('chats','rows','Loading conversations')||
+   (L.length?`<div class="fade">${L.map(row).join("")}</div>`:`<div class="empty">No conversations match that search.</div>`)}</div>`}
  <div style="height:12px"></div>`}
 function row([id,l,t,u]){const h=g(id);
  return `<button class="rowlink" onclick="go('thread','${domId(id)}')">
@@ -3389,7 +3580,7 @@ function row([id,l,t,u]){const h=g(id);
     <span class="s13" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${u?"var(--ink)":"var(--muted)"};font-weight:${u?500:400}">${esc(l)}</span>
     ${u?`<span class="tab" style="background:var(--accent);color:var(--cta-ink);border-radius:99px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;padding:0 5px">${esc(u)}</span>`:""}</span>
   </span></button>`}
-function paintList(){S.cache.chats=1;const q=(S.q||"").toLowerCase();
+function paintList(){const pending=window.contentSurface?.('chats','rows','Loading conversations');if(pending){const el=document.getElementById('clist');if(el)el.innerHTML=pending;return}const q=(S.q||"").toLowerCase();
  const L=CH.filter(([id,l])=>{const h=g(id);return !q||h.n.toLowerCase().includes(q)||l.toLowerCase().includes(q)});
  const el=document.getElementById("clist");
  if(el)el.innerHTML=L.length?L.map(row).join(""):`<div class="empty">No conversations match that search.</div>`}
@@ -3420,6 +3611,7 @@ function snd(){const i=document.getElementById("ti");if(!i||!i.value.trim())retu
  Native.send("chat.send",{to:S.h,text:i.value.trim()});
  S.msgs.push(["m",i.value.trim(),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);i.value="";paint()}
 function paint(){const f=document.getElementById("tf");if(!f)return;
+ const pending=window.contentSurface?.('thread','thread','Loading messages');if(pending){f.innerHTML=pending;return}
  f.innerHTML=S.msgs.map(([w,t,a,tm])=>w==="g"
   ?`<div class="gbub"><span class="gl">${giftGlyph(t)}</span><span class="gc">${gem}${esc(a)}</span>
      <span class="gt2">${esc(tm||"")}</span></div>`
@@ -3485,9 +3677,10 @@ function scrollPost(){
 function history_back(){go(S.back||"home",S.backId)}
 
 function vCoins(){
+ if(window.ZimiHome)return window.ZimiHome.coins();
  const sel=S.pack==null?2:S.pack, pk=PACKS[sel], money=v=>v.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
  return `<div class="cwrap">
-  <div class="ctools"><span class="cbal">${coin}${n(S.bal)}</span><button class="ccurrency">₹ INR ${I('chev',14)}</button></div>
+  <div class="ctools"><span class="cbal">${coin}${window.contentBalance?contentBalance():n(S.bal)}</span><button class="ccurrency">₹ INR ${I('chev',14)}</button></div>
   <div class="ctitle">Welcome Bonus for You!</div>
   <div class="cgrid">${PACKS.map(([c,pr,bonus],i)=>`<button class="cpack ${sel===i?"on":""}" onclick="S.pack=${i};r()">
     ${i===3?`<span class="cbest">🔥 Hot</span>`:i===5?`<span class="cbest">★ Popular</span>`:""}
@@ -3513,8 +3706,8 @@ const TXNS=[
  ["Call with Ananya","2 Sep, 10:24 PM",-285,"call"],
  ["Bonus coins","1 Sep, 9:00 AM",250,"topup"]];
 
-function vWallet(){return `<div class="acct">
- <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${n(S.bal)}</div>
+function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct">
+ <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div>
   <div class="sub">Use coins for calls and gifts. Your balance is ready across Zimi Live.</div>
   <button class="cta" onclick="go('coins')">Add coins</button></div>
  ${earnCard()}
@@ -3522,14 +3715,14 @@ function vWallet(){return `<div class="acct">
   <div class="support"><button onclick="go('coins')"><b>Recharge</b><span>Choose a coin pack</span></button>
    <button onclick="go('transactions')"><b>History</b><span>See every movement</span></button></div></div>
  <div class="acctsec"><div class="accttitle"><span>Recent activity</span><button onclick="go('transactions')" style="color:var(--accent-ink)">View all</button></div>
-  <div class="acctcard">${TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
+  <div class="acctcard">${window.contentSurface?.('transactions','rows','Loading recent transactions')||TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
 
 function txRow(x){const [title,time,amount,type]=x;return `<div class="acctrow">
  <span class="acctico">${I(type==='call'?'ph':type==='gift'?'gift':'wal',16)}</span>
  <span style="flex:1;min-width:0"><span class="main">${esc(title)}</span><span class="meta">${esc(time)}</span></span>
  <span class="end ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${n(Math.abs(amount))}</span></div>`}
 
-function vTransactions(){const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?x[2]>0:x[2]<0));return `<div class="acct">
+function vTransactions(){const pending=window.contentSurface?.('transactions','rows','Loading transactions');if(pending)return '<div class="acct">'+pending+'</div>';const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?x[2]>0:x[2]<0));return `<div class="acct">
  <div class="accttabs">${[['all','All'],['in','Added'],['out','Spent']].map(([k,l])=>`<button class="${S.txf===k?'on':''}" onclick="S.txf='${k}';r()">${l}</button>`).join('')}</div>
  <div class="acctcard">${L.map(txRow).join('')}</div>
  ${L.length?"":`<div class="s13 muted" style="text-align:center;padding:36px 20px">No activity yet.</div>`}
@@ -3540,7 +3733,7 @@ const CALLS=[
  ["noor","2 Sep, 10:24 PM","5m 42s",285],
  ["tara","31 Aug, 9:08 PM","3m 16s",156],
  ["meher","29 Aug, 8:31 PM","11m 04s",552]];
-function vCalls(){return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
+function vCalls(){const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
  <span class="callav">${av(h,38,'none')}<span class="badge">${I('ph',9)}</span></span>
  <span style="flex:1;min-width:0"><span class="main">${esc(h.n)}</span><span class="meta">${esc(time)} · ${esc(dur)}</span></span>
  <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('precall','${domId(id)}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
@@ -3649,14 +3842,14 @@ function vSettings(){
     <div class="lvlchip">LEVEL 7 &middot; ${isHost()?"HOST":"SENDER"}</div></div><span class="ch" style="margin-left:auto;color:var(--faint);font-size:22px">&rsaquo;</span></button>
 
   <div class="pstats">
-   <div><div class="v tab">${n(S.bal)}</div><div class="k">Coins</div></div>
+   <div><div class="v tab">${window.contentBalance?contentBalance():n(S.bal)}</div><div class="k">Coins</div></div>
    <div><div class="v tab">${n(S.gifted||0)}</div><div class="k">Gifted</div></div>
    <div><div class="v tab">${CH.length}</div><div class="k">Chats</div></div></div>
 
   <div class="pbal">
    <span class="orb"></span>
    <div class="amt"><div class="k">Balance</div>
-    <div class="v">${gem}${n(S.bal)}</div></div>
+    <div class="v">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div></div>
    <button class="go" onclick="go('coins')">Add coins</button></div>
 
   <div class="psec"><h3>Your profile</h3><div class="plist">
@@ -3745,6 +3938,7 @@ function myCard(){
 /* ---- Sender: before the call ---- */
 function talkTime(m){return m>=120?`about ${n(Math.floor(m/60))} hr`:`about ${n(m)} min`}
 function vPrecall(){
+ if(window.ZimiHome)return homePrecall();
  const h=g(S.h), need=h.fee+h.rate, mins=Math.floor(Math.max(0,S.bal-h.fee)/h.rate), low=S.bal<need;
  return `<div class="pcall">
  <div class="pcbg">${art(h.seed)}</div><span class="pcshade"></span>
@@ -3766,7 +3960,7 @@ function vPrecall(){
   <div class="pcprice">
    <div><span class="k">Entry fee</span><span class="v">${gem}${n(h.fee)}</span></div>
    <div><span class="k">Per minute</span><span class="v">${gem}${n(h.rate)}</span></div>
-   <div><span class="k">Your balance</span><span class="v ${low?"low":""}">${gem}${n(S.bal)}</span></div></div>
+   <div><span class="k">Your balance</span><span class="v ${low?"low":""}">${gem}${window.contentBalance?contentBalance():n(S.bal)}</span></div></div>
   <div class="pcmeta">${low
    ?`<span class="warn">${I("wal",14)} You need at least ${n(need)} coins to start this call.</span>`
    :`<span>${I("ph",14)} Your balance covers ${talkTime(mins)} of talk time</span>`}</div>
@@ -3790,10 +3984,11 @@ function vDial(){
   <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
  </div>`}
 
-function cancelDial(){Native.send("call.end",{reason:"cancelled"});if(S.v==="dialback")go("chats");else go("precall",S.h)}
+function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")go("chats");else go("precall",S.h)}
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
+ if(window.ZimiHome&&!DEMO)return homeWaiting();
  return `<div class="ringscr host">
   <div class="ringorb">${avc(me,104)}</div>
   <h2>You're online</h2>
@@ -3828,6 +4023,7 @@ function vRing(){const c=S.caller;
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
+ if(window.ZimiHome&&!DEMO)return homeCallView(true);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(me,c)}
  ${topBar(1)}
@@ -3859,7 +4055,7 @@ function incBanner(){const c=S.inc;
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
 function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting")}
-function acceptRing(){Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
+function acceptRing(){if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
  S.inc=c||nextCaller();
@@ -3877,6 +4073,7 @@ function logFee(){
  const early=!S.feeOk;if(early)S.early++;
  S.feeLog.push({n:S.caller.n,ok:!!S.feeOk,early});return early}
 function hostEnd(kind){
+ if(!DEMO){if(kind==='switch')return appNotice('Finish this call before accepting another.');return endCall()}
  if(!S.feeOk){S.confirm=kind;S.more=0;S.tray=0;return r()}
  kind==="switch"?acceptInc():endCall()}
 function confirmEnd(){
@@ -3914,6 +4111,7 @@ function connectingScreen(){const {from,to}=S.connecting;
 
 const IN_GIFTS=[1,2,3,4,5,6,8];
 function hostTick(){
+ if(!DEMO){S.sec++;paintHostTick();return}
  S.sec++;S.earned+=MY_RATE/60;
  if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
   S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
@@ -3941,6 +4139,7 @@ function paintHostTick(){
 /* ---- Ending a call: both sides land on a summary ---- */
 /* remote: the other side hung up, so there is nothing to tell the server */
 function endCall(remote){
+ if(window.ZimiMedia)window.ZimiMedia.stop();
  if(!remote)Native.send("call.end",{callId:S.v==="hcall"?S.caller.callId:S.callId});
  if(S.v==="hcall"){
   logFee();
@@ -3948,7 +4147,7 @@ function endCall(remote){
   const before=S.tasks.map(t=>t.p>=t.goal);
   const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
   S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
-  A().earn+=earned;
+  if(DEMO)A().earn+=earned;
   S.sum={k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
    done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
  } else {
@@ -3964,6 +4163,7 @@ function supportPct(h,spent){
  return Math.min(99,Math.round(xs.filter(x=>x<spent).length/xs.length*100))}
 
 function vSummary(){const s=S.sum;
+ if(window.ZimiHome&&!DEMO)return homeCallSummary();
  if(!s)return "";
  if(s.k==="sender"){
   const h=g(s.h),f=first(h.n),pct=supportPct(h,s.spent),big=pct>=50;
@@ -4197,6 +4397,7 @@ function withdraw(){const i=document.getElementById("pamt"),a=A();
 
 /* Chrome lives outside the scroller, so it cannot drift while scrolling. */
 function topFor(){
+ if(window.ZimiHome){const chrome=window.ZimiHome.header();if(chrome!==null)return chrome}
  if(S.v==="home"){
   const T=[["following","Following"],["explore","Explore"],["foryou","For You"],["new","New"]];
   return `<div class="stabs">
@@ -4221,7 +4422,7 @@ function topFor(){
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
-   <button class="bal" onclick="go('profile')">${gem}${n(S.bal)}</button></div>`;
+   <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
  if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
    <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
@@ -4241,10 +4442,11 @@ function appNotice(message){
 }
 function r(){
  obSyncTheme();
+ if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
  el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,thread:vThread,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
-  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards}[S.v]();
+  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
  nav();
@@ -4260,7 +4462,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -4279,7 +4481,7 @@ function personFrom(p){const id=String(p.id);
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */
 function knowHost(p){const h=hostFrom(p);if(!g(h.id))EXTRA.push(h);return h}
-const LIST_VIEWS=["home","board","search","chats","calls","wallet","transactions","profile","awards","kyc","payout"];
+const LIST_VIEWS=["home","explore","board","search","chats","calls","wallet","coins","transactions","profile","awards","kyc","payout"];
 function refresh(){if(LIST_VIEWS.includes(S.v))r()}
 
 if(!DEMO){
@@ -4328,18 +4530,23 @@ Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
- if(S.v==="dial"){S.callId=d.callId;go("call",S.h)}
+ if(S.v==="dial"){S.callId=d.callId;go(d.voice?'voice':"call",S.h)}
  else if(S.v==="dialback"){S.caller.callId=d.callId;go("hcall")}
+ else if(S.v==="ring"&&S.caller.callId===d.callId){S.callId=d.callId;S.acceptingCall=false;go('hcall')}
  else if(S.v==="hcall"&&S.connecting)finishSwitch()});
 Native.on("call.failed",d=>{
+ S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")go("chats")});
 Native.on("call.incoming",d=>{const c=personFrom({...d.from,callId:d.callId});
+ if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
+ c.voice=!!d.voice;
  if(S.v==="hcall")return ringIncoming(c);
  if(S.v==="ring")return;
  S.ringBack=S.v;S.caller=c;go("ring")});
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
+ if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
@@ -4352,14 +4559,599 @@ Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour
  if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push(["t",d.text,t]);return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
-/* tells the app the screens are listening */
-Native.send("ready",{demo:DEMO});
 const st=document.createElement("style");
 st.textContent="@keyframes up{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{transform:translateY(-180px);opacity:0}}";
 document.head.appendChild(st);
 /* const globals are not window properties; expose state so the design preview can drive the app. */
 if(DEMO){window.S=S;window.A=A}
+/* build-web initializes after all screen and loading handlers are registered. */
+
+/* Content placeholders follow requests, never a timer or a first-visit cache. */
+const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed'];
+const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1}]));
+function contentPending(key){return !!ContentLoading[key]?.loading}
+function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',...extra})}
+function skeletonLine(width='70%',height=12){return `<span class="zh-skeleton-shape" style="width:${width};height:${height}px"></span>`}
+function contentSkeleton(kind='rows',label='Loading content',count=4){
+  let body='';
+  if(kind==='cards')body=`<div class="zh-grid">${Array.from({length:count},()=>`<div class="zh-skeleton-tile"><div class="zh-tile-media zh-skeleton-shape"></div><div class="zh-skeleton-caption">${skeletonLine('70%',15)}${skeletonLine('90%',10)}</div></div>`).join('')}</div>`;
+  else if(kind==='stories')body=`<div class="zh-skeleton-story-list">${Array.from({length:count},()=>`<div class="zh-story"><span class="zh-story-ring zh-skeleton-shape"></span>${skeletonLine('76%',9)}</div>`).join('')}</div>`;
+  else if(kind==='featured')body=`<div class="zh-skeleton-hero"><div class="zh-skeleton-hero-top">${skeletonLine('52px',20)}${skeletonLine('46px',20)}</div><div class="zh-skeleton-hero-bottom">${skeletonLine('61%',24)}${skeletonLine('87%',12)}${skeletonLine('100%',27)}<div class="zh-skeleton-actions">${skeletonLine('64%',47)}${skeletonLine('34%',47)}</div></div></div>`;
+  else if(kind==='match')body=`<div class="zh-skeleton-match-layout"><div>${skeletonLine('83%',19)}${skeletonLine('100%',12)}${skeletonLine('60%',12)}</div>${skeletonLine('88px',47)}</div>`;
+  else if(kind==='packs'||kind==='gifts')body=`<div class="zh-${kind} zh-skeleton-catalog">${Array.from({length:count},()=>`<div>${skeletonLine('38px',38)}${skeletonLine('70%',18)}${skeletonLine('85%',10)}${skeletonLine('60%',12)}</div>`).join('')}</div>`;
+  else if(kind==='balance')body=skeletonLine('105px',38);
+  else if(kind==='wallet')body=`<div class="zh-loading-wallet">${skeletonLine('45%',12)}${skeletonLine('55%',38)}${skeletonLine('90%',12)}${skeletonLine('100%',38)}</div>${Array.from({length:3},()=>`<div class="zh-skeleton-row">${skeletonLine('100%',48)}</div>`).join('')}`;
+  else if(kind==='posts')body=`<div class="hpgrid">${Array.from({length:6},()=>'<div class="zh-skeleton-shape zh-skeleton-post"></div>').join('')}</div>`;
+  else if(kind==='thread')body=`<div class="zh-skeleton-thread-list">${Array.from({length:6},(_,i)=>`<div class="${i%3===1?'outgoing':''}">${skeletonLine(i%2?'62%':'79%',52)}</div>`).join('')}</div>`;
+  else body=Array.from({length:count},()=>`<div class="zh-skeleton-row"><span class="zh-skeleton-shape zh-skeleton-avatar"></span><div>${skeletonLine('56%',14)}${skeletonLine('89%',11)}${skeletonLine('34%',9)}</div></div>`).join('');
+  return `<div class="zh-skeleton zh-skeleton-${kind}" role="status" aria-label="${esc(label)}" aria-busy="true"><div aria-hidden="true">${body}</div></div>`;
+}
+function contentError(key){const message=ContentLoading[key]?.error;return message?`<div class="zh-error" role="alert">${esc(message)}<button onclick="contentRetry('${key}')">Retry</button></div>`:''}
+function contentSurface(key,kind='rows',label){return contentPending(key)?contentSkeleton(kind,label):ContentLoading[key]?.error?contentError(key):null}
+function contentBalance(value=S.bal){return contentPending('wallet')?'<span role="status" aria-label="Loading balance" aria-busy="true"><span aria-hidden="true">'+skeletonLine('55px',18)+'</span></span>':ContentLoading.wallet.error?'<span aria-label="Balance unavailable">—</span>':n(value)}
+function contentRetry(key){
+  if(key==='home')return homeLoad();
+  if(key==='search')return homeSearchRequest();
+  contentStart(key);contentRender(key);
+  if(key==='catalog')Native.send('catalog.load');
+  else if(key==='notifications')Native.send('notifications.load');
+  else if(key==='thread')Native.send('chat.open',{with:S.h});
+  else Native.send('data.reload');
+}
+function contentBeforeNavigate(view){
+  if(DEMO)return;
+  if(view==='thread')contentStart('thread');
+  if(view==='coins')contentStart('catalog');
+  if(view==='search')contentStart('search');
+}
+function contentRender(key){
+  if(key==='thread'){if(S.v==='thread')paint();return}
+  const views={home:['home','explore'],catalog:['coins'],notifications:['notifications','home','explore'],chats:['chats'],missed:['chats'],wallet:['home','explore','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile'],thread:['thread']};
+  if(key==='search'){if(S.v==='search')homePaintSearch();return}
+  if(views[key]?.includes(S.v)||(key==='catalog'&&Home.giftTo))r();
+}
+Native.on('data.loading',d=>{
+  if(!ContentLoading[d.resource])return;
+  if(d.resource==='search'&&d.q!==(S.sq||''))return;
+  Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
+  if(d.resource==='home'){Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.loaded=true;Home.error=d.error||''}}
+  if(d.resource==='search'){Home.searchLoading=d.loading;Home.searchMore=d.loading&&d.page>1;Home.searchError=d.error||''}
+  contentRender(d.resource);
+});
+/* Results also settle placeholders when received from an older native shell. */
+for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet'}))Native.on(event,d=>{
+  if(key==='search'&&d.q!==(S.sq||''))return;
+  if(key==='thread'&&d.with!==S.h)return;
+  Object.assign(ContentLoading[key],{loading:false,error:''});
+  if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
+});
+Native.on('operation.error',d=>{const key={'home.reload':'home','hosts.search':'search','catalog.load':'catalog','notifications.load':'notifications','chat.open':'thread'}[d.action];if(key){Object.assign(ContentLoading[key],{loading:false,error:d.message||'Unable to load. Please try again.'});contentRender(key)}});
+function contentReset(){for(const key of resourceNames)Object.assign(ContentLoading[key],{loading:!DEMO,error:'',page:1})}
+Native.on('session.none',contentReset);Native.on('session.expired',contentReset);
+
+function contentImageReady(img){if(!img?.classList?.contains('zh-photo-pending'))return;img.classList.remove('zh-photo-pending');img.classList.toggle('zh-photo-failed',!img.naturalWidth)}
+document.addEventListener('load',event=>contentImageReady(event.target),true);
+document.addEventListener('error',event=>contentImageReady(event.target),true);
+function contentImagesReady(){document.querySelectorAll('img.zh-photo-pending').forEach(img=>{if(img.complete)contentImageReady(img)})}
+
+/* Home surfaces use the same authenticated bridge as the rest of the app.
+   Preview people, activity and balances exist only in the DEMO build. */
+const Home = {
+  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', page: 1,
+  searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
+  hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
+  broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
+  notifications: [], unreadCount: 0, gifts: [], packs: [], paymentsAvailable: false,
+  matching: false, giftTo: null, giftBusy: false, claiming: false,
+  stream: null, hosting: false, streamBusy: false, messages: [], mediaStatus: '',
+  checkout: null, checkoutBusy: false, packId: '', notifyLoading: false
+};
+const homeIcons = {
+  house:'<path d="m3 10 9-7 9 7v10H6V10m4 10v-7h4v7"/>',
+  explore:'<circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5z"/>',
+  bolt:'<path d="m13 2-8 12h6l-1 8 9-13h-6z"/>',
+  music:'<path d="M9 17V5l11-2v12M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>',
+  bell:'<path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zM10 21h4M12 2v2"/>',
+  play:'<path d="m9 5 10 7-10 7z"/>',
+  verified:'<path d="m12 2 3 3 4 .4.6 4L22 12l-2.4 2.6-.6 4-4 .4-3 3-3-3-4-.4-.6-4L2 12l2.4-2.6.6-4L9 5z"/><path d="m8 12 3 3 5-6"/>',
+  rings:'<circle cx="14" cy="12" r="7"/><path d="M6 5a8 8 0 0 0 0 14"/>',
+  gift:'<path d="M3 9h18v5H3zM5 14v7h14v-7M12 9v12M12 9C3 9 5 1 9 4l3 5Zm0 0c9 0 7-8 3-5z"/>',
+  pulse:'<circle cx="12" cy="12" r="9"/><path d="M16 17a6 6 0 1 1 2-5c0 4-5 4-5 1V9m0 0a3 3 0 1 0 0 5"/>',
+  broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>'
+};
+function hi(name,size=20){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${homeIcons[name]||P[name]||P.star}</svg>`}
+function homeCompact(value){const x=Math.max(0,Number(value)||0);return x>=1000?(x/1000).toFixed(x>=10000?0:1).replace(/\.0$/,'')+'k':n(x)}
+function homeCreator(p){const h=hostFrom(p);return {...h,verified:!!p.verified,available:!!p.availableForCall,about:p.about||'',stream:p.stream||null,viewers:p.stream?.viewers||0}}
+function homeRemember(p){const h=homeCreator(p),old=H.find(x=>x.id===h.id);if(old)Object.assign(old,h);else H.push(h);return h}
+function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl);return src?`<img class="zh-photo zh-photo-pending" src="${src}" alt="${esc(h.n)}" loading="${priority?'eager':'lazy'}" decoding="async">`:`<div class="zh-fallback">${artC(h.seed)}<span>${esc(h.n.split(' ').map(x=>x[0]).slice(0,2).join(''))}</span></div>`}
+function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
+function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
+function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:'<span class="zh-badge zh-offline">Offline</span>'}
+function homeLoad(more=false){
+  if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
+  Home.error='';Home.loadingMore=more;Home.loading=!DEMO;
+  if(DEMO){Home.loaded=true;Home.loadingMore=false;r();return}
+  const page=more?Home.page+1:1;
+  contentStart('home',{page});
+  const data={page,mode:Home.filter==='instant'?'instant':'popular'};
+  if(Home.categories.includes(Home.filter))data.category=Home.filter;
+  Native.send('home.reload',data);r();
+}
+function homeContentPending(){return !DEMO&&(Home.loading||contentPending('home'))&&!Home.loadingMore}
+function homeContentError(){return !DEMO&&(Home.error||ContentLoading.home.error)}
+
+function homeFilter(value){Home.filter=value;homeLoad()}
+function homeList(){let list=Home.hosts;if(DEMO){if(Home.filter==='instant')list=list.filter(h=>h.available);else if(Home.categories.includes(Home.filter))list=list.filter(h=>h.cat===Home.filter)}return list}
+function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="Zimi Live home">${hi('sun',27)}<span>Zimi<span>Live</span></span></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button><button class="zh-profile" onclick="go('profile')" aria-label="Your profile">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="">`:hi('user',19)}</button></div></header>`}
+function homeNav(){
+  const el=document.getElementById('nav');
+  if(!['home','explore','chats','profile','settings','notifications'].includes(S.v))return false;
+  el.style.display='flex';el.classList.add('zh-nav');
+  const item=(v,label,icon)=>`<button class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&CH.some(c=>c[3]>0)?'<i class="zh-nav-dot"></i>':''}</button>`;
+  el.innerHTML=item('home','Home','house')+item('explore','Explore','explore')+`<button class="zh-create" onclick="homeGoLive()" aria-label="Go live">${hi('broadcast',26)}</button>`+item('chats','Chats','chat')+item('profile','Profile','user');return true;
+}
+function homeStage(){const rows=Home.stage.slice(0,12),pending=homeContentPending(),error=homeContentError();return `<section class="zh-stage" aria-label="Live creators"><div class="zh-section-title"><h2><i></i>Stage &amp; Live Calls</h2><span>${pending?skeletonLine('94px',10):error?'':homeCompact(Home.broadcasterCount)+' BROADCASTERS'}</span></div><div class="zh-stories"><button class="zh-story zh-story-create" onclick="homeGoLive()"><span class="zh-story-ring">${hi('plus',24)}<i>${hi('vid',10)}</i></span><span>Go Live</span></button>${pending?contentSkeleton('stories','Loading live creators',4):error?'':rows.map(h=>`<button class="zh-story" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}"><span class="zh-story-ring ${h.stream?'':'zh-story-call'}">${homeCover(h)}<b>${h.stream?'LIVE':hi('ph',9)+' 1:1'}</b></span><span>${esc(first(h.n))}</span></button>`).join('')}${!pending&&!error&&!rows.length?'<span class="zh-stage-empty">Your next favourite creator is on the way.</span>':''}</div></section>`}
+
+function homeFilters(){const filters=[['popular','Popular','&#128293;'],['instant','Instant Call',hi('bolt',15)],...Home.categories.map(c=>[c,c,c==='Music'?hi('music',16):c==='Talk'?hi('chat',15):hi('star',14)])];return `<div class="zh-filters" role="group" aria-label="Browse categories">${filters.map(([key,label,icon])=>`<button class="${Home.filter===key?'selected':''}" data-home-filter="${esc(key)}" aria-pressed="${Home.filter===key}" onclick="homeFilter(this.dataset.homeFilter)">${icon}<span>${esc(label)}</span></button>`).join('')}</div>`}
+function homeFeatured(){if(homeContentPending())return `<div class="zh-featured">${contentSkeleton('featured','Loading featured creator')}</div>`;if(homeContentError())return '';const list=homeList(),h=Home.filter==='popular'?Home.featured||list[0]:list[0];if(!h)return '';return `<article class="zh-featured">${homeCover(h,true)}<div class="zh-featured-shade"></div><div class="zh-featured-top">${homeBadge(h)}${h.stream?`<span class="zh-viewers">${hi('eye',13)} ${homeCompact(h.viewers)}</span>`:''}<button class="zh-featured-open" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch live':'View profile'}">${hi(h.stream?'play':'user',12)} ${h.stream?'Watch live':'Creator'}</button></div><button class="zh-featured-hit" aria-label="Open ${esc(h.n)}" onclick="homeOpen('${domId(h.id)}')"></button><div class="zh-featured-bottom"><div class="zh-featured-identity"><button onclick="go('host','${domId(h.id)}')"><h1>${esc(h.n)} ${homeVerified(h)}</h1><p>${esc(h.stream?.title||h.about||h.tag||'Meet your next favourite creator')}</p></button><button class="zh-gift" onclick="homeGifts('${domId(h.id)}')" aria-label="Send a gift to ${esc(h.n)}">${hi('gift',23)}</button></div><div class="zh-live-note"><i></i>${h.stream?`Live now · ${esc(h.cat||'Join the conversation')}`:h.available?'Online and ready to connect':'Follow for their next live session'}</div><div class="zh-featured-actions"><button class="zh-primary" onclick="homeCall('${domId(h.id)}')" ${h.available?'':'disabled'}>${hi('vid',19)} ${h.available?'Instant 1-on-1 Call':'Currently unavailable'}</button><div class="zh-rate"><span>Call rate</span><b>${homeRate(h)}</b></div></div></div></article>`}
+function homeMatch(){if(homeContentPending())return `<div class="zh-match">${contentSkeleton('match','Loading video matches')}</div>`;if(homeContentError())return '';if(!Home.speedMatchEnabled)return '';return `<section class="zh-match"><div><h2>${hi('pulse',20)} Speed Video Pulse</h2><p>Find your next conversation.</p><div class="zh-available"><span class="zh-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>${homeCompact(Home.availableCount)} Available</div></div><button class="zh-primary" onclick="homeMatchNow()" ${Home.matching||!Home.availableCount?'disabled':''}>${hi('bolt',19)} ${Home.matching?'Finding…':'Match'}</button></section>`}
+function homeTile(h){return `<article class="zh-tile"><div class="zh-tile-media">${homeCover(h)}<div class="zh-tile-shade"></div><button class="zh-tile-hit" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Meet'} ${esc(h.n)}"></button><div class="zh-tile-top">${homeBadge(h)}${h.stream?`<span class="zh-viewers">${hi('eye',11)} ${homeCompact(h.viewers)}</span>`:h.available?'<span class="zh-viewers"><i class="zh-online-dot"></i>Online</span>':''}</div>${!h.stream?`<span class="zh-tile-rate">${homeRate(h)}</span>`:''}<button class="zh-tile-action ${h.stream?'':'zh-hot'}" onclick="${h.stream?'homeOpen':'homeCall'}('${domId(h.id)}')" ${!h.stream&&!h.available?'disabled':''} aria-label="${h.stream?'Watch live':'Start call'} with ${esc(h.n)}">${hi(h.stream?'play':'vid',18)}</button></div><button class="zh-tile-caption" onclick="go('host','${domId(h.id)}')"><h3>${esc(h.n)} ${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></button></article>`}
+function homeBonus(){if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
+function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A little quiet right now</h3><p>${Home.filter==='instant'?'No creators are available for a call right now. Try again shortly.':'Try another category or come back for the next live session.'}</p><button class="zh-soft" onclick="homeLoad()">Refresh ${hi('refresh',14)}</button></div>`}
+
+function homeScreen(explore=false){const list=homeList(),pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home')),error=!pending&&!more&&homeContentError();return `<div class="zh-home ${explore?'zh-explore':''}">${explore?'<div class="zh-explore-heading"><span>FIND YOUR PEOPLE</span><h1>Explore Zimi</h1><p>A new voice. A fresh perspective. Your kind of live.</p></div>':homeStage()}${homeFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button onclick="homeLoad()">Retry</button></div>`:''}${!explore?homeFeatured()+homeMatch():''}<section class="zh-trending"><div class="zh-section-title"><h2>${explore?'Live & available creators':'Trending Live & Calls'}</h2>${!explore?'<button onclick="go(\'explore\')">See all <span>&rsaquo;</span></button>':pending?skeletonLine('74px',10):error?'':`<span>${n(Home.total)} creators</span>`}</div>${pending?contentSkeleton('cards','Loading creators',4):error?'':list.length?`<div class="zh-grid">${(explore?list:list.slice(0,4)).map(homeTile).join('')}</div>`:more?'':homeEmpty()}${more?contentSkeleton('cards','Loading more creators',2):''}${explore&&!pending&&!more&&!error&&Home.total>list.length?'<button class="zh-load-more" onclick="homeLoad(true)">Load more creators</button>':''}</section>${!explore?homeBonus():''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample creators and activity</p>':''}</div>${homeGiftSheet()}`}
+
+function homeOpen(id){if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
+function homeCall(id){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');go('precall',id)}
+function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
+function homeGoLive(){if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');if(isHost()&&A().kyc==='verified')go('broadcast');else{S.creatorSetup=1;go('kyc')}}
+function homeClaim(){const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
+function homeNotifications(){Home.notifyLoading=!DEMO;if(!DEMO)contentStart('notifications');go('notifications');if(DEMO)r();else Native.send('notifications.load')}
+
+function homeMarkRead(id){if(DEMO){Home.notifications.forEach(x=>{if(!id||x.id===id)x.read=true});Home.unreadCount=Home.notifications.filter(x=>!x.read).length;r();return}const ids=id?[id]:Home.notifications.filter(x=>!x.read).map(x=>x.id);if(ids.length)Native.send('notifications.read',{ids})}
+function homeNotificationsView(){const surface=DEMO?null:contentSurface('notifications','rows','Loading notifications');return `<section class="zh-notifications"><div class="zh-section-title"><h2>Your updates</h2>${!surface&&Home.unreadCount?'<button onclick="homeMarkRead()">Mark all read</button>':''}</div>${surface??(Home.notifications.length?Home.notifications.map(item=>`<button class="zh-notification ${item.read?'':'unread'}" onclick="homeMarkRead('${domId(item.id)}')"><span>${hi('bell',20)}</span><div><h3>${esc(item.title)}</h3><p>${esc(item.body)}</p><time>${esc(homeTime(item.createdAt))}</time></div>${item.read?'':'<i></i>'}</button>`).join(''):`<div class="zh-empty">${hi('bell',32)}<h3>You're all caught up</h3><p>Your Zimi notifications will appear here.</p></div>`)}</section>`}
+
+function homeTime(value){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('en-IN',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function homeRequestStreamClose(streamId,hosting){if(DEMO)return;Home.pendingClose={streamId,hosting};Home.closeError='';Native.send(hosting?'stream.end':'stream.leave',{streamId})}
+function homeRetryStreamClose(){const pending=Home.pendingClose;if(pending)homeRequestStreamClose(pending.streamId,pending.hosting)}
+function homeShowCloseError(){const el=document.getElementById('screen');if(Home.closeError&&Home.pendingClose&&['home','explore'].includes(S.v)&&el&&!el.querySelector('.zh-close-retry'))el.insertAdjacentHTML('afterbegin',`<div class="zh-error zh-close-retry" role="alert">${esc(Home.closeError)}<button onclick="homeRetryStreamClose()">Retry ending session</button></div>`)}
+function homeGifts(id){Home.giftTo=id;Home.giftBusy=false;if(!DEMO){contentStart('catalog');Native.send('catalog.load')}r()}
+
+function homeGiftSheet(){if(!Home.giftTo)return '';const h=g(Home.giftTo),surface=DEMO?null:contentSurface('catalog','gifts','Loading gifts');return `<div class="zh-sheet-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet" role="dialog" aria-modal="true" aria-label="Send a gift"><div class="zh-sheet-heading"><div><h2>A little love for ${esc(h?first(h.n):'your creator')}</h2><p>${contentBalance()} coins available</p></div><button aria-label="Close gifts" onclick="Home.giftTo=null;r()">×</button></div>${surface??(Home.gifts.length?`<div class="zh-gifts">${Home.gifts.map(x=>`<button onclick="homeSendGift('${domId(x.id)}')" ${Home.giftBusy||(!DEMO&&(contentPending('wallet')||ContentLoading.wallet.error))||S.bal<x.coins?'disabled':''}>${x.mediaUrl?`<img src="${homeGiftUrl(x.mediaUrl)}" alt="${esc(x.name)}">`:`<span>${esc(x.emoji||'🎁')}</span>`}<b>${esc(x.name)}</b><small>${hi('rings',12)} ${n(x.coins)}</small></button>`).join('')}</div>`:'<p class="zh-empty-small">No gifts are available right now.</p>')}<button class="zh-soft" onclick="Home.giftTo=null;go('coins')">${hi('plus',15)} Add coins</button></section></div>`}
+function homeGiftUrl(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password&&!/[<>"'`\s]/.test(raw)?esc(u.href):''}catch{return ''}}
+function homeCloseGifts(e){if(e.target===e.currentTarget){Home.giftTo=null;r()}}
+function homeSendGift(id){if(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error||contentPending('wallet')||ContentLoading.wallet.error))return;const gift=Home.gifts.find(x=>x.id===id);if(!gift||Home.giftBusy||S.bal<gift.coins)return;Home.giftBusy=true;r();if(DEMO){S.bal-=gift.coins;Home.giftBusy=false;Home.giftTo=null;r();appNotice('Preview gift sent');return}const to=Home.giftTo;if(!Home.giftAttempt||Home.giftAttempt.to!==to||Home.giftAttempt.gift!==id)Home.giftAttempt={to,gift:id,idempotencyKey:crypto.randomUUID()};Native.send('gift.send',{...Home.giftAttempt,coins:gift.coins,inCall:['call','voice','hcall'].includes(S.v),...(Home.stream?.id&&S.v==='live'?{streamId:Home.stream.id}:{})})}
+function homeCoins(){const selected=Home.packs.find(x=>x.id===Home.packId)||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs');return `<section class="zh-coins"><div class="zh-wallet-card"><span>Your balance</span><h1>${hi('rings',30)} ${contentBalance()}</h1><p>A little appreciation goes a long way.</p></div>${!DEMO?contentError('wallet'):''}<h2>Make someone’s day</h2><p class="zh-muted">Choose a coin pack for gifts.</p>${surface??(Home.packs.length?`<div class="zh-packs">${Home.packs.map(x=>`<button class="${selected?.id===x.id?'selected':''}" onclick="Home.packId='${domId(x.id)}';r()">${hi('rings',26)}<strong>${n(x.coins)}</strong><span>${esc(x.name||'Coins')}</span><b>₹${(x.pricePaise/100).toLocaleString('en-IN',{maximumFractionDigits:2})}</b></button>`).join('')}</div>`:'<div class="zh-empty-small">Coin packs are currently unavailable.</div>')}${!surface&&selected?`<button class="zh-primary zh-full" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}</button>`:''}${Home.checkout?`<div class="zh-payment-status" role="status"><p>${esc(Home.checkout.status==='SUCCESS'?'Payment confirmed. Your wallet is up to date.':Home.checkout.status==='FAILED'?'Payment was not completed.':'Complete your payment, then check its status here.')}</p><button class="zh-soft" onclick="homeVerifyPayment()">Check payment status</button></div>`:''}<p class="zh-coins-note">Your balance updates after payment is confirmed.</p></section>`}
+function homeCheckout(){if((!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error))||Home.checkoutBusy||!Home.paymentsAvailable)return;const pack=Home.packs.find(x=>x.id===Home.packId)||Home.packs[0];if(!pack)return;if(DEMO){S.bal+=pack.coins;r();appNotice('Preview coins added');return}Home.checkoutBusy=true;const attempt=Home.checkoutAttempt;if(!attempt||attempt.packId!==pack.id)Home.checkoutAttempt={packId:pack.id,idempotencyKey:crypto.randomUUID()};Native.send('wallet.checkout',Home.checkoutAttempt);r()}
+function homeVerifyPayment(){if(Home.checkout?.merchantOrderId)Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId})}
+function homeBroadcast(){return `<section class="zh-broadcast"><span class="zh-eyebrow">YOUR STAGE IS READY</span><h1>Make it a moment.</h1><p>Share your world. Start a live conversation.</p><div class="zh-camera-preview"><video data-zimi-local autoplay muted playsinline></video><span>${hi('vid',38)}<b>${esc(Home.mediaStatus||'Camera preview')}</b></span></div><label>Give your live a title<input id="live-title" maxlength="120" placeholder="What’s happening today?" value="${esc(Home.draftTitle||'')}" oninput="Home.draftTitle=this.value"></label><label>Category<select id="live-category" onchange="Home.draftCategory=this.value">${Home.categories.map(c=>`<option ${Home.draftCategory===c?'selected':''} value="${esc(c)}">${esc(c)}</option>`).join('')}</select></label><button class="zh-primary zh-full" onclick="homeStartStream()" ${Home.streamBusy?'disabled':''}>${hi('broadcast',21)} ${Home.streamBusy?'Starting…':'Go Live'}</button><button class="zh-soft zh-full" onclick="go('setup')">${hi('ph',17)} Go online for 1-on-1 calls</button></section>`}
+async function homeStartStream(){if(Home.streamBusy)return;const title=(Home.draftTitle||'').trim();if(!title)return appNotice('Add a title for your live session.');Home.streamBusy=true;S.mic=1;r();try{if(!DEMO)await window.ZimiMedia.prepare(true);if(S.v!=='broadcast'){window.ZimiMedia?.stop();Home.streamBusy=false;return}if(DEMO){Home.stream={id:'preview-live',title,category:Home.draftCategory||Home.categories[0],kind:'video',viewers:0};Home.hosting=true;Home.streamBusy=false;Home.mediaStatus='Design preview';go('live')}else Native.send('stream.start',{title,category:Home.draftCategory||Home.categories[0],kind:'video'})}catch(e){Home.streamBusy=false;Home.mediaStatus=e.message;r();appNotice(e.message)}}
+function homeLive(){const stream=Home.stream;if(!stream)return '<div class="zh-empty">This session has ended.</div>';const h=g(S.h);return `<section class="zh-room"><div class="zh-room-video">${h&&!Home.hosting?homeCover(h):''}<video ${Home.hosting?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video><div class="zh-room-shade"></div></div><div class="zh-room-top"><button class="zh-room-icon" onclick="homeLeaveStream()" aria-label="${Home.hosting?'End broadcast':'Leave live'}">${hi('back',23)}</button><span class="zh-badge zh-live"><i></i> LIVE</span><span class="zh-viewers">${hi('eye',15)} ${homeCompact(stream.viewers)}</span><span class="zh-room-top-title">${esc(stream.title)}</span></div><p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><h2>${esc(Home.hosting?me.n:h?.n||'Live creator')} ${h?homeVerified(h):''}</h2><p>${esc(stream.title)}</p><div class="zh-room-messages" id="home-room-messages">${Home.messages.slice(-30).map(m=>`<p><b>${esc(m.name||'Viewer')}</b> ${esc(m.text)}</p>`).join('')}</div><form class="zh-room-chat" onsubmit="event.preventDefault();homeSendStreamMessage()"><input id="home-stream-message" maxlength="500" placeholder="Say something…" aria-label="Live chat message"><button aria-label="Send message">${hi('send',20)}</button>${!Home.hosting&&h?`<button type="button" class="zh-gift" onclick="homeGifts('${domId(h.id)}')" aria-label="Send a gift">${hi('gift',21)}</button>`:''}${Home.hosting?'<button type="button" onclick="homeLeaveStream()">End</button>':''}</form></div>${homeGiftSheet()}</section>`}
+function homeSendStreamMessage(){const input=document.getElementById('home-stream-message'),text=input?.value.trim();if(!text||!Home.stream)return;if(DEMO){Home.messages.push({id:String(Date.now()),name:'You',text});r();return}Native.send('stream.message',{streamId:Home.stream.id,text});input.value=''}
+function homeLeaveStream(){if(Home.stream)homeRequestStreamClose(Home.stream.id,Home.hosting);window.ZimiMedia?.stop();Home.stream=null;Home.streamBusy=false;Home.messages=[];Home.mediaStatus='';go('home');homeLoad()}
+function homePrecall(){const h=g(S.h);if(!h)return homeEmpty();return `<section class="zh-precall"><div class="zh-precall-photo">${homeCover(h,true)}<div class="zh-precall-shade"></div></div><button class="zh-precall-back" onclick="go('home')" aria-label="Back">${hi('back',24)}</button><div class="zh-precall-content"><div class="zh-precall-avatar">${homeCover(h)}</div><h1>${esc(h.n)} ${homeVerified(h)}</h1><p>${esc(h.tag||h.cat||'Creator')}</p><span class="zh-precall-status">${h.available||DEMO?'Online · Ready to connect':'Currently unavailable'}</span><div class="zh-precall-details"><span>Call rate <b>${homeRate(h)}</b></span>${h.fee?`<span>Entry fee <b>${n(h.fee)} coins</b></span>`:''}<span>Your balance <b>${contentBalance()} coins</b></span></div><p class="zh-precall-note">Your camera and microphone are used only when you start the call. You can turn them off at any time.</p>${S.pcerr?`<p class="zh-error" role="alert">${esc(S.pcerr)}</p>`:''}<button class="zh-primary zh-full" onclick="S.nextCallVoice=false;S.callId=null;go('dial','${domId(h.id)}')" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('vid',21)} ${Home.preparingCall?'Preparing camera…':'Start video call'}</button><button class="zh-soft zh-full" onclick="S.callId=null;S.nextCallVoice=true;go('dial','${domId(h.id)}')" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('ph',18)} Voice call</button></div></section>`}
+async function homePrepareCall(view,id){if(Home.preparingCall)return;Home.preparingCall=true;Home.mediaStatus='Connecting…';if(!S.nextCallVoice)S.scam=1;const previous=S.v,target=id||S.h;S.pcerr='';r();try{await window.ZimiMedia.prepare(!S.nextCallVoice);if(S.v!==previous){window.ZimiMedia.stop();return}S.allowPreparedCall=true;go(view,target)}catch(e){S.pcerr=e.message;appNotice(e.message)}finally{Home.preparingCall=false;S.allowPreparedCall=false;if(S.v===previous)r()}}
+async function homeAcceptCall(){if(S.acceptingCall)return;const callId=S.caller?.callId;if(!callId)return;S.acceptingCall=true;Home.mediaStatus='Connecting…';r();try{await window.ZimiMedia.prepare(!S.caller.voice);if(S.v!=='ring'||S.caller?.callId!==callId){S.acceptingCall=false;window.ZimiMedia.stop();return}Native.send('call.accept',{callId})}catch(e){S.acceptingCall=false;appNotice(e.message);r()}}
+function homeCallView(host){const p=host?S.caller:g(S.h),voice=host?S.caller?.voice:S.v==='voice';return `<section class="zh-room zh-call-room"><div class="zh-room-video">${voice?`<div class="zh-voice-person">${avc(p,110)}<h2>${esc(p.n)}</h2></div><video data-zimi-remote autoplay playsinline style="display:none"></video>`:`<video data-zimi-remote autoplay playsinline></video>`}<div class="zh-room-shade"></div></div><div class="zh-room-top"><button class="zh-room-icon" onclick="endCall()" aria-label="End call">${hi('back',23)}</button><span class="zh-viewers"><i class="zh-online-dot"></i><span id="ck">${clock(S.sec)}</span></span><span class="zh-room-top-title">${esc(p.n)} · ${voice?'Voice':'Video'} call</span></div>${!voice?'<div class="zh-call-pip"><video data-zimi-local autoplay muted playsinline></video><span>You</span></div>':''}<p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><div class="zh-call-controls"><button onclick="S.mic=S.mic?0:1;r()" aria-label="${S.mic?'Mute':'Unmute'} microphone" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',22)}<span>${S.mic?'Mute':'Unmute'}</span></button>${!voice?`<button onclick="toggleCam()" aria-label="${camOn()?'Turn camera off':'Turn camera on'}" aria-pressed="${!camOn()}">${hi(camOn()?'vid':'camoff',22)}<span>Camera</span></button>`:''}${!host?`<button onclick="homeGifts('${domId(p.id)}')" aria-label="Send a gift">${hi('gift',22)}<span>Gift</span></button>`:''}<button class="zh-end-call" onclick="endCall()" aria-label="End call">${hi('ph',23)}<span>End</span></button></div><p class="zh-free-call">${DEMO?'Design preview':'Free call · gifts are optional'}</p></div>${homeGiftSheet()}</section>`}
+function homeCallSetup(){return `<section class="zh-broadcast"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1><p>Go online so members can call you. Camera and microphone permission is requested when you accept a call.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy?'disabled':''}>${Home.presenceBusy?'Connecting…':'Go online for calls'}</button><button class="zh-soft zh-full" onclick="go('broadcast')">${hi('broadcast',20)} Start a public live instead</button></section>`}
+function homeSetPresence(online){if(Home.presenceBusy)return;Home.presenceBusy=true;Native.send('presence.set',{online,visible:true});r()}
+function homeWaiting(){return `<section class="zh-broadcast"><span class="zh-eyebrow">OPEN TO CONNECTIONS</span><h1>You’re online.</h1><p>Members can discover you and start a call while you’re available.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="go('home')">Explore Zimi</button><button class="zh-soft zh-full" onclick="homeSetPresence(false)" ${Home.presenceBusy?'disabled':''}>Go offline</button><p class="zh-coins-note">Keep the app connected to receive incoming calls.</p></section>`}
+function homeCallSummary(){const s=S.sum;return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>A moment well shared.</h1><p>Your call has ended.</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>Call charge <b>Free</b></span></div><button class="zh-primary zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button></section>`}
+let homeSearchTimer;
+function homeSearchInput(value){S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
+
+function homeSearchRequest(more=false){if(more&&Home.searchLoading)return;const q=S.sq||'',page=more?(Home.searchPage||1)+1:1;Home.searchLoading=!DEMO;Home.searchMore=more;Home.searchError='';if(DEMO){const rows=Home.hosts.filter(h=>(h.n+' '+h.cat).toLowerCase().includes(q.toLowerCase()));Home.searchRows=rows;Home.searchTotal=rows.length;Home.searchPage=1;Home.searchQuery=q;Home.searchLoading=false;Home.searchMore=false;homePaintSearch();return}contentStart('search',{page});homePaintSearch();Native.send('hosts.search',{q,page})}
+
+function homeSearchResults(){const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),list=Home.searchQuery===(S.sq||'')?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('cards','Finding creators',4);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;return `${list.length?`<div class="zh-grid">${list.map(homeTile).join('')}</div>`:!pending?'<div class="zh-empty"><h3>No creators found</h3><p>Try another name or category.</p></div>':''}${more?contentSkeleton('cards','Loading more search results',2):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more</button>':''}`}
+
+function homePaintSearch(){const el=document.getElementById('home-search-results');if(el)el.innerHTML=homeSearchResults()}
+function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>Find your next connection</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
+function homeTheme(){const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','explore','chats','profile','settings','notifications'].includes(S.v))}
+window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{explore:()=>homeScreen(true),search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
+  if(['home','explore'].includes(S.v))return homeHeader();
+  if(S.v==='search')return `<header class="zh-search-header"><button aria-label="Back to home" onclick="go('home')">${hi('back',23)}</button><div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
+  if(S.v==='live')return '';
+  const title={notifications:'Notifications',broadcast:'Go Live',coins:'Your coins'}[S.v];
+  return title?`<header class="zh-subheader"><button onclick="go('home')" aria-label="Back to home">${hi('back',22)}</button><h1>${title}</h1>${S.v==='coins'?`<span>${hi('rings',15)} ${contentBalance()}</span>`:''}</header>`:null;
+},afterRender:()=>{contentImagesReady();homeShowCloseError();if(Home.giftTo){const sheet=document.querySelector('.zh-sheet');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button')?.focus({preventScroll:true})}const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
+
+Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;if(['home','explore'].includes(S.v))r()});
+Native.on('data.notifications',d=>{Home.notifyLoading=false;Home.notifications=d.items||[];Home.unreadCount=d.unreadCount||0;if(['home','explore','notifications'].includes(S.v))r()});
+Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
+Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||Home.giftTo)r()});
+Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
+Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
+Native.on('gift.sent',()=>{Home.giftBusy=false;Home.giftTo=null;Home.giftAttempt=null;r();appNotice('Gift sent!')});
+Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=d.online?1:0;S.vis=d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}});
+Native.on('call.created',d=>{S.callId=d.callId});
+Native.on('wallet.checkout',d=>{Home.checkoutBusy=false;Home.checkout=d;r()});
+Native.on('wallet.purchase',d=>{Home.checkoutBusy=false;Home.checkout={...Home.checkout,...d};if(['SUCCESS','FAILED','REVERTED'].includes(d.status))Home.checkoutAttempt=null;r()});
+Native.on('stream.opened',d=>{Home.streamBusy=false;if(!['live','broadcast'].includes(S.v)){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.stream=d.stream;Home.hosting=d.hosting;Home.messages=d.messages||[];Home.mediaStatus='Connecting video…';go('live');window.ZimiMedia?.openStream(d.stream,d.hosting)});
+Native.on('stream.message',d=>{if(Home.stream?.id!==d.streamId)return;if(!Home.messages.some(x=>x.id===d.id))Home.messages.push(d);if(S.v==='live'){const input=document.getElementById('home-stream-message'),draft=input?.value;r();const next=document.getElementById('home-stream-message');if(next&&draft)next.value=draft}});
+Native.on('stream.viewers',d=>{if(Home.stream?.id===d.streamId){Home.stream.viewers=d.count;if(S.v==='live')r()}const h=H.find(h=>h.stream?.id===d.streamId);if(h){h.viewers=d.count;h.stream.viewers=d.count}});
+Native.on('stream.ended',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError=''}if(Home.stream?.id===d.streamId){window.ZimiMedia?.stop();Home.stream=null;go('home');appNotice('This live session has ended.');homeLoad()}});
+Native.on('stream.closed',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError='';if(S.v==='home')r()}});
+Native.on('operation.error',d=>{if(['stream.end','stream.leave'].includes(d.action)&&Home.pendingClose){Home.closeError=d.message;homeShowCloseError()}});
+Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;Home.loadingMore=false;Home.error=d.message}if(d.action==='call.match')Home.matching=false;if(d.action==='awards.claim')Home.claiming=false;if(d.action==='notifications.load')Home.notifyLoading=false;if(d.action==='presence.set')Home.presenceBusy=false;if(d.action==='call.accept'){S.acceptingCall=false;window.ZimiMedia?.stop()}if(d.action?.startsWith('wallet.'))Home.checkoutBusy=false;if(d.action==='gift.send')Home.giftBusy=false;if(d.action?.startsWith('stream.')){Home.streamBusy=false;Home.mediaStatus=d.message}if(['home','explore','coins','notifications','live','broadcast','setup','waiting','ring'].includes(S.v))r()});
+Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
+function homeReset(){contentReset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
+Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
+document.addEventListener('aurora:navigate',()=>{if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
+
+if(DEMO){
+  const demo=[
+    {id:'aanya',name:'Mila Vance',category:'Music',tag:'Acoustic Sessions & Night City IRL 🎸✨',avatarUrl:OB_MEDIA[0],coverUrl:OB_MEDIA[0],ratePerMin:50,entryFee:0,online:true,live:true,verified:true,availableForCall:true,stream:{id:'demo-mila',title:'Acoustic Sessions & Night City IRL 🎸✨',kind:'video',viewers:3400}},
+    {id:'meher',name:'Amara Soul',category:'Music',tag:'Singing & Chill Vibes 🎧',avatarUrl:OB_MEDIA[2],coverUrl:OB_MEDIA[2],ratePerMin:40,online:true,verified:true,availableForCall:true},
+    {id:'ishaan',name:'Jaxson Ray',category:'Gaming',tag:'Ranked FPS & Freestyle 🎯',avatarUrl:OB_MEDIA[1],coverUrl:OB_MEDIA[1],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-jaxson',title:'Ranked FPS & Freestyle 🎯',kind:'video',viewers:890}},
+    {id:'noor',name:'Elena Rostova',category:'Talk',tag:'Late Night Deep Talks 💬',avatarUrl:OB_MEDIA[0],coverUrl:OB_MEDIA[0],ratePerMin:60,online:true,verified:false,availableForCall:true},
+    {id:'kabir',name:'Kobe Vance',category:'Music',tag:'Guitar Jam Session 🎶🎸',avatarUrl:OB_MEDIA[1],coverUrl:OB_MEDIA[1],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-kobe',title:'Guitar Jam Session 🎶🎸',kind:'video',viewers:2100}}
+  ];
+  Home.hosts=demo.map(homeRemember);Home.featured=Home.hosts[0];Home.stage=[Home.hosts[0],Home.hosts[2],Home.hosts[1],Home.hosts[4]];Home.hosts=[Home.hosts[1],Home.hosts[2],Home.hosts[3],Home.hosts[4],Home.hosts[0]];
+  Home.total=5;Home.broadcasterCount=1400;Home.availableCount=1420;S.bal=1250;
+  Home.bonus={id:'demo-bonus',title:'Special Broadcaster Bonus',description:'Go live and share your first moment',rewardCoins:200,progress:0,target:1,claimed:false};
+  Home.notifications=[{id:'demo-welcome',title:'Welcome to Zimi Live',body:'Find your people. Make your first connection.',createdAt:new Date().toISOString(),read:false}];Home.unreadCount=1;
+  Home.gifts=[{id:'demo-rose',name:'Rose',emoji:'🌹',coins:99},{id:'demo-heart',name:'Love',emoji:'💗',coins:199},{id:'demo-party',name:'Party',emoji:'🎉',coins:499},{id:'demo-crown',name:'Crown',emoji:'👑',coins:999}];
+  Home.packs=[{id:'demo-small',name:'A little love',coins:200,pricePaise:9900},{id:'demo-medium',name:'Fan favourite',coins:625,pricePaise:24900},{id:'demo-large',name:'Make it special',coins:1250,pricePaise:49900}];Home.paymentsAvailable=true;
+}
+
+/* Real media stays in the WebView. The authenticated native bridge carries
+   signaling only; camera/microphone capture begins from an explicit action. */
+(function () {
+  'use strict';
+  let local = null, remote = null, active = null, capture = null, pendingCall = null;
+  let generation = 0, configRequest = null;
+  const peers = new Map(), earlySignals = [];
+  const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+
+  function status(message, error) {
+    if (typeof Home !== 'undefined') Home.mediaStatus = message;
+    if (typeof S !== 'undefined') S.mediaStatus = message;
+    document.querySelectorAll('.zh-media-status, [data-zimi-media-status]').forEach(el => { el.textContent = message; });
+    if (error && typeof appNotice === 'function') appNotice(message);
+  }
+  function explain(error) {
+    const name = error && error.name;
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') return 'Camera or microphone access was denied. Allow access in your device settings, then try again.';
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') return 'A camera or microphone could not be found on this device.';
+    if (name === 'NotReadableError' || name === 'TrackStartError') return 'Your camera or microphone is in use by another app. Close it and try again.';
+    if (name === 'OverconstrainedError') return 'This device cannot use the requested camera. Try another device or a voice call.';
+    return error && error.message ? error.message : 'The media connection could not be started. Please try again.';
+  }
+  function stopTracks(stream) {
+    if (stream) stream.getTracks().forEach(track => { track.onended = null; track.stop(); });
+  }
+  function closePeer(id) {
+    const peer = peers.get(id);
+    if (!peer) return;
+    peers.delete(id);
+    peer.pc.onicecandidate = null;
+    peer.pc.ontrack = null;
+    peer.pc.onconnectionstatechange = null;
+    peer.pc.close();
+  }
+  function clearPeers() {
+    [...peers.keys()].forEach(closePeer);
+    stopTracks(remote);
+    remote = null;
+  }
+  function stop() {
+    generation++;
+    active = null;
+    pendingCall = null;
+    capture = null;
+    earlySignals.length = 0;
+    clearPeers();
+    stopTracks(local);
+    local = null;
+    if (configRequest) {
+      const pending = configRequest;
+      configRequest = null;
+      clearTimeout(pending.timer);
+      pending.reject(new Error('Media connection cancelled.'));
+    }
+    document.querySelectorAll('video[data-zimi-local], video[data-zimi-remote], audio[data-zimi-remote]').forEach(el => {
+      el.pause();
+      el.srcObject = null;
+    });
+  }
+  function attach() {
+    if (local) {
+      const muted = typeof S !== 'undefined' && S.mic === 0;
+      const videoOn = active && active.kind === 'call'
+        ? !active.voice && (typeof camOn !== 'function' || !!camOn())
+        : true;
+      local.getAudioTracks().forEach(track => { track.enabled = !muted; });
+      local.getVideoTracks().forEach(track => { track.enabled = videoOn; });
+    }
+    [['local', local], ['remote', remote]].forEach(([kind, stream]) => {
+      document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
+        if (el.srcObject === stream) return;
+        el.srcObject = stream;
+        el.muted = kind === 'local';
+        el.playsInline = true;
+        el.autoplay = true;
+        if (!stream) return;
+        const playing = el.play();
+        if (playing && playing.catch) playing.catch(() => {
+          if (el.srcObject !== stream || kind === 'local') return;
+          el.controls = true;
+          status('Tap the video to start playback and hear audio.');
+        });
+      });
+    });
+  }
+  async function prepare(video) {
+    if (typeof DEMO !== 'undefined' && DEMO) throw new Error('Camera and microphone are available in the connected app.');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Camera and microphone access is unavailable. Open the app on a supported device with camera permissions enabled.');
+    if (typeof RTCPeerConnection === 'undefined') throw new Error('Live video is not supported by this device. Please update your app or system WebView.');
+    if (capture) {
+      const requestedAt = generation;
+      try { await capture; } catch (error) { throw new Error(explain(error)); }
+      if (requestedAt !== generation) throw new Error('Camera request cancelled. Start again when you are ready.');
+    }
+    if (local && local.getAudioTracks().some(track => track.readyState === 'live') && (!video || local.getVideoTracks().some(track => track.readyState === 'live'))) {
+      if (!video) local.getVideoTracks().forEach(track => { track.stop(); local.removeTrack(track); });
+      attach();
+      return local;
+    }
+    stopTracks(local);
+    local = null;
+    const version = generation;
+    const pending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } } : false });
+    capture = pending;
+    try {
+      const stream = await pending;
+      if (version !== generation) {
+        stopTracks(stream);
+        throw new Error('Camera request cancelled. Start again when you are ready.');
+      }
+      local = stream;
+      local.getTracks().forEach(track => {
+        track.onended = () => { if (local === stream) status('Camera or microphone access ended. Leave and reconnect to continue.', true); };
+      });
+      attach();
+      return stream;
+    } catch (error) {
+      throw new Error(explain(error));
+    } finally {
+      if (capture === pending) capture = null;
+    }
+  }
+  function iceConfig() {
+    if (configRequest) return configRequest.promise;
+    let resolve, reject;
+    const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+    const pending = { promise, resolve, reject, timer: null };
+    pending.timer = setTimeout(() => {
+      if (configRequest !== pending) return;
+      configRequest = null;
+      reject(new Error('Could not load the video connection settings. Check your connection and try again.'));
+    }, 15000);
+    configRequest = pending;
+    Native.send('rtc.config');
+    return promise;
+  }
+  Native.on('rtc.config', data => {
+    if (!configRequest) return;
+    const pending = configRequest;
+    configRequest = null;
+    clearTimeout(pending.timer);
+    if (!Array.isArray(data.iceServers)) return pending.reject(new Error('The server returned invalid video connection settings.'));
+    pending.resolve({ iceServers: data.iceServers });
+  });
+  function sendSignal(session, to, signal) {
+    if (active !== session) return;
+    Native.send(session.kind === 'stream' ? 'stream.signal' : 'rtc.signal', session.kind === 'stream'
+      ? { streamId: session.id, to, ...signal }
+      : { callId: session.id, ...signal });
+  }
+  function fail(session, error) {
+    if (active !== session) return;
+    const message = explain(error);
+    Native.send(session.kind === 'call' ? 'call.end' : session.hosting ? 'stream.end' : 'stream.leave', session.kind === 'call' ? { callId: session.id, reason: 'media_failed' } : { streamId: session.id });
+    stop();
+    status(message, true);
+  }
+  function newPeer(session, id, offerer) {
+    if (peers.has(id)) return peers.get(id);
+    const pc = new RTCPeerConnection(session.config);
+    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer };
+    peers.set(id, peer);
+    if ((session.kind === 'call' || session.hosting) && local) local.getTracks().forEach(track => pc.addTrack(track, local));
+    pc.onicecandidate = event => {
+      if (event.candidate) {
+        const candidate = event.candidate.toJSON ? event.candidate.toJSON() : event.candidate;
+        if (peer.candidates.length < 100) peer.candidates.push(candidate);
+        sendSignal(session, id, { candidate });
+      }
+    };
+    pc.ontrack = event => {
+      if (active !== session || (session.kind === 'stream' && session.hosting)) return;
+      if (event.streams && event.streams[0]) remote = event.streams[0];
+      else {
+        if (!remote) remote = new MediaStream();
+        if (!remote.getTracks().some(track => track.id === event.track.id)) remote.addTrack(event.track);
+      }
+      attach();
+    };
+    pc.onconnectionstatechange = () => {
+      if (active !== session) return;
+      if (pc.connectionState === 'connected') status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
+      if (pc.connectionState === 'disconnected') status('Connection interrupted. Reconnecting…');
+      if (pc.connectionState === 'failed') {
+        if (session.kind === 'stream' && session.hosting) { closePeer(id); status('One viewer disconnected. Your broadcast is still live.'); }
+        else fail(session, new Error('The media connection failed. Please reconnect.'));
+      }
+    };
+    return peer;
+  }
+  function enqueue(session, id, work) {
+    const peer = peers.get(id);
+    if (!peer) return;
+    peer.queue = peer.queue.then(async () => {
+      if (active === session && peers.get(id) === peer) await work(peer);
+    }).catch(error => {
+      if (active !== session || peers.get(id) !== peer) return;
+      if (session.kind === 'stream' && session.hosting) { closePeer(id); status('Could not connect one viewer. They can rejoin the live session.'); }
+      else fail(session, error);
+    });
+  }
+  function offer(session, id) {
+    const existing = peers.get(id);
+    if (existing) {
+      // A viewer may announce readiness after our first offer was sent. Replay
+      // the outstanding negotiation rather than abandoning that viewer.
+      if (existing.pc.connectionState !== 'connected') enqueue(session, id, async peer => {
+        const description = peer.pc.localDescription;
+        if (description && description.type === 'offer') {
+          sendSignal(session, id, { description: { type: description.type, sdp: description.sdp } });
+          peer.candidates.forEach(candidate => sendSignal(session, id, { candidate }));
+        }
+      });
+      return;
+    }
+    newPeer(session, id, true);
+    enqueue(session, id, async peer => {
+      const description = await peer.pc.createOffer();
+      if (active !== session) return;
+      await peer.pc.setLocalDescription(description);
+      sendSignal(session, id, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
+    });
+  }
+  function receive(kind, data) {
+    const id = kind === 'stream' ? data.streamId : data.callId;
+    if (!active || active.kind !== kind || active.id !== id) {
+      const expectedStream = kind === 'stream' && typeof Home !== 'undefined' && Home.stream?.id === id && typeof S !== 'undefined' && S.v === 'live';
+      if (((kind === 'call' && local) || expectedStream) && earlySignals.length < 100) earlySignals.push({ kind, data });
+      return;
+    }
+    const session = active;
+    if (!session.ready) { if (session.signals.length < 100) session.signals.push(data); return; }
+    const from = data.from;
+    if (!from || (session.kind === 'call' && session.peerId && from !== session.peerId) || (session.kind === 'stream' && !session.hosting && from !== session.hostId)) return;
+    const existing = peers.get(from);
+    if (!existing) {
+      if (session.hosting || session.initiator) return;
+      newPeer(session, from, false);
+    }
+    enqueue(session, from, async peer => {
+      if (data.description) {
+        const description = data.description;
+        if (description.type !== (peer.offerer ? 'answer' : 'offer')) return;
+        if (peer.offerer && peer.pc.signalingState !== 'have-local-offer') return;
+        await peer.pc.setRemoteDescription(description);
+        while (peer.pending.length) await peer.pc.addIceCandidate(peer.pending.shift());
+        if (description.type === 'offer') {
+          const answer = await peer.pc.createAnswer();
+          await peer.pc.setLocalDescription(answer);
+          sendSignal(session, from, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
+        }
+      }
+      if (data.candidate) {
+        if (peer.pc.remoteDescription) await peer.pc.addIceCandidate(data.candidate);
+        else if (peer.pending.length < 100) peer.pending.push(data.candidate);
+      }
+    });
+  }
+  async function initialize(session) {
+    session.config = await iceConfig();
+    if (active !== session) return false;
+    session.ready = true;
+    attach();
+    session.signals.splice(0).forEach(data => receive(session.kind, data));
+    return true;
+  }
+  async function openStream(stream, hosting) {
+    if (typeof DEMO !== 'undefined' && DEMO) return;
+    if (active && active.kind === 'stream' && active.id === stream.id) { attach(); return; }
+    clearPeers();
+    if (!hosting) { stopTracks(local); local = null; }
+    const session = { kind: 'stream', id: stream.id, hostId: stream.hostId || stream.host?.id, hosting: !!hosting, ready: false, signals: [], waitingPeers: new Set() };
+    active = session;
+    earlySignals.splice(0).forEach(signal => { if (signal.kind === 'stream' && signal.data.streamId === session.id) session.signals.push(signal.data); });
+    try {
+      if (typeof RTCPeerConnection === 'undefined') throw new Error('Live video is not supported by this device. Update your app or system WebView.');
+      if (hosting && !local) throw new Error('Camera access is needed to broadcast. Return to Go Live and allow access.');
+      if (!await initialize(session)) return;
+      session.waitingPeers.forEach(id => offer(session, id));
+      session.waitingPeers.clear();
+      status(hosting ? 'You are live. Waiting for viewers…' : 'Connecting to the live creator…');
+      Native.send('stream.ready', { streamId: session.id });
+    } catch (error) { fail(session, error); }
+  }
+  Native.on('stream.peer', data => {
+    const session = active;
+    if (!session || session.kind !== 'stream' || !session.hosting || session.id !== data.streamId || !data.userId) return;
+    if (!session.ready) session.waitingPeers.add(data.userId);
+    else offer(session, data.userId);
+  });
+  Native.on('stream.peerLeft', data => {
+    if (active && active.kind === 'stream' && active.id === data.streamId) {
+      active.waitingPeers.delete(data.userId);
+      closePeer(data.userId);
+    }
+  });
+  Native.on('stream.signal', data => receive('stream', data));
+  Native.on('rtc.signal', data => receive('call', data));
+  Native.on('call.created', data => { if (!active && local) pendingCall = data.callId; });
+  Native.on('call.incoming', data => { if (!active) pendingCall = data.callId; });
+  Native.on('call.connected', async data => {
+    if (typeof DEMO !== 'undefined' && DEMO) return;
+    if (active && active.kind === 'call' && active.id === data.callId) return;
+    clearPeers();
+    const session = { kind: 'call', id: data.callId, peerId: data.peerId, initiator: !!data.initiator, voice: !!data.voice, ready: false, signals: [] };
+    pendingCall = null;
+    active = session;
+    try {
+      if (!local) throw new Error('Camera or microphone access is needed. End the call and allow access when starting again.');
+      if (!await initialize(session)) return;
+      if (session.initiator) {
+        if (!session.peerId) throw new Error('The call participant could not be identified. Please try again.');
+        offer(session, session.peerId);
+      }
+      earlySignals.splice(0).forEach(signal => receive(signal.kind, signal.data));
+      status('Connecting your call…');
+    } catch (error) { fail(session, error); }
+  });
+  Native.on('call.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
+  Native.on('call.failed', () => { if (!active || active.kind === 'call') stop(); });
+  ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));
+  ['session.none', 'session.expired'].forEach(type => Native.on(type, stop));
+  Native.on('realtime.status', data => {
+    if (!active || active.kind !== 'stream') return;
+    if (!data.connected) active.reconnecting = true;
+    else if (active.reconnecting && active.ready) {
+      active.reconnecting = false;
+      // Keep any healthy media path through a short signaling outage. The
+      // server restores room membership and replays outstanding peer offers.
+      Native.send('stream.ready', { streamId: active.id });
+    }
+  });
+  Native.on('operation.error', data => {
+    if (data.action === 'rtc.config' && configRequest) {
+      const pending = configRequest;
+      configRequest = null;
+      clearTimeout(pending.timer);
+      pending.reject(new Error(data.message || 'Could not load video connection settings.'));
+    } else if (data.action === 'stream.start') { stop(); status(data.message || 'The broadcast could not be started.', true); }
+    else if (active && ['rtc.signal', 'stream.signal', 'stream.ready'].includes(data.action)) {
+      if (active.kind === 'call' || data.action === 'stream.ready') fail(active, new Error(data.message || 'The media connection was interrupted.'));
+      else status(data.message || 'The media connection was interrupted.', true);
+    }
+  });
+  document.addEventListener('aurora:navigate', () => {
+    const view = typeof S !== 'undefined' ? S.v : '';
+    if (!mediaViews.has(view) || (active && active.kind === 'stream' && view !== 'live') || (active && active.kind === 'call' && !['call', 'hcall', 'voice', 'switch'].includes(view))) stop();
+    else attach();
+  });
+  window.addEventListener('pagehide', stop);
+  const screen = document.getElementById('screen');
+  if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
+  window.ZimiMedia = { prepare, attach, openStream, stop };
+})();
+
 r();
+Native.send('ready',{demo:DEMO});
 </script>
 </body>
 </html>

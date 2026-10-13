@@ -64,7 +64,60 @@ export interface Host {
   top?: boolean;
   isNew?: boolean;
   following?: boolean;
+  about?: string;
+  verified?: boolean;
+  availableForCall?: boolean;
+  stream?: HomeStream | null;
 }
+
+export interface HomeStream {
+  id: string;
+  hostId: string;
+  host?: Host;
+  title: string;
+  category: string;
+  kind: "video" | "audio";
+  viewers: number;
+  createdAt: string;
+  status: string;
+}
+export interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  metric: string;
+  target: number;
+  progress: number;
+  rewardCoins: number;
+  claimed: boolean;
+  endsAt: string;
+}
+export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant"; page?: number; }
+export interface HomeData {
+  hosts: Host[];
+  stage: Host[];
+  featured: Host | null;
+  total: number;
+  page: number;
+  limit: number;
+  categories: string[];
+  broadcasterCount: number;
+  availableCount: number;
+  speedMatchEnabled: boolean;
+  bonus: Mission | null;
+  unreadCount: number;
+}
+export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; }
+export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
+export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
+export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
+export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
+export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; }
+export interface RtcPayload {
+  description?: { type: "offer" | "answer"; sdp: string };
+  candidate?: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string };
+}
+export interface RtcConfig { iceServers: { urls: string[]; username?: string; credential?: string }[]; }
 
 /* Anyone on the other end of a call, chat or missed call. */
 export interface Person {

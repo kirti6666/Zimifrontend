@@ -14,12 +14,14 @@
           "NSAllowsArbitraryLoads": false,
           "NSAllowsLocalNetworking": false
         },
-        "NSCameraUsageDescription": "Zimi Live uses your camera when you choose to take a profile photo.",
+        "NSCameraUsageDescription": "Zimi Live uses your camera for video calls, live broadcasts, and profile photos when you choose to use these features.",
+        "NSMicrophoneUsageDescription": "Zimi Live uses your microphone when you start or join an audio or video call, or host a live broadcast.",
         "NSPhotoLibraryUsageDescription": "Zimi Live lets you choose photos from your library for your profile."
       }
     },
     "android": {
       "package": "com.aurora.liveapp",
+      "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize"
     },

@@ -435,6 +435,13 @@
 }
 .ob-recovery { display: flex; align-items: center; min-height: 85dvh; }
 .ob-recovery .ob-main { width: 100%; max-width: 480px; margin: auto; }
+.ob-session-skeleton { width: 100%; }
+.ob-session-stories { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+.ob-session-stories span { display: block; flex: 1; max-width: 58px; aspect-ratio: 1; border-radius: 50%; background: var(--ob-raised); }
+.ob-session-card { display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; min-height: 190px; padding: 20px; border-radius: 20px; background: var(--ob-surface); }
+.ob-session-line { display: block; width: 72%; height: 16px; border-radius: 6px; background: var(--ob-raised); }
+.ob-session-line.short { width: 46%; height: 10px; }
+.ob-session-action { display: block; height: 38px; margin-top: 4px; border-radius: 12px; background: var(--ob-raised); }
 .ob-session-notice { padding: 12px 16px; border: 1px solid #ed49934a; border-radius: 16px; background: #ed499318; color: #f4cddd; line-height: 1.5; font-size: 13px; }
 .app-network-note { display: flex; gap: 12px; align-items: center; padding: 12px 16px; margin: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.5; }
 .app-network-note span { flex: 1; overflow-wrap: anywhere; }

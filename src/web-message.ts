@@ -10,6 +10,17 @@ const amount = (value: unknown) => typeof value === "number" && Number.isFinite(
 const identifier = (value: unknown) => text(value) && /^[a-zA-Z0-9_-]+$/.test(value as string);
 const strings = (value: unknown, max: number) => Array.isArray(value) && value.length <= max && value.every(item => text(item, 100));
 const photoData = (value: unknown) => typeof value === "string" && value.length <= 2 * 1024 * 1024 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value);
+const category = (value: unknown) => ["Dance", "Gaming", "Music", "Talk", "Astrology", "Fitness", "Comedy"].includes(String(value));
+const rtcSignal = (data: Record<string, unknown>) => {
+  if (Boolean(data.description) === Boolean(data.candidate)) return false;
+  if (data.description) return record(data.description) && ["offer", "answer"].includes(String(data.description.type)) && text(data.description.sdp, 60000);
+  const candidate = data.candidate;
+  return record(candidate) && typeof candidate.candidate === "string" && candidate.candidate.length <= 4096 &&
+    (candidate.sdpMid == null || text(candidate.sdpMid, 256)) &&
+    (candidate.sdpMLineIndex == null || (Number.isInteger(candidate.sdpMLineIndex) && Number(candidate.sdpMLineIndex) >= 0 && Number(candidate.sdpMLineIndex) <= 100)) &&
+    optionalText(candidate.usernameFragment, 256);
+};
+const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
 
 /** WebView messages are untrusted input, even when TypeScript callers are typed. */
 export function parseWebMessage(raw: string): WebMessage | null {
@@ -24,6 +35,18 @@ export function parseWebMessage(raw: string): WebMessage | null {
   switch (message.type) {
     case "ready": valid = boolean(d.demo); break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
+    case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
+    case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
+    case "notifications.load": case "catalog.load": case "rtc.config": valid = true; break;
+    case "notifications.read": valid = Array.isArray(d.ids) && d.ids.length > 0 && d.ids.length <= 100 && d.ids.every(identifier); break;
+    case "call.match": valid = d.category === undefined || category(d.category); break;
+    case "rtc.signal": valid = identifier(d.callId) && rtcSignal(d); break;
+    case "stream.signal": valid = identifier(d.streamId) && identifier(d.to) && rtcSignal(d); break;
+    case "stream.start": valid = text(d.title, 120) && category(d.category) && (d.kind === undefined || ["video", "audio"].includes(String(d.kind))); break;
+    case "stream.join": case "stream.leave": case "stream.end": case "stream.ready": valid = identifier(d.streamId); break;
+    case "stream.message": valid = identifier(d.streamId) && text(d.text, 500); break;
+    case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey); break;
+    case "wallet.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === undefined || d.canvas === "" || (typeof d.canvas === "string" && /^#[0-9a-f]{6}$/i.test(d.canvas))); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "auth.sendOtp": valid = typeof d.phone === "string" && /^\+91[6-9]\d{9}$/.test(d.phone) && role(d.role); break;
@@ -45,7 +68,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "follow.set": valid = identifier(d.id) && boolean(d.on); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)); break;
-    case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && amount(d.coins) && boolean(d.inCall); break;
+    case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && amount(d.coins) && boolean(d.inCall) && (d.streamId === undefined || identifier(d.streamId)) && (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)); break;
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;
     case "call.accept": case "call.decline": valid = identifier(d.callId); break;
     case "call.end": valid = (d.callId === undefined || identifier(d.callId)) && optionalText(d.reason, 300); break;

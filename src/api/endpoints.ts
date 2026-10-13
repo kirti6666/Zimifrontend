@@ -1,8 +1,8 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, callsFrom, chatsFrom, hostFrom, idOf, items, messagesFrom, missedFrom, postFrom, record, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, purchaseFrom, record, streamChatFrom, streamFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, Role, Session, Verification, Wallet } from "./types";
+import type { Account, HomeQuery, Role, RtcConfig, Session, Verification, Wallet } from "./types";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -21,6 +21,7 @@ function boundedStrings(value: unknown, label: string, min: number, max: number)
   return [...new Set(value.map(item => (item as string).trim()))];
 }
 const unavailable = async <T>(message: string): Promise<T> => { throw new ApiError(message, 501); };
+const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
 
 export const api = {
   async sendOtp(phone: string, _role?: Role): Promise<{ expiresIn: number; resendAfter: number }> {
@@ -116,8 +117,53 @@ export const api = {
     const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages });
     return { status: verificationOf(application.status) };
   },
-  setPresence: (_online: boolean, _visible: boolean) => unavailable<void>("Going live is not connected in this build yet."),
+  async setPresence(online: boolean, visible: boolean) { await request("PATCH", "/safety", { allowRequests: online, showActivity: online, discoverable: visible }); return { online, visible }; },
+  async presence() { const data = record(await request("GET", "/safety")); return { online: data.allowRequests !== false && data.showActivity !== false, visible: data.discoverable !== false }; },
   saveSettings: (_settings: Record<string, unknown>) => unavailable<void>("This setting is not available yet."),
+  async home(query: HomeQuery = {}) { return homeFrom(await request("GET", `/home?${queryString({ ...query, limit: 20 })}`)); },
+  async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
+  async notifications() { return notificationsFrom(await request("GET", "/notifications?limit=100")); },
+  async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
+  async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
+  rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
+  async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
+  async streamMessages(streamId: string) { return items(await request("GET", `/streams/${encodeURIComponent(streamId)}/messages?limit=50`)).map(streamChatFrom).reverse(); },
+  async startStream(input: { title: string; category: string; kind?: "video" | "audio" }) {
+    const version = getSessionVersion();
+    const stream = streamFrom(await request("POST", "/streams", input));
+    try {
+      ensureSession(version);
+      await request("POST", `/streams/${encodeURIComponent(stream.id)}/join`);
+      return await api.stream(stream.id);
+    } catch (error) {
+      if (getSessionVersion() === version) await api.endStream(stream.id).catch(() => {});
+      throw error;
+    }
+  },
+  async joinStream(streamId: string) {
+    const version = getSessionVersion();
+    try { await request("POST", `/streams/${encodeURIComponent(streamId)}/join`); ensureSession(version); return await api.stream(streamId); }
+    catch (error) { if (getSessionVersion() === version) await api.leaveStream(streamId).catch(() => {}); throw error; }
+  },
+  leaveStream: (streamId: string) => request<void>("POST", `/streams/${encodeURIComponent(streamId)}/leave`),
+  async endStream(streamId: string): Promise<void> {
+    const version = getSessionVersion();
+    try { await request<void>("PUT", `/streams/${encodeURIComponent(streamId)}/end`); }
+    catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 409) throw error;
+      ensureSession(version);
+      // A lost success response may leave the host retrying an already ended room.
+      // Confirm ownership and terminal status; permission errors still propagate.
+      const stream = await api.stream(streamId);
+      if (stream.status === "ended" || stream.status === "terminated") {
+        const userId = await selfId();
+        ensureSession(version);
+        if (stream.hostId === userId) return;
+      }
+      throw error;
+    }
+  },
+  async sendStreamMessage(streamId: string, text: string) { return streamChatFrom(await request("POST", `/streams/${encodeURIComponent(streamId)}/messages`, { text })); },
   async hosts() { return { hosts: items(await request("GET", "/hosts?limit=100")).map(hostFrom) }; },
   async chats() { const id = await selfId(); return chatsFrom(await request("GET", "/chats"), id); },
   async thread(withId: string) { const id = await selfId(); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}`), id); },
@@ -126,13 +172,19 @@ export const api = {
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
-  acceptCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/accept`),
+  async acceptCall(callId: string) { const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)); return { peerId: idOf(call.callerId), voice: call.kind === "audio" }; },
   declineCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
   endCall: (callId: string, _reason?: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
-  sendGift: (_to: string, _gift: string, _coins: number, _callId?: string) => unavailable<Wallet>("Gifts are not connected to the server catalog in this build yet. No coins were spent."),
+  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<Wallet> {
+    if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
+    await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });
+    return api.wallet();
+  },
   sendMessage: (to: string, text: string, _callId?: string) => request<void>("POST", `/chats/${encodeURIComponent(to)}`, { text }),
   follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
   recharge: (_purchase: { pack: number; coins: number; price: number; method: string }) => unavailable<Wallet>("Secure checkout is not available in this build yet. No payment was taken."),
+  async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
+  async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
   requestPayout: (_coins: number, _upi: string) => unavailable<Wallet>("Withdrawals require the earnings balance in your account currency. This withdrawal screen is not available yet."),
-  claimAward: (_task: string) => unavailable<Wallet>("This award is not connected to an available server mission yet."),
+  async claimAward(task: string): Promise<Wallet> { await request("POST", `/missions/${encodeURIComponent(task)}/claim`); return api.wallet(); },
 };

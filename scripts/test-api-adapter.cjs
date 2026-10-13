@@ -199,7 +199,58 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   finished();
   reset();
   await assert.rejects(api.recharge({}), /checkout/); await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
-  assert.equal(requests.length, 0, 'Unimplemented money flows cannot debit or fake success');
+  assert.equal(requests.length, 0, 'Legacy money flows cannot debit or fake success');
+
+  const creator = { _id: 'creator-id', name: 'Asha Live', avatar: { url: 'https://cdn.example.test/host.jpg' }, isVerifiedHost: true, isOnline: true, availableForCall: true, callRateCoinsPerMinute: 0,
+    stream: { _id: 'stream-id', title: 'Acoustic night', category: 'Music', kind: 'video', viewers: 12 } };
+  expect('GET', '/home?category=Music&page=2&limit=20', { items: [creator], stage: [creator], featured: creator, total: 21, page: 2, limit: 20, categories: ['Music'], broadcasterCount: 5, availableCount: 3, speedMatchEnabled: true, unreadNotifications: 4,
+    bonus: { _id: 'mission-id', title: 'Creator bonus', target: 10, progress: 5, rewardCoins: 200, claimed: false } });
+  const home = await api.home({ category: 'Music', page: 2 });
+  assert.equal(home.hosts[0].ratePerMin, 0, 'Free calls must not invent a per-minute charge');
+  assert.equal(home.hosts[0].stream.hostId, creator._id); assert.equal(home.hosts[0].verified, true);
+  assert.equal(home.availableCount, 3); assert.equal(home.bonus.progress, 5); assert.equal(home.unreadCount, 4);
+  expect('GET', '/home/match?category=Music', { host: creator });
+  assert.equal((await api.matchHost('Music')).host.id, creator._id);
+  expect('PATCH', '/safety', {}, body => assert.deepEqual(plain(body), { allowRequests: false, showActivity: false, discoverable: true }));
+  assert.deepEqual(plain(await api.setPresence(false, true)), { online: false, visible: true });
+  expect('POST', '/notifications/read', {}, body => assert.deepEqual(plain(body), { ids: ['note-id'] }));
+  expect('GET', '/notifications?limit=100', { items: [{ _id: 'note-id', title: 'From admin', body: 'Event tonight', read: true }] });
+  assert.equal((await api.readNotifications(['note-id'])).items[0].read, true);
+  const giftId = '0123456789abcdef01234567', packId = '1123456789abcdef01234567';
+  expect('GET', '/gifts?limit=100', { items: [{ _id: giftId, name: 'Rose', emoji: 'rose', coins: 25 }] });
+  expect('GET', '/coins/packs', { items: [{ _id: packId, name: 'Starter', coins: 100, pricePaise: 9900 }], paymentsAvailable: true });
+  const catalog = await api.catalog(); assert.equal(catalog.gifts[0].id, giftId); assert.equal(catalog.packs[0].pricePaise, 9900); assert.equal(catalog.paymentsAvailable, true);
+  expect('POST', '/gifts/send', {}, body => { assert.deepEqual(plain(body), { recipientId: 'creator-id', giftId, quantity: 1, streamId: 'stream-id', idempotencyKey: 'gift-attempt-1' }); assert.equal(body.coins, undefined, 'Price must come from the server catalog'); });
+  expect('GET', '/wallet', { coins: 75, earningsPaise: 0 });
+  assert.equal((await api.sendGift('creator-id', giftId, 1, undefined, 'stream-id', 'gift-attempt-1')).coins, 75);
+  expect('POST', '/missions/mission-id/claim', {}); expect('GET', '/wallet', { coins: 275, earningsPaise: 0 });
+  assert.equal((await api.claimAward('mission-id')).coins, 275);
+  expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'pending', paymentUrl: 'https://checkout.example.test/pay' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
+  assert.equal((await api.checkout(packId, 'payment-attempt-1')).status, 'PENDING');
+  expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'paid' });
+  assert.equal((await api.verifyPurchase('zimi_order')).status, 'SUCCESS');
+  assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);
+  expect('POST', '/streams/stream-id/join', { count: 13 });
+  expect('GET', '/streams/stream-id', { _id: 'stream-id', hostId: creator._id, host: creator, title: 'Acoustic night', viewers: 13 });
+  assert.equal((await api.joinStream('stream-id')).host.name, 'Asha Live');
+  for (const status of ['ended', 'terminated']) {
+    expect('PUT', '/streams/owned-stream/end', undefined, undefined, { error: new ApiError('Stream is not live or you are not its host', 409) });
+    expect('GET', '/streams/owned-stream', { _id: 'owned-stream', hostId: 'member-id', status });
+    await api.endStream('owned-stream');
+  }
+  const stillLive = new ApiError('Stream changed. Retry.', 409);
+  expect('PUT', '/streams/live-stream/end', undefined, undefined, { error: stillLive });
+  expect('GET', '/streams/live-stream', { _id: 'live-stream', hostId: 'member-id', status: 'live' });
+  await assert.rejects(api.endStream('live-stream'), error => error === stillLive);
+  const notOwner = new ApiError('Stream is not live or you are not its host', 409);
+  expect('PUT', '/streams/other-stream/end', undefined, undefined, { error: notOwner });
+  expect('GET', '/streams/other-stream', { _id: 'other-stream', hostId: 'someone-else', status: 'ended' });
+  await assert.rejects(api.endStream('other-stream'), error => error === notOwner);
+  const denied = new ApiError('You cannot access this stream', 403);
+  expect('PUT', '/streams/blocked-stream/end', undefined, undefined, { error: notOwner });
+  expect('GET', '/streams/blocked-stream', undefined, undefined, { error: denied });
+  await assert.rejects(api.endStream('blocked-stream'), error => error === denied);
+  finished();
 
   const { connectRealtime } = load('src/api/realtime.ts');
   const events = [], stop = connectRealtime(token, event => events.push(event), 'member-id');
@@ -214,5 +265,5 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   token = 'rotated-token'; tokenListeners.forEach(listener => listener()); await Promise.resolve();
   assert.equal(socket.connects, 2);
   stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 3);
-  console.log('API adapter checks passed: auth contracts, role authority, R2 avatar/cover/post uploads, metadata validation, session races, lists, wallet units, unsupported payments, and Socket.IO.');
+  console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

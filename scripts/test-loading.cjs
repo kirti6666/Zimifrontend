@@ -1,0 +1,251 @@
+/* Browser contracts for real request-driven skeletons. No account or network service is used. */
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const os = require('node:os');
+const { pathToFileURL } = require('node:url');
+const { chromium } = require('playwright');
+const root = path.resolve(__dirname, '..');
+
+const hostId = '507f1f77bcf86cd799439011';
+const secondId = '507f1f77bcf86cd799439021';
+const host = { id: hostId, name: 'Mira North', category: 'Music', online: true, verified: true, availableForCall: true, ratePerMin: 0,
+  stream: { id: '507f1f77bcf86cd799439012', hostId, title: 'Evening acoustic set', category: 'Music', kind: 'video', viewers: 12, status: 'live' } };
+const second = { ...host, id: secondId, name: 'Asha Sen', stream: null };
+const feed = (hosts = [host], extra = {}) => ({ hosts, stage: hosts, featured: hosts[0] || null, total: hosts.length, page: 1, limit: 20,
+  categories: ['Music', 'Talk'], broadcasterCount: hosts.filter(item => item.stream).length, availableCount: hosts.length, speedMatchEnabled: true, bonus: null, unreadCount: 0, ...extra });
+const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji: '🌹', coins: 25, mediaUrl: '' }],
+  packs: [{ id: '507f1f77bcf86cd799439015', name: 'Starter', coins: 200, pricePaise: 9900 }], paymentsAvailable: true };
+
+(async () => {
+  const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+  page.setDefaultTimeout(7000);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  // Native.receive logs caught handler failures, which do not trigger pageerror.
+  page.on('console', message => {
+    if (message.type() === 'error' && !/^Failed to load resource: net::ERR_FAILED/.test(message.text())) errors.push(message.text());
+  });
+  await page.route('https://**/*', route => route.abort());
+  await page.addInitScript(() => {
+    window.__sent = [];
+    window.ReactNativeWebView = { postMessage: raw => window.__sent.push(JSON.parse(raw)) };
+  });
+  const receive = (type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
+  const loading = (resource, value, extra = {}) => receive('data.loading', { resource, loading: value, ...extra });
+  const result = async (event, data, resource, extra = {}) => {
+    await receive(event, data);
+    await loading(resource, false, extra);
+  };
+  const status = label => page.getByRole('status', { name: label, exact: true });
+  const visible = async label => {
+    await status(label).waitFor({ state: 'visible' });
+    assert.equal(await status(label).getAttribute('aria-busy'), 'true', `${label} communicates busy state`);
+  };
+  const gone = async label => assert.equal(await status(label).count(), 0, `${label} settles after its request`);
+  const navigate = view => page.evaluate(value => go(value), view);
+  const lastSent = type => page.evaluate(value => window.__sent.filter(message => message.type === value).at(-1)?.data, type);
+  try {
+    await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
+    assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
+    for (const label of ['Loading live creators', 'Loading featured creator', 'Loading video matches', 'Loading creators']) await visible(label);
+    assert.equal(await page.locator('.zh-tile').count(), 0, 'Initial content has no invented creator cards');
+    assert.equal(await page.locator('.zh-empty,.zh-stage-empty').count(), 0, 'Pending is distinct from an empty feed');
+    assert.equal(await page.locator('.zh-balance').innerText(), '', 'An unknown balance must not flash a fabricated zero');
+    assert.equal(await page.getByText('0 Available', { exact: true }).count(), 0);
+    assert.equal(await page.getByText('0 BROADCASTERS', { exact: true }).count(), 0);
+    const animations = await page.locator('.zh-skeleton-shape').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).animationName));
+    assert.ok(animations.length > 4 && animations.every(name => name === 'none'), 'Reduced motion disables skeleton animation');
+    await result('data.home', feed(), 'home', { page: 1 });
+    await result('wallet.balance', { coins: 1234, earningsPaise: 0 }, 'wallet');
+    await gone('Loading creators');
+    assert.equal(await page.locator('.zh-tile').count(), 1);
+    assert.match(await page.locator('.zh-balance').innerText(), /1,234/);
+
+    // A socket refresh hides the cached first page until the new response arrives.
+    await loading('home', true, { page: 1 });
+    await visible('Loading creators');
+    assert.equal(await page.locator('.zh-tile,article.zh-featured').count(), 0);
+    await receive('data.loaded');
+    await visible('Loading creators');
+    await result('data.home', feed(), 'home', { page: 1 });
+    await page.getByRole('button', { name: 'Music', exact: true }).click();
+    await visible('Loading creators');
+    assert.equal((await lastSent('home.reload')).category, 'Music');
+    await result('data.home', feed([host], { total: 2 }), 'home', { page: 1 });
+    await page.getByRole('button', { name: 'Explore', exact: true }).click();
+    await page.getByRole('button', { name: 'Load more creators', exact: true }).click();
+    await visible('Loading more creators');
+    assert.equal(await page.locator('.zh-tile').count(), 1, 'Pagination retains the current cards');
+    assert.ok(await page.locator('.zh-skeleton-tile').count() > 0, 'Pagination appends placeholders');
+    assert.equal((await lastSent('home.reload')).page, 2);
+    await result('data.home', feed([second], { page: 2, total: 2 }), 'home', { page: 2 });
+    assert.equal(await page.locator('.zh-tile').count(), 2);
+    await gone('Loading more creators');
+    await loading('home', true, { page: 1 });
+    await loading('home', false, { page: 1, error: 'Creators could not be loaded' });
+    await gone('Loading creators');
+    assert.match(await page.getByRole('alert').innerText(), /Creators could not be loaded/);
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await visible('Loading creators');
+    await result('data.home', feed([]), 'home', { page: 1 });
+    await page.getByRole('heading', { name: 'A little quiet right now', exact: true }).waitFor();
+    await result('data.home', feed(), 'home', { page: 1 });
+    await page.getByRole('button', { name: 'Home', exact: true }).click();
+    console.log('PASS loading: initial feed, unknown balance, realtime refresh, filters, pagination, failure and retry');
+
+    // Search starts immediately on input, ignores responses for older queries and supports clearing.
+    await page.getByRole('button', { name: 'Search creators', exact: true }).click();
+    await visible('Finding creators');
+    const search = page.getByRole('textbox', { name: 'Search creators', exact: true });
+    await search.fill('Mira');
+    await page.waitForFunction(() => window.__sent.some(message => message.type === 'hosts.search' && message.data.q === 'Mira'));
+    await result('data.search', { q: 'Mira', hosts: [host], total: 1, page: 1 }, 'search', { q: 'Mira', page: 1 });
+    assert.match(await page.locator('#home-search-results .zh-tile').innerText(), /Mira North/);
+    await search.fill('Asha');
+    await visible('Finding creators');
+    assert.equal(await page.locator('#home-search-results .zh-tile').count(), 0, 'A changed query hides cached results');
+    await result('data.search', { q: 'Mira', hosts: [host], total: 1, page: 1 }, 'search', { q: 'Mira', page: 1 });
+    await visible('Finding creators');
+    await page.waitForFunction(() => window.__sent.some(message => message.type === 'hosts.search' && message.data.q === 'Asha'));
+    await result('data.search', { q: 'Asha', hosts: [second], total: 1, page: 1 }, 'search', { q: 'Asha', page: 1 });
+    assert.match(await page.locator('#home-search-results .zh-tile').innerText(), /Asha Sen/);
+    await search.fill('');
+    await visible('Finding creators');
+    await page.waitForFunction(() => window.__sent.filter(message => message.type === 'hosts.search').at(-1)?.data.q === '');
+    await result('data.search', { q: '', hosts: [host, second], total: 2, page: 1 }, 'search', { q: '', page: 1 });
+    assert.equal(await page.locator('#home-search-results .zh-tile').count(), 2);
+    await loading('search', true, { q: '', page: 1 });
+    await loading('search', false, { q: '', error: 'Search is unavailable' });
+    await gone('Finding creators');
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await visible('Finding creators');
+    await result('data.search', { q: '', hosts: [], total: 0, page: 1 }, 'search', { q: '' });
+    await page.getByRole('heading', { name: 'No creators found', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Back to home', exact: true }).click();
+    console.log('PASS loading: search current/stale requests, query changes, clearing and retry');
+
+    await page.getByRole('button', { name: /^Notifications/ }).click();
+    await visible('Loading notifications');
+    assert.equal(await page.getByText("You're all caught up", { exact: true }).count(), 0);
+    await result('data.notifications', { items: [{ id: 'notice-id', title: 'Tonight on Zimi', body: 'A real admin update', read: false }], unreadCount: 1 }, 'notifications');
+    assert.equal(await page.locator('.zh-notification h3').innerText(), 'Tonight on Zimi');
+    await loading('notifications', true);
+    assert.equal(await page.locator('.zh-notification').count(), 0);
+    await loading('notifications', false, { error: 'Updates are unavailable' });
+    await gone('Loading notifications');
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await visible('Loading notifications');
+    await result('data.notifications', { items: [], unreadCount: 0 }, 'notifications');
+    await page.getByRole('heading', { name: "You're all caught up", exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Home', exact: true }).click();
+    // Even cached catalog content refreshes on opening its sheet or screen.
+    await result('data.catalog', catalog, 'catalog');
+    await page.getByRole('button', { name: 'Send a gift to Mira North', exact: true }).click();
+    await visible('Loading gifts');
+    assert.equal(await page.getByRole('button', { name: /Rose/ }).count(), 0);
+    await result('data.catalog', catalog, 'catalog');
+    await gone('Loading gifts');
+    assert.equal(await page.getByRole('button', { name: /Rose/ }).isEnabled(), true);
+    await loading('wallet', true);
+    assert.equal(await page.getByRole('button', { name: /Rose/ }).isEnabled(), false, 'Gift purchase waits for the real wallet');
+    await result('wallet.balance', { coins: 1234, earningsPaise: 0 }, 'wallet');
+    await page.getByRole('button', { name: 'Close gifts', exact: true }).click();
+    await page.getByRole('button', { name: /^Wallet, / }).click();
+    await visible('Loading coin packs');
+    assert.equal(await page.getByRole('button', { name: 'Get 200 coins', exact: true }).count(), 0);
+    await result('data.catalog', catalog, 'catalog');
+    assert.equal(await page.getByRole('button', { name: 'Get 200 coins', exact: true }).isEnabled(), true);
+    await loading('catalog', true);
+    await loading('catalog', false, { error: 'Coin packs could not be loaded' });
+    await gone('Loading coin packs');
+    assert.equal(await page.getByRole('button', { name: 'Get 200 coins', exact: true }).count(), 0);
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await visible('Loading coin packs');
+    await result('data.catalog', catalog, 'catalog');
+    console.log('PASS loading: notifications, cached gift and coin catalogs, wallet-dependent gift actions');
+
+    await navigate('chats');
+    await visible('Loading conversations');
+    assert.equal(await page.getByText('No conversations match that search.', { exact: true }).count(), 0);
+    const chats = { chats: [{ user: host, last: 'Hello from Mira', time: 'Today', unread: 1 }] };
+    await result('data.chats', chats, 'chats');
+    assert.equal(await page.locator('.rowlink').count(), 1);
+    await loading('chats', true);
+    assert.equal(await page.locator('.rowlink').count(), 0);
+    await result('data.chats', chats, 'chats');
+    await page.locator('.rowlink').click();
+    await visible('Loading messages');
+    const draft = page.getByPlaceholder('Message', { exact: true });
+    await draft.fill('Draft while history is loading');
+    await receive('data.thread', { with: secondId, messages: [{ text: 'Wrong conversation', mine: false }] });
+    await visible('Loading messages');
+    await result('data.thread', { with: hostId, messages: [{ text: 'The real conversation', mine: false, time: '12:00' }] }, 'thread');
+    assert.match(await page.locator('#tf').innerText(), /The real conversation/);
+    assert.equal(await draft.inputValue(), 'Draft while history is loading', 'Settling history preserves the message draft');
+    await loading('thread', true);
+    assert.equal(await page.locator('#tf .bub').count(), 0);
+    await loading('thread', false, { error: 'Messages are unavailable' });
+    await gone('Loading messages');
+    assert.equal(await draft.inputValue(), 'Draft while history is loading', 'A history failure preserves the message draft');
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await visible('Loading messages');
+    assert.equal((await lastSent('chat.open')).with, hostId);
+    await result('data.thread', { with: hostId, messages: [] }, 'thread');
+    assert.equal(await draft.inputValue(), 'Draft while history is loading', 'Retrying history preserves the message draft');
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('tab', { name: /^Missed calls/ }).click();
+    await visible('Loading missed calls');
+    await result('data.missed', { calls: [] }, 'missed');
+    await page.getByRole('heading', { name: 'No missed calls', exact: true }).waitFor();
+    console.log('PASS loading: conversation and thread refresh, stale conversation isolation, missed calls');
+
+    await navigate('wallet');
+    await loading('wallet', true);
+    await visible('Loading wallet');
+    assert.equal(await page.locator('.accthero').count(), 0, 'Refreshing wallet conceals its old balance');
+    await loading('wallet', false, { error: 'Wallet is temporarily unavailable' });
+    await gone('Loading wallet');
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await visible('Loading wallet');
+    await result('wallet.balance', { coins: 4321, earningsPaise: 0 }, 'wallet');
+    assert.match(await page.locator('.accthero .big').innerText(), /4,321/);
+    await visible('Loading recent transactions');
+    const transactions = { items: [{ title: 'Server coin purchase', time: 'Today', coins: 200, kind: 'topup' }] };
+    await result('data.transactions', transactions, 'transactions');
+    assert.match(await page.locator('.acctcard').innerText(), /Server coin purchase/);
+    await navigate('transactions');
+    await loading('transactions', true);
+    await visible('Loading transactions');
+    assert.equal(await page.getByText('No activity yet.', { exact: true }).count(), 0);
+    await result('data.transactions', { items: [] }, 'transactions');
+    await page.getByText('No activity yet.', { exact: true }).waitFor();
+    await navigate('calls');
+    await visible('Loading call history');
+    await result('data.calls', { calls: [{ user: host, time: 'Today', duration: '2:10', coins: 0 }] }, 'calls');
+    assert.match(await page.locator('.acctcard').innerText(), /Mira North/);
+    await loading('calls', true);
+    assert.equal(await page.locator('.acctrow').count(), 0);
+    await result('data.calls', { calls: [] }, 'calls');
+    await gone('Loading call history');
+    await page.evaluate(() => { S.ht = 'posts'; go('profile'); });
+    await visible('Loading your posts');
+    assert.equal(await page.locator('.hpgrid button.post').count(), 0);
+    await result('data.posts', { posts: [{ id: 'post-id', kind: 'photo', mediaUrl: 'https://media.example.test/photo.jpg', caption: 'Photo' }] }, 'posts');
+    assert.equal(await page.getByRole('img', { name: 'Your post', exact: true }).count(), 1);
+    await loading('posts', true);
+    assert.equal(await page.getByRole('img', { name: 'Your post', exact: true }).count(), 0);
+    await loading('posts', false, { error: 'Posts could not be loaded' });
+    await gone('Loading your posts');
+    assert.match(await page.getByRole('alert').innerText(), /Posts could not be loaded/);
+    console.log('PASS loading: wallet, transactions, call history and profile posts');
+
+    assert.deepEqual(errors, [], 'Skeleton transitions must not cause browser errors');
+    console.log('PASS reduced-motion skeletons and no uncaught browser errors');
+  } catch (error) {
+    const screenshot = path.join(os.tmpdir(), 'zimi-loading-failure.png');
+    await page.screenshot({ path: screenshot, fullPage: true }).catch(() => {});
+    console.error(`Loading failure screenshot: ${screenshot}`);
+    throw error;
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

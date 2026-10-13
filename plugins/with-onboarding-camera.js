@@ -1,7 +1,8 @@
 const { withAndroidManifest } = require('expo/config-plugins');
 
 // WebView's capture="user" input resolves an external camera activity.
-// Android 11+ needs this visibility query; no direct CAMERA permission is used.
+// Android 11+ needs this visibility query. The app also declares CAMERA and
+// RECORD_AUDIO for live WebRTC; WebView requests those permissions on capture.
 module.exports = function withOnboardingCamera(config) {
   return withAndroidManifest(config, (mod) => {
     const manifest = mod.modResults.manifest;
