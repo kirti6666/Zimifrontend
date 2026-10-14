@@ -99,6 +99,8 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("wallet:updated", refreshWallet);
   socket.on("home:updated", () => emit("home.updated", {}));
   socket.on("account:updated", () => emit("account.updated", {}));
+  // Socket payloads only invalidate; entitlement and tokens come from GET /themes.
+  for (const event of ["themes:updated", "appearance:updated", "premium:updated"]) socket.on(event, () => emit("themes.updated", {}));
   const unsubscribe = onTokenChanged(() => {
     if (closed) return;
     socket.disconnect();

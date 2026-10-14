@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, blockedUsersFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, Session, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -198,6 +198,10 @@ export const api = {
   recharge: (_purchase: { pack: number; coins: number; price: number; method: string }) => unavailable<Wallet>("Secure checkout is not available in this build yet. No payment was taken."),
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
   async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
+  async themes() { return themesFrom(await request("GET", "/themes")); },
+  async selectTheme(themeId: string) { return themesFrom(await request("PATCH", "/themes/preference", { themeId })); },
+  async checkoutPremium(idempotencyKey: string) { return purchaseFrom(await request("POST", "/themes/premium/purchase", { idempotencyKey })); },
+  async verifyPremium(merchantOrderId: string) { return purchaseFrom(await request("POST", "/themes/premium/verify", { merchantOrderId })); },
   requestPayout: (_coins: number, _upi: string) => unavailable<Wallet>("Withdrawals require the earnings balance in your account currency. This withdrawal screen is not available yet."),
   async claimAward(task: string): Promise<Wallet> { await request("POST", `/missions/${encodeURIComponent(task)}/claim`); return api.wallet(); },
 };

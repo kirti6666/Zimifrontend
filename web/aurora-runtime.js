@@ -886,12 +886,13 @@ function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Load
  <div class="acctsec"><div class="accttitle"><span>Recent activity</span><button onclick="go('transactions')" style="color:var(--accent-ink)">View all</button></div>
   <div class="acctcard">${window.contentSurface?.('transactions','rows','Loading recent transactions')||TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
 
-function txRow(x){const [title,time,amount,type]=x;return `<div class="acctrow">
+function txAmount(x){return x[2]===0&&Number.isSafeInteger(x[4])&&x[4]!==0?x[4]:x[2]}
+function txRow(x){const [title,time,coins,type,paise]=x,amount=txAmount(x),money=coins===0&&Number.isSafeInteger(paise)&&paise!==0;return `<div class="acctrow">
  <span class="acctico">${I(type==='call'?'ph':type==='gift'?'gift':'wal',16)}</span>
  <span style="flex:1;min-width:0"><span class="main">${esc(title)}</span><span class="meta">${esc(time)}</span></span>
- <span class="end ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${n(Math.abs(amount))}</span></div>`}
+ <span class="end ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${money?'₹'+(Math.abs(amount)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):n(Math.abs(amount))}</span></div>`}
 
-function vTransactions(){const pending=window.contentSurface?.('transactions','rows','Loading transactions');if(pending)return '<div class="acct">'+pending+'</div>';const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?x[2]>0:x[2]<0));return `<div class="acct">
+function vTransactions(){const pending=window.contentSurface?.('transactions','rows','Loading transactions');if(pending)return '<div class="acct">'+pending+'</div>';const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?txAmount(x)>0:txAmount(x)<0));return `<div class="acct">
  <div class="accttabs">${[['all','All'],['in','Added'],['out','Spent']].map(([k,l])=>`<button class="${S.txf===k?'on':''}" onclick="S.txf='${k}';r()">${l}</button>`).join('')}</div>
  <div class="acctcard">${L.map(txRow).join('')}</div>
  ${L.length?"":`<div class="s13 muted" style="text-align:center;padding:36px 20px">No activity yet.</div>`}
@@ -1696,7 +1697,7 @@ Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublish
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});
 Native.on("data.chats",d=>{CH.splice(0,CH.length,...(d.chats||[]).map(c=>[knowHost(c.user).id,c.last||"",c.time||"",c.unread||0]));refresh()});
 Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()?personFrom(c.user):knowHost(c.user)).id,when:c.when||"",kind:c.kind||"video"}));refresh()});
-Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind]));refresh()});
+Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise]));refresh()});
 Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>[knowHost(c.user).id,c.time||"",c.duration||"",c.coins||0]));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
  S.msgs=(d.messages||[]).map(m=>[m.mine?"m":"t",m.text,m.time||""]);paint()});

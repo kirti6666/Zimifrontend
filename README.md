@@ -204,6 +204,39 @@ when the app becomes active again. The backend's signed webhook and payment
 verification remain authoritative. Configure the provider and confirm a real
 device checkout before using payments live.
 
+## Themes and premium appearance
+
+Open **Profile & Settings → Appearance & Theme** to browse the theme gallery.
+Zimi Original and Soft Rose are free; premium includes Midnight Ocean and Amber
+Silk. The sibling admin dashboard's **Themes & text styles** section controls
+colors, fonts, text sizing/weight, ordering, availability, premium flags, and
+the one-time premium price (initially ₹199). Built-in free themes remain available.
+Admins can choose **Set as default** on any active free theme. Users without a
+saved theme, or whose selected theme becomes unavailable, receive that default.
+Saved eligible selections stay unchanged. The gallery labels the app default;
+tapping any card, including the active default, saves that theme as a personal
+choice. Choose a different default before hiding it or making it premium.
+
+Selections are saved to the account through `/themes/preference`. Premium access
+comes from a verified paid purchase on the backend; opening checkout or returning
+to the app does not unlock it. All premium themes share one lifetime unlock.
+The app opens the existing PayPlus hosted checkout, supports continuing an
+unfinished checkout and checking payment status, and refreshes eligibility on
+return/reconnect. Reversed purchases and unavailable themes fall back to a free
+theme. Configure and verify the backend's PayPlus integration before live sales.
+
+`web/themes.js` applies validated color and typography tokens without replacing
+screen content or interrupting media. Colors transition for 260 ms; reduced-motion
+users get an immediate change. Admin updates and account changes refresh the
+catalog, and signing out clears the previous account's theme and payment state.
+The website preview uses demo themes and a clearly labeled, no-charge preview
+unlock. Rebuild the WebView bundle with `npm run build:web` after edits.
+
+Run `npm run test:themes` for responsive gallery, transition, selection, payment,
+revocation, and account-isolation browser checks. These use mocked native events
+and do not make real purchases. Verify hosted checkout and native safe-area
+appearance on physical Android/iOS devices before release.
+
 ## Notes
 
 Authentication, onboarding, discovery, chat, follows, gifts, mission claims,

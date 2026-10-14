@@ -5,7 +5,7 @@ import { AppState, Linking } from "react-native";
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
 import { connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, RtcConfig, RtcPayload, StreamChat, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, RtcConfig, RtcPayload, StreamChat, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { parseWebMessage } from "./web-message";
 import { approvedHost } from "./host-access";
@@ -33,6 +33,10 @@ export type WebMessage =
   | { type: "stream.message"; data: { streamId: string; text: string } }
   | { type: "wallet.checkout"; data: { packId: string; idempotencyKey: string } }
   | { type: "wallet.verify"; data: { merchantOrderId: string } }
+  | { type: "themes.load"; data: Record<string, never> }
+  | { type: "themes.select"; data: { themeId: string; requestId?: number } }
+  | { type: "themes.premium.checkout"; data: { idempotencyKey: string } }
+  | { type: "themes.premium.verify"; data: { merchantOrderId: string } }
   | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string } }
   | { type: "ui.haptic"; data: { kind: "selection" | "success" | "error" | "light" } }
   | { type: "auth.sendOtp"; data: { phone: string; role: Role; requestId?: number } }
@@ -64,7 +68,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "blocked";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "blocked" | "themes";
 export type AppMessage =
   | { type: "session"; data: Account }
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
@@ -88,6 +92,10 @@ export type AppMessage =
   | { type: "home.updated"; data: Record<string, never> }
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> }
   | { type: "data.catalog"; data: Catalog }
+  | { type: "data.themes"; data: ThemeCatalog }
+  | { type: "themes.selected"; data: { catalog: ThemeCatalog; requestId?: number } }
+  | { type: "themes.error"; data: { action: string; message: string; code?: string; requestId?: number } }
+  | { type: "themes.premium.checkout" | "themes.premium.purchase"; data: Purchase }
   | { type: "data.profileSettings"; data: ProfileSettings }
   | { type: "profile.settings.saved"; data: { settings: ProfileSettings; requestId?: number } }
   | { type: "profile.settings.error" | "privacy.error"; data: { message: string; requestId?: number } }
@@ -151,8 +159,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let homeQuery: HomeQuery = {};
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
-  let pendingPurchase: { orderId: string; epoch: number } | undefined;
-  let verifyingPurchase = false;
+  type PurchaseKind = "coins" | "premium";
+  const pendingPurchases = new Map<string, { orderId: string; kind: PurchaseKind; epoch: number; sessionVersion: number }>();
+  const verifyingPurchases = new Set<string>();
   const operations = new Set<string>();
   const authWork = new Set<string>();
   const current = (version: number) => !closed && version === epoch;
@@ -161,7 +170,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
     message: errorMessage(error),
     ...(error instanceof ApiError ? { code: error.code, retryAfterSeconds: error.retryAfterSeconds } : {}),
   });
-  const operationError = (error: unknown, action?: string) => emit({ type: "operation.error", data: { message: errorMessage(error), action } });
+  const operationError = (error: unknown, action?: string) => {
+    if (action?.startsWith("themes.")) emit({ type: "themes.error", data: { message: errorMessage(error), action, ...(error instanceof ApiError ? { code: error.code } : {}) } });
+    else emit({ type: "operation.error", data: { message: errorMessage(error), action } });
+  };
   const quietly = (work: Promise<unknown>, action?: string) => {
     const version = epoch;
     void work.catch(error => { if (current(version)) operationError(error, action); });
@@ -242,6 +254,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const loadNotifications = () => readResource("notifications", () => api.notifications(), data => emit({ type: "data.notifications", data }));
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
+  const loadThemes = () => readResource("themes", () => api.themes(), data => emit({ type: "data.themes", data }));
   const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), data => emit({ type: "data.profileSettings", data }));
   const loadBlocked = (page = 1) => readResource("blocked", () => api.blockedUsers(page), data => emit({ type: "data.blocked", data }), { page });
   const deliverProfileSettings = (settings: ProfileSettings) => {
@@ -252,21 +265,29 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const loadChats = (page = 1) => readResource<ChatsData>("chats", () => ["pending", "rejected", "suspended"].includes(hostStatus || "")
     ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => emit({ type: "data.chats", data }), { page });
-  const verifyPurchase = async (orderId: string) => {
-    if (verifyingPurchase) return;
-    verifyingPurchase = true;
-    const version = epoch;
+  const verifyPurchase = async (orderId: string, kind: PurchaseKind = "coins") => {
+    const version = epoch, sessionVersion = getSessionVersion(), key = `${version}:${kind}:${orderId}`;
+    if (verifyingPurchases.has(key)) return;
+    verifyingPurchases.add(key);
     try {
-      const purchase = await api.verifyPurchase(orderId);
-      if (current(version)) {
-        emit({ type: "wallet.purchase", data: purchase });
-        if (purchase.status !== "PENDING" && pendingPurchase?.orderId === orderId) pendingPurchase = undefined;
-        await refreshWallet();
+      const purchase = await (kind === "premium" ? api.verifyPremium(orderId) : api.verifyPurchase(orderId));
+      if (current(version) && getSessionVersion() === sessionVersion) {
+        const resolvedKind = purchase.kind ?? kind;
+        emit({ type: resolvedKind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: purchase });
+        if (purchase.status !== "PENDING") pendingPurchases.delete(orderId);
+        // Only a fresh authenticated catalog can grant or revoke theme access.
+        if (resolvedKind === "premium") await loadThemes(); else await refreshWallet();
       }
-    } finally { verifyingPurchase = false; }
+    } finally { verifyingPurchases.delete(key); }
   };
   const activity = AppState?.addEventListener("change", state => {
-    if (state === "active" && pendingPurchase?.epoch === epoch && !closed) quietly(verifyPurchase(pendingPurchase.orderId), "wallet.verify");
+    if (state !== "active" || closed) return;
+    for (const pending of pendingPurchases.values()) {
+      if (pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
+        quietly(verifyPurchase(pending.orderId, pending.kind), pending.kind === "premium" ? "themes.premium.verify" : "wallet.verify");
+      }
+    }
+    if (accountId && getCachedToken() && !hostAccount?.requiresOnboarding) quietly(loadThemes(), "themes.load");
   });
   const sendWallet = (work: Promise<Wallet>, action: string) => {
     const version = epoch;
@@ -280,7 +301,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
     const results = await Promise.allSettled([
-      loadHome(), loadNotifications(), loadCatalog(), loadProfileSettings(),
+      loadHome(), loadNotifications(), loadCatalog(), loadProfileSettings(), loadThemes(),
       api.presence().then(data => deliver({ type: "presence.saved", data: { ...data, online: hasHostAccess() && data.online } })),
       loadChats(),
       readResource("missed", () => api.missedCalls(), data => deliver({ type: "data.missed", data })),
@@ -313,7 +334,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
       if (event.type === "chats.updated") { if (!onboarding) quietly(loadChats(), "chats.reload"); return; }
-      if (event.type === "account.updated") { if (!onboarding) quietly(loadProfileSettings(), "profile.settings.load"); return; }
+      if (event.type === "account.updated") {
+        if (!onboarding) { quietly(loadProfileSettings(), "profile.settings.load"); quietly(loadThemes(), "themes.load"); }
+        return;
+      }
+      if (event.type === "themes.updated") { if (!onboarding) quietly(loadThemes(), "themes.load"); return; }
       const callId = event.data?.callId;
       if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
         void api.declineCall(callId).catch(() => {}); return;
@@ -341,13 +366,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
         quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
         quietly(loadChats(), "chats.reload");
         quietly(loadProfileSettings(), "profile.settings.load");
+        quietly(loadThemes(), "themes.load");
       }
       emit(event as AppMessage);
     }, accountId);
     if (!onboarding) void loadLists();
   };
   const unsubscribe = onSessionExpired(() => {
-    epoch++; callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchase = undefined;
+    epoch++; callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
   });
@@ -389,6 +415,26 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "notifications.load": return loadNotifications();
       case "notifications.read": return readResource("notifications", () => api.readNotifications(msg.data.ids), data => emit({ type: "data.notifications", data }));
       case "catalog.load": return loadCatalog();
+      case "themes.load": return loadThemes();
+      case "themes.select": {
+        const { themeId, requestId } = msg.data, sessionVersion = getSessionVersion();
+        try {
+          const catalog = await api.selectTheme(themeId);
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            // Reads started before this committed selection cannot restore an older choice.
+            readRequests.set("themes", (readRequests.get("themes") ?? 0) + 1);
+            emit({ type: "data.themes", data: catalog });
+            emit({ type: "data.loading", data: { resource: "themes", loading: false } });
+            emit({ type: "themes.selected", data: { catalog, requestId } });
+          }
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "themes.error", data: { action: msg.type, message: errorMessage(error), requestId, ...(error instanceof ApiError ? { code: error.code } : {}) } });
+            quietly(loadThemes(), "themes.load");
+          }
+        }
+        return;
+      }
       case "profile.settings.load": return loadProfileSettings();
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
@@ -424,16 +470,21 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "stream.message": { const data = await api.sendStreamMessage(msg.data.streamId, msg.data.text); if (current(version)) emit({ type: "stream.message", data }); return; }
-      case "wallet.checkout": {
-        const purchase = await api.checkout(msg.data.packId, msg.data.idempotencyKey);
-        if (!current(version)) return;
-        pendingPurchase = purchase.status === "PENDING" && purchase.merchantOrderId ? { orderId: purchase.merchantOrderId, epoch: version } : undefined;
+      case "wallet.checkout": case "themes.premium.checkout": {
+        const kind: PurchaseKind = msg.type === "themes.premium.checkout" ? "premium" : "coins", sessionVersion = getSessionVersion();
+        const purchase = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey) : api.checkoutPremium(msg.data.idempotencyKey));
+        if (!current(version) || sessionVersion !== getSessionVersion()) return;
+        if (purchase.status === "PENDING" && purchase.merchantOrderId) pendingPurchases.set(purchase.merchantOrderId, { orderId: purchase.merchantOrderId, kind, epoch: version, sessionVersion });
         // Payment pages stay outside the privileged application WebView.
-        if (purchase.paymentUrl) await Linking.openURL(purchase.paymentUrl);
-        if (current(version)) emit({ type: "wallet.checkout", data: purchase });
+        if (purchase.status === "PENDING" && purchase.paymentUrl) await Linking.openURL(purchase.paymentUrl);
+        if (current(version) && sessionVersion === getSessionVersion()) {
+          emit({ type: kind === "premium" ? "themes.premium.checkout" : "wallet.checkout", data: purchase });
+          if (kind === "premium" && purchase.status !== "PENDING") await loadThemes();
+        }
         return;
       }
       case "wallet.verify": return verifyPurchase(msg.data.merchantOrderId);
+      case "themes.premium.verify": return verifyPurchase(msg.data.merchantOrderId, "premium");
       case "auth.sendOtp": {
         if (authWork.has("send")) return;
         authWork.add("send");
@@ -454,7 +505,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; callGeneration++; pendingOutgoing = undefined; activeCall = undefined; // Retire work and socket callbacks owned by the previous identity.
+          epoch++; callGeneration++; pendingOutgoing = undefined; activeCall = undefined; pendingPurchases.clear(); // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
@@ -468,7 +519,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "auth.google": return emit({ type: "auth.error", data: { message: "Use your mobile number to sign in.", code: "UNSUPPORTED_PROVIDER" } });
       case "auth.logout": {
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchase = undefined;
+        callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -683,11 +734,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
+      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
       const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" ? `:${msg.data.id}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
-      void handle(msg).catch(error => { if (current(version)) operationError(error, msg.type); }).finally(() => operations.delete(key));
+      void handle(msg).catch(error => {
+        if (!current(version)) return;
+        operationError(error, msg.type);
+      }).finally(() => operations.delete(key));
     },
     close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); activity?.remove(); stopLive(); },
   };

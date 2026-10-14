@@ -114,6 +114,24 @@ export interface StreamChat { id: string; streamId: string; userId: string; name
 export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
 export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
+export interface AppTheme {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  isPremium: boolean;
+  active: boolean;
+  isDefault: boolean;
+  sortOrder: number;
+  mode: "dark" | "light";
+  colors: { background: string; surface: string; surfaceElevated: string; text: string; textMuted: string; primary: string; primaryContrast: string; secondary: string; border: string; success: string; danger: string };
+  typography: { fontFamily: "system" | "rounded" | "serif" | "mono"; fontScale: number; fontWeight: "400" | "500" | "600"; headingWeight: "600" | "700" | "800" };
+}
+export interface ThemeCatalog {
+  items: AppTheme[];
+  selectedThemeId: string;
+  premium: { active: boolean; pricePaise: number; currency: "INR"; paymentsAvailable: boolean; purchaseType: "lifetime" };
+}
 export type Appearance = "dark" | "light" | "system";
 export interface PrivacySettings { discoverable: boolean; showActivity: boolean; allowRequests: boolean; }
 export interface ProfileSettings {
@@ -126,7 +144,7 @@ export interface ProfileSettings {
 }
 export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
-export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; }
+export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; }
 export interface RtcPayload {
   description?: { type: "offer" | "answer"; sdp: string };
   candidate?: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string };
@@ -197,6 +215,7 @@ export interface Transaction {
   coins: number; // positive for coins in, negative for coins out
   kind: "call" | "gift" | "topup" | "withdrawal" | "reward";
   amountPaise?: number;
+  displayAmountPaise?: number; // Zero-coin purchases: negative paid, positive refunded (INR).
 }
 
 export interface Wallet {

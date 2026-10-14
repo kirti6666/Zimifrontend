@@ -51,6 +51,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": case "catalog.load": case "rtc.config": valid = true; break;
+    case "themes.load": valid = Object.keys(d).length === 0; break;
+    case "themes.select": valid = typeof d.themeId === "string" && /^[a-f\d]{24}$/i.test(d.themeId) && Object.keys(d).every(key => ["themeId", "requestId"].includes(key)); break;
+    case "themes.premium.checkout": valid = idempotency(d.idempotencyKey) && Object.keys(d).every(key => key === "idempotencyKey"); break;
     case "profile.settings.load": valid = true; break;
     case "profile.settings.save": case "settings.set": valid = settingsPatch(d); break;
     case "privacy.save": valid = privacyPatch(d); break;
@@ -64,7 +67,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.join": case "stream.leave": case "stream.end": case "stream.ready": valid = identifier(d.streamId); break;
     case "stream.message": valid = identifier(d.streamId) && text(d.text, 500); break;
     case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey); break;
-    case "wallet.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)); break;
+    case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === undefined || d.canvas === "" || (typeof d.canvas === "string" && /^#[0-9a-f]{6}$/i.test(d.canvas))); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "auth.sendOtp": valid = typeof d.phone === "string" && /^\+91[6-9]\d{9}$/.test(d.phone) && role(d.role); break;

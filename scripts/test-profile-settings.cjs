@@ -165,14 +165,15 @@ async function run() {
 
     await row('Appearance & Theme').click();
     const appearance = dialog('Appearance & Theme');
-    await appearance.getByLabel('Appearance', { exact: true }).selectOption('light');
-    await appearance.getByRole('button', { name: 'Save preferences', exact: true }).click();
-    request = await lastSent(page, 'profile.settings.save');
-    assert.equal(request.appearance, 'light');
-    saved = { ...saved, preferences: { ...saved.preferences, appearance: 'light' } };
-    await receive(page, 'data.profileSettings', saved);
-    await receive(page, 'profile.settings.saved', { settings: saved, requestId: request.requestId });
+    await appearance.getByRole('status', { name: 'Loading themes', exact: true }).waitFor();
+    const themes = await page.evaluate(() => ({ items: [ZThemeOriginal, ZThemeRose], selectedThemeId: ZThemeOriginal.id, premium: { active: false, pricePaise: 19900, currency: 'INR', paymentsAvailable: false, purchaseType: 'lifetime' } }));
+    await receive(page, 'data.themes', themes);
+    await appearance.getByRole('button', { name: 'Use Soft Rose', exact: true }).click();
+    request = await lastSent(page, 'themes.select');
+    assert.equal(request.themeId, themes.items[1].id);
+    await receive(page, 'themes.selected', { catalog: { ...themes, selectedThemeId: request.themeId }, requestId: request.requestId });
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+    await close();
     await page.locator('.zh-nav').getByRole('button', { name: 'Chats', exact: true }).click();
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light', 'Saved appearance applies across tabs');
     await readyProfile();

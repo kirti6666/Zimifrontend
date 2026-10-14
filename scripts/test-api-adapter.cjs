@@ -286,6 +286,37 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'paid' });
   assert.equal((await api.verifyPurchase('zimi_order')).status, 'SUCCESS');
   assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);
+  const themeId = '000000000000000000000001';
+  const theme = { _id: themeId, slug: 'primary', name: 'Primary', description: 'Free primary theme', active: true, isPremium: false, isDefault: true, sortOrder: 0, mode: 'dark',
+    colors: { background: '#101012', surface: '#202022', surfaceElevated: '#303033', text: '#ffffff', textMuted: '#bbbbbb', primary: '#aa0055', primaryContrast: '#ffffff', secondary: '#aa1155', border: '#555555', success: '#006622', danger: '#bb0000' },
+    typography: { fontFamily: 'system', fontScale: 1, fontWeight: '400', headingWeight: '700' } };
+  const themes = { items: [theme], selectedThemeId: themeId, premium: { active: false, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } };
+  expect('GET', '/themes', themes);
+  const appearance = await api.themes(); assert.equal(appearance.items[0].id, themeId); assert.equal(appearance.items[0]._id, undefined); assert.equal(appearance.premium.active, false);
+  expect('PATCH', '/themes/preference', themes, body => assert.deepEqual(plain(body), { themeId })); await api.selectTheme(themeId);
+  for (const unsafe of [
+    { ...theme, colors: { ...theme.colors, background: 'url(https://evil.test)' } },
+    { ...theme, typography: { ...theme.typography, fontFamily: 'injected' } },
+    { ...theme, typography: { ...theme.typography, fontScale: 99 } },
+  ]) assert.throws(() => adapters.themesFrom({ ...themes, items: [unsafe] }), /theme/);
+  assert.throws(() => adapters.themesFrom({ ...themes, items: [{ ...theme, isPremium: true }] }), /confirmed/);
+  expect('POST', '/themes/premium/purchase', { _id: 'premium-purchase', merchantOrderId: 'premium_order', kind: 'premium', status: 'pending' }, body => assert.deepEqual(plain(body), { idempotencyKey: 'premium-attempt-1' }));
+  assert.equal((await api.checkoutPremium('premium-attempt-1')).kind, 'premium');
+  expect('POST', '/themes/premium/verify', { _id: 'premium-purchase', merchantOrderId: 'premium_order', kind: 'premium', status: 'reverted' }, body => assert.deepEqual(plain(body), { merchantOrderId: 'premium_order' }));
+  assert.equal((await api.verifyPremium('premium_order')).status, 'REVERTED');
+  const transactions = adapters.transactionsFrom({ items: [
+    { type: 'purchase', coins: 0, amountPaise: 19950, description: 'Lifetime premium themes' },
+    { type: 'purchase_reversal', coins: 0, amountPaise: -19950, description: 'Premium payment reversed' },
+    { type: 'purchase', coins: 100, amountPaise: 9900 },
+    { type: 'purchase_reversal', coins: -100, amountPaise: -9900 },
+    { type: 'gift_sent', coins: -25, amountPaise: 0 },
+    { type: 'gift_received', coins: 0, amountPaise: 500 },
+  ] }).items;
+  assert.equal(transactions[0].displayAmountPaise, -19950); assert.equal(transactions[0].amountPaise, 19950);
+  assert.equal(transactions[1].displayAmountPaise, 19950); assert.equal(transactions[1].amountPaise, -19950);
+  assert.deepEqual(transactions.slice(2).map(tx => tx.displayAmountPaise), [undefined, undefined, undefined, undefined]);
+  assert.deepEqual(transactions.map(tx => tx.coins), [0, 0, 100, -100, -25, 0]);
+  assert.deepEqual(transactions.filter(tx => tx.kind === 'gift').map(tx => tx.coins), [-25, 0]);
   expect('POST', '/streams/stream-id/join', { count: 13 });
   expect('GET', '/streams/stream-id', { _id: 'stream-id', hostId: creator._id, host: creator, title: 'Acoustic night', viewers: 13 });
   assert.equal((await api.joinStream('stream-id')).host.name, 'Asha Live');
@@ -323,8 +354,11 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
+  for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
+    socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });
+  }
   token = 'rotated-token'; tokenListeners.forEach(listener => listener()); await Promise.resolve();
   assert.equal(socket.connects, 2);
-  stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 7);
+  stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 10);
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

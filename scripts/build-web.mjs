@@ -89,6 +89,7 @@ const page = (demo) =>
   read("web/chats.css") +
   read("web/navigation.css") +
   read("web/profile.css") +
+  read("web/themes.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -105,6 +106,7 @@ const page = (demo) =>
   "\n" + read("web/media.js") +
   "\n" + read("web/chats.js") +
   "\n" + read("web/profile.js") +
+  "\n" + read("web/themes.js") +
   "\n" + read("web/navigation.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;

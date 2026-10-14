@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, BlockedUsers, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, AppTheme, BlockedUsers, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -120,7 +120,33 @@ export function purchaseFrom(value: unknown): Purchase {
   const data = record(value), paymentUrl = string(data.paymentUrl);
   if (paymentUrl && !/^https:\/\/[^\s"'<>]+$/.test(paymentUrl)) throw new ApiError("Checkout did not return a secure payment address.", 502);
   const status = string(data.status);
-  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}) };
+  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}), ...(data.kind === "premium" || data.kind === "coins" ? { kind: data.kind } : {}) };
+}
+export function themeFrom(value: unknown): AppTheme {
+  const data = record(value), colors = record(data.colors), typography = record(data.typography);
+  const colorKeys = ["background", "surface", "surfaceElevated", "text", "textMuted", "primary", "primaryContrast", "secondary", "border", "success", "danger"] as const;
+  if (!/^[a-f\d]{24}$/i.test(idOf(data)) || !string(data.name) || !["light", "dark"].includes(String(data.mode)) ||
+    colorKeys.some(key => typeof colors[key] !== "string" || !/^#[a-f\d]{6}$/i.test(colors[key] as string)) ||
+    !["system", "rounded", "serif", "mono"].includes(String(typography.fontFamily)) ||
+    typeof typography.fontScale !== "number" || !Number.isFinite(typography.fontScale) || typography.fontScale < 0.9 || typography.fontScale > 1.15 ||
+    !["400", "500", "600"].includes(String(typography.fontWeight)) || !["600", "700", "800"].includes(String(typography.headingWeight))) {
+    throw new ApiError("A theme could not be loaded. Refresh your themes and try again.", 502);
+  }
+  return { id: idOf(data), slug: string(data.slug), name: string(data.name), description: string(data.description), isPremium: data.isPremium === true,
+    active: data.active === true, isDefault: data.isDefault === true, sortOrder: finite(data.sortOrder) ?? 0, mode: data.mode as AppTheme["mode"],
+    colors: Object.fromEntries(colorKeys.map(key => [key, colors[key]])) as AppTheme["colors"],
+    typography: { fontFamily: typography.fontFamily as AppTheme["typography"]["fontFamily"], fontScale: typography.fontScale,
+      fontWeight: String(typography.fontWeight) as AppTheme["typography"]["fontWeight"], headingWeight: String(typography.headingWeight) as AppTheme["typography"]["headingWeight"] } };
+}
+export function themesFrom(value: unknown): ThemeCatalog {
+  const data = record(value), premium = record(data.premium), themes = items(data).map(themeFrom), selectedThemeId = string(data.selectedThemeId);
+  const selected = themes.find(theme => theme.id === selectedThemeId);
+  if (typeof premium.active !== "boolean" || !Number.isSafeInteger(premium.pricePaise) || Number(premium.pricePaise) < 0 ||
+    premium.currency !== "INR" || premium.purchaseType !== "lifetime" || !selected?.active || (selected.isPremium && !premium.active)) {
+    throw new ApiError("Your themes could not be confirmed. Refresh and try again.", 502);
+  }
+  return { items: themes, selectedThemeId, premium: { active: premium.active, pricePaise: premium.pricePaise as number,
+    currency: "INR", paymentsAvailable: premium.paymentsAvailable === true, purchaseType: "lifetime" } };
 }
 export function timeOf(value: unknown): string {
   const date = new Date(string(value));
@@ -161,8 +187,15 @@ export function walletFrom(value: unknown): Wallet {
   return { coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number, reservedPaise: finite(wallet.reservedPaise) };
 }
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
-  return { items: items(value).map(record).map(tx => ({
-    title: string(tx.description) || string(tx.type).replace(/_/g, " "), time: timeOf(tx.createdAt), coins: finite(tx.coins) ?? 0, amountPaise: finite(tx.amountPaise),
-    kind: string(tx.type).startsWith("gift") ? "gift" : string(tx.type).startsWith("purchase") ? "topup" : string(tx.type).startsWith("withdrawal") ? "withdrawal" : "reward",
-  })) };
+  return { items: items(value).map(record).map(tx => {
+    const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);
+    // The ledger stores purchase charges as positive and reversals as negative.
+    // Monetary-only purchases display the account holder's spending/refund sign.
+    const monetaryPurchase = coins === 0 && amountPaise !== undefined && Number.isSafeInteger(amountPaise) && amountPaise !== 0 && ["purchase", "purchase_reversal"].includes(type);
+    return {
+      title: string(tx.description) || type.replace(/_/g, " "), time: timeOf(tx.createdAt), coins, amountPaise,
+      ...(monetaryPurchase ? { displayAmountPaise: type === "purchase" ? -Math.abs(amountPaise) : Math.abs(amountPaise) } : {}),
+      kind: type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
+    };
+  }) };
 }

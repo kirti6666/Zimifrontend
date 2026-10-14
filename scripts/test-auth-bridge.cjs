@@ -15,6 +15,7 @@ const profileSettings = (appearance = 'dark') => ({ profile: { id: 'alice', name
   stats: { fans: 2, following: 3, giftsSent: 4, giftsReceived: 5, coinsSent: 40, coinsReceived: 50 }, preferences: { pushNotifications: false, matchCategory: null, appearance }, privacy: { discoverable: true, showActivity: true, allowRequests: false }, categories: ['Music'], capabilities: { pushNotifications: false, nativePushRegistered: false, liveAlerts: false, interfaceLanguages: ['en'], currency: 'INR' } });
 const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phone: '+919876543210', code: '123456', role: 'sender', signup: true, requestId } });
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
+const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
 
 function harness() {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], effects = [], opened = [], signals = [], activities = [];
@@ -29,7 +30,7 @@ function harness() {
     hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
     transactions: () => ({ items: [] }), wallet: () => ({ coins: 100, earningsPaise: 0 }), logout: () => {},
     home: () => ({ hosts: [], stage: [], featured: null, page: 1 }), notifications: () => ({ items: [], unreadCount: 0 }), catalog: () => ({ gifts: [], packs: [], paymentsAvailable: false }), presence: () => ({ online: true, visible: true }),
-    profileSettings: () => profileSettings(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
+    profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
   };
   const api = new Proxy({}, { get: (_, name) => async (...args) => {
     calls.push({ name, args });
@@ -1083,6 +1084,103 @@ test('account preference events reload the summary without changing host authori
   h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
   h.live[0].onEvent({ type: 'account.updated', data: {} }); await settle();
   assert.equal(h.count('profileSettings'), reads + 1); h.bridge.close();
+});
+
+test('theme messages reject injected authority, arbitrary styles and malformed purchase requests', async () => {
+  const h = harness();
+  const invalid = [
+    { type: 'themes.select', data: { themeId: '000000000000000000000001', premium: true } },
+    { type: 'themes.select', data: { themeId: 'default', requestId: 1 } },
+    { type: 'themes.select', data: { themeId: '000000000000000000000001', colors: { background: '#000000' } } },
+    { type: 'themes.premium.checkout', data: { idempotencyKey: 'attempt-123', pricePaise: 1 } },
+    { type: 'themes.premium.checkout', data: { idempotencyKey: 'short' } },
+    { type: 'themes.premium.verify', data: { merchantOrderId: 'order', status: 'SUCCESS' } },
+  ];
+  for (const message of invalid) { assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null); h.bridge.handle(message); }
+  await settle(); assert.equal(h.calls.length, 0);
+  h.bridge.close();
+});
+
+test('theme selection waits for the server and retires preexisting catalog reads', async () => {
+  const h = harness(), older = deferred(), selection = deferred();
+  h.overrides.themes = () => older.promise;
+  h.overrides.selectTheme = () => selection.promise;
+  h.bridge.handle({ type: 'themes.load', data: {} });
+  h.bridge.handle({ type: 'themes.select', data: { themeId: '000000000000000000000002', requestId: 27 } });
+  assert.equal(h.find('themes.selected').length, 0);
+  selection.resolve(themeCatalog(false, '000000000000000000000002')); await settle();
+  assert.equal(h.find('themes.selected')[0].data.requestId, 27);
+  older.resolve(themeCatalog()); await settle();
+  assert.equal(h.find('data.themes').length, 1);
+  assert.equal(h.find('data.themes')[0].data.selectedThemeId, '000000000000000000000002');
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'themes').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('premium selection rejection reloads authoritative fallback and never acknowledges success', async () => {
+  const h = harness();
+  h.overrides.selectTheme = () => { throw new h.ApiError('Premium access is required', 403); };
+  h.bridge.handle({ type: 'themes.select', data: { themeId: '000000000000000000000004', requestId: 9 } }); await settle();
+  assert.equal(h.find('themes.selected').length, 0);
+  assert.equal(h.find('themes.error')[0].data.requestId, 9);
+  assert.equal(h.find('data.themes')[0].data.premium.active, false);
+  h.bridge.close();
+});
+
+test('premium checkout preserves terminal API codes without treating network failures as terminal', async () => {
+  const h = harness();
+  h.overrides.checkoutPremium = () => { throw new h.ApiError('Payment setup failed. Start a new checkout.', 502, 'PAYIN_PROVISIONING_FAILED'); };
+  const checkout = { type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-attempt-1' } };
+  h.bridge.handle(checkout); await settle();
+  assert.equal(h.find('themes.error')[0].data.action, 'themes.premium.checkout');
+  assert.equal(h.find('themes.error')[0].data.code, 'PAYIN_PROVISIONING_FAILED');
+  assert.equal(h.find('themes.error')[0].data.message, 'Payment setup failed. Start a new checkout.');
+  h.overrides.checkoutPremium = () => { throw new Error('Network connection lost'); };
+  h.bridge.handle(checkout); await settle();
+  assert.equal(h.find('themes.error')[1].data.code, undefined);
+  assert.equal(h.find('themes.premium.checkout').length, 0);
+  assert.equal(h.opened.length, 0);
+  h.bridge.close();
+});
+
+test('premium checkout opens once, verifies on resume and derives access only from refreshed catalog', async () => {
+  const h = harness(), checkout = deferred();
+  h.overrides.checkoutPremium = () => checkout.promise;
+  h.overrides.verifyPremium = () => ({ purchaseId: 'premium-purchase', merchantOrderId: 'premium_order', kind: 'premium', status: 'SUCCESS' });
+  const message = { type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-attempt-1' } };
+  h.bridge.handle(message); h.bridge.handle(message);
+  assert.equal(h.count('checkoutPremium'), 1);
+  checkout.resolve({ purchaseId: 'premium-purchase', merchantOrderId: 'premium_order', kind: 'premium', status: 'PENDING', paymentUrl: 'https://checkout.example.test/premium' }); await settle();
+  assert.deepEqual(h.opened, ['https://checkout.example.test/premium']);
+  assert.equal(h.find('data.themes').length, 0, 'Opening the provider does not grant theme access');
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.calls.find(call => call.name === 'verifyPremium').args[0], 'premium_order');
+  assert.equal(h.find('themes.premium.purchase')[0].data.status, 'SUCCESS');
+  assert.equal(h.find('data.themes')[0].data.premium.active, false, 'A payment event alone cannot grant entitlement');
+  assert.equal(h.count('wallet'), 0, 'Premium payment does not fabricate wallet credits');
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.count('verifyPremium'), 1);
+  h.bridge.close();
+});
+
+test('foreground and realtime refresh theme entitlement while logout suppresses late purchase work', async () => {
+  const h = harness(), pending = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.ok(h.count('themes') >= 1);
+  const before = h.count('themes');
+  h.activities.forEach(listener => listener('active')); await settle();
+  h.live[0].onEvent({ type: 'themes.updated', data: { active: true } }); await settle();
+  assert.equal(h.count('themes'), before + 2);
+  assert.equal(h.find('data.themes').at(-1).data.premium.active, false);
+  h.overrides.checkoutPremium = () => pending.promise;
+  h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-attempt-2' } });
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  pending.resolve({ purchaseId: 'late', merchantOrderId: 'late_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/late' }); await settle();
+  assert.equal(h.opened.length, 0);
+  assert.equal(h.find('themes.premium.checkout').length, 0);
+  h.bridge.close();
 });
 
 test('realtime wallet reads use loading events and logout suppresses old completion', async () => {
