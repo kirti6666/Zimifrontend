@@ -52,6 +52,25 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     }
     console.log('PASS chats: screenshot layout at 320/373/630/1280px, shared header/navigation, demo, reduced motion');
 
+    await preview.evaluate(() => go('thread', 'aanya'));
+    await preview.locator('.zc-thread').waitFor();
+    assert.equal(await preview.locator('.zc-thread-live').count(), 1, 'A live creator shows the live banner');
+    assert.equal(await preview.locator('.zc-gift-card').count(), 1);
+    assert.equal(await preview.locator('.zc-voice').count(), 1);
+    for (const width of [320, 373, 630, 1280]) {
+      await preview.setViewportSize({ width, height: 844 });
+      assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `The thread does not overflow at ${width}px`);
+      assert.equal(await preview.getByRole('button', { name: 'Send message', exact: true }).isVisible(), true);
+      await preview.screenshot({ path: path.join(os.tmpdir(), `zimi-thread-preview-${width}.png`) });
+    }
+    await preview.getByRole('button', { name: 'More options', exact: true }).click();
+    await preview.getByRole('menuitem', { name: 'View profile' }).waitFor();
+    await preview.keyboard.press('Escape');
+    assert.equal(await preview.getByRole('menu').count(), 0, 'Escape closes the thread menu');
+    await preview.locator('#ti').focus();
+    assert.equal(await preview.locator('#ti').evaluate(input => getComputedStyle(input).outlineStyle), 'none', 'The focused composer shows focus on its pill, not a box inside it');
+    console.log('PASS chats: thread preview layout at 320/373/630/1280px and menu');
+
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
     page.setDefaultTimeout(7000);
     captureErrors(page);
@@ -164,7 +183,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.getByRole('status', { name: 'Loading messages', exact: true }).waitFor();
     await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00' }], readAt: new Date().toISOString() }, 'thread');
     assert.match(await page.locator('#tf').innerText(), /A real thread response/);
-    const draft = page.getByPlaceholder('Message', { exact: true });
+    const draft = page.getByPlaceholder('Type a message to Mira', { exact: true });
     await draft.fill('Keep this unsent draft');
     const openedBeforeIncoming = await sentCount('chat.open');
     await receive('chat.message', { from: mira.id, text: 'A new message in the active thread', id: id('31'), createdAt: new Date().toISOString() });
@@ -178,6 +197,33 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await receive('chat.message', { from: asha.id, text: 'Message in another conversation', id: id('32') });
     await receive('chat.message', { from: mira.id, text: 'An in-call message', inCall: true, id: id('33') });
     assert.equal(await sentCount('chat.open'), openedBeforeIncoming + 1, 'Other conversations and in-call events do not mark the active thread read');
+    await settle('data.thread', { with: mira.id, messages: [{ mine: true, text: 'Seen already', createdAt: at(3), status: 'read' }, { mine: true, text: 'Not seen yet', createdAt: at(2), status: 'sent' }, { mine: false, text: 'Reply from Mira', createdAt: at(1) }], readAt: new Date().toISOString() }, 'thread');
+    assert.deepEqual(await page.locator('#tf .zc-tick').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Read', 'Sent'], 'Read ticks follow the server read state of own messages');
+    assert.equal(await page.locator('.zc-thread-day').textContent(), 'Today');
+    assert.equal(await page.locator('.zc-voice, .zc-gift-card, .zc-thread-live').count(), 0, 'Production threads show only server history, without preview content');
+    assert.equal(await page.locator('.zc-thread-header small').textContent(), 'Online', 'An unknown call rate is never presented as a price');
+    await draft.fill('Hello Mira');
+    await draft.press('Enter');
+    assert.equal((await lastSent('chat.send')).text, 'Hello Mira');
+    assert.equal(await draft.inputValue(), '', 'Sending clears the draft');
+    await receive('operation.error', { action: 'chat.send', message: 'Message could not be sent.' });
+    await page.locator('#tf .zc-meta').filter({ hasText: 'Not sent' }).waitFor();
+    await page.getByRole('button', { name: 'Love it', exact: true }).click();
+    assert.equal((await lastSent('chat.send')).text, 'Love it 🔥', 'Quick replies send real messages');
+    const rose = { id: id('41'), name: 'Rose', emoji: '🌹', coins: 10 };
+    await page.getByRole('button', { name: 'Send a gift', exact: true }).click();
+    await settle('data.catalog', { gifts: [rose], packs: [], paymentsAvailable: false }, 'catalog');
+    await page.getByRole('dialog', { name: 'Send a gift', exact: true }).getByRole('button').filter({ hasText: 'Rose' }).click();
+    assert.equal((await lastSent('gift.send')).gift, rose.id);
+    assert.equal((await lastSent('gift.send')).inCall, false);
+    assert.equal(await page.locator('.zc-gift-card').count(), 0, 'A gift card waits for server confirmation');
+    await receive('gift.sent', { to: mira.id, gift: rose.id, idempotencyKey: (await lastSent('gift.send')).idempotencyKey });
+    assert.match(await page.locator('.zc-gift-card').innerText(), /Rose[\s\S]*Delivered to Mira/);
+    await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'Thank you!', createdAt: new Date().toISOString() }] }, 'thread');
+    assert.equal(await page.locator('.zc-gift-card').count(), 1, 'A confirmed gift stays in the thread across history refreshes');
+    assert.equal(await page.locator('#app-notice').textContent(), 'Gift sent!');
+    await page.evaluate(() => document.getElementById('app-notice')?.remove()); // the toast would cover later steps for 7s
+    console.log('PASS chats: thread read ticks, quick replies, failed sends and confirmed gift cards');
     await navigate('chats');
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
     const picker = page.getByRole('dialog', { name: 'New conversation', exact: true });

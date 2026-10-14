@@ -26,6 +26,8 @@
 :root[data-theme-id] .zp-danger{background:var(--theme-danger)!important;color:var(--canvas)!important}
 :root[data-theme-id] :is(input,textarea)::placeholder{color:var(--muted)}
 :root[data-theme-id] :is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+/* An input inside a pill-shaped field would draw a box inside the pill; the field shows focus instead. */
+:root :is(.zc-composer-field,.zc-compose-search,.zh-search-header>div)>input:focus-visible{outline:none}
 :root[data-theme-id] input[type=checkbox]{accent-color:var(--accent)}
 :root[data-theme-id] .zh-packs>button.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 :root[data-theme-id] :is(.zp-camera,.zp-avatar,.zh-story-create .zh-story-ring,.zh-rate,.ob-toast){background:var(--raised);color:var(--ink);border-color:var(--line)}

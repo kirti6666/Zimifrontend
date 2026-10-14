@@ -82,7 +82,7 @@ function obRestoreScreen() {
   const skeleton = `<div class="ob-session-skeleton" role="status" aria-label="Restoring session" aria-busy="true"><div aria-hidden="true"><div class="ob-session-stories">${Array.from({ length: 5 }, () => '<span></span>').join('')}</div><div class="ob-session-card"><span class="ob-session-line"></span><span class="ob-session-line short"></span><span class="ob-session-action"></span></div></div></div>`;
   return `<section class="ob-shell ob-recovery"><div class="ob-main"><span class="ob-eyebrow">ZIMI LIVE</span><h1 class="ob-heading" tabindex="-1">${busy ? "Picking up where you left off." : "Let’s reconnect."}</h1><p class="ob-description">${busy ? "Checking your saved session…" : esc(S.sessionError || "Check your connection and try again.")}</p><div class="ob-actions">${busy ? skeleton : '<button class="ob-primary" onclick="Native.send(\'session.resume\')">Try again</button><button class="ob-secondary" onclick="logout()">Use another account</button>'}</div></div></section>`;
 }
-const obArrow = () => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const obArrow = () => '<svg class="zi-icon" data-icon="arrow" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function obHaptic(kind = "selection") { Native.send("ui.haptic", { kind }); }
 function obSyncTheme() {
   const active = S.v === "welcome" || S.v === "login";

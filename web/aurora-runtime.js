@@ -11,8 +11,6 @@ const H=[
 const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","going live in ten","5:54 pm",1],
  ["tara","send your birth time when you can","5:31 pm",0],["ishaan","you: gg, rough last round","4:12 pm",0],
  ["meher","recording the folk set tonight","2:47 pm",0],["dev","you: form check tomorrow?","Yesterday",0]];
-const TH=[["t","hey, you caught the end of the set?","5:48 pm"],["m","only the last two songs","5:49 pm"],
- ["t","wrote it last week, bridge still rough","5:50 pm"],["m","bridge was the best part honestly","5:52 pm"]];
 const WATER_STICKER="__WATER_FLOWING_STICKER__";
 const GIFTS=[
  ["Rose waterfall","&#127801;",9999,"water"],
@@ -163,8 +161,9 @@ const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>'
  plus:'<path d="M12 5v14M5 12h14" stroke-linecap="round"/>',
  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/>',
  moon:'<path d="M20 14.2A8.2 8.2 0 019.8 4a8.4 8.4 0 102 10.4 8.2 8.2 0 008.2-.2z" stroke-linejoin="round"/>'};
-const I=(k,s)=>`<svg viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6">${P[k]}</svg>`;
-const coin=`<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc400" stroke="#ef9f00" stroke-width="1.3"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#fff178" stroke-width="1.2"/><path d="M12 7.4l1.35 2.73 3.02.44-2.18 2.12.52 3-2.71-1.43-2.71 1.43.52-3-2.18-2.12 3.02-.44z" fill="#fff3a1"/></svg>`;
+/* Every icon carries data-icon so icons.css can give it its own press animation. */
+const I=(k,s)=>`<svg class="zi-icon" data-icon="${k}" viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${P[k]}</svg>`;
+const coin=`<svg class="zi-icon" data-icon="coin" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc400" stroke="#ef9f00" stroke-width="1.3"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#fff178" stroke-width="1.2"/><path d="M12 7.4l1.35 2.73 3.02.44-2.18 2.12.52 3-2.71-1.43-2.71 1.43.52-3-2.18-2.12 3.02-.44z" fill="#fff3a1"/></svg>`;
 /* One currency mark everywhere: balances, gifts, targets, calls and purchases. */
 const gem=coin;
 const th=()=>"";
@@ -211,7 +210,7 @@ function go(v,id){
   S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
- if(v==="thread"){S.msgs=DEMO?TH.map(m=>m.slice()):[];Native.send("chat.open",{with:S.h})}
+ if(v==="thread"){S.msgs=DEMO?zcDemoThread(g(S.h)):[];Native.send("chat.open",{with:S.h})}
  if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"));window.ZimiNavigation?.after(navigationChange)}
@@ -603,7 +602,7 @@ function sendGift(l,e,v,k){
  S.bal-=v; S.tray=0; S.sh=0;
  Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});
  if(S.v==="thread"){
-  S.msgs.push(["g",e,n(v),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);
+  S.msgs.push({kind:"gift",mine:true,at:new Date().toISOString(),status:"sent",gift:{name:l,html:e,coins:v}});
   r(); paint(); playGift(l,e,v,k); return}
  if(S.v==="hcall"){
   S.rmsgs.push(["gift","You",`sent ${e} ${l} to ${first(S.caller.n)}`]);
@@ -754,38 +753,10 @@ function paintList(){const pending=window.contentSurface?.('chats','rows','Loadi
  const el=document.getElementById("clist");
  if(el)el.innerHTML=L.length?L.map(row).join(""):`<div class="empty">No conversations match that search.</div>`}
 
-function vThread(){const h=g(S.h);
- return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden">
- <div class="hdr" style="padding:10px 12px">
-  <button onclick="go('chats')" aria-label="Back" style="color:var(--muted);display:flex">${I("back",21)}</button>
-  <button class="threadperson" onclick="go('host','${domId(h.id)}')" aria-label="Open ${esc(h.n)} profile">
-   ${av(h,34)}
-   <span style="min-width:0"><span class="s15" style="display:block;font-weight:600;line-height:1.2">${esc(h.n)}</span>
-   <span class="s11 muted" style="display:flex;align-items:center;gap:5px">${h.on?"Online":"Away"} · ${esc(h.c)}</span></span>
-  </button>
-  <button onclick="go('precall','${domId(h.id)}')" aria-label="Video call" style="color:var(--muted);display:flex">${I("vid",21)}</button></div>
- <div class="pat" id="tf"></div>
- <div class="fx" id="fl"></div>
- <div class="qs">${GIFTS.slice(0,8).map(([l,e,v,k])=>`
-   <button onclick="sendGift('${l}','${e}',${v},'${k||""}')" ${S.bal<v?"disabled":""} aria-label="Send ${l}">
-    ${k==="water"?`<span class="gl media"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gc">${n(v)}</span></button>`).join("")}</div>
- <div class="comp">
-  <button class="send" style="background:var(--raised);color:var(--accent-ink)" onclick="S.tray=1;r()" aria-label="Open gifts">${I("gift",20)}</button>
-  <span class="field"><input id="ti" placeholder="Message" onkeydown="if(event.key==='Enter')snd()"></span>
-  <button class="send" onclick="snd()" aria-label="Send">${I("send",20)}</button></div>
- ${S.tray?giftTray():""}</div>`}
 function focusField(id){const i=document.getElementById(id);
  if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}
-function snd(){const i=document.getElementById("ti");if(!i||!i.value.trim())return;
- Native.send("chat.send",{to:S.h,text:i.value.trim()});
- S.msgs.push(["m",i.value.trim(),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);i.value="";paint()}
-function paint(){const f=document.getElementById("tf");if(!f)return;
- const pending=window.contentSurface?.('thread','thread','Loading messages');if(pending){f.innerHTML=pending;return}
- f.innerHTML=S.msgs.map(([w,t,a,tm])=>w==="g"
-  ?`<div class="gbub"><span class="gl">${giftGlyph(t)}</span><span class="gc">${gem}${esc(a)}</span>
-     <span class="gt2">${esc(tm||"")}</span></div>`
-  :`<div class="bub ${w==="m"?"me":"them"}">${esc(t)}<span style="font-size:10.5px;margin-left:7px;opacity:.6">${esc(a)}</span></div>`).join("");
- f.scrollTop=f.scrollHeight}
+/* The conversation thread lives in chats.js; loading and server events repaint it through here. */
+function paint(){zcPaintThread()}
 
 function vBoard(){
  const rows=boardRows();
@@ -1620,7 +1591,7 @@ function r(){
  if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
- el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,thread:vThread,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+ el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
@@ -1700,7 +1671,7 @@ Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()
 Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise]));refresh()});
 Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>[knowHost(c.user).id,c.time||"",c.duration||"",c.coins||0]));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
- S.msgs=(d.messages||[]).map(m=>[m.mine?"m":"t",m.text,m.time||""]);paint()});
+ S.msgs=zcThreadMessages(d);paint()});
 Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)A().earn=d.earned;refresh()});
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
@@ -1731,7 +1702,7 @@ Native.on("gift.received",d=>{if(S.v!=="hcall")return;
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
 Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
  if(d.inCall&&(S.v==="call"||S.v==="hcall")){S.rmsgs.push(["host",first(d.name||"Them"),d.text]);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push(["t",d.text,t]);return paint()}
+ if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,time:t,at:d.createdAt||new Date().toISOString()});return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");

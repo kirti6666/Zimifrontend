@@ -17,7 +17,7 @@ const zpIcons={
   logout:'<path d="M10 3H3v18h7M8 12h14m-5-5 5 5-5 5"/>',
   mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 5 10 8 10-8"/>'
 };
-function zi(name,size=20){return zpIcons[name]?`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${zpIcons[name]}</svg>`:hi(name,size)}
+function zi(name,size=20){return zpIcons[name]?`<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${zpIcons[name]}</svg>`:hi(name,size)}
 function zpNumber(value){return new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(Math.max(0,Number(value)||0))}
 function zpMoney(value){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format((Number(value)||0)/100)}
 function zpActive(){return ['profile','settings'].includes(S.v)}

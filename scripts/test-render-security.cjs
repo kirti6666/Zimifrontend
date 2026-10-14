@@ -42,11 +42,7 @@ const root = path.resolve(__dirname, '..');
       const maliciousId = { ...host, id: "');window.__xss++;//" };
       const safeId = safeMarkup(card(maliciousId)) && [...testRoot.querySelectorAll('[onclick],[onkeydown]')].every(element =>
         ![element.getAttribute('onclick'), element.getAttribute('onkeydown')].some(value => value && value.includes('__xss')));
-      testRoot.innerHTML = '<div id="tf"></div><div id="rfeed"></div>';
-      S.msgs = [['t', attack, attack], ['m', normal, '10:00'], ['g', attack, 5, attack]];
-      paint();
-      const chatText = document.getElementById('tf').textContent;
-      const chatSafe = !testRoot.querySelector('[onerror],script,img') && chatText.includes(attack) && chatText.includes(normal);
+      testRoot.innerHTML = '<div id="rfeed"></div>';
       S.rmsgs = [['host', attack, attack], ['sys', '', normal], ['evil" onerror="window.__xss++', attack, attack]];
       paintFeed();
       const feedSafe = !testRoot.querySelector('[onerror],script,img') && document.getElementById('rfeed').textContent.includes(attack);
@@ -64,8 +60,28 @@ const root = path.resolve(__dirname, '..');
       const captionSafe = caption?.textContent === attack && !caption.querySelector('img,script');
       S.v = 'hcall'; S.caller = { ...host, n: '<img/src=x/onerror=window.__xss++>' }; S.tray = 1; S.cache.gifts = 1;
       const traySafe = safeMarkup(giftTray()) && testRoot.textContent.includes(S.caller.n);
-      return { rendererResults, safeId, chatSafe, feedSafe, imageSafe, editSafe, gallerySafe, searchSafe, captionSafe, traySafe, executions: window.__xss };
+      return { rendererResults, safeId, feedSafe, imageSafe, editSafe, gallerySafe, searchSafe, captionSafe, traySafe, executions: window.__xss };
     });
+    // The conversation thread is rendered by the chats layer, which builds on the home layer.
+    for (const file of ['host-access.js', 'loading.js', 'home.js', 'chats.js']) {
+      await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
+    }
+    Object.assign(result, await page.evaluate(() => {
+      const attack = 'A " autofocus onfocus="window.__xss++" ><img src=x onerror="window.__xss++"> & O\'Neil';
+      const normal = 'O\'Neil & "friends" <3';
+      const testRoot = document.createElement('section'); document.body.appendChild(testRoot);
+      const host = H[0];
+      host.stream = { id: 'stream-1', title: attack, viewers: 12 };
+      S.v = 'thread'; S.h = host.id; ContentLoading.thread.loading = false;
+      S.msgs = [{ mine: false, text: attack, time: attack }, { mine: true, text: normal, time: '10:00', status: 'read' }, { kind: 'gift', mine: true, gift: { name: attack, emoji: attack, coins: 5 } }, { kind: 'gift', mine: false, gift: { name: attack, html: attack, coins: 5 } }];
+      testRoot.innerHTML = zcThread();
+      paint();
+      const chatText = document.getElementById('tf').textContent;
+      const chatSafe = !testRoot.querySelector('[onerror],script,img') && chatText.includes(attack) && chatText.includes(normal) &&
+        [...testRoot.querySelectorAll('*')].every(element => [...element.attributes].every(attribute => !(/^on/i.test(attribute.name) && attribute.value.includes('__xss')))) &&
+        testRoot.querySelector('.zc-thread-live').textContent.includes(attack) && testRoot.querySelector('#ti').getAttribute('aria-label') === 'Message ' + attack;
+      return { chatSafe, executions: window.__xss }; // cumulative across both passes
+    }));
     for (const item of result.rendererResults) {
       assert.equal(item.safe, true, `${item.label} must escape markup and attributes`);
       assert.equal(item.textPreserved, true, `${item.label} must preserve readable text`);

@@ -169,7 +169,10 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
 }
 export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string } {
   const data = record(value);
-  return { messages: items(data).map(record).reverse().map(message => ({ id: idOf(message), mine: idOf(message.senderId) === userId, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt), kind: "text" })),
+  return { messages: items(data).map(record).reverse().map(message => {
+    const mine = idOf(message.senderId) === userId;
+    return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt), kind: "text" as const, ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
+  }),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
 export function callsFrom(value: unknown, userId: string): { calls: CallRecord[] } {

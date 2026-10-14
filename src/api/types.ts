@@ -194,6 +194,7 @@ export interface Message {
   time: string;
   createdAt?: string;
   kind?: "text";
+  status?: "sent" | "read"; // own messages only: whether the other person has read it
 }
 
 export interface MissedCall {
