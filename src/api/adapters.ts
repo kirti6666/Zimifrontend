@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, Purchase, StreamChat, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, AppTheme, BlockedUsers, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -81,6 +81,33 @@ export function notificationsFrom(value: unknown): { items: AppNotification[]; u
   const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt) }));
   return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length };
 }
+export function privacyFrom(value: unknown): PrivacySettings {
+  const data = record(value);
+  if (["discoverable", "showActivity", "allowRequests"].some(key => typeof data[key] !== "boolean")) throw new ApiError("Your privacy settings could not be loaded. Try again.", 502);
+  return { discoverable: data.discoverable as boolean, showActivity: data.showActivity as boolean, allowRequests: data.allowRequests as boolean };
+}
+export function profileSettingsFrom(value: unknown): ProfileSettings {
+  const data = record(value), profile = record(data.profile), stats = record(data.stats), preferences = record(data.preferences), capabilities = record(data.capabilities);
+  const statKeys = ["fans", "following", "giftsSent", "giftsReceived", "coinsSent", "coinsReceived"] as const;
+  if (!idOf(profile) || statKeys.some(key => !Number.isSafeInteger(stats[key]) || Number(stats[key]) < 0) ||
+    typeof preferences.pushNotifications !== "boolean" || (preferences.matchCategory !== null && typeof preferences.matchCategory !== "string") ||
+    !["dark", "light", "system"].includes(String(preferences.appearance))) throw new ApiError("Your account settings could not be loaded. Try again.", 502);
+  return {
+    profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
+    stats: { fans: stats.fans as number, following: stats.following as number, giftsSent: stats.giftsSent as number, giftsReceived: stats.giftsReceived as number, coinsSent: stats.coinsSent as number, coinsReceived: stats.coinsReceived as number },
+    preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
+    privacy: privacyFrom(data.privacy), categories: stringList(data.categories),
+    // This native build does not register OS push tokens yet. Backend worker
+    // availability alone must not be presented as notifications on this device.
+    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, liveAlerts: capabilities.liveAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
+  };
+}
+export function blockedUsersFrom(value: unknown): BlockedUsers {
+  const data = record(value);
+  const users = items(data).map(record).filter(block => block.blockedId && idOf(block.blockedId)).map(block => hostFrom(block.blockedId));
+  if (!Number.isSafeInteger(data.total) || Number(data.total) < 0) throw new ApiError("Your blocked accounts could not be loaded. Try again.", 502);
+  return { users, total: data.total as number, page: count(data.page) || 1, limit: count(data.limit) || 20 };
+}
 export function streamChatFrom(value: unknown): StreamChat {
   const message = record(value), user = message.userId && typeof message.userId === "object" ? record(message.userId) : {};
   return { id: idOf(message), streamId: idOf(message.streamId), userId: idOf(message.userId), name: string(user.name), text: string(message.text), createdAt: string(message.createdAt) };
@@ -93,7 +120,33 @@ export function purchaseFrom(value: unknown): Purchase {
   const data = record(value), paymentUrl = string(data.paymentUrl);
   if (paymentUrl && !/^https:\/\/[^\s"'<>]+$/.test(paymentUrl)) throw new ApiError("Checkout did not return a secure payment address.", 502);
   const status = string(data.status);
-  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}) };
+  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}), ...(data.kind === "premium" || data.kind === "coins" ? { kind: data.kind } : {}) };
+}
+export function themeFrom(value: unknown): AppTheme {
+  const data = record(value), colors = record(data.colors), typography = record(data.typography);
+  const colorKeys = ["background", "surface", "surfaceElevated", "text", "textMuted", "primary", "primaryContrast", "secondary", "border", "success", "danger"] as const;
+  if (!/^[a-f\d]{24}$/i.test(idOf(data)) || !string(data.name) || !["light", "dark"].includes(String(data.mode)) ||
+    colorKeys.some(key => typeof colors[key] !== "string" || !/^#[a-f\d]{6}$/i.test(colors[key] as string)) ||
+    !["system", "rounded", "serif", "mono"].includes(String(typography.fontFamily)) ||
+    typeof typography.fontScale !== "number" || !Number.isFinite(typography.fontScale) || typography.fontScale < 0.9 || typography.fontScale > 1.15 ||
+    !["400", "500", "600"].includes(String(typography.fontWeight)) || !["600", "700", "800"].includes(String(typography.headingWeight))) {
+    throw new ApiError("A theme could not be loaded. Refresh your themes and try again.", 502);
+  }
+  return { id: idOf(data), slug: string(data.slug), name: string(data.name), description: string(data.description), isPremium: data.isPremium === true,
+    active: data.active === true, isDefault: data.isDefault === true, sortOrder: finite(data.sortOrder) ?? 0, mode: data.mode as AppTheme["mode"],
+    colors: Object.fromEntries(colorKeys.map(key => [key, colors[key]])) as AppTheme["colors"],
+    typography: { fontFamily: typography.fontFamily as AppTheme["typography"]["fontFamily"], fontScale: typography.fontScale,
+      fontWeight: String(typography.fontWeight) as AppTheme["typography"]["fontWeight"], headingWeight: String(typography.headingWeight) as AppTheme["typography"]["headingWeight"] } };
+}
+export function themesFrom(value: unknown): ThemeCatalog {
+  const data = record(value), premium = record(data.premium), themes = items(data).map(themeFrom), selectedThemeId = string(data.selectedThemeId);
+  const selected = themes.find(theme => theme.id === selectedThemeId);
+  if (typeof premium.active !== "boolean" || !Number.isSafeInteger(premium.pricePaise) || Number(premium.pricePaise) < 0 ||
+    premium.currency !== "INR" || premium.purchaseType !== "lifetime" || !selected?.active || (selected.isPremium && !premium.active)) {
+    throw new ApiError("Your themes could not be confirmed. Refresh and try again.", 502);
+  }
+  return { items: themes, selectedThemeId, premium: { active: premium.active, pricePaise: premium.pricePaise as number,
+    currency: "INR", paymentsAvailable: premium.paymentsAvailable === true, purchaseType: "lifetime" } };
 }
 export function timeOf(value: unknown): string {
   const date = new Date(string(value));
@@ -134,8 +187,15 @@ export function walletFrom(value: unknown): Wallet {
   return { coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number, reservedPaise: finite(wallet.reservedPaise) };
 }
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
-  return { items: items(value).map(record).map(tx => ({
-    title: string(tx.description) || string(tx.type).replace(/_/g, " "), time: timeOf(tx.createdAt), coins: finite(tx.coins) ?? 0, amountPaise: finite(tx.amountPaise),
-    kind: string(tx.type).startsWith("gift") ? "gift" : string(tx.type).startsWith("purchase") ? "topup" : string(tx.type).startsWith("withdrawal") ? "withdrawal" : "reward",
-  })) };
+  return { items: items(value).map(record).map(tx => {
+    const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);
+    // The ledger stores purchase charges as positive and reversals as negative.
+    // Monetary-only purchases display the account holder's spending/refund sign.
+    const monetaryPurchase = coins === 0 && amountPaise !== undefined && Number.isSafeInteger(amountPaise) && amountPaise !== 0 && ["purchase", "purchase_reversal"].includes(type);
+    return {
+      title: string(tx.description) || type.replace(/_/g, " "), time: timeOf(tx.createdAt), coins, amountPaise,
+      ...(monetaryPurchase ? { displayAmountPaise: type === "purchase" ? -Math.abs(amountPaise) : Math.abs(amountPaise) } : {}),
+      kind: type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
+    };
+  }) };
 }

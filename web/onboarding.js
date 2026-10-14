@@ -44,6 +44,7 @@ function obAuthError(data) {
 function obPhotoUrl(value) { return typeof value === "string" && (/^https:\/\/[^\s"'<>]+$/.test(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)) ? value : ""; }
 function obApplyAccount(account) {
   const u = account.user || {}; S.user = u;
+  window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
   me.n = u.name || ""; S.editName = me.n; me.c = u.city || ""; me.about = u.about || "";
   S.editCity = me.c; S.editAbout = me.about;
@@ -63,6 +64,7 @@ function obResumeOnboarding(account, desiredCreator) {
 function obResetSession(message = "") {
   window.ZimiHostAccess?.reset();
   if(window.ZimiHome)homeReset();
+  window.ZimiThemes?.reset();
   clearInterval(obRateTimer); clearInterval(S.otpT); clearTimeout(obRequestTimer);
   S.loggedIn = 0; S.online = 0; S.sessionState = ""; S.sessionError = ""; S.notice = message; S.creatorSetup = false; S.user = null;
   S.auth = { step: "phone" }; S.avatarData = ""; S.coverData = ""; S.kf = {}; S.postData = []; S.interests = []; S.msgs = null; S.rmsgs = [];

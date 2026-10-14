@@ -11,8 +11,11 @@ const deferred = () => { let resolve, reject; const promise = new Promise((yes, 
 const tokenPair = (id = 'alice') => ({ accessToken: `${id}.access.${'a'.repeat(30)}`, refreshToken: `${id}.refresh.${'r'.repeat(30)}`, expiresIn: 900, refreshExpiresIn: 86400 });
 const account = (id = 'alice') => ({ user: { id, name: id, role: 'sender' }, verification: 'none', requiresOnboarding: true });
 const approvedAccount = (id = 'alice') => ({ ...account(id), user: { ...account(id).user, role: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified', requiresOnboarding: false });
+const profileSettings = (appearance = 'dark') => ({ profile: { id: 'alice', name: 'Alice', bio: '', city: 'Pune', languages: ['English'], maskedPhone: '+91 ••••••3210', countryCode: '+91', isPhoneVerified: true, createdAt: '2026-10-13T09:00:00.000Z' },
+  stats: { fans: 2, following: 3, giftsSent: 4, giftsReceived: 5, coinsSent: 40, coinsReceived: 50 }, preferences: { pushNotifications: false, matchCategory: null, appearance }, privacy: { discoverable: true, showActivity: true, allowRequests: false }, categories: ['Music'], capabilities: { pushNotifications: false, nativePushRegistered: false, liveAlerts: false, interfaceLanguages: ['en'], currency: 'INR' } });
 const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phone: '+919876543210', code: '123456', role: 'sender', signup: true, requestId } });
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
+const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
 
 function harness() {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], effects = [], opened = [], signals = [], activities = [];
@@ -27,6 +30,7 @@ function harness() {
     hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
     transactions: () => ({ items: [] }), wallet: () => ({ coins: 100, earningsPaise: 0 }), logout: () => {},
     home: () => ({ hosts: [], stage: [], featured: null, page: 1 }), notifications: () => ({ items: [], unreadCount: 0 }), catalog: () => ({ gifts: [], packs: [], paymentsAvailable: false }), presence: () => ({ online: true, visible: true }),
+    profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
   };
   const api = new Proxy({}, { get: (_, name) => async (...args) => {
     calls.push({ name, args });
@@ -790,7 +794,7 @@ test('resource loading starts before list reads and settles failures with an exp
     return chats.promise;
   };
   h.bridge.handle({ type: 'data.reload', data: {} }); await settle();
-  const resources = ['home', 'notifications', 'catalog', 'chats', 'missed', 'calls', 'transactions', 'posts', 'wallet'];
+  const resources = ['home', 'notifications', 'catalog', 'chats', 'missed', 'calls', 'transactions', 'posts', 'wallet', 'profileSettings'];
   for (const resource of resources) {
     const loading = h.find('data.loading').filter(event => event.data.resource === resource);
     assert.equal(loading[0].data.loading, true, `${resource} begins loading`);
@@ -941,6 +945,241 @@ test('a successful message send refreshes conversations while failed sends leave
   h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Try again' } }); await settle();
   assert.equal(h.count('chats'), 1);
   assert.equal(h.find('operation.error').at(-1).data.action, 'chat.send');
+  h.bridge.close();
+});
+
+test('profile settings and privacy messages accept only supported preferences, never account authority or call availability', async () => {
+  const h = harness();
+  const invalid = [
+    { type: 'profile.settings.save', data: {} }, { type: 'profile.settings.save', data: { requestId: 1 } },
+    { type: 'profile.settings.save', data: { role: 'host', hostStatus: 'approved' } },
+    { type: 'profile.settings.save', data: { appearance: 'javascript:alert(1)' } },
+    { type: 'profile.settings.save', data: { pushNotifications: 1 } },
+    { type: 'profile.settings.save', data: { matchCategory: 'Fake category' } },
+    { type: 'profile.settings.save', data: { languages: ['English', ' english '] } },
+    { type: 'profile.settings.save', data: { languages: ['<script>'] } },
+    { type: 'profile.settings.save', data: { city: 'x'.repeat(101) } },
+    { type: 'privacy.save', data: { allowRequests: true } }, { type: 'privacy.save', data: { showActivity: 'true' } },
+    { type: 'settings.set', data: { showMvps: true } }, { type: 'blocked.load', data: { page: -1 } },
+    { type: 'block.set', data: { id: '../other-user', blocked: true } }, { type: 'block.set', data: { id: 'user', blocked: 'false' } },
+  ];
+  for (const message of invalid) { assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null); h.bridge.handle(message); }
+  for (const data of [{ matchCategory: null }, { appearance: 'system' }, { languages: ['English', 'हिन्दी'] }, { city: '' }]) assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.settings.save', data })));
+  await settle(); assert.equal(h.calls.length, 0); h.bridge.close();
+});
+
+test('profile settings reads report actual loading and never allow stale responses to replace the current summary', async () => {
+  const h = harness(), old = deferred(), latest = deferred(); let reads = 0;
+  h.overrides.profileSettings = () => ++reads === 1 ? old.promise : latest.promise;
+  h.bridge.handle({ type: 'profile.settings.load', data: {} });
+  h.bridge.handle({ type: 'profile.settings.load', data: {} });
+  old.resolve(profileSettings('dark')); await settle();
+  assert.equal(h.find('data.profileSettings').length, 0);
+  assert.equal(h.find('data.loading').filter(event => !event.data.loading).length, 0);
+  latest.resolve(profileSettings('light')); await settle();
+  assert.equal(h.find('data.profileSettings')[0].data.preferences.appearance, 'light');
+  assert.equal(h.find('data.loading').at(-1).data.resource, 'profileSettings'); assert.equal(h.find('data.loading').at(-1).data.loading, false);
+  h.overrides.profileSettings = () => { throw new h.ApiError('Settings unavailable', 503); };
+  h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
+  assert.equal(h.find('data.loading').at(-1).data.error, 'Settings unavailable');
+  assert.equal(h.find('data.profileSettings').length, 1, 'A failed read never fabricates empty statistics or defaults');
+  h.bridge.close();
+});
+
+test('profile edits retire settings reads from before and during the write, then reload the saved fields', async () => {
+  const h = harness(), before = deferred(), during = deferred(), saved = deferred(), fresh = deferred(); let reads = 0;
+  h.overrides.profileSettings = () => [before, during, fresh][reads++].promise;
+  h.overrides.saveProfile = () => saved.promise;
+  h.bridge.handle({ type: 'profile.settings.load', data: {} });
+  h.bridge.handle({ type: 'profile.save', data: { name: 'Updated Name', requestId: 29 } });
+  before.resolve(profileSettings()); await settle();
+  assert.equal(h.find('data.profileSettings').length, 0, 'A read begun before editing is retired immediately');
+  h.bridge.handle({ type: 'profile.settings.load', data: {} });
+  saved.resolve({ ...account(), user: { ...account().user, name: 'Updated Name', city: 'Delhi' } }); await settle();
+  assert.equal(h.find('profile.saved')[0].data.account.user.name, 'Updated Name');
+  assert.equal(reads, 3, 'Successful profile save reloads the canonical settings summary');
+  during.resolve(profileSettings()); await settle();
+  assert.equal(h.find('data.profileSettings').length, 0, 'A read begun during the write cannot overwrite saved fields');
+  const summary = profileSettings(); summary.profile.name = 'Updated Name'; summary.profile.city = 'Delhi';
+  fresh.resolve(summary); await settle();
+  assert.equal(h.find('data.profileSettings')[0].data.profile.name, 'Updated Name');
+  assert.equal(h.find('data.profileSettings')[0].data.profile.city, 'Delhi');
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'profileSettings').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('settings saves acknowledge server values once and retire an older summary read', async () => {
+  const h = harness(), oldRead = deferred(), save = deferred();
+  h.overrides.profileSettings = () => oldRead.promise; h.overrides.saveProfileSettings = () => save.promise;
+  h.bridge.handle({ type: 'profile.settings.load', data: {} });
+  const mutation = { type: 'profile.settings.save', data: { appearance: 'light', requestId: 7 } };
+  h.bridge.handle(mutation); h.bridge.handle(mutation); h.bridge.handle({ type: 'settings.set', data: mutation.data }); await settle();
+  assert.equal(h.count('saveProfileSettings'), 1, 'New and legacy aliases share the same mutation lock');
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls.find(call => call.name === 'saveProfileSettings').args[0])), { appearance: 'light' }, 'The correlation ID is never persisted as a preference');
+  assert.equal(h.find('profile.settings.saved').length, 0); assert.equal(h.find('data.profileSettings').length, 0);
+  save.resolve(profileSettings('light')); await settle();
+  assert.equal(h.find('profile.settings.saved')[0].data.requestId, 7);
+  assert.equal(h.find('profile.settings.saved')[0].data.settings.preferences.appearance, 'light');
+  oldRead.resolve(profileSettings('dark')); await settle();
+  assert.equal(h.find('data.profileSettings').length, 1); assert.equal(h.find('data.profileSettings')[0].data.preferences.appearance, 'light');
+  assert.equal(h.find('data.loading').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('settings write failures retain the previous server summary and account changes suppress late acknowledgments', async () => {
+  const h = harness();
+  h.overrides.saveProfileSettings = () => { throw new h.ApiError('Could not save preferences', 503); };
+  h.bridge.handle({ type: 'profile.settings.save', data: { pushNotifications: false, requestId: 11 } }); await settle();
+  assert.equal(h.find('profile.settings.error')[0].data.requestId, 11); assert.equal(h.find('profile.settings.saved').length, 0); assert.equal(h.find('data.profileSettings').length, 0);
+  const save = deferred(); h.overrides.saveProfileSettings = () => save.promise;
+  h.bridge.handle({ type: 'profile.settings.save', data: { appearance: 'light', requestId: 12 } });
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  save.resolve(profileSettings('light')); await settle();
+  assert.equal(h.find('profile.settings.saved').length, 0); assert.equal(h.find('data.profileSettings').length, 0);
+  h.bridge.close();
+});
+
+test('privacy updates send only the selected public preference and acknowledge effective server privacy', async () => {
+  const h = harness(), write = deferred(); h.overrides.savePrivacy = () => write.promise;
+  h.bridge.handle({ type: 'privacy.save', data: { discoverable: false, requestId: 4 } }); await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls.find(call => call.name === 'savePrivacy').args[0])), { discoverable: false });
+  assert.equal(h.find('privacy.saved').length, 0);
+  write.resolve({ discoverable: false, showActivity: true, allowRequests: false }); await settle();
+  assert.equal(h.find('privacy.saved')[0].data.privacy.allowRequests, false); assert.equal(h.find('privacy.saved')[0].data.requestId, 4);
+  assert.equal(h.count('profileSettings'), 1); assert.equal(h.count('home'), 1);
+  h.overrides.savePrivacy = () => { throw new h.ApiError('Privacy could not be saved', 503); };
+  h.bridge.handle({ type: 'privacy.save', data: { showActivity: false, requestId: 5 } }); await settle();
+  assert.equal(h.find('privacy.error')[0].data.requestId, 5); assert.equal(h.find('privacy.saved').length, 1);
+  h.bridge.close();
+});
+
+test('blocking waits for server success and refreshes real lists while failures retain the existing block state', async () => {
+  const h = harness(), write = deferred(); h.overrides.setBlocked = () => write.promise;
+  h.overrides.blockedUsers = page => ({ users: [{ id: 'blocked-user', name: 'Blocked User' }], total: 1, page, limit: 20 });
+  h.bridge.handle({ type: 'block.set', data: { id: 'blocked-user', blocked: true, requestId: 14 } }); await settle();
+  assert.equal(h.find('block.saved').length, 0); assert.equal(h.count('blockedUsers'), 0);
+  write.resolve(); await settle();
+  assert.equal(h.find('block.saved')[0].data.id, 'blocked-user'); assert.equal(h.find('block.saved')[0].data.blocked, true);
+  assert.equal(h.find('data.blocked')[0].data.users[0].id, 'blocked-user');
+  for (const name of ['blockedUsers', 'profileSettings', 'home', 'chats']) assert.equal(h.count(name), 1);
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'blocked').at(-1).data.loading, false);
+  h.overrides.setBlocked = () => { throw new h.ApiError('Unblock failed', 503); };
+  h.bridge.handle({ type: 'block.set', data: { id: 'blocked-user', blocked: false, requestId: 15 } }); await settle();
+  assert.equal(h.find('block.error')[0].data.id, 'blocked-user'); assert.equal(h.find('block.error')[0].data.blocked, false);
+  assert.equal(h.find('block.saved').length, 1); assert.equal(h.count('blockedUsers'), 1);
+  h.bridge.handle({ type: 'blocked.load', data: { page: 2 } }); await settle();
+  assert.equal(h.find('data.blocked').at(-1).data.page, 2); assert.equal(h.find('data.loading').filter(event => event.data.resource === 'blocked').at(-1).data.page, 2);
+  h.bridge.close();
+});
+
+test('account preference events reload the summary without changing host authority and stop after logout', async () => {
+  const h = harness(); await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const reads = h.count('profileSettings'), authority = h.find('host.access').length;
+  h.overrides.profileSettings = () => profileSettings('system');
+  h.live[0].onEvent({ type: 'account.updated', data: {} }); await settle();
+  assert.equal(h.count('profileSettings'), reads + 1); assert.equal(h.find('data.profileSettings').at(-1).data.preferences.appearance, 'system');
+  assert.equal(h.find('host.access').length, authority);
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'account.updated', data: {} }); await settle();
+  assert.equal(h.count('profileSettings'), reads + 1); h.bridge.close();
+});
+
+test('theme messages reject injected authority, arbitrary styles and malformed purchase requests', async () => {
+  const h = harness();
+  const invalid = [
+    { type: 'themes.select', data: { themeId: '000000000000000000000001', premium: true } },
+    { type: 'themes.select', data: { themeId: 'default', requestId: 1 } },
+    { type: 'themes.select', data: { themeId: '000000000000000000000001', colors: { background: '#000000' } } },
+    { type: 'themes.premium.checkout', data: { idempotencyKey: 'attempt-123', pricePaise: 1 } },
+    { type: 'themes.premium.checkout', data: { idempotencyKey: 'short' } },
+    { type: 'themes.premium.verify', data: { merchantOrderId: 'order', status: 'SUCCESS' } },
+  ];
+  for (const message of invalid) { assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null); h.bridge.handle(message); }
+  await settle(); assert.equal(h.calls.length, 0);
+  h.bridge.close();
+});
+
+test('theme selection waits for the server and retires preexisting catalog reads', async () => {
+  const h = harness(), older = deferred(), selection = deferred();
+  h.overrides.themes = () => older.promise;
+  h.overrides.selectTheme = () => selection.promise;
+  h.bridge.handle({ type: 'themes.load', data: {} });
+  h.bridge.handle({ type: 'themes.select', data: { themeId: '000000000000000000000002', requestId: 27 } });
+  assert.equal(h.find('themes.selected').length, 0);
+  selection.resolve(themeCatalog(false, '000000000000000000000002')); await settle();
+  assert.equal(h.find('themes.selected')[0].data.requestId, 27);
+  older.resolve(themeCatalog()); await settle();
+  assert.equal(h.find('data.themes').length, 1);
+  assert.equal(h.find('data.themes')[0].data.selectedThemeId, '000000000000000000000002');
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'themes').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('premium selection rejection reloads authoritative fallback and never acknowledges success', async () => {
+  const h = harness();
+  h.overrides.selectTheme = () => { throw new h.ApiError('Premium access is required', 403); };
+  h.bridge.handle({ type: 'themes.select', data: { themeId: '000000000000000000000004', requestId: 9 } }); await settle();
+  assert.equal(h.find('themes.selected').length, 0);
+  assert.equal(h.find('themes.error')[0].data.requestId, 9);
+  assert.equal(h.find('data.themes')[0].data.premium.active, false);
+  h.bridge.close();
+});
+
+test('premium checkout preserves terminal API codes without treating network failures as terminal', async () => {
+  const h = harness();
+  h.overrides.checkoutPremium = () => { throw new h.ApiError('Payment setup failed. Start a new checkout.', 502, 'PAYIN_PROVISIONING_FAILED'); };
+  const checkout = { type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-attempt-1' } };
+  h.bridge.handle(checkout); await settle();
+  assert.equal(h.find('themes.error')[0].data.action, 'themes.premium.checkout');
+  assert.equal(h.find('themes.error')[0].data.code, 'PAYIN_PROVISIONING_FAILED');
+  assert.equal(h.find('themes.error')[0].data.message, 'Payment setup failed. Start a new checkout.');
+  h.overrides.checkoutPremium = () => { throw new Error('Network connection lost'); };
+  h.bridge.handle(checkout); await settle();
+  assert.equal(h.find('themes.error')[1].data.code, undefined);
+  assert.equal(h.find('themes.premium.checkout').length, 0);
+  assert.equal(h.opened.length, 0);
+  h.bridge.close();
+});
+
+test('premium checkout opens once, verifies on resume and derives access only from refreshed catalog', async () => {
+  const h = harness(), checkout = deferred();
+  h.overrides.checkoutPremium = () => checkout.promise;
+  h.overrides.verifyPremium = () => ({ purchaseId: 'premium-purchase', merchantOrderId: 'premium_order', kind: 'premium', status: 'SUCCESS' });
+  const message = { type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-attempt-1' } };
+  h.bridge.handle(message); h.bridge.handle(message);
+  assert.equal(h.count('checkoutPremium'), 1);
+  checkout.resolve({ purchaseId: 'premium-purchase', merchantOrderId: 'premium_order', kind: 'premium', status: 'PENDING', paymentUrl: 'https://checkout.example.test/premium' }); await settle();
+  assert.deepEqual(h.opened, ['https://checkout.example.test/premium']);
+  assert.equal(h.find('data.themes').length, 0, 'Opening the provider does not grant theme access');
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.calls.find(call => call.name === 'verifyPremium').args[0], 'premium_order');
+  assert.equal(h.find('themes.premium.purchase')[0].data.status, 'SUCCESS');
+  assert.equal(h.find('data.themes')[0].data.premium.active, false, 'A payment event alone cannot grant entitlement');
+  assert.equal(h.count('wallet'), 0, 'Premium payment does not fabricate wallet credits');
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.count('verifyPremium'), 1);
+  h.bridge.close();
+});
+
+test('foreground and realtime refresh theme entitlement while logout suppresses late purchase work', async () => {
+  const h = harness(), pending = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.ok(h.count('themes') >= 1);
+  const before = h.count('themes');
+  h.activities.forEach(listener => listener('active')); await settle();
+  h.live[0].onEvent({ type: 'themes.updated', data: { active: true } }); await settle();
+  assert.equal(h.count('themes'), before + 2);
+  assert.equal(h.find('data.themes').at(-1).data.premium.active, false);
+  h.overrides.checkoutPremium = () => pending.promise;
+  h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-attempt-2' } });
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  pending.resolve({ purchaseId: 'late', merchantOrderId: 'late_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/late' }); await settle();
+  assert.equal(h.opened.length, 0);
+  assert.equal(h.find('themes.premium.checkout').length, 0);
   h.bridge.close();
 });
 

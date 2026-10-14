@@ -1,8 +1,8 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, purchaseFrom, record, streamChatFrom, streamFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, blockedUsersFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, HomeQuery, Role, RtcConfig, Session, Verification, Wallet } from "./types";
+import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, Session, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
@@ -118,9 +118,16 @@ export const api = {
     const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages });
     return { status: verificationOf(application.status) };
   },
-  async setPresence(online: boolean, visible: boolean) { await request("PATCH", "/safety", { allowRequests: online, showActivity: online, discoverable: visible }); return { online, visible }; },
-  async presence() { const data = record(await request("GET", "/safety")); return { online: data.allowRequests !== false && data.showActivity !== false, visible: data.discoverable !== false }; },
-  saveSettings: (_settings: Record<string, unknown>) => unavailable<void>("This setting is not available yet."),
+  async setPresence(online: boolean, visible: boolean) {
+    const data = privacyFrom(await request("PATCH", "/safety", { allowRequests: online, showActivity: online, discoverable: visible }));
+    return { online: data.allowRequests && data.showActivity, visible: data.discoverable };
+  },
+  async presence() { const data = privacyFrom(await request("GET", "/safety")); return { online: data.allowRequests && data.showActivity, visible: data.discoverable }; },
+  async profileSettings() { return profileSettingsFrom(await request("GET", "/account/settings")); },
+  async saveProfileSettings(input: ProfileSettingsPatch) { return profileSettingsFrom(await request("PATCH", "/account/settings", input)); },
+  async savePrivacy(input: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">>) { return privacyFrom(await request("PATCH", "/safety", input)); },
+  async blockedUsers(page = 1) { return blockedUsersFrom(await request("GET", `/users/blocked?page=${page}&limit=20`)); },
+  setBlocked: (id: string, blocked: boolean) => request<void>(blocked ? "POST" : "DELETE", `/users/${encodeURIComponent(id)}/block`, blocked ? {} : undefined),
   async home(query: HomeQuery = {}) { return homeFrom(await request("GET", `/home?${queryString({ ...query, limit: 20 })}`)); },
   async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
   async notifications() { return notificationsFrom(await request("GET", "/notifications?limit=100")); },
@@ -191,6 +198,10 @@ export const api = {
   recharge: (_purchase: { pack: number; coins: number; price: number; method: string }) => unavailable<Wallet>("Secure checkout is not available in this build yet. No payment was taken."),
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
   async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
+  async themes() { return themesFrom(await request("GET", "/themes")); },
+  async selectTheme(themeId: string) { return themesFrom(await request("PATCH", "/themes/preference", { themeId })); },
+  async checkoutPremium(idempotencyKey: string) { return purchaseFrom(await request("POST", "/themes/premium/purchase", { idempotencyKey })); },
+  async verifyPremium(merchantOrderId: string) { return purchaseFrom(await request("POST", "/themes/premium/verify", { merchantOrderId })); },
   requestPayout: (_coins: number, _upi: string) => unavailable<Wallet>("Withdrawals require the earnings balance in your account currency. This withdrawal screen is not available yet."),
   async claimAward(task: string): Promise<Wallet> { await request("POST", `/missions/${encodeURIComponent(task)}/claim`); return api.wallet(); },
 };

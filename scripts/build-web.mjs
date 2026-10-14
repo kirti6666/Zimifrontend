@@ -88,10 +88,14 @@ const page = (demo) =>
   read("web/home.css") +
   read("web/chats.css") +
   read("web/navigation.css") +
+  read("web/profile.css") +
+  read("web/themes.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
   `window.ZIMI_DEMO = ${demo};\n` +
+  `window.ZIMI_APP_VERSION = ${JSON.stringify(JSON.parse(read('app.json')).expo.version)};\n` +
+  read("node_modules/qrcode-generator/dist/qrcode.js") +
   read("web/bridge.js") +
   read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
     "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
@@ -101,6 +105,8 @@ const page = (demo) =>
   "\n" + read("web/home.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/chats.js") +
+  "\n" + read("web/profile.js") +
+  "\n" + read("web/themes.js") +
   "\n" + read("web/navigation.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;

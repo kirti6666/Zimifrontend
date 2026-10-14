@@ -21,6 +21,19 @@ const rtcSignal = (data: Record<string, unknown>) => {
     optionalText(candidate.usernameFragment, 256);
 };
 const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
+const settingsPatch = (data: Record<string, unknown>) => {
+  const keys = Object.keys(data).filter(key => key !== "requestId");
+  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city"].includes(key)) &&
+    (data.pushNotifications === undefined || boolean(data.pushNotifications)) &&
+    (data.matchCategory === undefined || data.matchCategory === null || category(data.matchCategory)) &&
+    (data.appearance === undefined || ["dark", "light", "system"].includes(String(data.appearance))) &&
+    (data.city === undefined || (typeof data.city === "string" && data.city.length <= 100)) &&
+    (data.languages === undefined || (Array.isArray(data.languages) && data.languages.length <= 8 && data.languages.every(value => typeof value === "string" && value.trim().length > 0 && value.length <= 50 && /^[\p{L}\p{M}\p{N} _&+-]+$/u.test(value)) && new Set(data.languages.map(value => String(value).trim().toLowerCase())).size === data.languages.length));
+};
+const privacyPatch = (data: Record<string, unknown>) => {
+  const keys = Object.keys(data).filter(key => key !== "requestId");
+  return keys.length > 0 && keys.every(key => ["discoverable", "showActivity"].includes(key) && boolean(data[key]));
+};
 
 /** WebView messages are untrusted input, even when TypeScript callers are typed. */
 export function parseWebMessage(raw: string): WebMessage | null {
@@ -38,6 +51,14 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": case "catalog.load": case "rtc.config": valid = true; break;
+    case "themes.load": valid = Object.keys(d).length === 0; break;
+    case "themes.select": valid = typeof d.themeId === "string" && /^[a-f\d]{24}$/i.test(d.themeId) && Object.keys(d).every(key => ["themeId", "requestId"].includes(key)); break;
+    case "themes.premium.checkout": valid = idempotency(d.idempotencyKey) && Object.keys(d).every(key => key === "idempotencyKey"); break;
+    case "profile.settings.load": valid = true; break;
+    case "profile.settings.save": case "settings.set": valid = settingsPatch(d); break;
+    case "privacy.save": valid = privacyPatch(d); break;
+    case "blocked.load": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
+    case "block.set": valid = identifier(d.id) && boolean(d.blocked); break;
     case "notifications.read": valid = Array.isArray(d.ids) && d.ids.length > 0 && d.ids.length <= 100 && d.ids.every(identifier); break;
     case "call.match": valid = d.category === undefined || category(d.category); break;
     case "rtc.signal": valid = identifier(d.callId) && rtcSignal(d); break;
@@ -46,7 +67,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.join": case "stream.leave": case "stream.end": case "stream.ready": valid = identifier(d.streamId); break;
     case "stream.message": valid = identifier(d.streamId) && text(d.text, 500); break;
     case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey); break;
-    case "wallet.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)); break;
+    case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === undefined || d.canvas === "" || (typeof d.canvas === "string" && /^#[0-9a-f]{6}$/i.test(d.canvas))); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "auth.sendOtp": valid = typeof d.phone === "string" && /^\+91[6-9]\d{9}$/.test(d.phone) && role(d.role); break;
@@ -64,7 +85,6 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
-    case "settings.set": valid = Object.keys(d).length <= 20; break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
