@@ -114,6 +114,18 @@ export interface StreamChat { id: string; streamId: string; userId: string; name
 export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
 export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
+export type Appearance = "dark" | "light" | "system";
+export interface PrivacySettings { discoverable: boolean; showActivity: boolean; allowRequests: boolean; }
+export interface ProfileSettings {
+  profile: { id: string; name: string; bio: string; city: string; languages: string[]; maskedPhone: string; countryCode: string; isPhoneVerified: boolean; createdAt: string };
+  stats: { fans: number; following: number; giftsSent: number; giftsReceived: number; coinsSent: number; coinsReceived: number };
+  preferences: { pushNotifications: boolean; matchCategory: string | null; appearance: Appearance };
+  privacy: PrivacySettings;
+  categories: string[];
+  capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
+}
+export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
+export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
 export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; }
 export interface RtcPayload {
   description?: { type: "offer" | "answer"; sdp: string };

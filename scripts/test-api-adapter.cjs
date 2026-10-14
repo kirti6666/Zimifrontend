@@ -240,8 +240,35 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(home.availableCount, 3); assert.equal(home.bonus.progress, 5); assert.equal(home.unreadCount, 4);
   expect('GET', '/home/match?category=Music', { host: creator });
   assert.equal((await api.matchHost('Music')).host.id, creator._id);
-  expect('PATCH', '/safety', {}, body => assert.deepEqual(plain(body), { allowRequests: false, showActivity: false, discoverable: true }));
+  expect('PATCH', '/safety', { allowRequests: false, showActivity: false, discoverable: true }, body => assert.deepEqual(plain(body), { allowRequests: false, showActivity: false, discoverable: true }));
   assert.deepEqual(plain(await api.setPresence(false, true)), { online: false, visible: true });
+  expect('PATCH', '/safety', { allowRequests: false, showActivity: true, discoverable: true });
+  assert.equal((await api.setPresence(true, true)).online, false, 'Presence acknowledges effective server permission, not the requested optimistic toggle');
+  const serverSettings = {
+    profile: { id: 'member-id', name: 'Asha', bio: 'Acoustic music', city: 'Pune', languages: ['English', 'Hindi'], maskedPhone: '+91 ••••••3210', countryCode: '+91', isPhoneVerified: true, createdAt: chatAt, phone: '9876543210', role: 'host', isVerifiedHost: true },
+    stats: { fans: 42, following: 8, giftsSent: 5, giftsReceived: 12, coinsSent: 300, coinsReceived: 950 },
+    preferences: { pushNotifications: true, matchCategory: 'Music', appearance: 'system' },
+    privacy: { discoverable: true, showActivity: false, allowRequests: false },
+    categories: ['Music', 'Gaming'], capabilities: { pushNotifications: true, liveAlerts: false, interfaceLanguages: ['en'], currency: 'INR' },
+  };
+  expect('GET', '/account/settings', serverSettings);
+  const settings = await api.profileSettings();
+  assert.equal(settings.stats.fans, 42); assert.equal(settings.stats.coinsReceived, 950); assert.equal(settings.preferences.appearance, 'system');
+  assert.equal(settings.profile.maskedPhone, '+91 ••••••3210'); assert.equal(settings.profile.countryCode, '+91'); assert.equal(settings.profile.isPhoneVerified, true);
+  assert.equal(settings.capabilities.pushNotifications, true); assert.equal(settings.capabilities.nativePushRegistered, false, 'Server worker availability is not device push registration');
+  assert.equal(JSON.stringify(settings).includes('9876543210'), false, 'Only the masked phone may reach the settings WebView');
+  assert.equal(settings.profile.role, undefined); assert.equal(settings.profile.isVerifiedHost, undefined, 'Settings summaries cannot grant host authority');
+  assert.throws(() => adapters.profileSettingsFrom({ ...serverSettings, stats: {} }), /settings could not be loaded/, 'Missing statistics must not become fabricated zero values');
+  expect('PATCH', '/account/settings', { ...serverSettings, preferences: { pushNotifications: false, matchCategory: null, appearance: 'light' } }, body => assert.deepEqual(plain(body), { pushNotifications: false, matchCategory: null, appearance: 'light', languages: ['English'], city: 'Delhi' }));
+  assert.equal((await api.saveProfileSettings({ pushNotifications: false, matchCategory: null, appearance: 'light', languages: ['English'], city: 'Delhi' })).preferences.appearance, 'light');
+  expect('PATCH', '/safety', { discoverable: false, showActivity: true, allowRequests: false }, body => {
+    assert.deepEqual(plain(body), { discoverable: false }); assert.equal(body.allowRequests, undefined);
+  });
+  assert.deepEqual(plain(await api.savePrivacy({ discoverable: false })), { discoverable: false, showActivity: true, allowRequests: false });
+  expect('GET', '/users/blocked?page=2&limit=20', { items: [{ _id: 'block-id', blockedId: { _id: 'blocked-id', name: 'Blocked account', avatar: { url: 'https://cdn.example.test/blocked.jpg' } } }], total: 23, page: 2, limit: 20 });
+  const blocked = await api.blockedUsers(2); assert.equal(blocked.users[0].id, 'blocked-id'); assert.equal(blocked.users[0].avatarUrl, 'https://cdn.example.test/blocked.jpg'); assert.equal(blocked.total, 23); assert.equal(blocked.page, 2);
+  expect('POST', '/users/blocked-id/block', {}, body => assert.deepEqual(plain(body), {})); await api.setBlocked('blocked-id', true);
+  expect('DELETE', '/users/blocked-id/block', {}, body => assert.equal(body, undefined)); await api.setBlocked('blocked-id', false);
   expect('POST', '/notifications/read', {}, body => assert.deepEqual(plain(body), { ids: ['note-id'] }));
   expect('GET', '/notifications?limit=100', { items: [{ _id: 'note-id', title: 'From admin', body: 'Event tonight', read: true }] });
   assert.equal((await api.readNotifications(['note-id'])).items[0].read, true);
@@ -295,8 +322,9 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   socket.emitServer('host:reviewed', { status: 'approved' });
   assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
+  socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
   token = 'rotated-token'; tokenListeners.forEach(listener => listener()); await Promise.resolve();
   assert.equal(socket.connects, 2);
-  stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 6);
+  stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 7);
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

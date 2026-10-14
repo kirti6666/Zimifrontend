@@ -194,7 +194,7 @@ function go(v,id){
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
- if(v==='editprofile')S.editBack=S.v==='settings'?'settings':'profile';
+ if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';S.editName=me.n;S.editCity=me.c;S.editAbout=me.about}
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
@@ -976,8 +976,8 @@ function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
  ${isHost()?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
   <label class="editpost add">${I('grid',18)} Add photo<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'posts')" ${disabled}></label>
-  ${(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
-  ${!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
+  ${window.contentSurface?.('posts','posts','Loading your posts')||(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
+  ${DEMO&&!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
  </div>${S.postDraftData?`<div class="editposts"><span class="editpost"><img src="${imageSrc(S.postDraftData)}" alt="Photo ready to publish"></span></div><label class="editlabel" for="postcaption">Caption</label><textarea id="postcaption" class="editinput" maxlength="2000" placeholder="Say something about this moment" oninput="S.postCaption=this.value" ${disabled}>${esc(S.postCaption||"")}</textarea>${S.postError?`<div class="ob-error" role="alert">${esc(S.postError)}</div>`:""}<button class="editsave" onclick="publishPost()" ${disabled}>${S.postPublishing?"Publishing photo…":"Publish photo"}</button>`:""}</div>`:""}</div>`}
 
 function vProfile(){

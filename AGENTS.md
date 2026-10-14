@@ -13,6 +13,9 @@ keeps it identical to the original Next.js version.
   `api/realtime.ts`, `bridge.ts`, `session.ts`, `config.ts`. See `docs/API.md`.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
+- `web/profile.js` / `web/profile.css` ? Profile & Settings. Use authenticated
+  account summaries for identity, counts and preferences; never copy sample
+  balances, VIP levels or host ratings into production.
 - `web/admin.html` — the desktop-only admin console. Self-contained; never part
   of the phone app. `npm run build:web` also copies it to `dist/admin/` for
   previews (skip with `INCLUDE_ADMIN=0`); `npm run build:admin` builds the

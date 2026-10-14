@@ -21,6 +21,19 @@ const rtcSignal = (data: Record<string, unknown>) => {
     optionalText(candidate.usernameFragment, 256);
 };
 const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
+const settingsPatch = (data: Record<string, unknown>) => {
+  const keys = Object.keys(data).filter(key => key !== "requestId");
+  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city"].includes(key)) &&
+    (data.pushNotifications === undefined || boolean(data.pushNotifications)) &&
+    (data.matchCategory === undefined || data.matchCategory === null || category(data.matchCategory)) &&
+    (data.appearance === undefined || ["dark", "light", "system"].includes(String(data.appearance))) &&
+    (data.city === undefined || (typeof data.city === "string" && data.city.length <= 100)) &&
+    (data.languages === undefined || (Array.isArray(data.languages) && data.languages.length <= 8 && data.languages.every(value => typeof value === "string" && value.trim().length > 0 && value.length <= 50 && /^[\p{L}\p{M}\p{N} _&+-]+$/u.test(value)) && new Set(data.languages.map(value => String(value).trim().toLowerCase())).size === data.languages.length));
+};
+const privacyPatch = (data: Record<string, unknown>) => {
+  const keys = Object.keys(data).filter(key => key !== "requestId");
+  return keys.length > 0 && keys.every(key => ["discoverable", "showActivity"].includes(key) && boolean(data[key]));
+};
 
 /** WebView messages are untrusted input, even when TypeScript callers are typed. */
 export function parseWebMessage(raw: string): WebMessage | null {
@@ -38,6 +51,11 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": case "catalog.load": case "rtc.config": valid = true; break;
+    case "profile.settings.load": valid = true; break;
+    case "profile.settings.save": case "settings.set": valid = settingsPatch(d); break;
+    case "privacy.save": valid = privacyPatch(d); break;
+    case "blocked.load": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
+    case "block.set": valid = identifier(d.id) && boolean(d.blocked); break;
     case "notifications.read": valid = Array.isArray(d.ids) && d.ids.length > 0 && d.ids.length <= 100 && d.ids.every(identifier); break;
     case "call.match": valid = d.category === undefined || category(d.category); break;
     case "rtc.signal": valid = identifier(d.callId) && rtcSignal(d); break;
@@ -64,7 +82,6 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
-    case "settings.set": valid = Object.keys(d).length <= 20; break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;

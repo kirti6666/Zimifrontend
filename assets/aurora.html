@@ -2382,6 +2382,32 @@ button.gpill[onclick]{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.zh-app .zh-nav>button,.zh-app .zh-nav>button>svg,.zh-app .zh-nav>button::before{transition:none!important}}
 
 .zh-app .zh-nav>.zh-create-pending{align-self:center;width:55px;height:55px;margin:-12px 0 0;border-radius:50%;pointer-events:none}
+/* Profile & Settings: compact account cards and grouped, accessible controls. */
+.zp-page{max-width:660px;margin:auto;padding:8px 15px 30px;color:var(--ink)}
+.zp-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:7px;margin:0 0 19px}
+.zp-heading h1{font-size:26px;line-height:1.25;letter-spacing:-.85px;font-weight:720}
+.zp-heading p{font-size:10.5px;line-height:1.6;color:#e0bfce;letter-spacing:.15px;margin-top:1px}
+.zp-heading-actions{display:flex;gap:5px;flex:none;padding-top:2px}.zp-heading-actions>button{width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:#392332;color:#f1d6e2}
+.zp-identity{padding:17px 15px 14px;background:linear-gradient(125deg,#2b1827,#3b162d);border-radius:13px}
+.zp-person{display:flex;align-items:center;gap:14px;min-height:75px}.zp-avatar{position:relative;width:76px;height:76px;flex:none;border-radius:50%;background:#51223e}.zp-avatar>img{width:100%;height:100%;border-radius:50%;object-fit:cover}.zp-initials{font-size:26px;font-weight:650;display:grid;place-items:center;height:100%}
+.zp-verified{position:absolute;right:-2px;top:-4px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#ed0782;color:white;border:2px solid #39162c}.zp-camera{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:24px;height:24px;background:#442c3e;color:#f8d7e8;border-radius:50%;border:2px solid #311829}
+.zp-person-text{min-width:0}.zp-person h2{font-size:21px;line-height:1.3;letter-spacing:-.65px;font-weight:660;overflow-wrap:anywhere}.zp-person-text>p{font-size:11px;line-height:17px;display:flex;align-items:center;gap:4px;color:#f4d7e5}.zp-person-text .zp-id{font-size:11px;color:#c9a7bc;letter-spacing:.1px}
+.zp-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:14px}.zp-stats>div{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;padding:7px 2px;border-radius:9px;background:#331b2b}.zp-stats svg{color:#edbed4;width:13px;height:13px}.zp-stats b{display:flex;font-size:12px;line-height:15px;font-weight:650}.zp-stats span{font-size:9px;line-height:13px;text-align:center}.zp-bio{padding:9px 8px;font-size:12px;line-height:19px;background:#2d1927a3;border-radius:8px;margin-top:14px;overflow-wrap:anywhere}
+.zp-wallet{margin-top:15px;padding:16px 15px 15px;background:linear-gradient(120deg,#3c192e,#341a3a);border-radius:13px}.zp-wallet-top{display:flex;justify-content:space-between;align-items:center;gap:9px}.zp-wallet h2{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:550;text-transform:uppercase;letter-spacing:.2px}.zp-balance{display:flex;align-items:baseline;gap:5px;margin-top:3px}.zp-balance strong{font-size:27px;letter-spacing:.3px;line-height:33px;font-weight:680}.zp-balance>span{font-size:11px}.zp-topup{display:flex;justify-content:center;align-items:center;gap:6px;padding:10px 14px;border-radius:30px;font-size:13px;font-weight:650;color:white;background:linear-gradient(135deg,#f4178c,#df087a);box-shadow:0 5px 20px #e6098438;white-space:nowrap}.zp-wallet-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:16px}.zp-wallet-actions>button{display:flex;align-items:center;justify-content:center;gap:10px;min-height:41px;padding:7px 9px;border-radius:8px;background:#41263b;color:#f6dfea;font-size:11px;line-height:15px}.zp-wallet-actions>button>svg{flex:none}
+.zp-group{margin-top:16px}.zp-group>h2{font-size:9px;line-height:15px;text-transform:uppercase;font-weight:650;letter-spacing:.35px;color:#e0b9cd;margin:0 3px 3px}.zp-group-card{background:#2c1826;border-radius:13px;padding:3px 0;overflow:hidden}.zp-row{display:flex;align-items:center;width:100%;min-height:63px;gap:8px;padding:11px 15px;text-align:left;color:#fae7f0}.zp-row-icon{width:33px;height:33px;display:grid;place-items:center;flex:none;border-radius:8px;background:#3c2636;color:#edb8d1}.zp-row-text{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}.zp-row-text>b{font-size:12px;line-height:17px;font-weight:570;letter-spacing:.04px}.zp-row-text>small{font-size:10px;line-height:15px;color:#dec2d1;overflow-wrap:anywhere}.zp-row-text>small:empty{display:none}.zp-chevron{font-size:20px;font-weight:400;color:#e1c1d1;flex:none;margin-left:0;line-height:20px}.zp-badge{padding:3px 6px;border-radius:20px;font-size:8.5px;line-height:12px;background:#55223f;color:#ffd0e5;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis}.zp-badge-muted{white-space:normal;text-align:center;font-size:8px;line-height:11px;max-width:81px;background:#3a2333}.zp-row:hover{background:#ffffff03}.zp-logout{color:#ffb5b5}.zp-logout .zp-row-icon{color:#ffb4b0;background:#661823}.zp-switch{display:flex;align-items:center;justify-content:flex-start;width:44px;height:26px;flex:none;padding:2px;border-radius:20px;background:#5f3e53;transition:background-color 160ms}.zp-switch>i{display:block;width:22px;height:22px;border-radius:50%;background:white;box-shadow:0 1px 4px #0003;transition:transform 160ms}.zp-switch.is-on{background:#f20885}.zp-switch.is-on>i{transform:translateX(18px)}.zp-switch>.zh-skeleton-shape{width:22px;height:22px;border-radius:50%}
+.zp-footer{text-align:center;padding:25px 5px 8px;font-size:10px;line-height:18px;color:#bb97ad}.zp-footer>span{display:flex;align-items:center;justify-content:center;gap:6px;color:#e2bccf;font-size:10px}.zp-footer small{font-size:9px;color:#a7819a}
+.zp-dialog{position:fixed;inset:0;margin:auto;width:calc(100% - 30px);max-width:450px;max-height:calc(100dvh - 50px);padding:0;border:1px solid #624051;border-radius:20px;background:#2c1827;color:#fce8f2;box-shadow:0 25px 100px #0009;overflow:auto;color-scheme:dark}.zp-dialog::backdrop{background:#100812b8;backdrop-filter:blur(5px)}.zp-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:19px 20px 10px}.zp-dialog-heading h2{font-size:21px;line-height:1.35;letter-spacing:-.6px;font-weight:650}.zp-dialog-heading>button{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#442c3c;font-size:23px;flex:none}.zp-dialog-body{padding:5px 20px 24px}.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p{font-size:13px;line-height:1.7;color:#d9b9cd;margin:8px 0 17px}.zp-dialog .zp-note{font-size:11px;color:#ba96ad;margin:7px 0 15px}.zp-dialog h3{font-size:14px;margin:19px 0 8px}.zp-dialog details{padding:12px 0;border-bottom:1px solid #563447}.zp-dialog summary{font-size:13px;line-height:1.6;font-weight:600;cursor:pointer}.zp-dialog details p{margin:10px 0 0}.zp-field{display:flex;flex-direction:column;font-size:12px;gap:8px;margin:20px 0;color:#f3d7e7}.zp-field>input,.zp-field>select{width:100%;min-height:45px;border:1px solid #765067;background:#3a2333;border-radius:10px;padding:10px 12px;color:inherit;font-size:13px}.zp-save,.zp-secondary{display:flex;justify-content:center;align-items:center;width:100%;min-height:44px;gap:8px;padding:12px;border-radius:12px;font-size:13px;font-weight:650;margin-top:14px}.zp-save{background:linear-gradient(135deg,#f6158f,#d50772);color:#fff}.zp-secondary{background:#422b3b;color:#f3d8e8}.zp-dialog button:disabled{opacity:.5;cursor:default}.zp-save .zh-skeleton-shape{background-color:#ffffff30}.zp-save-error{color:#ffb2b9!important;background:#5d253350;padding:10px;border-radius:8px}.zp-languages{border:0;padding:0;margin-top:20px;display:flex;flex-wrap:wrap;gap:8px}.zp-languages legend{font-size:12px;padding-bottom:10px}.zp-languages label{font-size:12px;display:flex;gap:5px;align-items:center;border:1px solid #654356;background:#382231;border-radius:8px;padding:9px}.zp-dialog input[type=checkbox]{accent-color:#ef0883;width:18px;height:18px;flex:none}.zp-preference{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:14px 0}.zp-theme-preview{display:flex;gap:8px;margin:12px 0}.zp-theme-preview span{flex:1;height:45px;border-radius:8px;background:#210f1d}.zp-theme-preview span:nth-child(2){background:#fff1f7}.zp-theme-preview span:nth-child(3){background:linear-gradient(120deg,#210f1d 50%,#fff1f7 50%)}.zp-detail{display:flex;flex-direction:column;gap:5px;padding:15px 0;border-bottom:1px solid #563447;font-size:13px;overflow-wrap:anywhere}.zp-detail>span,.zp-detail>small{font-size:11px;color:#cda6bd}.zp-qr{width:220px;max-width:100%;margin:20px auto;background:white;padding:5px;border-radius:15px}.zp-qr svg{width:100%;height:auto;display:block}.zp-account-id{display:block;user-select:text;text-align:center;overflow-wrap:anywhere;font-size:12px;padding:12px;background:#3a2333;border-radius:8px}.zp-empty{text-align:center;padding:24px 5px;color:#caa5bc}.zp-empty>svg{color:#f557a7}.zp-empty p{font-size:12px;line-height:1.7}.zp-earnings{padding:20px 15px;background:#412537;border-radius:12px;display:flex;flex-direction:column;gap:10px}.zp-earnings>span,.zp-earnings>small{font-size:11px;color:#d8b6cb}.zp-earnings>strong{font-size:30px}.zp-blocked>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;font-size:12px}.zp-blocked button{background:#513045;padding:8px 10px;border-radius:8px;color:#ffd3e8;font-size:11px}.zp-history .acctrow{padding-left:0;padding-right:0}.zp-danger{background:#9d263e}
+.zp-dialog :is(button,input,select,summary):focus-visible{outline:2px solid #ffb2d7;outline-offset:3px}
+@media(min-width:900px){.zp-page{max-width:1040px;padding:22px 24px 35px}.zp-heading{margin-bottom:25px}.zp-heading h1{font-size:32px}.zp-heading p{font-size:12px}.zp-heading-actions>button{width:42px;height:42px}.zp-layout{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:26px;align-items:start}.zp-overview{position:sticky;top:20px}.zp-settings>.zp-group:first-child{margin-top:0}.zp-identity{padding:24px 20px}.zp-person h2{font-size:24px}.zp-bio{font-size:13px}.zp-wallet{padding:20px}.zp-row{min-height:67px}.zp-row-text>b{font-size:13px}.zp-row-text>small{font-size:11px}.zp-group>h2{font-size:10px}.zp-stats{margin-top:20px}.zp-stats>div{min-height:64px}.zp-footer{padding-top:28px}}
+@media(max-width:350px){.zp-page{padding-left:12px;padding-right:12px}.zp-heading h1{font-size:22px}.zp-heading p{font-size:9px}.zp-heading-actions{gap:4px}.zp-heading-actions>button{width:29px;height:32px}.zp-heading-actions svg{width:17px}.zp-person{gap:10px}.zp-avatar{width:66px;height:66px}.zp-person h2{font-size:19px}.zp-identity{padding:15px 12px}.zp-row{padding-left:11px;padding-right:11px;gap:7px}.zp-row-text>b{font-size:11px}.zp-row-text>small{font-size:9px}.zp-badge{font-size:8px;padding:2px 5px}.zp-row-icon{width:29px;height:31px}.zp-balance strong{font-size:24px}.zp-topup{font-size:12px;padding:10px 12px}}
+@media(prefers-reduced-motion:reduce){.zp-switch,.zp-switch>i{transition:none}}
+/* The saved appearance is applied to shared chrome and all account surfaces. */
+.zp-light.zh-app{--canvas:#fff5fa;--deep:#faeaf3;--surface:#fff;--raised:#f4dfeb;--line:#e8cadb;--ink:#321525;--muted:#79556a;--faint:#906d81;--accent-ink:#b50a65;color-scheme:light}.zp-light.zh-app .app,.zp-light.zc-app .app{background:linear-gradient(135deg,#fff5fa,#f9edf5)}.zp-light.zh-app #top,.zp-light .zh-header{background:#fff5fa}.zp-light .zh-header{border-color:#ebd4e1}.zp-light .zh-balance,.zp-light .zp-heading-actions>button{background:#f0dce9;color:#602841}.zp-light .zh-bell>i{outline-color:#fff5fa}.zp-light .zh-brand>svg{color:#bf176a}.zp-light.zh-app .nav.zh-nav{background:#fff5fa;box-shadow:0 -5px 18px #5630440a}.zp-light.zh-app .zh-nav>button{color:#795168}.zp-light.zh-app .zh-nav>button.on{color:#bb0061}.zp-light.zh-app .zh-nav>.zh-create{color:#fff}.zp-light .zp-heading p,.zp-light .zp-group>h2,.zp-light .zp-footer>span{color:#775066}.zp-light .zp-identity{background:linear-gradient(125deg,#fff,#f6dfea)}.zp-light .zp-person-text>p,.zp-light .zp-person-text .zp-id{color:#79556a}.zp-light .zp-stats>div,.zp-light .zp-bio{background:#f3e1ec}.zp-light .zp-stats svg{color:#ae4e7e}.zp-light .zp-wallet{background:linear-gradient(125deg,#f7ddeb,#eadcf5)}.zp-light .zp-wallet-actions>button{background:#ffffffa6;color:#55283f}.zp-light .zp-group-card{background:#fff}.zp-light .zp-row{color:#3e1e30}.zp-light .zp-row-icon{background:#f4e6ee;color:#a63f75}.zp-light .zp-row-text>small{color:#866079}.zp-light .zp-chevron{color:#936a81}.zp-light .zp-badge{color:#942655;background:#f7cfe3}.zp-light .zp-logout{color:#ba3d49}.zp-light .zp-logout .zp-row-icon{background:#fce0e2;color:#ba3d49}.zp-light .zp-footer{color:#946b84}.zp-light .zh-skeleton-shape{background-image:linear-gradient(100deg,#aa608015 20%,#aa60802c 45%,#aa608015 70%)}.zp-light .zp-dialog{background:#fff5fa;color:#321525;border-color:#e8cadb;color-scheme:light}.zp-light .zp-dialog-body>p,.zp-light .zp-guidelines>p,.zp-light .zp-dialog details p,.zp-light .zp-detail>span,.zp-light .zp-detail>small,.zp-light .zp-field,.zp-light .zp-earnings>span,.zp-light .zp-earnings>small{color:#79556a}.zp-light .zp-dialog-heading>button,.zp-light .zp-secondary,.zp-light .zp-account-id,.zp-light .zp-earnings,.zp-light .zp-field>input,.zp-light .zp-field>select,.zp-light .zp-languages label{background:#f2dfeb;color:#54283e;border-color:#d6b5c9}.zp-light .zp-dialog details,.zp-light .zp-detail{border-color:#e8cadb}.zp-light .zp-dialog .zp-note{color:#866179}
+.zp-light .zh-match,.zp-light .zh-bonus,.zp-light .zc-thread,.zp-light .zc-pulse,.zp-light .zc-search,.zp-light .zc-match-footer,.zp-light .zh-tile-caption{background:#f0deeb;color:#462236}.zp-light .zh-match p,.zp-light .zc-thread .zc-preview,.zp-light .zc-pulse p{color:#79556a}.zp-light .zh-filters button,.zp-light .zc-filters button{background:#edd7e5;color:#6f3d58}.zp-light .zh-filters button.selected,.zp-light .zc-filters button.selected{background:#ed087f;color:#fff}.zp-light .zh-header .zh-icon{color:#76405d}.zp-light .zh-featured,.zp-light .zh-tile-media,.zp-light .zh-room{color:#fce8f2}
+
+.zp-light .zh-balance svg{color:#b9477d}.zp-light .zc-tabs>button,.zp-light .zc-mark-read{background:#edd7e5;color:#6f3d58}.zp-light .zc-tabs>button.selected{background:#e90b80;color:white}.zp-light .zc-section-heading h2,.zp-light .zc-person>span:last-child,.zp-light .zc-section-heading>button{color:#884868}.zp-light .zc-row.rowlink,.zp-light .zc-skeleton-row{background:#fff;color:#422137}.zp-light .zc-row.zc-unread{background:#f4e1ed}.zp-light .zc-row-heading time,.zp-light .zc-message,.zp-light .zc-unread .zc-message{color:#79526b}.zp-light .zc-gift-message,.zp-light .zc-unread .zc-gift-message,.zp-light .zc-name .zh-verified svg,.zp-light .zc-name>svg{color:#ae3474}.zp-light .zc-empty,.zp-light .zc-empty h2,.zp-light .zh-empty,.zp-light .zh-empty h3,.zp-light .zh-muted{color:#79556a}.zp-light .zh-match h2,.zp-light .zh-tile h3{color:#482035}.zp-light .zh-tile p,.zp-light .zh-section-title>span,.zp-light .zh-available,.zp-light .zh-bonus p{color:#81576e}.zp-light .zh-section-title>button{color:#ad2c6c}.zp-light .zh-explore-heading>span,.zp-light .zh-explore-heading p,.zp-light .zh-stories>.zh-stage-empty{color:#92516f}.zp-light .zh-bonus>button{background:#e8bcd4;color:#7d2050}.zp-light .zh-primary{color:#fff}
+
+.zp-heading>div:first-child{min-width:0}
 </style>
 </head>
 <body>
@@ -2422,6 +2448,2304 @@ button.gpill[onclick]{cursor:pointer}
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
+window.ZIMI_APP_VERSION = "1.0.0";
+//---------------------------------------------------------------------
+//
+// QR Code Generator for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//  http://www.opensource.org/licenses/mit-license.php
+//
+// The word 'QR Code' is registered trademark of
+// DENSO WAVE INCORPORATED
+//  http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+
+var qrcode = function() {
+
+  //---------------------------------------------------------------------
+  // qrcode
+  //---------------------------------------------------------------------
+
+  /**
+   * qrcode
+   * @param typeNumber 1 to 40
+   * @param errorCorrectionLevel 'L','M','Q','H'
+   */
+  var qrcode = function(typeNumber, errorCorrectionLevel) {
+
+    var PAD0 = 0xEC;
+    var PAD1 = 0x11;
+
+    var _typeNumber = typeNumber;
+    var _errorCorrectionLevel = QRErrorCorrectionLevel[errorCorrectionLevel];
+    var _modules = null;
+    var _moduleCount = 0;
+    var _dataCache = null;
+    var _dataList = [];
+
+    var _this = {};
+
+    var makeImpl = function(test, maskPattern) {
+
+      _moduleCount = _typeNumber * 4 + 17;
+      _modules = function(moduleCount) {
+        var modules = new Array(moduleCount);
+        for (var row = 0; row < moduleCount; row += 1) {
+          modules[row] = new Array(moduleCount);
+          for (var col = 0; col < moduleCount; col += 1) {
+            modules[row][col] = null;
+          }
+        }
+        return modules;
+      }(_moduleCount);
+
+      setupPositionProbePattern(0, 0);
+      setupPositionProbePattern(_moduleCount - 7, 0);
+      setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
+      setupTimingPattern();
+      setupTypeInfo(test, maskPattern);
+
+      if (_typeNumber >= 7) {
+        setupTypeNumber(test);
+      }
+
+      if (_dataCache == null) {
+        _dataCache = createData(_typeNumber, _errorCorrectionLevel, _dataList);
+      }
+
+      mapData(_dataCache, maskPattern);
+    };
+
+    var setupPositionProbePattern = function(row, col) {
+
+      for (var r = -1; r <= 7; r += 1) {
+
+        if (row + r <= -1 || _moduleCount <= row + r) continue;
+
+        for (var c = -1; c <= 7; c += 1) {
+
+          if (col + c <= -1 || _moduleCount <= col + c) continue;
+
+          if ( (0 <= r && r <= 6 && (c == 0 || c == 6) )
+              || (0 <= c && c <= 6 && (r == 0 || r == 6) )
+              || (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+            _modules[row + r][col + c] = true;
+          } else {
+            _modules[row + r][col + c] = false;
+          }
+        }
+      }
+    };
+
+    var getBestMaskPattern = function() {
+
+      var minLostPoint = 0;
+      var pattern = 0;
+
+      for (var i = 0; i < 8; i += 1) {
+
+        makeImpl(true, i);
+
+        var lostPoint = QRUtil.getLostPoint(_this);
+
+        if (i == 0 || minLostPoint > lostPoint) {
+          minLostPoint = lostPoint;
+          pattern = i;
+        }
+      }
+
+      return pattern;
+    };
+
+    var setupTimingPattern = function() {
+
+      for (var r = 8; r < _moduleCount - 8; r += 1) {
+        if (_modules[r][6] != null) {
+          continue;
+        }
+        _modules[r][6] = (r % 2 == 0);
+      }
+
+      for (var c = 8; c < _moduleCount - 8; c += 1) {
+        if (_modules[6][c] != null) {
+          continue;
+        }
+        _modules[6][c] = (c % 2 == 0);
+      }
+    };
+
+    var setupPositionAdjustPattern = function() {
+
+      var pos = QRUtil.getPatternPosition(_typeNumber);
+
+      for (var i = 0; i < pos.length; i += 1) {
+
+        for (var j = 0; j < pos.length; j += 1) {
+
+          var row = pos[i];
+          var col = pos[j];
+
+          if (_modules[row][col] != null) {
+            continue;
+          }
+
+          for (var r = -2; r <= 2; r += 1) {
+
+            for (var c = -2; c <= 2; c += 1) {
+
+              if (r == -2 || r == 2 || c == -2 || c == 2
+                  || (r == 0 && c == 0) ) {
+                _modules[row + r][col + c] = true;
+              } else {
+                _modules[row + r][col + c] = false;
+              }
+            }
+          }
+        }
+      }
+    };
+
+    var setupTypeNumber = function(test) {
+
+      var bits = QRUtil.getBCHTypeNumber(_typeNumber);
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[Math.floor(i / 3)][i % 3 + _moduleCount - 8 - 3] = mod;
+      }
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[i % 3 + _moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+      }
+    };
+
+    var setupTypeInfo = function(test, maskPattern) {
+
+      var data = (_errorCorrectionLevel << 3) | maskPattern;
+      var bits = QRUtil.getBCHTypeInfo(data);
+
+      // vertical
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 6) {
+          _modules[i][8] = mod;
+        } else if (i < 8) {
+          _modules[i + 1][8] = mod;
+        } else {
+          _modules[_moduleCount - 15 + i][8] = mod;
+        }
+      }
+
+      // horizontal
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 8) {
+          _modules[8][_moduleCount - i - 1] = mod;
+        } else if (i < 9) {
+          _modules[8][15 - i - 1 + 1] = mod;
+        } else {
+          _modules[8][15 - i - 1] = mod;
+        }
+      }
+
+      // fixed module
+      _modules[_moduleCount - 8][8] = (!test);
+    };
+
+    var mapData = function(data, maskPattern) {
+
+      var inc = -1;
+      var row = _moduleCount - 1;
+      var bitIndex = 7;
+      var byteIndex = 0;
+      var maskFunc = QRUtil.getMaskFunction(maskPattern);
+
+      for (var col = _moduleCount - 1; col > 0; col -= 2) {
+
+        if (col == 6) col -= 1;
+
+        while (true) {
+
+          for (var c = 0; c < 2; c += 1) {
+
+            if (_modules[row][col - c] == null) {
+
+              var dark = false;
+
+              if (byteIndex < data.length) {
+                dark = ( ( (data[byteIndex] >>> bitIndex) & 1) == 1);
+              }
+
+              var mask = maskFunc(row, col - c);
+
+              if (mask) {
+                dark = !dark;
+              }
+
+              _modules[row][col - c] = dark;
+              bitIndex -= 1;
+
+              if (bitIndex == -1) {
+                byteIndex += 1;
+                bitIndex = 7;
+              }
+            }
+          }
+
+          row += inc;
+
+          if (row < 0 || _moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    };
+
+    var createBytes = function(buffer, rsBlocks) {
+
+      var offset = 0;
+
+      var maxDcCount = 0;
+      var maxEcCount = 0;
+
+      var dcdata = new Array(rsBlocks.length);
+      var ecdata = new Array(rsBlocks.length);
+
+      for (var r = 0; r < rsBlocks.length; r += 1) {
+
+        var dcCount = rsBlocks[r].dataCount;
+        var ecCount = rsBlocks[r].totalCount - dcCount;
+
+        maxDcCount = Math.max(maxDcCount, dcCount);
+        maxEcCount = Math.max(maxEcCount, ecCount);
+
+        dcdata[r] = new Array(dcCount);
+
+        for (var i = 0; i < dcdata[r].length; i += 1) {
+          dcdata[r][i] = 0xff & buffer.getBuffer()[i + offset];
+        }
+        offset += dcCount;
+
+        var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+        var rawPoly = qrPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+        var modPoly = rawPoly.mod(rsPoly);
+        ecdata[r] = new Array(rsPoly.getLength() - 1);
+        for (var i = 0; i < ecdata[r].length; i += 1) {
+          var modIndex = i + modPoly.getLength() - ecdata[r].length;
+          ecdata[r][i] = (modIndex >= 0)? modPoly.getAt(modIndex) : 0;
+        }
+      }
+
+      var totalCodeCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalCodeCount += rsBlocks[i].totalCount;
+      }
+
+      var data = new Array(totalCodeCount);
+      var index = 0;
+
+      for (var i = 0; i < maxDcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < dcdata[r].length) {
+            data[index] = dcdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      for (var i = 0; i < maxEcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < ecdata[r].length) {
+            data[index] = ecdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      return data;
+    };
+
+    var createData = function(typeNumber, errorCorrectionLevel, dataList) {
+
+      var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectionLevel);
+
+      var buffer = qrBitBuffer();
+
+      for (var i = 0; i < dataList.length; i += 1) {
+        var data = dataList[i];
+        buffer.put(data.getMode(), 4);
+        buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+        data.write(buffer);
+      }
+
+      // calc num max data.
+      var totalDataCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalDataCount += rsBlocks[i].dataCount;
+      }
+
+      if (buffer.getLengthInBits() > totalDataCount * 8) {
+        throw 'code length overflow. ('
+          + buffer.getLengthInBits()
+          + '>'
+          + totalDataCount * 8
+          + ')';
+      }
+
+      // end code
+      if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+        buffer.put(0, 4);
+      }
+
+      // padding
+      while (buffer.getLengthInBits() % 8 != 0) {
+        buffer.putBit(false);
+      }
+
+      // padding
+      while (true) {
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD0, 8);
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD1, 8);
+      }
+
+      return createBytes(buffer, rsBlocks);
+    };
+
+    _this.addData = function(data, mode) {
+
+      mode = mode || 'Byte';
+
+      var newData = null;
+
+      switch(mode) {
+      case 'Numeric' :
+        newData = qrNumber(data);
+        break;
+      case 'Alphanumeric' :
+        newData = qrAlphaNum(data);
+        break;
+      case 'Byte' :
+        newData = qr8BitByte(data);
+        break;
+      case 'Kanji' :
+        newData = qrKanji(data);
+        break;
+      default :
+        throw 'mode:' + mode;
+      }
+
+      _dataList.push(newData);
+      _dataCache = null;
+    };
+
+    _this.isDark = function(row, col) {
+      if (row < 0 || _moduleCount <= row || col < 0 || _moduleCount <= col) {
+        throw row + ',' + col;
+      }
+      return _modules[row][col];
+    };
+
+    _this.getModuleCount = function() {
+      return _moduleCount;
+    };
+
+    _this.make = function() {
+      if (_typeNumber < 1) {
+        var typeNumber = 1;
+
+        for (; typeNumber < 40; typeNumber++) {
+          var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, _errorCorrectionLevel);
+          var buffer = qrBitBuffer();
+
+          for (var i = 0; i < _dataList.length; i++) {
+            var data = _dataList[i];
+            buffer.put(data.getMode(), 4);
+            buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+            data.write(buffer);
+          }
+
+          var totalDataCount = 0;
+          for (var i = 0; i < rsBlocks.length; i++) {
+            totalDataCount += rsBlocks[i].dataCount;
+          }
+
+          if (buffer.getLengthInBits() <= totalDataCount * 8) {
+            break;
+          }
+        }
+
+        _typeNumber = typeNumber;
+      }
+
+      makeImpl(false, getBestMaskPattern() );
+    };
+
+    _this.createTableTag = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var qrHtml = '';
+
+      qrHtml += '<table style="';
+      qrHtml += ' border-width: 0px; border-style: none;';
+      qrHtml += ' border-collapse: collapse;';
+      qrHtml += ' padding: 0px; margin: ' + margin + 'px;';
+      qrHtml += '">';
+      qrHtml += '<tbody>';
+
+      for (var r = 0; r < _this.getModuleCount(); r += 1) {
+
+        qrHtml += '<tr>';
+
+        for (var c = 0; c < _this.getModuleCount(); c += 1) {
+          qrHtml += '<td style="';
+          qrHtml += ' border-width: 0px; border-style: none;';
+          qrHtml += ' border-collapse: collapse;';
+          qrHtml += ' padding: 0px; margin: 0px;';
+          qrHtml += ' width: ' + cellSize + 'px;';
+          qrHtml += ' height: ' + cellSize + 'px;';
+          qrHtml += ' background-color: ';
+          qrHtml += _this.isDark(r, c)? '#000000' : '#ffffff';
+          qrHtml += ';';
+          qrHtml += '"/>';
+        }
+
+        qrHtml += '</tr>';
+      }
+
+      qrHtml += '</tbody>';
+      qrHtml += '</table>';
+
+      return qrHtml;
+    };
+
+    _this.createSvgTag = function(cellSize, margin, alt, title) {
+
+      var opts = {};
+      if (typeof arguments[0] == 'object') {
+        // Called by options.
+        opts = arguments[0];
+        // overwrite cellSize and margin.
+        cellSize = opts.cellSize;
+        margin = opts.margin;
+        alt = opts.alt;
+        title = opts.title;
+      }
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      // Compose alt property surrogate
+      alt = (typeof alt === 'string') ? {text: alt} : alt || {};
+      alt.text = alt.text || null;
+      alt.id = (alt.text) ? alt.id || 'qrcode-description' : null;
+
+      // Compose title property surrogate
+      title = (typeof title === 'string') ? {text: title} : title || {};
+      title.text = title.text || null;
+      title.id = (title.text) ? title.id || 'qrcode-title' : null;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var c, mc, r, mr, qrSvg='', rect;
+
+      rect = 'l' + cellSize + ',0 0,' + cellSize +
+        ' -' + cellSize + ',0 0,-' + cellSize + 'z ';
+
+      qrSvg += '<svg version="1.1" xmlns="http://www.w3.org/2000/svg"';
+      qrSvg += !opts.scalable ? ' width="' + size + 'px" height="' + size + 'px"' : '';
+      qrSvg += ' viewBox="0 0 ' + size + ' ' + size + '" ';
+      qrSvg += ' preserveAspectRatio="xMinYMin meet"';
+      qrSvg += (title.text || alt.text) ? ' role="img" aria-labelledby="' +
+          escapeXml([title.id, alt.id].join(' ').trim() ) + '"' : '';
+      qrSvg += '>';
+      qrSvg += (title.text) ? '<title id="' + escapeXml(title.id) + '">' +
+          escapeXml(title.text) + '</title>' : '';
+      qrSvg += (alt.text) ? '<description id="' + escapeXml(alt.id) + '">' +
+          escapeXml(alt.text) + '</description>' : '';
+      qrSvg += '<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>';
+      qrSvg += '<path d="';
+
+      for (r = 0; r < _this.getModuleCount(); r += 1) {
+        mr = r * cellSize + margin;
+        for (c = 0; c < _this.getModuleCount(); c += 1) {
+          if (_this.isDark(r, c) ) {
+            mc = c*cellSize+margin;
+            qrSvg += 'M' + mc + ',' + mr + rect;
+          }
+        }
+      }
+
+      qrSvg += '" stroke="transparent" fill="black"/>';
+      qrSvg += '</svg>';
+
+      return qrSvg;
+    };
+
+    _this.createDataURL = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      return createDataURL(size, size, function(x, y) {
+        if (min <= x && x < max && min <= y && y < max) {
+          var c = Math.floor( (x - min) / cellSize);
+          var r = Math.floor( (y - min) / cellSize);
+          return _this.isDark(r, c)? 0 : 1;
+        } else {
+          return 1;
+        }
+      } );
+    };
+
+    _this.createImgTag = function(cellSize, margin, alt) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+
+      var img = '';
+      img += '<img';
+      img += '\u0020src="';
+      img += _this.createDataURL(cellSize, margin);
+      img += '"';
+      img += '\u0020width="';
+      img += size;
+      img += '"';
+      img += '\u0020height="';
+      img += size;
+      img += '"';
+      if (alt) {
+        img += '\u0020alt="';
+        img += escapeXml(alt);
+        img += '"';
+      }
+      img += '/>';
+
+      return img;
+    };
+
+    var escapeXml = function(s) {
+      var escaped = '';
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charAt(i);
+        switch(c) {
+        case '<': escaped += '&lt;'; break;
+        case '>': escaped += '&gt;'; break;
+        case '&': escaped += '&amp;'; break;
+        case '"': escaped += '&quot;'; break;
+        default : escaped += c; break;
+        }
+      }
+      return escaped;
+    };
+
+    var _createHalfASCII = function(margin) {
+      var cellSize = 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r1, r2, p;
+
+      var blocks = {
+        '██': '█',
+        '█ ': '▀',
+        ' █': '▄',
+        '  ': ' '
+      };
+
+      var blocksLastLineNoMargin = {
+        '██': '▀',
+        '█ ': '▀',
+        ' █': ' ',
+        '  ': ' '
+      };
+
+      var ascii = '';
+      for (y = 0; y < size; y += 2) {
+        r1 = Math.floor((y - min) / cellSize);
+        r2 = Math.floor((y + 1 - min) / cellSize);
+        for (x = 0; x < size; x += 1) {
+          p = '█';
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r1, Math.floor((x - min) / cellSize))) {
+            p = ' ';
+          }
+
+          if (min <= x && x < max && min <= y+1 && y+1 < max && _this.isDark(r2, Math.floor((x - min) / cellSize))) {
+            p += ' ';
+          }
+          else {
+            p += '█';
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          ascii += (margin < 1 && y+1 >= max) ? blocksLastLineNoMargin[p] : blocks[p];
+        }
+
+        ascii += '\n';
+      }
+
+      if (size % 2 && margin > 0) {
+        return ascii.substring(0, ascii.length - size - 1) + Array(size+1).join('▀');
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.createASCII = function(cellSize, margin) {
+      cellSize = cellSize || 1;
+
+      if (cellSize < 2) {
+        return _createHalfASCII(margin);
+      }
+
+      cellSize -= 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r, p;
+
+      var white = Array(cellSize+1).join('██');
+      var black = Array(cellSize+1).join('  ');
+
+      var ascii = '';
+      var line = '';
+      for (y = 0; y < size; y += 1) {
+        r = Math.floor( (y - min) / cellSize);
+        line = '';
+        for (x = 0; x < size; x += 1) {
+          p = 1;
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r, Math.floor((x - min) / cellSize))) {
+            p = 0;
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          line += p ? white : black;
+        }
+
+        for (r = 0; r < cellSize; r += 1) {
+          ascii += line + '\n';
+        }
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.renderTo2dContext = function(context, cellSize) {
+      cellSize = cellSize || 2;
+      var length = _this.getModuleCount();
+      for (var row = 0; row < length; row++) {
+        for (var col = 0; col < length; col++) {
+          context.fillStyle = _this.isDark(row, col) ? 'black' : 'white';
+          context.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrcode.stringToBytes
+  //---------------------------------------------------------------------
+
+  qrcode.stringToBytesFuncs = {
+    'default' : function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        bytes.push(c & 0xff);
+      }
+      return bytes;
+    }
+  };
+
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs['default'];
+
+  //---------------------------------------------------------------------
+  // qrcode.createStringToBytes
+  //---------------------------------------------------------------------
+
+  /**
+   * @param unicodeData base64 string of byte array.
+   * [16bit Unicode],[16bit Bytes], ...
+   * @param numChars
+   */
+  qrcode.createStringToBytes = function(unicodeData, numChars) {
+
+    // create conversion map.
+
+    var unicodeMap = function() {
+
+      var bin = base64DecodeInputStream(unicodeData);
+      var read = function() {
+        var b = bin.read();
+        if (b == -1) throw 'eof';
+        return b;
+      };
+
+      var count = 0;
+      var unicodeMap = {};
+      while (true) {
+        var b0 = bin.read();
+        if (b0 == -1) break;
+        var b1 = read();
+        var b2 = read();
+        var b3 = read();
+        var k = String.fromCharCode( (b0 << 8) | b1);
+        var v = (b2 << 8) | b3;
+        unicodeMap[k] = v;
+        count += 1;
+      }
+      if (count != numChars) {
+        throw count + ' != ' + numChars;
+      }
+
+      return unicodeMap;
+    }();
+
+    var unknownChar = '?'.charCodeAt(0);
+
+    return function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        if (c < 128) {
+          bytes.push(c);
+        } else {
+          var b = unicodeMap[s.charAt(i)];
+          if (typeof b == 'number') {
+            if ( (b & 0xff) == b) {
+              // 1byte
+              bytes.push(b);
+            } else {
+              // 2bytes
+              bytes.push(b >>> 8);
+              bytes.push(b & 0xff);
+            }
+          } else {
+            bytes.push(unknownChar);
+          }
+        }
+      }
+      return bytes;
+    };
+  };
+
+  //---------------------------------------------------------------------
+  // QRMode
+  //---------------------------------------------------------------------
+
+  var QRMode = {
+    MODE_NUMBER :    1 << 0,
+    MODE_ALPHA_NUM : 1 << 1,
+    MODE_8BIT_BYTE : 1 << 2,
+    MODE_KANJI :     1 << 3
+  };
+
+  //---------------------------------------------------------------------
+  // QRErrorCorrectionLevel
+  //---------------------------------------------------------------------
+
+  var QRErrorCorrectionLevel = {
+    L : 1,
+    M : 0,
+    Q : 3,
+    H : 2
+  };
+
+  //---------------------------------------------------------------------
+  // QRMaskPattern
+  //---------------------------------------------------------------------
+
+  var QRMaskPattern = {
+    PATTERN000 : 0,
+    PATTERN001 : 1,
+    PATTERN010 : 2,
+    PATTERN011 : 3,
+    PATTERN100 : 4,
+    PATTERN101 : 5,
+    PATTERN110 : 6,
+    PATTERN111 : 7
+  };
+
+  //---------------------------------------------------------------------
+  // QRUtil
+  //---------------------------------------------------------------------
+
+  var QRUtil = function() {
+
+    var PATTERN_POSITION_TABLE = [
+      [],
+      [6, 18],
+      [6, 22],
+      [6, 26],
+      [6, 30],
+      [6, 34],
+      [6, 22, 38],
+      [6, 24, 42],
+      [6, 26, 46],
+      [6, 28, 50],
+      [6, 30, 54],
+      [6, 32, 58],
+      [6, 34, 62],
+      [6, 26, 46, 66],
+      [6, 26, 48, 70],
+      [6, 26, 50, 74],
+      [6, 30, 54, 78],
+      [6, 30, 56, 82],
+      [6, 30, 58, 86],
+      [6, 34, 62, 90],
+      [6, 28, 50, 72, 94],
+      [6, 26, 50, 74, 98],
+      [6, 30, 54, 78, 102],
+      [6, 28, 54, 80, 106],
+      [6, 32, 58, 84, 110],
+      [6, 30, 58, 86, 114],
+      [6, 34, 62, 90, 118],
+      [6, 26, 50, 74, 98, 122],
+      [6, 30, 54, 78, 102, 126],
+      [6, 26, 52, 78, 104, 130],
+      [6, 30, 56, 82, 108, 134],
+      [6, 34, 60, 86, 112, 138],
+      [6, 30, 58, 86, 114, 142],
+      [6, 34, 62, 90, 118, 146],
+      [6, 30, 54, 78, 102, 126, 150],
+      [6, 24, 50, 76, 102, 128, 154],
+      [6, 28, 54, 80, 106, 132, 158],
+      [6, 32, 58, 84, 110, 136, 162],
+      [6, 26, 54, 82, 110, 138, 166],
+      [6, 30, 58, 86, 114, 142, 170]
+    ];
+    var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);
+    var G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0);
+    var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1);
+
+    var _this = {};
+
+    var getBCHDigit = function(data) {
+      var digit = 0;
+      while (data != 0) {
+        digit += 1;
+        data >>>= 1;
+      }
+      return digit;
+    };
+
+    _this.getBCHTypeInfo = function(data) {
+      var d = data << 10;
+      while (getBCHDigit(d) - getBCHDigit(G15) >= 0) {
+        d ^= (G15 << (getBCHDigit(d) - getBCHDigit(G15) ) );
+      }
+      return ( (data << 10) | d) ^ G15_MASK;
+    };
+
+    _this.getBCHTypeNumber = function(data) {
+      var d = data << 12;
+      while (getBCHDigit(d) - getBCHDigit(G18) >= 0) {
+        d ^= (G18 << (getBCHDigit(d) - getBCHDigit(G18) ) );
+      }
+      return (data << 12) | d;
+    };
+
+    _this.getPatternPosition = function(typeNumber) {
+      return PATTERN_POSITION_TABLE[typeNumber - 1];
+    };
+
+    _this.getMaskFunction = function(maskPattern) {
+
+      switch (maskPattern) {
+
+      case QRMaskPattern.PATTERN000 :
+        return function(i, j) { return (i + j) % 2 == 0; };
+      case QRMaskPattern.PATTERN001 :
+        return function(i, j) { return i % 2 == 0; };
+      case QRMaskPattern.PATTERN010 :
+        return function(i, j) { return j % 3 == 0; };
+      case QRMaskPattern.PATTERN011 :
+        return function(i, j) { return (i + j) % 3 == 0; };
+      case QRMaskPattern.PATTERN100 :
+        return function(i, j) { return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 == 0; };
+      case QRMaskPattern.PATTERN101 :
+        return function(i, j) { return (i * j) % 2 + (i * j) % 3 == 0; };
+      case QRMaskPattern.PATTERN110 :
+        return function(i, j) { return ( (i * j) % 2 + (i * j) % 3) % 2 == 0; };
+      case QRMaskPattern.PATTERN111 :
+        return function(i, j) { return ( (i * j) % 3 + (i + j) % 2) % 2 == 0; };
+
+      default :
+        throw 'bad maskPattern:' + maskPattern;
+      }
+    };
+
+    _this.getErrorCorrectPolynomial = function(errorCorrectLength) {
+      var a = qrPolynomial([1], 0);
+      for (var i = 0; i < errorCorrectLength; i += 1) {
+        a = a.multiply(qrPolynomial([1, QRMath.gexp(i)], 0) );
+      }
+      return a;
+    };
+
+    _this.getLengthInBits = function(mode, type) {
+
+      if (1 <= type && type < 10) {
+
+        // 1 - 9
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 10;
+        case QRMode.MODE_ALPHA_NUM : return 9;
+        case QRMode.MODE_8BIT_BYTE : return 8;
+        case QRMode.MODE_KANJI     : return 8;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 27) {
+
+        // 10 - 26
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 12;
+        case QRMode.MODE_ALPHA_NUM : return 11;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 10;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 41) {
+
+        // 27 - 40
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 14;
+        case QRMode.MODE_ALPHA_NUM : return 13;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 12;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else {
+        throw 'type:' + type;
+      }
+    };
+
+    _this.getLostPoint = function(qrcode) {
+
+      var moduleCount = qrcode.getModuleCount();
+
+      var lostPoint = 0;
+
+      // LEVEL1
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount; col += 1) {
+
+          var sameCount = 0;
+          var dark = qrcode.isDark(row, col);
+
+          for (var r = -1; r <= 1; r += 1) {
+
+            if (row + r < 0 || moduleCount <= row + r) {
+              continue;
+            }
+
+            for (var c = -1; c <= 1; c += 1) {
+
+              if (col + c < 0 || moduleCount <= col + c) {
+                continue;
+              }
+
+              if (r == 0 && c == 0) {
+                continue;
+              }
+
+              if (dark == qrcode.isDark(row + r, col + c) ) {
+                sameCount += 1;
+              }
+            }
+          }
+
+          if (sameCount > 5) {
+            lostPoint += (3 + sameCount - 5);
+          }
+        }
+      };
+
+      // LEVEL2
+
+      for (var row = 0; row < moduleCount - 1; row += 1) {
+        for (var col = 0; col < moduleCount - 1; col += 1) {
+          var count = 0;
+          if (qrcode.isDark(row, col) ) count += 1;
+          if (qrcode.isDark(row + 1, col) ) count += 1;
+          if (qrcode.isDark(row, col + 1) ) count += 1;
+          if (qrcode.isDark(row + 1, col + 1) ) count += 1;
+          if (count == 0 || count == 4) {
+            lostPoint += 3;
+          }
+        }
+      }
+
+      // LEVEL3
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount - 6; col += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row, col + 1)
+              &&  qrcode.isDark(row, col + 2)
+              &&  qrcode.isDark(row, col + 3)
+              &&  qrcode.isDark(row, col + 4)
+              && !qrcode.isDark(row, col + 5)
+              &&  qrcode.isDark(row, col + 6) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount - 6; row += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row + 1, col)
+              &&  qrcode.isDark(row + 2, col)
+              &&  qrcode.isDark(row + 3, col)
+              &&  qrcode.isDark(row + 4, col)
+              && !qrcode.isDark(row + 5, col)
+              &&  qrcode.isDark(row + 6, col) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      // LEVEL4
+
+      var darkCount = 0;
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount; row += 1) {
+          if (qrcode.isDark(row, col) ) {
+            darkCount += 1;
+          }
+        }
+      }
+
+      var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+      lostPoint += ratio * 10;
+
+      return lostPoint;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // QRMath
+  //---------------------------------------------------------------------
+
+  var QRMath = function() {
+
+    var EXP_TABLE = new Array(256);
+    var LOG_TABLE = new Array(256);
+
+    // initialize tables
+    for (var i = 0; i < 8; i += 1) {
+      EXP_TABLE[i] = 1 << i;
+    }
+    for (var i = 8; i < 256; i += 1) {
+      EXP_TABLE[i] = EXP_TABLE[i - 4]
+        ^ EXP_TABLE[i - 5]
+        ^ EXP_TABLE[i - 6]
+        ^ EXP_TABLE[i - 8];
+    }
+    for (var i = 0; i < 255; i += 1) {
+      LOG_TABLE[EXP_TABLE[i] ] = i;
+    }
+
+    var _this = {};
+
+    _this.glog = function(n) {
+
+      if (n < 1) {
+        throw 'glog(' + n + ')';
+      }
+
+      return LOG_TABLE[n];
+    };
+
+    _this.gexp = function(n) {
+
+      while (n < 0) {
+        n += 255;
+      }
+
+      while (n >= 256) {
+        n -= 255;
+      }
+
+      return EXP_TABLE[n];
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrPolynomial
+  //---------------------------------------------------------------------
+
+  function qrPolynomial(num, shift) {
+
+    if (typeof num.length == 'undefined') {
+      throw num.length + '/' + shift;
+    }
+
+    var _num = function() {
+      var offset = 0;
+      while (offset < num.length && num[offset] == 0) {
+        offset += 1;
+      }
+      var _num = new Array(num.length - offset + shift);
+      for (var i = 0; i < num.length - offset; i += 1) {
+        _num[i] = num[i + offset];
+      }
+      return _num;
+    }();
+
+    var _this = {};
+
+    _this.getAt = function(index) {
+      return _num[index];
+    };
+
+    _this.getLength = function() {
+      return _num.length;
+    };
+
+    _this.multiply = function(e) {
+
+      var num = new Array(_this.getLength() + e.getLength() - 1);
+
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        for (var j = 0; j < e.getLength(); j += 1) {
+          num[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i) ) + QRMath.glog(e.getAt(j) ) );
+        }
+      }
+
+      return qrPolynomial(num, 0);
+    };
+
+    _this.mod = function(e) {
+
+      if (_this.getLength() - e.getLength() < 0) {
+        return _this;
+      }
+
+      var ratio = QRMath.glog(_this.getAt(0) ) - QRMath.glog(e.getAt(0) );
+
+      var num = new Array(_this.getLength() );
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        num[i] = _this.getAt(i);
+      }
+
+      for (var i = 0; i < e.getLength(); i += 1) {
+        num[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i) ) + ratio);
+      }
+
+      // recursive call
+      return qrPolynomial(num, 0).mod(e);
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // QRRSBlock
+  //---------------------------------------------------------------------
+
+  var QRRSBlock = function() {
+
+    var RS_BLOCK_TABLE = [
+
+      // L
+      // M
+      // Q
+      // H
+
+      // 1
+      [1, 26, 19],
+      [1, 26, 16],
+      [1, 26, 13],
+      [1, 26, 9],
+
+      // 2
+      [1, 44, 34],
+      [1, 44, 28],
+      [1, 44, 22],
+      [1, 44, 16],
+
+      // 3
+      [1, 70, 55],
+      [1, 70, 44],
+      [2, 35, 17],
+      [2, 35, 13],
+
+      // 4
+      [1, 100, 80],
+      [2, 50, 32],
+      [2, 50, 24],
+      [4, 25, 9],
+
+      // 5
+      [1, 134, 108],
+      [2, 67, 43],
+      [2, 33, 15, 2, 34, 16],
+      [2, 33, 11, 2, 34, 12],
+
+      // 6
+      [2, 86, 68],
+      [4, 43, 27],
+      [4, 43, 19],
+      [4, 43, 15],
+
+      // 7
+      [2, 98, 78],
+      [4, 49, 31],
+      [2, 32, 14, 4, 33, 15],
+      [4, 39, 13, 1, 40, 14],
+
+      // 8
+      [2, 121, 97],
+      [2, 60, 38, 2, 61, 39],
+      [4, 40, 18, 2, 41, 19],
+      [4, 40, 14, 2, 41, 15],
+
+      // 9
+      [2, 146, 116],
+      [3, 58, 36, 2, 59, 37],
+      [4, 36, 16, 4, 37, 17],
+      [4, 36, 12, 4, 37, 13],
+
+      // 10
+      [2, 86, 68, 2, 87, 69],
+      [4, 69, 43, 1, 70, 44],
+      [6, 43, 19, 2, 44, 20],
+      [6, 43, 15, 2, 44, 16],
+
+      // 11
+      [4, 101, 81],
+      [1, 80, 50, 4, 81, 51],
+      [4, 50, 22, 4, 51, 23],
+      [3, 36, 12, 8, 37, 13],
+
+      // 12
+      [2, 116, 92, 2, 117, 93],
+      [6, 58, 36, 2, 59, 37],
+      [4, 46, 20, 6, 47, 21],
+      [7, 42, 14, 4, 43, 15],
+
+      // 13
+      [4, 133, 107],
+      [8, 59, 37, 1, 60, 38],
+      [8, 44, 20, 4, 45, 21],
+      [12, 33, 11, 4, 34, 12],
+
+      // 14
+      [3, 145, 115, 1, 146, 116],
+      [4, 64, 40, 5, 65, 41],
+      [11, 36, 16, 5, 37, 17],
+      [11, 36, 12, 5, 37, 13],
+
+      // 15
+      [5, 109, 87, 1, 110, 88],
+      [5, 65, 41, 5, 66, 42],
+      [5, 54, 24, 7, 55, 25],
+      [11, 36, 12, 7, 37, 13],
+
+      // 16
+      [5, 122, 98, 1, 123, 99],
+      [7, 73, 45, 3, 74, 46],
+      [15, 43, 19, 2, 44, 20],
+      [3, 45, 15, 13, 46, 16],
+
+      // 17
+      [1, 135, 107, 5, 136, 108],
+      [10, 74, 46, 1, 75, 47],
+      [1, 50, 22, 15, 51, 23],
+      [2, 42, 14, 17, 43, 15],
+
+      // 18
+      [5, 150, 120, 1, 151, 121],
+      [9, 69, 43, 4, 70, 44],
+      [17, 50, 22, 1, 51, 23],
+      [2, 42, 14, 19, 43, 15],
+
+      // 19
+      [3, 141, 113, 4, 142, 114],
+      [3, 70, 44, 11, 71, 45],
+      [17, 47, 21, 4, 48, 22],
+      [9, 39, 13, 16, 40, 14],
+
+      // 20
+      [3, 135, 107, 5, 136, 108],
+      [3, 67, 41, 13, 68, 42],
+      [15, 54, 24, 5, 55, 25],
+      [15, 43, 15, 10, 44, 16],
+
+      // 21
+      [4, 144, 116, 4, 145, 117],
+      [17, 68, 42],
+      [17, 50, 22, 6, 51, 23],
+      [19, 46, 16, 6, 47, 17],
+
+      // 22
+      [2, 139, 111, 7, 140, 112],
+      [17, 74, 46],
+      [7, 54, 24, 16, 55, 25],
+      [34, 37, 13],
+
+      // 23
+      [4, 151, 121, 5, 152, 122],
+      [4, 75, 47, 14, 76, 48],
+      [11, 54, 24, 14, 55, 25],
+      [16, 45, 15, 14, 46, 16],
+
+      // 24
+      [6, 147, 117, 4, 148, 118],
+      [6, 73, 45, 14, 74, 46],
+      [11, 54, 24, 16, 55, 25],
+      [30, 46, 16, 2, 47, 17],
+
+      // 25
+      [8, 132, 106, 4, 133, 107],
+      [8, 75, 47, 13, 76, 48],
+      [7, 54, 24, 22, 55, 25],
+      [22, 45, 15, 13, 46, 16],
+
+      // 26
+      [10, 142, 114, 2, 143, 115],
+      [19, 74, 46, 4, 75, 47],
+      [28, 50, 22, 6, 51, 23],
+      [33, 46, 16, 4, 47, 17],
+
+      // 27
+      [8, 152, 122, 4, 153, 123],
+      [22, 73, 45, 3, 74, 46],
+      [8, 53, 23, 26, 54, 24],
+      [12, 45, 15, 28, 46, 16],
+
+      // 28
+      [3, 147, 117, 10, 148, 118],
+      [3, 73, 45, 23, 74, 46],
+      [4, 54, 24, 31, 55, 25],
+      [11, 45, 15, 31, 46, 16],
+
+      // 29
+      [7, 146, 116, 7, 147, 117],
+      [21, 73, 45, 7, 74, 46],
+      [1, 53, 23, 37, 54, 24],
+      [19, 45, 15, 26, 46, 16],
+
+      // 30
+      [5, 145, 115, 10, 146, 116],
+      [19, 75, 47, 10, 76, 48],
+      [15, 54, 24, 25, 55, 25],
+      [23, 45, 15, 25, 46, 16],
+
+      // 31
+      [13, 145, 115, 3, 146, 116],
+      [2, 74, 46, 29, 75, 47],
+      [42, 54, 24, 1, 55, 25],
+      [23, 45, 15, 28, 46, 16],
+
+      // 32
+      [17, 145, 115],
+      [10, 74, 46, 23, 75, 47],
+      [10, 54, 24, 35, 55, 25],
+      [19, 45, 15, 35, 46, 16],
+
+      // 33
+      [17, 145, 115, 1, 146, 116],
+      [14, 74, 46, 21, 75, 47],
+      [29, 54, 24, 19, 55, 25],
+      [11, 45, 15, 46, 46, 16],
+
+      // 34
+      [13, 145, 115, 6, 146, 116],
+      [14, 74, 46, 23, 75, 47],
+      [44, 54, 24, 7, 55, 25],
+      [59, 46, 16, 1, 47, 17],
+
+      // 35
+      [12, 151, 121, 7, 152, 122],
+      [12, 75, 47, 26, 76, 48],
+      [39, 54, 24, 14, 55, 25],
+      [22, 45, 15, 41, 46, 16],
+
+      // 36
+      [6, 151, 121, 14, 152, 122],
+      [6, 75, 47, 34, 76, 48],
+      [46, 54, 24, 10, 55, 25],
+      [2, 45, 15, 64, 46, 16],
+
+      // 37
+      [17, 152, 122, 4, 153, 123],
+      [29, 74, 46, 14, 75, 47],
+      [49, 54, 24, 10, 55, 25],
+      [24, 45, 15, 46, 46, 16],
+
+      // 38
+      [4, 152, 122, 18, 153, 123],
+      [13, 74, 46, 32, 75, 47],
+      [48, 54, 24, 14, 55, 25],
+      [42, 45, 15, 32, 46, 16],
+
+      // 39
+      [20, 147, 117, 4, 148, 118],
+      [40, 75, 47, 7, 76, 48],
+      [43, 54, 24, 22, 55, 25],
+      [10, 45, 15, 67, 46, 16],
+
+      // 40
+      [19, 148, 118, 6, 149, 119],
+      [18, 75, 47, 31, 76, 48],
+      [34, 54, 24, 34, 55, 25],
+      [20, 45, 15, 61, 46, 16]
+    ];
+
+    var qrRSBlock = function(totalCount, dataCount) {
+      var _this = {};
+      _this.totalCount = totalCount;
+      _this.dataCount = dataCount;
+      return _this;
+    };
+
+    var _this = {};
+
+    var getRsBlockTable = function(typeNumber, errorCorrectionLevel) {
+
+      switch(errorCorrectionLevel) {
+      case QRErrorCorrectionLevel.L :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+      case QRErrorCorrectionLevel.M :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+      case QRErrorCorrectionLevel.Q :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+      case QRErrorCorrectionLevel.H :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+      default :
+        return undefined;
+      }
+    };
+
+    _this.getRSBlocks = function(typeNumber, errorCorrectionLevel) {
+
+      var rsBlock = getRsBlockTable(typeNumber, errorCorrectionLevel);
+
+      if (typeof rsBlock == 'undefined') {
+        throw 'bad rs block @ typeNumber:' + typeNumber +
+            '/errorCorrectionLevel:' + errorCorrectionLevel;
+      }
+
+      var length = rsBlock.length / 3;
+
+      var list = [];
+
+      for (var i = 0; i < length; i += 1) {
+
+        var count = rsBlock[i * 3 + 0];
+        var totalCount = rsBlock[i * 3 + 1];
+        var dataCount = rsBlock[i * 3 + 2];
+
+        for (var j = 0; j < count; j += 1) {
+          list.push(qrRSBlock(totalCount, dataCount) );
+        }
+      }
+
+      return list;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrBitBuffer
+  //---------------------------------------------------------------------
+
+  var qrBitBuffer = function() {
+
+    var _buffer = [];
+    var _length = 0;
+
+    var _this = {};
+
+    _this.getBuffer = function() {
+      return _buffer;
+    };
+
+    _this.getAt = function(index) {
+      var bufIndex = Math.floor(index / 8);
+      return ( (_buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+    };
+
+    _this.put = function(num, length) {
+      for (var i = 0; i < length; i += 1) {
+        _this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+      }
+    };
+
+    _this.getLengthInBits = function() {
+      return _length;
+    };
+
+    _this.putBit = function(bit) {
+
+      var bufIndex = Math.floor(_length / 8);
+      if (_buffer.length <= bufIndex) {
+        _buffer.push(0);
+      }
+
+      if (bit) {
+        _buffer[bufIndex] |= (0x80 >>> (_length % 8) );
+      }
+
+      _length += 1;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrNumber
+  //---------------------------------------------------------------------
+
+  var qrNumber = function(data) {
+
+    var _mode = QRMode.MODE_NUMBER;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _data;
+
+      var i = 0;
+
+      while (i + 2 < data.length) {
+        buffer.put(strToNum(data.substring(i, i + 3) ), 10);
+        i += 3;
+      }
+
+      if (i < data.length) {
+        if (data.length - i == 1) {
+          buffer.put(strToNum(data.substring(i, i + 1) ), 4);
+        } else if (data.length - i == 2) {
+          buffer.put(strToNum(data.substring(i, i + 2) ), 7);
+        }
+      }
+    };
+
+    var strToNum = function(s) {
+      var num = 0;
+      for (var i = 0; i < s.length; i += 1) {
+        num = num * 10 + chatToNum(s.charAt(i) );
+      }
+      return num;
+    };
+
+    var chatToNum = function(c) {
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      }
+      throw 'illegal char :' + c;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrAlphaNum
+  //---------------------------------------------------------------------
+
+  var qrAlphaNum = function(data) {
+
+    var _mode = QRMode.MODE_ALPHA_NUM;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var s = _data;
+
+      var i = 0;
+
+      while (i + 1 < s.length) {
+        buffer.put(
+          getCode(s.charAt(i) ) * 45 +
+          getCode(s.charAt(i + 1) ), 11);
+        i += 2;
+      }
+
+      if (i < s.length) {
+        buffer.put(getCode(s.charAt(i) ), 6);
+      }
+    };
+
+    var getCode = function(c) {
+
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      } else if ('A' <= c && c <= 'Z') {
+        return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+      } else {
+        switch (c) {
+        case ' ' : return 36;
+        case '$' : return 37;
+        case '%' : return 38;
+        case '*' : return 39;
+        case '+' : return 40;
+        case '-' : return 41;
+        case '.' : return 42;
+        case '/' : return 43;
+        case ':' : return 44;
+        default :
+          throw 'illegal char :' + c;
+        }
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qr8BitByte
+  //---------------------------------------------------------------------
+
+  var qr8BitByte = function(data) {
+
+    var _mode = QRMode.MODE_8BIT_BYTE;
+    var _data = data;
+    var _bytes = qrcode.stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _bytes.length;
+    };
+
+    _this.write = function(buffer) {
+      for (var i = 0; i < _bytes.length; i += 1) {
+        buffer.put(_bytes[i], 8);
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrKanji
+  //---------------------------------------------------------------------
+
+  var qrKanji = function(data) {
+
+    var _mode = QRMode.MODE_KANJI;
+    var _data = data;
+
+    var stringToBytes = qrcode.stringToBytesFuncs['SJIS'];
+    if (!stringToBytes) {
+      throw 'sjis not supported.';
+    }
+    !function(c, code) {
+      // self test for sjis support.
+      var test = stringToBytes(c);
+      if (test.length != 2 || ( (test[0] << 8) | test[1]) != code) {
+        throw 'sjis not supported.';
+      }
+    }('\u53cb', 0x9746);
+
+    var _bytes = stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return ~~(_bytes.length / 2);
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _bytes;
+
+      var i = 0;
+
+      while (i + 1 < data.length) {
+
+        var c = ( (0xff & data[i]) << 8) | (0xff & data[i + 1]);
+
+        if (0x8140 <= c && c <= 0x9FFC) {
+          c -= 0x8140;
+        } else if (0xE040 <= c && c <= 0xEBBF) {
+          c -= 0xC140;
+        } else {
+          throw 'illegal char at ' + (i + 1) + '/' + c;
+        }
+
+        c = ( (c >>> 8) & 0xff) * 0xC0 + (c & 0xff);
+
+        buffer.put(c, 13);
+
+        i += 2;
+      }
+
+      if (i < data.length) {
+        throw 'illegal char at ' + (i + 1);
+      }
+    };
+
+    return _this;
+  };
+
+  //=====================================================================
+  // GIF Support etc.
+  //
+
+  //---------------------------------------------------------------------
+  // byteArrayOutputStream
+  //---------------------------------------------------------------------
+
+  var byteArrayOutputStream = function() {
+
+    var _bytes = [];
+
+    var _this = {};
+
+    _this.writeByte = function(b) {
+      _bytes.push(b & 0xff);
+    };
+
+    _this.writeShort = function(i) {
+      _this.writeByte(i);
+      _this.writeByte(i >>> 8);
+    };
+
+    _this.writeBytes = function(b, off, len) {
+      off = off || 0;
+      len = len || b.length;
+      for (var i = 0; i < len; i += 1) {
+        _this.writeByte(b[i + off]);
+      }
+    };
+
+    _this.writeString = function(s) {
+      for (var i = 0; i < s.length; i += 1) {
+        _this.writeByte(s.charCodeAt(i) );
+      }
+    };
+
+    _this.toByteArray = function() {
+      return _bytes;
+    };
+
+    _this.toString = function() {
+      var s = '';
+      s += '[';
+      for (var i = 0; i < _bytes.length; i += 1) {
+        if (i > 0) {
+          s += ',';
+        }
+        s += _bytes[i];
+      }
+      s += ']';
+      return s;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64EncodeOutputStream
+  //---------------------------------------------------------------------
+
+  var base64EncodeOutputStream = function() {
+
+    var _buffer = 0;
+    var _buflen = 0;
+    var _length = 0;
+    var _base64 = '';
+
+    var _this = {};
+
+    var writeEncoded = function(b) {
+      _base64 += String.fromCharCode(encode(b & 0x3f) );
+    };
+
+    var encode = function(n) {
+      if (n < 0) {
+        // error.
+      } else if (n < 26) {
+        return 0x41 + n;
+      } else if (n < 52) {
+        return 0x61 + (n - 26);
+      } else if (n < 62) {
+        return 0x30 + (n - 52);
+      } else if (n == 62) {
+        return 0x2b;
+      } else if (n == 63) {
+        return 0x2f;
+      }
+      throw 'n:' + n;
+    };
+
+    _this.writeByte = function(n) {
+
+      _buffer = (_buffer << 8) | (n & 0xff);
+      _buflen += 8;
+      _length += 1;
+
+      while (_buflen >= 6) {
+        writeEncoded(_buffer >>> (_buflen - 6) );
+        _buflen -= 6;
+      }
+    };
+
+    _this.flush = function() {
+
+      if (_buflen > 0) {
+        writeEncoded(_buffer << (6 - _buflen) );
+        _buffer = 0;
+        _buflen = 0;
+      }
+
+      if (_length % 3 != 0) {
+        // padding
+        var padlen = 3 - _length % 3;
+        for (var i = 0; i < padlen; i += 1) {
+          _base64 += '=';
+        }
+      }
+    };
+
+    _this.toString = function() {
+      return _base64;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64DecodeInputStream
+  //---------------------------------------------------------------------
+
+  var base64DecodeInputStream = function(str) {
+
+    var _str = str;
+    var _pos = 0;
+    var _buffer = 0;
+    var _buflen = 0;
+
+    var _this = {};
+
+    _this.read = function() {
+
+      while (_buflen < 8) {
+
+        if (_pos >= _str.length) {
+          if (_buflen == 0) {
+            return -1;
+          }
+          throw 'unexpected end of file./' + _buflen;
+        }
+
+        var c = _str.charAt(_pos);
+        _pos += 1;
+
+        if (c == '=') {
+          _buflen = 0;
+          return -1;
+        } else if (c.match(/^\s$/) ) {
+          // ignore if whitespace.
+          continue;
+        }
+
+        _buffer = (_buffer << 6) | decode(c.charCodeAt(0) );
+        _buflen += 6;
+      }
+
+      var n = (_buffer >>> (_buflen - 8) ) & 0xff;
+      _buflen -= 8;
+      return n;
+    };
+
+    var decode = function(c) {
+      if (0x41 <= c && c <= 0x5a) {
+        return c - 0x41;
+      } else if (0x61 <= c && c <= 0x7a) {
+        return c - 0x61 + 26;
+      } else if (0x30 <= c && c <= 0x39) {
+        return c - 0x30 + 52;
+      } else if (c == 0x2b) {
+        return 62;
+      } else if (c == 0x2f) {
+        return 63;
+      } else {
+        throw 'c:' + c;
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // gifImage (B/W)
+  //---------------------------------------------------------------------
+
+  var gifImage = function(width, height) {
+
+    var _width = width;
+    var _height = height;
+    var _data = new Array(width * height);
+
+    var _this = {};
+
+    _this.setPixel = function(x, y, pixel) {
+      _data[y * _width + x] = pixel;
+    };
+
+    _this.write = function(out) {
+
+      //---------------------------------
+      // GIF Signature
+
+      out.writeString('GIF87a');
+
+      //---------------------------------
+      // Screen Descriptor
+
+      out.writeShort(_width);
+      out.writeShort(_height);
+
+      out.writeByte(0x80); // 2bit
+      out.writeByte(0);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Global Color Map
+
+      // black
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+
+      // white
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+
+      //---------------------------------
+      // Image Descriptor
+
+      out.writeString(',');
+      out.writeShort(0);
+      out.writeShort(0);
+      out.writeShort(_width);
+      out.writeShort(_height);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Local Color Map
+
+      //---------------------------------
+      // Raster Data
+
+      var lzwMinCodeSize = 2;
+      var raster = getLZWRaster(lzwMinCodeSize);
+
+      out.writeByte(lzwMinCodeSize);
+
+      var offset = 0;
+
+      while (raster.length - offset > 255) {
+        out.writeByte(255);
+        out.writeBytes(raster, offset, 255);
+        offset += 255;
+      }
+
+      out.writeByte(raster.length - offset);
+      out.writeBytes(raster, offset, raster.length - offset);
+      out.writeByte(0x00);
+
+      //---------------------------------
+      // GIF Terminator
+      out.writeString(';');
+    };
+
+    var bitOutputStream = function(out) {
+
+      var _out = out;
+      var _bitLength = 0;
+      var _bitBuffer = 0;
+
+      var _this = {};
+
+      _this.write = function(data, length) {
+
+        if ( (data >>> length) != 0) {
+          throw 'length over';
+        }
+
+        while (_bitLength + length >= 8) {
+          _out.writeByte(0xff & ( (data << _bitLength) | _bitBuffer) );
+          length -= (8 - _bitLength);
+          data >>>= (8 - _bitLength);
+          _bitBuffer = 0;
+          _bitLength = 0;
+        }
+
+        _bitBuffer = (data << _bitLength) | _bitBuffer;
+        _bitLength = _bitLength + length;
+      };
+
+      _this.flush = function() {
+        if (_bitLength > 0) {
+          _out.writeByte(_bitBuffer);
+        }
+      };
+
+      return _this;
+    };
+
+    var getLZWRaster = function(lzwMinCodeSize) {
+
+      var clearCode = 1 << lzwMinCodeSize;
+      var endCode = (1 << lzwMinCodeSize) + 1;
+      var bitLength = lzwMinCodeSize + 1;
+
+      // Setup LZWTable
+      var table = lzwTable();
+
+      for (var i = 0; i < clearCode; i += 1) {
+        table.add(String.fromCharCode(i) );
+      }
+      table.add(String.fromCharCode(clearCode) );
+      table.add(String.fromCharCode(endCode) );
+
+      var byteOut = byteArrayOutputStream();
+      var bitOut = bitOutputStream(byteOut);
+
+      // clear code
+      bitOut.write(clearCode, bitLength);
+
+      var dataIndex = 0;
+
+      var s = String.fromCharCode(_data[dataIndex]);
+      dataIndex += 1;
+
+      while (dataIndex < _data.length) {
+
+        var c = String.fromCharCode(_data[dataIndex]);
+        dataIndex += 1;
+
+        if (table.contains(s + c) ) {
+
+          s = s + c;
+
+        } else {
+
+          bitOut.write(table.indexOf(s), bitLength);
+
+          if (table.size() < 0xfff) {
+
+            if (table.size() == (1 << bitLength) ) {
+              bitLength += 1;
+            }
+
+            table.add(s + c);
+          }
+
+          s = c;
+        }
+      }
+
+      bitOut.write(table.indexOf(s), bitLength);
+
+      // end code
+      bitOut.write(endCode, bitLength);
+
+      bitOut.flush();
+
+      return byteOut.toByteArray();
+    };
+
+    var lzwTable = function() {
+
+      var _map = {};
+      var _size = 0;
+
+      var _this = {};
+
+      _this.add = function(key) {
+        if (_this.contains(key) ) {
+          throw 'dup key:' + key;
+        }
+        _map[key] = _size;
+        _size += 1;
+      };
+
+      _this.size = function() {
+        return _size;
+      };
+
+      _this.indexOf = function(key) {
+        return _map[key];
+      };
+
+      _this.contains = function(key) {
+        return typeof _map[key] != 'undefined';
+      };
+
+      return _this;
+    };
+
+    return _this;
+  };
+
+  var createDataURL = function(width, height, getPixel) {
+    var gif = gifImage(width, height);
+    for (var y = 0; y < height; y += 1) {
+      for (var x = 0; x < width; x += 1) {
+        gif.setPixel(x, y, getPixel(x, y) );
+      }
+    }
+
+    var b = byteArrayOutputStream();
+    gif.write(b);
+
+    var base64 = base64EncodeOutputStream();
+    var bytes = b.toByteArray();
+    for (var i = 0; i < bytes.length; i += 1) {
+      base64.writeByte(bytes[i]);
+    }
+    base64.flush();
+
+    return 'data:image/gif;base64,' + base64;
+  };
+
+  //---------------------------------------------------------------------
+  // returns qrcode function.
+
+  return qrcode;
+}();
+
+// multibyte support
+!function() {
+
+  qrcode.stringToBytesFuncs['UTF-8'] = function(s) {
+    // http://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
+    function toUTF8Array(str) {
+      var utf8 = [];
+      for (var i=0; i < str.length; i++) {
+        var charcode = str.charCodeAt(i);
+        if (charcode < 0x80) utf8.push(charcode);
+        else if (charcode < 0x800) {
+          utf8.push(0xc0 | (charcode >> 6),
+              0x80 | (charcode & 0x3f));
+        }
+        else if (charcode < 0xd800 || charcode >= 0xe000) {
+          utf8.push(0xe0 | (charcode >> 12),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+        // surrogate pair
+        else {
+          i++;
+          // UTF-16 encodes 0x10000-0x10FFFF by
+          // subtracting 0x10000 and splitting the
+          // 20 bits of 0x0-0xFFFFF into two halves
+          charcode = 0x10000 + (((charcode & 0x3ff)<<10)
+            | (str.charCodeAt(i) & 0x3ff));
+          utf8.push(0xf0 | (charcode >>18),
+              0x80 | ((charcode>>12) & 0x3f),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+      }
+      return utf8;
+    }
+    return toUTF8Array(s);
+  };
+
+}();
+
+(function (factory) {
+  if (typeof define === 'function' && define.amd) {
+      define([], factory);
+  } else if (typeof exports === 'object') {
+      module.exports = factory();
+  }
+}(function () {
+    return qrcode;
+}));
 /* Link between these screens and the React Native shell (src/bridge.ts).
 
    DEMO is on for the website preview and off in the phone app build
@@ -3142,7 +5466,7 @@ function go(v,id){
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
- if(v==='editprofile')S.editBack=S.v==='settings'?'settings':'profile';
+ if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';S.editName=me.n;S.editCity=me.c;S.editAbout=me.about}
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
@@ -3924,8 +6248,8 @@ function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
  ${isHost()?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
   <label class="editpost add">${I('grid',18)} Add photo<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'posts')" ${disabled}></label>
-  ${(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
-  ${!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
+  ${window.contentSurface?.('posts','posts','Loading your posts')||(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
+  ${DEMO&&!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
  </div>${S.postDraftData?`<div class="editposts"><span class="editpost"><img src="${imageSrc(S.postDraftData)}" alt="Photo ready to publish"></span></div><label class="editlabel" for="postcaption">Caption</label><textarea id="postcaption" class="editinput" maxlength="2000" placeholder="Say something about this moment" oninput="S.postCaption=this.value" ${disabled}>${esc(S.postCaption||"")}</textarea>${S.postError?`<div class="ob-error" role="alert">${esc(S.postError)}</div>`:""}<button class="editsave" onclick="publishPost()" ${disabled}>${S.postPublishing?"Publishing photo…":"Publish photo"}</button>`:""}</div>`:""}</div>`}
 
 function vProfile(){
@@ -4741,7 +7065,7 @@ if (DEMO && roleParam === 'host' && new URLSearchParams(location.search).get('ap
 }
 
 /* Content placeholders follow requests, never a timer or a first-visit cache. */
-const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed'];
+const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked'];
 const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
 function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',...extra})}
@@ -4764,6 +7088,8 @@ function contentError(key){const message=ContentLoading[key]?.error;return messa
 function contentSurface(key,kind='rows',label){return contentPending(key)?contentSkeleton(kind,label):ContentLoading[key]?.error?contentError(key):null}
 function contentBalance(value=S.bal){return contentPending('wallet')?'<span role="status" aria-label="Loading balance" aria-busy="true"><span aria-hidden="true">'+skeletonLine('55px',18)+'</span></span>':ContentLoading.wallet.error?'<span aria-label="Balance unavailable">—</span>':n(value)}
 function contentRetry(key){
+  if(key==='profileSettings')return zpLoad();
+  if(key==='blocked')return zpBlockedLoad();
   if(key==='home')return homeLoad();
   if(key==='search')return homeSearchRequest();
   contentStart(key);contentRender(key);
@@ -4780,7 +7106,7 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
-  const views={home:['home','explore','chats'],catalog:['coins'],notifications:['notifications','home','explore','chats'],chats:['chats'],missed:['chats'],wallet:['home','explore','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile'],thread:['thread']};
+  const views={profileSettings:['profile','settings'],blocked:[],home:['home','explore','chats'],catalog:['coins'],notifications:['notifications','home','explore','chats'],chats:['chats'],missed:['chats'],wallet:['home','explore','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile','editprofile'],thread:['thread']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
   if(views[key]?.includes(S.v)||(key==='catalog'&&Home.giftTo))r();
 }
@@ -4793,7 +7119,7 @@ Native.on('data.loading',d=>{
   contentRender(d.resource);
 });
 /* Results also settle placeholders when received from an older native shell. */
-for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet'}))Native.on(event,d=>{
+for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;
   Object.assign(ContentLoading[key],{loading:false,error:''});
@@ -4862,7 +7188,7 @@ function homeNav(){
   if(!['home','explore','chats','profile','settings','notifications'].includes(S.v))return false;
   const hostSlot=isApprovedHost()||(window.ZimiHostAccess.checking()&&S.role==='host');
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');el.style.setProperty('--nav-count',hostSlot?5:4);
-  const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
+  const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${(S.v===v||(v==='profile'&&S.v==='settings'))?'on':''}" ${(S.v===v||(v==='profile'&&S.v==='settings'))?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
   el.innerHTML=item('home','Home','house')+item('explore','Explore','explore')+(isApprovedHost()?`<button type="button" class="zh-create" onclick="homeGoLive()" aria-label="Go live">${hi('broadcast',26)}</button>`:hostSlot?'<span class="zh-create-pending zh-skeleton-shape" role="status" aria-label="Checking host approval"></span>':'')+item('chats','Chats','chat')+item('profile','Profile','user');return true;
 }
 function homeStage(){const rows=Home.stage.slice(0,12),pending=homeContentPending(),error=homeContentError();return `<section class="zh-stage" aria-label="Live creators"><div class="zh-section-title"><h2><i></i>Stage &amp; Live Calls</h2><span>${pending?skeletonLine('94px',10):error?'':homeCompact(Home.broadcasterCount)+' BROADCASTERS'}</span></div><div class="zh-stories">${isApprovedHost()?`<button class="zh-story zh-story-create" onclick="homeGoLive()"><span class="zh-story-ring">${hi('plus',24)}<i>${hi('vid',10)}</i></span><span>Go Live</span></button>`:''}${pending?contentSkeleton('stories','Loading live creators',4):error?'':rows.map(h=>`<button class="zh-story" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}"><span class="zh-story-ring ${h.stream?'':'zh-story-call'}">${homeCover(h)}<b>${h.stream?'LIVE':hi('ph',9)+' 1:1'}</b></span><span>${esc(first(h.n))}</span></button>`).join('')}${!pending&&!error&&!rows.length?'<span class="zh-stage-empty">Your next favourite creator is on the way.</span>':''}</div></section>`}
@@ -4921,9 +7247,9 @@ function homeSearchResults(){const pending=!DEMO&&(Home.searchLoading||contentPe
 
 function homePaintSearch(){const el=document.getElementById('home-search-results');if(el)el.innerHTML=homeSearchResults()}
 function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>Find your next connection</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
-function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','explore','chats','profile','settings','notifications'].includes(S.v))}
+function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','explore','chats','profile','settings','notifications'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{explore:()=>homeScreen(true),search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
-  if(['home','explore','chats','profile'].includes(S.v))return homeHeader();
+  if(['home','explore','chats','profile','settings'].includes(S.v))return homeHeader();
   if(S.v==='search')return `<header class="zh-search-header"><button aria-label="Back to home" onclick="go('home')">${hi('back',23)}</button><div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   const title={notifications:'Notifications',broadcast:'Go Live',coins:'Your coins'}[S.v];
@@ -4968,7 +7294,7 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','explore','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
+function homeReset(){if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 
@@ -5421,6 +7747,129 @@ if(DEMO){
   Chats.rows=people.map((p,i)=>{const user={...p,role:p.bot?'sender':'host',category:i===0?'Music':i===4?'Gaming':'Talk',avatarUrl:OB_MEDIA[p.photo],availableForCall:!!p.online};knowHost(user);return {id:'demo-chat-'+i,user,bot:p.bot,last:previews[i],lastKind:['call','gift','text','system','text','voice'][i],lastMine:i===2||i===4,lastStatus:i===2?'read':'sent',lastAt:new Date(Date.now()-[2,14,60,180,1440,10080][i]*60000).toISOString(),displayTime:times[i],unread:[2,1,0,1,0,0][i],hasCalls:i===0||i===2}});
   Chats.total=Chats.rows.length;Chats.unreadConversations=3;CH.splice(0,CH.length,...Chats.rows.map(c=>[c.user.id,c.last,c.displayTime,c.unread]));
 }
+
+/* Account settings use server summaries; sample identities exist only in preview. */
+const ZProfile={data:null,requested:false,error:'',dialog:'',draft:{},saving:false,saveError:'',requestId:0,presenceBusy:false,privacyBusy:false,blocked:[],blockedTotal:0,blockedPage:1,blockBusy:'',wallet:null};
+const zpIcons={
+  qr:'<path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h2v2h-2zM20 13v3M13 20h3v-2M19 19h2v2h-2zM12 3v2M3 12h3M9 12h4v3M12 8v2M17 12h4"/>',
+  edit:'<path d="m16 3 5 5M4 15 16 3l5 5L9 20l-6 1zM4 15l5 5"/>',
+  camera:'<path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/>',
+  people:'<circle cx="9" cy="8" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M17 5a3 3 0 0 1 0 6M19 15a5 5 0 0 1 3 5"/>',
+  follow:'<circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M19 8v8M15 12h8"/>',
+  wallet:'<path d="M3 5h17v16H3zM3 5V3h14v2M15 10h7v6h-7zM18 13h1"/>',
+  cash:'<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 9v6M19 9v6"/>',
+  language:'<path d="M2 5h12M8 2v3M4 5c0 6 7 10 9 11M12 5c0 5-5 10-10 12M13 22l5-13 5 13M15 18h6"/>',
+  location:'<path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2"/>',
+  shield:'<path d="m12 2 9 4-1 8c-1 4-8 8-8 8s-7-4-8-8L3 6zM12 3v17"/>',
+  badge:'<rect x="4" y="5" width="16" height="17" rx="2"/><path d="M9 2h6v6H9zM8 13h8M8 17h5"/>',
+  moon:'<path d="M20 15A9 9 0 0 1 9 4 9 9 0 1 0 20 15Z"/>',
+  help:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 8a3 3 0 1 1 4 3c-1 1-1 2-1 3M12 18h.01"/>',
+  logout:'<path d="M10 3H3v18h7M8 12h14m-5-5 5 5-5 5"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 5 10 8 10-8"/>'
+};
+function zi(name,size=20){return zpIcons[name]?`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${zpIcons[name]}</svg>`:hi(name,size)}
+function zpNumber(value){return new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(Math.max(0,Number(value)||0))}
+function zpMoney(value){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format((Number(value)||0)/100)}
+function zpActive(){return ['profile','settings'].includes(S.v)}
+function zpPending(){return !DEMO&&contentPending('profileSettings')}
+function zpLoad(){if(DEMO)return;ZProfile.requested=true;ZProfile.error='';contentStart('profileSettings');Native.send('profile.settings.load');if(zpActive())r()}
+function zpRow(icon,title,detail,action,extra=''){return `<button type="button" class="zp-row" onclick="${action}"><span class="zp-row-icon">${zi(icon,18)}</span><span class="zp-row-text"><b>${title}</b><small>${detail}</small></span>${extra}<span class="zp-chevron" aria-hidden="true">›</span></button>`}
+function zpGroup(title,rows){return `<section class="zp-group"><h2>${title}</h2><div class="zp-group-card">${rows}</div></section>`}
+function zpIdentity(){
+  const data=ZProfile.data,p=data?.profile||{},stats=data?.stats||{},name=p.name||S.user?.name||me.n||'Your profile',bio=p.bio??S.user?.about??me.about,city=p.city??S.user?.city??me.c,id=S.user?.id||p.id||'',avatar=S.avatarData||(DEMO?OB_MEDIA[0]:''),approved=isApprovedHost();
+  return `<section class="zp-identity" aria-label="Your profile"><div class="zp-person"><button class="zp-avatar" onclick="zpGo('editprofile')" aria-label="Change profile photo">${imageSrc(avatar)?`<img class="zh-photo-pending" src="${imageSrc(avatar)}" alt="${esc(name)}">`:`<span class="zp-initials">${esc(name.split(' ').map(x=>x[0]).slice(0,2).join(''))}</span>`}${approved?`<span class="zp-verified" aria-label="Admin approved host">${hi('verified',15)}</span>`:''}<span class="zp-camera">${zi('camera',14)}</span></button><div class="zp-person-text"><h2>${esc(name)}</h2><p class="zp-id">${id?'ID · '+esc(id.slice(-8)):'Your Zimi account'}</p><p>${zi('location',12)} ${esc(city||'Add your location')}</p></div></div><div class="zp-stats">${[['people','Fans',stats.fans],['follow','Following',stats.following],['gift','Gifts sent',stats.giftsSent],['gift','Gifts received',stats.giftsReceived]].map(([icon,label,value])=>`<div>${zi(icon,14)}<b>${zpPending()?skeletonLine('34px',12):ZProfile.error?'—':zpNumber(value)}</b><span>${label}</span></div>`).join('')}</div><div class="zp-bio">${esc(bio||'A little about you goes a long way. Add your introduction in Edit profile.')}</div></section>`;
+}
+function zpWallet(){return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>${zi('wallet',13)} Wallet balance</h2><div class="zp-balance"><strong>${contentBalance()}</strong><span>Coins</span></div></div><button class="zp-topup" onclick="zpGo('coins')">${hi('plus',17)} Top Up</button></div><div class="zp-wallet-actions"><button onclick="${isApprovedHost()?"zpOpen('earnings')":"zpGo('wallet')"}">${zi('cash',18)}<span>${isApprovedHost()?'Earnings & Wallet':'Wallet & Activity'}</span></button><button onclick="zpOpen('gifts')">${hi('gift',18)} Gift History</button></div></section>`}
+function zpAvailability(){const on=!!ZProfile.data?.privacy?.allowRequests&&!!ZProfile.data?.privacy?.showActivity;return `<div class="zp-row"><span class="zp-row-icon">${hi('ph',18)}</span><span class="zp-row-text"><b>1-on-1 Call Availability</b><small>${ZProfile.presenceBusy?'Updating availability':on?'Online · Free calls':'Offline · Free calls'}</small></span><button type="button" class="zp-switch ${on?'is-on':''}" role="switch" aria-label="1-on-1 Call Availability" aria-checked="${on}" onclick="zpAvailabilitySet(${!on})" ${ZProfile.presenceBusy||zpPending()?'disabled':''}>${ZProfile.presenceBusy?'<span class="zh-skeleton-shape"></span>':'<i></i>'}</button></div>`}
+function zpSettingsRows(){
+  const d=ZProfile.data,approved=isApprovedHost(),pending=zpPending(),v=d?.preferences||{},p=d?.profile||{},badge=approved?'Verified ✓':kycLabel();
+  const txt=(text,width='90px')=>pending?skeletonLine(width,10):esc(text);
+  return zpGroup('Account & Broadcast',
+    (approved?zpRow('vid','Creator Studio & Go Live','Your live stream & camera settings','homeGoLive()',`<span class="zp-badge">Host On</span>`):'')+
+    `<button type="button" class="zp-row" aria-label="${approved?'Host approval':'Creator application'}" onclick="zpGo('kyc')"><span class="zp-row-icon">${zi('badge',18)}</span><span class="zp-row-text"><b>${approved?'Creator Verification':'Creator Application'}</b><small>${approved?'Reviewed by the Zimi team':'Apply to become a host'}</small></span><span class="zp-badge ${approved?'':'zp-badge-muted'}">${esc(badge)}</span><span class="zp-chevron" aria-hidden="true">›</span></button>`+
+    zpRow('shield','Phone & Email Security',txt(p.maskedPhone||'Your sign-in details'),"zpOpen('security')"))+
+    zpGroup('Discovery & Video Calls',(approved?zpAvailability():'')+
+      zpRow('bolt','Match & Speed Pulse',txt(v.matchCategory||'All creator categories'),"zpOpen('match')")+
+      zpRow('language','Language & Region',txt((p.languages||[]).join(', ')||'Choose your spoken languages'),"zpOpen('language')"))+
+    zpGroup('App Experience & Privacy',
+      zpRow('bell','Notifications & Live Alerts','In-app updates & alert preferences',"zpOpen('notifications')")+
+      zpRow('shield','Privacy & Blocked Users',txt(d?.privacy?.discoverable===false?'Private discovery · Manage blocked accounts':'Discovery, activity & blocked accounts'),"zpOpen('privacy')")+
+      zpRow('moon','Appearance & Theme',txt(v.appearance==='light'?'Soft Rose (Active)':v.appearance==='system'?'Follow device theme':'Deep Magenta Night (Active)'),"zpOpen('appearance')"))+
+    zpGroup('Support & Community',
+      zpRow('help','Help Center & Safety Guidelines','',"zpOpen('help')")+
+      zpRow('shield','Community Guidelines','',"zpOpen('guidelines')")+
+      `<button class="zp-row zp-logout" onclick="zpOpen('logout')"><span class="zp-row-icon">${zi('logout',18)}</span><span class="zp-row-text"><b>Log Out</b></span><span class="zp-chevron" aria-hidden="true">→</span></button>`);
+}
+function zpScreen(){const unavailable=ZProfile.error||ContentLoading.profileSettings.error;return `<div class="zp-page"><div class="zp-heading"><div><h1>Profile & Settings</h1><p>${isApprovedHost()?'Manage your stage presence & creator perks':'Your space, your connections, your settings'}</p></div><div class="zp-heading-actions"><button onclick="zpOpen('identity')" aria-label="Your Zimi QR code">${zi('qr',20)}</button><button onclick="zpGo('editprofile')" aria-label="Edit profile">${zi('edit',20)}</button></div></div>${unavailable?`<div class="zh-error" role="alert">${esc(unavailable)}<button onclick="zpLoad()">Retry</button></div>`:''}<div class="zp-layout"><div class="zp-overview">${zpIdentity()+zpWallet()}</div><div class="zp-settings">${zpSettingsRows()}</div></div><footer class="zp-footer"><span>${hi('sun',15)} Zimi Live</span><p>Version ${esc(window.ZIMI_APP_VERSION||'1.0.0')} · Made for connections</p>${DEMO?'<small>Design preview · Sample account</small>':''}</footer></div>`}
+function zpGo(view){zpClose();go(view)}
+function zpOpen(kind){
+  zpClose();ZProfile.dialog=kind;ZProfile.dialogLoading=!ZProfile.data||zpPending();ZProfile.saveError='';ZProfile.draft={...(ZProfile.data?.preferences||{}),languages:[...(ZProfile.data?.profile?.languages||[])],city:ZProfile.data?.profile?.city||'',...(ZProfile.data?.privacy||{})};
+  const el=document.createElement('dialog');el.id='zp-dialog';el.className='zp-dialog';el.setAttribute('aria-labelledby','zp-dialog-title');document.body.append(el);
+  el.addEventListener('close',()=>{el.remove();ZProfile.dialog=''});el.addEventListener('click',e=>{if(e.target===el){const b=el.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)zpClose()}});
+  zpPaintDialog();el.showModal();
+  if(['privacy','blocked'].includes(kind))zpBlockedLoad();
+  if(kind==='gifts'&&!DEMO){contentStart('transactions');Native.send('data.reload');zpPaintDialog()}
+}
+function zpClose(){document.getElementById('zp-dialog')?.close();ZProfile.dialog=''}
+function zpSelect(label,options,value,onchange){return `<label class="zp-field">${label}<select aria-label="${label}" onchange="${onchange}" ${ZProfile.saving?'disabled':''}>${options.map(([key,text])=>`<option value="${esc(key)}" ${key===value?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`}
+function zpToggle(label,key,on,disabled=false){return `<label class="zp-preference"><span>${label}</span><input type="checkbox" aria-label="${label}" ${on?'checked':''} ${disabled||ZProfile.saving||ZProfile.privacyBusy?'disabled':''} onchange="ZProfile.draft.${key}=this.checked"></label>`}
+function zpSaveButton(action='zpSave()'){return `<button class="zp-save" onclick="${action}" ${ZProfile.saving||ZProfile.privacyBusy||zpPending()||!ZProfile.data?'disabled':''}>${ZProfile.saving||ZProfile.privacyBusy?'<span role="status" aria-label="Saving preferences">'+skeletonLine('100px',16)+'</span>':'Save preferences'}</button>`}
+function zpDialogContent(kind){
+  const d=ZProfile.data,p=d?.profile||{},draft=ZProfile.draft,cap=d?.capabilities||{};
+  if(['match','language','notifications','appearance','privacy','security'].includes(kind)&&(ZProfile.dialogLoading||!d))return ZProfile.error||ContentLoading.profileSettings.error?`<div class="zh-error" role="alert">${esc(ZProfile.error||ContentLoading.profileSettings.error)}<button onclick="zpLoad()">Retry</button></div>`:contentSkeleton('rows','Loading account settings',3);
+  if(kind==='identity'){
+    const id=S.user?.id||p.id||'',qr=id&&typeof qrcode==='function'?qrcode(0,'M'):null;if(qr){qr.addData('Zimi Live ID: '+id);qr.make()}
+    return `<p>Your personal Zimi account ID.</p>${qr?`<div class="zp-qr" aria-label="QR code for your Zimi account ID">${qr.createSvgTag({cellSize:5,margin:20,scalable:true})}</div>`:''}<code class="zp-account-id">${esc(id||'Sign in to view your account ID')}</code><button class="zp-save" onclick="zpCopyId()" ${id?'':'disabled'}>Copy account ID</button>`;
+  }
+  if(kind==='match')return `<p>Choose the kind of creator you’d like to meet. Speed Pulse uses this preference when you haven’t selected a category on Home.</p>${zpSelect('Match category',[['','All categories'],...(d.categories||[]).map(c=>[c,c])],draft.matchCategory||'',"ZProfile.draft.matchCategory=this.value||null")}${zpSaveButton()}`;
+  if(kind==='language')return `<p>Let people know which languages you speak.</p><fieldset class="zp-languages"><legend>Spoken languages</legend>${[...new Set([...LANGS,...(p.languages||[])])].map((lang,index)=>`<label><input type="checkbox" data-zp-language="${index}" value="${esc(lang)}" ${draft.languages.includes(lang)?'checked':''} ${ZProfile.saving?'disabled':''} onchange="zpLanguage(this)"><span>${esc(lang)}</span></label>`).join('')}</fieldset><label class="zp-field">City / region<input maxlength="100" aria-label="City / region" value="${esc(draft.city)}" oninput="ZProfile.draft.city=this.value" ${ZProfile.saving?'disabled':''}></label><p class="zp-note">App language: English. Your location is shown on your profile.</p>${zpSaveButton()}`;
+  if(kind==='appearance')return `<p>Choose a look that feels like you.</p>${zpSelect('Appearance',[['dark','Deep Magenta Night'],['light','Soft Rose'],['system','Use device theme']],draft.appearance||'dark',"ZProfile.draft.appearance=this.value")}<div class="zp-theme-preview"><span></span><span></span><span></span></div>${zpSaveButton()}`;
+  if(kind==='notifications'){const available=cap.pushNotifications===true&&cap.nativePushRegistered===true;return `<p>Keep up with your conversations and account updates.</p>${zpToggle('Push notifications','pushNotifications',draft.pushNotifications, !available)}${!available?'<p class="zp-note">Push notifications are not available on this device yet. Your updates are available in the notification inbox.</p>':zpSaveButton()}<button class="zp-secondary" onclick="zpGo('notifications')">Open notifications</button><p class="zp-note">Separate live alerts are not available yet.</p>`}
+  if(kind==='security')return `<div class="zp-detail"><span>Phone number</span><b>${esc(p.maskedPhone||'Not available')}</b><small>${p.isPhoneVerified?'Verified for sign-in':'Not verified'}</small></div><div class="zp-detail"><span>Contact email</span><b>${esc(S.user?.email||'Not added')}</b></div><p>Sign-in uses a one-time code sent to your registered phone. Never share your code with anyone.</p><button class="zp-secondary" onclick="zpOpen('logout')">Sign out of this device</button>`;
+  if(kind==='privacy')return `${zpToggle('Discoverable profile','discoverable',draft.discoverable!==false)}<p class="zp-note">Allow your profile to appear in discovery.</p>${zpToggle('Show activity status','showActivity',draft.showActivity!==false)}<p class="zp-note">Let others see when you’re online.</p>${zpSaveButton('zpPrivacySave()')}<h3 class="zp-dialog-section">Blocked accounts</h3>${zpBlockedContent()}`;
+  if(kind==='gifts'){const surface=contentSurface('transactions','rows','Loading gift history');if(surface)return surface;const gifts=TXNS.filter(x=>x[3]==='gift');return gifts.length?`<div class="zp-history">${gifts.map(txRow).join('')}</div><button class="zp-secondary" onclick="zpGo('transactions')">All transactions</button>`:'<div class="zp-empty">'+hi('gift',34)+'<h3>No gifts yet</h3><p>Your gift transactions will appear here.</p></div>'}
+  if(kind==='earnings'){const surface=contentSurface('wallet','wallet','Loading earnings');if(surface)return surface;if(!isApprovedHost())return '<p>Creator earnings are available after admin approval.</p>';return `<p>Your earnings are separate from the coins you buy.</p><div class="zp-earnings"><span>Available earnings</span><strong>${contentPending('wallet')?skeletonLine('140px',32):zpMoney(ZProfile.wallet?.earningsPaise)}</strong><small>${Number(ZProfile.wallet?.reservedPaise)>0?zpMoney(ZProfile.wallet.reservedPaise)+' reserved for withdrawals':'Currency: INR'}</small></div><button class="zp-secondary" onclick="zpGo('transactions')">View earning history</button>`}
+  if(kind==='help')return `<details open><summary>Getting started</summary><p>Explore creators, watch a live stream, or start a free call with an available host.</p></details><details><summary>Coins & gifts</summary><p>Use Top Up to view current coin packs. Gift prices are shown before you send. Find completed payments and gifts in your transaction history.</p></details><details><summary>Becoming a creator</summary><p>Submit a creator application for admin review. Only approved hosts can go live, receive calls, and publish posts.</p></details><details><summary>Staying safe</summary><p>Manage discovery, activity visibility and your blocked accounts in Privacy & Blocked Users.</p></details><button class="zp-secondary" onclick="zpOpen('privacy')">Privacy & blocked users</button>`;
+  if(kind==='guidelines')return `<div class="zp-guidelines"><h3>Be kind. Be yourself.</h3><p>Zimi Live is for adults aged 18 and over. Respect other people’s boundaries and personal information.</p><h3>Keep connections safe</h3><p>Never share your sign-in code or payment details in a chat. Block or report accounts that make you uncomfortable.</p><h3>Your creator account</h3><p>Host features require admin approval. Account reviews and moderation decisions determine whether these features remain available.</p></div>`;
+  if(kind==='logout')return '<p>You’ll need a verification code to sign in again on this device.</p><button class="zp-save zp-danger" onclick="zpClose();logout()">Log out of this device</button><button class="zp-secondary" onclick="zpClose()">Stay signed in</button>';
+  return '';
+}
+function zpPaintDialog(){const el=document.getElementById('zp-dialog');if(!el)return;const titles={identity:'Your Zimi ID',match:'Match & Speed Pulse',language:'Language & Region',appearance:'Appearance & Theme',notifications:'Notification preferences',security:'Phone & Email Security',privacy:'Privacy & Blocked Users',gifts:'Gift History',earnings:'Your Earnings',help:'Help Center',guidelines:'Community Guidelines',logout:'Log Out'};el.innerHTML=`<div class="zp-dialog-heading"><h2 id="zp-dialog-title">${titles[ZProfile.dialog]||'Your settings'}</h2><button aria-label="Close settings" onclick="zpClose()">×</button></div><div class="zp-dialog-body">${zpDialogContent(ZProfile.dialog)}${ZProfile.saveError?`<p class="zp-save-error" role="alert">${esc(ZProfile.saveError)}</p>`:''}</div>`}
+function zpLanguage(input){const languages=ZProfile.draft.languages;if(input.checked){if(languages.length>=8){input.checked=false;appNotice('Choose up to 8 languages.');return}languages.push(input.value)}else ZProfile.draft.languages=languages.filter(x=>x!==input.value)}
+function zpSave(){if(ZProfile.saving||!ZProfile.data)return;const d=ZProfile.draft,k=ZProfile.dialog,payload=k==='match'?{matchCategory:d.matchCategory||null}:k==='appearance'?{appearance:d.appearance}:k==='language'?{languages:d.languages,city:d.city.trim()}:k==='notifications'?{pushNotifications:!!d.pushNotifications}:null;if(!payload)return;ZProfile.saveError='';ZProfile.saving=true;const requestId=++ZProfile.requestId;zpPaintDialog();if(DEMO){zpApply({...ZProfile.data,preferences:{...ZProfile.data.preferences,...payload},profile:{...ZProfile.data.profile,...(payload.languages?{languages:payload.languages,city:payload.city}:{})}});ZProfile.saving=false;zpClose();r();appNotice('Preview preferences saved.');return}Native.send('profile.settings.save',{...payload,requestId})}
+function zpPrivacySave(){if(ZProfile.privacyBusy)return;ZProfile.privacyBusy=true;ZProfile.saveError='';const data={discoverable:!!ZProfile.draft.discoverable,showActivity:!!ZProfile.draft.showActivity,requestId:++ZProfile.requestId};zpPaintDialog();if(DEMO){ZProfile.data.privacy={...ZProfile.data.privacy,...data};ZProfile.privacyBusy=false;zpClose();r();return}Native.send('privacy.save',data)}
+function zpAvailabilitySet(online){if(!window.ZimiHostAccess.guard()||ZProfile.presenceBusy)return;ZProfile.presenceBusy=true;if(DEMO){Object.assign(ZProfile.data.privacy,{allowRequests:online,showActivity:online});S.online=online?1:0;ZProfile.presenceBusy=false;r();return}Native.send('presence.set',{online,visible:ZProfile.data?.privacy?.discoverable!==false});r()}
+function zpBlockedLoad(more=false){if(DEMO)return;const page=more?ZProfile.blockedPage+1:1;contentStart('blocked',{page});Native.send('blocked.load',{page});zpPaintDialog()}
+function zpBlockedContent(){if(contentPending('blocked')&&ContentLoading.blocked.page===1)return contentSkeleton('rows','Loading blocked accounts',2);if(ContentLoading.blocked.error)return `<div class="zh-error" role="alert">${esc(ContentLoading.blocked.error)}<button onclick="zpBlockedLoad()">Retry</button></div>`;return `${ZProfile.blocked.length?`<div class="zp-blocked">${ZProfile.blocked.map(u=>`<div><span>${esc(u.name||'Zimi member')}</span><button onclick="zpUnblock('${domId(u.id)}')" ${ZProfile.blockBusy?'disabled':''}>${ZProfile.blockBusy===u.id?'Updating…':'Unblock'}</button></div>`).join('')}</div>`:'<p class="zp-note">No blocked accounts.</p>'}${contentPending('blocked')?contentSkeleton('rows','Loading more blocked accounts',1):ZProfile.blockedTotal>ZProfile.blocked.length?'<button class="zp-secondary" onclick="zpBlockedLoad(true)">Load more</button>':''}`}
+function zpUnblock(id){if(ZProfile.blockBusy)return;ZProfile.blockBusy=id;ZProfile.saveError='';zpPaintDialog();if(DEMO){ZProfile.blocked=ZProfile.blocked.filter(u=>u.id!==id);ZProfile.blockBusy='';zpPaintDialog();return}Native.send('block.set',{id,blocked:false})}
+async function zpCopyId(){const id=S.user?.id||ZProfile.data?.profile?.id;if(!id)return;try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(id);else{const field=document.createElement('textarea');field.value=id;document.getElementById('zp-dialog').append(field);field.select();const copied=document.execCommand('copy');field.remove();if(!copied)throw new Error('Copy unavailable')}appNotice('Account ID copied.')}catch{appNotice('Copy is unavailable. You can select the account ID above.')}}
+function zpApply(data){ZProfile.data=data;if(S.user?.id===data.profile.id){Object.assign(S.user,{name:data.profile.name,about:data.profile.bio,city:data.profile.city,languages:[...data.profile.languages]});Object.assign(me,{n:data.profile.name,about:data.profile.bio,c:data.profile.city});if(S.v!=='editprofile'){S.editName=me.n;S.editAbout=me.about;S.editCity=me.c;}}ZProfile.error='';ZProfile.requested=true;Object.assign(ContentLoading.profileSettings,{loading:false,error:''});zpTheme()}
+function zpTheme(){const mode=ZProfile.data?.preferences?.appearance||'dark',light=mode==='light'||(mode==='system'&&matchMedia('(prefers-color-scheme: light)').matches);document.documentElement.classList.toggle('zp-light',light);if(!['welcome','login'].includes(S.v)){document.documentElement.dataset.theme=light?'light':'dark';document.documentElement.dataset.canvas=light?'#fff5fa':'#210f1d'}}
+window.ZimiProfile={render:zpScreen,theme:zpTheme};
+window.ZimiHome.views.profile=zpScreen;window.ZimiHome.views.settings=zpScreen;
+const zpPreviousAfterRender=window.ZimiHome.afterRender;
+window.ZimiHome.afterRender=()=>{zpPreviousAfterRender();if(zpActive()&&!ZProfile.requested&&!DEMO){ZProfile.requested=true;queueMicrotask(zpLoad)}};
+document.addEventListener('aurora:navigate',()=>{if(!zpActive())zpClose()});
+matchMedia('(prefers-color-scheme: light)').addEventListener?.('change',()=>{zpTheme()});
+Native.on('data.profileSettings',data=>{zpApply(data);if(zpActive())r();if(ZProfile.dialog&&ZProfile.dialogLoading&&!ZProfile.saving&&!ZProfile.privacyBusy){ZProfile.dialogLoading=false;ZProfile.draft={...data.preferences,...data.privacy,languages:[...data.profile.languages],city:data.profile.city||''};zpPaintDialog()}});
+Native.on('profile.settings.saved',d=>{if(d.requestId!==ZProfile.requestId)return;zpApply(d.settings);ZProfile.saving=false;zpClose();if(zpActive())r();appNotice('Preferences saved.')});
+Native.on('profile.settings.error',d=>{if(d.requestId!==ZProfile.requestId)return;ZProfile.saving=false;ZProfile.saveError=d.message;zpPaintDialog()});
+Native.on('privacy.saved',d=>{if(d.requestId!==ZProfile.requestId)return;if(ZProfile.data)ZProfile.data.privacy=d.privacy;ZProfile.privacyBusy=false;zpClose();if(zpActive())r();appNotice('Privacy settings saved.')});
+Native.on('privacy.error',d=>{if(d.requestId!==ZProfile.requestId)return;ZProfile.privacyBusy=false;ZProfile.saveError=d.message;zpPaintDialog()});
+Native.on('presence.saved',d=>{if(!ZProfile.presenceBusy)return;ZProfile.presenceBusy=false;if(ZProfile.data)Object.assign(ZProfile.data.privacy,{allowRequests:isApprovedHost()&&d.online,showActivity:d.online,discoverable:d.visible});if(zpActive())r()});
+Native.on('wallet.balance',d=>{ZProfile.wallet=d;if(ZProfile.dialog==='earnings')zpPaintDialog()});
+Native.on('data.transactions',()=>{if(ZProfile.dialog==='gifts')zpPaintDialog()});
+Native.on('data.blocked',d=>{ZProfile.blocked=d.page>1?[...ZProfile.blocked,...d.users.filter(u=>!ZProfile.blocked.some(x=>x.id===u.id))]:d.users;ZProfile.blockedTotal=d.total;ZProfile.blockedPage=d.page;Object.assign(ContentLoading.blocked,{loading:false,error:''});if(ZProfile.dialog==='privacy')zpPaintDialog()});
+Native.on('block.error',d=>{if(ZProfile.blockBusy!==d.id)return;ZProfile.blockBusy='';ZProfile.saveError=d.message;zpPaintDialog()});
+Native.on('block.saved',()=>{ZProfile.blockBusy='';zpBlockedLoad()});
+Native.on('data.loading',d=>{if(d.resource==='transactions'&&ZProfile.dialog==='gifts')zpPaintDialog();if(['profileSettings','blocked'].includes(d.resource)){if(d.resource==='profileSettings'){ZProfile.requested=true;ZProfile.error=d.error||'';}if(zpActive())r();if(ZProfile.dialog&&!ZProfile.saving&&!ZProfile.privacyBusy&&(ZProfile.dialogLoading||d.resource==='blocked'))zpPaintDialog()}});
+Native.on('operation.error',d=>{if(d.action==='presence.set'){ZProfile.presenceBusy=false;if(zpActive())r()}if(d.action==='block.set'){ZProfile.blockBusy='';ZProfile.saveError=d.message;zpPaintDialog()}if(d.action==='profile.settings.load'){ZProfile.error=d.message;Object.assign(ContentLoading.profileSettings,{loading:false,error:d.message});if(zpActive())r();zpPaintDialog()}});
+function zpReset(){zpClose();Object.assign(ZProfile,{data:null,requested:false,error:'',draft:{},saving:false,saveError:'',presenceBusy:false,privacyBusy:false,blocked:[],blockedTotal:0,blockedPage:1,blockBusy:'',wallet:null});ZProfile.requestId++;zpTheme()}
+Native.on('session.none',zpReset);Native.on('session.expired',zpReset);
+Native.on('session',d=>{if(ZProfile.data?.profile.id!==d.user?.id)zpReset()});
+Native.on('profile.saved',d=>{if(!d.onboarding&&d.account){if(ZProfile.data)Object.assign(ZProfile.data.profile,{name:d.account.user.name,bio:d.account.user.about,city:d.account.user.city,languages:d.account.user.languages||[]});if(zpActive())r()}});
+window.addEventListener('zimi:host-access',()=>{if(!isApprovedHost()&&ZProfile.dialog==='earnings')zpClose();if(zpActive())r()});
+if(DEMO){ZProfile.data={profile:{id:'demo-elena-rostova',name:'Elena Rostova',bio:'Acoustic singer & late night chats 🎸✨ Love connecting with creators worldwide!',city:'Los Angeles, CA',languages:['English','Spanish'],maskedPhone:'+91 •••••• 0010',isPhoneVerified:true},stats:{fans:12400,following:458,giftsSent:24,giftsReceived:149},preferences:{pushNotifications:true,matchCategory:'Music',appearance:'dark'},privacy:{discoverable:true,showActivity:true,allowRequests:true},categories:['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],capabilities:{pushNotifications:false,nativePushRegistered:false,liveAlerts:false,interfaceLanguages:['en'],currency:'INR'}};ZProfile.wallet={earningsPaise:184250,reservedPaise:0};ZProfile.requested=true;Object.assign(me,{n:'Elena Rostova',c:'Los Angeles, CA',about:ZProfile.data.profile.bio});S.editName=me.n;S.editCity=me.c;S.editAbout=me.about;S.avatarData=OB_MEDIA[0]}
 
 /* Animate the live content once per tab change, never on a data refresh. */
 window.ZimiNavigation=(()=>{

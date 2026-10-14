@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, Purchase, StreamChat, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, BlockedUsers, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -80,6 +80,33 @@ export function homeFrom(value: unknown): HomeData {
 export function notificationsFrom(value: unknown): { items: AppNotification[]; unreadCount: number } {
   const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt) }));
   return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length };
+}
+export function privacyFrom(value: unknown): PrivacySettings {
+  const data = record(value);
+  if (["discoverable", "showActivity", "allowRequests"].some(key => typeof data[key] !== "boolean")) throw new ApiError("Your privacy settings could not be loaded. Try again.", 502);
+  return { discoverable: data.discoverable as boolean, showActivity: data.showActivity as boolean, allowRequests: data.allowRequests as boolean };
+}
+export function profileSettingsFrom(value: unknown): ProfileSettings {
+  const data = record(value), profile = record(data.profile), stats = record(data.stats), preferences = record(data.preferences), capabilities = record(data.capabilities);
+  const statKeys = ["fans", "following", "giftsSent", "giftsReceived", "coinsSent", "coinsReceived"] as const;
+  if (!idOf(profile) || statKeys.some(key => !Number.isSafeInteger(stats[key]) || Number(stats[key]) < 0) ||
+    typeof preferences.pushNotifications !== "boolean" || (preferences.matchCategory !== null && typeof preferences.matchCategory !== "string") ||
+    !["dark", "light", "system"].includes(String(preferences.appearance))) throw new ApiError("Your account settings could not be loaded. Try again.", 502);
+  return {
+    profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
+    stats: { fans: stats.fans as number, following: stats.following as number, giftsSent: stats.giftsSent as number, giftsReceived: stats.giftsReceived as number, coinsSent: stats.coinsSent as number, coinsReceived: stats.coinsReceived as number },
+    preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
+    privacy: privacyFrom(data.privacy), categories: stringList(data.categories),
+    // This native build does not register OS push tokens yet. Backend worker
+    // availability alone must not be presented as notifications on this device.
+    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, liveAlerts: capabilities.liveAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
+  };
+}
+export function blockedUsersFrom(value: unknown): BlockedUsers {
+  const data = record(value);
+  const users = items(data).map(record).filter(block => block.blockedId && idOf(block.blockedId)).map(block => hostFrom(block.blockedId));
+  if (!Number.isSafeInteger(data.total) || Number(data.total) < 0) throw new ApiError("Your blocked accounts could not be loaded. Try again.", 502);
+  return { users, total: data.total as number, page: count(data.page) || 1, limit: count(data.limit) || 20 };
 }
 export function streamChatFrom(value: unknown): StreamChat {
   const message = record(value), user = message.userId && typeof message.userId === "object" ? record(message.userId) : {};

@@ -228,17 +228,18 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     assert.equal(await page.locator('.acctrow').count(), 0);
     await result('data.calls', { calls: [] }, 'calls');
     await gone('Loading call history');
-    await page.evaluate(() => { S.ht = 'posts'; go('profile'); });
+    await receive('session', { user: { id: hostId, name: 'Mira North', role: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified', requiresOnboarding: false });
+    await navigate('editprofile');
     await visible('Loading your posts');
-    assert.equal(await page.locator('.hpgrid button.post').count(), 0);
+    assert.equal(await page.locator('.editposts .editpost>img').count(), 0);
     await result('data.posts', { posts: [{ id: 'post-id', kind: 'photo', mediaUrl: 'https://media.example.test/photo.jpg', caption: 'Photo' }] }, 'posts');
-    assert.equal(await page.getByRole('img', { name: 'Your post', exact: true }).count(), 1);
+    assert.equal(await page.getByRole('img', { name: 'Published photo 1', exact: true }).count(), 1);
     await loading('posts', true);
-    assert.equal(await page.getByRole('img', { name: 'Your post', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('img', { name: 'Published photo 1', exact: true }).count(), 0);
     await loading('posts', false, { error: 'Posts could not be loaded' });
     await gone('Loading your posts');
     assert.match(await page.getByRole('alert').innerText(), /Posts could not be loaded/);
-    console.log('PASS loading: wallet, transactions, call history and profile posts');
+    console.log('PASS loading: wallet, transactions, call history and profile editor posts');
 
     assert.deepEqual(errors, [], 'Skeleton transitions must not cause browser errors');
     console.log('PASS reduced-motion skeletons and no uncaught browser errors');

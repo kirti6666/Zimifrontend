@@ -98,6 +98,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("stream:message", payload => { try { emit("stream.message", { ...streamChatFrom(payload) }); } catch { /* Invalid room message. */ } });
   socket.on("wallet:updated", refreshWallet);
   socket.on("home:updated", () => emit("home.updated", {}));
+  socket.on("account:updated", () => emit("account.updated", {}));
   const unsubscribe = onTokenChanged(() => {
     if (closed) return;
     socket.disconnect();

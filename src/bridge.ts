@@ -5,7 +5,7 @@ import { AppState, Linking } from "react-native";
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
 import { connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, Purchase, Role, RtcConfig, RtcPayload, StreamChat, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, RtcConfig, RtcPayload, StreamChat, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { parseWebMessage } from "./web-message";
 import { approvedHost } from "./host-access";
@@ -43,7 +43,11 @@ export type WebMessage =
   | { type: "media.post.create"; data: { photo: string; caption: string; requestId?: number } }
   | { type: "verification.submit"; data: Record<string, unknown> }
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
-  | { type: "settings.set"; data: Record<string, unknown> }
+  | { type: "profile.settings.load"; data: Record<string, never> }
+  | { type: "profile.settings.save" | "settings.set"; data: ProfileSettingsPatch & { requestId?: number } }
+  | { type: "privacy.save"; data: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">> & { requestId?: number } }
+  | { type: "blocked.load"; data: { page?: number } }
+  | { type: "block.set"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "follow.set"; data: { id: string; on: boolean } }
   | { type: "chat.open"; data: { with: string } }
   | { type: "chats.reload"; data: { page?: number } }
@@ -60,7 +64,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "blocked";
 export type AppMessage =
   | { type: "session"; data: Account }
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
@@ -84,6 +88,13 @@ export type AppMessage =
   | { type: "home.updated"; data: Record<string, never> }
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> }
   | { type: "data.catalog"; data: Catalog }
+  | { type: "data.profileSettings"; data: ProfileSettings }
+  | { type: "profile.settings.saved"; data: { settings: ProfileSettings; requestId?: number } }
+  | { type: "profile.settings.error" | "privacy.error"; data: { message: string; requestId?: number } }
+  | { type: "privacy.saved"; data: { privacy: PrivacySettings; requestId?: number } }
+  | { type: "data.blocked"; data: BlockedUsers }
+  | { type: "block.saved"; data: { id: string; blocked: boolean; requestId?: number } }
+  | { type: "block.error"; data: { id: string; blocked: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
   | { type: "host.access"; data: { approved: boolean; role: Role; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
@@ -231,6 +242,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const loadNotifications = () => readResource("notifications", () => api.notifications(), data => emit({ type: "data.notifications", data }));
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
+  const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), data => emit({ type: "data.profileSettings", data }));
+  const loadBlocked = (page = 1) => readResource("blocked", () => api.blockedUsers(page), data => emit({ type: "data.blocked", data }), { page });
+  const deliverProfileSettings = (settings: ProfileSettings) => {
+    // A GET started before this committed write cannot restore old preferences.
+    readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
+    emit({ type: "data.profileSettings", data: settings });
+    emit({ type: "data.loading", data: { resource: "profileSettings", loading: false } });
+  };
   const loadChats = (page = 1) => readResource<ChatsData>("chats", () => ["pending", "rejected", "suspended"].includes(hostStatus || "")
     ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => emit({ type: "data.chats", data }), { page });
   const verifyPurchase = async (orderId: string) => {
@@ -261,7 +280,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
     const results = await Promise.allSettled([
-      loadHome(), loadNotifications(), loadCatalog(),
+      loadHome(), loadNotifications(), loadCatalog(), loadProfileSettings(),
       api.presence().then(data => deliver({ type: "presence.saved", data: { ...data, online: hasHostAccess() && data.online } })),
       loadChats(),
       readResource("missed", () => api.missedCalls(), data => deliver({ type: "data.missed", data })),
@@ -294,6 +313,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
       if (event.type === "chats.updated") { if (!onboarding) quietly(loadChats(), "chats.reload"); return; }
+      if (event.type === "account.updated") { if (!onboarding) quietly(loadProfileSettings(), "profile.settings.load"); return; }
       const callId = event.data?.callId;
       if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
         void api.declineCall(callId).catch(() => {}); return;
@@ -320,6 +340,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "realtime.status" && event.data?.connected === true && !onboarding) {
         quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
         quietly(loadChats(), "chats.reload");
+        quietly(loadProfileSettings(), "profile.settings.load");
       }
       emit(event as AppMessage);
     }, accountId);
@@ -368,6 +389,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "notifications.load": return loadNotifications();
       case "notifications.read": return readResource("notifications", () => api.readNotifications(msg.data.ids), data => emit({ type: "data.notifications", data }));
       case "catalog.load": return loadCatalog();
+      case "profile.settings.load": return loadProfileSettings();
+      case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
       case "rtc.signal": case "stream.signal": case "stream.ready": {
         if (!stopLive.send) throw new ApiError("Live connection is unavailable. Reconnect and try again.", 503);
@@ -466,6 +489,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const id = typeof requestId === "number" ? requestId : undefined;
         const sessionVersion = getSessionVersion();
         let revision = hostRevision;
+        // A summary fetched before this edit must not repaint old profile fields.
+        readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
         try {
           let account = await api.saveProfile(profile, (done, total) => {
             if (current(version)) emit({ type: "profile.progress", data: { done, total, requestId: id } });
@@ -474,12 +499,19 @@ export function createBridge(post: (msg: AppMessage) => void) {
             revision = hostRevision; account = await api.me(true);
           }
           if (current(version) && sessionVersion === getSessionVersion()) {
+            // Also retire summary reads started while the profile write was pending.
+            readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
             applyHostAccount(account, false);
             emit({ type: "profile.saved", data: { onboarding: onboarding === true, account, requestId: id } });
             if (onboarding) void loadLists();
+            else quietly(loadProfileSettings(), "profile.settings.load");
           }
         } catch (error) {
-          if (current(version)) emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id } });
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id } });
+            // The retired read cannot settle its skeleton; recover current data.
+            quietly(loadProfileSettings(), "profile.settings.load");
+          }
         }
         return;
       }
@@ -509,7 +541,51 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
         return;
       }
-      case "settings.set": return quietly(api.saveSettings(msg.data), msg.type);
+      case "profile.settings.save": case "settings.set": {
+        const { requestId, ...patch } = msg.data;
+        const sessionVersion = getSessionVersion();
+        try {
+          const settings = await api.saveProfileSettings(patch);
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            deliverProfileSettings(settings);
+            emit({ type: "profile.settings.saved", data: { settings, requestId } });
+          }
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "profile.settings.error", data: { message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "privacy.save": {
+        const { requestId, ...patch } = msg.data;
+        const sessionVersion = getSessionVersion();
+        try {
+          const privacy = await api.savePrivacy(patch);
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "privacy.saved", data: { privacy, requestId } });
+            quietly(loadProfileSettings(), "profile.settings.load");
+            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+          }
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "privacy.error", data: { message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "block.set": {
+        const { id, blocked, requestId } = msg.data, sessionVersion = getSessionVersion();
+        try {
+          await api.setBlocked(id, blocked);
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "block.saved", data: { id, blocked, requestId } });
+            quietly(loadBlocked(), "blocked.load");
+            quietly(loadProfileSettings(), "profile.settings.load");
+            quietly(loadChats(), "chats.reload");
+            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+          }
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "block.error", data: { id, blocked, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
       case "follow.set": return quietly(api.follow(msg.data.id, msg.data.on), msg.type);
       case "chats.reload": return loadChats(msg.data.page);
       case "chats.readAll": {
@@ -607,8 +683,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "gift.send", "awards.claim", "chats.readAll"].includes(msg.type);
-      const key = `${version}:${msg.type}`;
+      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" ? `:${msg.data.id}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => { if (current(version)) operationError(error, msg.type); }).finally(() => operations.delete(key));
