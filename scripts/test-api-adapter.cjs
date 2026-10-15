@@ -29,11 +29,12 @@ const io = (url, options) => {
   socketUrl = url; socketOptions = options;
   const handlers = new Map();
   socket = {
-    active: true, connected: false, connects: 0,
+    active: true, connected: false, connects: 0, emitted: [],
     on: (name, handler) => { handlers.set(name, handler); },
     connect: () => { socket.connects++; },
     disconnect: () => { socket.connected = false; },
     removeAllListeners: () => handlers.clear(),
+    emit: (name, data) => { socket.emitted.push({ name, data: plain(data) }); },
     emitServer: (name, data) => handlers.get(name)?.(data),
   };
   return socket;
@@ -80,6 +81,8 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(signedIn.user.role, 'sender'); assert.equal(signedIn.tokens.refreshToken, 'refresh');
   assert.equal(signedIn.balance, undefined); assert.equal(signedIn.earned, undefined); assert.equal(signedIn.requiresOnboarding, true);
   for (const status of ['none', 'pending', 'rejected', 'suspended']) assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: status, isVerifiedHost: true } }).user.role, 'sender');
+  for (const status of ['none', 'pending', 'rejected', 'suspended']) assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: status } }).user.serverRole, 'host', 'Presentation role must not grant an unapproved host member chat permissions');
+  assert.equal(adapters.accountFrom({ user: { ...user, role: 'user', hostStatus: 'pending' } }).user.serverRole, 'user', 'A member applying to host remains a member until approved');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.role, 'host');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.isVerifiedHost, true);
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved' } }).user.isVerifiedHost, false);
@@ -205,16 +208,26 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(chatPage.unreadCount, 12, 'Total unread comes from all server conversations, not only this page');
   assert.equal(chatPage.unreadConversations, 4); assert.equal(chatPage.page, 2); assert.equal(chatPage.total, 31);
   assert.equal(chat.id, 'conversation-id'); assert.equal(chat.lastAt, chatAt); assert.equal(chat.lastMine, true); assert.equal(chat.lastStatus, 'read'); assert.equal(chat.lastKind, 'text'); assert.equal(chat.hasCalls, true);
+  assert.equal(chat.lastAutomated, false, 'Ordinary conversation previews are not labeled automated');
+  const welcomeChat = adapters.chatsFrom({ items: [{ participants: [{ _id: 'member-id' }, { _id: 'host-id' }], lastMessage: { text: 'Welcome!', automated: true } }] }, 'member-id');
+  assert.equal(welcomeChat.chats[0].lastAutomated, true, 'Persisted welcome metadata reaches the inbox');
   assert.equal(chat.user.role, 'host'); assert.equal(chat.user.online, true); assert.equal(chat.user.verified, true); assert.equal(chat.user.availableForCall, true);
   assert.equal(adapters.hostFrom({ _id: 'pending', role: 'host', hostStatus: 'pending', isVerifiedHost: true }).role, 'sender', 'Role labels require an approved host');
   expect('POST', '/chats/read-all', { updated: 12, readAt: chatAt }, body => assert.deepEqual(plain(body), {}));
   assert.deepEqual(plain(await api.readAllChats()), { updated: 12, readAt: chatAt });
   expect('POST', '/chats/read-all', { updated: '12', readAt: chatAt });
   await assert.rejects(api.readAllChats(), /read status could not be confirmed/);
-  expect('GET', '/chats/host-id', { items: [{ _id: 'second', senderId: 'member-id', text: 'Second', createdAt: chatAt }, { _id: 'first', senderId: 'host-id', text: 'First' }], readAt: chatAt });
+  expect('GET', '/chats/host-id', { items: [{ _id: 'second', senderId: 'member-id', text: 'Second', createdAt: chatAt }, { _id: 'first', senderId: 'host-id', text: 'First', automated: true }], readAt: chatAt });
   const thread = await api.thread('host-id');
   assert.deepEqual(plain(thread.messages.map(message => [message.text,message.mine])), [['First',false],['Second',true]]);
   assert.equal(thread.readAt, chatAt); assert.equal(thread.messages[1].id, 'second'); assert.equal(thread.messages[1].createdAt, chatAt);
+  assert.equal(thread.messages[0].automated, true); assert.equal(thread.messages[1].automated, false);
+  assert.equal(adapters.messagesFrom({ items: [{ automated: 'true' }] }, 'member-id').messages[0].automated, false, 'Only a boolean server marker identifies an automated welcome');
+  assert.equal(adapters.hostFrom({ _id: 'pending', role: 'host', hostStatus: 'pending' }).serverRole, 'host');
+  const restricted = adapters.messagesFrom({ items: [], canSend: false, sendDisabledReason: 'Wait for this member to reply.' }, 'host-id');
+  assert.equal(restricted.canSend, false); assert.equal(restricted.sendDisabledReason, 'Wait for this member to reply.');
+  const restrictedInbox = adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id' }, { _id: 'member-id', role: 'user' }], automatedOnly: true, canSend: false }] }, 'host-id');
+  assert.equal(restrictedInbox.chats[0].canSend, false); assert.equal(restrictedInbox.chats[0].automatedOnly, true);
   expect('GET', '/calls?limit=100', { items: [{ callerId: { _id: 'host-id' }, calleeId: { _id: 'member-id' }, status: 'missed', kind: 'audio' }, { callerId: 'member-id', calleeId: 'host-id', status: 'missed' }] });
   const missed = await api.missedCalls(); assert.equal(missed.calls.length, 1); assert.equal(missed.calls[0].kind, 'voice');
   expect('GET', '/wallet', { coins: 200, earningsPaise: 12345, reservedPaise: 2000 });
@@ -345,7 +358,7 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   let handshake; socketOptions.auth(value => { handshake = value; }); await Promise.resolve();
   assert.deepEqual(plain(handshake), { token });
   socket.emitServer('chat:message', { senderId: 'member-id', recipientId: 'host-id', text: 'Own echo' });
-  socket.emitServer('chat:message', { _id: 'message-id', senderId: 'host-id', recipientId: 'member-id', text: 'Hello', createdAt: chatAt });
+  socket.emitServer('chat:message', { _id: 'message-id', senderId: 'host-id', recipientId: 'member-id', text: 'Hello', createdAt: chatAt, automated: true });
   socket.emitServer('chat:message', { senderId: 'stranger', recipientId: 'other-user', text: 'Private unrelated message' });
   socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], readAt: chatAt });
   socket.emitServer('chat:read', { userId: 'host-id', conversationIds: 'malformed', readAt: chatAt });
@@ -353,12 +366,30 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   socket.emitServer('host:reviewed', { status: 'approved' });
   assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
+  assert.equal(events[1].data.automated, true, 'Realtime delivery retains the automated label');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
   for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
     socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });
   }
   token = 'rotated-token'; tokenListeners.forEach(listener => listener()); await Promise.resolve();
   assert.equal(socket.connects, 2);
-  stop(); assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, 10);
+  socket.connected = true; socket.emitServer('connect');
+  assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: true } }], 'Each connected session announces its initial foreground state');
+  stop.setActive(false);
+  assert.deepEqual(socket.emitted.at(-1), { name: 'app:activity', data: { active: false } });
+  socket.connected = false; const emittedBeforeOffline = socket.emitted.length;
+  stop.setActive(true); stop.setActive(false);
+  assert.equal(socket.emitted.length, emittedBeforeOffline, 'Offline transitions are not buffered as stale foreground messages');
+  socket.connected = true; socket.emitServer('connect');
+  assert.deepEqual(socket.emitted.at(-1), { name: 'app:activity', data: { active: false } }, 'A reconnect announces the latest state');
+  stop.setActive(true);
+  assert.deepEqual(socket.emitted.at(-1), { name: 'app:activity', data: { active: true } });
+  const beforeStop = events.length, emissionsBeforeStop = socket.emitted.length;
+  stop(); stop.setActive(false); assert.equal(socket.emitted.length, emissionsBeforeStop);
+  assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, beforeStop);
+  const backgroundStop = connectRealtime(token, () => {}, 'member-id', false);
+  socket.connected = true; socket.emitServer('connect');
+  assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: false } }], 'A session opened in background never starts a welcome schedule');
+  backgroundStop();
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

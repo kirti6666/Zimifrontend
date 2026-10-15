@@ -3,12 +3,14 @@
    Native.on handlers), so a renamed field shows up as a type error here. */
 
 export type Role = "sender" | "host";
+export type ServerRole = "user" | "host" | "admin";
 export type Verification = "none" | "pending" | "verified" | "rejected";
 
 export interface User {
   id: string;
   name: string;
   role: Role;
+  serverRole?: ServerRole;
   city?: string;
   about?: string;
   email?: string;
@@ -51,6 +53,7 @@ export interface Host {
   id: string;
   name: string;
   role?: Role;
+  serverRole?: ServerRole;
   city?: string;
   category?: string;
   tag?: string;
@@ -166,6 +169,9 @@ export interface Person {
 }
 
 export interface ChatSummary {
+  canSend?: boolean;
+  automatedOnly?: boolean;
+  sendDisabledReason?: string;
   id: string;
   user: Host;
   last: string;
@@ -173,6 +179,7 @@ export interface ChatSummary {
   unread: number;
   lastKind: "text";
   lastMine: boolean;
+  lastAutomated: boolean;
   lastAt: string;
   lastStatus: "sent" | "read";
   hasCalls: boolean;
@@ -194,6 +201,7 @@ export interface Message {
   time: string;
   createdAt?: string;
   kind?: "text";
+  automated?: boolean;
   status?: "sent" | "read"; // own messages only: whether the other person has read it
 }
 

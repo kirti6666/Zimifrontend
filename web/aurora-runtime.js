@@ -171,6 +171,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
  if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
   homeRequestStreamClose(Home.stream.id,Home.hosting);
@@ -366,7 +367,7 @@ function profilePage(p,raw,self){
  </div>
 
  ${self?'':`<div class="hpbar">
-  <button class="msg" aria-label="Message" onclick="go('thread','${domId(p.host?p.id:S.backId||"aanya")}')">${I("chat",20)}</button>
+  <button class="msg" aria-label="Message" ${!DEMO&&window.zcCanChat&&!zcCanChat(p.id)?'disabled':''} onclick="go('thread','${domId(p.id)}')">${I("chat",20)}</button>
   ${p.host
    ? `<button class="msg" aria-label="Start voice call" onclick="go('voice','${domId(p.id)}')">${I("ph",20)}</button>
       <button class="cta" onclick="go('precall','${domId(p.id)}')">${I("vid",19)} Start video call</button>`
@@ -1618,6 +1619,7 @@ const PEOPLE={};
 const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997;return x};
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
+  role:p.role,serverRole:p.serverRole,verified:p.verified===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
@@ -1702,7 +1704,7 @@ Native.on("gift.received",d=>{if(S.v!=="hcall")return;
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
 Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
  if(d.inCall&&(S.v==="call"||S.v==="hcall")){S.rmsgs.push(["host",first(d.name||"Them"),d.text]);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,time:t,at:d.createdAt||new Date().toISOString()});return paint()}
+ if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");

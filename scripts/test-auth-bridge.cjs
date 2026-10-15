@@ -17,7 +17,7 @@ const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phon
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
 const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
 
-function harness() {
+function harness(initialAppState = 'active') {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], effects = [], opened = [], signals = [], activities = [];
   const overrides = {};
   class ApiError extends Error {
@@ -27,7 +27,7 @@ function harness() {
   const defaults = {
     me: () => account(), verifyOtp: () => ({ ...account(), tokens: tokenPair(), isNew: true }),
     sendOtp: () => ({ resendAfter: 60, expiresIn: 300 }), saveProfile: () => account(),
-    hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
+    hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), thread: () => ({ messages: [], canSend: true }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
     transactions: () => ({ items: [] }), wallet: () => ({ coins: 100, earningsPaise: 0 }), logout: () => {},
     home: () => ({ hosts: [], stage: [], featured: null, page: 1 }), notifications: () => ({ items: [], unreadCount: 0 }), catalog: () => ({ gifts: [], packs: [], paymentsAvailable: false }), presence: () => ({ online: true, visible: true }),
     profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
@@ -61,15 +61,16 @@ function harness() {
       if (id === 'expo-secure-store') return storage;
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
-      if (id === './api/realtime') return { connectRealtime: (token, onEvent) => {
-        const connection = { token, onEvent, stopped: false }; live.push(connection);
+      if (id === './api/realtime') return { connectRealtime: (token, onEvent, userId, initiallyActive) => {
+        const connection = { token, onEvent, userId, initiallyActive, activeStates: [], stopped: false }; live.push(connection);
         const stop = () => { connection.stopped = true; };
         stop.send = async (...args) => { signals.push(args); };
+        stop.setActive = active => { connection.activeStates.push(active); };
         return stop;
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { AppState: { addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => opened.push(url) }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => opened.push(url) }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
@@ -106,6 +107,35 @@ test('login and session restoration never post access or refresh credentials to 
   const serialized = JSON.stringify(h.posts);
   for (const secret of [tokenPair().accessToken, tokenPair().refreshToken, 'legacy-secret', 'loose-secret']) assert.equal(serialized.includes(secret), false);
   assert.equal(h.live[0].token, tokenPair().accessToken);
+  h.bridge.close();
+});
+
+test('welcome activity stays disabled until onboarding completes and follows every app transition', async () => {
+  const h = harness();
+  h.bridge.handle(verifyMessage()); await settle();
+  const connection = h.live[0];
+  assert.equal(connection.initiallyActive, false, 'Onboarding sessions do not start automated welcomes');
+  h.activities.forEach(listener => listener('active'));
+  assert.deepEqual(connection.activeStates, [false]);
+  h.overrides.saveProfile = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
+  assert.equal(connection.activeStates.at(-1), true, 'Completing onboarding enables foreground welcomes without reconnecting');
+  for (const state of ['inactive', 'background', 'active']) h.activities.forEach(listener => listener(state));
+  assert.deepEqual(connection.activeStates.slice(-3), [false, false, true]);
+  const chatsBefore = h.count('chats');
+  connection.onEvent({ type: 'chats.updated', data: {} }); await settle();
+  assert.ok(h.count('chats') > chatsBefore, 'Post-onboarding chat events refresh the inbox');
+  h.bridge.close(); assert.equal(connection.stopped, true); assert.equal(h.activities.length, 0);
+});
+
+test('a restored session in background waits for foreground before allowing welcomes', async () => {
+  const h = harness('background');
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.equal(h.live[0].initiallyActive, false);
+  h.activities.forEach(listener => listener('active'));
+  assert.equal(h.live[0].activeStates.at(-1), true);
   h.bridge.close();
 });
 
@@ -945,6 +975,64 @@ test('a successful message send refreshes conversations while failed sends leave
   h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Try again' } }); await settle();
   assert.equal(h.count('chats'), 1);
   assert.equal(h.find('operation.error').at(-1).data.action, 'chat.send');
+  h.bridge.close();
+});
+
+test('chat rejects host-to-host and unapproved host requests before sending them to the API', async () => {
+  for (const status of ['approved', 'pending', 'suspended']) {
+    const h = harness();
+    h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host', role: status === 'approved' ? 'host' : 'sender', hostStatus: status, isVerifiedHost: status === 'approved' }, verification: status === 'approved' ? 'verified' : 'pending' });
+    h.overrides.home = () => ({ hosts: [{ id: 'other-host', verified: true }], stage: [] });
+    await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.bridge.handle({ type: 'chat.open', data: { with: 'other-host' } }); await settle();
+    h.bridge.handle({ type: 'chat.send', data: { to: 'other-host', text: 'Hello' } }); await settle();
+    assert.equal(h.count('thread'), 0); assert.equal(h.count('sendMessage'), 0);
+    assert.match(h.find('operation.error').at(-1).data.message, status === 'approved' ? /reply to members only/ : /admin approval/);
+    h.bridge.close();
+  }
+});
+
+test('members applying to host still load and send valid member conversations', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user', hostStatus: 'pending' } });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.ok(h.count('chats') > 0, 'A pending application does not hide a member inbox');
+  h.bridge.handle({ type: 'chat.send', data: { to: 'approved-host', text: 'Hello', inCall: true } }); await settle();
+  assert.equal(h.count('thread'), 1, 'An in-call send checks the conversation when there is no loaded thread');
+  assert.equal(h.count('sendMessage'), 1);
+  h.bridge.close();
+});
+
+test('read-only host welcomes cannot send until an authoritative member reply unlocks the conversation', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host' } });
+  h.overrides.thread = () => ({ messages: [], canSend: false, sendDisabledReason: 'Wait for this member to reply.' });
+  h.overrides.chats = () => ({ chats: [{ user: { id: 'member', role: 'sender', serverRole: 'user' }, canSend: false }] });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.bridge.handle({ type: 'chat.open', data: { with: 'member' } }); await settle();
+  assert.equal(h.find('data.thread').at(-1).data.canSend, false);
+  h.bridge.handle({ type: 'chat.send', data: { to: 'member', text: 'Hello', inCall: true } }); await settle();
+  assert.equal(h.count('sendMessage'), 0);
+  h.overrides.chats = () => ({ chats: [{ user: { id: 'member', role: 'sender', serverRole: 'user' }, canSend: true }] });
+  h.live[0].onEvent({ type: 'chats.updated', data: {} }); await settle();
+  h.bridge.handle({ type: 'chat.send', data: { to: 'member', text: 'Thanks for replying', inCall: true } }); await settle();
+  assert.equal(h.count('sendMessage'), 1, 'A member reply unlocks the cached read-only thread');
+  h.bridge.close();
+});
+
+test('failed thread authorization never sends and a retired authorization cannot borrow a new login', async () => {
+  const h = harness(), pending = deferred();
+  h.overrides.thread = () => { throw new h.ApiError('Conversation unavailable', 403); };
+  h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Hello' } }); await settle();
+  assert.equal(h.count('sendMessage'), 0);
+  h.overrides.thread = () => pending.promise;
+  h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Pending' } }); await settle();
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  pending.resolve({ messages: [], canSend: true }); await settle();
+  assert.equal(h.count('sendMessage'), 0);
   h.bridge.close();
 });
 

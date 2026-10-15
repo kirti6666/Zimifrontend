@@ -5,7 +5,7 @@ import { AppState, Linking } from "react-native";
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
 import { connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, RtcConfig, RtcPayload, StreamChat, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { parseWebMessage } from "./web-message";
 import { approvedHost } from "./host-access";
@@ -104,7 +104,7 @@ export type AppMessage =
   | { type: "block.saved"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "block.error"; data: { id: string; blocked: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
-  | { type: "host.access"; data: { approved: boolean; role: Role; hostStatus: string; verified: boolean; checking?: boolean } }
+  | { type: "host.access"; data: { approved: boolean; role: Role; serverRole?: ServerRole; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string } }
   | { type: "rtc.config"; data: RtcConfig }
@@ -121,7 +121,7 @@ export type AppMessage =
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
-  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string } }
+  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } }
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
@@ -132,7 +132,7 @@ export type AppMessage =
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
   | { type: "call.ended"; data: { callId: string } }
   | { type: "gift.received"; data: { gift: string; coins: number; from: string } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean } };
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean; automated?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -142,6 +142,8 @@ export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
 
 export function createBridge(post: (msg: AppMessage) => void) {
   let stopLive: RealtimeConnection = () => {};
+  let appActive = AppState?.currentState !== "background" && AppState?.currentState !== "inactive";
+  let liveOnboarding = false;
   let activeCall: string | undefined;
   let callGeneration = 0;
   let pendingOutgoing: { generation: number; callId?: string } | undefined;
@@ -152,6 +154,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let accountId: string | undefined;
   let hostStatus: string | undefined;
   let hostAccount: Account | undefined;
+  let accountRole: ServerRole | undefined;
+  const chatPeers = new Map<string, Host>();
+  const threadPermissions = new Map<string, { canSend: boolean; reason?: string }>();
   let hostRevision = 0;
   let hostChecking = false;
   let activeHostCall = false;
@@ -192,7 +197,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const hasHostAccess = () => !hostChecking && approvedHost(hostAccount);
   const publishHostAccess = () => {
     const approved = hasHostAccess();
-    emit({ type: "host.access", data: { approved, role: approved || (hostChecking && hostAccount?.user.role === "host") ? "host" : "sender", hostStatus: hostStatus || "", verified: approved || (hostChecking && hostAccount?.user.isVerifiedHost === true), checking: hostChecking } });
+    emit({ type: "host.access", data: { approved, role: approved || (hostChecking && hostAccount?.user.role === "host") ? "host" : "sender", serverRole: accountRole, hostStatus: hostStatus || "", verified: approved || (hostChecking && hostAccount?.user.isVerifiedHost === true), checking: hostChecking } });
     if (!approved && !hostChecking) {
       if (activeStream?.hosting) {
         const streamId = activeStream.id; activeStream = undefined;
@@ -207,12 +212,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const applyHostAccount = (account: Account, publish = true) => {
+    const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
+    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); }
+    if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
+    accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
     accountId = account.user.id; hostStatus = account.user.hostStatus; hostAccount = account;
     hostChecking = false;
     if (publish) publishHostAccess();
   };
   const invalidateHostAccess = (checking: boolean) => {
+    threadPermissions.clear();
     hostRevision++; hostChecking = checking;
     if (!checking) hostAccount = undefined;
     publishHostAccess();
@@ -232,6 +242,24 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!approvedHost(account)) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
     return revision;
   };
+  const requireChatPair = async (peerId: string) => {
+    if (!hostAccount || hostChecking) await refreshHostAccount();
+    if (!hostAccount || hostChecking) throw new ApiError("Your account is being checked. Try again in a moment.", 403);
+    if (peerId === accountId) throw new ApiError("Choose another user.", 400);
+    if (accountRole === "admin" || (accountRole === "host" && !hasHostAccess())) throw new ApiError("Your creator profile needs admin approval before you can chat.", 403);
+    const peer = chatPeers.get(peerId);
+    const peerRole = peer?.serverRole ?? (peer?.role === "host" || peer?.verified === true ? "host" : peer?.role === "sender" ? "user" : undefined);
+    if (accountRole === "host" && peerRole === "host") throw new ApiError("Host accounts can reply to members only. Use a member account to message a host.", 403);
+    if (accountRole === "user" && peerRole && peerRole !== "host") throw new ApiError("Members can message approved hosts only.", 403);
+  };
+  const rememberHomePeers = (data: HomeData) => {
+    for (const peer of [...data.hosts, ...(data.stage ?? []), ...(data.featured ? [data.featured] : [])]) chatPeers.set(peer.id, { ...peer, serverRole: "host" });
+  };
+  const rememberThreadPermission = (peerId: string, data: { canSend?: boolean; sendDisabledReason?: string }) => {
+    // Older servers may omit this flag; they still enforce every send. Hosts
+    // require explicit permission because welcomes do not unlock manual replies.
+    threadPermissions.set(peerId, { canSend: data.canSend ?? accountRole === "user", reason: data.sendDisabledReason });
+  };
   const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
@@ -250,7 +278,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const refreshWallet = () => readResource("wallet", () => api.wallet(), data => emit({ type: "wallet.balance", data }));
   const loadHome = (query = homeQuery) => {
     homeQuery = query;
-    return readResource("home", () => api.home(query), data => emit({ type: "data.home", data }), { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}) });
+    return readResource("home", () => api.home(query), data => { rememberHomePeers(data); emit({ type: "data.home", data }); }, { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}) });
   };
   const loadNotifications = () => readResource("notifications", () => api.notifications(), data => emit({ type: "data.notifications", data }));
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
@@ -263,8 +291,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
     emit({ type: "data.profileSettings", data: settings });
     emit({ type: "data.loading", data: { resource: "profileSettings", loading: false } });
   };
-  const loadChats = (page = 1) => readResource<ChatsData>("chats", () => ["pending", "rejected", "suspended"].includes(hostStatus || "")
-    ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => emit({ type: "data.chats", data }), { page });
+  const loadChats = (page = 1) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
+    ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => {
+      for (const chat of data.chats) if (chat.user?.id) {
+        chatPeers.set(chat.user.id, chat.user);
+        if (threadPermissions.has(chat.user.id) && typeof chat.canSend === "boolean") rememberThreadPermission(chat.user.id, chat);
+      }
+      emit({ type: "data.chats", data });
+    }, { page });
   const verifyPurchase = async (orderId: string, kind: PurchaseKind = "coins") => {
     const version = epoch, sessionVersion = getSessionVersion(), key = `${version}:${kind}:${orderId}`;
     if (verifyingPurchases.has(key)) return;
@@ -281,7 +315,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
     } finally { verifyingPurchases.delete(key); }
   };
   const activity = AppState?.addEventListener("change", state => {
-    if (state !== "active" || closed) return;
+    if (closed) return;
+    appActive = state === "active";
+    stopLive.setActive?.(appActive && !liveOnboarding);
+    if (!appActive) return;
     for (const pending of pendingPurchases.values()) {
       if (pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
         quietly(verifyPurchase(pending.orderId, pending.kind), pending.kind === "premium" ? "themes.premium.verify" : "wallet.verify");
@@ -318,6 +355,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const startSession = (token: string, onboarding = false) => {
     stopLive();
+    liveOnboarding = onboarding;
     const version = epoch;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
@@ -333,12 +371,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } else if (!hostChecking) invalidateHostAccess(true);
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
-      if (event.type === "chats.updated") { if (!onboarding) quietly(loadChats(), "chats.reload"); return; }
+      if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(), "chats.reload"); return; }
       if (event.type === "account.updated") {
-        if (!onboarding) { quietly(loadProfileSettings(), "profile.settings.load"); quietly(loadThemes(), "themes.load"); }
+        if (!liveOnboarding) { quietly(loadProfileSettings(), "profile.settings.load"); quietly(loadThemes(), "themes.load"); }
         return;
       }
-      if (event.type === "themes.updated") { if (!onboarding) quietly(loadThemes(), "themes.load"); return; }
+      if (event.type === "themes.updated") { if (!liveOnboarding) quietly(loadThemes(), "themes.load"); return; }
       const callId = event.data?.callId;
       if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
         void api.declineCall(callId).catch(() => {}); return;
@@ -362,17 +400,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
       if (event.type === "home.updated") quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
-      if (event.type === "realtime.status" && event.data?.connected === true && !onboarding) {
+      if (event.type === "realtime.status" && event.data?.connected === true && !liveOnboarding) {
         quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
         quietly(loadChats(), "chats.reload");
         quietly(loadProfileSettings(), "profile.settings.load");
         quietly(loadThemes(), "themes.load");
       }
       emit(event as AppMessage);
-    }, accountId);
+    }, accountId, appActive && !liveOnboarding);
     if (!onboarding) void loadLists();
   };
   const unsubscribe = onSessionExpired(() => {
+    accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
     epoch++; callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -410,7 +449,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "home.reload": return loadHome(msg.data);
       case "hosts.search": {
         const q = msg.data.q, page = msg.data.page ?? 1;
-        return readResource("search", () => api.home({ q, mode: "popular", page }), data => emit({ type: "data.search", data: { q, hosts: data.hosts, total: data.total, page: data.page } }), { q, page });
+        return readResource("search", () => api.home({ q, mode: "popular", page }), data => { rememberHomePeers(data); emit({ type: "data.search", data: { q, hosts: data.hosts, total: data.total, page: data.page } }); }, { q, page });
       }
       case "notifications.load": return loadNotifications();
       case "notifications.read": return readResource("notifications", () => api.readNotifications(msg.data.ids), data => emit({ type: "data.notifications", data }));
@@ -505,7 +544,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; callGeneration++; pendingOutgoing = undefined; activeCall = undefined; pendingPurchases.clear(); // Retire work and socket callbacks owned by the previous identity.
+          epoch++; callGeneration++; pendingOutgoing = undefined; activeCall = undefined; pendingPurchases.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
@@ -518,6 +557,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "auth.google": return emit({ type: "auth.error", data: { message: "Use your mobile number to sign in.", code: "UNSUPPORTED_PROVIDER" } });
       case "auth.logout": {
+        accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
         callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
         const token = getCachedToken();
@@ -554,7 +594,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
             readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
             applyHostAccount(account, false);
             emit({ type: "profile.saved", data: { onboarding: onboarding === true, account, requestId: id } });
-            if (onboarding) void loadLists();
+            if (onboarding) {
+              liveOnboarding = account.requiresOnboarding === true;
+              stopLive.setActive?.(appActive && !liveOnboarding);
+              void loadLists();
+            }
             else quietly(loadProfileSettings(), "profile.settings.load");
           }
         } catch (error) {
@@ -649,7 +693,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "chat.open": {
         const withId = msg.data.with;
-        return readResource("thread", () => api.thread(withId), data => {
+        threadPermissions.delete(withId);
+        return readResource("thread", async () => {
+          await requireChatPair(withId);
+          if (!current(version)) throw new ApiError("Your sign-in changed. Please try again.", 409);
+          const revision = hostRevision, data = await api.thread(withId);
+          if (revision !== hostRevision) throw new ApiError("Your account permissions changed. Open the conversation again.", 403);
+          return data;
+        }, data => {
+          rememberThreadPermission(withId, data);
           emit({ type: "data.thread", data: { with: withId, ...data } });
           // Only the messages returned by this page are marked read by the server.
           // Reload its counts instead of incorrectly clearing the entire conversation.
@@ -657,6 +709,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
         });
       }
       case "chat.send": {
+        await requireChatPair(msg.data.to);
+        if (!current(version)) return;
+        if (!threadPermissions.has(msg.data.to)) {
+          const revision = hostRevision;
+          const data = await api.thread(msg.data.to);
+          if (!current(version)) return;
+          if (revision !== hostRevision) throw new ApiError("Your account permissions changed. Open the conversation again.", 403);
+          rememberThreadPermission(msg.data.to, data);
+        }
+        const permission = threadPermissions.get(msg.data.to);
+        if (!permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
         await api.sendMessage(msg.data.to, msg.data.text, msg.data.inCall ? activeCall : undefined);
         if (current(version)) quietly(loadChats(), "chats.reload");
         return;

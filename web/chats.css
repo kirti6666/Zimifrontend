@@ -57,6 +57,8 @@
 .zc-name .zh-verified svg,.zc-name>svg{width:calc(15 * var(--zc-u));height:calc(15 * var(--zc-u));color:#f1aece}
 .zc-row-heading time{font-size:calc(9.5 * var(--zc-u));font-weight:650;color:#ddbbcd;white-space:nowrap;flex:none}
 .zc-row-preview{display:flex;align-items:center;gap:calc(7 * var(--zc-u));min-width:0}
+.zc-automated{font-size:calc(10 * var(--zc-u));font-weight:500;line-height:1.4;color:var(--muted,#bfa4b4)}
+.zc-meta:has(.zc-automated){flex-wrap:wrap}
 .zc-message{min-width:0;flex:1;display:flex;align-items:center;gap:calc(6 * var(--zc-u));font-size:calc(12 * var(--zc-u));color:#d9bbcc;line-height:1.4}
 .zc-message>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zc-message>svg{flex:none;width:calc(14 * var(--zc-u));height:calc(14 * var(--zc-u));color:#bb8ea5}

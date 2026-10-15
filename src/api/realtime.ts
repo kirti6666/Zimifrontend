@@ -7,12 +7,13 @@ import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 
 export interface ServerEvent { type: string; data?: Record<string, unknown> }
-export type RealtimeConnection = (() => void) & { send?: (event: "webrtc:signal" | "stream:signal" | "stream:ready", data: RtcPayload & { callId?: string; streamId?: string; to?: string }) => Promise<void> };
+export type RealtimeConnection = (() => void) & { setActive?: (active: boolean) => void; send?: (event: "webrtc:signal" | "stream:signal" | "stream:ready", data: RtcPayload & { callId?: string; streamId?: string; to?: string }) => Promise<void> };
 
 // Socket.IO authentication lives in its handshake, never in a URL or the WebView.
-export function connectRealtime(_initialToken: string, onEvent: (event: ServerEvent) => void, initialUserId?: string): RealtimeConnection {
+export function connectRealtime(_initialToken: string, onEvent: (event: ServerEvent) => void, initialUserId?: string, initiallyActive = true): RealtimeConnection {
   if (!SOCKET_URL) return () => {};
   let closed = false, recovering = false, userId = initialUserId, lastRecovery = 0;
+  let appActive = initiallyActive;
   let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
   const socket = io(SOCKET_URL, {
     autoConnect: false, forceNew: true, transports: ["websocket", "polling"], tryAllTransports: true,
@@ -39,7 +40,11 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     } catch { emit("realtime.status", { connected: false, message: "Live updates are unavailable. Check your connection." }); }
     finally { recovering = false; }
   };
-  socket.on("connect", () => emit("realtime.status", { connected: true }));
+  socket.on("connect", () => {
+    if (closed) return;
+    socket.emit("app:activity", { active: appActive });
+    emit("realtime.status", { connected: true });
+  });
   socket.on("disconnect", reason => {
     emit("realtime.status", { connected: false });
     // The backend closes sockets when access tokens expire. Normal transport failures
@@ -63,7 +68,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
       if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
-      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text" });
+      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text", automated: message.automated === true });
       // Sender echoes also update the list, including messages sent on another device.
       emit("chats.updated", {});
     } catch { /* Ignore malformed events. */ }
@@ -108,6 +113,12 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   });
   if (userId) socket.connect(); else void recover();
   const stop: RealtimeConnection = () => { closed = true; clearTimeout(recoveryTimer); unsubscribe(); socket.removeAllListeners(); socket.disconnect(); };
+  stop.setActive = active => {
+    if (closed) return;
+    appActive = active;
+    // Never queue a stale foreground event while the connection is offline.
+    if (socket.connected) socket.emit("app:activity", { active: appActive });
+  };
   stop.send = (event, data) => new Promise<void>((resolve, reject) => {
     if (closed || !socket.connected) { reject(new ApiError("Live connection is unavailable. Reconnect and try again.", 503)); return; }
     socket.timeout(10000).emit(event, data, (error: Error | null, reply: { success?: boolean; message?: string } | undefined) => {
