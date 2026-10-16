@@ -8,6 +8,7 @@ const Home = {
   notifications: [], unreadCount: 0, gifts: [], packs: [], paymentsAvailable: false,
   matching: false, giftTo: null, giftBusy: false, claiming: false,
   stream: null, hosting: false, streamBusy: false, messages: [], mediaStatus: '',
+  preparingCall: false, preparingVoice: false,
   checkout: null, checkoutBusy: false, packId: '', notifyLoading: false
 };
 const homeIcons = {
@@ -95,8 +96,65 @@ async function homeStartStream(){if(!isApprovedHost()){window.ZimiHostAccess.gua
 function homeLive(){if(window.zrLive)return zrLive();const stream=Home.stream;if(!stream)return '<div class="zh-empty">This session has ended.</div>';const h=g(S.h);return `<section class="zh-room"><div class="zh-room-video">${h&&!Home.hosting?homeCover(h):''}<video ${Home.hosting?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video><div class="zh-room-shade"></div></div><div class="zh-room-top"><button class="zh-room-icon" onclick="homeLeaveStream()" aria-label="${Home.hosting?'End broadcast':'Leave live'}">${hi('back',23)}</button><span class="zh-badge zh-live"><i></i> LIVE</span><span class="zh-viewers">${hi('eye',15)} ${homeCompact(stream.viewers)}</span><span class="zh-room-top-title">${esc(stream.title)}</span></div><p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><h2>${esc(Home.hosting?me.n:h?.n||'Live creator')} ${h?homeVerified(h):''}</h2><p>${esc(stream.title)}</p><div class="zh-room-messages" id="home-room-messages">${Home.messages.slice(-30).map(m=>`<p><b>${esc(m.name||'Viewer')}</b> ${esc(m.text)}</p>`).join('')}</div><form class="zh-room-chat" onsubmit="event.preventDefault();homeSendStreamMessage()"><input id="home-stream-message" maxlength="500" placeholder="Say something…" aria-label="Live chat message"><button aria-label="Send message">${hi('send',20)}</button>${!Home.hosting&&h?`<button type="button" class="zh-gift" onclick="homeGifts('${domId(h.id)}')" aria-label="Send a gift">${hi('gift',21)}</button>`:''}${Home.hosting?'<button type="button" onclick="homeLeaveStream()">End</button>':''}</form></div>${homeGiftSheet()}</section>`}
 function homeSendStreamMessage(){const input=document.getElementById('home-stream-message'),text=input?.value.trim();if(!text||!Home.stream)return;if(DEMO){Home.messages.push({id:String(Date.now()),name:'You',text});r();return}Native.send('stream.message',{streamId:Home.stream.id,text});input.value=''}
 function homeLeaveStream(){if(Home.stream)homeRequestStreamClose(Home.stream.id,Home.hosting);window.ZimiMedia?.stop();Home.stream=null;Home.streamBusy=false;Home.messages=[];Home.mediaStatus='';go('home');homeLoad()}
-function homePrecall(){const h=g(S.h);if(!h)return homeEmpty();return `<section class="zh-precall"><div class="zh-precall-photo">${homeCover(h,true)}<div class="zh-precall-shade"></div></div><button class="zh-precall-back" onclick="go('home')" aria-label="Back">${hi('back',24)}</button><div class="zh-precall-content"><div class="zh-precall-avatar">${homeCover(h)}</div><h1>${esc(h.n)} ${homeVerified(h)}</h1><p>${esc(h.tag||h.cat||'Creator')}</p><span class="zh-precall-status">${h.available||DEMO?'Online · Ready to connect':'Currently unavailable'}</span><div class="zh-precall-details"><span>Call rate <b>${homeRate(h)}</b></span>${h.fee?`<span>Entry fee <b>${n(h.fee)} coins</b></span>`:''}<span>Your balance <b>${contentBalance()} coins</b></span></div><p class="zh-precall-note">Your camera and microphone are used only when you start the call. You can turn them off at any time.</p>${S.pcerr?`<p class="zh-error" role="alert">${esc(S.pcerr)}</p>`:''}<button class="zh-primary zh-full" onclick="S.nextCallVoice=false;S.callId=null;go('dial','${domId(h.id)}')" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('vid',21)} ${Home.preparingCall?'Preparing camera…':'Start video call'}</button><button class="zh-soft zh-full" onclick="S.callId=null;S.nextCallVoice=true;go('dial','${domId(h.id)}')" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('ph',18)} Voice call</button></div></section>`}
-async function homePrepareCall(view,id){if(view==='dialback'&&!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.preparingCall)return;Home.preparingCall=true;Home.mediaStatus='Connecting…';if(!S.nextCallVoice)S.scam=1;const previous=S.v,target=id||S.h;S.pcerr='';r();try{await window.ZimiMedia.prepare(!S.nextCallVoice);if(S.v!==previous||(view==='dialback'&&!isApprovedHost())){window.ZimiMedia.stop();return}S.allowPreparedCall=true;go(view,target)}catch(e){S.pcerr=e.message;appNotice(e.message)}finally{Home.preparingCall=false;S.allowPreparedCall=false;if(S.v===previous)r()}}
+function homePrecall(){if(window.zpcScreen)return zpcScreen();const h=g(S.h);if(!h)return homeEmpty();return `<section class="zh-precall"><div class="zh-precall-photo">${homeCover(h,true)}<div class="zh-precall-shade"></div></div><button class="zh-precall-back" onclick="go('home')" aria-label="Back">${hi('back',24)}</button><div class="zh-precall-content"><div class="zh-precall-avatar">${homeCover(h)}</div><h1>${esc(h.n)} ${homeVerified(h)}</h1><p>${esc(h.tag||h.cat||'Creator')}</p><span class="zh-precall-status">${h.available||DEMO?'Online · Ready to connect':'Currently unavailable'}</span><div class="zh-precall-details"><span>Call rate <b>${homeRate(h)}</b></span>${h.fee?`<span>Entry fee <b>${n(h.fee)} coins</b></span>`:''}<span>Your balance <b>${contentBalance()} coins</b></span></div><p class="zh-precall-note">Your camera and microphone are used only when you start the call. You can turn them off at any time.</p>${S.pcerr?`<p class="zh-error" role="alert">${esc(S.pcerr)}</p>`:''}<button class="zh-primary zh-full" onclick="homeStartCall(false)" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('vid',21)} ${Home.preparingCall?'Preparing camera…':'Start video call'}</button><button class="zh-soft zh-full" onclick="homeStartCall(true)" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('ph',18)} Voice call</button></div></section>`}
+// The pending object is an intent token: navigating away and returning to the
+// same person never revives an earlier camera permission request.
+let homeCallPreparation = null;
+function homeCallUnavailable(id){return !g(id)||(!DEMO&&!g(id).available)}
+function homeStartCall(voice=false){
+  if(S.v!=='precall'||Home.preparingCall)return;
+  if(isHost()){appNotice('Calls can be started from a member account.');return}
+  if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
+  S.nextCallVoice=!!voice;S.callId=null;S.pcerr='';
+  return go('dial',S.h);
+}
+function homeCancelPrepare(message='',paint=true){
+  const pending=homeCallPreparation;
+  if(!pending)return;
+  homeCallPreparation=null;clearTimeout(pending.timer);
+  Home.preparingCall=false;Home.preparingVoice=false;Home.mediaStatus=message;
+  S.allowPreparedCall=false;S.pcerr=message;
+  // stop() also invalidates getUserMedia promises; any late stream is released
+  // by the media layer without interfering with a newer capture.
+  window.ZimiMedia?.stop();pending.cancel();
+  if(paint&&S.v===pending.screen)r();
+}
+function homeValidatePreparingPeer(){
+  const pending=homeCallPreparation;
+  if(pending&&pending.view==='dial'&&homeCallUnavailable(pending.target))homeCancelPrepare('This creator is no longer available. Please try again later.');
+}
+async function homePrepareCall(view,id){
+  if(Home.preparingCall)return;
+  if(view==='dialback'&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
+  const target=view==='dialback'?S.caller?.id:(id||S.h);
+  if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
+  if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
+  const voice=view==='dialback'?false:!!S.nextCallVoice;
+  const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
+  const cancelled=new Promise(resolve=>{pending.cancel=()=>resolve(false)});
+  homeCallPreparation=pending;Home.preparingCall=true;Home.preparingVoice=voice;
+  Home.mediaStatus=voice?'Waiting for microphone access…':'Waiting for camera and microphone access…';
+  if(!voice)S.scam=1;
+  S.pcerr='';r();
+  pending.timer=setTimeout(()=>{
+    if(homeCallPreparation===pending)homeCancelPrepare(voice?'Microphone access is taking too long. Allow microphone access in your device settings, then try again.':'Camera access is taking too long. Allow camera and microphone access in your device settings, then try again.');
+  },30000);
+  try{
+    if(!window.ZimiMedia?.prepare)throw new Error('Calling is unavailable right now. Please reopen the app and try again.');
+    const ready=await Promise.race([window.ZimiMedia.prepare(!voice).then(()=>true),cancelled]);
+    if(!ready||homeCallPreparation!==pending)return;
+    if(S.v!==pending.screen||S.h!==pending.screenPeer||(view==='dialback'&&(S.caller?.id!==pending.caller||!isApprovedHost()))){homeCancelPrepare('',false);return}
+    if(view==='dial'&&(isHost()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
+    clearTimeout(pending.timer);homeCallPreparation=null;
+    Home.preparingCall=false;Home.preparingVoice=false;Home.mediaStatus='Connecting…';
+    S.nextCallVoice=voice;S.allowPreparedCall=true;
+    try{go(view,target)}finally{S.allowPreparedCall=false}
+  }catch(error){
+    if(homeCallPreparation!==pending)return;
+    const message=error?.message||'Your camera or microphone could not be started. Please try again.';
+    homeCancelPrepare(message);appNotice(message);
+  }
+}
 async function homeAcceptCall(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(S.acceptingCall)return;const callId=S.caller?.callId;if(!callId)return;S.acceptingCall=true;Home.mediaStatus='Connecting…';r();try{await window.ZimiMedia.prepare(!S.caller.voice);if(S.v!=='ring'||S.caller?.callId!==callId||!isApprovedHost()){S.acceptingCall=false;window.ZimiMedia.stop();return}Native.send('call.accept',{callId})}catch(e){S.acceptingCall=false;appNotice(e.message);r()}}
 function homeCallView(host){if(window.zrCall)return zrCall(host);const p=host?S.caller:g(S.h),voice=host?S.caller?.voice:S.v==='voice';return `<section class="zh-room zh-call-room"><div class="zh-room-video">${voice?`<div class="zh-voice-person">${avc(p,110)}<h2>${esc(p.n)}</h2></div><video data-zimi-remote autoplay playsinline style="display:none"></video>`:`<video data-zimi-remote autoplay playsinline></video>`}<div class="zh-room-shade"></div></div><div class="zh-room-top"><button class="zh-room-icon" onclick="endCall()" aria-label="End call">${hi('back',23)}</button><span class="zh-viewers"><i class="zh-online-dot"></i><span id="ck">${clock(S.sec)}</span></span><span class="zh-room-top-title">${esc(p.n)} · ${voice?'Voice':'Video'} call</span></div>${!voice?'<div class="zh-call-pip"><video data-zimi-local autoplay muted playsinline></video><span>You</span></div>':''}<p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><div class="zh-call-controls"><button onclick="S.mic=S.mic?0:1;r()" aria-label="${S.mic?'Mute':'Unmute'} microphone" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',22)}<span>${S.mic?'Mute':'Unmute'}</span></button>${!voice?`<button onclick="toggleCam()" aria-label="${camOn()?'Turn camera off':'Turn camera on'}" aria-pressed="${!camOn()}">${hi(camOn()?'vid':'camoff',22)}<span>Camera</span></button>`:''}${!host?`<button onclick="homeGifts('${domId(p.id)}')" aria-label="Send a gift">${hi('gift',22)}<span>Gift</span></button>`:''}<button class="zh-end-call" onclick="endCall()" aria-label="End call">${hi('ph',23)}<span>End</span></button></div><p class="zh-free-call">${DEMO?'Design preview':'Free call · gifts are optional'}</p></div>${homeGiftSheet()}</section>`}
 function homeCallSetup(){return `<section class="zh-broadcast"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1><p>Go online so members can call you. Camera and microphone permission is requested when you accept a call.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy?'disabled':''}>${Home.presenceBusy?'Connecting…':'Go online for calls'}</button><button class="zh-soft zh-full" onclick="go('broadcast')">${hi('broadcast',20)} Start a public live instead</button></section>`}
@@ -121,8 +179,9 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   return title?`<header class="zh-subheader"><button onclick="go('home')" aria-label="Back to home">${hi('back',22)}</button><h1>${title}</h1>${S.v==='coins'?`<span>${hi('rings',15)} ${contentBalance()}</span>`:''}</header>`:null;
 },afterRender:()=>{contentImagesReady();homeShowCloseError();if(Home.giftTo){const sheet=document.querySelector('.zh-sheet');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button')?.focus({preventScroll:true})}const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
-Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;if(['home','explore','chats'].includes(S.v))r()});
+Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(['home','explore','chats','precall'].includes(S.v))r()});
 Native.on('data.notifications',d=>{Home.notifyLoading=false;Home.notifications=d.items||[];Home.unreadCount=d.unreadCount||0;if(['home','explore','notifications'].includes(S.v))r()});
+Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
 Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
 Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||Home.giftTo)r()});
 Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
@@ -144,6 +203,7 @@ window.addEventListener('zimi:host-access',event=>{
   // A reconnect checks permission for new activity without interrupting an existing session.
   if(event.detail.checking&&((Home.hosting&&Home.stream)||(S.v==='hcall'&&S.callId)))return;
   if(!event.detail.approved){
+    if(homeCallPreparation?.view==='dialback')homeCancelPrepare('',false);
     const hostCall=['ring','hcall','dialback'].includes(S.v);
     const hostedStream=Home.hosting&&!!Home.stream;
     if(hostedStream){homeRequestStreamClose(Home.stream.id,true);Home.stream=null;Home.hosting=false;Home.messages=[]}
@@ -159,9 +219,10 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','explore','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
+function homeReset(){homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
-document.addEventListener('aurora:navigate',()=>{if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
+document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
+window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
 
 if(DEMO){
   const demo=[

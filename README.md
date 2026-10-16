@@ -206,6 +206,14 @@ device checkout before using payments live.
 
 ## Live studio and private calls
 
+The call setup screen (`web/call-setup.js` / `web/call-setup.css`) fills the
+viewport with its own dark media surface while preserving the saved account
+theme. Choose Video or Voice before starting. Camera/microphone access can be
+cancelled, times out after 30 seconds, and never resumes an abandoned call.
+Preview it at `/?preview=precall&role=sender` or
+`/?preview=precall-offline&role=sender`. Run `npm run test:call-setup` for layout,
+availability, permissions, retry, and navigation regression checks.
+
 The immersive room interface lives in `web/live-room.js` and `web/live-room.css`.
 It includes viewer/host layouts, live chat, follows, server-priced gifts, gift
 alerts and session supporters, hearts, a private-call request queue, camera/mic

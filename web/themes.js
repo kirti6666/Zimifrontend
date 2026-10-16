@@ -15,7 +15,8 @@ function ztApply(animate=false){
   const root=document.documentElement;
   if(['welcome','login'].includes(S.v)){if(root.dataset.themeId){ZThemeVars.forEach(key=>root.style.removeProperty(key));['--theme-font','--theme-font-scale','--theme-font-weight','--theme-heading-weight'].forEach(key=>root.style.removeProperty(key));delete root.dataset.themeId;root.classList.remove('zt-transition');ZThemes.signature=''}return}
   const theme=ztCurrent(),c=theme.colors,t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
-  root.classList.toggle('zp-light',theme.mode==='light');if(root.dataset.theme!==theme.mode)root.dataset.theme=theme.mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
+  const surface=window.zpcChrome?.(),displayMode=surface?.mode||theme.mode,displayCanvas=surface?.canvas||c.background;
+  root.classList.toggle('zp-light',theme.mode==='light');if(root.dataset.theme!==displayMode)root.dataset.theme=displayMode;if(root.dataset.canvas!==displayCanvas)root.dataset.canvas=displayCanvas;
   if(signature===ZThemes.signature)return;
   const motion=animate&&ZThemes.signature&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
   clearTimeout(ZThemes.transitionTimer);root.classList.toggle('zt-transition',!!motion);

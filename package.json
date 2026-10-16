@@ -17,6 +17,7 @@
     "test:render-security": "node scripts/test-render-security.cjs",
     "test:home": "npm run build:web && node scripts/test-home.cjs && node scripts/test-home-media.cjs",
     "test:live": "npm run build:web && node scripts/test-live-room.cjs && node scripts/test-home-media.cjs",
+    "test:call-setup": "npm run build:web && node scripts/test-call-setup.cjs",
     "test:loading": "npm run build:web && node scripts/test-loading.cjs",
     "test:chats": "npm run build:web && node scripts/test-chats.cjs",
     "test:navigation": "npm run build:web && node scripts/test-navigation.cjs",
