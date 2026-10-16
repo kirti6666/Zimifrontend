@@ -5,6 +5,7 @@ const record = (value: unknown): value is Record<string, unknown> =>
 const text = (value: unknown, max = 128) => typeof value === "string" && value.length > 0 && value.length <= max;
 const optionalText = (value: unknown, max = 128) => value === undefined || text(value, max);
 const boolean = (value: unknown) => typeof value === "boolean";
+const optionalColor = (value: unknown) => value === undefined || (typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value));
 const role = (value: unknown) => value === "sender" || value === "host";
 const amount = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 1e9;
 const identifier = (value: unknown) => text(value) && /^[a-zA-Z0-9_-]+$/.test(value as string);
@@ -71,7 +72,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.request.cancel": case "stream.request.decline": case "stream.request.accept": valid = identifier(d.streamId) && identifier(d.id); break;
     case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey); break;
     case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
-    case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === undefined || d.canvas === "" || (typeof d.canvas === "string" && /^#[0-9a-f]{6}$/i.test(d.canvas))); break;
+    case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === "" || optionalColor(d.canvas)) && ["ink", "primary", "contrast", "surface", "raised"].every(key => optionalColor(d[key])); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "auth.sendOtp": valid = typeof d.phone === "string" && /^\+91[6-9]\d{9}$/.test(d.phone) && role(d.role); break;
     case "auth.verifyOtp": valid = typeof d.phone === "string" && /^\+91[6-9]\d{9}$/.test(d.phone) && typeof d.code === "string" && /^\d{6}$/.test(d.code) && role(d.role) && boolean(d.signup); break;

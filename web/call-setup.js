@@ -2,7 +2,6 @@
    the primary action; home.js owns permission requests and their cancellation. */
 const CallSetup = { mode: 'video', peerId: '', wasOpen: false };
 Object.assign(homeIcons,{arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>'});
-function zpcChrome(){return S.v==='precall'?{mode:'dark',canvas:'#170f1b'}:null}
 function zpcMode(mode){if(Home.preparingCall||!['video','voice'].includes(mode))return;CallSetup.mode=mode;S.pcerr='';r();document.querySelector(`[data-call-mode="${mode}"]`)?.focus({preventScroll:true})}
 function zpcInitials(name){const words=String(name||'Creator').trim().split(/\s+/).map(word=>word.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean);return (words.length>1?words[0][0]+words.at(-1)[0]:words[0]?.slice(0,2)||'Z').toUpperCase()}
 function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}">`:''}

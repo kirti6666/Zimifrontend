@@ -39,7 +39,7 @@ export type WebMessage =
   | { type: "themes.select"; data: { themeId: string; requestId?: number } }
   | { type: "themes.premium.checkout"; data: { idempotencyKey: string } }
   | { type: "themes.premium.verify"; data: { merchantOrderId: string } }
-  | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string } }
+  | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string; ink?: string; primary?: string; contrast?: string; surface?: string; raised?: string } }
   | { type: "ui.haptic"; data: { kind: "selection" | "success" | "error" | "light" } }
   | { type: "auth.sendOtp"; data: { phone: string; role: Role; requestId?: number } }
   | { type: "auth.verifyOtp"; data: { phone: string; code: string; role: Role; signup: boolean; requestId?: number } }

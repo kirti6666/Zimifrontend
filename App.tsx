@@ -16,6 +16,7 @@ const PLACEHOLDER = { light: "#e9e1e7", dark: "#3a2637" } as const;
 const PLACEHOLDER_SURFACE = { light: "#f7f1f5", dark: "#291a28" } as const;
 
 type Theme = keyof typeof CANVAS;
+type NativePalette = Partial<Record<"ink" | "primary" | "contrast" | "surface" | "raised", string>>;
 
 /* Mirrors the page's data-theme onto the native chrome so the safe-area
    padding and the status bar track the canvas the page is painting. */
@@ -26,13 +27,18 @@ const THEME_BRIDGE = `
       type: "theme",
       data: {
         theme: document.documentElement.dataset.theme || "light",
-        canvas: document.documentElement.dataset.canvas || ""
+        canvas: document.documentElement.dataset.canvas || "",
+        ink: document.documentElement.dataset.themeInk || undefined,
+        primary: document.documentElement.dataset.themePrimary || undefined,
+        contrast: document.documentElement.dataset.themeContrast || undefined,
+        surface: document.documentElement.dataset.themeSurface || undefined,
+        raised: document.documentElement.dataset.themeRaised || undefined
       }
     }));
   };
   new MutationObserver(post).observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-theme", "data-canvas"],
+    attributeFilter: ["data-theme", "data-canvas", "data-theme-ink", "data-theme-primary", "data-theme-contrast", "data-theme-surface", "data-theme-raised"],
   });
   post();
 })();
@@ -42,6 +48,7 @@ true;
 export default function App() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [canvasOverride, setCanvasOverride] = useState<string | null>("#190d19");
+  const [palette, setPalette] = useState<NativePalette>({});
   const [failure, setFailure] = useState<string | null>(null);
   const webRef = useRef<WebView>(null);
   const lastHapticAt = useRef(0);
@@ -58,6 +65,9 @@ export default function App() {
       if (msg.data.theme === "light" || msg.data.theme === "dark") setTheme(msg.data.theme);
       const color = msg.data.canvas;
       setCanvasOverride(typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : null);
+      // Replace the palette, rather than merging it, so returning to login clears
+      // the previous account's colors when the web theme attributes are removed.
+      setPalette({ ink: msg.data.ink, primary: msg.data.primary, contrast: msg.data.contrast, surface: msg.data.surface, raised: msg.data.raised });
     } else if (msg.type === "ui.haptic") {
       // Guard against bursts of pointer events; OS settings still decide if
       // tactile feedback is available on this device.
@@ -91,7 +101,11 @@ export default function App() {
   }, []);
 
   const canvas = canvasOverride ?? CANVAS[theme];
-  const ink = INK[theme];
+  const ink = palette.ink ?? INK[theme];
+  const primary = palette.primary ?? "#ec0785";
+  const contrast = palette.contrast ?? "#ffffff";
+  const placeholder = palette.raised ?? PLACEHOLDER[theme];
+  const placeholderSurface = palette.surface ?? PLACEHOLDER_SURFACE[theme];
 
   return (
     <SafeAreaProvider>
@@ -103,8 +117,8 @@ export default function App() {
             <Text style={[styles.failBody, { color: ink }]}>
               {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
             </Text>
-            <Pressable onPress={reload} style={styles.retry}>
-              <Text style={styles.retryText}>Retry</Text>
+            <Pressable onPress={reload} style={[styles.retry, { backgroundColor: primary }]}>
+              <Text style={[styles.retryText, { color: contrast }]}>Retry</Text>
             </Pressable>
           </View>
         ) : (
@@ -130,29 +144,29 @@ export default function App() {
               <View style={[styles.loading, { backgroundColor: canvas }]} accessible accessibilityRole="progressbar" accessibilityLabel="Loading Zimi Live" accessibilityState={{ busy: true }}>
                 <View style={styles.loadingContent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                   <View style={styles.loadingHeader}>
-                    <Text style={[styles.loadingBrand, { color: ink }]}>Zimi<Text style={styles.loadingBrandAccent}>Live</Text></Text>
-                    <View style={[styles.loadingPill, { backgroundColor: PLACEHOLDER[theme] }]} />
-                    <View style={[styles.loadingProfile, { backgroundColor: PLACEHOLDER[theme] }]} />
+                    <Text style={[styles.loadingBrand, { color: ink }]}>Zimi<Text style={{ color: primary }}>Live</Text></Text>
+                    <View style={[styles.loadingPill, { backgroundColor: placeholder }]} />
+                    <View style={[styles.loadingProfile, { backgroundColor: placeholder }]} />
                   </View>
-                  <View style={[styles.loadingHeading, { backgroundColor: PLACEHOLDER[theme] }]} />
+                  <View style={[styles.loadingHeading, { backgroundColor: placeholder }]} />
                   <View style={styles.loadingStories}>
                     {[0, 1, 2, 3, 4].map(index => (
                       <View key={index} style={styles.loadingStory}>
-                        <View style={[styles.loadingAvatar, { backgroundColor: PLACEHOLDER[theme] }]} />
-                        <View style={[styles.loadingStoryLabel, { backgroundColor: PLACEHOLDER[theme] }]} />
+                        <View style={[styles.loadingAvatar, { backgroundColor: placeholder }]} />
+                        <View style={[styles.loadingStoryLabel, { backgroundColor: placeholder }]} />
                       </View>
                     ))}
                   </View>
                   <View style={styles.loadingFilters}>
-                    {[0, 1, 2].map(index => <View key={index} style={[styles.loadingFilter, { backgroundColor: PLACEHOLDER[theme] }]} />)}
+                    {[0, 1, 2].map(index => <View key={index} style={[styles.loadingFilter, { backgroundColor: placeholder }]} />)}
                   </View>
-                  <View style={[styles.loadingHero, { backgroundColor: PLACEHOLDER_SURFACE[theme] }]}>
-                    <View style={[styles.loadingHeroTitle, { backgroundColor: PLACEHOLDER[theme] }]} />
-                    <View style={[styles.loadingHeroLine, { backgroundColor: PLACEHOLDER[theme] }]} />
-                    <View style={[styles.loadingHeroAction, { backgroundColor: PLACEHOLDER[theme] }]} />
+                  <View style={[styles.loadingHero, { backgroundColor: placeholderSurface }]}>
+                    <View style={[styles.loadingHeroTitle, { backgroundColor: placeholder }]} />
+                    <View style={[styles.loadingHeroLine, { backgroundColor: placeholder }]} />
+                    <View style={[styles.loadingHeroAction, { backgroundColor: placeholder }]} />
                   </View>
                   <View style={styles.loadingCards}>
-                    {[0, 1].map(index => <View key={index} style={[styles.loadingCard, { backgroundColor: PLACEHOLDER_SURFACE[theme] }]} />)}
+                    {[0, 1].map(index => <View key={index} style={[styles.loadingCard, { backgroundColor: placeholderSurface }]} />)}
                   </View>
                 </View>
               </View>
@@ -187,7 +201,6 @@ const styles = StyleSheet.create({
   loadingContent: { width: "100%", maxWidth: 540 },
   loadingHeader: { flexDirection: "row", alignItems: "center", gap: 12, height: 48, marginBottom: 20 },
   loadingBrand: { fontSize: 21, fontWeight: "800", flex: 1, letterSpacing: -0.6 },
-  loadingBrandAccent: { color: "#ec0785" },
   loadingPill: { width: 65, height: 30, borderRadius: 20 },
   loadingProfile: { width: 32, height: 32, borderRadius: 16 },
   loadingHeading: { width: "52%", height: 16, borderRadius: 6, marginBottom: 18 },
@@ -205,6 +218,6 @@ const styles = StyleSheet.create({
   loadingCard: { flex: 1, height: 180, borderRadius: 15 },
   failTitle: { fontSize: 17, fontWeight: "700", marginBottom: 8 },
   failBody: { fontSize: 13, opacity: 0.7, textAlign: "center", marginBottom: 20 },
-  retry: { backgroundColor: "#e8117a", borderRadius: 99, paddingHorizontal: 22, paddingVertical: 10 },
-  retryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  retry: { borderRadius: 99, paddingHorizontal: 22, paddingVertical: 10 },
+  retryText: { fontWeight: "700", fontSize: 14 },
 });

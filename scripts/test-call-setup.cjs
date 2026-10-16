@@ -2,6 +2,7 @@
    No real camera, remote participant, account, or network service is involved. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
@@ -20,12 +21,28 @@ async function assertLayout(page, label) {
   const layout = await page.locator(setupSelector).evaluate(el => {
     const bounds = el.getBoundingClientRect(), app = document.querySelector('.app').getBoundingClientRect();
     const title = el.querySelector('h1'), back = el.querySelector('button[aria-label="Back"]');
+    const theme = ztCurrent(), primary = el.querySelector('.zpc-primary'), selected = el.querySelector('.zpc-mode.selected');
+    const color = value => { const swatch = document.createElement('span'); swatch.style.color = value; el.append(swatch); const result = getComputedStyle(swatch).color; swatch.remove(); return result; };
+    const titleSize = innerWidth <= 360 ? 25 : innerHeight <= 740 ? 26 : innerWidth >= 600 ? 32 : 29;
     const visible = node => { const r = node.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
     return {
       widthOverflow: document.documentElement.scrollWidth > innerWidth + 1 || (!['hidden', 'clip'].includes(getComputedStyle(el).overflowX) && el.scrollWidth > el.clientWidth + 1),
       fillsApp: bounds.top <= app.top + 1 && bounds.bottom >= app.bottom - 1,
       titleColor: title && getComputedStyle(title).color,
       backColor: back && getComputedStyle(back).color,
+      canvasColor: getComputedStyle(el).backgroundColor,
+      expectedInk: color(theme.colors.text), expectedCanvas: color(theme.colors.background),
+      expectedPrimary: color(theme.colors.primary), expectedPrimaryInk: color(theme.colors.primaryContrast),
+      themeMode: theme.mode, themeCanvas: theme.colors.background,
+      nativeMode: document.documentElement.dataset.theme, nativeCanvas: document.documentElement.dataset.canvas,
+      primaryDisabled: primary.disabled, primaryColor: getComputedStyle(primary).color,
+      primaryBackground: getComputedStyle(primary).backgroundColor,
+      selectedBorder: getComputedStyle(selected).borderTopColor,
+      titleFont: getComputedStyle(title).fontFamily, primaryFont: getComputedStyle(primary).fontFamily,
+      bodyFont: getComputedStyle(document.body).fontFamily,
+      titleWeight: getComputedStyle(title).fontWeight, primaryWeight: getComputedStyle(primary).fontWeight,
+      headingWeight: theme.typography.headingWeight,
+      titleSize: parseFloat(getComputedStyle(title).fontSize), expectedTitleSize: titleSize * theme.typography.fontScale,
       titleVisible: !!title && visible(title), backVisible: !!back && visible(back),
       staleRoomClass: document.documentElement.classList.contains('zr-active'),
       navVisible: visible(document.getElementById('nav')),
@@ -38,10 +55,21 @@ async function assertLayout(page, label) {
   assert.equal(layout.widthOverflow, false, `${label}: no horizontal overflow`);
   assert.equal(layout.fillsApp, true, `${label}: the setup fills the app instead of leaving a blank lower viewport`);
   assert.equal(layout.titleVisible && layout.backVisible, true, `${label}: identity and Back are present`);
-  for (const [name, color] of [['title', layout.titleColor], ['Back', layout.backColor]]) {
-    const channels = color?.match(/[\d.]+/g)?.slice(0, 3).map(Number);
-    assert.ok(channels && Math.min(...channels) > 180, `${label}: ${name} remains readable on the dark setup (${color})`);
+  assert.equal(layout.titleColor, layout.expectedInk, `${label}: title follows selected text color`);
+  assert.equal(layout.backColor, layout.expectedInk, `${label}: Back follows selected text color`);
+  assert.equal(layout.canvasColor, layout.expectedCanvas, `${label}: setup follows selected canvas color`);
+  assert.equal(layout.nativeMode, layout.themeMode, `${label}: native status-bar mode follows selected theme`);
+  assert.equal(layout.nativeCanvas, layout.themeCanvas, `${label}: native safe-area canvas follows selected theme`);
+  assert.equal(layout.selectedBorder, layout.expectedPrimary, `${label}: selected call mode uses the theme accent`);
+  if (!layout.primaryDisabled) {
+    assert.equal(layout.primaryBackground, layout.expectedPrimary, `${label}: CTA follows selected primary color`);
+    assert.equal(layout.primaryColor, layout.expectedPrimaryInk, `${label}: CTA follows selected contrast color`);
   }
+  assert.equal(layout.titleFont, layout.bodyFont, `${label}: title inherits the selected typeface`);
+  assert.equal(layout.primaryFont, layout.bodyFont, `${label}: CTA inherits the selected typeface`);
+  assert.equal(layout.titleWeight, layout.headingWeight, `${label}: title follows selected heading weight`);
+  assert.equal(layout.primaryWeight, layout.headingWeight, `${label}: CTA follows selected heading weight`);
+  assert.ok(Math.abs(layout.titleSize - layout.expectedTitleSize) < .02, `${label}: title follows selected font scale`);
   assert.equal(layout.staleRoomClass, false, `${label}: leaving a live room clears room-only layout styles`);
   assert.equal(layout.navVisible, false, `${label}: setup hides the tab bar`);
   assert.equal(layout.clippedButtons, false, `${label}: controls stay inside the setup`);
@@ -108,13 +136,18 @@ async function assertLayout(page, label) {
     for (const theme of ['dark', 'light', 'custom']) {
       await page.evaluate(mode => {
         const base = mode === 'dark' ? ZThemeOriginal : ZThemeRose;
-        const theme = mode === 'custom' ? { ...base, id: 'setup-custom-theme', colors: { ...base.colors, background: '#f3f2fc', text: '#12132c', primary: '#6543b8', primaryContrast: '#ffffff' } } : base;
+        const theme = mode === 'custom' ? { ...base, id: 'setup-custom-theme', colors: { ...base.colors, background: '#f3f2fc', surface: '#fffcff', surfaceElevated: '#e5def3', text: '#12132c', textMuted: '#615879', primary: '#6543b8', primaryContrast: '#f4ecff', secondary: '#4e2f94', border: '#c6b8de' }, typography: { fontFamily: 'mono', fontScale: 1.1, fontWeight: '500', headingWeight: '800' } } : base;
         Native.receive({ type: 'data.themes', data: { items: [theme], selectedThemeId: theme.id } });
         r();
       }, theme);
       for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 693 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
         await page.setViewportSize(viewport);
         await assertLayout(page, `${theme} ${viewport.width}x${viewport.height}`);
+        if (theme !== 'dark' && viewport.width === 390 && viewport.height === 844) {
+          const screenshot = path.join(os.tmpdir(), `zimi-call-setup-${theme}.png`);
+          await page.screenshot({ path: screenshot });
+          console.log(`Theme screenshot: ${screenshot}`);
+        }
       }
     }
     await page.setViewportSize({ width: 320, height: 640 });

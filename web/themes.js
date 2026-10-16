@@ -13,10 +13,10 @@ function ztSafe(theme){return !!theme&&/^[a-zA-Z0-9_-]{1,80}$/.test(theme.id||''
 function ztCurrent(){const catalog=ZThemes.catalog,theme=catalog?.items.find(x=>x.id===catalog.selectedThemeId&&x.active!==false&&(!x.isPremium||catalog.premium?.active));if(theme&&ztSafe(theme))return theme;const mode=ZProfile.data?.preferences?.appearance;return mode==='light'||(mode==='system'&&matchMedia('(prefers-color-scheme: light)').matches)?ZThemeRose:ZThemeOriginal}
 function ztApply(animate=false){
   const root=document.documentElement;
-  if(['welcome','login'].includes(S.v)){if(root.dataset.themeId){ZThemeVars.forEach(key=>root.style.removeProperty(key));['--theme-font','--theme-font-scale','--theme-font-weight','--theme-heading-weight'].forEach(key=>root.style.removeProperty(key));delete root.dataset.themeId;root.classList.remove('zt-transition');ZThemes.signature=''}return}
+  if(['welcome','login'].includes(S.v)){if(root.dataset.themeId){ZThemeVars.forEach(key=>root.style.removeProperty(key));['--theme-font','--theme-font-scale','--theme-font-weight','--theme-heading-weight'].forEach(key=>root.style.removeProperty(key));['themeId','themeInk','themePrimary','themeContrast','themeSurface','themeRaised'].forEach(key=>delete root.dataset[key]);root.classList.remove('zt-transition');ZThemes.signature=''}return}
   const theme=ztCurrent(),c=theme.colors,t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
-  const surface=window.zpcChrome?.(),displayMode=surface?.mode||theme.mode,displayCanvas=surface?.canvas||c.background;
-  root.classList.toggle('zp-light',theme.mode==='light');if(root.dataset.theme!==displayMode)root.dataset.theme=displayMode;if(root.dataset.canvas!==displayCanvas)root.dataset.canvas=displayCanvas;
+  root.classList.toggle('zp-light',theme.mode==='light');if(root.dataset.theme!==theme.mode)root.dataset.theme=theme.mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
+  for(const [key,value] of Object.entries({themeInk:c.text,themePrimary:c.primary,themeContrast:c.primaryContrast,themeSurface:c.surface,themeRaised:c.surfaceElevated}))if(root.dataset[key]!==value)root.dataset[key]=value;
   if(signature===ZThemes.signature)return;
   const motion=animate&&ZThemes.signature&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
   clearTimeout(ZThemes.transitionTimer);root.classList.toggle('zt-transition',!!motion);

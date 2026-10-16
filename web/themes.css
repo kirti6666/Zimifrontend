@@ -40,6 +40,46 @@
 :root[data-theme-id] :is(.zp-row-text>small,.zp-stats span,.zp-field,.zp-preference,.zp-dialog-body>p,.zp-dialog details p,.zh-match p,.zh-tile p,.zh-bonus p){font-size:calc(12px * var(--theme-font-scale))}
 :root[data-theme-id] :is(.zp-row-text>b,.zc-message,.zc-contact b){font-size:calc(13px * var(--theme-font-scale))}
 :root[data-theme-id] :is(.zp-heading h1,.zc-heading h1){font-size:calc(27px * var(--theme-font-scale))}
+/* Every authenticated screen uses the same palette, including secondary flows. */
+:root[data-theme-id] :is(.stab.on,.msum .big,.phero .nm,.btab,.hpname .nm,.ctitle,.celcard b,.cfm>b){font-family:var(--theme-font)}
+:root[data-theme-id] :is(.zc-thread,.ringscr,.conn){background:var(--canvas);color:var(--ink)}
+:root[data-theme-id] :is(.zh-sheet,.zh-tile,.zh-precall-details){background:var(--surface);color:var(--ink);border-color:var(--line)}
+:root[data-theme-id] :is(.zh-sheet-heading>button,.zh-gifts>button,.zh-search-header>div,.zh-load-more,.zh-featured-open,.zh-tile-rate,.zh-tile-action,.zh-offline,.zh-viewers,.zh-gift,.zh-live-note,.zc-avatar,.zc-pulse-icon,.zp-switch){background:var(--raised);color:var(--ink);border-color:var(--line);box-shadow:none}
+:root[data-theme-id] :is(.zh-sheet-heading p,.zh-empty-small,.zh-search-status,.zh-wallet-card>span,.zh-wallet-card p,.zh-preview-note,.zh-precall-details>span,.zc-pulse p,.zc-search>button,.zc-message>svg,.ringscr p,.ringfee,.conn p,.connnote){color:var(--muted)}
+:root[data-theme-id] :is(.zh-gifts small,.zh-eyebrow,.zh-verified,.zh-error button,.zh-ready-illustration,.zh-broadcast>.zh-soft,.zc-pulse-icon,.zc-empty>svg,.zc-gift-message>svg,.conneye){color:var(--accent-ink)}
+:root[data-theme-id] .zh-precall-details b{color:var(--ink)}
+:root[data-theme-id] :is(.zh-profile,.zh-live,.zh-ready,.zh-tile-action.zh-hot,.zc-person>b,.zc-unread-count,.zc-bot,.zc-bot-label,.zc-match-footer>span,.pcgo,.sumbtns .pri,.hgo,.ebtn,.nav button.on .ic){background:var(--accent);color:var(--cta-ink);box-shadow:none}
+:root[data-theme-id] :is(.zh-section-title h2>i,.zh-live-note>i){background:var(--accent)}
+:root[data-theme-id] .zh-live>i{background:var(--cta-ink)}
+:root[data-theme-id] .zc-presence{background:var(--muted);border-color:var(--surface);box-shadow:none}
+:root[data-theme-id] :is(.zc-presence.online,.zh-online-dot,.ringeye i){background:var(--online)}
+:root[data-theme-id] .zp-switch>i{background:var(--ink)}
+:root[data-theme-id] .zp-switch.is-on>i{background:var(--cta-ink)}
+:root[data-theme-id] :is(.zh-camera-preview,.zh-ready-illustration>svg){background:radial-gradient(ellipse at center,var(--raised),var(--surface));color:var(--accent-ink);border-color:var(--line);box-shadow:0 0 55px color-mix(in srgb,var(--accent) 8%,transparent)}
+:root[data-theme-id] .zh-camera-preview>span{color:var(--muted)}
+:root[data-theme-id] :is(.zh-skeleton-tile,.zh-skeleton-hero,.zh-skeleton-catalog>div,.zh-loading-wallet,.zh-photo-failed){background:var(--surface);color:var(--muted);border-color:var(--line)}
+:root[data-theme-id] .zh-photo-pending{background-image:linear-gradient(100deg,var(--surface) 20%,var(--raised) 45%,var(--surface) 70%)}
+:root[data-theme-id] .zh-skeleton-row{border-color:var(--line)}
+:root[data-theme-id] #app-notice{background:var(--raised);color:var(--ink);border-color:var(--line);font-family:var(--theme-font)}
+:root[data-theme-id] .zh-error{border-color:var(--theme-danger)}
+/* Calling and incoming-call chrome is themed; identity artwork stays artwork. */
+:root[data-theme-id] :is(.ringbg,.connbg){opacity:.12;filter:blur(26px)}
+:root[data-theme-id] .ringorb{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 14%,transparent),0 0 0 22px color-mix(in srgb,var(--accent) 7%,transparent);animation-name:zt-ring-pulse}
+:root[data-theme-id] :is(.waitnote,.dialnote,.ringeye,.ringearn){background:var(--surface);color:var(--muted)}
+:root[data-theme-id] .ringearn{color:var(--accent-ink)}
+:root[data-theme-id] .ringact .accept{background:var(--accent);color:var(--cta-ink);box-shadow:none}
+:root[data-theme-id] .connring{border-color:var(--line);border-top-color:var(--accent);border-right-color:var(--accent-ink)}
+:root[data-theme-id] .connbar{background:var(--raised)}
+:root[data-theme-id] :is(.connbar i,.ssbar i,.ebar i){background:linear-gradient(90deg,var(--accent),var(--accent-ink))}
+/* Account, creator verification, rewards and payout actions use primaryContrast too. */
+:root[data-theme-id] :is(.accthero,.hoststrip,.incban){background:var(--surface);color:var(--ink);border-color:var(--line)}
+:root[data-theme-id] :is(.accthero .eyebrow,.accthero .sub,.hstx span,.incban .tx span){color:var(--muted)}
+:root[data-theme-id] .accthero .big{color:var(--accent-ink)}
+:root[data-theme-id] :is(.editsave,.pbal .go,.accthero .cta,.hpfollow:not(.on),.hoststrip button,.cta2:not(.ghost),.wgo,.awardcard button,.claim,.kyc .ob-options button.selected,.incban .yes){background:var(--accent);color:var(--cta-ink);border-color:var(--accent);box-shadow:none}
+:root[data-theme-id] :is(.lv,.callav .badge,.sslink){color:var(--cta-ink)}
+:root[data-theme-id] .kycnudge{background:var(--raised);color:var(--accent-ink)}
+:root[data-theme-id] .kycerr{color:var(--theme-danger)}
+@keyframes zt-ring-pulse{50%{box-shadow:0 0 0 14px color-mix(in srgb,var(--accent) 10%,transparent),0 0 0 28px color-mix(in srgb,var(--accent) 3%,transparent)}}
 :root[data-theme-id][data-theme=light]{color-scheme:light}
 :root[data-theme-id][data-theme=dark]{color-scheme:dark}
 /* Animate only colors, and only during a theme change. Media and layout stay put. */
