@@ -236,7 +236,8 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/calls', { _id: 'call-id' }, body => assert.deepEqual(plain(body), { calleeId: 'host-id', kind: 'audio' }));
   assert.equal((await api.startCall('host-id', true)).callId, 'call-id');
   expect('POST', '/calls/call-id/end', {}); await api.declineCall('call-id');
-  expect('POST', '/chats/host-id', {}); await api.sendMessage('host-id', 'Hello');
+  expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello' })); await api.sendMessage('host-id', 'Hello');
+  expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello in our call', callId: 'accepted-call' })); await api.sendMessage('host-id', 'Hello in our call', 'accepted-call');
   expect('POST', '/users/host-id/follow', {}, body => assert.deepEqual(plain(body), { following: true })); await api.follow('host-id', true);
   finished();
   reset();
@@ -367,6 +368,14 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   assert.equal(events[1].data.automated, true, 'Realtime delivery retains the automated label');
+  socket.emitServer('chat:message', { _id: 'call-message', senderId: 'host-id', recipientId: 'member-id', text: 'Call message', callId: 'accepted-call', inCall: true });
+  const callMessage=events.filter(event=>event.type==='chat.message').at(-1);assert.equal(callMessage.data.callId,'accepted-call');assert.equal(callMessage.data.inCall,true);
+  const receivedGift={_id:'gift-delivery',senderId:'host-id',recipientId:'member-id',streamId:'stream-id',giftId:'catalog-gift',giftName:'Diamond Crown',coins:250,senderName:'Asha Live',emoji:'💎',mediaUrl:'https://cdn.example.test/crown.png',senderAvatarUrl:'https://cdn.example.test/asha.png'};
+  socket.emitServer('gift:received',receivedGift);
+  const giftEvent=events.filter(event=>event.type==='gift.received').at(-1);
+  assert.deepEqual(plain(giftEvent.data),{gift:'Diamond Crown',coins:250,from:'host-id',id:'gift-delivery',streamId:'stream-id',giftId:'catalog-gift',giftName:'Diamond Crown',senderName:'Asha Live',emoji:'💎',mediaUrl:'https://cdn.example.test/crown.png',senderAvatarUrl:'https://cdn.example.test/asha.png'});
+  const giftCount=events.filter(event=>event.type==='gift.received').length;
+  socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
   for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
     socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });

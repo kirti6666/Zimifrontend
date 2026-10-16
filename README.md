@@ -204,6 +204,37 @@ when the app becomes active again. The backend's signed webhook and payment
 verification remain authoritative. Configure the provider and confirm a real
 device checkout before using payments live.
 
+## Live studio and private calls
+
+The immersive room interface lives in `web/live-room.js` and `web/live-room.css`.
+It includes viewer/host layouts, live chat, follows, server-priced gifts, gift
+alerts and session supporters, hearts, a private-call request queue, camera/mic
+controls, camera switching, and a private video/voice call screen. Studio goals
+and appearance filters apply to the host's own session display; filters do not
+change the camera video sent to other people.
+
+View the interactive demo after `npm run build:web` and `npx serve dist`:
+
+- `/?preview=live` — viewer
+- `/?preview=host-live&role=host&approvedHost=1` — host studio
+- `/?preview=call` — private video call
+
+Only the preview build contains sample people/activity. The native build waits
+for authenticated server responses. Queue acceptance ends the public stream and
+opens a private call for the host and selected viewer; camera permission failures
+end the call and release media. Call-scoped chat verifies the active participants.
+Calls are free; paid-minute metering and PK battles are not implemented.
+
+Native invitations use `zimilive://live/<streamId>` and the device share sheet.
+Rebuild the native app to register this scheme. Invitations wait for sign-in and
+show a join confirmation; they do not interrupt an existing live or private call.
+
+Run `npm run test:live` for responsive UI, native message contracts, queue/error
+handling, and browser WebRTC media tests. These tests use fixtures and virtual
+cameras. Validate two physical devices against your configured backend and TURN
+service before release; the existing broadcaster sends one peer connection per
+viewer and is intended for small rooms.
+
 ## Themes and premium appearance
 
 Open **Profile & Settings → Appearance & Theme** to browse the theme gallery.

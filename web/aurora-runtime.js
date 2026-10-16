@@ -199,10 +199,10 @@ function go(v,id){
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
-  S.rmsgs=[["sys","",DEMO?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO?g(S.h).fee:0;
-  if(DEMO)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
+  S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
+  if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
  if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
@@ -532,7 +532,7 @@ function vCall(){const h=g(S.h);
  ${S.tray?giftTray():S.sh==="fx"?fxSheet():""}</div>`}
 
 function vVoice(){const h=g(S.h);
- if(window.ZimiHome&&!DEMO)return homeCallView(false);
+ if(window.ZimiHome)return homeCallView(false);
  return `<div class="voicecall">
   <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
   <div class="voiceorb">${avc(h,104)}</div>
@@ -1167,7 +1167,7 @@ function vRing(){const c=S.caller;
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
- if(window.ZimiHome&&!DEMO)return homeCallView(true);
+ if(window.ZimiHome)return homeCallView(true);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(me,c)}
  ${topBar(1)}
@@ -1255,7 +1255,7 @@ function connectingScreen(){const {from,to}=S.connecting;
 
 const IN_GIFTS=[1,2,3,4,5,6,8];
 function hostTick(){
- if(!DEMO){S.sec++;paintHostTick();return}
+ if(!DEMO||window.ZimiHome){S.sec++;paintHostTick();return}
  S.sec++;S.earned+=MY_RATE/60;
  if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
   S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
@@ -1588,6 +1588,7 @@ function appNotice(message){
 function r(){
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const roomFocus=window.zrCapture?.();
  obSyncTheme();
  if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
@@ -1600,7 +1601,7 @@ function r(){
  if(S.v==="call"){tick();paintFeed();
   if(S.cmp){const i=document.getElementById("rmsg");
    if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}}
- if(S.v==="voice")tick();
+ if(S.v==="voice"){tick();paintFeed()}
  /* a redraw while the code screen is open must not leave the boxes unfocused */
  if(S.v==="login"&&S.auth&&S.auth.step==="otp"){const e=Array.from({length:6},(_,k)=>document.getElementById("o"+k)).find(x=>x&&!x.value);if(e)e.focus()}
  if(S.v==="call"&&!S.cmp)paintGoal();
@@ -1609,7 +1610,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus)}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus)}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1699,11 +1700,11 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
-Native.on("gift.received",d=>{if(S.v!=="hcall")return;
+Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  const gf=GIFTS.find(x=>x[0]===d.gift)||["Gift","&#127873;",d.coins||0];
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
 Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
- if(d.inCall&&(S.v==="call"||S.v==="hcall")){S.rmsgs.push(["host",first(d.name||"Them"),d.text]);return paintFeed()}
+ if(["call","hcall","voice"].includes(S.v)&&String(d.from)===String(S.v==="hcall"?S.caller?.id:S.h)){S.rmsgs.push(["host",first(d.name||(S.v==="hcall"?S.caller?.n:g(S.h)?.n)||"Them"),d.text]);if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);return paintFeed()}
  if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 

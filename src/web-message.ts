@@ -65,7 +65,10 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.signal": valid = identifier(d.streamId) && identifier(d.to) && rtcSignal(d); break;
     case "stream.start": valid = text(d.title, 120) && category(d.category) && (d.kind === undefined || ["video", "audio"].includes(String(d.kind))); break;
     case "stream.join": case "stream.leave": case "stream.end": case "stream.ready": valid = identifier(d.streamId); break;
+    case "stream.share": valid = identifier(d.streamId) && Object.keys(d).every(key => key === "streamId"); break;
     case "stream.message": valid = identifier(d.streamId) && text(d.text, 500); break;
+    case "stream.requests.load": case "stream.request": case "stream.react": valid = identifier(d.streamId); break;
+    case "stream.request.cancel": case "stream.request.decline": case "stream.request.accept": valid = identifier(d.streamId) && identifier(d.id); break;
     case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey); break;
     case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === undefined || d.canvas === "" || (typeof d.canvas === "string" && /^#[0-9a-f]{6}$/i.test(d.canvas))); break;
@@ -106,4 +109,11 @@ export function isTrustedDocument(url: string) {
   // iOS and Android's legacy bridge report the full document URL instead.
   // Accept both exact representations without allowing other hosts or paths.
   return url === "about:blank" || url === "https://aurora.localhost" || url === "https://aurora.localhost/";
+}
+
+/** Native links select an existing room; they never carry executable routes,
+ * credentials, host authority, arbitrary URLs, or automatic camera consent. */
+export function parseLiveLink(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  return /^zimilive:\/\/live\/([a-zA-Z0-9_-]{1,128})$/.exec(url)?.[1] ?? null;
 }

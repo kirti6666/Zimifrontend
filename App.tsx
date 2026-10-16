@@ -120,6 +120,7 @@ export default function App() {
             allowUniversalAccessFromFileURLs={false}
             mixedContentMode="never"
             injectedJavaScript={THEME_BRIDGE}
+            onLoadStart={() => bridge.documentLoading()}
             onMessage={onMessage}
             onError={onError}
             onRenderProcessGone={reload}

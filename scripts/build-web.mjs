@@ -91,6 +91,7 @@ const page = (demo) =>
   read("web/profile.css") +
   read("web/themes.css") +
   read("web/icons.css") +
+  read("web/live-room.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -105,6 +106,7 @@ const page = (demo) =>
   "\n" + read("web/loading.js") +
   "\n" + read("web/home.js") +
   "\n" + read("web/media.js") +
+  "\n" + read("web/live-room.js") +
   "\n" + read("web/chats.js") +
   "\n" + read("web/profile.js") +
   "\n" + read("web/themes.js") +

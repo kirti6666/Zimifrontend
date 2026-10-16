@@ -28,6 +28,22 @@ Native.on("call.connected")      <--  postToWeb(...)
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
 
+Live-room queue messages are `stream.requests.load {streamId}`, `stream.request {streamId}`,
+and `stream.request.cancel|decline|accept {streamId,id}` (where `id` is the queue entry ID).
+The bridge returns `stream.requests {streamId,requests,ownRequestId,count}` and
+`stream.request.updated {streamId,request}`, and reloads the active queue on socket
+invalidation or reconnection. Only hosts receive other members' queue entries.
+`stream.react {streamId}` returns/broadcasts `stream.reaction {id,streamId,userId,emoji}`;
+the UI deduplicates HTTP and socket copies using `id`.
+
+Accepting a queued request emits `stream.privateCall
+{streamId,requestId,callId,peerId,initiator,voice:false,peer}` before `stream.ended`.
+The screen stops public media, prepares camera/microphone, opens the private call
+and starts ordinary WebRTC signaling. It must deduplicate the socket and HTTP
+acceptance copies by call ID. No automatic `call.connected` event precedes that
+media preparation. The backend currently has no per-minute call billing; display
+the private call as free.
+
 ## Setup
 
 Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_URL`. The login token

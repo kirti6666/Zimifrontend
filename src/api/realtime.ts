@@ -68,7 +68,9 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
       if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
-      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text", automated: message.automated === true });
+      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text", automated: message.automated === true,
+        ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
+      });
       // Sender echoes also update the list, including messages sent on another device.
       emit("chats.updated", {});
     } catch { /* Ignore malformed events. */ }
@@ -83,7 +85,11 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const gift = record(payload);
       if (idOf(gift.recipientId) !== userId) return;
-      if (typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins > 0) emit("gift.received", { gift: "Gift", coins: gift.coins, from: idOf(gift.senderId) });
+      if (typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins > 0) emit("gift.received", {
+        gift: string(gift.giftName) || idOf(gift.giftId) || "Gift", coins: gift.coins, from: idOf(gift.senderId),
+        id: idOf(gift), streamId: idOf(gift.streamId), giftId: idOf(gift.giftId), giftName: string(gift.giftName),
+        senderName: string(gift.senderName), emoji: string(gift.emoji), mediaUrl: string(gift.mediaUrl), senderAvatarUrl: string(gift.senderAvatarUrl),
+      });
       refreshWallet();
     } catch { /* Ignore malformed events. */ }
   });
@@ -101,6 +107,9 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   }
   socket.on("stream:ended", payload => { try { const data = record(payload), streamId = idOf(data.streamId) || idOf(data); if (streamId) emit("stream.ended", { streamId }); } catch { /* Invalid room payload. */ } });
   socket.on("stream:message", payload => { try { emit("stream.message", { ...streamChatFrom(payload) }); } catch { /* Invalid room message. */ } });
+  for (const [serverName, appName] of [["stream:requests", "stream.requests.changed"], ["stream:request-updated", "stream.request.updated"], ["stream:private-call", "stream.privateCall"], ["stream:reaction", "stream.reaction"]]) {
+    socket.on(serverName, payload => { try { const data = record(payload); if (idOf(data.streamId)) emit(appName, data); } catch { /* Invalid room payload. */ } });
+  }
   socket.on("wallet:updated", refreshWallet);
   socket.on("home:updated", () => emit("home.updated", {}));
   socket.on("account:updated", () => emit("account.updated", {}));

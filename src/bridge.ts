@@ -1,13 +1,13 @@
 import type { RefObject } from "react";
 import type WebView from "react-native-webview";
-import { AppState, Linking } from "react-native";
+import { AppState, Linking, Share } from "react-native";
 
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
 import { connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
-import { parseWebMessage } from "./web-message";
+import { parseLiveLink, parseWebMessage } from "./web-message";
 import { approvedHost } from "./host-access";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
@@ -29,8 +29,10 @@ export type WebMessage =
   | { type: "rtc.signal"; data: RtcPayload & { callId: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string } }
   | { type: "stream.start"; data: { title: string; category: string; kind?: "video" | "audio" } }
-  | { type: "stream.join" | "stream.leave" | "stream.end" | "stream.ready"; data: { streamId: string } }
+  | { type: "stream.join" | "stream.leave" | "stream.end" | "stream.ready" | "stream.share"; data: { streamId: string } }
   | { type: "stream.message"; data: { streamId: string; text: string } }
+  | { type: "stream.requests.load" | "stream.request" | "stream.react"; data: { streamId: string } }
+  | { type: "stream.request.cancel" | "stream.request.decline" | "stream.request.accept"; data: { streamId: string; id: string } }
   | { type: "wallet.checkout"; data: { packId: string; idempotencyKey: string } }
   | { type: "wallet.verify"; data: { merchantOrderId: string } }
   | { type: "themes.load"; data: Record<string, never> }
@@ -112,10 +114,17 @@ export type AppMessage =
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string; from: string } }
   | { type: "stream.peer" | "stream.peerLeft"; data: { streamId: string; userId: string } }
   | { type: "stream.opened"; data: { stream: HomeStream; hosting: boolean; messages: StreamChat[] } }
+  | { type: "stream.link"; data: { stream: HomeStream } }
+  | { type: "stream.link.loading"; data: { streamId: string; loading: boolean } }
+  | { type: "stream.shareLink"; data: { streamId: string; url: string } }
   | { type: "stream.closed" | "stream.ended"; data: { streamId: string } }
   | { type: "stream.viewers"; data: { streamId: string; count: number } }
   | { type: "stream.message"; data: StreamChat }
   | { type: "stream.gift"; data: Record<string, unknown> }
+  | { type: "stream.requests"; data: StreamRequests }
+  | { type: "stream.request.updated"; data: { streamId: string; request: StreamCallRequest } }
+  | { type: "stream.privateCall"; data: StreamPrivateCall }
+  | { type: "stream.reaction"; data: StreamReaction }
   | { type: "call.matched"; data: { host: Host } }
   | { type: "call.created"; data: { callId: string; to: string; voice: boolean } }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
@@ -131,8 +140,8 @@ export type AppMessage =
   | { type: "call.failed"; data: { message: string } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
   | { type: "call.ended"; data: { callId: string } }
-  | { type: "gift.received"; data: { gift: string; coins: number; from: string } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean; automated?: boolean } };
+  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string } }
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -147,10 +156,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let activeCall: string | undefined;
   let callGeneration = 0;
   let pendingOutgoing: { generation: number; callId?: string } | undefined;
+  let pendingStreamAccept: { generation: number; streamId: string; id: string } | undefined;
   const cancelledCalls = new Set<string>();
   let epoch = 0;
   let closed = false;
   let restoring = false;
+  let webReady = false, sessionAvailable = false, runtimeLinkReceived = false;
+  let linkRevision = 0;
+  let pendingStreamLink: { streamId: string; revision: number } | undefined;
+  let loadingStreamLink: { revision: number; epoch: number } | undefined;
   let accountId: string | undefined;
   let hostStatus: string | undefined;
   let hostAccount: Account | undefined;
@@ -164,6 +178,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let homeQuery: HomeQuery = {};
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
+  let streamRequestsRevision = 0;
   type PurchaseKind = "coins" | "premium";
   const pendingPurchases = new Map<string, { orderId: string; kind: PurchaseKind; epoch: number; sessionVersion: number }>();
   const verifyingPurchases = new Set<string>();
@@ -182,6 +197,45 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const quietly = (work: Promise<unknown>, action?: string) => {
     const version = epoch;
     void work.catch(error => { if (current(version)) operationError(error, action); });
+  };
+  const flushStreamLink = async () => {
+    const link = pendingStreamLink;
+    if (!link || closed || !webReady || restoring || !sessionAvailable || !getCachedToken() || !hostAccount || hostAccount.requiresOnboarding || liveOnboarding) return;
+    const version = epoch, sessionVersion = getSessionVersion();
+    if (loadingStreamLink?.revision === link.revision && loadingStreamLink.epoch === version) return;
+    const request = { revision: link.revision, epoch: version };
+    loadingStreamLink = request;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && pendingStreamLink === link && webReady && sessionAvailable && !restoring && !hostAccount?.requiresOnboarding && !liveOnboarding;
+    emit({ type: "stream.link.loading", data: { streamId: link.streamId, loading: true } });
+    try {
+      const stream = await api.stream(link.streamId);
+      if (!applicable()) return;
+      if (stream.id !== link.streamId || stream.status !== "live" || !stream.hostId) throw new ApiError("This live session has ended or is no longer available.", 404);
+      pendingStreamLink = undefined;
+      emit({ type: "stream.link", data: { stream } });
+    } catch (error) {
+      if (applicable()) { pendingStreamLink = undefined; operationError(error, "stream.link"); }
+    } finally {
+      if (loadingStreamLink === request) loadingStreamLink = undefined;
+      if (current(version) && webReady && link.revision === linkRevision) emit({ type: "stream.link.loading", data: { streamId: link.streamId, loading: false } });
+      // A reload or account restoration may have deferred this same link while
+      // its old request was finishing. The current session owns the retry.
+      if (pendingStreamLink && (pendingStreamLink !== link || !current(version))) void flushStreamLink();
+    }
+  };
+  const openStreamLink = (url: unknown) => {
+    const streamId = parseLiveLink(url);
+    if (!streamId || closed) return false;
+    if (pendingStreamLink?.streamId !== streamId) pendingStreamLink = { streamId, revision: ++linkRevision };
+    void flushStreamLink();
+    return true;
+  };
+  const loadStreamRequests = async (streamId: string) => {
+    const version = epoch, revision = ++streamRequestsRevision;
+    try {
+      const data = await api.streamRequests(streamId);
+      if (current(version) && activeStream?.id === streamId && revision === streamRequestsRevision) emit({ type: "stream.requests", data });
+    } catch (error) { if (current(version) && activeStream?.id === streamId && revision === streamRequestsRevision) throw error; }
   };
   const rememberCancelledCall = (callId: string) => {
     cancelledCalls.add(callId);
@@ -356,6 +410,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const startSession = (token: string, onboarding = false) => {
     stopLive();
     liveOnboarding = onboarding;
+    sessionAvailable = true;
     const version = epoch;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
@@ -378,6 +433,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       if (event.type === "themes.updated") { if (!liveOnboarding) quietly(loadThemes(), "themes.load"); return; }
       const callId = event.data?.callId;
+      if (event.type === "stream.requests.changed") {
+        if (event.data?.streamId === activeStream?.id && activeStream) quietly(loadStreamRequests(activeStream.id), "stream.requests.load");
+        return;
+      }
+      if (event.type === "stream.privateCall" && typeof callId === "string") {
+        if (cancelledCalls.has(callId) || (event.data?.initiator === false && !hasHostAccess()) ||
+          (pendingStreamAccept && pendingStreamAccept.id === event.data?.requestId && pendingStreamAccept.generation !== callGeneration)) {
+          quietly(endCancelledCall(callId, getSessionVersion()), "call.end"); return;
+        }
+        activeCall = callId; activeHostCall = event.data?.initiator === false;
+        if (event.data?.streamId === activeStream?.id) activeStream = undefined;
+      }
       if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
         void api.declineCall(callId).catch(() => {}); return;
       }
@@ -401,6 +468,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
       if (event.type === "home.updated") quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
       if (event.type === "realtime.status" && event.data?.connected === true && !liveOnboarding) {
+        if (activeStream) quietly(loadStreamRequests(activeStream.id), "stream.requests.load");
         quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
         quietly(loadChats(), "chats.reload");
         quietly(loadProfileSettings(), "profile.settings.load");
@@ -409,8 +477,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
     if (!onboarding) void loadLists();
+    void flushStreamLink();
   };
   const unsubscribe = onSessionExpired(() => {
+    sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
     epoch++; callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
@@ -419,6 +489,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const restoreSession = async () => {
     if (restoring) return;
     restoring = true;
+    sessionAvailable = false;
     const version = epoch, sessionVersion = getSessionVersion();
     emit({ type: "session.restoring", data: {} });
     try {
@@ -437,13 +508,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; }
+    } finally { restoring = false; void flushStreamLink(); }
   };
 
   async function handle(msg: WebMessage) {
     const version = epoch;
     switch (msg.type) {
-      case "ready": if (!msg.data.demo) await restoreSession(); return;
+      case "ready": webReady = !msg.data.demo; if (webReady) await restoreSession(); return;
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "home.reload": return loadHome(msg.data);
@@ -496,10 +567,19 @@ export function createBridge(post: (msg: AppMessage) => void) {
         activeStream = { id: stream.id, hosting };
         const messages = await api.streamMessages(stream.id).catch(() => []);
         if (current(version) && activeStream?.id === stream.id) emit({ type: "stream.opened", data: { stream, hosting, messages } });
+        if (current(version) && activeStream?.id === stream.id) quietly(loadStreamRequests(stream.id), "stream.requests.load");
         quietly(loadHome(), "home.reload");
         return;
       }
+      case "stream.share": {
+        if (!sessionAvailable || !getCachedToken() || activeStream?.id !== msg.data.streamId) throw new ApiError("Open this live room before sharing it.", 409);
+        const url = `zimilive://live/${msg.data.streamId}`;
+        emit({ type: "stream.shareLink", data: { streamId: msg.data.streamId, url } });
+        await Share.share({ title: "Zimi Live", message: `Join this live on Zimi Live: ${url}` });
+        return;
+      }
       case "stream.leave": case "stream.end": {
+        if (pendingStreamAccept?.streamId === msg.data.streamId) callGeneration++;
         if (msg.type === "stream.end") await api.endStream(msg.data.streamId); else await api.leaveStream(msg.data.streamId);
         if (current(version)) {
           if (activeStream?.id === msg.data.streamId) activeStream = undefined;
@@ -509,6 +589,37 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "stream.message": { const data = await api.sendStreamMessage(msg.data.streamId, msg.data.text); if (current(version)) emit({ type: "stream.message", data }); return; }
+      case "stream.requests.load": return loadStreamRequests(msg.data.streamId);
+      case "stream.request": {
+        const data = await api.requestStreamCall(msg.data.streamId);
+        if (current(version) && activeStream?.id === msg.data.streamId) { streamRequestsRevision++; emit({ type: "stream.requests", data }); }
+        return;
+      }
+      case "stream.request.cancel": case "stream.request.decline": {
+        if (msg.type === "stream.request.decline") await requireApprovedHost();
+        const data = await api.updateStreamRequest(msg.data.streamId, msg.data.id, msg.type === "stream.request.cancel" ? "cancel" : "decline");
+        if (current(version)) { emit({ type: "stream.request.updated", data: { streamId: msg.data.streamId, request: data } }); await loadStreamRequests(msg.data.streamId); }
+        return;
+      }
+      case "stream.request.accept": {
+        const intent = { generation: ++callGeneration, streamId: msg.data.streamId, id: msg.data.id }, sessionVersion = getSessionVersion();
+        pendingStreamAccept = intent;
+        try {
+          const approval = await requireApprovedHost();
+          if (intent.generation !== callGeneration) return;
+          const data = await api.acceptStreamRequest(msg.data.streamId, msg.data.id);
+          if (!current(version) || intent.generation !== callGeneration || approval !== hostRevision || !hasHostAccess() || cancelledCalls.has(data.callId)) { await endCancelledCall(data.callId, sessionVersion); return; }
+          activeCall = data.callId; activeHostCall = true;
+          if (activeStream?.id === data.streamId) activeStream = undefined;
+          emit({ type: "stream.privateCall", data });
+        } finally { if (pendingStreamAccept === intent) pendingStreamAccept = undefined; }
+        return;
+      }
+      case "stream.react": {
+        const data = await api.reactToStream(msg.data.streamId);
+        if (current(version)) emit({ type: "stream.reaction", data });
+        return;
+      }
       case "wallet.checkout": case "themes.premium.checkout": {
         const kind: PurchaseKind = msg.type === "themes.premium.checkout" ? "premium" : "coins", sessionVersion = getSessionVersion();
         const purchase = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey) : api.checkoutPremium(msg.data.idempotencyKey));
@@ -557,6 +668,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "auth.google": return emit({ type: "auth.error", data: { message: "Use your mobile number to sign in.", code: "UNSUPPORTED_PROVIDER" } });
       case "auth.logout": {
+        sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
         callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
@@ -598,6 +710,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
               liveOnboarding = account.requiresOnboarding === true;
               stopLive.setActive?.(appActive && !liveOnboarding);
               void loadLists();
+              void flushStreamLink();
             }
             else quietly(loadProfileSettings(), "profile.settings.load");
           }
@@ -709,9 +822,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
         });
       }
       case "chat.send": {
+        const callId = msg.data.inCall ? activeCall : undefined;
+        if (msg.data.inCall && !callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);
         await requireChatPair(msg.data.to);
         if (!current(version)) return;
-        if (!threadPermissions.has(msg.data.to)) {
+        if (callId && activeCall !== callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);
+        if (!callId && !threadPermissions.has(msg.data.to)) {
           const revision = hostRevision;
           const data = await api.thread(msg.data.to);
           if (!current(version)) return;
@@ -719,8 +835,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
           rememberThreadPermission(msg.data.to, data);
         }
         const permission = threadPermissions.get(msg.data.to);
-        if (!permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
-        await api.sendMessage(msg.data.to, msg.data.text, msg.data.inCall ? activeCall : undefined);
+        if (!callId && !permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
+        // The server verifies that this accepted call belongs to both users;
+        // an in-call reply need not wait for a preexisting text conversation.
+        await api.sendMessage(msg.data.to, msg.data.text, callId);
         if (current(version)) quietly(loadChats(), "chats.reload");
         return;
       }
@@ -793,11 +911,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   }
 
+  const linkSubscription = Linking.addEventListener("url", event => {
+    if (openStreamLink(event.url)) runtimeLinkReceived = true;
+  });
+  void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
+
   return {
+    documentLoading: () => { webReady = false; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
+      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
       const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" ? `:${msg.data.id}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
@@ -806,6 +930,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
         operationError(error, msg.type);
       }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); activity?.remove(); stopLive(); },
+    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); activity?.remove(); linkSubscription.remove(); stopLive(); },
   };
 }

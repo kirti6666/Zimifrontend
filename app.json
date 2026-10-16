@@ -2,6 +2,7 @@
   "expo": {
     "name": "Zimi Live",
     "slug": "aurora-live-app",
+    "scheme": "zimilive",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
