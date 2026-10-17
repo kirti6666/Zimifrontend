@@ -206,7 +206,11 @@ export const api = {
     await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });
     return api.wallet();
   },
-  sendMessage: (to: string, text: string, callId?: string) => request<void>("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}) }),
+  /** Returns the text as delivered: the server hides phone numbers and abusive words. */
+  async sendMessage(to: string, text: string, callId?: string) {
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}) }));
+    return { text: typeof message.text === "string" ? message.text : text };
+  },
   follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
   async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },

@@ -136,6 +136,7 @@ export type AppMessage =
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
+  | { type: "chat.sent"; data: { to: string; sent: string; text: string; inCall: boolean } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number } }
   | { type: "call.failed"; data: { message: string } }
@@ -860,7 +861,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (!callId && !permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
         // The server verifies that this accepted call belongs to both users;
         // an in-call reply need not wait for a preexisting text conversation.
-        await api.sendMessage(msg.data.to, msg.data.text, callId);
+        const delivered = (await api.sendMessage(msg.data.to, msg.data.text, callId))?.text;
+        if (current(version) && typeof delivered === "string" && delivered !== msg.data.text)
+          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered, inCall: !!msg.data.inCall } });
         if (current(version)) quietly(loadChats(), "chats.reload");
         return;
       }

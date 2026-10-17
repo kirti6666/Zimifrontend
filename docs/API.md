@@ -122,6 +122,15 @@ The server persists configured host welcomes as normal chat messages with
 | `wallet.balance` | `{coins?, earned?}` | Updates balances everywhere |
 | `verification.status` | `{status}` | Moves the verification screen on |
 
+## Hidden chat text
+
+The server replaces phone numbers and abusive words in private, in-call and live chat
+with `█` characters before saving or delivering a message (`backend/src/lib/moderation.ts`).
+The screens draw every run of `█` as a blur that cannot be selected or copied
+(`escChat` in `web/aurora-runtime.js`). When something was hidden from a message the
+user just sent, the app posts `chat.sent {to, sent, text, inCall}` so the sender's bubble
+shows what was delivered, with a short notice.
+
 ## Private screens
 
 Screenshots and screen recordings are blocked while a video or voice call, a staff

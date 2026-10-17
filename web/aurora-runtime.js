@@ -576,7 +576,7 @@ function paintFeed(){
  const f=document.getElementById("rfeed");
  if(!f)return;
  f.innerHTML=S.rmsgs.map(([k,w,t])=>`<div class="lvmsg ${["me","host","sys","gift"].includes(k)?k:"host"}">
-  ${w?`<span class="who">${esc(w)}</span>`:""}<span class="txt">${esc(t)}</span></div>`).join("");
+  ${w?`<span class="who">${esc(w)}</span>`:""}<span class="txt">${escChat(t)}</span></div>`).join("");
  f.scrollTop=f.scrollHeight;
 }
 
@@ -880,6 +880,8 @@ function vHelp(){return `<div class="acct">
  <div class="s11 muted" style="padding:14px 3px;text-align:center">Typical reply time: under 24 hours</div></div>`}
 
 const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+/* The server replaces phone numbers and abusive words in chat with █; they show as a blur, never as text. */
+const escChat=v=>esc(v).replace(/█+/g,m=>`<span class="chat-hidden" role="img" aria-label="Hidden">${m}</span>`);
 // IDs enter inline handlers, so accept only identifier characters rather than
 // relying on HTML escaping (which is decoded before JavaScript runs).
 const domId=v=>/^[a-zA-Z0-9_-]{1,128}$/.test(String(v??""))?String(v):"";

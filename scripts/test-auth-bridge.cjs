@@ -463,6 +463,23 @@ test('home requests discard stale filters and never replace enriched feed with l
   h.bridge.close();
 });
 
+test('a chat message the server partly hid is reported back as delivered', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user', isPhoneVerified: true }, requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.thread = () => ({ messages: [], canSend: true });
+  h.overrides.sendMessage = () => ({ text: 'call ██████████' });
+  h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'call 9876543210' } });
+  await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent').map(post => post.data))), [{ to: 'host-1', sent: 'call 9876543210', text: 'call ██████████', inCall: false }]);
+  h.overrides.sendMessage = () => ({ text: 'hello' });
+  h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'hello' } });
+  await settle();
+  assert.equal(h.find('chat.sent').length, 1, 'Nothing is reported when nothing was hidden');
+  h.bridge.close();
+});
+
 test('match previews a real host without creating a call and media signals stay in native transport', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());

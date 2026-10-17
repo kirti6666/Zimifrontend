@@ -13,6 +13,7 @@ numbers.
 | Fake creators | Only admin-approved hosts can go live, take calls, receive gifts or withdraw; approval can be suspended | `hosts/host-access.ts` |
 | Unwanted contact | Only members start chats, calls and gifts, and only with approved hosts; a host can message or view a member only after the member writes first | `hosts/host-access.ts`, `chat/chat.controller.ts`, `users/user.service.ts` |
 | Harassment | A block hides both people from each other in chats, posts, profiles and search | `users/user.service.ts` (`hiddenUserIds`) |
+| Off-platform contact and abuse | Phone numbers (any spacing, or spelled out in English or Hindi words) and abusive words (Hinglish, Hindi, English) are hidden from private, in-call and live chat before they are saved or delivered; the other person sees a blur | `lib/moderation.ts` |
 | Gift farming | Nobody can gift themselves | `commerce/commerce.controller.ts` |
 | Fake coins | Coins are credited only by the server after PayPlus confirms payment (verify call or signed webhook); reversals take them back | `commerce/commerce.service.ts` |
 | Double spending | Gifts, purchases and withdrawals carry idempotency keys, and balances are checked and changed atomically | `commerce/commerce.controller.ts` |
@@ -25,7 +26,7 @@ numbers.
 | Risk | Proposed rule | Suggested default |
 | --- | --- | --- |
 | No way to report | Report a person, message or stream from the app; reports go to an admin queue | Hide a live stream for review after 3 reports from different members in 10 minutes |
-| Off-platform deals | Hide phone numbers, UPI IDs, emails and links in chat until the member has spent coins with that host | Hide until 500 coins spent with the host |
+| Off-platform deals | Phone numbers are always hidden now; also hide UPI IDs, emails, links and social handles | Hide them always, like phone numbers |
 | Chargeback fraud | Gift earnings become withdrawable only after a holding period | Withdrawable after 7 days |
 | Collusion (sender and host are the same person) | Flag gifts between accounts that share a device, payout UPI ID or recharge payment method; hold their earnings for review | Flag on any shared payout UPI ID |
 | Multiple accounts | Limit how many accounts one device can create | 2 accounts per device |

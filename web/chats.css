@@ -201,3 +201,5 @@
 @media(max-height:600px){.zc-thread:has(.zc-composer-field:focus-within) .zc-thread-live{display:none}}
 @media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer-send:active,.zc-thread-video:active{transform:none}}
 
+/* Phone numbers and abusive words the server hid from chat: a blur, never readable or copyable. */
+.chat-hidden{display:inline-block;filter:blur(4px);opacity:.7;user-select:none;-webkit-user-select:none;letter-spacing:-.05em;vertical-align:-.1em}
