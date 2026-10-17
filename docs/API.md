@@ -75,7 +75,7 @@ for it (login, call failed).
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | – |
 | Follow | `PUT /follows/:id` `{on}` | – |
-| Buy a coin pack | `POST /wallet/recharge` | `Wallet` |
+| Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
 
@@ -117,8 +117,10 @@ The server persists configured host welcomes as normal chat messages with
   needed in the React Native shell.
 - Incoming calls while the app is closed: needs push notifications and the
   Android incoming-call screen in the React Native shell.
-- Coin purchases: Google Play Billing must confirm a purchase before
-  `POST /wallet/recharge`.
+- Coin purchases use PayPlus checkout. Coins are credited only by the server,
+  after `POST /coins/purchase/verify` or the signed PayPlus webhook. Google
+  Play's payments policy may require Play Billing (or its alternative billing
+  programme) for coins sold inside the Android app; check before release.
 - Google sign-in: shows "isn't available yet".
 - Photos are sent inline as data URLs; large uploads should move to direct
   uploads with signed URLs.

@@ -5687,8 +5687,6 @@ const SENDERS=["Rohit S.","Arnav M.","Kunal T.","Faisal R.","Devika N.","Yash P.
 const CAPS=["late night set","practice run, be kind","new routine, day one","backstage before going live",
  "thank you for last night","testing a new sound","rehearsal cut","this one took a while",
  "same song, slower","one take, no edits","sunday morning","from the last stream"];
-const PACKS=[[200,97.99,100],[625,249.99,150],[1125,499.99,125],[2500,989.99,150],[3750,1499.99,150],[5000,1999.99,150]];
-const METHODS=["UPI","Card","Net banking"];
 const PERIODS=[["daily","Daily",1],["weekly","Weekly",6.4],["all","All time",41]];
 
 /* Deterministic totals so the ordering is stable between renders. */
@@ -5715,7 +5713,7 @@ kerr:0,ci:0,spent:0,giftN:0,
   {k:"callers",ico:"user",t:"Social star",d:"Talk to 10 different callers",goal:10,p:8,u:"callers",rw:1500},
   {k:"sessions",ico:"vid",t:"Show up",d:"Go online three times today",goal:3,p:3,u:"sessions",rw:800},
   {k:"earn",ico:"cup",t:"Big earner",d:"Earn 5,000 coins from calls",goal:5000,p:3400,u:"coins",rw:2500}],
-tab:"explore",ht:"posts",pi:0,likes:{},pack:2,meth:"UPI",mic:1,cam:1,bt:"creators",per:"weekly",rmsgs:callPreview?[["host","Aanya","hey, you made it"]]:[],h:callPreview?"aanya":null,bal:52400,sec:0,t:null,msgs:null,tray:previewMode==="gifts"?1:0,
+tab:"explore",ht:"posts",pi:0,likes:{},mic:1,cam:1,bt:"creators",per:"weekly",rmsgs:callPreview?[["host","Aanya","hey, you made it"]]:[],h:callPreview?"aanya":null,bal:52400,sec:0,t:null,msgs:null,tray:previewMode==="gifts"?1:0,
  title:"",goal:1000000,fav:22,favn:10,favGot:0,gifted:0,
  sh:0,cmp:0,cache:{},btab:"Beauty",bsel:{Beauty:1,Makeup:0,Sticker:0,Filters:0,"Image quality":0},lvmode:"Live",
  txf:"all",faq:-1,safe:{discover:1,requests:1,activity:0},blocked:[],
@@ -6455,28 +6453,8 @@ function scrollPost(){
 
 function history_back(){go(S.back||"home",S.backId)}
 
-function vCoins(){
- if(window.ZimiHome)return window.ZimiHome.coins();
- const sel=S.pack==null?2:S.pack, pk=PACKS[sel], money=v=>v.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
- return `<div class="cwrap">
-  <div class="ctools"><span class="cbal">${coin}${window.contentBalance?contentBalance():n(S.bal)}</span><button class="ccurrency">₹ INR ${I('chev',14)}</button></div>
-  <div class="ctitle">Welcome Bonus for You!</div>
-  <div class="cgrid">${PACKS.map(([c,pr,bonus],i)=>`<button class="cpack ${sel===i?"on":""}" onclick="S.pack=${i};r()">
-    ${i===3?`<span class="cbest">🔥 Hot</span>`:i===5?`<span class="cbest">★ Popular</span>`:""}
-    <span class="amt">${coin}${n(c)}</span>
-    <span class="bon">${bonus}% More</span>
-    <span class="coinart" aria-hidden="true"><i>★</i><i>★</i><i>★</i></span>
-    <span class="pr">&#8377;${money(pr)}</span></button>`).join("")}</div>
-  <div class="cnote">Coins are used for calls and gifts. Select a pack, then continue securely.</div>
- </div>
- <div class="cbar">
-  <button class="cbtn" onclick="buyPack(${sel})">${coin}Get ${n(pk[0])} coins &middot; &#8377;${money(pk[1])}</button></div>`}
-
-/* The app hands the purchase to the store; the new balance arrives as wallet.balance. */
-function buyPack(i){const [c,price]=PACKS[i];
- if(!DEMO){Native.send("wallet.recharge",{pack:i,coins:c,price,method:S.meth});return}
- S.bal+=c;
- go("profile")}
+// home.js is always bundled and owns the coin packs and PayPlus checkout.
+function vCoins(){return window.ZimiHome.coins()}
 
 const TXNS=[
  ["Call with Priya","Today, 11:42 AM",-420,"call"],

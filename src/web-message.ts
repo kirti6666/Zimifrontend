@@ -98,7 +98,6 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;
     case "call.accept": case "call.decline": valid = identifier(d.callId); break;
     case "call.end": valid = (d.callId === undefined || identifier(d.callId)) && optionalText(d.reason, 300); break;
-    case "wallet.recharge": valid = Number.isInteger(d.pack) && amount(d.coins) && amount(d.price) && text(d.method, 50); break;
     case "payout.request": valid = amount(d.coins) && text(d.upi, 100); break;
     case "awards.claim": valid = identifier(d.task); break;
   }

@@ -64,7 +64,6 @@ export type WebMessage =
   | { type: "call.accept"; data: { callId: string } }
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
-  | { type: "wallet.recharge"; data: { pack: number; coins: number; price: number; method: string } }
   | { type: "payout.request"; data: { coins: number; upi: string } }
   | { type: "awards.claim"; data: { task: string } };
 
@@ -896,7 +895,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (callId) quietly(api.endCall(callId, msg.data.reason), msg.type);
         return;
       }
-      case "wallet.recharge": return sendWallet(api.recharge(msg.data), msg.type);
       case "payout.request": {
         await requireApprovedHost();
         return sendWallet(api.requestPayout(msg.data.coins, msg.data.upi), msg.type);

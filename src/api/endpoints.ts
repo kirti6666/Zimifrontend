@@ -200,7 +200,6 @@ export const api = {
   },
   sendMessage: (to: string, text: string, callId?: string) => request<void>("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}) }),
   follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
-  recharge: (_purchase: { pack: number; coins: number; price: number; method: string }) => unavailable<Wallet>("Secure checkout is not available in this build yet. No payment was taken."),
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
   async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
   async themes() { return themesFrom(await request("GET", "/themes")); },

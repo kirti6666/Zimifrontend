@@ -241,7 +241,7 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/users/host-id/follow', {}, body => assert.deepEqual(plain(body), { following: true })); await api.follow('host-id', true);
   finished();
   reset();
-  await assert.rejects(api.recharge({}), /checkout/); await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
+  await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
   assert.equal(requests.length, 0, 'Legacy money flows cannot debit or fake success');
 
   const creator = { _id: 'creator-id', name: 'Asha Live', avatar: { url: 'https://cdn.example.test/host.jpg' }, isVerifiedHost: true, isOnline: true, availableForCall: true, callRateCoinsPerMinute: 0,
