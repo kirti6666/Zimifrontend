@@ -122,5 +122,6 @@ The server persists configured host welcomes as normal chat messages with
 - Google sign-in: shows "isn't available yet".
 - Photos are sent inline as data URLs; large uploads should move to direct
   uploads with signed URLs.
-- Profile numbers on host pages (lifetime coins, levels, top supporters) are
-  still worked out on the screen from sample formulas.
+- Your own level comes from `GET /account/settings` as `standing.level`
+  (thresholds are set in the admin dashboard). Other people's lifetime coins,
+  levels and top supporters on host pages are still sample formulas.
