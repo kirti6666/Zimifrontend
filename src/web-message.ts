@@ -21,6 +21,9 @@ const rtcSignal = (data: Record<string, unknown>) => {
     (candidate.sdpMLineIndex == null || (Number.isInteger(candidate.sdpMLineIndex) && Number(candidate.sdpMLineIndex) >= 0 && Number(candidate.sdpMLineIndex) <= 100)) &&
     optionalText(candidate.usernameFragment, 256);
 };
+// E.164, optionally with the calling code the person chose (it must start the number).
+const phoneNumber = (d: Record<string, unknown>) => typeof d.phone === "string" && /^\+[1-9]\d{5,14}$/.test(d.phone) &&
+  (d.dialCode === undefined || (typeof d.dialCode === "string" && /^\+[1-9]\d{0,2}$/.test(d.dialCode) && d.phone.startsWith(d.dialCode)));
 const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
 const settingsPatch = (data: Record<string, unknown>) => {
   const keys = Object.keys(data).filter(key => key !== "requestId");
@@ -74,8 +77,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === "" || optionalColor(d.canvas)) && ["ink", "primary", "contrast", "surface", "raised"].every(key => optionalColor(d[key])); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
-    case "auth.sendOtp": valid = typeof d.phone === "string" && /^\+91[6-9]\d{9}$/.test(d.phone) && role(d.role); break;
-    case "auth.verifyOtp": valid = typeof d.phone === "string" && /^\+91[6-9]\d{9}$/.test(d.phone) && typeof d.code === "string" && /^\d{6}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
+    case "auth.sendOtp": valid = phoneNumber(d) && role(d.role); break;
+    case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{6}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
     case "auth.google": valid = role(d.role) && boolean(d.signup); break;
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&

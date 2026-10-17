@@ -13,7 +13,7 @@ const obIsCreator = () => !!S.auth.creatorIntent || isHost();
 const obMatches = data => data.requestId === undefined || data.requestId === S.auth.requestId;
 const obDuration = seconds => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 function obWait(kind) {
-  return Math.max(0, Math.ceil((Math.max(obLimits[kind + ":*"] || 0, obLimits[kind + ":" + S.auth.phone] || 0) - Date.now()) / 1000));
+  return Math.max(0, Math.ceil((Math.max(obLimits[kind + ":*"] || 0, obLimits[kind + ":" + obE164()] || 0) - Date.now()) / 1000));
 }
 function obRateTick() {
   if (S.v !== "login") { clearInterval(obRateTimer); return; }
@@ -31,7 +31,7 @@ function obAuthError(data) {
   const action = data.action || S.auth.busy || "auth.verifyOtp";
   const seconds = Math.max(0, Math.min(86400, Number(data.retryAfterSeconds) || 0));
   if (seconds) {
-    const key = String(data.code || "").startsWith("OTP_") ? S.auth.phone : "*";
+    const key = String(data.code || "").startsWith("OTP_") ? obE164() : "*";
     const until = Date.now() + seconds * 1000;
     obLimits[action + ":" + key] = until;
     if (data.code === "OTP_LOCKED") { obLimits["auth.sendOtp:" + key] = until; obLimits["auth.verifyOtp:" + key] = until; }
@@ -221,9 +221,12 @@ function obSendOtp() {
   const v = ((document.getElementById("ph") || {}).value || a.phone || "").replace(/\D/g, "");
   a.phone = v;
   if (obWait("auth.sendOtp")) return obTrackRate();
-  if (v.length !== 10 || !/^[6-9]/.test(v)) return obSetError("Enter a valid 10-digit Indian mobile number.", "ph");
-  if (DEMO) { Native.send("auth.sendOtp", { phone: "+91" + v, role: S.role }); return obOtpSent(); }
-  obRequest("auth.sendOtp", { phone: "+91" + v, role: S.role });
+  const problem = obPhoneProblem();
+  if (problem) return obSetError(problem, "ph");
+  obRememberCountry(obCountry().iso);
+  const request = { phone: obE164(), dialCode: obCountry().dial, role: S.role };
+  if (DEMO) { Native.send("auth.sendOtp", request); return obOtpSent(); }
+  obRequest("auth.sendOtp", request);
 }
 function obOtpSent(data = {}) {
   clearTimeout(obRequestTimer); clearInterval(S.otpT);
@@ -243,7 +246,7 @@ function obResendText() {
 function obResend() {
   if (S.auth.busy || Date.now() < S.auth.resendAt || obWait("auth.sendOtp")) return;
   if (DEMO) return obOtpSent();
-  obRequest("auth.sendOtp", { phone: "+91" + S.auth.phone, role: S.role });
+  obRequest("auth.sendOtp", { phone: obE164(), dialCode: obCountry().dial, role: S.role });
 }
 function obOtpInput(el, index) {
   if (S.auth.busy) return;
@@ -277,8 +280,8 @@ function obVerifyOtp() {
   const code = Array.from({ length: 6 }, (_, i) => (document.getElementById("o" + i) || {}).value || "").join("");
   S.auth.code = code;
   if (!/^\d{6}$/.test(code)) return obSetError("Enter all six digits from your message.", "o0");
-  if (DEMO) { Native.send("auth.verifyOtp", { phone: "+91" + S.auth.phone, code, role: S.role, signup: S.auth.mode === "signup" }); return signedIn(); }
-  obRequest("auth.verifyOtp", { phone: "+91" + S.auth.phone, code, role: S.role, signup: S.auth.mode === "signup" });
+  if (DEMO) { Native.send("auth.verifyOtp", { phone: obE164(), dialCode: obCountry().dial, code, role: S.role, signup: S.auth.mode === "signup" }); return signedIn(); }
+  obRequest("auth.verifyOtp", { phone: obE164(), dialCode: obCountry().dial, code, role: S.role, signup: S.auth.mode === "signup" });
 }
 function obSignedIn() {
   clearInterval(S.otpT); clearTimeout(obRequestTimer); obHaptic("success");
@@ -416,10 +419,10 @@ function obLogin() {
     title = signup ? "Your next hello starts here." : "Good to see you again.";
     description = "Enter your number. We’ll text you a code to get you in.";
     content = `<div class="ob-note">${I("chat", 22)}<div><b>${host ? "Your creator journey starts here" : "Good conversations start with you"}</b><p>${host ? "Set up your space, then meet your audience." : "A few details. A whole new circle."}</p></div><span class="ob-note-dot"></span></div>
-      <form class="ob-form" onsubmit="event.preventDefault();obSendOtp()"><label class="ob-label" for="ph">Mobile number</label><div class="ob-phone-field"><span class="ob-country" aria-label="India country code plus 91"><span>🇮🇳</span> +91</span><input id="ph" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="Your 10-digit number" maxlength="10" value="${esc(a.phone || "")}" aria-describedby="ob-phone-hint ob-error" oninput="this.value=this.value.replace(/\\D/g,'');S.auth.phone=this.value;obSetError('')" ${a.busy ? "disabled" : ""}></div><p class="ob-field-hint" id="ob-phone-hint">${I("lock", 13)} Used to verify your account.</p><button type="submit" hidden tabindex="-1">Send code</button></form>`;
+      <form class="ob-form" onsubmit="event.preventDefault();obSendOtp()"><label class="ob-label" for="ph">Mobile number</label><div class="ob-phone-field">${obCountryButton(!!a.busy)}<input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="${obPhonePlaceholder()}" maxlength="18" value="${esc(a.phone || "")}" aria-describedby="ob-phone-hint ob-error" oninput="obPhoneInput(this)" ${a.busy ? "disabled" : ""}></div><p class="ob-field-hint" id="ob-phone-hint">${I("lock", 13)} Used to verify your account.</p><button type="submit" hidden tabindex="-1">Send code</button></form>`;
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
-    title = "Check your messages."; description = `Enter the six-digit code sent to <strong>+91 ${esc(a.phone)}</strong>.`;
+    title = "Check your messages."; description = `Enter the six-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
     content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>Edit phone number ${I("back", 13)}</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
@@ -451,21 +454,65 @@ function obLogin() {
 }
 function obShowHelp() {
   if (document.getElementById("ob-help")) return;
-  obDialogTrigger = document.activeElement;
   const dialog = document.createElement("dialog"); dialog.id = "ob-help"; dialog.className = "ob-dialog"; dialog.setAttribute("aria-labelledby", "ob-help-title");
-  dialog.innerHTML = `<div class="ob-dialog-head"><span class="ob-eyebrow">WE’RE HERE TO HELP</span><button class="ob-dialog-close ob-icon" aria-label="Close help" onclick="obCloseHelp()">×</button></div><div class="ob-dialog-body"><h2 id="ob-help-title">A little help getting in.</h2><p>Use an Indian mobile number with the +91 country code. Double-check all ten digits before requesting your code.</p><p>No message yet? Check your mobile signal and wait for the resend timer. Use the newest code if you requested more than one.</p><p>For photos, choose clear JPG, PNG or WebP images under 20 MB each. You can add up to six.</p><button class="ob-primary" onclick="obCloseHelp()">Got it ${I("check", 18)}</button></div>`;
+  dialog.innerHTML = `<div class="ob-dialog-head"><span class="ob-eyebrow">WE’RE HERE TO HELP</span><button class="ob-dialog-close ob-icon" aria-label="Close help" onclick="obCloseHelp()">×</button></div><div class="ob-dialog-body"><h2 id="ob-help-title">A little help getting in.</h2><p>Choose your country, then enter your mobile number. You can also paste a full number that starts with + and its country code. Double-check it before requesting your code.</p><p>No message yet? Check your mobile signal and wait for the resend timer. Use the newest code if you requested more than one.</p><p>For photos, choose clear JPG, PNG or WebP images under 20 MB each. You can add up to six.</p><button class="ob-primary" onclick="obCloseHelp()">Got it ${I("check", 18)}</button></div>`;
+  obModal(dialog);
+}
+function obCloseHelp() { const dialog = document.getElementById("ob-help"); if (dialog) dialog.close(); }
+/** Opens a dialog with a focus trap, outside-click close and focus return. */
+function obModal(dialog) {
+  obDialogTrigger = document.activeElement;
   document.body.appendChild(dialog); dialog.addEventListener("close", () => { dialog.remove(); if (obDialogTrigger && obDialogTrigger.isConnected) obDialogTrigger.focus(); });
   dialog.addEventListener("keydown", event => {
     if (event.key !== "Tab") return;
-    const controls = Array.from(dialog.querySelectorAll("button:not(:disabled),a[href],input:not(:disabled),[tabindex='0']"));
+    const controls = Array.from(dialog.querySelectorAll("button:not(:disabled):not([hidden]),a[href],input:not(:disabled),[tabindex='0']"));
     const first = controls[0], last = controls[controls.length - 1];
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   });
-  dialog.addEventListener("click", event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) obCloseHelp(); } });
+  dialog.addEventListener("click", event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
   dialog.showModal();
 }
-function obCloseHelp() { const dialog = document.getElementById("ob-help"); if (dialog) dialog.close(); }
+function obPhonePlaceholder() { return obCountry().iso === "IN" ? "Your 10-digit number" : "Mobile number"; }
+function obCountryButton(busy) {
+  const country = obCountry(), name = obCountryName(country.iso);
+  return `<button type="button" class="ob-country" id="ob-country" onclick="obShowCountries()" aria-haspopup="dialog" aria-label="Country code: ${esc(name)} ${country.dial}. Change country" ${busy ? "disabled" : ""}><span aria-hidden="true">${obFlag(country.iso)}</span> ${country.dial} ${I("chev", 12)}</button>`;
+}
+function obPaintCountry() {
+  const button = document.getElementById("ob-country"); if (button) button.outerHTML = obCountryButton(!!S.auth.busy);
+  const input = document.getElementById("ph"); if (input) input.placeholder = obPhonePlaceholder();
+}
+/** Keeps digits; a pasted or typed "+44…" also picks the country (calling codes never prefix each other). */
+function obPhoneInput(el) {
+  const typed = el.value.trim();
+  if (typed.startsWith("+")) {
+    const parsed = obParseInternational(typed);
+    if (parsed) { obRememberCountry(parsed.iso); el.value = parsed.national; obPaintCountry(); }
+    else el.value = "+" + typed.replace(/\D/g, "");
+  } else el.value = typed.replace(/\D/g, "");
+  S.auth.phone = el.value; obSetError("");
+}
+function obShowCountries() {
+  if (document.getElementById("ob-countries") || S.auth.busy) return;
+  const current = obCountry().iso;
+  const countries = OB_COUNTRIES.map(country => ({ ...country, name: obCountryName(country.iso) })).sort((a, b) => a.name.localeCompare(b.name));
+  const dialog = document.createElement("dialog"); dialog.id = "ob-countries"; dialog.className = "ob-dialog ob-country-dialog"; dialog.setAttribute("aria-labelledby", "ob-countries-title");
+  dialog.innerHTML = `<div class="ob-dialog-head"><h2 id="ob-countries-title">Choose your country</h2><button class="ob-dialog-close ob-icon" aria-label="Close country list" onclick="obCloseCountries()">×</button></div><input id="ob-country-search" class="ob-country-search" type="search" placeholder="Search country or code" aria-label="Search countries" autocomplete="off" oninput="obFilterCountries(this.value)"><div class="ob-country-list" id="ob-country-list">${countries.map(country => `<button type="button" class="ob-country-option" data-search="${esc(`${country.name} ${country.iso} ${country.dial} ${country.dial.slice(1)}`.toLowerCase())}" ${country.iso === current ? 'aria-current="true"' : ""} onclick="obPickCountry('${country.iso}')"><span aria-hidden="true">${obFlag(country.iso)}</span><span>${esc(country.name)}</span><span class="ob-country-dial">${country.dial}</span></button>`).join("")}</div><p class="ob-country-empty" id="ob-country-empty" role="status" hidden>No country matches that search.</p>`;
+  obModal(dialog);
+  dialog.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "center" });
+  document.getElementById("ob-country-search").focus();
+}
+function obFilterCountries(query) {
+  const text = query.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll("#ob-country-list .ob-country-option").forEach(option => { const match = !text || option.dataset.search.includes(text); option.hidden = !match; shown += match ? 1 : 0; });
+  const empty = document.getElementById("ob-country-empty"); if (empty) empty.hidden = shown > 0;
+}
+function obCloseCountries() { const dialog = document.getElementById("ob-countries"); if (dialog) dialog.close(); }
+function obPickCountry(iso) {
+  obRememberCountry(iso); obCloseCountries(); obSetError(""); obPaintCountry();
+  document.getElementById("ph")?.focus();
+}
 document.addEventListener("click", event => {
   const target = event.target.closest(".ob-shell button,.ob-dialog button,.ob-check");
   if (target && !target.disabled) obHaptic("selection");
@@ -484,7 +531,7 @@ document.addEventListener("pointerup", event => {
   if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5 && S.v === "welcome") { obDeck(dx < 0 ? 1 : -1); obHaptic(); }
 }, { passive: true });
 document.addEventListener("pointercancel", () => { obSwipe = null; }, { passive: true });
-Native.on("auth.otpSent", d => { if (obMatches(d) && S.v === "login" && S.auth.busy === "auth.sendOtp" && d.phone === "+91" + S.auth.phone) obOtpSent(d); });
+Native.on("auth.otpSent", d => { if (obMatches(d) && S.v === "login" && S.auth.busy === "auth.sendOtp" && d.phone === obE164()) obOtpSent(d); });
 Native.on("profile.saved", d => { if (obMatches(d) && d.onboarding && S.v === "login" && S.auth.busy === "profile.save") obComplete(d.account); });
 Native.on("profile.progress", d => {
   if (!obMatches(d) || S.v !== "login" || S.auth.busy !== "profile.save") return;

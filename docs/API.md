@@ -56,8 +56,8 @@ for it (login, call failed).
 
 | Action on screen | Request | Response |
 | --- | --- | --- |
-| Continue (phone number) | `POST /auth/otp` `{phone, role}` | – |
-| Enter the 6-digit code | `POST /auth/verify` `{phone, code, role, signup}` | `Session` |
+| Continue (phone number) | `POST /auth/otp/request` `{country_code, phone}` (the screen sends E.164 plus the chosen calling code; any country) | – |
+| Enter the 6-digit code | `POST /auth/otp/verify` `{country_code, phone, otp}` | `Session` |
 | Log out | `POST /auth/logout` | – |
 | App opens with a saved login | `GET /me` | `Account` |
 | Finish sign-up, edit profile | `PUT /me/profile` | – |

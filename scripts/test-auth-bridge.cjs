@@ -143,7 +143,7 @@ test('a restored session in background waits for foreground before allowing welc
 test('malformed, unknown, oversized and invalid auth messages are ignored', async () => {
   const h = harness();
   const invalid = [null, [], {}, { type: 'auth.verifyOtp', data: [] }, { type: 'auth.verifyOtp', data: { ...verifyMessage().data, code: '123' } },
-    { type: 'auth.sendOtp', data: { ...sendMessage().data, role: 'admin' } }, { type: 'auth.sendOtp', data: { ...sendMessage().data, phone: '+919876543210<script>' } },
+    { type: 'auth.sendOtp', data: { ...sendMessage().data, role: 'admin' } }, { type: 'auth.sendOtp', data: { ...sendMessage().data, phone: '+919876543210<script>' } }, { type: 'auth.sendOtp', data: { ...sendMessage().data, phone: '+447911123456', dialCode: '+1' } },
     { type: 'auth.sendOtp', data: { ...sendMessage().data, requestId: -1 } }, { type: 'eval', data: { code: 'malicious' } },
     { type: 'gift.send', data: { to: 'alice', gift: 'gift', coins: -1000, inCall: false } },
     { type: 'profile.save', data: { photos: ['data:image/svg+xml;base64,AAAA'] } },

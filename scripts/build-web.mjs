@@ -101,6 +101,7 @@ const page = (demo) =>
   `window.ZIMI_APP_VERSION = ${JSON.stringify(JSON.parse(read('app.json')).expo.version)};\n` +
   read("node_modules/qrcode-generator/dist/qrcode.js") +
   read("web/bridge.js") +
+  read("web/phone-countries.js") +
   read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
     "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
   read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +

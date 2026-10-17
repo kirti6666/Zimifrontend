@@ -69,11 +69,21 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const adapters = load('src/api/adapters.ts');
   assert.deepEqual(plain(phonePayload('+91 98765 43210')), { country_code: '+91', phone: '9876543210' });
-  assert.throws(() => phonePayload('+1 9876543210'), /Indian/);
+  assert.throws(() => phonePayload('+91 5467985456'), /Indian/, 'India keeps its mobile number check');
+  assert.deepEqual(plain(phonePayload('+14155550123', '+1')), { country_code: '+1', phone: '4155550123' });
+  assert.deepEqual(plain(phonePayload('+4407911123456', '+44')), { country_code: '+44', phone: '7911123456' }, 'A kept trunk 0 is dropped');
+  assert.deepEqual(plain(phonePayload('+971501234567', '+971')), { country_code: '+971', phone: '501234567' });
+  assert.throws(() => phonePayload('+14155550123'), /country code/, 'Other countries need the chosen calling code');
+  assert.throws(() => phonePayload('+14155550123', '+44'), /country code/);
+  assert.throws(() => phonePayload('+1415', '+1'), /valid mobile/);
   expect('POST', '/auth/otp/request', { expiresIn: 300, retryAfterSeconds: 75 }, (body, options) => {
     assert.deepEqual(plain(body), { country_code: '+91', phone: '9876543210' }); assert.equal(options.auth, false);
   });
-  assert.equal((await api.sendOtp('9876543210', 'host')).resendAfter, 75);
+  assert.equal((await api.sendOtp('+919876543210', 'host')).resendAfter, 75);
+  expect('POST', '/auth/otp/request', { expiresIn: 300, resendAfter: 30 }, body => {
+    assert.deepEqual(plain(body), { country_code: '+44', phone: '7911123456' }, 'Other countries post their own calling code');
+  });
+  assert.equal((await api.sendOtp('+447911123456', 'sender', '+44')).resendAfter, 30);
   expect('POST', '/auth/otp/verify', { user, tokens: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 900, refreshExpiresIn: 3600 }, isNewUser: true, requiresOnboarding: true }, (body, options) => {
     assert.deepEqual(plain(body), { country_code: '+91', phone: '9876543210', otp: '123456', client: 'native' }); assert.equal(options.auth, false);
   });

@@ -41,8 +41,8 @@ export type WebMessage =
   | { type: "themes.premium.verify"; data: { merchantOrderId: string } }
   | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string; ink?: string; primary?: string; contrast?: string; surface?: string; raised?: string } }
   | { type: "ui.haptic"; data: { kind: "selection" | "success" | "error" | "light" } }
-  | { type: "auth.sendOtp"; data: { phone: string; role: Role; requestId?: number } }
-  | { type: "auth.verifyOtp"; data: { phone: string; code: string; role: Role; signup: boolean; requestId?: number } }
+  | { type: "auth.sendOtp"; data: { phone: string; dialCode?: string; role: Role; requestId?: number } }
+  | { type: "auth.verifyOtp"; data: { phone: string; dialCode?: string; code: string; role: Role; signup: boolean; requestId?: number } }
   | { type: "auth.google"; data: { role: Role; signup: boolean } }
   | { type: "auth.logout"; data: Record<string, never> }
   | { type: "profile.save"; data: Record<string, unknown> }
@@ -660,7 +660,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (authWork.has("send")) return;
         authWork.add("send");
         try {
-          const result = await api.sendOtp(msg.data.phone, msg.data.role);
+          const result = await api.sendOtp(msg.data.phone, msg.data.role, msg.data.dialCode);
           if (current(version)) emit({ type: "auth.otpSent", data: { phone: msg.data.phone, resendAfter: result.resendAfter, expiresIn: result.expiresIn, requestId: msg.data.requestId } });
         } catch (error) {
           if (current(version)) emit({ type: "auth.error", data: { ...metadata(error), action: msg.type, requestId: msg.data.requestId } });
@@ -672,7 +672,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         authWork.add("verify");
         const sessionVersion = getSessionVersion();
         try {
-          const session = await api.verifyOtp(msg.data.phone, msg.data.code, msg.data.role, msg.data.signup);
+          const session = await api.verifyOtp(msg.data.phone, msg.data.code, msg.data.role, msg.data.signup, msg.data.dialCode);
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
