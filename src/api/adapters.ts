@@ -165,7 +165,7 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
       ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
       ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
-      lastKind: "text" as const, lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastKind: last.kind === "image" ? "image" as const : "text" as const, lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
       lastAutomated: last.automated === true,
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
@@ -179,7 +179,9 @@ export function messagesFrom(value: unknown, userId: string): { messages: Messag
     ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
     messages: items(data).map(record).reverse().map(message => {
     const mine = idOf(message.senderId) === userId;
-    return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt), kind: "text" as const, automated: message.automated === true, ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
+    const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+    return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
+      ...(imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true, ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
   }),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }

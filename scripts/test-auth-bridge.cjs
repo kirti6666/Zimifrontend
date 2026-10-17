@@ -463,7 +463,7 @@ test('home requests discard stale filters and never replace enriched feed with l
   h.bridge.close();
 });
 
-test('a chat message the server partly hid is reported back as delivered', async () => {
+test('chat text the server partly hid is reported back as delivered, and photos are sent through the same checks', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());
   h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user', isPhoneVerified: true }, requiresOnboarding: false });
@@ -477,6 +477,14 @@ test('a chat message the server partly hid is reported back as delivered', async
   h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'hello' } });
   await settle();
   assert.equal(h.find('chat.sent').length, 1, 'Nothing is reported when nothing was hidden');
+  const photo = 'data:image/png;base64,' + Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]).toString('base64');
+  h.overrides.sendPhotoMessage = () => undefined;
+  h.bridge.handle({ type: 'chat.photo', data: { to: 'host-1', photo } });
+  await settle();
+  assert.equal(h.count('sendPhotoMessage'), 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.photoSent').map(post => post.data))), [{ to: 'host-1' }]);
+  for (const data of [{ to: 'host-1', photo: 'https://example.test/x.png' }, { to: 'host-1', photo: 'data:image/svg+xml;base64,PHN2Zz4=' }, { to: '', photo }])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'chat.photo', data })), null, 'Only a JPEG, PNG or WebP photo from the page can be sent');
   h.bridge.close();
 });
 

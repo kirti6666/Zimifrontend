@@ -183,7 +183,7 @@ export interface ChatSummary {
   last: string;
   time: string;
   unread: number;
-  lastKind: "text";
+  lastKind: "text" | "image";
   lastMine: boolean;
   lastAutomated: boolean;
   lastAt: string;
@@ -206,7 +206,8 @@ export interface Message {
   text: string;
   time: string;
   createdAt?: string;
-  kind?: "text";
+  kind?: "text" | "image";
+  imageUrl?: string;
   automated?: boolean;
   status?: "sent" | "read"; // own messages only: whether the other person has read it
 }

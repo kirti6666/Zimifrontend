@@ -203,3 +203,8 @@
 
 /* Phone numbers and abusive words the server hid from chat: a blur, never readable or copyable. */
 .chat-hidden{display:inline-block;filter:blur(4px);opacity:.7;user-select:none;-webkit-user-select:none;letter-spacing:-.05em;vertical-align:-.1em}
+/* Photo messages; members' photos reach creators blurred until they tap. */
+.zc-photo{position:relative;display:block;padding:0;border:0;border-radius:18px;overflow:hidden;background:var(--raised);width:min(62vw,240px);aspect-ratio:3/4;color:#fff}
+.zc-photo img{display:block;width:100%;height:100%;object-fit:cover}
+.zc-photo.is-blurred{cursor:pointer}.zc-photo.is-blurred img{filter:blur(28px);transform:scale(1.2)}
+.zc-photo>span{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:650;text-shadow:0 1px 8px #000a}

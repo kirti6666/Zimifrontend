@@ -60,6 +60,7 @@ export type WebMessage =
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
   | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean } }
+  | { type: "chat.photo"; data: { to: string; photo: string } }
   | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
   | { type: "call.start"; data: { to: string; voice?: boolean } }
   | { type: "call.accept"; data: { callId: string } }
@@ -137,6 +138,7 @@ export type AppMessage =
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "chat.sent"; data: { to: string; sent: string; text: string; inCall: boolean } }
+  | { type: "chat.photoSent"; data: { to: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number } }
   | { type: "call.failed"; data: { message: string } }
@@ -312,6 +314,21 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const peerRole = peer?.serverRole ?? (peer?.role === "host" || peer?.verified === true ? "host" : peer?.role === "sender" ? "user" : undefined);
     if (accountRole === "host" && peerRole === "host") throw new ApiError("Host accounts can reply to members only. Use a member account to message a host.", 403);
     if (accountRole === "user" && peerRole && peerRole !== "host") throw new ApiError("Members can message approved hosts only.", 403);
+  };
+  /** The checks the server makes before a direct message: an allowed pair and an open conversation. False when the session changed. */
+  const requireThreadSend = async (to: string, version: number) => {
+    await requireChatPair(to);
+    if (!current(version)) return false;
+    if (!threadPermissions.has(to)) {
+      const revision = hostRevision;
+      const data = await api.thread(to);
+      if (!current(version)) return false;
+      if (revision !== hostRevision) throw new ApiError("Your account permissions changed. Open the conversation again.", 403);
+      rememberThreadPermission(to, data);
+    }
+    const permission = threadPermissions.get(to);
+    if (!permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
+    return true;
   };
   const rememberHomePeers = (data: HomeData) => {
     for (const peer of [...data.hosts, ...(data.stage ?? []), ...(data.featured ? [data.featured] : [])]) chatPeers.set(peer.id, { ...peer, serverRole: "host" });
@@ -847,24 +864,23 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "chat.send": {
         const callId = msg.data.inCall ? activeCall : undefined;
         if (msg.data.inCall && !callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);
-        await requireChatPair(msg.data.to);
-        if (!current(version)) return;
-        if (callId && activeCall !== callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);
-        if (!callId && !threadPermissions.has(msg.data.to)) {
-          const revision = hostRevision;
-          const data = await api.thread(msg.data.to);
+        if (callId) {
+          await requireChatPair(msg.data.to);
           if (!current(version)) return;
-          if (revision !== hostRevision) throw new ApiError("Your account permissions changed. Open the conversation again.", 403);
-          rememberThreadPermission(msg.data.to, data);
-        }
-        const permission = threadPermissions.get(msg.data.to);
-        if (!callId && !permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
+          if (activeCall !== callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);
+        } else if (!(await requireThreadSend(msg.data.to, version))) return;
         // The server verifies that this accepted call belongs to both users;
         // an in-call reply need not wait for a preexisting text conversation.
         const delivered = (await api.sendMessage(msg.data.to, msg.data.text, callId))?.text;
         if (current(version) && typeof delivered === "string" && delivered !== msg.data.text)
           emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered, inCall: !!msg.data.inCall } });
         if (current(version)) quietly(loadChats(), "chats.reload");
+        return;
+      }
+      case "chat.photo": {
+        if (!(await requireThreadSend(msg.data.to, version))) return;
+        await api.sendPhotoMessage(msg.data.to, msg.data.photo);
+        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to } }); quietly(loadChats(), "chats.reload"); }
         return;
       }
       case "gift.send": {

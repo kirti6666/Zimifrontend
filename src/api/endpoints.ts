@@ -206,6 +206,14 @@ export const api = {
     await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });
     return api.wallet();
   },
+  /** Uploads a chat photo into the sender's own folder, then sends it. */
+  async sendPhotoMessage(to: string, photo: string) {
+    const version = getSessionVersion();
+    decodePhoto(photo);
+    const imageKey = await uploadMedia(photo, "chat", version);
+    ensureSession(version);
+    await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey });
+  },
   /** Returns the text as delivered: the server hides phone numbers and abusive words. */
   async sendMessage(to: string, text: string, callId?: string) {
     const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}) }));

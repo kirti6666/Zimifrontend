@@ -9,6 +9,9 @@ const id = suffix => `507f1f77bcf86cd7994390${suffix}`;
 const mira = { id: id('11'), name: 'Mira North', role: 'host', category: 'Music', online: true, verified: true, availableForCall: true, ratePerMin: 0 };
 const member = { user: { id: id('01'), name: 'Member', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, balance: 0, verification: 'none', requiresOnboarding: false };
 const hidden = '█'.repeat(10);
+const host = { ...member, user: { ...member.user, id: id('02'), name: 'Mira North', role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified' };
+const rohan = { id: id('13'), name: 'Rohan', role: 'sender', online: true, verified: false };
+
 
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
@@ -55,8 +58,50 @@ const hidden = '█'.repeat(10);
     }, `ping ${hidden}`);
     assert.match(feeds.call, /class="chat-hidden"/, 'In-call chat blurs hidden text');
     assert.match(feeds.live, /class="chat-hidden"/, 'Live-room chat blurs hidden text');
+    // A member sends a photo: it is uploaded through the app and shows unblurred to them.
+    await page.evaluate(person => go('thread', person), mira.id);
+    await receive('data.thread', { with: mira.id, messages: [], canSend: true });
+    // A real PNG drawn in the browser, so the picker resizes it like any camera photo.
+    const png = Buffer.from(await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 8; const context = canvas.getContext('2d'); context.fillStyle = '#c0f'; context.fillRect(0, 0, 8, 8); return canvas.toDataURL('image/png').split(',')[1]; }), 'base64');
+    await page.locator('#zc-photo-input').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png });
+    await page.waitForFunction(() => __sent.some(message => message.type === 'chat.photo'));
+    const photoMessage = await page.evaluate(() => __sent.filter(message => message.type === 'chat.photo').at(-1).data);
+    assert.equal(photoMessage.to, mira.id);
+    assert.match(photoMessage.photo, /^data:image\/jpeg;base64,/, 'Photos are resized to a JPEG before upload');
+    const ownPhoto = page.locator('.zc-msg.mine .zc-photo').last();
+    await ownPhoto.getByText('Sending…').waitFor();
+    assert.equal(await ownPhoto.evaluate(node => node.classList.contains('is-blurred')), false, 'Senders see their own photo');
+    await receive('chat.photoSent', { to: mira.id });
+    await ownPhoto.getByText('Sending…').waitFor({ state: 'detached' });
+
+    // A creator receives a member's photo: blurred until they choose to view it.
+    const creator = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    creator.on('pageerror', error => errors.push(error.message));
+    await creator.route('https://**/*', route => route.abort());
+    await creator.addInitScript(() => { window.__sent = []; window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) }; });
+    await creator.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=host');
+    const creatorReceive = (type, data) => creator.evaluate(message => Native.receive(message), { type, data });
+    await creatorReceive('session', host);
+    await creatorReceive('data.chats', { chats: [{ id: id('31'), user: rohan, last: '', lastKind: 'image', time: '1m ago', lastAt: new Date().toISOString(), unread: 1, lastMine: false, lastStatus: 'sent', hasCalls: false }], total: 1, page: 1, limit: 50, unreadCount: 1, unreadConversations: 1 });
+    await creator.evaluate(() => go('chats'));
+    await creator.locator('.zc-row').filter({ hasText: 'Photo' }).waitFor();
+    await creator.evaluate(person => zcOpen(person), rohan.id);
+    await creatorReceive('data.thread', { with: rohan.id, messages: [{ id: 'photo-1', mine: false, kind: 'image', imageUrl: 'https://cdn.example.test/chats/rohan/photo.jpg', text: '', at: new Date().toISOString() }], canSend: true });
+    const blurred = creator.getByRole('button', { name: 'Photo hidden. Tap to view' });
+    await blurred.waitFor();
+    assert.match(await blurred.locator('img').evaluate(node => getComputedStyle(node).filter), /blur/, 'The photo itself is blurred');
+    await creator.screenshot({ path: path.join(os.tmpdir(), 'zimi-chat-photo-blurred.png') });
+    await blurred.click();
+    await blurred.waitFor({ state: 'detached' });
+    assert.equal(await creator.locator('.zc-msg.theirs .zc-photo img').evaluate(node => getComputedStyle(node).filter), 'none', 'Tapping shows the photo');
+    await creator.evaluate(() => go('chats'));
+    await creator.evaluate(person => zcOpen(person), rohan.id);
+    await creatorReceive('data.thread', { with: rohan.id, messages: [{ id: 'photo-1', mine: false, kind: 'image', imageUrl: 'https://cdn.example.test/chats/rohan/photo.jpg', text: '', at: new Date().toISOString() }], canSend: true });
+    await creator.getByRole('button', { name: 'Photo hidden. Tap to view' }).waitFor();
+    await creator.close();
+
     assert.deepEqual(errors, []);
-    console.log('PASS chat safety: hidden phone numbers and abuse show blurred and uncopyable in the list, conversation, in-call and live chat; senders see what was delivered');
+    console.log('PASS chat safety: hidden phone numbers and abuse show blurred and uncopyable in the list, conversation, in-call and live chat; senders see what was delivered; members send photos and creators see them blurred until they tap, again on every visit');
   } finally {
     await browser.close();
   }

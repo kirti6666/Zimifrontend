@@ -205,6 +205,15 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(uploads.length, 0, 'A sign-in change cancels post upload and publication'); finished();
 
   reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/chat', key: 'chats/member-id/photo.png' }, body => assert.equal(body.purpose, 'chat'));
+  expect('POST', '/chats/host-id', { _id: 'photo-message', text: '', image: { url: 'https://cdn.example.test/chat.png' } }, body => assert.deepEqual(plain(body), { imageKey: 'chats/member-id/photo.png' }));
+  await api.sendPhotoMessage('host-id', png);
+  assert.equal(uploads.length, 1, 'Chat photos go straight to storage, then only the key is sent'); finished();
+  const photoThread = adapters.messagesFrom({ items: [{ _id: 'photo-message', senderId: 'host-id', text: '', image: { url: 'https://cdn.example.test/chat.png' } }] }, 'member-id').messages[0];
+  assert.deepEqual([photoThread.kind, photoThread.imageUrl], ['image', 'https://cdn.example.test/chat.png']);
+  assert.equal(adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id', name: 'Creator' }], lastMessage: { text: '', kind: 'image' } }] }, 'member-id').chats[0].lastKind, 'image');
+
+  reset();
   expect('GET', '/auth/me', { user }); await api.me();
   expect('GET', '/hosts?limit=100', { items: [{ _id: 'host-id', name: 'Creator', avatar: { url: 'https://cdn.example.test/creator.jpg' }, coverUrl: 'https://cdn.example.test/cover.jpg' }] });
   const hosts = await api.hosts(); assert.equal(hosts.hosts[0].id, 'host-id'); assert.equal(hosts.hosts[0].ratePerMin, undefined);

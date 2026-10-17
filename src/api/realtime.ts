@@ -75,7 +75,9 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
       if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
-      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text", automated: message.automated === true,
+      const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt),
+        ...(imageUrl ? { kind: "image", imageUrl } : { kind: "text" }), automated: message.automated === true,
         ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
       });
       // Sender echoes also update the list, including messages sent on another device.

@@ -85,7 +85,8 @@ for it (login, call failed).
 | Start a call, call back | `POST /calls` `{to, voice}` | `{callId}` |
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
-| Send a message | `POST /chats/:id` `{text}` | – |
+| Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
+| Send a photo | `POST /media/upload-url` `{purpose: "chat"}`, PUT to storage, then `POST /chats/:id` `{imageKey}` | – |
 | Follow | `PUT /follows/:id` `{on}` | – |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
@@ -130,6 +131,10 @@ The screens draw every run of `█` as a blur that cannot be selected or copied
 (`escChat` in `web/aurora-runtime.js`). When something was hidden from a message the
 user just sent, the app posts `chat.sent {to, sent, text, inCall}` so the sender's bubble
 shows what was delivered, with a short notice.
+
+Photos members send (`chat.photo {to, photo}`, a resized JPEG from the photo picker) reach creators
+blurred with **Tap to view**. Each photo stays blurred until the creator taps it, and blurs again the
+next time the conversation is opened. Members see photos creators send, and their own, normally.
 
 ## Private screens
 
