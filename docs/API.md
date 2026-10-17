@@ -122,6 +122,16 @@ The server persists configured host welcomes as normal chat messages with
 | `wallet.balance` | `{coins?, earned?}` | Updates balances everywhere |
 | `verification.status` | `{status}` | Moves the verification screen on |
 
+## Private screens
+
+Screenshots and screen recordings are blocked while a video or voice call, a staff
+verification call, the chat list or a conversation is open. After every render the
+screens send `screen.secure {on}` when this changes (and once on load), and
+`App.tsx` turns `expo-screen-capture` on or off. On Android the screen shows black
+in screenshots, recordings and the recent-apps view; iOS 13+ blocks screenshots
+and recordings. Other screens, including public live rooms, can still be captured.
+A camera pointed at the phone can still record the screen.
+
 ## Staff verification calls (host applicants)
 
 Before approving a host application, staff video-call the applicant from the admin

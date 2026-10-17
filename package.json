@@ -19,6 +19,7 @@
     "test:live": "npm run build:web && node scripts/test-live-room.cjs && node scripts/test-home-media.cjs",
     "test:call-setup": "npm run build:web && node scripts/test-call-setup.cjs",
     "test:call-charges": "npm run build:web && node scripts/test-call-charges.cjs",
+    "test:private-screens": "npm run build:web && node scripts/test-private-screens.cjs",
     "test:verification": "npm run build:web && node scripts/test-verification-call.cjs",
     "test:loading": "npm run build:web && node scripts/test-loading.cjs",
     "test:chats": "npm run build:web && node scripts/test-chats.cjs",
@@ -32,6 +33,7 @@
   "dependencies": {
     "expo": "~57.0.24",
     "expo-haptics": "~57.0.3",
+    "expo-screen-capture": "~57.0.4",
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",

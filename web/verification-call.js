@@ -6,7 +6,7 @@ const ZV_ENDED={declined:'You declined the verification call.',missed:'You misse
 function zvTime(){const s=Math.max(0,Math.floor((Date.now()-ZVerify.startedAt)/1000));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
 function zvRender(){
   let el=document.getElementById('zv-call');
-  if(!ZVerify.state){el?.remove();clearInterval(ZVerify.timer);ZVerify.timer=null;return}
+  if(!ZVerify.state){el?.remove();clearInterval(ZVerify.timer);ZVerify.timer=null;window.zimiSecureScreen?.();return}
   if(!el){el=document.createElement('section');el.id='zv-call';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-labelledby','zv-title');document.body.append(el)}
   const ringing=ZVerify.state==='ringing'||ZVerify.state==='preparing',live=ZVerify.state==='connected',micOn=S.mic!==0,camOnNow=S.cam!==0;
   el.className='zv-call zv-'+ZVerify.state;
@@ -32,6 +32,7 @@ function zvRender(){
     </div>
   </div>`;
   window.ZimiMedia?.attach();
+  window.zimiSecureScreen?.();
   if(ringing)el.querySelector('.zv-accept:not([disabled])')?.focus();
 }
 function zvClose(message){

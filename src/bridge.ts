@@ -41,6 +41,7 @@ export type WebMessage =
   | { type: "themes.premium.verify"; data: { merchantOrderId: string } }
   | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string; ink?: string; primary?: string; contrast?: string; surface?: string; raised?: string } }
   | { type: "ui.haptic"; data: { kind: "selection" | "success" | "error" | "light" } }
+  | { type: "screen.secure"; data: { on: boolean } }
   | { type: "auth.sendOtp"; data: { phone: string; dialCode?: string; role: Role; requestId?: number } }
   | { type: "auth.verifyOtp"; data: { phone: string; dialCode?: string; code: string; role: Role; signup: boolean; requestId?: number } }
   | { type: "auth.google"; data: { role: Role; signup: boolean } }
@@ -950,7 +951,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version) && approval === hostRevision && hasHostAccess()) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome(), "home.reload"); }
         return;
       }
-      case "theme": case "ui.haptic": return;
+      case "theme": case "ui.haptic": case "screen.secure": return;
     }
   }
 

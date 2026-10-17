@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
+import * as ScreenCapture from "expo-screen-capture";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
@@ -16,6 +17,8 @@ const PLACEHOLDER = { light: "#e9e1e7", dark: "#3a2637" } as const;
 const PLACEHOLDER_SURFACE = { light: "#f7f1f5", dark: "#291a28" } as const;
 
 type Theme = keyof typeof CANVAS;
+/* One key for every private screen, so turning protection off undoes exactly this. */
+const PRIVATE_SCREEN = "zimi-private-screen";
 type NativePalette = Partial<Record<"ink" | "primary" | "contrast" | "surface" | "raised", string>>;
 
 /* Mirrors the page's data-theme onto the native chrome so the safe-area
@@ -84,6 +87,9 @@ export default function App() {
       }
       // Unavailable haptics must never interrupt the UI or network actions.
       void feedback.catch(() => {});
+    } else if (msg.type === "screen.secure") {
+      // Video calls and chats: screenshots and screen recordings show nothing while they are open.
+      void (msg.data.on ? ScreenCapture.preventScreenCaptureAsync(PRIVATE_SCREEN) : ScreenCapture.allowScreenCaptureAsync(PRIVATE_SCREEN)).catch(() => {});
     } else bridge.handle(msg);
   }, [bridge]);
 

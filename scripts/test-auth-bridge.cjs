@@ -18,7 +18,7 @@ const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '
 const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
 
 function harness(initialAppState = 'active', initialLink = null) {
-  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [];
+  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [];
   const overrides = {};
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
@@ -75,6 +75,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
+      if (id === 'expo-screen-capture') return { preventScreenCaptureAsync: async key => capture.push(['prevent', key]), allowScreenCaptureAsync: async key => capture.push(['allow', key]) };
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
@@ -91,7 +92,7 @@ function harness(initialAppState = 'active', initialLink = null) {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, effects, opened, signals, activities, links, shares };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares };
 }
 
 test('login and session restoration never post access or refresh credentials to the WebView', async () => {
@@ -388,6 +389,28 @@ test('native App refuses external document navigation and messages before privil
   web.props.onMessage({ nativeEvent: { url: 'https://aurora.localhost/', data: JSON.stringify(sendMessage()) } });
   await settle();
   assert.equal(h.count('sendOtp'), 1);
+  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
+});
+
+test('the app page alone turns screenshot protection on and off for private screens', async () => {
+  const h = harness();
+  const tree = h.load('App.tsx').default();
+  function findWeb(node) {
+    if (!node || typeof node !== 'object') return null;
+    if (node.type === 'WebView') return node;
+    for (const child of [node.props?.children].flat()) { const found = findWeb(child); if (found) return found; }
+    return null;
+  }
+  const web = findWeb(tree);
+  const send = (url, data) => web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type: 'screen.secure', data }) } });
+  send('https://evil.example/', { on: false });
+  send('https://aurora.localhost/', { on: 'yes' });
+  assert.deepEqual(h.capture, [], 'Other pages and malformed messages cannot change protection');
+  send('https://aurora.localhost/', { on: true });
+  send('https://aurora.localhost/', { on: false });
+  await settle();
+  assert.deepEqual(h.capture.map(([action]) => action), ['prevent', 'allow']);
+  assert.equal(new Set(h.capture.map(([, key]) => key)).size, 1, 'Both use one key, so allowing undoes exactly this protection');
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
