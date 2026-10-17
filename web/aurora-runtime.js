@@ -197,7 +197,7 @@ function go(v,id){
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
-  S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
+  S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
  if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
@@ -658,6 +658,7 @@ function playGift(l,e,v,k,label){
 }
 
 function tick(){if(!["call","voice"].includes(S.v))return;const h=g(S.h);
+ const cost=document.getElementById("zr-call-cost");if(cost&&window.zrCallCost)cost.textContent=zrCallCost(false);
  const c=document.getElementById("ck");if(c)c.textContent=String(Math.floor(S.sec/60)).padStart(2,"0")+":"+String(S.sec%60).padStart(2,"0");
  const b=document.getElementById("bl");if(b)b.innerHTML=gem+n(S.bal);
  const lc=document.querySelector(".idpill .co.coins");
@@ -1253,6 +1254,7 @@ function feeChip(){
  return S.feeOk?`${I("check",13)}<span>Entry fee ${gem}${MY_FEE} received</span>`
   :`${I("clock",13)}<span>Entry fee ${gem}${MY_FEE} unlocks in <b>${clock(left)}</b></span>`}
 function paintHostTick(){
+ const cost=document.getElementById("zr-call-cost");if(cost&&window.zrCallCost)cost.textContent=zrCallCost(true);
  const c=document.getElementById("ck");if(c)c.textContent=clock(S.sec);
  const fc=document.getElementById("fee");if(fc){if(feeShown()){fc.innerHTML=feeChip();fc.classList.toggle("ok",!!S.feeOk)}else fc.remove()}
  const e=document.getElementById("earn");if(e)e.innerHTML=`${gem}+${kfmt(Math.round(S.earned))}`
@@ -1262,7 +1264,11 @@ function paintHostTick(){
 /* remote: the other side hung up, so there is nothing to tell the server */
 function endCall(remote){
  if(window.ZimiMedia)window.ZimiMedia.stop();
- if(!remote)Native.send("call.end",{callId:S.v==="hcall"?S.caller.callId:S.callId});
+ const callId=S.v==="hcall"?S.caller.callId:S.callId,rate=S.callRate||0,end=S.callEnd?.callId===callId?S.callEnd:null;
+ /* Until the server reports the charge, estimate it the way it bills: whole seconds at the call's price. */
+ const charge={callId,rate,coins:end?.coins??Math.ceil(S.sec*rate/60),outOfCoins:end?.reason==='out_of_coins'};
+ S.callRate=0;S.callEnd=null;
+ if(!remote)Native.send("call.end",{callId});
  if(S.v==="hcall"){
   logFee();
   const mins=Math.max(1,Math.ceil(S.sec/60)),earned=Math.round(S.earned);
@@ -1270,12 +1276,12 @@ function endCall(remote){
   const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
   S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
   if(DEMO)A().earn+=earned;
-  S.sum={k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
+  S.sum={...charge,k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
    done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
  } else {
   const h=g(S.h);
   S.rate=0;
-  S.sum={k:"sender",h:h.id,sec:S.sec,spent:S.spent+(S.gifted||0),giftV:S.gifted||0,gifts:S.giftN||0};
+  S.sum={...charge,k:"sender",h:h.id,sec:S.sec,spent:S.spent+(S.gifted||0),giftV:S.gifted||0,gifts:S.giftN||0};
  }
  go("summary")}
 
@@ -1657,6 +1663,7 @@ Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
+ S.callRate=d.rate||0;
  if(S.v==="dial"){S.callId=d.callId;go(d.voice?'voice':"call",S.h)}
  else if(S.v==="dialback"){S.caller.callId=d.callId;go("hcall")}
  else if(S.v==="ring"&&S.caller.callId===d.callId){S.callId=d.callId;S.acceptingCall=false;go('hcall')}
@@ -1673,6 +1680,9 @@ Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Nativ
  S.ringBack=S.v;S.caller=c;go("ring")});
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
+ /* The server's charge replaces the summary's estimate once it arrives. */
+ if(S.v==='summary'&&S.sum?.callId===id){if(d.coins!=null)S.sum.coins=d.coins;if(d.reason==='out_of_coins')S.sum.outOfCoins=true;return r()}
+ S.callEnd={callId:id,coins:d.coins,reason:d.reason};
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}

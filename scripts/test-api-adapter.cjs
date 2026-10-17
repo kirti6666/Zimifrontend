@@ -337,11 +337,15 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
     { type: 'purchase_reversal', coins: -100, amountPaise: -9900 },
     { type: 'gift_sent', coins: -25, amountPaise: 0 },
     { type: 'gift_received', coins: 0, amountPaise: 500 },
+    { type: 'call_charge', coins: -150, amountPaise: 0 },
+    { type: 'call_earning', coins: 0, amountPaise: 3000 },
+    { type: 'welcome_bonus', coins: 100, amountPaise: 0 },
   ] }).items;
+  assert.deepEqual(transactions.slice(6).map(tx => [tx.kind, tx.coins]), [['call', -150], ['call', 0], ['reward', 100]], 'Call charges and welcome coins are labelled');
   assert.equal(transactions[0].displayAmountPaise, -19950); assert.equal(transactions[0].amountPaise, 19950);
   assert.equal(transactions[1].displayAmountPaise, 19950); assert.equal(transactions[1].amountPaise, -19950);
-  assert.deepEqual(transactions.slice(2).map(tx => tx.displayAmountPaise), [undefined, undefined, undefined, undefined]);
-  assert.deepEqual(transactions.map(tx => tx.coins), [0, 0, 100, -100, -25, 0]);
+  assert.deepEqual(transactions.slice(2, 6).map(tx => tx.displayAmountPaise), [undefined, undefined, undefined, undefined]);
+  assert.deepEqual(transactions.slice(0, 6).map(tx => tx.coins), [0, 0, 100, -100, -25, 0]);
   assert.deepEqual(transactions.filter(tx => tx.kind === 'gift').map(tx => tx.coins), [-25, 0]);
   expect('POST', '/streams/stream-id/join', { count: 13 });
   expect('GET', '/streams/stream-id', { _id: 'stream-id', hostId: creator._id, host: creator, title: 'Acoustic night', viewers: 13 });
@@ -389,6 +393,12 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   const giftCount=events.filter(event=>event.type==='gift.received').length;
   socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
+  socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'accepted', kind: 'video', coinsPerMinute: 60 });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.connected', data: { callId: 'paid-call', initiator: true, peerId: 'host-id', voice: false, rate: 60 } }, 'A paid call carries its price');
+  socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged: 150, endReason: 'out_of_coins' });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'paid-call', coins: 150, reason: 'out_of_coins' } }, 'An ended call reports its charge and why it ended');
+  socket.emitServer('call:updated', { _id: 'free-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 0, coinsCharged: 0 });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'free-call' } }, 'Free calls report no charge');
   for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
     socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });
   }

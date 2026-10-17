@@ -41,8 +41,20 @@ Accepting a queued request emits `stream.privateCall
 The screen stops public media, prepares camera/microphone, opens the private call
 and starts ordinary WebRTC signaling. It must deduplicate the socket and HTTP
 acceptance copies by call ID. No automatic `call.connected` event precedes that
-media preparation. The backend currently has no per-minute call billing; display
-the private call as free.
+media preparation.
+
+## Call charges
+
+Staff set the price in coins per minute in the admin dashboard (0 keeps calls free).
+A call keeps the price it was placed at. The server bills whole seconds once the host
+answers, `ceil(seconds × price / 60)` coins, charging every 10 seconds while the call
+lasts, so `wallet.balance` drops as people talk. Starting or requesting a paid call
+needs one minute of coins; otherwise the request fails with `INSUFFICIENT_COINS`
+and the setup screen offers **Buy coins to call** instead. When the coins run out,
+the server ends the call and `call.ended` carries `reason: "out_of_coins"`. The call
+screen shows the price and a running cost (an estimate between charges); the summary
+shows the server's charge when it arrives. New accounts can receive free welcome
+coins, also set by staff.
 
 ## Setup
 
@@ -103,8 +115,8 @@ The server persists configured host welcomes as normal chat messages with
 | Event | Data | What the screen does |
 | --- | --- | --- |
 | `call.incoming` | `{callId, from: Person}` | Full-screen ring, or a banner during a call |
-| `call.connected` | `{callId}` | Caller moves from "Calling…" into the call |
-| `call.ended` | `{callId}` | Call ends and the summary opens; a ringing call becomes a missed call |
+| `call.connected` | `{callId, rate?}` | Caller moves from "Calling…" into the call; `rate` is the coins per minute of a paid call |
+| `call.ended` | `{callId, coins?, reason?}` | Call ends and the summary opens with the coins charged; a ringing call becomes a missed call |
 | `gift.received` | `{gift, coins, from}` | Gift animation and earnings on the host's call screen |
 | `chat.message` | `{from, name, text, inCall?, automated?}` | Adds to the call chat or the open chat; automated welcomes are labeled |
 | `wallet.balance` | `{coins?, earned?}` | Updates balances everywhere |
@@ -130,9 +142,6 @@ member calls do not apply to an applicant answering staff.
 
 ## Not covered yet
 
-- Video and audio: the call screens show photos where video goes. A video SDK
-  (for example Agora or ZEGOCLOUD) plus camera and microphone permissions is
-  needed in the React Native shell.
 - Incoming calls while the app is closed: needs push notifications and the
   Android incoming-call screen in the React Native shell.
 - Coin purchases use PayPlus checkout. Coins are credited only by the server,
@@ -140,8 +149,6 @@ member calls do not apply to an applicant answering staff.
   Play's payments policy may require Play Billing (or its alternative billing
   programme) for coins sold inside the Android app; check before release.
 - Google sign-in: shows "isn't available yet".
-- Photos are sent inline as data URLs; large uploads should move to direct
-  uploads with signed URLs.
 - Your own level and crown come from `GET /account/settings` as `standing`
   (`{level, crown}`; thresholds, crown amount and window are set in the admin
   dashboard). The crown is held while gifts sent in the window reach the

@@ -136,10 +136,10 @@ export type AppMessage =
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
-  | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean } }
+  | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number } }
   | { type: "call.failed"; data: { message: string } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
-  | { type: "call.ended"; data: { callId: string } }
+  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }

@@ -197,6 +197,9 @@ export function walletFrom(value: unknown): Wallet {
   if (!Number.isSafeInteger(wallet.coins) || !Number.isSafeInteger(wallet.earningsPaise) || (wallet.coins as number) < 0 || (wallet.earningsPaise as number) < 0) throw new ApiError("Your wallet could not be loaded. Try again.", 502);
   return { coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number, reservedPaise: finite(wallet.reservedPaise) };
 }
+export const coinCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
+/** Coins per minute locked onto a paid call; free calls carry none. */
+export const callPrice = (call: Record<string, unknown>) => coinCount(call.coinsPerMinute) ? { rate: coinCount(call.coinsPerMinute) } : {};
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
   return { items: items(value).map(record).map(tx => {
     const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);
@@ -206,7 +209,7 @@ export function transactionsFrom(value: unknown): { items: Transaction[] } {
     return {
       title: string(tx.description) || type.replace(/_/g, " "), time: timeOf(tx.createdAt), coins, amountPaise,
       ...(monetaryPurchase ? { displayAmountPaise: type === "purchase" ? -Math.abs(amountPaise) : Math.abs(amountPaise) } : {}),
-      kind: type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
+      kind: type.startsWith("call") ? "call" : type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
     };
   }) };
 }

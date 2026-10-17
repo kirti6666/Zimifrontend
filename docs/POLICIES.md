@@ -34,5 +34,5 @@ numbers.
 | Host early endings | Count calls a host ends before 1 minute (the app already shows this rule) | Warning after 2 a day; entry fee goes to Zimi Live |
 | Payout identity | Ask for PAN before large payouts | PAN required once lifetime payouts pass ₹50,000 |
 
-The early-ending rule needs per-minute call billing on the server first. The
-backend does not bill calls yet (see `API.md`).
+Calls are billed by the second at the price staff set (see `API.md`), so the
+early-ending rule can now be built once its numbers are decided.

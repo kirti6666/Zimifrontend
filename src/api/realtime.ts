@@ -2,11 +2,16 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { idOf, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callPrice, coinCount, idOf, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 
 export interface ServerEvent { type: string; data?: Record<string, unknown> }
+/** What an ended call cost, and whether it ended because the caller's coins ran out. */
+const callCharge = (call: Record<string, unknown>) => ({
+  ...(coinCount(call.coinsPerMinute) ? { coins: coinCount(call.coinsCharged) } : {}),
+  ...(call.endReason === "out_of_coins" ? { reason: "out_of_coins" } : {}),
+});
 /** The staff side of a verification call, as the call's media peer. */
 export const VERIFY_PEER = "zimi-team";
 export type RealtimeConnection = (() => void) & { setActive?: (active: boolean) => void; send?: (event: "webrtc:signal" | "stream:signal" | "stream:ready", data: RtcPayload & { callId?: string; streamId?: string; to?: string }) => Promise<void> };
@@ -62,8 +67,8 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
       const call = record(payload), callId = idOf(call);
       if (!callId || !userId) return;
       if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: { id: idOf(call.callerId), name: "" }, kind: call.kind, voice: call.kind === "audio" });
-      else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio" });
-      else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId });
+      else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call) });
+      else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId, ...callCharge(call) });
     } catch { /* Ignore malformed events instead of corrupting screen state. */ }
   });
   socket.on("chat:message", payload => {
