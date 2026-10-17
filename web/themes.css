@@ -5,16 +5,18 @@
 :root[data-theme-id] :is(.app,#top,.zh-header,.nav.zh-nav){background:var(--canvas);color:var(--ink)}
 :root[data-theme-id] .app{background-image:radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 65%)}
 :root[data-theme-id] :is(.zh-header,.zp-dialog,.zp-detail,.zp-dialog details,.zc-contact){border-color:var(--line)}
-:root[data-theme-id] :is(.zh-balance,.zp-heading-actions>button,.zp-row-icon,.zp-wallet-actions>button,.zp-dialog-heading>button,.zp-secondary,.zp-account-id,.zp-earnings,.zp-field>input,.zp-field>select,.zp-languages label,.zp-blocked button,.zc-dialog-heading>button,.zc-search,.zc-mark-read,.zc-sort select,.zc-compose-search,.zh-soft,.zh-broadcast input,.zh-broadcast select,.zh-packs>button){background:var(--raised);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zp-group-card,.zp-dialog,.zc-dialog,.zc-row.rowlink,.zc-skeleton-row,.zc-pulse,.zc-match-footer,.zh-match,.zh-bonus,.zh-tile-caption,.zh-payment-status,.zh-wallet-card,.zh-gift-sheet,.zh-notification){background:var(--surface);color:var(--ink)}
-:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zh-match,.zc-pulse,.zh-wallet-card){background-image:linear-gradient(120deg,transparent,color-mix(in srgb,var(--accent) 7%,transparent))}
-:root[data-theme-id] :is(.zp-stats>div,.zp-bio,.zc-row.zc-unread,.zh-filters button,.zc-filters button,.zc-tabs>button){background:var(--raised);color:var(--ink)}
+:root[data-theme-id] :is(.zh-balance,.zp-heading-actions>button,.zp-row-icon,.zp-wallet-actions>button,.zp-dialog-heading>button,.zp-secondary,.zp-account-id,.zp-earnings,.zp-field>input,.zp-field>select,.zp-languages label,.zp-blocked button,.zc-dialog-heading>button,.zc-search,.zc-sort select,.zc-compose-search,.zh-soft,.zh-broadcast input,.zh-broadcast select,.zh-packs>button){background:var(--raised);color:var(--ink);border-color:var(--line)}
+:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zp-group-card,.zp-dialog,.zc-dialog,.zh-match,.zh-bonus,.zh-tile-caption,.zh-payment-status,.zh-wallet-card,.zh-gift-sheet,.zh-notification){background:var(--surface);color:var(--ink)}
+:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zh-match,.zh-wallet-card){background-image:linear-gradient(120deg,transparent,color-mix(in srgb,var(--accent) 7%,transparent))}
+:root[data-theme-id] :is(.zp-stats>div,.zp-bio,.zh-filters button,.zc-filters button,.zc-tabs>button.selected){background:var(--raised);color:var(--ink)}
 :root[data-theme-id] :is(.zp-row,.zp-person h2,.zh-match h2,.zh-tile h3,.zc-empty h2,.zh-empty h3,.zc-name){color:var(--ink)}
-:root[data-theme-id] :is(.zp-heading p,.zp-group>h2,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-row-text>small,.zp-chevron,.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-dialog .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-section-heading h2,.zc-person>span:last-child,.zc-row-heading time,.zc-message,.zc-unread .zc-message,.zc-no-available,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
+:root[data-theme-id] :is(.zp-heading p,.zp-group>h2,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-row-text>small,.zp-chevron,.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-dialog .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-section-heading h2,.zc-person>span:last-child,.zc-row-heading time,.zc-message,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
 :root[data-theme-id] :is(.zh-brand>svg,.zh-brand>span>span,.zh-balance svg,.zp-stats svg,.zp-row-icon,.zp-empty>svg,.zc-gift-message,.zc-unread .zc-gift-message,.zc-name .zh-verified svg,.zc-name>svg,.zc-section-heading>button,.zc-contact>svg,.zc-dialog-reset,.zc-search>button.active,.zh-section-title>button,.zh-match h2>svg,.zh-packs svg){color:var(--accent-ink)}
+:root[data-theme-id] .zc-unread .zc-message{color:var(--ink)}
+:root[data-theme-id] :is(.zc-unread .zc-row-heading time,.zc-heading-actions>.zc-compose-button){color:var(--accent-ink)}
 :root[data-theme-id] :is(.zp-badge,.zh-bonus>button,.zh-bonus-icon){background:var(--raised);color:var(--accent-ink)}
-:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected,.zc-tabs>button.selected,.zc-new,.zc-hot-button,.zc-compose-button,.zh-nav>.zh-create){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
-:root[data-theme-id] :is(.zh-bell>i,.zh-nav-dot,.zc-section-heading h2>i,.zc-pulse h2>i){background:var(--accent);outline-color:var(--canvas)}
+:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected,.zh-nav>.zh-create){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
+:root[data-theme-id] :is(.zh-bell>i,.zh-nav-dot){background:var(--accent);outline-color:var(--canvas)}
 :root[data-theme-id] .zh-nav>button{color:var(--muted)}
 :root[data-theme-id] .zh-nav>button.on{color:var(--accent-ink)}
 :root[data-theme-id] .zh-nav>button[data-tab]::before{background:var(--accent);opacity:0}
@@ -31,7 +33,7 @@
 :root[data-theme-id] input[type=checkbox]{accent-color:var(--accent)}
 :root[data-theme-id] .zh-packs>button.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 :root[data-theme-id] :is(.zp-camera,.zp-avatar,.zh-story-create .zh-story-ring,.zh-rate,.ob-toast){background:var(--raised);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zh-story-ring,.zc-person>.zc-avatar){border-color:var(--accent);box-shadow:none}
+:root[data-theme-id] :is(.zh-story-ring){border-color:var(--accent);box-shadow:none}
 :root[data-theme-id] :is(.zh-story-ring>b,.zh-story-create .zh-story-ring>i,.zh-notification>i){background:var(--accent);color:var(--cta-ink)}
 :root[data-theme-id] :is(.zh-notification p,.zh-notification time){color:var(--muted)}
 :root[data-theme-id] .zh-notification>span{color:var(--accent-ink)}
@@ -44,14 +46,14 @@
 :root[data-theme-id] :is(.stab.on,.msum .big,.phero .nm,.btab,.hpname .nm,.ctitle,.celcard b,.cfm>b){font-family:var(--theme-font)}
 :root[data-theme-id] :is(.zc-thread,.ringscr,.conn){background:var(--canvas);color:var(--ink)}
 :root[data-theme-id] :is(.zh-sheet,.zh-tile,.zh-precall-details){background:var(--surface);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zh-sheet-heading>button,.zh-gifts>button,.zh-search-header>div,.zh-load-more,.zh-featured-open,.zh-tile-rate,.zh-tile-action,.zh-offline,.zh-viewers,.zh-gift,.zh-live-note,.zc-avatar,.zc-pulse-icon,.zp-switch){background:var(--raised);color:var(--ink);border-color:var(--line);box-shadow:none}
-:root[data-theme-id] :is(.zh-sheet-heading p,.zh-empty-small,.zh-search-status,.zh-wallet-card>span,.zh-wallet-card p,.zh-preview-note,.zh-precall-details>span,.zc-pulse p,.zc-search>button,.zc-message>svg,.ringscr p,.ringfee,.conn p,.connnote){color:var(--muted)}
-:root[data-theme-id] :is(.zh-gifts small,.zh-eyebrow,.zh-verified,.zh-error button,.zh-ready-illustration,.zh-broadcast>.zh-soft,.zc-pulse-icon,.zc-empty>svg,.zc-gift-message>svg,.conneye){color:var(--accent-ink)}
+:root[data-theme-id] :is(.zh-sheet-heading>button,.zh-gifts>button,.zh-search-header>div,.zh-load-more,.zh-featured-open,.zh-tile-rate,.zh-tile-action,.zh-offline,.zh-viewers,.zh-gift,.zh-live-note,.zc-avatar,.zp-switch){background:var(--raised);color:var(--ink);border-color:var(--line);box-shadow:none}
+:root[data-theme-id] :is(.zh-sheet-heading p,.zh-empty-small,.zh-search-status,.zh-wallet-card>span,.zh-wallet-card p,.zh-preview-note,.zh-precall-details>span,.zc-search>button,.zc-message>svg,.ringscr p,.ringfee,.conn p,.connnote){color:var(--muted)}
+:root[data-theme-id] :is(.zh-gifts small,.zh-eyebrow,.zh-verified,.zh-error button,.zh-ready-illustration,.zh-broadcast>.zh-soft,.zc-empty>svg,.zc-gift-message>svg,.conneye){color:var(--accent-ink)}
 :root[data-theme-id] .zh-precall-details b{color:var(--ink)}
-:root[data-theme-id] :is(.zh-profile,.zh-live,.zh-ready,.zh-tile-action.zh-hot,.zc-person>b,.zc-unread-count,.zc-bot,.zc-bot-label,.zc-match-footer>span,.pcgo,.sumbtns .pri,.hgo,.ebtn,.nav button.on .ic){background:var(--accent);color:var(--cta-ink);box-shadow:none}
+:root[data-theme-id] :is(.zh-profile,.zh-live,.zh-ready,.zh-tile-action.zh-hot,.zc-person>b,.zc-unread-count,.zc-bot,.zc-bot-label,.pcgo,.sumbtns .pri,.hgo,.ebtn,.nav button.on .ic){background:var(--accent);color:var(--cta-ink);box-shadow:none}
 :root[data-theme-id] :is(.zh-section-title h2>i,.zh-live-note>i){background:var(--accent)}
 :root[data-theme-id] .zh-live>i{background:var(--cta-ink)}
-:root[data-theme-id] .zc-presence{background:var(--muted);border-color:var(--surface);box-shadow:none}
+:root[data-theme-id] .zc-presence{border-color:var(--canvas);box-shadow:none}
 :root[data-theme-id] :is(.zc-presence.online,.zh-online-dot,.ringeye i){background:var(--online)}
 :root[data-theme-id] .zp-switch>i{background:var(--ink)}
 :root[data-theme-id] .zp-switch.is-on>i{background:var(--cta-ink)}
@@ -84,7 +86,7 @@
 :root[data-theme-id][data-theme=dark]{color-scheme:dark}
 /* Animate only colors, and only during a theme change. Media and layout stay put. */
 :root.zt-transition{transition-property:--canvas,--deep,--surface,--raised,--line,--ink,--muted,--faint,--accent,--accent-ink,--accent-wash,--accent-line,--live,--live-wash,--online,--cta,--cta-ink,--btn,--btn-ink,--theme-danger;transition-duration:260ms;transition-timing-function:ease}
-:root.zt-transition:not([data-theme-interpolation]) :is(body,.app,#top,.zh-header,.nav.zh-nav,.zp-dialog,.zp-identity,.zp-wallet,.zp-group-card,.zp-row,.zp-row-icon,.zp-row-text>small,.zp-stats>div,.zp-bio,.zh-match,.zh-bonus,.zh-tile-caption,.zc-row,.zc-pulse,.zc-tabs>button){transition:background-color 260ms ease,color 260ms ease,border-color 260ms ease}
+:root.zt-transition:not([data-theme-interpolation]) :is(body,.app,#top,.zh-header,.nav.zh-nav,.zp-dialog,.zp-identity,.zp-wallet,.zp-group-card,.zp-row,.zp-row-icon,.zp-row-text>small,.zp-stats>div,.zp-bio,.zh-match,.zh-bonus,.zh-tile-caption,.zc-row,.zc-tabs>button){transition:background-color 260ms ease,color 260ms ease,border-color 260ms ease}
 .zp-dialog.zt-dialog{max-width:680px}
 .zt-dialog .zp-dialog-heading{padding-bottom:6px}
 .zt-dialog .zp-dialog-body{padding-top:0}

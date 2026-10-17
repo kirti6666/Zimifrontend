@@ -2284,89 +2284,70 @@ button.gpill[onclick]{cursor:pointer}
 @keyframes zh-skeleton-shimmer{0%{background-position:180% 0}100%{background-position:-40% 0}}
 @media(min-width:600px){.zh-skeleton-story-list{gap:22px}}
 @media(prefers-reduced-motion:reduce){.zh-skeleton-shape,.zh-photo-pending,.sk{animation:none!important}}
-/* The inbox follows the reference's generous cards and quiet plum surfaces. */
+/* The inbox is a plain list: title, search, filters and conversations, in the theme colours. */
 .zc-app{--zc-u:clamp(1px,.26667vw,1.68px);--canvas:#1d0e1a}
 .zc-app .app{background:linear-gradient(160deg,#1e0f1b,#210f1c 65%,#1b0c17)}
-.zc-chats{max-width:1100px;margin:auto;padding:calc(4 * var(--zc-u)) calc(15.5 * var(--zc-u)) calc(15 * var(--zc-u))}
-.zc-heading{display:flex;align-items:center;gap:calc(6 * var(--zc-u));margin-bottom:calc(8 * var(--zc-u));min-height:calc(38 * var(--zc-u))}
-.zc-heading h1{font-size:calc(29 * var(--zc-u));letter-spacing:calc(-1 * var(--zc-u));line-height:1.1;font-weight:750}
-.zc-new{background:#e80a7c;color:white;border-radius:99px;padding:calc(4 * var(--zc-u)) calc(9 * var(--zc-u));font-size:calc(10 * var(--zc-u));font-weight:700;line-height:1;white-space:nowrap}
-.zc-heading-actions{display:flex;align-items:center;gap:calc(4 * var(--zc-u));margin-left:auto}
-.zc-heading-actions>button{display:grid;place-items:center;border-radius:50%;width:calc(38 * var(--zc-u));height:calc(38 * var(--zc-u));color:#e4bfce}
+.zc-chats{max-width:760px;margin:auto;padding:calc(6 * var(--zc-u)) calc(16 * var(--zc-u)) calc(15 * var(--zc-u))}
+.zc-heading{display:flex;align-items:center;gap:calc(8 * var(--zc-u));margin-bottom:calc(10 * var(--zc-u));min-height:calc(38 * var(--zc-u))}
+.zc-heading h1{font-size:calc(26 * var(--zc-u));letter-spacing:calc(-0.8 * var(--zc-u));line-height:1.1;font-weight:750}
+.zc-new{color:var(--accent-ink);font-size:calc(12.5 * var(--zc-u));font-weight:650;white-space:nowrap}
+.zc-heading-actions{display:flex;align-items:center;gap:calc(2 * var(--zc-u));margin-left:auto}
+.zc-heading-actions>button{display:grid;place-items:center;border-radius:50%;width:calc(38 * var(--zc-u));height:calc(38 * var(--zc-u));color:var(--ink)}.zc-heading-actions>button:hover:not(:disabled){background:var(--surface)}.zc-heading-actions>button:disabled{opacity:.4}
 .zc-heading-actions>button>svg{height:calc(22 * var(--zc-u));width:calc(22 * var(--zc-u))}
-.zc-mark-read{background:#301b29}
-.zc-compose-button{background:#ec087f!important;color:white!important;box-shadow:0 6px 22px #f2078133}
-.zc-search{display:flex;align-items:center;gap:calc(8 * var(--zc-u));background:#301b28;border-radius:99px;padding:0 calc(14 * var(--zc-u));height:calc(43 * var(--zc-u));margin:calc(7 * var(--zc-u)) 0;color:#ab8499}
+.zc-heading-actions>.zc-compose-button{color:var(--accent-ink)}
+.zc-search{display:flex;align-items:center;gap:calc(8 * var(--zc-u));background:var(--raised);border-radius:12px;padding:0 calc(12 * var(--zc-u));height:calc(40 * var(--zc-u));margin:0 0 calc(10 * var(--zc-u));color:var(--muted)}
 .zc-search>svg,.zc-search button>svg{width:calc(17 * var(--zc-u));height:calc(17 * var(--zc-u));flex:none}
 .zc-search input{flex:1;min-width:0;width:0;font-size:calc(13.5 * var(--zc-u));letter-spacing:-.15px;outline:none!important}
-.zc-search input::placeholder{color:#ad869b;opacity:1}
-.zc-search>button{display:grid;place-items:center;flex:none;min-width:28px;height:100%;color:#ad879b}
-.zc-search>button.active{color:#ff82bc}
-.zc-tabs{display:flex;gap:calc(4 * var(--zc-u));overflow:auto;scrollbar-width:none;margin:0 calc(-15.5 * var(--zc-u)) calc(12 * var(--zc-u));padding:0 calc(15.5 * var(--zc-u));white-space:nowrap}
+.zc-search input::placeholder{color:var(--muted);opacity:1}
+.zc-search>button{display:grid;place-items:center;flex:none;min-width:28px;height:100%;color:var(--muted)}
+.zc-search>button.active{color:var(--accent-ink)}
+.zc-tabs{display:flex;gap:calc(4 * var(--zc-u));overflow:auto;scrollbar-width:none;margin:0 calc(-16 * var(--zc-u)) calc(8 * var(--zc-u));padding:0 calc(16 * var(--zc-u));white-space:nowrap}
 .zc-tabs::-webkit-scrollbar,.zc-people::-webkit-scrollbar{display:none}
-.zc-tabs>button{background:#2e1a27;border-radius:99px;padding:calc(7 * var(--zc-u)) calc(14 * var(--zc-u));font-size:calc(11.5 * var(--zc-u));line-height:1.25;font-weight:650;color:#ddbdce;flex:none}
-.zc-tabs>button.selected{background:#e90b80;color:white}
-.zc-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 calc(10 * var(--zc-u))}
-.zc-section-heading h2{display:flex;align-items:center;gap:calc(7 * var(--zc-u));font-size:calc(11.5 * var(--zc-u));font-weight:650;letter-spacing:calc(.65 * var(--zc-u));color:#dfbed0;line-height:1.3}
-.zc-section-heading h2>i,.zc-pulse h2>i{display:inline-block;border-radius:50%;width:calc(7 * var(--zc-u));height:calc(7 * var(--zc-u));background:#ed1186;flex:none}
-.zc-section-heading>button{font-size:calc(10.5 * var(--zc-u));font-weight:650;letter-spacing:.3px;color:#ffadd1;white-space:nowrap}
-.zc-people{display:flex;gap:calc(15 * var(--zc-u));overflow:auto;scrollbar-width:none;margin:0 calc(-15.5 * var(--zc-u));padding:0 calc(17 * var(--zc-u)) calc(4 * var(--zc-u));align-items:flex-start}
-.zc-person{position:relative;flex:0 0 calc(62 * var(--zc-u));width:calc(62 * var(--zc-u));text-align:center;min-width:0}
-.zc-person>.zc-avatar{width:calc(61 * var(--zc-u));height:calc(61 * var(--zc-u));padding:2px;border:2px solid #dc36d1;background:#1a101a}
+.zc-tabs>button{border-radius:99px;padding:calc(6 * var(--zc-u)) calc(12 * var(--zc-u));font-size:calc(13 * var(--zc-u));line-height:1.25;font-weight:600;color:var(--muted);flex:none}
+.zc-tabs>button.selected{background:var(--raised);color:var(--ink)}
+.zc-available{margin:calc(4 * var(--zc-u)) 0 calc(10 * var(--zc-u))}.zc-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 calc(8 * var(--zc-u))}
+.zc-section-heading h2{font-size:calc(13 * var(--zc-u));font-weight:650;color:var(--muted);line-height:1.3}
+.zc-section-heading>button{font-size:calc(13 * var(--zc-u));font-weight:600;color:var(--accent-ink);white-space:nowrap}
+.zc-people{display:flex;gap:calc(14 * var(--zc-u));overflow:auto;scrollbar-width:none;margin:0 calc(-16 * var(--zc-u));padding:0 calc(16 * var(--zc-u)) calc(2 * var(--zc-u));align-items:flex-start}
+.zc-person{position:relative;flex:0 0 calc(56 * var(--zc-u));width:calc(56 * var(--zc-u));text-align:center;min-width:0}
+.zc-person>.zc-avatar{width:calc(56 * var(--zc-u));height:calc(56 * var(--zc-u))}
 .zc-person>.zc-avatar>.zh-photo{border-radius:50%}
-.zc-person>b{position:absolute;top:calc(53 * var(--zc-u));left:50%;transform:translateX(-50%);background:#ec0a84;font-size:calc(9 * var(--zc-u));line-height:1.3;border-radius:5px;padding:0 calc(5 * var(--zc-u));white-space:nowrap;color:white}
-.zc-person-ready>.zc-avatar{border-color:#dc51ec}
-.zc-person-ready>b{background:#a23ef0}
-.zc-person>span:last-child{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(10 * var(--zc-u));font-weight:650;color:#dfbdcf;letter-spacing:.2px;margin-top:calc(7 * var(--zc-u))}
-.zc-no-available{font-size:calc(12 * var(--zc-u));color:#b99aad;padding:calc(16 * var(--zc-u)) 0;line-height:1.6}
-.zc-pulse{display:flex;align-items:center;gap:calc(10 * var(--zc-u));padding:calc(8 * var(--zc-u));border-radius:calc(14 * var(--zc-u));background:linear-gradient(120deg,#382332,#301927);margin:calc(9 * var(--zc-u)) 0 calc(7 * var(--zc-u));min-height:calc(50 * var(--zc-u))}
-.zc-pulse-icon{height:calc(36 * var(--zc-u));width:calc(36 * var(--zc-u));border-radius:50%;background:#651635;color:#f80887;display:grid;place-items:center;flex:none}
-.zc-pulse-icon>svg{width:calc(23 * var(--zc-u));height:calc(23 * var(--zc-u))}
-.zc-pulse>div{flex:1;min-width:0}
-.zc-pulse h2{font-size:calc(12 * var(--zc-u));line-height:1.35;font-weight:700;display:flex;gap:calc(5 * var(--zc-u));align-items:center;white-space:nowrap}
-.zc-pulse h2>i{height:calc(6 * var(--zc-u));width:calc(6 * var(--zc-u))}
-.zc-pulse p{font-size:calc(11.5 * var(--zc-u));line-height:1.4;color:#d7b5c8;white-space:nowrap}
-.zc-hot-button{background:#ec087d;color:white;border-radius:calc(9 * var(--zc-u));padding:calc(7 * var(--zc-u)) calc(12 * var(--zc-u));font-size:calc(11.5 * var(--zc-u));font-weight:700;white-space:nowrap;box-shadow:0 5px 22px #f1088130;flex:none}
-.zc-list{display:flex;flex-direction:column;gap:calc(7 * var(--zc-u))}
-.zc-row.rowlink,.zc-skeleton-row{display:flex;align-items:center;gap:calc(9 * var(--zc-u));width:100%;padding:calc(12 * var(--zc-u));min-height:calc(70 * var(--zc-u));border:0;border-radius:calc(14 * var(--zc-u));background:#2d1927;text-align:left;color:#f8e2ee;margin:0}
-.zc-row.rowlink:hover{background:#362031}
-.zc-row.zc-unread{background:#321d2c}
+.zc-person>b{position:absolute;top:calc(47 * var(--zc-u));left:50%;transform:translateX(-50%);background:var(--accent);color:var(--cta-ink);font-size:calc(8.5 * var(--zc-u));font-weight:750;letter-spacing:.4px;line-height:1.4;border-radius:4px;padding:0 calc(4 * var(--zc-u));white-space:nowrap}.zc-person>i{position:absolute;top:calc(42 * var(--zc-u));right:calc(1 * var(--zc-u));width:calc(13 * var(--zc-u));height:calc(13 * var(--zc-u));border-radius:50%;background:var(--online);border:2px solid var(--canvas)}
+.zc-person>span:last-child{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(11.5 * var(--zc-u));font-weight:550;color:var(--muted);margin-top:calc(6 * var(--zc-u))}
+.zc-list{display:flex;flex-direction:column;gap:2px}
+.zc-row.rowlink,.zc-skeleton-row{display:flex;align-items:center;gap:calc(12 * var(--zc-u));width:calc(100% + calc(16 * var(--zc-u)));margin:0 calc(-8 * var(--zc-u));padding:calc(10 * var(--zc-u)) calc(8 * var(--zc-u));min-height:calc(68 * var(--zc-u));border:0;border-radius:calc(14 * var(--zc-u));background:transparent;text-align:left;color:var(--ink)}
+.zc-row.rowlink:hover,.zc-row.rowlink:active{background:var(--surface)}
 .zc-avatar-wrap{position:relative;flex:none}
-.zc-avatar{display:block;position:relative;height:calc(46 * var(--zc-u));width:calc(46 * var(--zc-u));border-radius:50%;overflow:hidden;background:#352330;flex:none}
+.zc-avatar{display:block;position:relative;height:calc(50 * var(--zc-u));width:calc(50 * var(--zc-u));border-radius:50%;overflow:hidden;background:var(--raised);flex:none}
 .zc-avatar>.zh-photo,.zc-avatar>.zh-fallback{width:100%;height:100%;border-radius:50%;object-position:center 30%}
 .zc-avatar .zh-fallback>span{font-size:calc(18 * var(--zc-u))}
-.zc-presence{position:absolute;right:0;bottom:0;height:calc(13 * var(--zc-u));width:calc(13 * var(--zc-u));border-radius:50%;background:#523247;border:1px solid #321d2c}
-.zc-presence.online{background:#ff3797;box-shadow:0 0 12px #ff138d50}
-.zc-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(5 * var(--zc-u))}
+.zc-presence{position:absolute;right:0;bottom:0;height:calc(13 * var(--zc-u));width:calc(13 * var(--zc-u));border-radius:50%;background:var(--online);border:2px solid var(--canvas)}.zc-presence:not(.online){display:none}
+.zc-presence.online{background:var(--online)}
+.zc-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(3 * var(--zc-u))}
 .zc-row-heading{display:flex;align-items:center;justify-content:space-between;gap:calc(6 * var(--zc-u))}
-.zc-name{display:flex;align-items:center;gap:calc(5 * var(--zc-u));font-size:calc(15 * var(--zc-u));font-weight:650;letter-spacing:calc(-.2 * var(--zc-u));line-height:1.25;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.zc-name .zh-verified svg,.zc-name>svg{width:calc(15 * var(--zc-u));height:calc(15 * var(--zc-u));color:#f1aece}
-.zc-row-heading time{font-size:calc(9.5 * var(--zc-u));font-weight:650;color:#ddbbcd;white-space:nowrap;flex:none}
+.zc-name{display:flex;align-items:center;gap:calc(5 * var(--zc-u));font-size:calc(15.5 * var(--zc-u));font-weight:600;letter-spacing:calc(-0.2 * var(--zc-u));line-height:1.25;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.zc-unread .zc-name{font-weight:750}
+.zc-name>svg{width:calc(15 * var(--zc-u));height:calc(15 * var(--zc-u));color:var(--accent-ink)}
+.zc-row-heading time{font-size:calc(11.5 * var(--zc-u));font-weight:500;color:var(--muted);white-space:nowrap;flex:none}.zc-unread .zc-row-heading time{color:var(--accent-ink);font-weight:650}
 .zc-row-preview{display:flex;align-items:center;gap:calc(7 * var(--zc-u));min-width:0}
-.zc-automated{font-size:calc(10 * var(--zc-u));font-weight:500;line-height:1.4;color:var(--muted,#bfa4b4)}
+.zc-automated{font-size:calc(11 * var(--zc-u));font-weight:500;line-height:1.4;color:var(--muted);opacity:.85}
 .zc-meta:has(.zc-automated){flex-wrap:wrap}
-.zc-message{min-width:0;flex:1;display:flex;align-items:center;gap:calc(6 * var(--zc-u));font-size:calc(12 * var(--zc-u));color:#d9bbcc;line-height:1.4}
+.zc-message{min-width:0;flex:1;display:flex;align-items:center;gap:calc(5 * var(--zc-u));font-size:calc(13.5 * var(--zc-u));color:var(--muted);line-height:1.4}
 .zc-message>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.zc-message>svg{flex:none;width:calc(14 * var(--zc-u));height:calc(14 * var(--zc-u));color:#bb8ea5}
-.zc-unread .zc-message{font-weight:650;color:#f0d9e7}
-.zc-gift-message,.zc-unread .zc-gift-message{color:#ffabd0}
-.zc-gift-message>svg{color:#f9168c}
-.zc-unread-count{display:grid;place-items:center;background:#ec0781;border-radius:50%;min-width:calc(19 * var(--zc-u));height:calc(19 * var(--zc-u));padding:0 4px;font-size:calc(10 * var(--zc-u));font-weight:700;color:white;box-shadow:0 3px 14px #f30b8533;flex:none}
+.zc-message>svg{flex:none;width:calc(14 * var(--zc-u));height:calc(14 * var(--zc-u));color:var(--muted)}
+.zc-unread .zc-message{font-weight:600;color:var(--ink)}
+.zc-gift-message,.zc-unread .zc-gift-message{color:var(--accent-ink)}
+.zc-gift-message>svg{color:var(--accent)}
+.zc-unread-count{display:grid;place-items:center;background:var(--accent);border-radius:99px;min-width:calc(20 * var(--zc-u));height:calc(20 * var(--zc-u));padding:0 calc(6 * var(--zc-u));font-size:calc(11 * var(--zc-u));font-weight:700;color:var(--cta-ink);flex:none}
 .zc-bot{display:grid;place-items:center;background:linear-gradient(135deg,#b831b0,#d726d5);color:white;border:1px solid #e75bc844}
 .zc-bot>svg{width:calc(28 * var(--zc-u));height:calc(28 * var(--zc-u))}
 .zc-bot-label{position:absolute;bottom:calc(-2 * var(--zc-u));right:calc(-2 * var(--zc-u));padding:0 4px;border-radius:99px;background:#e40981;color:white;font-weight:800;font-size:calc(8 * var(--zc-u))}
-.zc-match-footer{grid-column:1/-1;display:flex;align-items:center;gap:calc(8 * var(--zc-u));background:#42293b;border-radius:99px;padding:calc(8 * var(--zc-u)) calc(12 * var(--zc-u));margin-top:calc(4 * var(--zc-u))}
-.zc-match-footer>span{display:grid;place-items:center;width:calc(27 * var(--zc-u));height:calc(27 * var(--zc-u));border-radius:50%;background:#e90980;color:white;flex:none}
-.zc-match-footer>span>svg{width:calc(18 * var(--zc-u));height:calc(18 * var(--zc-u))}
-.zc-match-footer p{flex:1;font-size:calc(9.5 * var(--zc-u));font-weight:650;letter-spacing:calc(.2 * var(--zc-u))}
-.zc-match-footer .zc-hot-button{font-size:calc(10 * var(--zc-u));border-radius:99px;padding:calc(5 * var(--zc-u)) calc(12 * var(--zc-u))}
 .zc-empty{text-align:center;padding:calc(32 * var(--zc-u)) calc(15 * var(--zc-u));color:#cba6be}
 .zc-empty>svg{color:#f652a1;margin-bottom:16px}.zc-empty h2{font-size:calc(17 * var(--zc-u));letter-spacing:-.5px;color:#f8ddec;margin-bottom:9px}
 .zc-empty p{font-size:calc(12 * var(--zc-u));line-height:1.7;margin:0 auto 18px;max-width:360px}
 .zc-inbox-skeleton>div{display:flex;flex-direction:column;gap:calc(7 * var(--zc-u))}
 .zc-skeleton-row{pointer-events:none}.zc-skeleton-row .zc-row-body{gap:calc(12 * var(--zc-u))}
-.zc-people .zh-story{width:calc(61 * var(--zc-u));flex-basis:calc(61 * var(--zc-u))}
-.zc-people .zh-story-ring{height:calc(61 * var(--zc-u));width:calc(61 * var(--zc-u))}
+.zc-people .zh-story{width:calc(56 * var(--zc-u));flex-basis:calc(56 * var(--zc-u))}
+.zc-people .zh-story-ring{height:calc(56 * var(--zc-u));width:calc(56 * var(--zc-u))}
 .zc-people .zh-skeleton-story-list{gap:calc(15 * var(--zc-u))}
 .zc-people>.zh-skeleton{width:max-content;flex:none}
 .zc-overlay{position:fixed;inset:0;z-index:90;background:#0c050cbd;backdrop-filter:blur(5px);display:flex;align-items:flex-end;justify-content:center}
@@ -2385,8 +2366,8 @@ button.gpill[onclick]{cursor:pointer}
 .zc-contact>.zc-avatar{height:45px;width:45px}.zc-contact>span:nth-child(2){flex:1;min-width:0}
 .zc-contact b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.zc-contact small{display:block;font-size:11px;color:#d1a6bf;margin-top:4px}
 .zc-contact>svg{color:#ff9ccf;flex:none}.zc-empty-contact{font-size:13px;line-height:1.7;text-align:center;padding:20px 5px;color:#d2aac1}
-@media(min-width:900px){.zc-app{--zc-u:1.1px}.zc-chats{padding-top:20px}.zc-heading{margin-bottom:16px}.zc-search{max-width:670px;margin:0 0 16px}.zc-tabs{margin-bottom:25px}.zc-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:0 25px;align-items:start}.zc-discovery{min-width:0}.zc-conversations{grid-column:2;grid-row:1 / span 2;min-width:0}.zc-people{margin:0;padding:0 0 10px;gap:12px}.zc-section-heading h2{font-size:12px;letter-spacing:.4px}.zc-pulse{flex-wrap:wrap;margin-top:18px;padding:16px;gap:10px}.zc-pulse>.zc-hot-button{width:100%;margin-top:7px}.zc-match-footer{grid-column:1;margin-top:18px;align-self:start;flex-wrap:wrap;border-radius:16px;padding:14px}.zc-match-footer>.zc-hot-button{margin-left:36px}.zc-row.rowlink{min-height:91px}.zc-dialog{align-self:center;border-radius:24px}}
-@media(max-width:350px){.zc-header-actions{gap:7px}.zc-pulse{gap:7px}.zc-pulse h2{font-size:11px}.zc-pulse p{font-size:10px}.zc-pulse>.zc-hot-button{padding-left:9px;padding-right:9px;font-size:10px}.zc-message{font-size:11px}.zc-name{font-size:14px}.zc-row.rowlink{padding:10px;gap:8px}.zc-match-footer{padding:8px}.zc-match-footer p{font-size:9px}.zc-match-footer .zc-hot-button{padding-left:9px;padding-right:9px}}
+@media(min-width:900px){.zc-app{--zc-u:1.1px}.zc-chats{padding-top:20px}.zc-heading{margin-bottom:16px}.zc-dialog{align-self:center;border-radius:24px}}
+@media(max-width:350px){.zc-message{font-size:12.5px}.zc-name{font-size:14px}.zc-row.rowlink{gap:10px}}
 @media(prefers-reduced-motion:reduce){.zc-app *{scroll-behavior:auto!important}}
 
 /* Conversation thread: pinned header and live banner, scrolling history, quick replies and composer.
@@ -2406,7 +2387,7 @@ button.gpill[onclick]{cursor:pointer}
 .zc-thread-title .zh-verified{color:var(--accent-ink)}
 .zc-thread-title small{font-size:12.5px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .zc-thread-actions{flex:none;display:flex;align-items:center;gap:2px}
-.zc-thread-actions>.zc-thread-video{width:48px;height:48px;margin:0 2px;background:var(--accent);color:var(--cta-ink);box-shadow:0 6px 20px -4px color-mix(in srgb,var(--accent) 55%,transparent)}
+.zc-thread-actions>.zc-thread-video{color:var(--accent-ink)}
 .zc-thread-more{position:relative}
 .zc-thread-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:200px;padding:6px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
 .zc-thread-menu[hidden]{display:none}
@@ -2483,7 +2464,7 @@ button.gpill[onclick]{cursor:pointer}
 
 .zc-chips{flex:none;display:flex;gap:8px;padding:10px var(--zc-gutter) 4px;overflow-x:auto;scrollbar-width:none;border-top:1px solid color-mix(in srgb,var(--line) 45%,transparent)}
 .zc-chips::-webkit-scrollbar,.zc-emoji::-webkit-scrollbar{display:none}
-.zc-chips>button{flex:none;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:99px;background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600;white-space:nowrap}
+.zc-chips>button{flex:none;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:99px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;white-space:nowrap}
 .zc-chips>button:active{background:var(--raised)}
 .zc-emoji{flex:none;display:flex;gap:4px;padding:8px var(--zc-gutter) 0;overflow-x:auto;scrollbar-width:none}
 .zc-emoji[hidden]{display:none}
@@ -2542,9 +2523,9 @@ button.gpill[onclick]{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.zp-switch,.zp-switch>i{transition:none}}
 /* The saved appearance is applied to shared chrome and all account surfaces. */
 .zp-light.zh-app{--canvas:#fff5fa;--deep:#faeaf3;--surface:#fff;--raised:#f4dfeb;--line:#e8cadb;--ink:#321525;--muted:#79556a;--faint:#906d81;--accent-ink:#b50a65;color-scheme:light}.zp-light.zh-app .app,.zp-light.zc-app .app{background:linear-gradient(135deg,#fff5fa,#f9edf5)}.zp-light.zh-app #top,.zp-light .zh-header{background:#fff5fa}.zp-light .zh-header{border-color:#ebd4e1}.zp-light .zh-balance,.zp-light .zp-heading-actions>button{background:#f0dce9;color:#602841}.zp-light .zh-bell>i{outline-color:#fff5fa}.zp-light .zh-brand>svg{color:#bf176a}.zp-light.zh-app .nav.zh-nav{background:#fff5fa;box-shadow:0 -5px 18px #5630440a}.zp-light.zh-app .zh-nav>button{color:#795168}.zp-light.zh-app .zh-nav>button.on{color:#bb0061}.zp-light.zh-app .zh-nav>.zh-create{color:#fff}.zp-light .zp-heading p,.zp-light .zp-group>h2,.zp-light .zp-footer>span{color:#775066}.zp-light .zp-identity{background:linear-gradient(125deg,#fff,#f6dfea)}.zp-light .zp-person-text>p,.zp-light .zp-person-text .zp-id{color:#79556a}.zp-light .zp-stats>div,.zp-light .zp-bio{background:#f3e1ec}.zp-light .zp-stats svg{color:#ae4e7e}.zp-light .zp-wallet{background:linear-gradient(125deg,#f7ddeb,#eadcf5)}.zp-light .zp-wallet-actions>button{background:#ffffffa6;color:#55283f}.zp-light .zp-group-card{background:#fff}.zp-light .zp-row{color:#3e1e30}.zp-light .zp-row-icon{background:#f4e6ee;color:#a63f75}.zp-light .zp-row-text>small{color:#866079}.zp-light .zp-chevron{color:#936a81}.zp-light .zp-badge{color:#942655;background:#f7cfe3}.zp-light .zp-logout{color:#ba3d49}.zp-light .zp-logout .zp-row-icon{background:#fce0e2;color:#ba3d49}.zp-light .zp-footer{color:#946b84}.zp-light .zh-skeleton-shape{background-image:linear-gradient(100deg,#aa608015 20%,#aa60802c 45%,#aa608015 70%)}.zp-light .zp-dialog{background:#fff5fa;color:#321525;border-color:#e8cadb;color-scheme:light}.zp-light .zp-dialog-body>p,.zp-light .zp-guidelines>p,.zp-light .zp-dialog details p,.zp-light .zp-detail>span,.zp-light .zp-detail>small,.zp-light .zp-field,.zp-light .zp-earnings>span,.zp-light .zp-earnings>small{color:#79556a}.zp-light .zp-dialog-heading>button,.zp-light .zp-secondary,.zp-light .zp-account-id,.zp-light .zp-earnings,.zp-light .zp-field>input,.zp-light .zp-field>select,.zp-light .zp-languages label{background:#f2dfeb;color:#54283e;border-color:#d6b5c9}.zp-light .zp-dialog details,.zp-light .zp-detail{border-color:#e8cadb}.zp-light .zp-dialog .zp-note{color:#866179}
-.zp-light .zh-match,.zp-light .zh-bonus,.zp-light .zc-thread,.zp-light .zc-pulse,.zp-light .zc-search,.zp-light .zc-match-footer,.zp-light .zh-tile-caption{background:#f0deeb;color:#462236}.zp-light .zh-match p,.zp-light .zc-thread .zc-preview,.zp-light .zc-pulse p{color:#79556a}.zp-light .zh-filters button,.zp-light .zc-filters button{background:#edd7e5;color:#6f3d58}.zp-light .zh-filters button.selected,.zp-light .zc-filters button.selected{background:#ed087f;color:#fff}.zp-light .zh-header .zh-icon{color:#76405d}.zp-light .zh-featured,.zp-light .zh-tile-media,.zp-light .zh-room{color:#fce8f2}
+.zp-light .zh-match,.zp-light .zh-bonus,.zp-light .zc-thread,.zp-light .zh-tile-caption{background:#f0deeb;color:#462236}.zp-light .zh-match p,.zp-light .zc-thread .zc-preview{color:#79556a}.zp-light .zh-filters button,.zp-light .zc-filters button{background:#edd7e5;color:#6f3d58}.zp-light .zh-filters button.selected,.zp-light .zc-filters button.selected{background:#ed087f;color:#fff}.zp-light .zh-header .zh-icon{color:#76405d}.zp-light .zh-featured,.zp-light .zh-tile-media,.zp-light .zh-room{color:#fce8f2}
 
-.zp-light .zh-balance svg{color:#b9477d}.zp-light .zc-tabs>button,.zp-light .zc-mark-read{background:#edd7e5;color:#6f3d58}.zp-light .zc-tabs>button.selected{background:#e90b80;color:white}.zp-light .zc-section-heading h2,.zp-light .zc-person>span:last-child,.zp-light .zc-section-heading>button{color:#884868}.zp-light .zc-row.rowlink,.zp-light .zc-skeleton-row{background:#fff;color:#422137}.zp-light .zc-row.zc-unread{background:#f4e1ed}.zp-light .zc-row-heading time,.zp-light .zc-message,.zp-light .zc-unread .zc-message{color:#79526b}.zp-light .zc-gift-message,.zp-light .zc-unread .zc-gift-message,.zp-light .zc-name .zh-verified svg,.zp-light .zc-name>svg{color:#ae3474}.zp-light .zc-empty,.zp-light .zc-empty h2,.zp-light .zh-empty,.zp-light .zh-empty h3,.zp-light .zh-muted{color:#79556a}.zp-light .zh-match h2,.zp-light .zh-tile h3{color:#482035}.zp-light .zh-tile p,.zp-light .zh-section-title>span,.zp-light .zh-available,.zp-light .zh-bonus p{color:#81576e}.zp-light .zh-section-title>button{color:#ad2c6c}.zp-light .zh-explore-heading>span,.zp-light .zh-explore-heading p,.zp-light .zh-stories>.zh-stage-empty{color:#92516f}.zp-light .zh-bonus>button{background:#e8bcd4;color:#7d2050}.zp-light .zh-primary{color:#fff}
+.zp-light .zh-balance svg{color:#b9477d}.zp-light .zc-empty,.zp-light .zc-empty h2,.zp-light .zh-empty,.zp-light .zh-empty h3,.zp-light .zh-muted{color:#79556a}.zp-light .zh-match h2,.zp-light .zh-tile h3{color:#482035}.zp-light .zh-tile p,.zp-light .zh-section-title>span,.zp-light .zh-available,.zp-light .zh-bonus p{color:#81576e}.zp-light .zh-section-title>button{color:#ad2c6c}.zp-light .zh-explore-heading>span,.zp-light .zh-explore-heading p,.zp-light .zh-stories>.zh-stage-empty{color:#92516f}.zp-light .zh-bonus>button{background:#e8bcd4;color:#7d2050}.zp-light .zh-primary{color:#fff}
 
 .zp-heading>div:first-child{min-width:0}
 /* Shared semantic tokens keep new palettes consistent across the existing screens. */
@@ -2554,16 +2535,18 @@ button.gpill[onclick]{cursor:pointer}
 :root[data-theme-id] :is(.app,#top,.zh-header,.nav.zh-nav){background:var(--canvas);color:var(--ink)}
 :root[data-theme-id] .app{background-image:radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 65%)}
 :root[data-theme-id] :is(.zh-header,.zp-dialog,.zp-detail,.zp-dialog details,.zc-contact){border-color:var(--line)}
-:root[data-theme-id] :is(.zh-balance,.zp-heading-actions>button,.zp-row-icon,.zp-wallet-actions>button,.zp-dialog-heading>button,.zp-secondary,.zp-account-id,.zp-earnings,.zp-field>input,.zp-field>select,.zp-languages label,.zp-blocked button,.zc-dialog-heading>button,.zc-search,.zc-mark-read,.zc-sort select,.zc-compose-search,.zh-soft,.zh-broadcast input,.zh-broadcast select,.zh-packs>button){background:var(--raised);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zp-group-card,.zp-dialog,.zc-dialog,.zc-row.rowlink,.zc-skeleton-row,.zc-pulse,.zc-match-footer,.zh-match,.zh-bonus,.zh-tile-caption,.zh-payment-status,.zh-wallet-card,.zh-gift-sheet,.zh-notification){background:var(--surface);color:var(--ink)}
-:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zh-match,.zc-pulse,.zh-wallet-card){background-image:linear-gradient(120deg,transparent,color-mix(in srgb,var(--accent) 7%,transparent))}
-:root[data-theme-id] :is(.zp-stats>div,.zp-bio,.zc-row.zc-unread,.zh-filters button,.zc-filters button,.zc-tabs>button){background:var(--raised);color:var(--ink)}
+:root[data-theme-id] :is(.zh-balance,.zp-heading-actions>button,.zp-row-icon,.zp-wallet-actions>button,.zp-dialog-heading>button,.zp-secondary,.zp-account-id,.zp-earnings,.zp-field>input,.zp-field>select,.zp-languages label,.zp-blocked button,.zc-dialog-heading>button,.zc-search,.zc-sort select,.zc-compose-search,.zh-soft,.zh-broadcast input,.zh-broadcast select,.zh-packs>button){background:var(--raised);color:var(--ink);border-color:var(--line)}
+:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zp-group-card,.zp-dialog,.zc-dialog,.zh-match,.zh-bonus,.zh-tile-caption,.zh-payment-status,.zh-wallet-card,.zh-gift-sheet,.zh-notification){background:var(--surface);color:var(--ink)}
+:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zh-match,.zh-wallet-card){background-image:linear-gradient(120deg,transparent,color-mix(in srgb,var(--accent) 7%,transparent))}
+:root[data-theme-id] :is(.zp-stats>div,.zp-bio,.zh-filters button,.zc-filters button,.zc-tabs>button.selected){background:var(--raised);color:var(--ink)}
 :root[data-theme-id] :is(.zp-row,.zp-person h2,.zh-match h2,.zh-tile h3,.zc-empty h2,.zh-empty h3,.zc-name){color:var(--ink)}
-:root[data-theme-id] :is(.zp-heading p,.zp-group>h2,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-row-text>small,.zp-chevron,.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-dialog .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-section-heading h2,.zc-person>span:last-child,.zc-row-heading time,.zc-message,.zc-unread .zc-message,.zc-no-available,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
+:root[data-theme-id] :is(.zp-heading p,.zp-group>h2,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-row-text>small,.zp-chevron,.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-dialog .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-section-heading h2,.zc-person>span:last-child,.zc-row-heading time,.zc-message,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
 :root[data-theme-id] :is(.zh-brand>svg,.zh-brand>span>span,.zh-balance svg,.zp-stats svg,.zp-row-icon,.zp-empty>svg,.zc-gift-message,.zc-unread .zc-gift-message,.zc-name .zh-verified svg,.zc-name>svg,.zc-section-heading>button,.zc-contact>svg,.zc-dialog-reset,.zc-search>button.active,.zh-section-title>button,.zh-match h2>svg,.zh-packs svg){color:var(--accent-ink)}
+:root[data-theme-id] .zc-unread .zc-message{color:var(--ink)}
+:root[data-theme-id] :is(.zc-unread .zc-row-heading time,.zc-heading-actions>.zc-compose-button){color:var(--accent-ink)}
 :root[data-theme-id] :is(.zp-badge,.zh-bonus>button,.zh-bonus-icon){background:var(--raised);color:var(--accent-ink)}
-:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected,.zc-tabs>button.selected,.zc-new,.zc-hot-button,.zc-compose-button,.zh-nav>.zh-create){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
-:root[data-theme-id] :is(.zh-bell>i,.zh-nav-dot,.zc-section-heading h2>i,.zc-pulse h2>i){background:var(--accent);outline-color:var(--canvas)}
+:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected,.zh-nav>.zh-create){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
+:root[data-theme-id] :is(.zh-bell>i,.zh-nav-dot){background:var(--accent);outline-color:var(--canvas)}
 :root[data-theme-id] .zh-nav>button{color:var(--muted)}
 :root[data-theme-id] .zh-nav>button.on{color:var(--accent-ink)}
 :root[data-theme-id] .zh-nav>button[data-tab]::before{background:var(--accent);opacity:0}
@@ -2580,7 +2563,7 @@ button.gpill[onclick]{cursor:pointer}
 :root[data-theme-id] input[type=checkbox]{accent-color:var(--accent)}
 :root[data-theme-id] .zh-packs>button.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 :root[data-theme-id] :is(.zp-camera,.zp-avatar,.zh-story-create .zh-story-ring,.zh-rate,.ob-toast){background:var(--raised);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zh-story-ring,.zc-person>.zc-avatar){border-color:var(--accent);box-shadow:none}
+:root[data-theme-id] :is(.zh-story-ring){border-color:var(--accent);box-shadow:none}
 :root[data-theme-id] :is(.zh-story-ring>b,.zh-story-create .zh-story-ring>i,.zh-notification>i){background:var(--accent);color:var(--cta-ink)}
 :root[data-theme-id] :is(.zh-notification p,.zh-notification time){color:var(--muted)}
 :root[data-theme-id] .zh-notification>span{color:var(--accent-ink)}
@@ -2593,14 +2576,14 @@ button.gpill[onclick]{cursor:pointer}
 :root[data-theme-id] :is(.stab.on,.msum .big,.phero .nm,.btab,.hpname .nm,.ctitle,.celcard b,.cfm>b){font-family:var(--theme-font)}
 :root[data-theme-id] :is(.zc-thread,.ringscr,.conn){background:var(--canvas);color:var(--ink)}
 :root[data-theme-id] :is(.zh-sheet,.zh-tile,.zh-precall-details){background:var(--surface);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zh-sheet-heading>button,.zh-gifts>button,.zh-search-header>div,.zh-load-more,.zh-featured-open,.zh-tile-rate,.zh-tile-action,.zh-offline,.zh-viewers,.zh-gift,.zh-live-note,.zc-avatar,.zc-pulse-icon,.zp-switch){background:var(--raised);color:var(--ink);border-color:var(--line);box-shadow:none}
-:root[data-theme-id] :is(.zh-sheet-heading p,.zh-empty-small,.zh-search-status,.zh-wallet-card>span,.zh-wallet-card p,.zh-preview-note,.zh-precall-details>span,.zc-pulse p,.zc-search>button,.zc-message>svg,.ringscr p,.ringfee,.conn p,.connnote){color:var(--muted)}
-:root[data-theme-id] :is(.zh-gifts small,.zh-eyebrow,.zh-verified,.zh-error button,.zh-ready-illustration,.zh-broadcast>.zh-soft,.zc-pulse-icon,.zc-empty>svg,.zc-gift-message>svg,.conneye){color:var(--accent-ink)}
+:root[data-theme-id] :is(.zh-sheet-heading>button,.zh-gifts>button,.zh-search-header>div,.zh-load-more,.zh-featured-open,.zh-tile-rate,.zh-tile-action,.zh-offline,.zh-viewers,.zh-gift,.zh-live-note,.zc-avatar,.zp-switch){background:var(--raised);color:var(--ink);border-color:var(--line);box-shadow:none}
+:root[data-theme-id] :is(.zh-sheet-heading p,.zh-empty-small,.zh-search-status,.zh-wallet-card>span,.zh-wallet-card p,.zh-preview-note,.zh-precall-details>span,.zc-search>button,.zc-message>svg,.ringscr p,.ringfee,.conn p,.connnote){color:var(--muted)}
+:root[data-theme-id] :is(.zh-gifts small,.zh-eyebrow,.zh-verified,.zh-error button,.zh-ready-illustration,.zh-broadcast>.zh-soft,.zc-empty>svg,.zc-gift-message>svg,.conneye){color:var(--accent-ink)}
 :root[data-theme-id] .zh-precall-details b{color:var(--ink)}
-:root[data-theme-id] :is(.zh-profile,.zh-live,.zh-ready,.zh-tile-action.zh-hot,.zc-person>b,.zc-unread-count,.zc-bot,.zc-bot-label,.zc-match-footer>span,.pcgo,.sumbtns .pri,.hgo,.ebtn,.nav button.on .ic){background:var(--accent);color:var(--cta-ink);box-shadow:none}
+:root[data-theme-id] :is(.zh-profile,.zh-live,.zh-ready,.zh-tile-action.zh-hot,.zc-person>b,.zc-unread-count,.zc-bot,.zc-bot-label,.pcgo,.sumbtns .pri,.hgo,.ebtn,.nav button.on .ic){background:var(--accent);color:var(--cta-ink);box-shadow:none}
 :root[data-theme-id] :is(.zh-section-title h2>i,.zh-live-note>i){background:var(--accent)}
 :root[data-theme-id] .zh-live>i{background:var(--cta-ink)}
-:root[data-theme-id] .zc-presence{background:var(--muted);border-color:var(--surface);box-shadow:none}
+:root[data-theme-id] .zc-presence{border-color:var(--canvas);box-shadow:none}
 :root[data-theme-id] :is(.zc-presence.online,.zh-online-dot,.ringeye i){background:var(--online)}
 :root[data-theme-id] .zp-switch>i{background:var(--ink)}
 :root[data-theme-id] .zp-switch.is-on>i{background:var(--cta-ink)}
@@ -2633,7 +2616,7 @@ button.gpill[onclick]{cursor:pointer}
 :root[data-theme-id][data-theme=dark]{color-scheme:dark}
 /* Animate only colors, and only during a theme change. Media and layout stay put. */
 :root.zt-transition{transition-property:--canvas,--deep,--surface,--raised,--line,--ink,--muted,--faint,--accent,--accent-ink,--accent-wash,--accent-line,--live,--live-wash,--online,--cta,--cta-ink,--btn,--btn-ink,--theme-danger;transition-duration:260ms;transition-timing-function:ease}
-:root.zt-transition:not([data-theme-interpolation]) :is(body,.app,#top,.zh-header,.nav.zh-nav,.zp-dialog,.zp-identity,.zp-wallet,.zp-group-card,.zp-row,.zp-row-icon,.zp-row-text>small,.zp-stats>div,.zp-bio,.zh-match,.zh-bonus,.zh-tile-caption,.zc-row,.zc-pulse,.zc-tabs>button){transition:background-color 260ms ease,color 260ms ease,border-color 260ms ease}
+:root.zt-transition:not([data-theme-interpolation]) :is(body,.app,#top,.zh-header,.nav.zh-nav,.zp-dialog,.zp-identity,.zp-wallet,.zp-group-card,.zp-row,.zp-row-icon,.zp-row-text>small,.zp-stats>div,.zp-bio,.zh-match,.zh-bonus,.zh-tile-caption,.zc-row,.zc-tabs>button){transition:background-color 260ms ease,color 260ms ease,border-color 260ms ease}
 .zp-dialog.zt-dialog{max-width:680px}
 .zt-dialog .zp-dialog-heading{padding-bottom:6px}
 .zt-dialog .zp-dialog-body{padding-top:0}
@@ -8693,7 +8676,6 @@ const chatIcons={
 function ci(name,size=20){return chatIcons[name]?`<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${chatIcons[name]}</svg>`:hi(name,size)}
 function zcPending(){return !DEMO&&contentPending('chats')&&!Chats.loadingMore}
 function zcHasCalls(c){return !!c.hasCalls||CALLS.some(x=>x[0]===c.user.id)}
-function zcIsCreator(c){return c.user.role==='host'||(c.user.role===undefined&&!!c.user.verified)}
 function zcPerson(c){const old=g(c.user.id)||{};return {...old,...homeCreator(c.user),role:c.user.role}}
 function zcSelfRole(){return S.hostAccess?.serverRole||S.user?.serverRole||(isApprovedHost()?'host':'user')}
 function zcChatBlockReason(id){
@@ -8715,15 +8697,14 @@ function zcRestoreFocus(saved){if(!saved)return;const el=document.getElementById
 function zcTime(c){if(c.displayTime)return c.displayTime;const at=new Date(c.lastAt);if(Number.isNaN(at.getTime()))return c.time||'';const age=Math.max(0,Date.now()-at.getTime()),minutes=Math.floor(age/60000);if(minutes<1)return 'Now';if(minutes<60)return minutes+'m ago';if(minutes<1440)return Math.floor(minutes/60)+'h ago';const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);return at.toDateString()===yesterday.toDateString()?'Yesterday':at.toLocaleDateString('en-IN',{month:'short',day:'numeric'})}
 function zcPhoto(h,extra=''){return `<span class="zc-avatar ${extra}">${homeCover({...h,coverUrl:h.avatarUrl||h.coverUrl})}</span>`}
 function zcRows(){const q=Chats.query.trim().toLowerCase();let rows=Chats.rows.filter(c=>{
-  if(Chats.filter==='creators'&&!zcIsCreator(c))return false;
   if(Chats.filter==='calls'&&!zcHasCalls(c))return false;
   if(Chats.filter==='unread'&&!c.unread)return false;
   if(Chats.onlineOnly&&!c.user.online)return false;
   return !q||[c.user.name,c.user.category,c.user.tag,c.last].some(value=>String(value||'').toLowerCase().includes(q));
 });return rows.sort((a,b)=>Chats.sort==='name'?a.user.name.localeCompare(b.user.name):Chats.sort==='unread'&&(a.unread||b.unread)?b.unread-a.unread:(Date.parse(b.lastAt)||0)-(Date.parse(a.lastAt)||0))}
-function zcTabs(){const pending=zcPending(),count=k=>pending?'':` (${k})`,tabs=[['all','All',Chats.total||Chats.rows.length],['creators','Creators',Chats.rows.filter(zcIsCreator).length],['calls','1-on-1 Calls',Chats.rows.filter(zcHasCalls).length],['unread','Unread',zcUnread()],['missed','Missed calls',missedRows().length]];return `<div class="zc-tabs" role="tablist" aria-label="Conversation categories">${tabs.map(([key,label,total])=>`<button role="tab" aria-selected="${Chats.filter===key}" class="${Chats.filter===key?'selected':''}" onclick="zcSetFilter('${key}')">${label}${count(total)}</button>`).join('')}</div>`}
+function zcTabs(){const tabs=[['all','All'],['unread','Unread'],['calls','Calls'],['missed','Missed calls']];return `<div class="zc-tabs" role="tablist" aria-label="Conversation categories">${tabs.map(([key,label])=>`<button role="tab" aria-selected="${Chats.filter===key}" class="${Chats.filter===key?'selected':''}" onclick="zcSetFilter('${key}')">${label}</button>`).join('')}</div>`}
 function zcSetFilter(value){Chats.filter=value;r()}
-function zcRow(c){const h=zcPerson(c),bot=DEMO&&c.bot;return `<button class="zc-row rowlink ${c.unread?'zc-unread':''}" onclick="${bot?'homeNotifications()':`zcOpen('${domId(h.id)}')`}" aria-label="${esc(h.n)}${c.lastAutomated===true?', automated welcome':''}${c.unread?', '+c.unread+' unread messages':''}"><span class="zc-avatar-wrap">${bot?`<span class="zc-avatar zc-bot">${ci('robot',30)}</span><span class="zc-bot-label">BOT</span>`:zcPhoto(h)+`<i class="zc-presence ${h.on?'online':''}" aria-label="${h.on?'Online':'Offline'}"></i>`}</span><span class="zc-row-body"><span class="zc-row-heading"><span class="zc-name">${esc(h.n)} ${bot?hi('shield',17):homeVerified(h)}</span><time datetime="${esc(c.lastAt||'')}">${esc(zcTime(c))}</time></span><span class="zc-row-preview"><span class="zc-message ${c.lastKind==='gift'?'zc-gift-message':''}">${c.lastKind==='gift'?hi('gift',17):c.lastKind==='voice'?hi('mic',17):c.lastKind==='call'?hi('ph',17):c.lastMine?ci(c.lastStatus==='read'?'checks':'check',17):''}<span>${esc(c.last||'Start a conversation')}</span></span>${c.unread?`<span class="zc-unread-count">${c.unread>99?'99+':n(c.unread)}</span>`:''}</span>${c.lastAutomated===true?'<span class="zc-automated">Automated welcome</span>':''}</span></button>`}
+function zcRow(c){const h=zcPerson(c),bot=DEMO&&c.bot;return `<button class="zc-row rowlink ${c.unread?'zc-unread':''}" onclick="${bot?'homeNotifications()':`zcOpen('${domId(h.id)}')`}" aria-label="${esc(h.n)}${c.lastAutomated===true?', automated welcome':''}${c.unread?', '+c.unread+' unread messages':''}"><span class="zc-avatar-wrap">${bot?`<span class="zc-avatar zc-bot">${ci('robot',30)}</span><span class="zc-bot-label">BOT</span>`:zcPhoto(h)+`<i class="zc-presence ${h.on?'online':''}" aria-label="${h.on?'Online':'Offline'}"></i>`}</span><span class="zc-row-body"><span class="zc-row-heading"><span class="zc-name">${esc(h.n)}${bot?' '+hi('shield',17):''}</span><time datetime="${esc(c.lastAt||'')}">${esc(zcTime(c))}</time></span><span class="zc-row-preview"><span class="zc-message ${c.lastKind==='gift'?'zc-gift-message':''}">${c.lastKind==='gift'?hi('gift',17):c.lastKind==='voice'?hi('mic',17):c.lastKind==='call'?hi('ph',17):c.lastMine?ci(c.lastStatus==='read'?'checks':'check',17):''}<span>${esc(c.last||'Start a conversation')}</span></span>${c.unread?`<span class="zc-unread-count">${c.unread>99?'99+':n(c.unread)}</span>`:''}</span>${c.lastAutomated===true?'<span class="zc-automated">Automated welcome</span>':''}</span></button>`}
 function zcSkeleton(){return `<div class="zc-inbox-skeleton" role="status" aria-label="Loading conversations" aria-busy="true"><div aria-hidden="true">${Array.from({length:6},()=>`<div class="zc-row zc-skeleton-row"><span class="zh-skeleton-shape zc-avatar"></span><span class="zc-row-body"><span class="zc-row-heading">${skeletonLine('60%',17)}${skeletonLine('36px',10)}</span>${skeletonLine('90%',12)}</span></div>`).join('')}</div></div>`}
 function zcList(){
   if(Chats.filter==='missed')return missedList();
@@ -8737,10 +8718,8 @@ function zcReload(more=false){if(DEMO)return;if(more&&contentPending('chats'))re
 function zcResetFilters(){Chats.query='';Chats.filter='all';Chats.onlineOnly=false;Chats.sort='recent';r()}
 function zcAvailable(){const seen=new Set();return [...Home.stage,...Home.hosts].filter(h=>{if(seen.has(h.id)||(!h.available&&!h.stream))return false;seen.add(h.id);return true}).slice(0,12)}
 function zcShortName(value){const names=String(value).trim().split(/\s+/);return names.length>1?names[0]+' '+names.at(-1)[0]+'.':names[0]}
-function zcAvailableView(){const pending=!DEMO&&contentPending('home'),error=!DEMO&&ContentLoading.home.error,rows=zcAvailable();return `<section class="zc-available" aria-label="Available creators"><div class="zc-section-heading"><h2><i></i>AVAILABLE FOR CALL</h2><button onclick="zcExploreAvailable()">See All</button></div><div class="zc-people">${pending?contentSkeleton('stories','Loading available creators',5):error?`<div class="zh-error" role="alert">${esc(error)}<button onclick="homeLoad()">Retry</button></div>`:rows.length?rows.map(h=>`<button class="zc-person ${h.stream?'zc-person-live':'zc-person-ready'}" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}">${zcPhoto(h)}<b>${h.stream?'LIVE':'Ready ⚡'}</b><span>${esc(zcShortName(h.n))}</span></button>`).join(''):'<p class="zc-no-available">Creators will appear here when they’re ready to connect.</p>'}</div></section>`}
+function zcAvailableView(){const pending=!DEMO&&contentPending('home'),error=!DEMO&&ContentLoading.home.error,rows=zcAvailable();if(!pending&&!error&&!rows.length)return '';return `<section class="zc-available" aria-label="Available creators"><div class="zc-section-heading"><h2>Online now</h2><button onclick="zcExploreAvailable()">See all</button></div><div class="zc-people">${pending?contentSkeleton('stories','Loading available creators',5):error?`<div class="zh-error" role="alert">${esc(error)}<button onclick="homeLoad()">Retry</button></div>`:rows.map(h=>`<button class="zc-person" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}">${zcPhoto(h)}${h.stream?'<b>LIVE</b>':'<i aria-hidden="true"></i>'}<span>${esc(zcShortName(h.n))}</span></button>`).join('')}</div></section>`}
 function zcExploreAvailable(){go('explore');homeFilter('instant')}
-function zcPulse(){if(!DEMO&&contentPending('home'))return `<div class="zc-pulse">${contentSkeleton('match','Loading video matches')}</div>`;if((!DEMO&&ContentLoading.home.error)||!Home.speedMatchEnabled)return '';return `<section class="zc-pulse"><span class="zc-pulse-icon">${hi('bolt',27)}</span><div><h2>Speed Video Pulse <i></i></h2><p>${homeCompact(Home.availableCount)} Creators available now</p></div><button class="zc-hot-button" onclick="homeMatchNow()" ${Home.matching||!Home.availableCount||isHost()?'disabled':''}>${Home.matching?'Finding…':'Start Pulse'}</button></section>`}
-function zcFooter(){if(!Home.speedMatchEnabled||(!DEMO&&(contentPending('home')||ContentLoading.home.error)))return '';return `<aside class="zc-match-footer"><span>${hi('vid',20)}</span><p>Ready for a random 1:1 Live?</p><button class="zc-hot-button" onclick="homeMatchNow()" ${Home.matching||!Home.availableCount||isHost()?'disabled':''}>${Home.matching?'Finding…':'Go Match'}</button></aside>`}
 function zcReadAll(){if(Chats.readBusy||zcPending()||!zcUnread())return;Chats.readError='';if(DEMO){Chats.rows.forEach(c=>c.unread=0);CH.forEach(c=>c[3]=0);r();return}Chats.readBusy=true;Native.send('chats.readAll');r()}
 function zcOpen(id){Chats.composeOpen=false;Chats.filtersOpen=false;go('thread',id)}
 function zcFilters(){if(!Chats.filtersOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog" role="dialog" aria-modal="true" aria-label="Conversation filters"><div class="zc-dialog-heading"><h2>Conversation filters</h2><button onclick="zcCloseDialogs()" aria-label="Close filters">×</button></div><label class="zc-toggle"><span>Online only</span><input type="checkbox" ${Chats.onlineOnly?'checked':''} onchange="Chats.onlineOnly=this.checked;zcPaintList()"></label><label class="zc-sort">Sort conversations<select aria-label="Sort conversations" onchange="Chats.sort=this.value;zcPaintList()">${[['recent','Most recent'],['unread','Unread first'],['name','Name']].map(([key,label])=>`<option value="${key}" ${Chats.sort===key?'selected':''}>${label}</option>`).join('')}</select></label><button class="zc-dialog-reset" onclick="zcResetFilters()">Reset filters</button><button class="zh-primary zh-full" onclick="zcCloseDialogs()">Show conversations</button></section></div>`}
@@ -8751,7 +8730,7 @@ function zcPaintContacts(){const list=document.getElementById('zc-contacts');if(
 function zcComposeView(){if(!Chats.composeOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog zc-compose" role="dialog" aria-modal="true" aria-label="New conversation"><div class="zc-dialog-heading"><h2>New conversation</h2><button onclick="zcCloseDialogs()" aria-label="Close new conversation">×</button></div><label class="zc-compose-search">${hi('srch',19)}<input id="zc-contact-query" placeholder="Find a creator or contact" aria-label="Search contacts" value="${esc(Chats.composeQuery)}" oninput="Chats.composeQuery=this.value;zcPaintContacts()"></label><div id="zc-contacts">${zcContactList()}</div><button class="zh-soft zh-full" onclick="zcCloseDialogs();go('search')">Find more creators ${hi('explore',17)}</button></section></div>`}
 function zcCloseDialogs(){Chats.composeOpen=false;Chats.filtersOpen=false;r();document.querySelector('.zc-compose-button')?.focus({preventScroll:true})}
 function zcCloseOverlay(event){if(event.target===event.currentTarget)zcCloseDialogs()}
-function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search creators, messages, or tags…" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<div class="zc-layout"><div class="zc-discovery">${zcAvailableView()}${zcPulse()}</div><section class="zc-conversations" aria-label="Conversations">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}<div id="zc-list" class="zc-list">${zcList()}</div></section>${zcFooter()}</div>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations</p>':''}</div>${zcFilters()}${zcComposeView()}`}
+function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search chats" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<div class="zc-layout"><div class="zc-discovery">${zcAvailableView()}</div><section class="zc-conversations" aria-label="Conversations">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}<div id="zc-list" class="zc-list">${zcList()}</div></section></div>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations</p>':''}</div>${zcFilters()}${zcComposeView()}`}
 window.ZimiHome.views.chats=zcScreen;
 const chatsAfterRender=window.ZimiHome.afterRender;
 window.ZimiHome.afterRender=()=>{chatsAfterRender();const dialog=document.querySelector('.zc-dialog');if(dialog&&!dialog.contains(document.activeElement))(dialog.querySelector('input[type="text"],input:not([type]),button'))?.focus({preventScroll:true})};
@@ -8784,10 +8763,10 @@ function zcVoiceMemo(m){const playing=Chats.playing===m.id;return `<div class="z
 function zcVoiceToggle(button,id){const m=S.msgs.find(x=>x.id===id);if(!m)return;Chats.playing=Chats.playing===id?'':id;button.closest('.zc-voice').outerHTML=zcVoiceMemo(m);document.querySelector(`[data-voice="${CSS.escape(id)}"]`)?.focus()}
 function zcBubble(m,h){const tick=m.mine&&m.status!=='failed'?`<span class="zc-tick ${m.status==='read'?'read':''}" role="img" aria-label="${m.status==='read'?'Read':'Sent'}">${ci(m.status==='read'?'checks':'check',16)}</span>`:'',meta=`<span class="zc-meta">${m.automated===true?'<span class="zc-automated">Automated welcome</span>':''}${m.status==='failed'?'<b>Not sent</b>':`<time${m.at?` datetime="${esc(m.at)}"`:''}>${esc(zcClock(m))}</time>`}${tick}</span>`,body=m.kind==='gift'?zcGiftCard(m,h):m.kind==='voice'?zcVoiceMemo(m):`<div class="bub">${esc(m.text)}</div>`;return `<div class="zc-msg ${m.mine?'mine':'theirs'} zc-msg-${m.kind||'text'}">${m.mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack">${body}${meta}</div></div>`}
 function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;if(!S.msgs.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return S.msgs.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+zcBubble(m,h)}).join('')}
-function zcThreadChips(h){const id=domId(h.id),member=!isHost(),chips=[['🔥','Love it',"zcThreadSend('Love it 🔥')"],member&&['💎','Send Gift',`homeGifts('${id}')`],member&&['🎥','Video Call',`homeCall('${id}')`],['💖','Thank you',"zcThreadSend('Thank you! 💖')"]].filter(Boolean);return `<div class="zc-chips" role="group" aria-label="Quick replies">${chips.map(([emoji,label,action])=>`<button ${action.startsWith("zcThreadSend")?"data-chat-send":""} ${action.startsWith("zcThreadSend")&&zcThreadBlocked()?"disabled":""} onclick="${action}"><span aria-hidden="true">${emoji}</span>${label}</button>`).join('')}</div>`}
+function zcThreadChips(){const chips=[['🔥','Love it',"zcThreadSend('Love it 🔥')"],['💖','Thank you',"zcThreadSend('Thank you! 💖')"]];return `<div class="zc-chips" role="group" aria-label="Quick replies">${chips.map(([emoji,label,action])=>`<button ${action.startsWith("zcThreadSend")?"data-chat-send":""} ${action.startsWith("zcThreadSend")&&zcThreadBlocked()?"disabled":""} onclick="${action}"><span aria-hidden="true">${emoji}</span>${label}</button>`).join('')}</div>`}
 const zcEmoji=['😊','😂','😍','🥰','🔥','💖','👏','🙌','🎶','🎧','✨','🙏'];
 function zcThreadComposer(h){return `<p id="zc-send-status" class="zc-thread-note" role="status" ${!zcThreadBlocked()?"hidden":""}>${esc(zcThreadBlocked())}</p><div id="zc-emoji" class="zc-emoji" role="group" aria-label="Emoji" hidden>${zcEmoji.map(e=>`<button onclick="zcThreadInsert('${e}')" aria-label="Insert ${e}">${e}</button>`).join('')}</div><div class="zc-composer"><button class="zc-composer-icon zc-composer-emoji" aria-label="Add emoji" aria-expanded="false" aria-controls="zc-emoji" onclick="zcThreadEmoji()">${ci('add',26)}</button>${isHost()?'':`<button class="zc-composer-icon zc-composer-gift" aria-label="Send a gift" onclick="homeGifts('${domId(h.id)}')">${hi('gift',24)}</button>`}<div class="zc-composer-field"><input id="ti" placeholder="Type a message to ${esc(first(h.n))}" aria-label="Message ${esc(h.n)}" maxlength="2000" autocomplete="off" value="${esc(Chats.drafts[S.h]||'')}" oninput="Chats.drafts[S.h]=this.value" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();zcThreadSend()}"><button aria-label="Record a voice message" onclick="appNotice('Voice messages are coming soon.')">${hi('mic',21)}</button></div><button class="zc-composer-send" data-chat-send ${zcThreadBlocked()?"disabled":""} aria-label="Send message" onclick="zcThreadSend()">${ci('up',22)}</button></div>`}
-function zcThread(){const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips(h)}${zcThreadComposer(h)}</div>${homeGiftSheet()}`}
+function zcThread(){const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips()}${zcThreadComposer(h)}</div>${homeGiftSheet()}`}
 function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send]").forEach(button=>{button.disabled=!!reason;button.title=reason});const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
 function zcPaintThread(){zcUpdateSendControls();const f=document.getElementById('tf');if(!f)return;f.innerHTML=zcThreadList(zcThreadPerson());f.scrollTop=f.scrollHeight;contentImagesReady()}
 /* Quick replies pass their text; the composer sends and clears its draft. */
