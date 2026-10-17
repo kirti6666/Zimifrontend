@@ -4,7 +4,7 @@ import { AppState, Linking, Share } from "react-native";
 
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
-import { connectRealtime, type RealtimeConnection } from "./api/realtime";
+import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
 import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { parseLiveLink, parseWebMessage } from "./web-message";
@@ -41,8 +41,8 @@ export type WebMessage =
   | { type: "themes.premium.verify"; data: { merchantOrderId: string } }
   | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string; ink?: string; primary?: string; contrast?: string; surface?: string; raised?: string } }
   | { type: "ui.haptic"; data: { kind: "selection" | "success" | "error" | "light" } }
-  | { type: "auth.sendOtp"; data: { phone: string; role: Role; requestId?: number } }
-  | { type: "auth.verifyOtp"; data: { phone: string; code: string; role: Role; signup: boolean; requestId?: number } }
+  | { type: "auth.sendOtp"; data: { phone: string; dialCode?: string; role: Role; requestId?: number } }
+  | { type: "auth.verifyOtp"; data: { phone: string; dialCode?: string; code: string; role: Role; signup: boolean; requestId?: number } }
   | { type: "auth.google"; data: { role: Role; signup: boolean } }
   | { type: "auth.logout"; data: Record<string, never> }
   | { type: "profile.save"; data: Record<string, unknown> }
@@ -64,7 +64,7 @@ export type WebMessage =
   | { type: "call.accept"; data: { callId: string } }
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
-  | { type: "wallet.recharge"; data: { pack: number; coins: number; price: number; method: string } }
+  | { type: "verify.accept" | "verify.end"; data: { callId: string } }
   | { type: "payout.request"; data: { coins: number; upi: string } }
   | { type: "awards.claim"; data: { task: string } };
 
@@ -140,6 +140,9 @@ export type AppMessage =
   | { type: "call.failed"; data: { message: string } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
   | { type: "call.ended"; data: { callId: string } }
+  | { type: "verify.incoming"; data: { callId: string } }
+  | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
+  | { type: "verify.ended"; data: { callId: string; status: string } }
   | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string } }
   | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean; callId?: string; automated?: boolean } };
 
@@ -154,6 +157,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let appActive = AppState?.currentState !== "background" && AppState?.currentState !== "inactive";
   let liveOnboarding = false;
   let activeCall: string | undefined;
+  // A staff verification call; `accepted` marks the device that answered it.
+  let verifyCall: { callId: string; accepted: boolean } | undefined;
   let callGeneration = 0;
   let pendingOutgoing: { generation: number; callId?: string } | undefined;
   let pendingStreamAccept: { generation: number; streamId: string; id: string } | undefined;
@@ -433,6 +438,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       if (event.type === "themes.updated") { if (!liveOnboarding) quietly(loadThemes(), "themes.load"); return; }
       const callId = event.data?.callId;
+      if (event.type === "verify.updated" && typeof callId === "string") {
+        const status = String(event.data?.status);
+        if (status === "ringing") {
+          if (verifyCall?.callId !== callId) verifyCall = { callId, accepted: false };
+          emit({ type: "verify.incoming", data: { callId } });
+        } else if (status !== "accepted" || (verifyCall?.callId === callId && !verifyCall.accepted)) {
+          // Ended, or answered on another of this person's devices.
+          if (verifyCall?.callId === callId) verifyCall = undefined;
+          emit({ type: "verify.ended", data: { callId, status } });
+        }
+        return;
+      }
       if (event.type === "stream.requests.changed") {
         if (event.data?.streamId === activeStream?.id && activeStream) quietly(loadStreamRequests(activeStream.id), "stream.requests.load");
         return;
@@ -482,7 +499,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
   });
@@ -549,6 +566,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
       case "rtc.signal": case "stream.signal": case "stream.ready": {
+        if (msg.type === "rtc.signal" && msg.data.callId === verifyCall?.callId) {
+          const { callId, ...signal } = msg.data;
+          return api.verificationSignal(callId, signal);
+        }
         if (!stopLive.send) throw new ApiError("Live connection is unavailable. Reconnect and try again.", 503);
         return stopLive.send(msg.type === "rtc.signal" ? "webrtc:signal" : msg.type === "stream.ready" ? "stream:ready" : "stream:signal", msg.data);
       }
@@ -639,7 +660,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (authWork.has("send")) return;
         authWork.add("send");
         try {
-          const result = await api.sendOtp(msg.data.phone, msg.data.role);
+          const result = await api.sendOtp(msg.data.phone, msg.data.role, msg.data.dialCode);
           if (current(version)) emit({ type: "auth.otpSent", data: { phone: msg.data.phone, resendAfter: result.resendAfter, expiresIn: result.expiresIn, requestId: msg.data.requestId } });
         } catch (error) {
           if (current(version)) emit({ type: "auth.error", data: { ...metadata(error), action: msg.type, requestId: msg.data.requestId } });
@@ -651,11 +672,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
         authWork.add("verify");
         const sessionVersion = getSessionVersion();
         try {
-          const session = await api.verifyOtp(msg.data.phone, msg.data.code, msg.data.role, msg.data.signup);
+          const session = await api.verifyOtp(msg.data.phone, msg.data.code, msg.data.role, msg.data.signup, msg.data.dialCode);
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; callGeneration++; pendingOutgoing = undefined; activeCall = undefined; pendingPurchases.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
+          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; pendingPurchases.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
@@ -671,7 +692,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -859,7 +880,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           activeCall = result.callId;
           emit({ type: "call.created", data: { callId: activeCall, to: msg.data.to, voice: !!msg.data.voice } });
         } catch (error) { if (current(version) && intent.generation === callGeneration) emit({ type: "call.failed", data: { message: errorMessage(error) } }); }
-        finally { if (pendingOutgoing === intent) pendingOutgoing = undefined; }
+        finally { if (pendingOutgoing === intent) pendingOutgoing = undefined; verifyCall = undefined; }
         return;
       }
       case "call.accept": {
@@ -888,7 +909,30 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (activeCall === msg.data.callId) { activeCall = undefined; activeHostCall = false; callGeneration++; }
         return quietly(api.declineCall(msg.data.callId), msg.type);
       }
+      case "verify.accept": {
+        const callId = msg.data.callId;
+        verifyCall = { callId, accepted: true };
+        try {
+          await api.acceptVerificationCall(callId);
+          if (current(version) && verifyCall?.callId === callId) emit({ type: "verify.connected", data: { callId, peerId: VERIFY_PEER, initiator: false, voice: false } });
+        } catch (error) {
+          if (verifyCall?.callId === callId) verifyCall = undefined;
+          if (current(version)) emit({ type: "verify.ended", data: { callId, status: "unavailable" } });
+          throw error;
+        }
+        return;
+      }
+      case "verify.end": {
+        if (verifyCall?.callId === msg.data.callId) verifyCall = undefined;
+        return quietly(api.endVerificationCall(msg.data.callId), msg.type);
+      }
       case "call.end": {
+        if (msg.data.callId && msg.data.callId === verifyCall?.callId) {
+          // The call media failed on this device.
+          verifyCall = undefined;
+          emit({ type: "verify.ended", data: { callId: msg.data.callId, status: "failed" } });
+          return quietly(api.endVerificationCall(msg.data.callId), msg.type);
+        }
         const callId = msg.data.callId ?? activeCall;
         if (!msg.data.callId || callId === activeCall || callId === pendingOutgoing?.callId) callGeneration++;
         if (callId) rememberCancelledCall(callId);
@@ -896,7 +940,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (callId) quietly(api.endCall(callId, msg.data.reason), msg.type);
         return;
       }
-      case "wallet.recharge": return sendWallet(api.recharge(msg.data), msg.type);
       case "payout.request": {
         await requireApprovedHost();
         return sendWallet(api.requestPayout(msg.data.coins, msg.data.upi), msg.type);
@@ -921,7 +964,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
+      const serialized = ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
       const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" ? `:${msg.data.id}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);

@@ -429,7 +429,7 @@
   Native.on('rtc.signal', data => receive('call', data));
   Native.on('call.created', data => { if (!active && local) pendingCall = data.callId; });
   Native.on('call.incoming', data => { if (!active) pendingCall = data.callId; });
-  Native.on('call.connected', async data => {
+  async function connectCall(data) {
     if (typeof DEMO !== 'undefined' && DEMO) return;
     if (active && active.kind === 'call' && active.id === data.callId) return;
     clearPeers();
@@ -446,7 +446,12 @@
       earlySignals.splice(0).forEach(signal => receive(signal.kind, signal.data));
       status('Connecting your call…');
     } catch (error) { fail(session, error); }
-  });
+  }
+  Native.on('call.connected', connectCall);
+  // Staff verification calls use the same call session, answered from verification-call.js.
+  Native.on('verify.connected', connectCall);
+  Native.on('verify.incoming', data => { if (!active) pendingCall = data.callId; });
+  Native.on('verify.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
   Native.on('call.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
   Native.on('call.failed', () => { if (!active || active.kind === 'call') stop(); });
   ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));

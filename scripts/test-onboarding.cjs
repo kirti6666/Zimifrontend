@@ -66,8 +66,9 @@ const errors = [];
 const snapshots = {};
 let browser;
 
-async function openPage(native = false, viewport = { width: 390, height: 844 }) {
-  const context = await browser.newContext({ viewport, reducedMotion: 'reduce' });
+// India by default: the country code picker starts from the device's time zone and language.
+async function openPage(native = false, viewport = { width: 390, height: 844 }, region = { locale: 'en-IN', timezoneId: 'Asia/Kolkata' }) {
+  const context = await browser.newContext({ viewport, reducedMotion: 'reduce', ...region });
   // No external fonts are required for functional or overflow checks.
   await context.route('https://fonts.googleapis.com/**', route => route.abort());
   await context.route('https://fonts.gstatic.com/**', route => route.abort());
@@ -459,6 +460,88 @@ async function accountRouting() {
   console.log('PASS account routing: returning users bypass signup, new users start signup even from login');
 }
 
+async function internationalPhone() {
+  const page = await openPage(true, undefined, { locale: 'en-GB', timezoneId: 'Europe/London' });
+  const sent = type => page.evaluate(value => window.__messages.filter(message => message.type === value).at(-1)?.data, type);
+  const country = () => page.locator('#ob-country').getAttribute('aria-label');
+  await startSignup(page);
+  assert.ok((await country()).includes('United Kingdom +44'), 'A UK phone starts with the UK calling code');
+  await page.locator('#ph').fill('07911 123456');
+  assert.equal(await page.locator('#ph').inputValue(), '07911123456');
+  await action(page, 'obSendOtp').click();
+  await page.waitForFunction(() => window.__messages.some(message => message.type === 'auth.sendOtp'));
+  assert.deepEqual({ phone: (await sent('auth.sendOtp')).phone, dialCode: (await sent('auth.sendOtp')).dialCode }, { phone: '+447911123456', dialCode: '+44' }, 'The national trunk 0 is dropped');
+  await receive(page, 'auth.otpSent', { phone: '+447911123456', resendAfter: 30 });
+  await step(page, 'otp');
+  assert.ok((await page.locator('[data-ob-step="otp"]').innerText()).includes('+44 7911123456'), 'The code screen shows the full number');
+  await enterCode(page);
+  await page.waitForFunction(() => window.__messages.some(message => message.type === 'auth.verifyOtp'));
+  assert.equal((await sent('auth.verifyOtp')).dialCode, '+44');
+  await receive(page, 'auth.error', { message: 'That code did not match.', code: 'OTP_INVALID', action: 'auth.verifyOtp' });
+  await action(page, 'obBack').click();
+  await step(page, 'phone');
+
+  await page.locator('#ob-country').click();
+  const dialog = page.getByRole('dialog', { name: 'Choose your country' });
+  await dialog.waitFor();
+  assert.match(await dialog.locator('[aria-current="true"]').innerText(), /United Kingdom/);
+  await page.screenshot({ path: path.join(artifacts, 'country-picker.png') });
+  const searchbox = dialog.getByRole('searchbox', { name: 'Search countries' }), list = dialog.locator('#ob-country-list');
+  // Country names shown once the debounced search has run.
+  const results = async query => {
+    await searchbox.fill(query);
+    await page.waitForFunction(() => !obCountrySearchTimer);
+    return list.locator('.ob-country-option > span:nth-child(2)').allInnerTexts();
+  };
+  assert.ok(await list.evaluate(element => element.scrollTop) > 0, 'The list opens at the current country');
+  await results('a');
+  assert.equal(await list.evaluate(element => element.scrollTop), 0, 'Results start at the best match');
+  const typed = await page.evaluate(() => new Promise(resolve => {
+    const input = document.getElementById('ob-country-search'), options = document.getElementById('ob-country-list'), before = options.innerHTML;
+    let renders = 0; new MutationObserver(records => { renders += records.length; }).observe(options, { childList: true });
+    for (const value of ['g', 'ge', 'ger', 'germ']) { input.value = value; input.dispatchEvent(new Event('input')); }
+    const waited = options.innerHTML === before;
+    setTimeout(() => resolve({ waited, renders, names: [...options.children].map(option => option.children[1].textContent) }), 400);
+  }));
+  assert.deepEqual(typed, { waited: true, renders: 1, names: ['Germany'] }, 'Fast typing searches once, after the pause');
+  assert.deepEqual(await results('uk'), ['United Kingdom', 'Ukraine'], 'Everyday names find the country first');
+  assert.deepEqual(await results('44'), ['United Kingdom', 'Guernsey', 'Isle of Man', 'Jersey'], 'A shared calling code lists its main country first');
+  const inResults = await results('in');
+  assert.equal(inResults[0], 'India');
+  assert.ok(!inResults.includes('Argentina'), 'Searches match the start of a word, not its middle');
+  assert.match((await results('turkey')).join('|'), /^T[üu]rk[a-z]+$/, 'Former names still work');
+  assert.match((await results("cote d'ivoire")).join('|'), /^C.te d.Ivoire$/, 'Accents and apostrophes do not matter');
+  assert.match((await results('saint lucia')).join('|'), /^St\.? Lucia$/, 'Saint finds names written St.');
+  await results('zzz');
+  await dialog.getByText('No country matches that search.').waitFor();
+  assert.deepEqual(await results('+971'), ['United Arab Emirates']);
+  await dialog.getByRole('button', { name: /United Arab Emirates/ }).click();
+  await dialog.waitFor({ state: 'detached' });
+  assert.ok((await country()).includes('United Arab Emirates +971'));
+  assert.equal(await page.locator('#ph').evaluate(input => input === document.activeElement), true, 'Choosing a country returns to the number');
+
+  await page.locator('#ph').fill('+1 415 555 0123');
+  assert.equal(await page.locator('#ph').inputValue(), '4155550123', 'A pasted international number fills both parts');
+  assert.ok((await country()).includes('United States +1'));
+  await page.locator('#ph').fill('415');
+  await action(page, 'obSendOtp').click();
+  assert.match((await state(page)).err, /valid mobile number for United States/);
+
+  await page.locator('#ob-country').click();
+  await searchbox.fill('ind');
+  await searchbox.press('Enter');
+  assert.match(await page.evaluate(() => document.activeElement.textContent), /India/, "The keyboard's search key moves to the best match");
+  await page.keyboard.press('Enter');
+  await dialog.waitFor({ state: 'detached' });
+  await page.locator('#ph').fill('5467985456');
+  await action(page, 'obSendOtp').click();
+  assert.equal((await state(page)).err, 'Enter a valid 10-digit Indian mobile number.', 'India keeps its mobile number check');
+  await noOverflow(page, 'international phone entry');
+  await page.screenshot({ path: path.join(artifacts, 'international-phone.png') });
+  await page.context().close();
+  console.log('PASS international phone: device default, picker search, pasted numbers, trunk zero, India check, verify carries the code');
+}
+
 async function enlargedTextChecks(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const name of ['phone', 'profile', 'photos', 'interests']) {
@@ -495,6 +578,7 @@ async function enlargedTextChecks(page) {
     await nativeRateLimits();
     await nativeSessionRecovery();
     await nativeCreatorFlow();
+    await internationalPhone();
     assert.deepEqual(errors, [], 'Browser must not emit uncaught JavaScript errors');
     console.log(`PASS no uncaught browser errors. Screenshots: ${artifacts}`);
   } catch (error) {

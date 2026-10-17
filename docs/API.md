@@ -56,8 +56,8 @@ for it (login, call failed).
 
 | Action on screen | Request | Response |
 | --- | --- | --- |
-| Continue (phone number) | `POST /auth/otp` `{phone, role}` | – |
-| Enter the 6-digit code | `POST /auth/verify` `{phone, code, role, signup}` | `Session` |
+| Continue (phone number) | `POST /auth/otp/request` `{country_code, phone}` (the screen sends E.164 plus the chosen calling code; any country) | – |
+| Enter the 6-digit code | `POST /auth/otp/verify` `{country_code, phone, otp}` | `Session` |
 | Log out | `POST /auth/logout` | – |
 | App opens with a saved login | `GET /me` | `Account` |
 | Finish sign-up, edit profile | `PUT /me/profile` | – |
@@ -75,7 +75,7 @@ for it (login, call failed).
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | – |
 | Follow | `PUT /follows/:id` `{on}` | – |
-| Buy a coin pack | `POST /wallet/recharge` | `Wallet` |
+| Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
 
@@ -110,6 +110,24 @@ The server persists configured host welcomes as normal chat messages with
 | `wallet.balance` | `{coins?, earned?}` | Updates balances everywhere |
 | `verification.status` | `{status}` | Moves the verification screen on |
 
+## Staff verification calls (host applicants)
+
+Before approving a host application, staff video-call the applicant from the admin
+dashboard. The server refuses to approve a pending application until a call has
+connected for at least 10 seconds.
+
+| Step | Server | App |
+| --- | --- | --- |
+| Staff start the call | socket `verification:call` `{_id, status: "ringing"}` (replayed on reconnect) | `verify.incoming {callId}` opens `web/verification-call.js` |
+| Applicant answers | `POST /verification-calls/:id/accept` | camera and mic start first; then `verify.connected {callId, peerId: "zimi-team"}` starts the `media.js` call session |
+| Staff offer and candidates | socket `verification:signal` | arrive as `rtc.signal` from `zimi-team` |
+| Applicant answer and candidates | `POST /verification-calls/:id/signal` | the bridge routes this call's `rtc.signal` there, not to the socket |
+| Decline or hang up | `POST /verification-calls/:id/end` | `verify.end {callId}` |
+| Ended, missed or answered elsewhere | socket `verification:call` `{status}` | `verify.ended {callId, status}` closes the overlay |
+
+These never use the member-call messages (`call.*`), so host-access rules for
+member calls do not apply to an applicant answering staff.
+
 ## Not covered yet
 
 - Video and audio: the call screens show photos where video goes. A video SDK
@@ -117,10 +135,15 @@ The server persists configured host welcomes as normal chat messages with
   needed in the React Native shell.
 - Incoming calls while the app is closed: needs push notifications and the
   Android incoming-call screen in the React Native shell.
-- Coin purchases: Google Play Billing must confirm a purchase before
-  `POST /wallet/recharge`.
+- Coin purchases use PayPlus checkout. Coins are credited only by the server,
+  after `POST /coins/purchase/verify` or the signed PayPlus webhook. Google
+  Play's payments policy may require Play Billing (or its alternative billing
+  programme) for coins sold inside the Android app; check before release.
 - Google sign-in: shows "isn't available yet".
 - Photos are sent inline as data URLs; large uploads should move to direct
   uploads with signed URLs.
-- Profile numbers on host pages (lifetime coins, levels, top supporters) are
-  still worked out on the screen from sample formulas.
+- Your own level and crown come from `GET /account/settings` as `standing`
+  (`{level, crown}`; thresholds, crown amount and window are set in the admin
+  dashboard). The crown is held while gifts sent in the window reach the
+  amount and drops by itself when they no longer do. Other people's lifetime coins,
+  levels and top supporters on host pages are still sample formulas.

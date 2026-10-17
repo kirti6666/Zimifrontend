@@ -14,6 +14,7 @@ const approved = { ...account, user: { ...account.user, role: 'host', hostStatus
 const settings = {
   profile: { id: account.user.id, name: account.user.name, bio: account.user.about, city: 'Pune', languages: ['English', 'Hindi'], maskedPhone: '+91 ••••••3210', countryCode: '+91', isPhoneVerified: true, createdAt: '2026-01-01T10:00:00.000Z' },
   stats: { fans: 17, following: 5, giftsSent: 4, giftsReceived: 9, coinsSent: 125, coinsReceived: 400 },
+  standing: { level: 3, crown: true },
   preferences: { pushNotifications: false, matchCategory: null, appearance: 'dark' },
   privacy: { discoverable: true, showActivity: true, allowRequests: false },
   categories: ['Music', 'Talk', 'Gaming'],
@@ -79,6 +80,10 @@ async function run() {
     await profile().getByRole('heading', { name: 'Profile & Settings', exact: true }).waitFor();
     assert.equal(await page.locator('.zp-person h2').innerText(), 'Mira North');
     assert.match(await page.locator('.zp-person-text').innerText(), /Pune/);
+    assert.match(await page.locator('.zp-person .zp-id').textContent(), /· Level 3 · Crown$/);
+    await settleSettings(page, { ...settings, standing: { level: 3, crown: false } });
+    assert.equal(await page.locator('.zp-crown').count(), 0, 'No crown once the server drops it');
+    await settleSettings(page);
     assert.match(await page.locator('.zp-bio').innerText(), /Acoustic songs/);
     assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Fans' }).locator('b').innerText(), '17');
     assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Following' }).locator('b').innerText(), '5');

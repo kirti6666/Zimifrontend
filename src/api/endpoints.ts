@@ -2,7 +2,7 @@ import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
 import { accountFrom, blockedUsersFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
+import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
@@ -11,11 +11,15 @@ const remember = (account: Account) => { identity = { id: account.user.id, versi
 async function selfId(): Promise<string> {
   return identity?.version === getSessionVersion() ? identity.id : (await api.me()).user.id;
 }
-export function phonePayload(phone: string): { country_code: string; phone: string } {
+/** Splits an E.164 number at the calling code the person chose; India keeps its stricter mobile check. */
+export function phonePayload(phone: string, dialCode?: string): { country_code: string; phone: string } {
   const digits = phone.replace(/[\s()-]/g, "");
-  const local = digits.startsWith("+91") ? digits.slice(3) : digits;
-  if (!/^[6-9]\d{9}$/.test(local)) throw new ApiError("Enter a valid 10-digit Indian mobile number.", 400);
-  return { country_code: "+91", phone: local };
+  const dial = dialCode ?? (digits.startsWith("+91") ? "+91" : "");
+  if (!/^\+[1-9]\d{0,2}$/.test(dial) || !digits.startsWith(dial)) throw new ApiError("Choose your country code, then enter your mobile number.", 400);
+  const local = digits.slice(dial.length).replace(/^0+/, "");
+  if (dial === "+91" ? !/^[6-9]\d{9}$/.test(local) : !/^[1-9]\d{3,13}$/.test(local) || dial.length - 1 + local.length > 15)
+    throw new ApiError(dial === "+91" ? "Enter a valid 10-digit Indian mobile number." : "Enter a valid mobile number.", 400);
+  return { country_code: dial, phone: local };
 }
 function boundedStrings(value: unknown, label: string, min: number, max: number): string[] {
   if (!Array.isArray(value) || value.length < min || value.length > max || value.some(item => typeof item !== "string" || !item.trim() || item.length > 80)) throw new ApiError(`Check your ${label} and try again.`, 400);
@@ -25,13 +29,13 @@ const unavailable = async <T>(message: string): Promise<T> => { throw new ApiErr
 const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
 
 export const api = {
-  async sendOtp(phone: string, _role?: Role): Promise<{ expiresIn: number; resendAfter: number }> {
-    const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number }>("POST", "/auth/otp/request", phonePayload(phone), { auth: false });
+  async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number }> {
+    const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number }>("POST", "/auth/otp/request", phonePayload(phone, dialCode), { auth: false });
     return { expiresIn: result.expiresIn, resendAfter: result.resendAfter ?? result.retryAfterSeconds ?? 60 };
   },
-  async verifyOtp(phone: string, code: string, _role?: Role, _signup?: boolean): Promise<Session> {
+  async verifyOtp(phone: string, code: string, _role?: Role, _signup?: boolean, dialCode?: string): Promise<Session> {
     if (!/^\d{6}$/.test(code)) throw new ApiError("Enter the 6-digit verification code.", 400);
-    const response = await request<{ tokens: SessionTokens; user: unknown; isNewUser: boolean; requiresOnboarding: boolean }>("POST", "/auth/otp/verify", { ...phonePayload(phone), otp: code, client: "native" }, { auth: false });
+    const response = await request<{ tokens: SessionTokens; user: unknown; isNewUser: boolean; requiresOnboarding: boolean }>("POST", "/auth/otp/verify", { ...phonePayload(phone, dialCode), otp: code, client: "native" }, { auth: false });
     const data = record(response), tokens = data.tokens;
     if (!isSessionTokens(tokens)) throw new ApiError("Sign-in could not be completed. Request a new code and try again.", 502);
     return { ...accountFrom(data), tokens, isNew: response.isNewUser === true };
@@ -193,6 +197,10 @@ export const api = {
   async acceptCall(callId: string) { const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)); return { peerId: idOf(call.callerId), voice: call.kind === "audio" }; },
   declineCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
   endCall: (callId: string, _reason?: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
+  // Staff verification calls for host applicants: staff place the call and send the offer.
+  acceptVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/accept`),
+  endVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/end`),
+  verificationSignal: (callId: string, signal: RtcPayload) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/signal`, signal),
   async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<Wallet> {
     if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
     await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });
@@ -200,7 +208,6 @@ export const api = {
   },
   sendMessage: (to: string, text: string, callId?: string) => request<void>("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}) }),
   follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
-  recharge: (_purchase: { pack: number; coins: number; price: number; method: string }) => unavailable<Wallet>("Secure checkout is not available in this build yet. No payment was taken."),
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
   async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
   async themes() { return themesFrom(await request("GET", "/themes")); },

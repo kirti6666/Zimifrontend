@@ -69,11 +69,21 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const adapters = load('src/api/adapters.ts');
   assert.deepEqual(plain(phonePayload('+91 98765 43210')), { country_code: '+91', phone: '9876543210' });
-  assert.throws(() => phonePayload('+1 9876543210'), /Indian/);
+  assert.throws(() => phonePayload('+91 5467985456'), /Indian/, 'India keeps its mobile number check');
+  assert.deepEqual(plain(phonePayload('+14155550123', '+1')), { country_code: '+1', phone: '4155550123' });
+  assert.deepEqual(plain(phonePayload('+4407911123456', '+44')), { country_code: '+44', phone: '7911123456' }, 'A kept trunk 0 is dropped');
+  assert.deepEqual(plain(phonePayload('+971501234567', '+971')), { country_code: '+971', phone: '501234567' });
+  assert.throws(() => phonePayload('+14155550123'), /country code/, 'Other countries need the chosen calling code');
+  assert.throws(() => phonePayload('+14155550123', '+44'), /country code/);
+  assert.throws(() => phonePayload('+1415', '+1'), /valid mobile/);
   expect('POST', '/auth/otp/request', { expiresIn: 300, retryAfterSeconds: 75 }, (body, options) => {
     assert.deepEqual(plain(body), { country_code: '+91', phone: '9876543210' }); assert.equal(options.auth, false);
   });
-  assert.equal((await api.sendOtp('9876543210', 'host')).resendAfter, 75);
+  assert.equal((await api.sendOtp('+919876543210', 'host')).resendAfter, 75);
+  expect('POST', '/auth/otp/request', { expiresIn: 300, resendAfter: 30 }, body => {
+    assert.deepEqual(plain(body), { country_code: '+44', phone: '7911123456' }, 'Other countries post their own calling code');
+  });
+  assert.equal((await api.sendOtp('+447911123456', 'sender', '+44')).resendAfter, 30);
   expect('POST', '/auth/otp/verify', { user, tokens: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 900, refreshExpiresIn: 3600 }, isNewUser: true, requiresOnboarding: true }, (body, options) => {
     assert.deepEqual(plain(body), { country_code: '+91', phone: '9876543210', otp: '123456', client: 'native' }); assert.equal(options.auth, false);
   });
@@ -241,7 +251,7 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/users/host-id/follow', {}, body => assert.deepEqual(plain(body), { following: true })); await api.follow('host-id', true);
   finished();
   reset();
-  await assert.rejects(api.recharge({}), /checkout/); await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
+  await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
   assert.equal(requests.length, 0, 'Legacy money flows cannot debit or fake success');
 
   const creator = { _id: 'creator-id', name: 'Asha Live', avatar: { url: 'https://cdn.example.test/host.jpg' }, isVerifiedHost: true, isOnline: true, availableForCall: true, callRateCoinsPerMinute: 0,
@@ -261,12 +271,14 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   const serverSettings = {
     profile: { id: 'member-id', name: 'Asha', bio: 'Acoustic music', city: 'Pune', languages: ['English', 'Hindi'], maskedPhone: '+91 ••••••3210', countryCode: '+91', isPhoneVerified: true, createdAt: chatAt, phone: '9876543210', role: 'host', isVerifiedHost: true },
     stats: { fans: 42, following: 8, giftsSent: 5, giftsReceived: 12, coinsSent: 300, coinsReceived: 950 },
+    standing: { level: 4, crown: true },
     preferences: { pushNotifications: true, matchCategory: 'Music', appearance: 'system' },
     privacy: { discoverable: true, showActivity: false, allowRequests: false },
     categories: ['Music', 'Gaming'], capabilities: { pushNotifications: true, liveAlerts: false, interfaceLanguages: ['en'], currency: 'INR' },
   };
   expect('GET', '/account/settings', serverSettings);
   const settings = await api.profileSettings();
+  assert.deepEqual(plain(settings.standing), { level: 4, crown: true }); assert.deepEqual(plain(adapters.profileSettingsFrom({ ...serverSettings, standing: undefined }).standing), { level: 0, crown: false }, 'An older server reports no level or crown rather than fabricated ones');
   assert.equal(settings.stats.fans, 42); assert.equal(settings.stats.coinsReceived, 950); assert.equal(settings.preferences.appearance, 'system');
   assert.equal(settings.profile.maskedPhone, '+91 ••••••3210'); assert.equal(settings.profile.countryCode, '+91'); assert.equal(settings.profile.isPhoneVerified, true);
   assert.equal(settings.capabilities.pushNotifications, true); assert.equal(settings.capabilities.nativePushRegistered, false, 'Server worker availability is not device push registration');

@@ -93,6 +93,7 @@ const page = (demo) =>
   read("web/icons.css") +
   read("web/live-room.css") +
   read("web/call-setup.css") +
+  read("web/verification-call.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -100,6 +101,7 @@ const page = (demo) =>
   `window.ZIMI_APP_VERSION = ${JSON.stringify(JSON.parse(read('app.json')).expo.version)};\n` +
   read("node_modules/qrcode-generator/dist/qrcode.js") +
   read("web/bridge.js") +
+  read("web/phone-countries.js") +
   read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
     "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
   read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +
@@ -109,6 +111,7 @@ const page = (demo) =>
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +
+  "\n" + read("web/verification-call.js") +
   "\n" + read("web/chats.js") +
   "\n" + read("web/profile.js") +
   "\n" + read("web/themes.js") +
