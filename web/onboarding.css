@@ -467,7 +467,9 @@
 .ob-country-search:focus { outline: none; border-color: #f02b90; box-shadow: 0 0 0 3px #ec07851a; }
 .ob-country-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -8px; padding: 0 2px; }
 .ob-country-option { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 8px; border: 0; border-radius: 12px; background: none; color: #fce8f3; font-size: 15px; text-align: left; cursor: pointer; }
-.ob-country-option:hover, .ob-country-option:focus-visible { background: #ffffff12; outline: none; }
+.ob-country-option:hover, .ob-country-option:focus-visible { background: #ffffff12; }
+/* Inset, so the scrolling list does not clip the focus ring. */
+.ob-dialog .ob-country-option:focus-visible { outline-offset: -3px; }
 .ob-country-option[aria-current="true"] { background: #ec078526; }
 .ob-country-option > span:first-child { font-size: 20px; line-height: 1; }
 .ob-country-option > span:nth-child(2) { flex: 1; min-width: 0; }

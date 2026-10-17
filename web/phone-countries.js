@@ -5,9 +5,37 @@ const OB_COUNTRIES = OB_DIAL.split(' ').map(entry => ({ iso: entry.slice(0, 2), 
 // Several places share a calling code; a typed "+1…" or "+44…" picks the main one.
 const OB_DIAL_HOME = { '+1': 'US', '+7': 'RU', '+39': 'IT', '+44': 'GB', '+47': 'NO', '+61': 'AU', '+212': 'MA', '+262': 'RE', '+358': 'FI', '+590': 'GP', '+599': 'CW' };
 const obRegionNames = (() => { try { return new Intl.DisplayNames([...(navigator.languages || []), 'en'], { type: 'region' }); } catch { return null; } })();
-function obCountryName(iso) { try { return obRegionNames?.of(iso) || iso; } catch { return iso; } }
+const obEnglishNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }); } catch { return null; } })();
+function obCountryName(iso, names = obRegionNames) { try { return names?.of(iso) || iso; } catch { return iso; } }
 function obFlag(iso) { return String.fromCodePoint(...[...iso].map(letter => 127397 + letter.charCodeAt(0))); }
 function obCountryOf(iso) { return OB_COUNTRIES.find(country => country.iso === iso); }
+// Names people search by that the official country names leave out.
+const OB_COUNTRY_ALIASES = { GB: 'uk,britain,great britain,england,scotland,wales', US: 'usa,america', AE: 'uae', NL: 'holland', TR: 'turkey', CI: 'ivory coast', CZ: 'czech republic', SZ: 'swaziland', PS: 'palestine', TL: 'east timor', CD: 'drc', MO: 'macau', SA: 'ksa', IN: 'bharat' };
+/** Search text without case, accents or punctuation: "Côte d’Ivoire" -> "cote d ivoire", "Trinidad & Tobago" -> "trinidad and tobago". */
+function obFold(text) {
+  return String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/[^\p{L}\p{M}\p{N}+]+/gu, ' ').trim();
+}
+/** Every country, alphabetical in the device language, with what it can be found by: its device and English names and aliases. */
+function obCountryIndex() {
+  return OB_COUNTRIES.map(country => {
+    const name = obCountryName(country.iso), names = [name, obCountryName(country.iso, obEnglishNames)].map(obFold);
+    const aliases = (OB_COUNTRY_ALIASES[country.iso] || '').split(',').filter(Boolean);
+    // "St. Lucia" is also found as "saint lucia".
+    return { ...country, name, keys: [...new Set([...names, ...names.map(key => key.replace(/\bst\b/g, 'saint')), ...aliases])] };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
+/** Best first: an exact name, alias or calling code; then a name or code that starts with the search; then a word inside a name that does. */
+function obSearchCountries(countries, query) {
+  const text = obFold(query), digits = /^\+?[\d ]*$/.test(text) ? text.replace(/\D/g, '').replace(/^0+/, '') : null;
+  if (!text || digits === '') return countries;
+  const rank = digits !== null
+    ? country => country.dial === '+' + digits ? (OB_DIAL_HOME[country.dial] === country.iso ? 0 : 1) : country.dial.startsWith('+' + digits) ? 2 : -1
+    : country => country.keys.includes(text) ? 0
+      : country.iso.toLowerCase() === text || country.keys.some(key => key.startsWith(text)) ? 1
+      : country.keys.some(key => key.includes(' ' + text)) ? 2 : -1;
+  // sort() is stable, so countries that match equally stay alphabetical.
+  return countries.map(country => ({ country, rank: rank(country) })).filter(match => match.rank >= 0).sort((a, b) => a.rank - b.rank).map(match => match.country);
+}
 /** Last country used here; otherwise India for the India time zone, else the device region. */
 const obHomeCountry = (() => {
   try { const saved = localStorage.getItem('zimi.country'); if (obCountryOf(saved)) return saved; } catch { /* Storage can be unavailable. */ }

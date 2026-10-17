@@ -486,10 +486,35 @@ async function internationalPhone() {
   await dialog.waitFor();
   assert.match(await dialog.locator('[aria-current="true"]').innerText(), /United Kingdom/);
   await page.screenshot({ path: path.join(artifacts, 'country-picker.png') });
-  await dialog.getByRole('searchbox', { name: 'Search countries' }).fill('zzz');
+  const searchbox = dialog.getByRole('searchbox', { name: 'Search countries' }), list = dialog.locator('#ob-country-list');
+  // Country names shown once the debounced search has run.
+  const results = async query => {
+    await searchbox.fill(query);
+    await page.waitForFunction(() => !obCountrySearchTimer);
+    return list.locator('.ob-country-option > span:nth-child(2)').allInnerTexts();
+  };
+  assert.ok(await list.evaluate(element => element.scrollTop) > 0, 'The list opens at the current country');
+  await results('a');
+  assert.equal(await list.evaluate(element => element.scrollTop), 0, 'Results start at the best match');
+  const typed = await page.evaluate(() => new Promise(resolve => {
+    const input = document.getElementById('ob-country-search'), options = document.getElementById('ob-country-list'), before = options.innerHTML;
+    let renders = 0; new MutationObserver(records => { renders += records.length; }).observe(options, { childList: true });
+    for (const value of ['g', 'ge', 'ger', 'germ']) { input.value = value; input.dispatchEvent(new Event('input')); }
+    const waited = options.innerHTML === before;
+    setTimeout(() => resolve({ waited, renders, names: [...options.children].map(option => option.children[1].textContent) }), 400);
+  }));
+  assert.deepEqual(typed, { waited: true, renders: 1, names: ['Germany'] }, 'Fast typing searches once, after the pause');
+  assert.deepEqual(await results('uk'), ['United Kingdom', 'Ukraine'], 'Everyday names find the country first');
+  assert.deepEqual(await results('44'), ['United Kingdom', 'Guernsey', 'Isle of Man', 'Jersey'], 'A shared calling code lists its main country first');
+  const inResults = await results('in');
+  assert.equal(inResults[0], 'India');
+  assert.ok(!inResults.includes('Argentina'), 'Searches match the start of a word, not its middle');
+  assert.match((await results('turkey')).join('|'), /^T[üu]rk[a-z]+$/, 'Former names still work');
+  assert.match((await results("cote d'ivoire")).join('|'), /^C.te d.Ivoire$/, 'Accents and apostrophes do not matter');
+  assert.match((await results('saint lucia')).join('|'), /^St\.? Lucia$/, 'Saint finds names written St.');
+  await results('zzz');
   await dialog.getByText('No country matches that search.').waitFor();
-  await dialog.getByRole('searchbox', { name: 'Search countries' }).fill('+971');
-  assert.equal(await dialog.locator('.ob-country-option:not([hidden])').count(), 1);
+  assert.deepEqual(await results('+971'), ['United Arab Emirates']);
   await dialog.getByRole('button', { name: /United Arab Emirates/ }).click();
   await dialog.waitFor({ state: 'detached' });
   assert.ok((await country()).includes('United Arab Emirates +971'));
@@ -503,9 +528,11 @@ async function internationalPhone() {
   assert.match((await state(page)).err, /valid mobile number for United States/);
 
   await page.locator('#ob-country').click();
-  await dialog.getByRole('searchbox', { name: 'Search countries' }).fill('india');
-  // "india" also matches British Indian Ocean Territory, so pick India by its search key.
-  await dialog.locator('.ob-country-option[data-search^="india "]').click();
+  await searchbox.fill('ind');
+  await searchbox.press('Enter');
+  assert.match(await page.evaluate(() => document.activeElement.textContent), /India/, "The keyboard's search key moves to the best match");
+  await page.keyboard.press('Enter');
+  await dialog.waitFor({ state: 'detached' });
   await page.locator('#ph').fill('5467985456');
   await action(page, 'obSendOtp').click();
   assert.equal((await state(page)).err, 'Enter a valid 10-digit Indian mobile number.', 'India keeps its mobile number check');

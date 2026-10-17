@@ -7,7 +7,7 @@ const OB_INTERESTS = [
   ["✨", "Astrology"], ["💪", "Fitness"], ["🤝", "New friends"], ["🏏", "Cricket"],
   ["👗", "Style"], ["🍳", "Cooking"], ["📚", "Books"], ["🌿", "Wellness"]
 ];
-let obPreviousTheme = null, obRenderKey = "", obRequestTimer, obDialogTrigger, obSwipe, obSequence = 0, obRateTimer;
+let obPreviousTheme = null, obRenderKey = "", obRequestTimer, obDialogTrigger, obSwipe, obSequence = 0, obRateTimer, obCountryList = [], obCountrySearchTimer = 0;
 const obLimits = {};
 const obIsCreator = () => !!S.auth.creatorIntent || isHost();
 const obMatches = data => data.requestId === undefined || data.requestId === S.auth.requestId;
@@ -492,21 +492,33 @@ function obPhoneInput(el) {
   } else el.value = typed.replace(/\D/g, "");
   S.auth.phone = el.value; obSetError("");
 }
+function obCountryOptions(countries) {
+  const current = obCountry().iso;
+  return countries.map(country => `<button type="button" class="ob-country-option" ${country.iso === current ? 'aria-current="true"' : ""} onclick="obPickCountry('${country.iso}')"><span aria-hidden="true">${obFlag(country.iso)}</span><span>${esc(country.name)}</span><span class="ob-country-dial">${country.dial}</span></button>`).join("");
+}
 function obShowCountries() {
   if (document.getElementById("ob-countries") || S.auth.busy) return;
-  const current = obCountry().iso;
-  const countries = OB_COUNTRIES.map(country => ({ ...country, name: obCountryName(country.iso) })).sort((a, b) => a.name.localeCompare(b.name));
+  obCountryList = obCountryIndex();
   const dialog = document.createElement("dialog"); dialog.id = "ob-countries"; dialog.className = "ob-dialog ob-country-dialog"; dialog.setAttribute("aria-labelledby", "ob-countries-title");
-  dialog.innerHTML = `<div class="ob-dialog-head"><h2 id="ob-countries-title">Choose your country</h2><button class="ob-dialog-close ob-icon" aria-label="Close country list" onclick="obCloseCountries()">×</button></div><input id="ob-country-search" class="ob-country-search" type="search" placeholder="Search country or code" aria-label="Search countries" autocomplete="off" oninput="obFilterCountries(this.value)"><div class="ob-country-list" id="ob-country-list">${countries.map(country => `<button type="button" class="ob-country-option" data-search="${esc(`${country.name} ${country.iso} ${country.dial} ${country.dial.slice(1)}`.toLowerCase())}" ${country.iso === current ? 'aria-current="true"' : ""} onclick="obPickCountry('${country.iso}')"><span aria-hidden="true">${obFlag(country.iso)}</span><span>${esc(country.name)}</span><span class="ob-country-dial">${country.dial}</span></button>`).join("")}</div><p class="ob-country-empty" id="ob-country-empty" role="status" hidden>No country matches that search.</p>`;
+  dialog.innerHTML = `<div class="ob-dialog-head"><h2 id="ob-countries-title">Choose your country</h2><button class="ob-dialog-close ob-icon" aria-label="Close country list" onclick="obCloseCountries()">×</button></div><input id="ob-country-search" class="ob-country-search" type="search" placeholder="Search country or code" aria-label="Search countries" autocomplete="off" oninput="obQueueCountrySearch()" onkeydown="obCountrySearchKey(event)"><div class="ob-country-list" id="ob-country-list">${obCountryOptions(obCountryList)}</div><p class="ob-country-empty" id="ob-country-empty" role="status" hidden>No country matches that search.</p>`;
   obModal(dialog);
   dialog.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "center" });
   document.getElementById("ob-country-search").focus();
 }
-function obFilterCountries(query) {
-  const text = query.trim().toLowerCase();
-  let shown = 0;
-  document.querySelectorAll("#ob-country-list .ob-country-option").forEach(option => { const match = !text || option.dataset.search.includes(text); option.hidden = !match; shown += match ? 1 : 0; });
-  const empty = document.getElementById("ob-country-empty"); if (empty) empty.hidden = shown > 0;
+// Searches once typing pauses, not on every key.
+function obQueueCountrySearch() { clearTimeout(obCountrySearchTimer); obCountrySearchTimer = setTimeout(obFilterCountries, 150); }
+function obFilterCountries() {
+  clearTimeout(obCountrySearchTimer); obCountrySearchTimer = 0;
+  const list = document.getElementById("ob-country-list"), search = document.getElementById("ob-country-search"); if (!list || !search) return;
+  const matches = obSearchCountries(obCountryList, search.value);
+  list.innerHTML = obCountryOptions(matches); list.scrollTop = 0;
+  document.getElementById("ob-country-empty").hidden = matches.length > 0;
+}
+// The keyboard's search key shows the results at once and moves to the best match.
+function obCountrySearchKey(event) {
+  if (event.key !== "Enter") return;
+  event.preventDefault(); obFilterCountries();
+  document.querySelector("#ob-country-list .ob-country-option")?.focus();
 }
 function obCloseCountries() { const dialog = document.getElementById("ob-countries"); if (dialog) dialog.close(); }
 function obPickCountry(iso) {
