@@ -4,6 +4,7 @@ import { AppState, Linking, Share } from "react-native";
 
 import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
+import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
 import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
@@ -59,8 +60,10 @@ export type WebMessage =
   | { type: "chat.open"; data: { with: string } }
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
-  | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean } }
+  | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string } }
   | { type: "chat.photo"; data: { to: string; photo: string } }
+  | { type: "chat.edit"; data: { to: string; id: string; text: string } }
+  | { type: "chat.delete"; data: { to: string; id: string; everyone: boolean } }
   | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
   | { type: "call.start"; data: { to: string; voice?: boolean } }
   | { type: "call.accept"; data: { callId: string } }
@@ -137,8 +140,10 @@ export type AppMessage =
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
-  | { type: "chat.sent"; data: { to: string; sent: string; text: string; inCall: boolean } }
-  | { type: "chat.photoSent"; data: { to: string } }
+  | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean } }
+  | { type: "chat.photoSent"; data: { to: string; id: string } }
+  | { type: "chat.updated"; data: { with: string; message: Message } }
+  | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number } }
   | { type: "call.failed"; data: { message: string } }
@@ -871,16 +876,32 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } else if (!(await requireThreadSend(msg.data.to, version))) return;
         // The server verifies that this accepted call belongs to both users;
         // an in-call reply need not wait for a preexisting text conversation.
-        const delivered = (await api.sendMessage(msg.data.to, msg.data.text, callId))?.text;
-        if (current(version) && typeof delivered === "string" && delivered !== msg.data.text)
-          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered, inCall: !!msg.data.inCall } });
+        // The screen learns the message's server ID (for reply, edit and delete) and the text as delivered.
+        const delivered = await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo);
+        if (current(version) && typeof delivered?.text === "string")
+          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered.text, id: delivered.id, inCall: !!msg.data.inCall } });
         if (current(version)) quietly(loadChats(), "chats.reload");
         return;
       }
       case "chat.photo": {
         if (!(await requireThreadSend(msg.data.to, version))) return;
-        await api.sendPhotoMessage(msg.data.to, msg.data.photo);
-        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to } }); quietly(loadChats(), "chats.reload"); }
+        const sent = await api.sendPhotoMessage(msg.data.to, msg.data.photo);
+        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "" } }); quietly(loadChats(), "chats.reload"); }
+        return;
+      }
+      case "chat.edit": {
+        await requireChatPair(msg.data.to);
+        if (!current(version)) return;
+        const updated = await api.editMessage(msg.data.to, msg.data.id, msg.data.text);
+        if (current(version)) { emit({ type: "chat.updated", data: { with: msg.data.to, message: messageFrom(updated, accountId ?? "") } }); quietly(loadChats(), "chats.reload"); }
+        return;
+      }
+      case "chat.delete": {
+        // Deleting your own words never waits on chat permission: it works even after a block.
+        const result = await api.deleteMessage(msg.data.to, msg.data.id, msg.data.everyone);
+        if (!current(version)) return;
+        emit(msg.data.everyone ? { type: "chat.updated", data: { with: msg.data.to, message: messageFrom(result, accountId ?? "") } } : { type: "chat.removed", data: { id: msg.data.id } });
+        quietly(loadChats(), "chats.reload");
         return;
       }
       case "gift.send": {

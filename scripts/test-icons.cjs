@@ -47,7 +47,7 @@ const root = path.resolve(__dirname, '..');
     await page.locator('#ti').fill('Hello');
     await press(page.locator('.zc-composer-send'));
     assert.equal((await motion(page.locator('.zc-composer-send>.zi-icon'))).name, 'zi-rise');
-    const typed = page.locator('.zc-composer-emoji>.zi-icon');
+    const typed = page.locator('.zc-composer-add>.zi-icon');
     await page.locator('#ti').press(' ');
     assert.equal((await motion(typed)).tap, false, 'Typing in a field never animates nearby icons');
 

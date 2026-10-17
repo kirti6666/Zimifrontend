@@ -97,7 +97,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "chats.readAll": valid = true; break;
-    case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)); break;
+    case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)) && (d.replyTo === undefined || identifier(d.replyTo)); break;
+    case "chat.edit": valid = identifier(d.to) && identifier(d.id) && typeof d.text === "string" && d.text.length <= 4000; break;
+    case "chat.delete": valid = identifier(d.to) && identifier(d.id) && boolean(d.everyone); break;
     case "chat.photo": valid = identifier(d.to) && photoData(d.photo); break;
     case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && amount(d.coins) && boolean(d.inCall) && (d.streamId === undefined || identifier(d.streamId)) && (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)); break;
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;

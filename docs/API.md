@@ -87,6 +87,9 @@ for it (login, call failed).
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
 | Send a photo | `POST /media/upload-url` `{purpose: "chat"}`, PUT to storage, then `POST /chats/:id` `{imageKey}` | – |
+| Reply to a message | `POST /chats/:id` `{text, replyTo}` | The message, with a `reply` quote |
+| Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
+| Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `PUT /follows/:id` `{on}` | – |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
@@ -133,7 +136,14 @@ user just sent, the app posts `chat.sent {to, sent, text, inCall}` so the sender
 shows what was delivered, with a short notice.
 
 Photos members send (`chat.photo {to, photo}`, a resized JPEG from the photo picker) reach creators
-blurred with **Tap to view**. Each photo stays blurred until the creator taps it, and blurs again the
+blurred with **Tap to view**.
+
+Tapping a sent message opens its options: **Reply**, **Edit** (your own text), and **Delete for everyone**
+(your own) or **Delete for me** (someone else's). The screens post `chat.send {replyTo}`, `chat.edit {to, id, text}`
+and `chat.delete {to, id, everyone}`; the app answers with `chat.updated {with, message}` or `chat.removed {id}`,
+and the socket events `chat:message-updated` and `chat:message-hidden` keep both people and other devices in step.
+Every sent message gets its server ID back in `chat.sent` / `chat.photoSent`, so it has options straight away.
+The **+** button holds **Photo** and **Emoji**. Each photo stays blurred until the creator taps it, and blurs again the
 next time the conversation is opened. Members see photos creators send, and their own, normally.
 
 ## Private screens

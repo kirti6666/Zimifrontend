@@ -165,7 +165,7 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
       ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
       ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
-      lastKind: last.kind === "image" ? "image" as const : "text" as const, lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastKind: last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
       lastAutomated: last.automated === true,
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
@@ -173,16 +173,23 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : chats.reduce((sum, chat) => sum + chat.unread, 0),
     unreadConversations: typeof data.unreadConversations === "number" ? count(data.unreadConversations) : chats.filter(chat => chat.unread > 0).length };
 }
+/** One chat message as the screens show it, including its edit, delete and reply state. */
+export function messageFrom(value: unknown, userId: string): Message {
+  const message = record(value);
+  const mine = idOf(message.senderId) === userId;
+  const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+  const reply = message.reply && typeof message.reply === "object" ? record(message.reply) : undefined;
+  return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
+    ...(imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
+    ...(message.editedAt ? { edited: true } : {}), ...(message.deletedAt ? { deleted: true } : {}),
+    ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, deleted: reply.deleted === true } } : {}),
+    ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
+}
 export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {
   const data = record(value);
   return { ...(typeof data.canSend === "boolean" ? { canSend: data.canSend } : {}),
     ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
-    messages: items(data).map(record).reverse().map(message => {
-    const mine = idOf(message.senderId) === userId;
-    const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
-    return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
-      ...(imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true, ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
-  }),
+    messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
 export function callsFrom(value: unknown, userId: string): { calls: CallRecord[] } {

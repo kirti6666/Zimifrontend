@@ -469,22 +469,50 @@ test('chat text the server partly hid is reported back as delivered, and photos 
   h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user', isPhoneVerified: true }, requiresOnboarding: false });
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.thread = () => ({ messages: [], canSend: true });
-  h.overrides.sendMessage = () => ({ text: 'call ██████████' });
+  h.overrides.sendMessage = () => ({ id: 'message-1', text: 'call ██████████' });
   h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'call 9876543210' } });
   await settle();
-  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent').map(post => post.data))), [{ to: 'host-1', sent: 'call 9876543210', text: 'call ██████████', inCall: false }]);
-  h.overrides.sendMessage = () => ({ text: 'hello' });
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent').map(post => post.data))), [{ to: 'host-1', sent: 'call 9876543210', text: 'call ██████████', id: 'message-1', inCall: false }]);
+  h.overrides.sendMessage = () => ({ id: 'message-2', text: 'hello' });
   h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'hello' } });
   await settle();
-  assert.equal(h.find('chat.sent').length, 1, 'Nothing is reported when nothing was hidden');
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent')[1].data)), { to: 'host-1', sent: 'hello', text: 'hello', id: 'message-2', inCall: false }, 'Every sent message learns its server ID, for reply, edit and delete');
   const photo = 'data:image/png;base64,' + Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]).toString('base64');
-  h.overrides.sendPhotoMessage = () => undefined;
+  h.overrides.sendPhotoMessage = () => ({ id: 'photo-1' });
   h.bridge.handle({ type: 'chat.photo', data: { to: 'host-1', photo } });
   await settle();
   assert.equal(h.count('sendPhotoMessage'), 1);
-  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.photoSent').map(post => post.data))), [{ to: 'host-1' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.photoSent').map(post => post.data))), [{ to: 'host-1', id: 'photo-1' }]);
   for (const data of [{ to: 'host-1', photo: 'https://example.test/x.png' }, { to: 'host-1', photo: 'data:image/svg+xml;base64,PHN2Zz4=' }, { to: '', photo }])
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'chat.photo', data })), null, 'Only a JPEG, PNG or WebP photo from the page can be sent');
+  h.bridge.close();
+});
+
+test('replies, edits and deletes reach the server and come back to the screen', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user', isPhoneVerified: true }, requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.thread = () => ({ messages: [], canSend: true });
+  h.overrides.sendMessage = () => ({ id: 'reply-1', text: 'Yes!' });
+  h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'Yes!', replyTo: 'question-1' } });
+  await settle();
+  assert.equal(h.calls.find(call => call.name === 'sendMessage').args[3], 'question-1', 'A reply names the message it answers');
+  h.overrides.editMessage = () => ({ _id: 'reply-1', senderId: 'alice', recipientId: 'host-1', text: 'Yes, at 9!', editedAt: '2026-10-17T10:00:00.000Z' });
+  h.bridge.handle({ type: 'chat.edit', data: { to: 'host-1', id: 'reply-1', text: 'Yes, at 9!' } });
+  await settle();
+  const edited = JSON.parse(JSON.stringify(h.find('chat.updated').at(-1).data));
+  assert.deepEqual([edited.with, edited.message.id, edited.message.text, edited.message.edited, edited.message.mine], ['host-1', 'reply-1', 'Yes, at 9!', true, true]);
+  h.overrides.deleteMessage = () => ({ _id: 'reply-1', senderId: 'alice', recipientId: 'host-1', text: '', deletedAt: '2026-10-17T10:01:00.000Z' });
+  h.bridge.handle({ type: 'chat.delete', data: { to: 'host-1', id: 'reply-1', everyone: true } });
+  await settle();
+  assert.equal(h.find('chat.updated').at(-1).data.message.deleted, true);
+  h.bridge.handle({ type: 'chat.delete', data: { to: 'host-1', id: 'other-1', everyone: false } });
+  await settle();
+  assert.deepEqual(h.calls.filter(call => call.name === 'deleteMessage').map(call => call.args[2]), [true, false]);
+  assert.equal(h.find('chat.removed').at(-1).data.id, 'other-1', 'Deleting for me removes it from this screen only');
+  for (const message of [{ type: 'chat.edit', data: { to: 'host-1', id: '', text: 'x' } }, { type: 'chat.delete', data: { to: 'host-1', id: 'm', everyone: 'yes' } }, { type: 'chat.send', data: { to: 'host-1', text: 'hi', replyTo: 42 } }])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null, 'Malformed reply, edit and delete messages are refused');
   h.bridge.close();
 });
 
@@ -1491,7 +1519,7 @@ test('accepted calls allow the first host message with server-verified call cont
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'No active call',inCall:true}});await settle();assert.equal(h.count('sendMessage'),0);
   h.live[0].onEvent({type:'call.connected',data:{callId:'accepted-call',initiator:false,peerId:'member',voice:false}});
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'Hello on our call',inCall:true}});await settle();
-  assert.equal(h.count('sendMessage'),1);assert.deepEqual(h.calls.find(call=>call.name==='sendMessage').args,['member','Hello on our call','accepted-call']);
+  assert.equal(h.count('sendMessage'),1);assert.deepEqual(h.calls.find(call=>call.name==='sendMessage').args,['member','Hello on our call','accepted-call',undefined]);
   assert.equal(h.count('thread'),1,'The active call bypasses only the cached conversation restriction');
   h.live[0].onEvent({type:'call.ended',data:{callId:'accepted-call'}});
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'After call',inCall:true}});h.bridge.handle({type:'chat.send',data:{to:'member',text:'Ordinary message'}});await settle();

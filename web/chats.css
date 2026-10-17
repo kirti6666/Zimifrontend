@@ -185,7 +185,7 @@
 .zc-emoji>button{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--surface);font-size:22px}
 .zc-composer{flex:none;display:flex;align-items:center;gap:8px;padding:8px max(10px,calc(50% - 384px)) 12px}
 .zc-composer-icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--muted)}
-.zc-composer-emoji[aria-expanded="true"]{color:var(--accent-ink);background:var(--surface)}
+.zc-composer-add[aria-expanded="true"]{color:var(--accent-ink);background:var(--surface)}
 .zc-composer-gift{color:var(--accent-ink)}
 .zc-composer-field{flex:1;min-width:0;display:flex;align-items:center;height:48px;padding:0 4px 0 18px;border-radius:99px;background:var(--surface)}
 .zc-composer-field>input{flex:1;min-width:0;width:0;font-size:15px;outline:none}
@@ -208,3 +208,18 @@
 .zc-photo img{display:block;width:100%;height:100%;object-fit:cover}
 .zc-photo.is-blurred{cursor:pointer}.zc-photo.is-blurred img{filter:blur(28px);transform:scale(1.2)}
 .zc-photo>span{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:650;text-shadow:0 1px 8px #000a}
+/* Message options, replies, edits and deletes; the "+" menu for photos and emoji. */
+.zc-msg [role=button]{cursor:pointer;-webkit-tap-highlight-color:transparent}.zc-msg [role=button]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.zc-quote{display:flex;flex-direction:column;gap:1px;margin:-2px 0 6px;padding:5px 9px;border-left:3px solid var(--accent);border-radius:8px;background:color-mix(in srgb,var(--canvas) 30%,transparent);font-size:12px;line-height:1.35;cursor:pointer;max-width:100%}
+.zc-quote>b{font-weight:700;color:var(--accent-ink)}.mine .zc-quote>b{color:inherit;opacity:.9}.zc-quote>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.85}.zc-quote-above{margin:0 0 4px;background:var(--surface);color:var(--ink)}
+.zc-deleted{font-style:italic;opacity:.65}.zc-edited{font-size:11px;color:var(--muted)}
+.zc-flash .bub,.zc-flash .zc-photo{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent);transition:box-shadow .3s}
+.zc-message-menu{display:flex;flex-direction:column;gap:4px;padding:16px 16px max(16px,env(safe-area-inset-bottom))}
+.zc-message-menu>button{width:100%;padding:14px;border-radius:12px;text-align:left;font-size:15px;font-weight:600;color:var(--ink)}.zc-message-menu>button:hover,.zc-message-menu>button:focus-visible{background:var(--raised);outline:none}
+.zc-message-menu>button.danger{color:var(--danger,#ff6b81)}.zc-message-menu>.zc-menu-cancel{text-align:center;color:var(--muted)}
+.zc-menu-preview{margin:0 0 8px;padding:0 4px 10px;border-bottom:1px solid var(--line);color:var(--muted);font-size:13px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.zc-context{display:flex;align-items:center;gap:10px;margin:6px var(--zc-gutter) 0;padding:8px 10px 8px 12px;border-left:3px solid var(--accent);border-radius:10px;background:var(--surface)}
+.zc-context>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.zc-context b{font-size:12.5px;color:var(--accent-ink)}.zc-context span{font-size:13px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zc-context>button{flex:none;width:30px;height:30px;border-radius:50%;font-size:20px;line-height:1;color:var(--muted)}.zc-context>button:hover{background:var(--raised)}
+.zc-attach{display:flex;gap:8px;padding:8px var(--zc-gutter) 0}.zc-attach[hidden]{display:none}
+.zc-attach>button{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:12px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}.zc-attach>button:disabled{opacity:.45}.zc-attach>button svg{color:var(--accent-ink)}

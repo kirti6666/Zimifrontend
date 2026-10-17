@@ -212,12 +212,17 @@ export const api = {
     decodePhoto(photo);
     const imageKey = await uploadMedia(photo, "chat", version);
     ensureSession(version);
-    await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey });
+    return { id: idOf(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey })) };
   },
+  editMessage: async (to: string, id: string, text: string) =>
+    record(await request("PATCH", `/chats/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}`, { text })),
+  /** `everyone` wipes your own message for both people; otherwise it leaves only your own view. */
+  deleteMessage: async (to: string, id: string, everyone: boolean) =>
+    record(await request("DELETE", `/chats/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}?for=${everyone ? "everyone" : "me"}`)),
   /** Returns the text as delivered: the server hides phone numbers and abusive words. */
-  async sendMessage(to: string, text: string, callId?: string) {
-    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}) }));
-    return { text: typeof message.text === "string" ? message.text : text };
+  async sendMessage(to: string, text: string, callId?: string, replyTo?: string) {
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}) }));
+    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text };
   },
   follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },

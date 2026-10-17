@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { callPrice, coinCount, idOf, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callPrice, coinCount, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 
@@ -78,11 +78,25 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
       const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
       if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt),
         ...(imageUrl ? { kind: "image", imageUrl } : { kind: "text" }), automated: message.automated === true,
+        ...(message.reply && typeof message.reply === "object" ? { reply: messageFrom(message, userId).reply } : {}),
         ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
       });
       // Sender echoes also update the list, including messages sent on another device.
       emit("chats.updated", {});
     } catch { /* Ignore malformed events. */ }
+  });
+  // An edit or a delete for everyone, from either person.
+  socket.on("chat:message-updated", payload => {
+    try {
+      const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
+      if (!userId || !idOf(message) || (from !== userId && to !== userId)) return;
+      emit("chat.updated", { with: from === userId ? to : from, message: messageFrom(message, userId) });
+      emit("chats.updated", {});
+    } catch { /* Ignore malformed events. */ }
+  });
+  // A message this account deleted for itself on another device.
+  socket.on("chat:message-hidden", payload => {
+    try { const id = idOf(record(payload)); if (id) { emit("chat.removed", { id }); emit("chats.updated", {}); } } catch { /* Ignore malformed events. */ }
   });
   socket.on("chat:read", payload => {
     try {

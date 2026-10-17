@@ -408,6 +408,17 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'paid-call', coins: 150, reason: 'out_of_coins' } }, 'An ended call reports its charge and why it ended');
   socket.emitServer('call:updated', { _id: 'free-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 0, coinsCharged: 0 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'free-call' } }, 'Free calls report no charge');
+  socket.emitServer('chat:message-updated', { _id: 'm-1', senderId: 'host-id', recipientId: 'member-id', text: 'Edited words', editedAt: chatAt, reply: { _id: 'm-0', senderId: 'member-id', text: 'Question', image: false, deleted: false } });
+  const update = events.filter(event => event.type === 'chat.updated').at(-1);
+  assert.equal(update.data.with, 'host-id');
+  assert.deepEqual([update.data.message.text, update.data.message.edited, update.data.message.reply.mine, update.data.message.reply.text], ['Edited words', true, true, 'Question']);
+  socket.emitServer('chat:message-updated', { _id: 'm-2', senderId: 'stranger', recipientId: 'other-user', text: 'Not ours' });
+  assert.equal(events.filter(event => event.type === 'chat.updated').length, 1, 'Updates to other conversations are ignored');
+  socket.emitServer('chat:message-hidden', { _id: 'm-3', conversationId: 'conversation-id' });
+  assert.equal(events.filter(event => event.type === 'chat.removed').at(-1).data.id, 'm-3');
+  const deletedMessage = adapters.messageFrom({ _id: 'm-4', senderId: 'member-id', text: '', deletedAt: chatAt }, 'member-id');
+  assert.deepEqual([deletedMessage.deleted, deletedMessage.mine, deletedMessage.text], [true, true, '']);
+  assert.equal(adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id', name: 'Creator' }], lastMessage: { text: '', deleted: true } }] }, 'member-id').chats[0].lastDeleted, true);
   for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
     socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });
   }

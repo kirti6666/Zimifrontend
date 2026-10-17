@@ -184,6 +184,7 @@ export interface ChatSummary {
   time: string;
   unread: number;
   lastKind: "text" | "image";
+  lastDeleted?: boolean;
   lastMine: boolean;
   lastAutomated: boolean;
   lastAt: string;
@@ -208,6 +209,9 @@ export interface Message {
   createdAt?: string;
   kind?: "text" | "image";
   imageUrl?: string;
+  edited?: boolean;
+  deleted?: boolean; // deleted for everyone; only a placeholder remains
+  reply?: { id: string; mine: boolean; text: string; image: boolean; deleted: boolean };
   automated?: boolean;
   status?: "sent" | "read"; // own messages only: whether the other person has read it
 }
