@@ -3,12 +3,14 @@
    Native.on handlers), so a renamed field shows up as a type error here. */
 
 export type Role = "sender" | "host";
+export type ServerRole = "user" | "host" | "admin";
 export type Verification = "none" | "pending" | "verified" | "rejected";
 
 export interface User {
   id: string;
   name: string;
   role: Role;
+  serverRole?: ServerRole;
   city?: string;
   about?: string;
   email?: string;
@@ -51,6 +53,7 @@ export interface Host {
   id: string;
   name: string;
   role?: Role;
+  serverRole?: ServerRole;
   city?: string;
   category?: string;
   tag?: string;
@@ -111,6 +114,10 @@ export interface HomeData {
 }
 export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; }
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
+export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
+export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
+export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string }; }
+export interface StreamReaction { id: string; streamId: string; userId: string; emoji: string; }
 export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
 export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
@@ -166,6 +173,9 @@ export interface Person {
 }
 
 export interface ChatSummary {
+  canSend?: boolean;
+  automatedOnly?: boolean;
+  sendDisabledReason?: string;
   id: string;
   user: Host;
   last: string;
@@ -173,6 +183,7 @@ export interface ChatSummary {
   unread: number;
   lastKind: "text";
   lastMine: boolean;
+  lastAutomated: boolean;
   lastAt: string;
   lastStatus: "sent" | "read";
   hasCalls: boolean;
@@ -194,6 +205,8 @@ export interface Message {
   time: string;
   createdAt?: string;
   kind?: "text";
+  automated?: boolean;
+  status?: "sent" | "read"; // own messages only: whether the other person has read it
 }
 
 export interface MissedCall {

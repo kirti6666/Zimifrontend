@@ -176,7 +176,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.chats', chats, 'chats');
     await page.locator('.rowlink').click();
     await visible('Loading messages');
-    const draft = page.getByPlaceholder('Message', { exact: true });
+    const draft = page.getByPlaceholder('Type a message to Mira', { exact: true });
     await draft.fill('Draft while history is loading');
     await receive('data.thread', { with: secondId, messages: [{ text: 'Wrong conversation', mine: false }] });
     await visible('Loading messages');

@@ -204,6 +204,45 @@ when the app becomes active again. The backend's signed webhook and payment
 verification remain authoritative. Configure the provider and confirm a real
 device checkout before using payments live.
 
+## Live studio and private calls
+
+The call setup screen (`web/call-setup.js` / `web/call-setup.css`) fills the
+viewport using the selected account theme, including its colors and typography.
+Choose Video or Voice before starting. Camera/microphone access can be
+cancelled, times out after 30 seconds, and never resumes an abandoned call.
+Preview it at `/?preview=precall&role=sender` or
+`/?preview=precall-offline&role=sender`. Run `npm run test:call-setup` for layout,
+availability, permissions, retry, and navigation regression checks.
+
+The immersive room interface lives in `web/live-room.js` and `web/live-room.css`.
+It includes viewer/host layouts, live chat, follows, server-priced gifts, gift
+alerts and session supporters, hearts, a private-call request queue, camera/mic
+controls, camera switching, and a private video/voice call screen. Studio goals
+and appearance filters apply to the host's own session display; filters do not
+change the camera video sent to other people.
+
+View the interactive demo after `npm run build:web` and `npx serve dist`:
+
+- `/?preview=live` — viewer
+- `/?preview=host-live&role=host&approvedHost=1` — host studio
+- `/?preview=call` — private video call
+
+Only the preview build contains sample people/activity. The native build waits
+for authenticated server responses. Queue acceptance ends the public stream and
+opens a private call for the host and selected viewer; camera permission failures
+end the call and release media. Call-scoped chat verifies the active participants.
+Calls are free; paid-minute metering and PK battles are not implemented.
+
+Native invitations use `zimilive://live/<streamId>` and the device share sheet.
+Rebuild the native app to register this scheme. Invitations wait for sign-in and
+show a join confirmation; they do not interrupt an existing live or private call.
+
+Run `npm run test:live` for responsive UI, native message contracts, queue/error
+handling, and browser WebRTC media tests. These tests use fixtures and virtual
+cameras. Validate two physical devices against your configured backend and TURN
+service before release; the existing broadcaster sends one peer connection per
+viewer and is intended for small rooms.
+
 ## Themes and premium appearance
 
 Open **Profile & Settings → Appearance & Theme** to browse the theme gallery.
@@ -225,8 +264,9 @@ unfinished checkout and checking payment status, and refreshes eligibility on
 return/reconnect. Reversed purchases and unavailable themes fall back to a free
 theme. Configure and verify the backend's PayPlus integration before live sales.
 
-`web/themes.js` applies validated color and typography tokens without replacing
-screen content or interrupting media. Colors transition for 260 ms; reduced-motion
+`web/themes.js` applies validated color and typography tokens across authenticated
+screens, live/private calls, sheets, dialogs, and native loading/error chrome without
+replacing screen content or interrupting media. Colors transition for 260 ms; reduced-motion
 users get an immediate change. Admin updates and account changes refresh the
 catalog, and signing out clears the previous account's theme and payment state.
 The website preview uses demo themes and a clearly labeled, no-charge preview
@@ -234,7 +274,8 @@ unlock. Rebuild the WebView bundle with `npm run build:web` after edits.
 
 Run `npm run test:themes` for responsive gallery, transition, selection, payment,
 revocation, and account-isolation browser checks. These use mocked native events
-and do not make real purchases. Verify hosted checkout and native safe-area
+and do not make real purchases. Run `npm run test:theme-consistency` to verify
+selected palettes across screens and call overlays. Verify hosted checkout and native safe-area
 appearance on physical Android/iOS devices before release.
 
 ## Notes

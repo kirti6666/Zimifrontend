@@ -29,6 +29,7 @@ export function accountFrom(value: unknown): Account {
   return {
     user: {
       id, name: string(user.name), role: user.role === "host" && user.hostStatus === "approved" && user.isVerifiedHost === true ? "host" : "sender",
+      ...(user.role === "user" || user.role === "host" || user.role === "admin" ? { serverRole: user.role } : {}),
       city: string(user.city), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), photos,
       languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), adultConfirmed: user.adultConfirmed === true,
       ...(user.onboardingPreference === "creator" || user.onboardingPreference === "member" ? { onboardingPreference: user.onboardingPreference } : {}),
@@ -51,6 +52,7 @@ export function hostFrom(value: unknown): Host {
     languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.entryFee), followers: finite(host.followers),
     about: string(host.bio), verified: host.isVerifiedHost === true,
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
+    ...(host.role === "user" || host.role === "host" || host.role === "admin" ? { serverRole: host.role } : {}),
     ...(typeof (host.isOnline ?? host.online) === "boolean" ? { online: (host.isOnline ?? host.online) as boolean } : {}), ...(typeof host.live === "boolean" ? { live: host.live } : {}),
     ...(typeof host.availableForCall === "boolean" ? { availableForCall: host.availableForCall } : {}),
     ...(host.stream && typeof host.stream === "object" ? { stream: streamFrom(host.stream, idOf(host)), live: true } : host.stream === null ? { stream: null, live: false } : {}),
@@ -160,16 +162,24 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     if (!peer || !idOf(peer)) throw new ApiError("A conversation could not be loaded. Try again.", 502);
     const lastAt = string(chat.lastMessageAt) || string(last.createdAt);
     return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
+      ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
+      ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
       lastKind: "text" as const, lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastAutomated: last.automated === true,
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
   return { chats, total: typeof data.total === "number" ? count(data.total) : chats.length, page: count(data.page) || 1, limit: count(data.limit) || 20,
     unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : chats.reduce((sum, chat) => sum + chat.unread, 0),
     unreadConversations: typeof data.unreadConversations === "number" ? count(data.unreadConversations) : chats.filter(chat => chat.unread > 0).length };
 }
-export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string } {
+export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {
   const data = record(value);
-  return { messages: items(data).map(record).reverse().map(message => ({ id: idOf(message), mine: idOf(message.senderId) === userId, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt), kind: "text" })),
+  return { ...(typeof data.canSend === "boolean" ? { canSend: data.canSend } : {}),
+    ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
+    messages: items(data).map(record).reverse().map(message => {
+    const mine = idOf(message.senderId) === userId;
+    return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt), kind: "text" as const, automated: message.automated === true, ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
+  }),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
 export function callsFrom(value: unknown, userId: string): { calls: CallRecord[] } {

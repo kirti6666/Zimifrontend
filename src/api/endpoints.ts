@@ -2,7 +2,7 @@ import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
 import { accountFrom, blockedUsersFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, Session, Verification, Wallet } from "./types";
+import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
@@ -172,6 +172,11 @@ export const api = {
     }
   },
   async sendStreamMessage(streamId: string, text: string) { return streamChatFrom(await request("POST", `/streams/${encodeURIComponent(streamId)}/messages`, { text })); },
+  streamRequests: (streamId: string) => request<StreamRequests>("GET", `/streams/${encodeURIComponent(streamId)}/requests`),
+  requestStreamCall: (streamId: string) => request<StreamRequests>("POST", `/streams/${encodeURIComponent(streamId)}/requests`, {}),
+  updateStreamRequest: (streamId: string, id: string, action: "cancel" | "decline") => request<StreamCallRequest>("POST", `/streams/${encodeURIComponent(streamId)}/requests/${encodeURIComponent(id)}/${action}`, {}),
+  acceptStreamRequest: (streamId: string, id: string) => request<StreamPrivateCall>("POST", `/streams/${encodeURIComponent(streamId)}/requests/${encodeURIComponent(id)}/accept`, {}),
+  reactToStream: (streamId: string) => request<StreamReaction>("POST", `/streams/${encodeURIComponent(streamId)}/reactions`, {}),
   async hosts() { return { hosts: items(await request("GET", "/hosts?limit=100")).map(hostFrom) }; },
   async chats(page = 1) { const id = await selfId(); return chatsFrom(await request("GET", page === 1 ? "/chats" : `/chats?page=${page}`), id); },
   async readAllChats() {
@@ -193,7 +198,7 @@ export const api = {
     await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });
     return api.wallet();
   },
-  sendMessage: (to: string, text: string, _callId?: string) => request<void>("POST", `/chats/${encodeURIComponent(to)}`, { text }),
+  sendMessage: (to: string, text: string, callId?: string) => request<void>("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}) }),
   follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
   recharge: (_purchase: { pack: number; coins: number; price: number; method: string }) => unavailable<Wallet>("Secure checkout is not available in this build yet. No payment was taken."),
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },

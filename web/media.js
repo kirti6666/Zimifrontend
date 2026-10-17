@@ -3,7 +3,8 @@
 (function () {
   'use strict';
   let local = null, remote = null, active = null, capture = null, pendingCall = null;
-  let generation = 0, configRequest = null;
+  let generation = 0, configRequest = null, cameraSwitch = null, switchingStream = null;
+  let facingMode = 'user', playbackMuted = false;
   const peers = new Map(), earlySignals = [];
   const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
 
@@ -43,6 +44,11 @@
     active = null;
     pendingCall = null;
     capture = null;
+    cameraSwitch = null;
+    stopTracks(switchingStream);
+    switchingStream = null;
+    facingMode = 'user';
+    playbackMuted = false;
     earlySignals.length = 0;
     clearPeers();
     stopTracks(local);
@@ -58,20 +64,26 @@
       el.srcObject = null;
     });
   }
+  function cameraEnabled() {
+    if (active && active.kind === 'call' && active.voice) return false;
+    if (typeof S === 'undefined') return true;
+    const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v);
+    return inCall && typeof camOn === 'function' ? !!camOn() : S.cam !== 0;
+  }
   function attach() {
+    if (switchingStream) switchingStream.getVideoTracks().forEach(track => { track.enabled = cameraEnabled(); });
     if (local) {
       const muted = typeof S !== 'undefined' && S.mic === 0;
-      const videoOn = active && active.kind === 'call'
-        ? !active.voice && (typeof camOn !== 'function' || !!camOn())
-        : true;
+      const videoOn = cameraEnabled();
       local.getAudioTracks().forEach(track => { track.enabled = !muted; });
       local.getVideoTracks().forEach(track => { track.enabled = videoOn; });
     }
     [['local', local], ['remote', remote]].forEach(([kind, stream]) => {
       document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
+        el.muted = kind === 'local' || playbackMuted;
+        if (kind === 'local') el.dataset.zimiFacing = facingMode;
         if (el.srcObject === stream) return;
         el.srcObject = stream;
-        el.muted = kind === 'local';
         el.playsInline = true;
         el.autoplay = true;
         if (!stream) return;
@@ -88,6 +100,11 @@
     if (typeof DEMO !== 'undefined' && DEMO) throw new Error('Camera and microphone are available in the connected app.');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Camera and microphone access is unavailable. Open the app on a supported device with camera permissions enabled.');
     if (typeof RTCPeerConnection === 'undefined') throw new Error('Live video is not supported by this device. Please update your app or system WebView.');
+    if (cameraSwitch) {
+      const requestedAt = generation;
+      try { await cameraSwitch; } catch (_) { /* A failed flip leaves the original capture usable. */ }
+      if (requestedAt !== generation) throw new Error('Camera request cancelled. Start again when you are ready.');
+    }
     if (capture) {
       const requestedAt = generation;
       try { await capture; } catch (error) { throw new Error(explain(error)); }
@@ -110,6 +127,7 @@
         throw new Error('Camera request cancelled. Start again when you are ready.');
       }
       local = stream;
+      facingMode = local.getVideoTracks()[0]?.getSettings?.().facingMode || 'user';
       local.getTracks().forEach(track => {
         track.onended = () => { if (local === stream) status('Camera or microphone access ended. Leave and reconnect to continue.', true); };
       });
@@ -120,6 +138,117 @@
     } finally {
       if (capture === pending) capture = null;
     }
+  }
+  function setPlaybackMuted(muted) {
+    playbackMuted = !!muted;
+    attach();
+    return playbackMuted;
+  }
+  function getState() {
+    return {
+      facingMode, playbackMuted, switchingCamera: !!cameraSwitch,
+      microphoneEnabled: typeof S === 'undefined' || S.mic !== 0,
+      cameraEnabled: cameraEnabled()
+    };
+  }
+  function flipCamera() {
+    // Coalesce repeated presses so a slow permission dialog cannot open more
+    // cameras or race a later camera selection.
+    if (cameraSwitch) return cameraSwitch;
+    const stream = local, oldTrack = stream && stream.getVideoTracks()[0];
+    if (!oldTrack || oldTrack.readyState !== 'live' || active && active.kind === 'call' && active.voice) {
+      return Promise.reject(new Error('Start a video call or broadcast before switching cameras.'));
+    }
+    const version = generation, settings = oldTrack.getSettings ? oldTrack.getSettings() : {};
+    const nextFacing = (settings.facingMode || facingMode) === 'environment' ? 'user' : 'environment';
+    let released = false;
+    const current = () => version === generation && local === stream && (oldTrack.readyState === 'live' || released);
+    const cancelled = () => new Error('Camera switch cancelled.');
+    const pending = (async () => {
+      let acquired = null, nextTrack = null, committed = false, switchFailure = null;
+      const replaced = new Set();
+      try {
+        let devices = [];
+        if (navigator.mediaDevices.enumerateDevices) {
+          try { devices = (await navigator.mediaDevices.enumerateDevices()).filter(device => device.kind === 'videoinput'); } catch (_) { /* Facing mode still works without a device list. */ }
+        }
+        if (!current()) throw cancelled();
+        const alternatives = settings.deviceId ? devices.filter(device => device.deviceId && device.deviceId !== settings.deviceId) : [];
+        const matching = alternatives.find(device => (nextFacing === 'environment' ? /back|rear|environment/i : /front|user|facetime/i).test(device.label));
+        const device = matching || alternatives[0];
+        const video = { width: { ideal: 720 }, height: { ideal: 1280 }, ...(device ? { deviceId: { exact: device.deviceId } } : { facingMode: { exact: nextFacing } }) };
+        try {
+          acquired = await navigator.mediaDevices.getUserMedia({ audio: false, video });
+        } catch (error) {
+          // Some mobile devices permit only one active camera. Keep the
+          // original camera on other failures (especially denied permission).
+          if (!current() || !['NotReadableError', 'AbortError'].includes(error?.name)) throw error;
+          released = true;
+          oldTrack.onended = null;
+          oldTrack.stop();
+          try {
+            acquired = await navigator.mediaDevices.getUserMedia({ audio: false, video });
+          } catch (retryError) {
+            if (!current()) throw cancelled();
+            switchFailure = retryError;
+            const previousCamera = settings.deviceId ? { deviceId: { exact: settings.deviceId } } : { facingMode: settings.facingMode || facingMode };
+            try { acquired = await navigator.mediaDevices.getUserMedia({ audio: false, video: previousCamera }); }
+            catch (_) {
+              const message = 'The camera could not be restarted. Reconnect to continue.';
+              if (active) fail(active, new Error(message));
+              else { stop(); status(message, true); }
+              throw new Error(message);
+            }
+          }
+        }
+        if (!current()) throw cancelled();
+        switchingStream = acquired;
+        nextTrack = acquired.getVideoTracks()[0];
+        if (!nextTrack) throw new Error('The selected camera did not provide video. Your current camera is still selected.');
+        nextTrack.enabled = cameraEnabled();
+        // A live broadcast has one sender per viewer. Include any viewers who
+        // join while a preceding replaceTrack promise is still resolving.
+        while (true) {
+          const senders = [...peers.values()].flatMap(peer => peer.pc.getSenders()).filter(sender => sender.track === oldTrack && !replaced.has(sender));
+          if (!senders.length) break;
+          const results = await Promise.allSettled(senders.map(async sender => { replaced.add(sender); await sender.replaceTrack(nextTrack); }));
+          if (!current()) throw cancelled();
+          const failure = results.find(result => result.status === 'rejected');
+          if (failure) throw failure.reason;
+        }
+        if (!current()) throw cancelled();
+        stream.removeTrack(oldTrack);
+        stream.addTrack(nextTrack);
+        facingMode = nextTrack.getSettings?.().facingMode || (switchFailure ? settings.facingMode || facingMode : nextFacing);
+        nextTrack.onended = () => { if (local === stream) status('Camera access ended. Leave and reconnect to continue.', true); };
+        oldTrack.onended = null;
+        oldTrack.stop();
+        acquired.getTracks().filter(track => track !== nextTrack).forEach(track => track.stop());
+        if (switchingStream === acquired) switchingStream = null;
+        acquired = null;
+        committed = true;
+        attach();
+        if (switchFailure) throw new Error('The camera could not be switched. Your previous camera has been restored.');
+        return facingMode;
+      } catch (error) {
+        if (!committed && current() && released) {
+          const message = 'The camera could not be switched. Reconnect to continue.';
+          if (active) fail(active, new Error(message));
+          else { stop(); status(message, true); }
+        } else if (!committed && current() && replaced.size) {
+          const liveSenders = new Set([...peers.values()].flatMap(peer => peer.pc.getSenders()));
+          const rollback = await Promise.allSettled([...replaced].filter(sender => liveSenders.has(sender)).map(sender => sender.replaceTrack(oldTrack)));
+          if (current() && rollback.some(result => result.status === 'rejected') && active) fail(active, new Error('The camera could not be restored. Reconnect to continue.'));
+        }
+        stopTracks(acquired);
+        if (switchingStream === acquired) switchingStream = null;
+        if (error?.name === 'OverconstrainedError' || error?.name === 'NotFoundError') throw new Error('Another camera is not available on this device. Your current camera is still selected.');
+        throw new Error(explain(error));
+      }
+    })();
+    cameraSwitch = pending;
+    pending.then(() => { if (cameraSwitch === pending) cameraSwitch = null; }, () => { if (cameraSwitch === pending) cameraSwitch = null; });
+    return pending;
   }
   function iceConfig() {
     if (configRequest) return configRequest.promise;
@@ -226,7 +355,8 @@
     const id = kind === 'stream' ? data.streamId : data.callId;
     if (!active || active.kind !== kind || active.id !== id) {
       const expectedStream = kind === 'stream' && typeof Home !== 'undefined' && Home.stream?.id === id && typeof S !== 'undefined' && S.v === 'live';
-      if (((kind === 'call' && local) || expectedStream) && earlySignals.length < 100) earlySignals.push({ kind, data });
+      const expectedCall = kind === 'call' && (pendingCall === id || typeof S !== 'undefined' && S.callId === id);
+      if (((kind === 'call' && local) || expectedCall || expectedStream) && earlySignals.length < 100) earlySignals.push({ kind, data });
       return;
     }
     const session = active;
@@ -351,5 +481,5 @@
   window.addEventListener('pagehide', stop);
   const screen = document.getElementById('screen');
   if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
-  window.ZimiMedia = { prepare, attach, openStream, stop };
+  window.ZimiMedia = { prepare, attach, openStream, stop, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
 })();

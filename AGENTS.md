@@ -16,6 +16,11 @@ keeps it identical to the original Next.js version.
 - `web/profile.js` / `web/profile.css` ? Profile & Settings. Use authenticated
   account summaries for identity, counts and preferences; never copy sample
   balances, VIP levels or host ratings into production.
+- `web/icons.css` / `web/icons.js` — icon motion. Icons from the `I`/`hi`/`ci`/`zi`
+  helpers carry `data-icon`; a press plays that icon's animation (and continues it
+  when the screen redraws). Add new icons through a helper and give them an
+  animation in `icons.css`; inline SVGs get no motion. Loops are only for things
+  waiting on the person (unread bell, ringing call, empty states, gifting).
 - `web/admin.html` — the desktop-only admin console. Self-contained; never part
   of the phone app. `npm run build:web` also copies it to `dist/admin/` for
   previews (skip with `INCLUDE_ADMIN=0`); `npm run build:admin` builds the

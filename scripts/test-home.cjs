@@ -92,6 +92,7 @@ const root = path.resolve(__dirname, '..');
     await real.locator('.zh-featured-hit').click();
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.join').at(-1)?.data.streamId),streamId);
     await real.getByRole('button',{name:'Leave live',exact:true}).click();
+    await real.getByRole('dialog',{name:'Leave this live?'}).getByRole('button',{name:'Leave live',exact:true}).click();
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.leave').at(-1)?.data.streamId),streamId);
     await receive('stream.closed',{streamId});
     await receive('operation.error',{action:'home.reload',message:'Temporarily offline'});

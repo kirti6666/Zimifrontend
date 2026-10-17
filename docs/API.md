@@ -28,6 +28,22 @@ Native.on("call.connected")      <--  postToWeb(...)
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
 
+Live-room queue messages are `stream.requests.load {streamId}`, `stream.request {streamId}`,
+and `stream.request.cancel|decline|accept {streamId,id}` (where `id` is the queue entry ID).
+The bridge returns `stream.requests {streamId,requests,ownRequestId,count}` and
+`stream.request.updated {streamId,request}`, and reloads the active queue on socket
+invalidation or reconnection. Only hosts receive other members' queue entries.
+`stream.react {streamId}` returns/broadcasts `stream.reaction {id,streamId,userId,emoji}`;
+the UI deduplicates HTTP and socket copies using `id`.
+
+Accepting a queued request emits `stream.privateCall
+{streamId,requestId,callId,peerId,initiator,voice:false,peer}` before `stream.ended`.
+The screen stops public media, prepares camera/microphone, opens the private call
+and starts ordinary WebRTC signaling. It must deduplicate the socket and HTTP
+acceptance copies by call ID. No automatic `call.connected` event precedes that
+media preparation. The backend currently has no per-minute call billing; display
+the private call as free.
+
 ## Setup
 
 Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_URL`. The login token
@@ -50,24 +66,39 @@ for it (login, call failed).
 | Show MVPs switch | `PUT /me/settings` | – |
 | Home | `GET /hosts` | `{hosts: Host[]}` |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
-| Open a chat | `GET /chats/:id/messages` | `{messages: Message[]}` |
+| Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
 | Call history | `GET /calls` | `{calls: CallRecord[]}` |
 | Transactions | `GET /wallet/transactions` | `{items: Transaction[]}` |
 | Start a call, call back | `POST /calls` `{to, voice}` | `{callId}` |
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
-| Send a message | `POST /chats/:id/messages` `{text, callId?}` | – |
+| Send a message | `POST /chats/:id` `{text}` | – |
 | Follow | `PUT /follows/:id` `{on}` | – |
 | Buy a coin pack | `POST /wallet/recharge` | `Wallet` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
 
+Chat eligibility uses `user.serverRole` from the authenticated account, separately
+from the `sender`/`host` presentation role. Members message approved hosts; approved
+hosts reply to existing member conversations. An automated welcome does not permit
+a manual host reply until the member responds. Inbox and thread `canSend` flags
+come from the server; a failed or pending thread read disables sends while retaining
+the draft. The native bridge also rejects known invalid pairs and verifies thread
+permission before a send that has no previously loaded conversation.
+
 ## Live events (socket)
 
-One WebSocket per signed-in user at `EXPO_PUBLIC_SOCKET_URL` (default
-`<API_URL>/ws`), token in the `token` query parameter. Each message is
-`{ "type": ..., "data": {...} }` and goes straight to the screens:
+One Socket.IO connection per signed-in user uses `EXPO_PUBLIC_SOCKET_URL`.
+The native client supplies its token in the authentication handshake and
+adapts server events into `{ "type": ..., "data": {...} }` for the screens.
+
+The native client sends `app:activity` with `{active: boolean}` on every
+connection and foreground/background transition. Welcome scheduling stays
+inactive during onboarding and while the app is in the background. Offline
+transitions are remembered locally; reconnect sends only the latest state.
+The server persists configured host welcomes as normal chat messages with
+`automated: true`, which remains labeled in the inbox and conversation history.
 
 | Event | Data | What the screen does |
 | --- | --- | --- |
@@ -75,7 +106,7 @@ One WebSocket per signed-in user at `EXPO_PUBLIC_SOCKET_URL` (default
 | `call.connected` | `{callId}` | Caller moves from "Calling…" into the call |
 | `call.ended` | `{callId}` | Call ends and the summary opens; a ringing call becomes a missed call |
 | `gift.received` | `{gift, coins, from}` | Gift animation and earnings on the host's call screen |
-| `chat.message` | `{from, name, text, inCall?}` | Adds to the call chat or the open chat |
+| `chat.message` | `{from, name, text, inCall?, automated?}` | Adds to the call chat or the open chat; automated welcomes are labeled |
 | `wallet.balance` | `{coins?, earned?}` | Updates balances everywhere |
 | `verification.status` | `{status}` | Moves the verification screen on |
 

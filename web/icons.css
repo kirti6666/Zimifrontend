@@ -1,0 +1,77 @@
+/* Icon motion. Every icon from the I/hi/ci/zi helpers is an svg.zi-icon with data-icon="<name>".
+   Hover (fine pointers) lifts an icon and a press squeezes it. A press also plays the icon's own
+   animation: icons.js adds .zi-tap, and the per-icon variables below pick the keyframes.
+   A few icons loop where something is waiting for the person: unread notifications, a ringing
+   call, empty states and gifting. Transforms only, so layout never moves, and every bit of it
+   stays off for reduced-motion preferences. */
+.zi-icon{--zi-base:translate(0);transform-origin:var(--zi-origin,50% 50%)}
+/* Hang-up buttons turn the phone over; the animations compose on that turn. */
+.voiceend>.zi-icon,.rndb.endb>.zi-icon,.incban .no>.zi-icon{--zi-base:rotate(135deg)}
+
+.zi-icon[data-icon=bell]{--zi-tap:zi-ring;--zi-origin:50% 8%;--zi-time:650ms}
+.zi-icon[data-icon=ph]{--zi-tap:zi-ring;--zi-time:600ms}
+.zi-icon:is([data-icon=heart],[data-icon=follow]){--zi-tap:zi-beat;--zi-time:560ms}
+.zi-icon[data-icon=send]{--zi-tap:zi-fly;--zi-time:520ms}
+.zi-icon[data-icon=up]{--zi-tap:zi-rise;--zi-time:520ms}
+.zi-icon[data-icon=back]{--zi-tap:zi-nudge-left;--zi-time:380ms}
+.zi-icon:is([data-icon=logout],[data-icon=arrow]){--zi-tap:zi-nudge-right;--zi-time:380ms}
+.zi-icon[data-icon=chev]{--zi-tap:zi-nudge-down;--zi-time:380ms}
+.zi-icon:is([data-icon=set],[data-icon=explore],[data-icon=refresh]){--zi-tap:zi-turn;--zi-turn:360deg;--zi-time:650ms}
+.zi-icon:is([data-icon=sun],[data-icon=dots],[data-icon=more]){--zi-tap:zi-turn;--zi-turn:180deg;--zi-time:460ms}
+.zi-icon[data-icon=star]{--zi-tap:zi-turn;--zi-turn:144deg;--zi-time:520ms}
+.zi-icon:is([data-icon=plus],[data-icon=add]){--zi-tap:zi-turn;--zi-turn:90deg;--zi-time:420ms}
+.zi-icon:is([data-icon=flip],[data-icon=coin],[data-icon=rings],[data-icon=globe],[data-icon=cash]){--zi-tap:zi-flip;--zi-time:620ms}
+.zi-icon:is([data-icon=srch],[data-icon=compose],[data-icon=edit],[data-icon=moon],[data-icon=music],[data-icon=clock],[data-icon=language],[data-icon=sliders]){--zi-tap:zi-tilt;--zi-time:520ms}
+.zi-icon[data-icon=lock]{--zi-tap:zi-shake;--zi-time:400ms}
+.zi-icon:is([data-icon=eye],[data-icon=eyeoff]){--zi-tap:zi-blink;--zi-time:360ms}
+.zi-icon:is([data-icon=home],[data-icon=house],[data-icon=user],[data-icon=people],[data-icon=chat],[data-icon=wal],[data-icon=wallet],[data-icon=cup],[data-icon=robot],[data-icon=crown],[data-icon=doc],[data-icon=mail],[data-icon=help],[data-icon=badge]){--zi-tap:zi-bounce;--zi-origin:50% 100%;--zi-time:560ms}
+.zi-icon:is([data-icon=bolt],[data-icon=sparkle],[data-icon=pulse],[data-icon=verified]){--zi-tap:zi-flash;--zi-time:520ms}
+.zi-icon:is([data-icon=vid],[data-icon=camera],[data-icon=mic],[data-icon=micoff],[data-icon=camoff],[data-icon=broadcast],[data-icon=vol],[data-icon=pow]){--zi-tap:zi-glow;--zi-time:520ms}
+.zi-icon[data-icon=gift]{--zi-tap:zi-wiggle;--zi-origin:50% 90%;--zi-time:620ms}
+.zi-icon[data-icon=location]{--zi-tap:zi-drop;--zi-origin:50% 100%;--zi-time:520ms}
+.zi-icon[data-icon=copy]{--zi-tap:zi-copy;--zi-time:380ms}
+
+@media(prefers-reduced-motion:no-preference){
+  .zi-icon{transition:transform 240ms cubic-bezier(.34,1.56,.64,1)}
+  .zh-app .zh-nav>button>.zi-icon{transition:filter 180ms ease,transform 240ms cubic-bezier(.34,1.56,.64,1)}
+  @media(hover:hover) and (pointer:fine){
+    :is(button,a[href],summary,[role=button],[role=tab],[role=menuitem]):not(:disabled):hover>.zi-icon{transform:var(--zi-base) translateY(-1px) scale(1.1)}
+  }
+  :is(button,a[href],summary,[role=button],[role=tab],[role=menuitem]):not(:disabled):active>.zi-icon{transform:var(--zi-base) scale(.86);transition-duration:90ms}
+  .zi-icon.zi-tap{animation:var(--zi-tap,zi-pop) var(--zi-time,460ms) cubic-bezier(.3,.7,.4,1) both!important}
+
+  /* Looping icons, each for something waiting on the person. */
+  .zh-bell:has(>i)>.zi-icon{animation:zi-idle-ring 6s ease-in-out 1.2s infinite}
+  :is(.ringact .accept,.incban .yes,.zh-ready-illustration)>.zi-icon{animation:zi-ring-loop 1.6s ease-in-out infinite}
+  :is(.zc-empty,.zh-empty,.zp-empty,.zc-thread-empty)>.zi-icon{animation:zi-float 3.2s ease-in-out infinite}
+  :is(.zc-composer-gift,.zh-gift,.zh-bonus-icon)>.zi-icon{--zi-origin:50% 90%;animation:zi-idle-sway 7s ease-in-out 2s infinite}
+  .zc-pulse-icon>.zi-icon{animation:zi-idle-flash 4s ease-in-out 1s infinite}
+  .zc-gift-top .zi-icon{animation:zi-twinkle 2.4s ease-in-out infinite}
+}
+
+@keyframes zi-pop{0%,100%{transform:var(--zi-base)}20%{transform:var(--zi-base) scale(.8)}55%{transform:var(--zi-base) scale(1.16)}78%{transform:var(--zi-base) scale(.96)}}
+@keyframes zi-beat{0%,100%{transform:var(--zi-base)}15%{transform:var(--zi-base) scale(.78)}40%{transform:var(--zi-base) scale(1.34)}60%{transform:var(--zi-base) scale(.94)}80%{transform:var(--zi-base) scale(1.08)}}
+@keyframes zi-ring{0%,100%{transform:var(--zi-base)}12%{transform:var(--zi-base) rotate(-18deg)}28%{transform:var(--zi-base) rotate(15deg)}44%{transform:var(--zi-base) rotate(-11deg)}60%{transform:var(--zi-base) rotate(7deg)}76%{transform:var(--zi-base) rotate(-3deg)}}
+@keyframes zi-fly{0%,100%{transform:var(--zi-base);opacity:1}18%{transform:var(--zi-base) translate(-2px,2px) scale(.88)}46%{transform:var(--zi-base) translate(10px,-10px);opacity:0}54%{transform:var(--zi-base) translate(-8px,8px);opacity:0}}
+@keyframes zi-rise{0%,100%{transform:var(--zi-base);opacity:1}18%{transform:var(--zi-base) translateY(2px) scale(.88)}46%{transform:var(--zi-base) translateY(-11px);opacity:0}54%{transform:var(--zi-base) translateY(10px);opacity:0}}
+@keyframes zi-nudge-left{0%,100%{transform:var(--zi-base)}35%{transform:var(--zi-base) translateX(-5px)}65%{transform:var(--zi-base) translateX(1.5px)}}
+@keyframes zi-nudge-right{0%,100%{transform:var(--zi-base)}35%{transform:var(--zi-base) translateX(5px)}65%{transform:var(--zi-base) translateX(-1.5px)}}
+@keyframes zi-nudge-down{0%,100%{transform:var(--zi-base)}35%{transform:var(--zi-base) translateY(4px)}65%{transform:var(--zi-base) translateY(-1px)}}
+@keyframes zi-turn{0%{transform:var(--zi-base)}22%{transform:var(--zi-base) rotate(calc(var(--zi-turn,90deg) * -.1)) scale(.86)}100%{transform:var(--zi-base) rotate(var(--zi-turn,90deg))}}
+@keyframes zi-flip{0%{transform:var(--zi-base) perspective(80px) rotateY(0)}100%{transform:var(--zi-base) perspective(80px) rotateY(360deg)}}
+@keyframes zi-tilt{0%,100%{transform:var(--zi-base)}30%{transform:var(--zi-base) rotate(-14deg) scale(1.08)}60%{transform:var(--zi-base) rotate(8deg)}80%{transform:var(--zi-base) rotate(-3deg)}}
+@keyframes zi-shake{0%,100%{transform:var(--zi-base)}15%,55%{transform:var(--zi-base) translateX(-2.5px)}35%,75%{transform:var(--zi-base) translateX(2.5px)}}
+@keyframes zi-blink{0%,100%{transform:var(--zi-base)}40%{transform:var(--zi-base) scaleY(.1)}65%{transform:var(--zi-base) scaleY(1.06)}}
+@keyframes zi-bounce{0%,100%{transform:var(--zi-base)}20%{transform:var(--zi-base) translateY(1px) scale(1.1,.86)}45%{transform:var(--zi-base) translateY(-5px) scale(.94,1.07)}70%{transform:var(--zi-base) scale(1.04,.96)}85%{transform:var(--zi-base) translateY(-1.5px)}}
+@keyframes zi-flash{0%,100%{transform:var(--zi-base);opacity:1;filter:none}20%{transform:var(--zi-base) scale(.84)}45%{transform:var(--zi-base) scale(1.22);filter:drop-shadow(0 0 6px currentColor)}60%{opacity:.5}75%{transform:var(--zi-base);opacity:1}}
+@keyframes zi-glow{0%,100%{transform:var(--zi-base);filter:none}20%{transform:var(--zi-base) scale(.86)}50%{transform:var(--zi-base) scale(1.16);filter:drop-shadow(0 0 7px currentColor)}}
+@keyframes zi-wiggle{0%,100%{transform:var(--zi-base)}15%{transform:var(--zi-base) scale(.86)}35%{transform:var(--zi-base) translateY(-3px) rotate(-12deg) scale(1.1)}55%{transform:var(--zi-base) rotate(9deg)}75%{transform:var(--zi-base) rotate(-4deg)}}
+@keyframes zi-drop{0%,100%{transform:var(--zi-base)}35%{transform:var(--zi-base) translateY(-6px)}60%{transform:var(--zi-base) scale(1.12,.86)}80%{transform:var(--zi-base) scale(.97,1.04)}}
+@keyframes zi-copy{0%,100%{transform:var(--zi-base)}40%{transform:var(--zi-base) translate(2px,2px) scale(.9)}70%{transform:var(--zi-base) translate(-1px,-1px)}}
+
+@keyframes zi-idle-ring{0%,82%,100%{transform:var(--zi-base)}85%{transform:var(--zi-base) rotate(-16deg)}88%{transform:var(--zi-base) rotate(14deg)}91%{transform:var(--zi-base) rotate(-10deg)}94%{transform:var(--zi-base) rotate(6deg)}97%{transform:var(--zi-base) rotate(-2deg)}}
+@keyframes zi-ring-loop{0%,55%,100%{transform:var(--zi-base)}8%{transform:var(--zi-base) rotate(-16deg)}16%{transform:var(--zi-base) rotate(14deg)}24%{transform:var(--zi-base) rotate(-12deg)}32%{transform:var(--zi-base) rotate(9deg)}40%{transform:var(--zi-base) rotate(-5deg)}48%{transform:var(--zi-base) rotate(2deg)}}
+@keyframes zi-float{0%,100%{transform:var(--zi-base)}50%{transform:var(--zi-base) translateY(-5px)}}
+@keyframes zi-idle-sway{0%,86%,100%{transform:var(--zi-base)}89%{transform:var(--zi-base) translateY(-2px) rotate(-10deg)}92%{transform:var(--zi-base) rotate(8deg)}95%{transform:var(--zi-base) rotate(-4deg)}}
+@keyframes zi-idle-flash{0%,70%,100%{transform:var(--zi-base);filter:none}78%{transform:var(--zi-base) scale(1.18);filter:drop-shadow(0 0 6px currentColor)}86%{transform:var(--zi-base);filter:none}}
+@keyframes zi-twinkle{0%,100%{transform:var(--zi-base);opacity:1}50%{transform:var(--zi-base) scale(.82) rotate(18deg);opacity:.65}}

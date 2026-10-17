@@ -11,8 +11,6 @@ const H=[
 const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","going live in ten","5:54 pm",1],
  ["tara","send your birth time when you can","5:31 pm",0],["ishaan","you: gg, rough last round","4:12 pm",0],
  ["meher","recording the folk set tonight","2:47 pm",0],["dev","you: form check tomorrow?","Yesterday",0]];
-const TH=[["t","hey, you caught the end of the set?","5:48 pm"],["m","only the last two songs","5:49 pm"],
- ["t","wrote it last week, bridge still rough","5:50 pm"],["m","bridge was the best part honestly","5:52 pm"]];
 const WATER_STICKER="__WATER_FLOWING_STICKER__";
 const GIFTS=[
  ["Rose waterfall","&#127801;",9999,"water"],
@@ -163,8 +161,9 @@ const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>'
  plus:'<path d="M12 5v14M5 12h14" stroke-linecap="round"/>',
  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/>',
  moon:'<path d="M20 14.2A8.2 8.2 0 019.8 4a8.4 8.4 0 102 10.4 8.2 8.2 0 008.2-.2z" stroke-linejoin="round"/>'};
-const I=(k,s)=>`<svg viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6">${P[k]}</svg>`;
-const coin=`<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc400" stroke="#ef9f00" stroke-width="1.3"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#fff178" stroke-width="1.2"/><path d="M12 7.4l1.35 2.73 3.02.44-2.18 2.12.52 3-2.71-1.43-2.71 1.43.52-3-2.18-2.12 3.02-.44z" fill="#fff3a1"/></svg>`;
+/* Every icon carries data-icon so icons.css can give it its own press animation. */
+const I=(k,s)=>`<svg class="zi-icon" data-icon="${k}" viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${P[k]}</svg>`;
+const coin=`<svg class="zi-icon" data-icon="coin" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc400" stroke="#ef9f00" stroke-width="1.3"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#fff178" stroke-width="1.2"/><path d="M12 7.4l1.35 2.73 3.02.44-2.18 2.12.52 3-2.71-1.43-2.71 1.43.52-3-2.18-2.12 3.02-.44z" fill="#fff3a1"/></svg>`;
 /* One currency mark everywhere: balances, gifts, targets, calls and purchases. */
 const gem=coin;
 const th=()=>"";
@@ -172,6 +171,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
  if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
   homeRequestStreamClose(Home.stream.id,Home.hosting);
@@ -199,10 +199,10 @@ function go(v,id){
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
-  S.rmsgs=[["sys","",DEMO?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO?g(S.h).fee:0;
-  if(DEMO)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
+  S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
+  if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go("call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
  if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
@@ -211,7 +211,7 @@ function go(v,id){
   S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
- if(v==="thread"){S.msgs=DEMO?TH.map(m=>m.slice()):[];Native.send("chat.open",{with:S.h})}
+ if(v==="thread"){S.msgs=DEMO?zcDemoThread(g(S.h)):[];Native.send("chat.open",{with:S.h})}
  if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"));window.ZimiNavigation?.after(navigationChange)}
@@ -367,7 +367,7 @@ function profilePage(p,raw,self){
  </div>
 
  ${self?'':`<div class="hpbar">
-  <button class="msg" aria-label="Message" onclick="go('thread','${domId(p.host?p.id:S.backId||"aanya")}')">${I("chat",20)}</button>
+  <button class="msg" aria-label="Message" ${!DEMO&&window.zcCanChat&&!zcCanChat(p.id)?'disabled':''} onclick="go('thread','${domId(p.id)}')">${I("chat",20)}</button>
   ${p.host
    ? `<button class="msg" aria-label="Start voice call" onclick="go('voice','${domId(p.id)}')">${I("ph",20)}</button>
       <button class="cta" onclick="go('precall','${domId(p.id)}')">${I("vid",19)} Start video call</button>`
@@ -532,7 +532,7 @@ function vCall(){const h=g(S.h);
  ${S.tray?giftTray():S.sh==="fx"?fxSheet():""}</div>`}
 
 function vVoice(){const h=g(S.h);
- if(window.ZimiHome&&!DEMO)return homeCallView(false);
+ if(window.ZimiHome)return homeCallView(false);
  return `<div class="voicecall">
   <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
   <div class="voiceorb">${avc(h,104)}</div>
@@ -603,7 +603,7 @@ function sendGift(l,e,v,k){
  S.bal-=v; S.tray=0; S.sh=0;
  Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});
  if(S.v==="thread"){
-  S.msgs.push(["g",e,n(v),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);
+  S.msgs.push({kind:"gift",mine:true,at:new Date().toISOString(),status:"sent",gift:{name:l,html:e,coins:v}});
   r(); paint(); playGift(l,e,v,k); return}
  if(S.v==="hcall"){
   S.rmsgs.push(["gift","You",`sent ${e} ${l} to ${first(S.caller.n)}`]);
@@ -754,38 +754,10 @@ function paintList(){const pending=window.contentSurface?.('chats','rows','Loadi
  const el=document.getElementById("clist");
  if(el)el.innerHTML=L.length?L.map(row).join(""):`<div class="empty">No conversations match that search.</div>`}
 
-function vThread(){const h=g(S.h);
- return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden">
- <div class="hdr" style="padding:10px 12px">
-  <button onclick="go('chats')" aria-label="Back" style="color:var(--muted);display:flex">${I("back",21)}</button>
-  <button class="threadperson" onclick="go('host','${domId(h.id)}')" aria-label="Open ${esc(h.n)} profile">
-   ${av(h,34)}
-   <span style="min-width:0"><span class="s15" style="display:block;font-weight:600;line-height:1.2">${esc(h.n)}</span>
-   <span class="s11 muted" style="display:flex;align-items:center;gap:5px">${h.on?"Online":"Away"} · ${esc(h.c)}</span></span>
-  </button>
-  <button onclick="go('precall','${domId(h.id)}')" aria-label="Video call" style="color:var(--muted);display:flex">${I("vid",21)}</button></div>
- <div class="pat" id="tf"></div>
- <div class="fx" id="fl"></div>
- <div class="qs">${GIFTS.slice(0,8).map(([l,e,v,k])=>`
-   <button onclick="sendGift('${l}','${e}',${v},'${k||""}')" ${S.bal<v?"disabled":""} aria-label="Send ${l}">
-    ${k==="water"?`<span class="gl media"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gc">${n(v)}</span></button>`).join("")}</div>
- <div class="comp">
-  <button class="send" style="background:var(--raised);color:var(--accent-ink)" onclick="S.tray=1;r()" aria-label="Open gifts">${I("gift",20)}</button>
-  <span class="field"><input id="ti" placeholder="Message" onkeydown="if(event.key==='Enter')snd()"></span>
-  <button class="send" onclick="snd()" aria-label="Send">${I("send",20)}</button></div>
- ${S.tray?giftTray():""}</div>`}
 function focusField(id){const i=document.getElementById(id);
  if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}
-function snd(){const i=document.getElementById("ti");if(!i||!i.value.trim())return;
- Native.send("chat.send",{to:S.h,text:i.value.trim()});
- S.msgs.push(["m",i.value.trim(),new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})]);i.value="";paint()}
-function paint(){const f=document.getElementById("tf");if(!f)return;
- const pending=window.contentSurface?.('thread','thread','Loading messages');if(pending){f.innerHTML=pending;return}
- f.innerHTML=S.msgs.map(([w,t,a,tm])=>w==="g"
-  ?`<div class="gbub"><span class="gl">${giftGlyph(t)}</span><span class="gc">${gem}${esc(a)}</span>
-     <span class="gt2">${esc(tm||"")}</span></div>`
-  :`<div class="bub ${w==="m"?"me":"them"}">${esc(t)}<span style="font-size:10.5px;margin-left:7px;opacity:.6">${esc(a)}</span></div>`).join("");
- f.scrollTop=f.scrollHeight}
+/* The conversation thread lives in chats.js; loading and server events repaint it through here. */
+function paint(){zcPaintThread()}
 
 function vBoard(){
  const rows=boardRows();
@@ -1195,7 +1167,7 @@ function vRing(){const c=S.caller;
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
- if(window.ZimiHome&&!DEMO)return homeCallView(true);
+ if(window.ZimiHome)return homeCallView(true);
  return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;background:#000;overflow:hidden">
  ${stage(me,c)}
  ${topBar(1)}
@@ -1283,7 +1255,7 @@ function connectingScreen(){const {from,to}=S.connecting;
 
 const IN_GIFTS=[1,2,3,4,5,6,8];
 function hostTick(){
- if(!DEMO){S.sec++;paintHostTick();return}
+ if(!DEMO||window.ZimiHome){S.sec++;paintHostTick();return}
  S.sec++;S.earned+=MY_RATE/60;
  if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
   S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
@@ -1616,11 +1588,12 @@ function appNotice(message){
 function r(){
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const roomFocus=window.zrCapture?.();
  obSyncTheme();
  if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
- el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,thread:vThread,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+ el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
@@ -1628,7 +1601,7 @@ function r(){
  if(S.v==="call"){tick();paintFeed();
   if(S.cmp){const i=document.getElementById("rmsg");
    if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}}
- if(S.v==="voice")tick();
+ if(S.v==="voice"){tick();paintFeed()}
  /* a redraw while the code screen is open must not leave the boxes unfocused */
  if(S.v==="login"&&S.auth&&S.auth.step==="otp"){const e=Array.from({length:6},(_,k)=>document.getElementById("o"+k)).find(x=>x&&!x.value);if(e)e.focus()}
  if(S.v==="call"&&!S.cmp)paintGoal();
@@ -1637,7 +1610,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus)}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1647,6 +1620,7 @@ const PEOPLE={};
 const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997;return x};
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
+  role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
@@ -1700,7 +1674,7 @@ Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()
 Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise]));refresh()});
 Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>[knowHost(c.user).id,c.time||"",c.duration||"",c.coins||0]));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
- S.msgs=(d.messages||[]).map(m=>[m.mine?"m":"t",m.text,m.time||""]);paint()});
+ S.msgs=zcThreadMessages(d);paint()});
 Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)A().earn=d.earned;refresh()});
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
@@ -1726,12 +1700,12 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
-Native.on("gift.received",d=>{if(S.v!=="hcall")return;
+Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  const gf=GIFTS.find(x=>x[0]===d.gift)||["Gift","&#127873;",d.coins||0];
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
 Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
- if(d.inCall&&(S.v==="call"||S.v==="hcall")){S.rmsgs.push(["host",first(d.name||"Them"),d.text]);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push(["t",d.text,t]);return paint()}
+ if(["call","hcall","voice"].includes(S.v)&&String(d.from)===String(S.v==="hcall"?S.caller?.id:S.h)){S.rmsgs.push(["host",first(d.name||(S.v==="hcall"?S.caller?.n:g(S.h)?.n)||"Them"),d.text]);if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);return paintFeed()}
+ if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");

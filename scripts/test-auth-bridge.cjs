@@ -17,8 +17,8 @@ const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phon
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
 const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
 
-function harness() {
-  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], effects = [], opened = [], signals = [], activities = [];
+function harness(initialAppState = 'active', initialLink = null) {
+  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [];
   const overrides = {};
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
@@ -27,10 +27,11 @@ function harness() {
   const defaults = {
     me: () => account(), verifyOtp: () => ({ ...account(), tokens: tokenPair(), isNew: true }),
     sendOtp: () => ({ resendAfter: 60, expiresIn: 300 }), saveProfile: () => account(),
-    hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
+    hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), thread: () => ({ messages: [], canSend: true }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
     transactions: () => ({ items: [] }), wallet: () => ({ coins: 100, earningsPaise: 0 }), logout: () => {},
     home: () => ({ hosts: [], stage: [], featured: null, page: 1 }), notifications: () => ({ items: [], unreadCount: 0 }), catalog: () => ({ gifts: [], packs: [], paymentsAvailable: false }), presence: () => ({ online: true, visible: true }),
     profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
+    streamRequests: streamId => ({ streamId, requests: [], count: 0, ownRequestId: null }),
   };
   const api = new Proxy({}, { get: (_, name) => async (...args) => {
     calls.push({ name, args });
@@ -61,15 +62,16 @@ function harness() {
       if (id === 'expo-secure-store') return storage;
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
-      if (id === './api/realtime') return { connectRealtime: (token, onEvent) => {
-        const connection = { token, onEvent, stopped: false }; live.push(connection);
+      if (id === './api/realtime') return { connectRealtime: (token, onEvent, userId, initiallyActive) => {
+        const connection = { token, onEvent, userId, initiallyActive, activeStates: [], stopped: false }; live.push(connection);
         const stop = () => { connection.stopped = true; };
         stop.send = async (...args) => { signals.push(args); };
+        stop.setActive = active => { connection.activeStates.push(active); };
         return stop;
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { AppState: { addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => opened.push(url) }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => opened.push(url), getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
@@ -89,7 +91,7 @@ function harness() {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, effects, opened, signals, activities };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, effects, opened, signals, activities, links, shares };
 }
 
 test('login and session restoration never post access or refresh credentials to the WebView', async () => {
@@ -106,6 +108,35 @@ test('login and session restoration never post access or refresh credentials to 
   const serialized = JSON.stringify(h.posts);
   for (const secret of [tokenPair().accessToken, tokenPair().refreshToken, 'legacy-secret', 'loose-secret']) assert.equal(serialized.includes(secret), false);
   assert.equal(h.live[0].token, tokenPair().accessToken);
+  h.bridge.close();
+});
+
+test('welcome activity stays disabled until onboarding completes and follows every app transition', async () => {
+  const h = harness();
+  h.bridge.handle(verifyMessage()); await settle();
+  const connection = h.live[0];
+  assert.equal(connection.initiallyActive, false, 'Onboarding sessions do not start automated welcomes');
+  h.activities.forEach(listener => listener('active'));
+  assert.deepEqual(connection.activeStates, [false]);
+  h.overrides.saveProfile = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
+  assert.equal(connection.activeStates.at(-1), true, 'Completing onboarding enables foreground welcomes without reconnecting');
+  for (const state of ['inactive', 'background', 'active']) h.activities.forEach(listener => listener(state));
+  assert.deepEqual(connection.activeStates.slice(-3), [false, false, true]);
+  const chatsBefore = h.count('chats');
+  connection.onEvent({ type: 'chats.updated', data: {} }); await settle();
+  assert.ok(h.count('chats') > chatsBefore, 'Post-onboarding chat events refresh the inbox');
+  h.bridge.close(); assert.equal(connection.stopped, true); assert.equal(h.activities.length, 0);
+});
+
+test('a restored session in background waits for foreground before allowing welcomes', async () => {
+  const h = harness('background');
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.equal(h.live[0].initiallyActive, false);
+  h.activities.forEach(listener => listener('active'));
+  assert.equal(h.live[0].activeStates.at(-1), true);
   h.bridge.close();
 });
 
@@ -948,6 +979,64 @@ test('a successful message send refreshes conversations while failed sends leave
   h.bridge.close();
 });
 
+test('chat rejects host-to-host and unapproved host requests before sending them to the API', async () => {
+  for (const status of ['approved', 'pending', 'suspended']) {
+    const h = harness();
+    h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host', role: status === 'approved' ? 'host' : 'sender', hostStatus: status, isVerifiedHost: status === 'approved' }, verification: status === 'approved' ? 'verified' : 'pending' });
+    h.overrides.home = () => ({ hosts: [{ id: 'other-host', verified: true }], stage: [] });
+    await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.bridge.handle({ type: 'chat.open', data: { with: 'other-host' } }); await settle();
+    h.bridge.handle({ type: 'chat.send', data: { to: 'other-host', text: 'Hello' } }); await settle();
+    assert.equal(h.count('thread'), 0); assert.equal(h.count('sendMessage'), 0);
+    assert.match(h.find('operation.error').at(-1).data.message, status === 'approved' ? /reply to members only/ : /admin approval/);
+    h.bridge.close();
+  }
+});
+
+test('members applying to host still load and send valid member conversations', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user', hostStatus: 'pending' } });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.ok(h.count('chats') > 0, 'A pending application does not hide a member inbox');
+  h.bridge.handle({ type: 'chat.send', data: { to: 'approved-host', text: 'Hello' } }); await settle();
+  assert.equal(h.count('thread'), 1, 'A normal send checks the conversation when there is no loaded thread');
+  assert.equal(h.count('sendMessage'), 1);
+  h.bridge.close();
+});
+
+test('read-only host welcomes cannot send until an authoritative member reply unlocks the conversation', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host' } });
+  h.overrides.thread = () => ({ messages: [], canSend: false, sendDisabledReason: 'Wait for this member to reply.' });
+  h.overrides.chats = () => ({ chats: [{ user: { id: 'member', role: 'sender', serverRole: 'user' }, canSend: false }] });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.bridge.handle({ type: 'chat.open', data: { with: 'member' } }); await settle();
+  assert.equal(h.find('data.thread').at(-1).data.canSend, false);
+  h.bridge.handle({ type: 'chat.send', data: { to: 'member', text: 'Hello' } }); await settle();
+  assert.equal(h.count('sendMessage'), 0);
+  h.overrides.chats = () => ({ chats: [{ user: { id: 'member', role: 'sender', serverRole: 'user' }, canSend: true }] });
+  h.live[0].onEvent({ type: 'chats.updated', data: {} }); await settle();
+  h.bridge.handle({ type: 'chat.send', data: { to: 'member', text: 'Thanks for replying' } }); await settle();
+  assert.equal(h.count('sendMessage'), 1, 'A member reply unlocks the cached read-only thread');
+  h.bridge.close();
+});
+
+test('failed thread authorization never sends and a retired authorization cannot borrow a new login', async () => {
+  const h = harness(), pending = deferred();
+  h.overrides.thread = () => { throw new h.ApiError('Conversation unavailable', 403); };
+  h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Hello' } }); await settle();
+  assert.equal(h.count('sendMessage'), 0);
+  h.overrides.thread = () => pending.promise;
+  h.bridge.handle({ type: 'chat.send', data: { to: 'peer', text: 'Pending' } }); await settle();
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  pending.resolve({ messages: [], canSend: true }); await settle();
+  assert.equal(h.count('sendMessage'), 0);
+  h.bridge.close();
+});
+
 test('profile settings and privacy messages accept only supported preferences, never account authority or call availability', async () => {
   const h = harness();
   const invalid = [
@@ -1200,4 +1289,130 @@ test('realtime wallet reads use loading events and logout suppresses old complet
   catalog.reject(new h.ApiError('Old account catalog failed', 503)); await settle();
   assert.equal(h.posts.length, previous, 'An old session cannot finish a new screen loading state');
   h.bridge.close();
+});
+
+test('live queue refreshes from actual requests and ignores completion after leaving the room', async () => {
+  const h = harness(), pending = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.joinStream = id => ({ id }); h.overrides.streamMessages = () => [];
+  h.bridge.handle({ type: 'stream.join', data: { streamId: 'room-one' } }); await settle();
+  assert.equal(h.find('stream.requests').at(-1).data.count, 0);
+  const item = { id: 'request-one', streamId: 'room-one', userId: 'alice', name: 'Alice', status: 'pending', createdAt: '2026-10-16T10:00:00Z' };
+  h.overrides.requestStreamCall = streamId => ({ streamId, requests: [item], count: 1, ownRequestId: item.id });
+  h.bridge.handle({ type: 'stream.request', data: { streamId: 'room-one' } }); await settle();
+  assert.equal(h.find('stream.requests').at(-1).data.ownRequestId, item.id);
+  assert.equal(h.count('startCall'), 0, 'Queueing must not ring or reserve a real call');
+  h.overrides.streamRequests = () => pending.promise;
+  h.live[0].onEvent({ type: 'stream.requests.changed', data: { streamId: 'room-one' } }); await settle();
+  h.bridge.handle({ type: 'stream.leave', data: { streamId: 'room-one' } }); await settle();
+  const delivered = h.find('stream.requests').length;
+  pending.resolve({ streamId: 'room-one', requests: [item], count: 1, ownRequestId: item.id }); await settle();
+  assert.equal(h.find('stream.requests').length, delivered, 'An old room cannot restore its queue after leave');
+  h.bridge.close();
+});
+
+test('queued acceptance checks host access and never emits connected before UI media preparation', async () => {
+  const denied = harness(); denied.overrides.me = () => account();
+  denied.bridge.handle({ type: 'stream.request.accept', data: { streamId: 'room', id: 'entry' } }); await settle();
+  assert.equal(denied.count('acceptStreamRequest'), 0); denied.bridge.close();
+  const h = harness(); h.overrides.me = () => approvedAccount();
+  h.overrides.acceptStreamRequest = () => ({ streamId: 'room', requestId: 'entry', callId: 'private-call', peerId: 'member', initiator: false, voice: false, peer: { id: 'member', name: 'Member' } });
+  h.bridge.handle({ type: 'stream.request.accept', data: { streamId: 'room', id: 'entry' } }); await settle();
+  assert.equal(h.count('acceptStreamRequest'), 1); assert.equal(h.find('stream.privateCall').length, 1);
+  assert.equal(h.find('call.connected').length, 0, 'The UI acquires private media before connecting');
+  h.bridge.handle({ type: 'call.end', data: {} }); await settle();
+  assert.equal(h.calls.find(call => call.name === 'endCall').args[0], 'private-call', 'Private transitions retain normal call cleanup');
+  h.bridge.close();
+});
+
+test('leaving during queued acceptance cancels a late call instead of reopening media', async () => {
+  const h = harness(), pending = deferred(); h.overrides.me = () => approvedAccount();
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startStream = () => ({ id: 'room' }); h.overrides.streamMessages = () => [];
+  h.bridge.handle({ type: 'stream.start', data: { title: 'Music', category: 'Music' } }); await settle();
+  h.overrides.acceptStreamRequest = () => pending.promise;
+  h.bridge.handle({ type: 'stream.request.accept', data: { streamId: 'room', id: 'entry' } }); await settle();
+  h.bridge.handle({ type: 'stream.end', data: { streamId: 'room' } }); await settle();
+  const result = { streamId: 'room', requestId: 'entry', callId: 'late-private', peerId: 'member', initiator: false, voice: false, peer: { id: 'member', name: 'Member' } };
+  h.live[0].onEvent({ type: 'stream.privateCall', data: result }); pending.resolve(result); await settle();
+  assert.equal(h.find('stream.privateCall').length, 0);
+  assert.ok(h.calls.filter(call => call.name === 'endCall').every(call => call.args[0] === result.callId));
+  assert.ok(h.count('endCall') >= 1); h.bridge.close();
+});
+
+const linkedStream = id => ({ id, hostId: 'linked-host', host: { id: 'linked-host', name: 'Linked Creator' }, title: 'Live music', category: 'Music', kind: 'video', viewers: 3, createdAt: '', status: 'live' });
+
+test('native live links and share messages reject arbitrary URLs, injected fields and malformed room IDs', () => {
+  const h = harness();
+  assert.equal(h.webMessages.parseLiveLink('zimilive://live/room_123-abc'), 'room_123-abc');
+  for (const url of [null, {}, 'https://evil.test/live/room', 'javascript:alert(1)', 'zimilive://live.evil.test/room', 'zimilive://user@live/room', 'zimilive://live:443/room', 'zimilive://live/../room', 'zimilive://live/%2e%2e', 'zimilive://live/room?token=secret', 'zimilive://live/room#host', 'zimilive://live/room/extra', 'zimilive://live/', 'zimilive://live/'+ 'x'.repeat(129), ' zimilive://live/room']) assert.equal(h.webMessages.parseLiveLink(url), null);
+  for (const data of [{streamId:'room',url:'https://evil.test'}, {streamId:'../room'}, {streamId:'room',hosting:true}]) assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'stream.share',data})),null);
+  h.bridge.close(); assert.equal(h.links.length,0,'Native URL subscriptions stop with the bridge');
+});
+
+test('a cold live link waits for WebView readiness, login and onboarding before selecting the server room', async () => {
+  const h = harness('active','zimilive://live/cold-room'); h.overrides.stream = linkedStream;
+  await settle(); assert.equal(h.count('stream'),0);
+  h.bridge.handle({type:'ready',data:{demo:false}});await settle();assert.equal(h.find('session.none').length,1);assert.equal(h.count('stream'),0);
+  h.bridge.handle(verifyMessage());await settle();assert.equal(h.count('stream'),0,'Onboarding is not interrupted by a live invite');
+  h.overrides.saveProfile=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'profile.save',data:{name:'Alice',onboarding:true}});await settle();
+  assert.equal(h.find('stream.link')[0].data.stream.id,'cold-room');assert.equal(h.find('stream.link')[0].data.stream.host.name,'Linked Creator');
+  assert.deepEqual(h.find('stream.link.loading').map(event=>event.data.loading),[true,false]);
+  assert.equal(h.count('joinStream'),0,'An external link selects the room for confirmation without opening media');h.bridge.close();
+});
+
+test('warm live links use the latest selection and discard older responses and delayed cold URLs', async () => {
+  const initial=deferred(), first=deferred(),second=deferred(),h=harness('active',()=>initial.promise);
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>id==='first'?first.promise:second.promise;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.links.forEach(listener=>listener({url:'zimilive://live/first'}));await settle();
+  h.links.forEach(listener=>listener({url:'zimilive://live/second'}));await settle();
+  initial.resolve('zimilive://live/stale-cold-room');second.resolve(linkedStream('second'));await settle();first.resolve(linkedStream('first'));await settle();
+  assert.deepEqual(h.calls.filter(call=>call.name==='stream').map(call=>call.args[0]),['first','second']);
+  assert.deepEqual(h.find('stream.link').map(event=>event.data.stream.id),['second']);
+  h.bridge.documentLoading();h.links.forEach(listener=>listener({url:'zimilive://live/reloaded'}));await settle();assert.equal(h.count('stream'),2);
+  h.overrides.stream=linkedStream;h.bridge.handle({type:'ready',data:{demo:false}});await settle();assert.equal(h.find('stream.link').at(-1).data.stream.id,'reloaded');h.bridge.close();
+});
+
+test('logout suppresses pending live-link results and new signed-out links wait for the next login', async () => {
+  const h=harness(), pending=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=()=>pending.promise;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.links.forEach(listener=>listener({url:'zimilive://live/old-account-room'}));await settle();
+  h.bridge.handle({type:'auth.logout',data:{}});await settle();pending.resolve(linkedStream('old-account-room'));await settle();assert.equal(h.find('stream.link').length,0);
+  h.links.forEach(listener=>listener({url:'zimilive://live/new-room'}));await settle();assert.equal(h.count('stream'),1);
+  h.overrides.stream=linkedStream;h.overrides.verifyOtp=()=>({...account('next'),requiresOnboarding:false,tokens:tokenPair('next'),isNew:false});
+  h.bridge.handle(verifyMessage(7));await settle();assert.equal(h.find('stream.link')[0].data.stream.id,'new-room');h.bridge.close();
+});
+
+test('unavailable live links report an error and always settle their loading state', async () => {
+  const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>({...linkedStream(id),status:'ended'});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.links.forEach(listener=>listener({url:'zimilive://live/ended-room'}));await settle();
+  assert.equal(h.find('stream.link').length,0);assert.equal(h.find('operation.error').at(-1).data.action,'stream.link');assert.equal(h.find('stream.link.loading').at(-1).data.loading,false);
+  assert.equal(h.count('joinStream'),0);h.bridge.close();
+});
+
+test('share live opens one native share sheet with the active room link and returns selectable link text', async () => {
+  const h=harness(),share=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.joinStream=linkedStream;h.overrides.streamMessages=()=>[];h.overrides.share=()=>share.promise;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'stream.join',data:{streamId:'shared-room'}});await settle();
+  const message={type:'stream.share',data:{streamId:'shared-room'}};h.bridge.handle(message);h.bridge.handle(message);await settle();
+  assert.equal(h.shares.length,1);assert.equal(h.shares[0].message,'Join this live on Zimi Live: zimilive://live/shared-room');
+  assert.equal(h.find('stream.shareLink')[0].data.url,'zimilive://live/shared-room');share.resolve({action:'dismissedAction'});await settle();
+  h.bridge.handle({type:'stream.share',data:{streamId:'another-room'}});await settle();assert.equal(h.shares.length,1);assert.equal(h.find('operation.error').at(-1).data.action,'stream.share');h.bridge.close();
+});
+
+test('accepted calls allow the first host message with server-verified call context without unlocking normal text chat', async () => {
+  const h=harness();h.overrides.me=()=>approvedAccount();h.overrides.thread=()=>({messages:[],canSend:false});h.overrides.chats=()=>({chats:[{user:{id:'member',role:'sender',serverRole:'user'},canSend:false}]});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'session.resume',data:{}});await settle();
+  h.bridge.handle({type:'chat.open',data:{with:'member'}});await settle();
+  h.bridge.handle({type:'chat.send',data:{to:'member',text:'No active call',inCall:true}});await settle();assert.equal(h.count('sendMessage'),0);
+  h.live[0].onEvent({type:'call.connected',data:{callId:'accepted-call',initiator:false,peerId:'member',voice:false}});
+  h.bridge.handle({type:'chat.send',data:{to:'member',text:'Hello on our call',inCall:true}});await settle();
+  assert.equal(h.count('sendMessage'),1);assert.deepEqual(h.calls.find(call=>call.name==='sendMessage').args,['member','Hello on our call','accepted-call']);
+  assert.equal(h.count('thread'),1,'The active call bypasses only the cached conversation restriction');
+  h.live[0].onEvent({type:'call.ended',data:{callId:'accepted-call'}});
+  h.bridge.handle({type:'chat.send',data:{to:'member',text:'After call',inCall:true}});h.bridge.handle({type:'chat.send',data:{to:'member',text:'Ordinary message'}});await settle();
+  assert.equal(h.count('sendMessage'),1,'Ending the call does not grant permission to start ordinary text chat');h.bridge.close();
 });
