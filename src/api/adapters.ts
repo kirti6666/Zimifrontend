@@ -97,7 +97,7 @@ export function profileSettingsFrom(value: unknown): ProfileSettings {
   return {
     profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
     stats: { fans: stats.fans as number, following: stats.following as number, giftsSent: stats.giftsSent as number, giftsReceived: stats.giftsReceived as number, coinsSent: stats.coinsSent as number, coinsReceived: stats.coinsReceived as number },
-    standing: { level: count(record(data.standing ?? {}).level) },
+    standing: { level: count(record(data.standing ?? {}).level), crown: record(data.standing ?? {}).crown === true },
     preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
     privacy: privacyFrom(data.privacy), categories: stringList(data.categories),
     // This native build does not register OS push tokens yet. Backend worker

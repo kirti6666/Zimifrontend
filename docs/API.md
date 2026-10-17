@@ -122,6 +122,8 @@ The server persists configured host welcomes as normal chat messages with
 - Google sign-in: shows "isn't available yet".
 - Photos are sent inline as data URLs; large uploads should move to direct
   uploads with signed URLs.
-- Your own level comes from `GET /account/settings` as `standing.level`
-  (thresholds are set in the admin dashboard). Other people's lifetime coins,
+- Your own level and crown come from `GET /account/settings` as `standing`
+  (`{level, crown}`; thresholds, crown amount and window are set in the admin
+  dashboard). The crown is held while gifts sent in the window reach the
+  amount and drops by itself when they no longer do. Other people's lifetime coins,
   levels and top supporters on host pages are still sample formulas.

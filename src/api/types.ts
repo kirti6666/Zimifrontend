@@ -145,7 +145,7 @@ export interface ProfileSettings {
   profile: { id: string; name: string; bio: string; city: string; languages: string[]; maskedPhone: string; countryCode: string; isPhoneVerified: boolean; createdAt: string };
   stats: { fans: number; following: number; giftsSent: number; giftsReceived: number; coinsSent: number; coinsReceived: number };
   /** level 0 means the server did not report one. */
-  standing: { level: number };
+  standing: { level: number; crown: boolean };
   preferences: { pushNotifications: boolean; matchCategory: string | null; appearance: Appearance };
   privacy: PrivacySettings;
   categories: string[];

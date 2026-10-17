@@ -261,14 +261,14 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   const serverSettings = {
     profile: { id: 'member-id', name: 'Asha', bio: 'Acoustic music', city: 'Pune', languages: ['English', 'Hindi'], maskedPhone: '+91 ••••••3210', countryCode: '+91', isPhoneVerified: true, createdAt: chatAt, phone: '9876543210', role: 'host', isVerifiedHost: true },
     stats: { fans: 42, following: 8, giftsSent: 5, giftsReceived: 12, coinsSent: 300, coinsReceived: 950 },
-    standing: { level: 4 },
+    standing: { level: 4, crown: true },
     preferences: { pushNotifications: true, matchCategory: 'Music', appearance: 'system' },
     privacy: { discoverable: true, showActivity: false, allowRequests: false },
     categories: ['Music', 'Gaming'], capabilities: { pushNotifications: true, liveAlerts: false, interfaceLanguages: ['en'], currency: 'INR' },
   };
   expect('GET', '/account/settings', serverSettings);
   const settings = await api.profileSettings();
-  assert.equal(settings.standing.level, 4); assert.equal(adapters.profileSettingsFrom({ ...serverSettings, standing: undefined }).standing.level, 0, 'An older server reports no level rather than a fabricated one');
+  assert.deepEqual(plain(settings.standing), { level: 4, crown: true }); assert.deepEqual(plain(adapters.profileSettingsFrom({ ...serverSettings, standing: undefined }).standing), { level: 0, crown: false }, 'An older server reports no level or crown rather than fabricated ones');
   assert.equal(settings.stats.fans, 42); assert.equal(settings.stats.coinsReceived, 950); assert.equal(settings.preferences.appearance, 'system');
   assert.equal(settings.profile.maskedPhone, '+91 ••••••3210'); assert.equal(settings.profile.countryCode, '+91'); assert.equal(settings.profile.isPhoneVerified, true);
   assert.equal(settings.capabilities.pushNotifications, true); assert.equal(settings.capabilities.nativePushRegistered, false, 'Server worker availability is not device push registration');
