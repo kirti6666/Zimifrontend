@@ -7,6 +7,8 @@ import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 
 export interface ServerEvent { type: string; data?: Record<string, unknown> }
+/** The staff side of a verification call, as the call's media peer. */
+export const VERIFY_PEER = "zimi-team";
 export type RealtimeConnection = (() => void) & { setActive?: (active: boolean) => void; send?: (event: "webrtc:signal" | "stream:signal" | "stream:ready", data: RtcPayload & { callId?: string; streamId?: string; to?: string }) => Promise<void> };
 
 // Socket.IO authentication lives in its handshake, never in a URL or the WebView.
@@ -98,6 +100,12 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   });
   socket.on("webrtc:signal", payload => {
     try { const signal = record(payload); if (idOf(signal.callId) && idOf(signal.from)) emit("rtc.signal", signal); } catch { /* Invalid peer payload. */ }
+  });
+  socket.on("verification:call", payload => {
+    try { const call = record(payload), callId = idOf(call); if (callId && typeof call.status === "string") emit("verify.updated", { callId, status: call.status }); } catch { /* Ignore malformed events. */ }
+  });
+  socket.on("verification:signal", payload => {
+    try { const signal = record(payload); if (idOf(signal.callId)) emit("rtc.signal", { ...signal, from: VERIFY_PEER }); } catch { /* Invalid staff payload. */ }
   });
   socket.on("stream:signal", payload => {
     try { const signal = record(payload); if (idOf(signal.streamId) && idOf(signal.from)) emit("stream.signal", signal); } catch { /* Invalid peer payload. */ }

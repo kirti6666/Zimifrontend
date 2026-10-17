@@ -2772,6 +2772,35 @@ button.gpill[onclick]{cursor:pointer}
 @media(max-width:360px){.zpc-setup{padding-inline:18px}.zpc-header>span:nth-child(2){font-size:calc(12px * var(--theme-font-scale,1));padding-left:16px}.zpc-profile h1{font-size:calc(25px * var(--theme-font-scale,1));letter-spacing:-.8px}.zpc-section-title>span{display:none}.zpc-modes{gap:9px}.zpc-mode{padding-inline:8px;gap:5px}.zpc-mode-icon{width:28px}.zpc-mode-icon>svg{width:20px;height:20px}.zpc-mode-copy>strong{font-size:calc(11px * var(--theme-font-scale,1))}.zpc-mode-copy>small{font-size:calc(8px * var(--theme-font-scale,1))}.zpc-details{padding-inline:15px}.zpc-permission-note p,.zpc-unavailable-note p{font-size:calc(9px * var(--theme-font-scale,1))}.zpc-eyebrow{font-size:calc(7px * var(--theme-font-scale,1))}}
 @media(max-height:610px){.zpc-profile{padding-block:20px}.zpc-setup{min-height:610px}.zpc-avatar-wrap{width:76px;height:76px;margin-bottom:16px}.zpc-avatar{width:72px;height:72px}.zpc-mode{min-height:68px}}
 @media(prefers-reduced-motion:reduce){.zpc-setup *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* Staff verification call overlay; sits above every screen and follows the active theme. */
+.zv-call{position:fixed;inset:0;z-index:90;display:grid;color:#fff;background:#120910}
+.zv-ring{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px 24px calc(28px + env(safe-area-inset-bottom));text-align:center;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--accent,#c9086a) 45%,#120910),#120910 70%)}
+.zv-badge{display:grid;place-items:center;width:96px;height:96px;border-radius:50%;background:#ffffff1f;box-shadow:0 0 0 12px #ffffff0d,0 0 0 26px #ffffff08;margin-bottom:14px;animation:zv-pulse 1.8s ease-out infinite}
+.zv-eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#ffd4e7}
+.zv-ring h2{font-size:26px;line-height:1.2;font-weight:750;letter-spacing:-.4px}
+.zv-note{max-width:320px;font-size:14px;line-height:1.5;color:#f3d9e6}
+.zv-error{max-width:320px;font-size:13px;line-height:1.45;color:#ffd0d6;background:#ff3b5c2e;border-radius:12px;padding:10px 12px}
+.zv-actions{display:flex;gap:56px;margin-top:28px}
+.zv-actions button{display:grid;place-items:center;width:68px;height:68px;border-radius:50%;color:#fff}
+.zv-decline{background:#ef3154}
+.zv-decline svg,.zv-end svg{transform:rotate(135deg)}
+.zv-accept{background:#19b46b}
+.zv-accept[disabled]{opacity:.6}
+.zv-hint{font-size:12px;color:#e7c6d7}
+.zv-stage{position:relative;overflow:hidden;background:#000}
+.zv-remote{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#1b1018}
+.zv-local{position:absolute;top:calc(64px + env(safe-area-inset-top));right:14px;width:28%;max-width:150px;aspect-ratio:3/4;object-fit:cover;border-radius:14px;border:2px solid #ffffff59;background:#2b1a26}
+.zv-local[data-zimi-facing=user]{transform:scaleX(-1)}
+.zv-top{position:absolute;inset:0 0 auto;display:flex;align-items:center;gap:8px;padding:calc(16px + env(safe-area-inset-top)) 16px 16px;background:linear-gradient(#000a,#0000);font-size:14px}
+.zv-dot{width:8px;height:8px;border-radius:50%;background:#19b46b}
+.zv-connecting .zv-dot{background:#f5b301}
+.zv-timer{margin-left:auto;font-variant-numeric:tabular-nums;color:#ffffffd9}
+.zv-controls{position:absolute;inset:auto 0 0;display:flex;align-items:center;justify-content:center;gap:28px;padding:20px 16px calc(24px + env(safe-area-inset-bottom));background:linear-gradient(#0000,#000b)}
+.zv-controls button{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:#ffffff2e;color:#fff}
+.zv-controls button.off{background:#fff;color:#1b1018}
+.zv-controls .zv-end{width:66px;height:66px;background:#ef3154}
+@keyframes zv-pulse{0%{box-shadow:0 0 0 0 #ffffff33,0 0 0 0 #ffffff1a}100%{box-shadow:0 0 0 18px #ffffff00,0 0 0 36px #ffffff00}}
+@media(prefers-reduced-motion:reduce){.zv-badge{animation:none}}
 </style>
 </head>
 <body>
@@ -8126,7 +8155,7 @@ if(DEMO){
   Native.on('rtc.signal', data => receive('call', data));
   Native.on('call.created', data => { if (!active && local) pendingCall = data.callId; });
   Native.on('call.incoming', data => { if (!active) pendingCall = data.callId; });
-  Native.on('call.connected', async data => {
+  async function connectCall(data) {
     if (typeof DEMO !== 'undefined' && DEMO) return;
     if (active && active.kind === 'call' && active.id === data.callId) return;
     clearPeers();
@@ -8143,7 +8172,12 @@ if(DEMO){
       earlySignals.splice(0).forEach(signal => receive(signal.kind, signal.data));
       status('Connecting your call…');
     } catch (error) { fail(session, error); }
-  });
+  }
+  Native.on('call.connected', connectCall);
+  // Staff verification calls use the same call session, answered from verification-call.js.
+  Native.on('verify.connected', connectCall);
+  Native.on('verify.incoming', data => { if (!active) pendingCall = data.callId; });
+  Native.on('verify.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
   Native.on('call.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
   Native.on('call.failed', () => { if (!active || active.kind === 'call') stop(); });
   ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));
@@ -8404,6 +8438,76 @@ if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Bennett',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':OB_MEDIA[2],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});
   S.v='precall';S.h=h.id;S.loggedIn=1;S.bal=offline?0:1250;
 }
+
+/* Staff video calls for host applicants. The ZimiLive team calls before deciding an
+   application; the applicant answers here. Media runs through ZimiMedia's call session
+   (verify.connected), so this file only owns the overlay and its controls. */
+const ZVerify={callId:'',state:'',error:'',startedAt:0,timer:null};
+const ZV_ENDED={declined:'You declined the verification call.',missed:'You missed the verification call. The team can call you again.',unavailable:'This verification call is no longer available.',failed:'The video connection failed. The team can call you again.'};
+function zvTime(){const s=Math.max(0,Math.floor((Date.now()-ZVerify.startedAt)/1000));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
+function zvRender(){
+  let el=document.getElementById('zv-call');
+  if(!ZVerify.state){el?.remove();clearInterval(ZVerify.timer);ZVerify.timer=null;return}
+  if(!el){el=document.createElement('section');el.id='zv-call';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-labelledby','zv-title');document.body.append(el)}
+  const ringing=ZVerify.state==='ringing'||ZVerify.state==='preparing',live=ZVerify.state==='connected',micOn=S.mic!==0,camOnNow=S.cam!==0;
+  el.className='zv-call zv-'+ZVerify.state;
+  el.innerHTML=ringing?`<div class="zv-ring">
+    <span class="zv-badge" aria-hidden="true">${I('shield',34)}</span>
+    <p class="zv-eyebrow">Creator verification</p>
+    <h2 id="zv-title">ZimiLive team is calling</h2>
+    <p class="zv-note">A short video call to confirm it’s really you. Find good light, keep your face visible and say hello.</p>
+    ${ZVerify.error?`<p class="zv-error" role="alert">${esc(ZVerify.error)}</p>`:''}
+    <div class="zv-actions">
+      <button class="zv-decline" onclick="zvDecline()" aria-label="Decline verification call">${I('ph',24)}</button>
+      <button class="zv-accept" onclick="zvAccept()" aria-label="Accept verification video call" ${ZVerify.state==='preparing'?'disabled aria-busy="true"':''}>${I('vid',24)}</button>
+    </div>
+    <p class="zv-hint">${ZVerify.state==='preparing'?'Starting your camera…':'Accept to turn on your camera and microphone.'}</p>
+  </div>`:`<div class="zv-stage">
+    <video class="zv-remote" data-zimi-remote autoplay playsinline aria-label="ZimiLive team video"></video>
+    <video class="zv-local" data-zimi-local autoplay playsinline muted aria-label="Your camera"></video>
+    <div class="zv-top"><span class="zv-dot" aria-hidden="true"></span><b id="zv-title">ZimiLive verification</b><span class="zv-timer" id="zv-timer" aria-live="off">${live?zvTime():'Connecting…'}</span></div>
+    <div class="zv-controls">
+      <button class="${micOn?'':'off'}" onclick="zvMic()" aria-pressed="${!micOn}" aria-label="${micOn?'Mute microphone':'Unmute microphone'}">${I(micOn?'mic':'micoff',22)}</button>
+      <button class="zv-end" onclick="zvEnd()" aria-label="End verification call">${I('ph',26)}</button>
+      <button class="${camOnNow?'':'off'}" onclick="zvCam()" aria-pressed="${!camOnNow}" aria-label="${camOnNow?'Turn camera off':'Turn camera on'}">${I(camOnNow?'vid':'camoff',22)}</button>
+    </div>
+  </div>`;
+  window.ZimiMedia?.attach();
+  if(ringing)el.querySelector('.zv-accept:not([disabled])')?.focus();
+}
+function zvClose(message){
+  ZVerify.callId='';ZVerify.state='';ZVerify.error='';zvRender();
+  window.ZimiMedia?.stop();
+  if(message)appNotice(message);
+}
+async function zvAccept(){
+  if(ZVerify.state!=='ringing')return;
+  const callId=ZVerify.callId;ZVerify.state='preparing';ZVerify.error='';zvRender();
+  try{S.mic=1;S.cam=1;S.scam=1;await window.ZimiMedia.prepare(true)}
+  catch(e){if(ZVerify.callId!==callId)return;ZVerify.state='ringing';ZVerify.error=e.message||'Allow camera and microphone access to answer.';zvRender();return}
+  if(ZVerify.callId!==callId){window.ZimiMedia.stop();return}
+  ZVerify.state='connecting';zvRender();
+  Native.send('verify.accept',{callId});
+}
+function zvDecline(){if(ZVerify.callId)Native.send('verify.end',{callId:ZVerify.callId});zvClose()}
+function zvEnd(){if(ZVerify.callId)Native.send('verify.end',{callId:ZVerify.callId});zvClose('Thanks for joining. The team will update your application soon.')}
+function zvMic(){S.mic=S.mic===0?1:0;window.ZimiMedia?.attach();zvRender()}
+function zvCam(){const next=S.cam===0?1:0;S.cam=next;S.scam=next;window.ZimiMedia?.attach();zvRender()}
+Native.on('verify.incoming',d=>{
+  if(ZVerify.callId===d.callId&&ZVerify.state)return;
+  ZVerify.callId=d.callId;ZVerify.state='ringing';ZVerify.error='';zvRender();
+});
+Native.on('verify.connected',d=>{
+  if(d.callId!==ZVerify.callId)return;
+  ZVerify.state='connected';ZVerify.startedAt=Date.now();zvRender();
+  clearInterval(ZVerify.timer);
+  ZVerify.timer=setInterval(()=>{const t=document.getElementById('zv-timer');if(t)t.textContent=zvTime()},1000);
+});
+Native.on('verify.ended',d=>{
+  if(d.callId!==ZVerify.callId)return;
+  zvClose(ZVerify.state==='connected'?'The verification call has ended. The team will update your application soon.':ZV_ENDED[d.status]||'The verification call has ended.');
+});
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{if(ZVerify.state)zvClose()}));
 
 /* Inbox presentation. Production conversations and counts come from the bridge. */
 const Chats={rows:[],query:'',filter:'all',sort:'recent',onlineOnly:false,filtersOpen:false,composeOpen:false,composeQuery:'',readBusy:false,readError:'',page:1,total:0,unreadCount:0,unreadConversations:0,loadingMore:false,drafts:{},gifts:{},playing:'',threadPermission:null};

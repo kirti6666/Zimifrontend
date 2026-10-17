@@ -2,7 +2,7 @@ import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
 import { accountFrom, blockedUsersFrom, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
+import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
@@ -193,6 +193,10 @@ export const api = {
   async acceptCall(callId: string) { const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)); return { peerId: idOf(call.callerId), voice: call.kind === "audio" }; },
   declineCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
   endCall: (callId: string, _reason?: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
+  // Staff verification calls for host applicants: staff place the call and send the offer.
+  acceptVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/accept`),
+  endVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/end`),
+  verificationSignal: (callId: string, signal: RtcPayload) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/signal`, signal),
   async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<Wallet> {
     if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
     await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });

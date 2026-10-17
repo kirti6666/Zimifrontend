@@ -62,7 +62,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       if (id === 'expo-secure-store') return storage;
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
-      if (id === './api/realtime') return { connectRealtime: (token, onEvent, userId, initiallyActive) => {
+      if (id === './api/realtime') return { VERIFY_PEER: 'zimi-team', connectRealtime: (token, onEvent, userId, initiallyActive) => {
         const connection = { token, onEvent, userId, initiallyActive, activeStates: [], stopped: false }; live.push(connection);
         const stop = () => { connection.stopped = true; };
         stop.send = async (...args) => { signals.push(args); };
@@ -454,6 +454,39 @@ test('match previews a real host without creating a call and media signals stay 
   await settle();
   assert.equal(h.signals[0][0], 'webrtc:signal'); assert.equal(h.signals[1][0], 'stream:ready');
   assert.equal(JSON.stringify(h.posts).includes(tokenPair().accessToken), false);
+  h.bridge.close();
+});
+
+test('staff verification calls ring applicants and answer through their own endpoints, never the member-call path', async () => {
+  const h = harness();
+  const plain = value => JSON.parse(JSON.stringify(value));
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const live = h.live.at(-1);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-1', status: 'ringing' } });
+  assert.deepEqual(plain(h.find('verify.incoming').map(post => post.data)), [{ callId: 'verify-1' }]);
+  assert.equal(h.count('declineCall'), 0, 'Applicants without host access are not auto-declined');
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-1' } }); await settle();
+  assert.equal(h.count('acceptVerificationCall'), 1);
+  assert.deepEqual(plain(h.find('verify.connected')[0].data), { callId: 'verify-1', peerId: 'zimi-team', initiator: false, voice: false });
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-1', status: 'accepted' } });
+  assert.equal(h.find('verify.ended').length, 0, 'Our own answer does not dismiss the call');
+  h.bridge.handle({ type: 'rtc.signal', data: { callId: 'verify-1', description: { type: 'answer', sdp: 'answer-sdp' } } }); await settle();
+  assert.equal(h.signals.length, 0, 'Verification signals never use the member-call socket');
+  assert.deepEqual(plain(h.calls.find(call => call.name === 'verificationSignal').args), ['verify-1', { description: { type: 'answer', sdp: 'answer-sdp' } }]);
+  h.bridge.handle({ type: 'call.end', data: { callId: 'verify-1', reason: 'media_failed' } }); await settle();
+  assert.equal(h.count('endVerificationCall'), 1); assert.equal(h.count('endCall'), 0);
+  assert.deepEqual(plain(h.find('verify.ended').at(-1).data), { callId: 'verify-1', status: 'failed' });
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-2', status: 'ringing' } });
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-2', status: 'accepted' } });
+  assert.deepEqual(plain(h.find('verify.ended').at(-1).data), { callId: 'verify-2', status: 'accepted' }, 'A call answered on another device is dismissed here');
+  h.overrides.acceptVerificationCall = () => { throw new h.ApiError('This call is no longer ringing', 409); };
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-3', status: 'ringing' } });
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-3' } }); await settle();
+  assert.deepEqual(plain(h.find('verify.ended').at(-1).data), { callId: 'verify-3', status: 'unavailable' });
+  h.bridge.handle({ type: 'verify.end', data: { callId: 'verify-3' } }); await settle();
+  assert.equal(h.count('endVerificationCall'), 2);
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'verify.accept', data: { callId: '../calls' } })), null);
   h.bridge.close();
 });
 

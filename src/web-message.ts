@@ -96,7 +96,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)); break;
     case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && amount(d.coins) && boolean(d.inCall) && (d.streamId === undefined || identifier(d.streamId)) && (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)); break;
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;
-    case "call.accept": case "call.decline": valid = identifier(d.callId); break;
+    case "call.accept": case "call.decline": case "verify.accept": case "verify.end": valid = identifier(d.callId); break;
     case "call.end": valid = (d.callId === undefined || identifier(d.callId)) && optionalText(d.reason, 300); break;
     case "payout.request": valid = amount(d.coins) && text(d.upi, 100); break;
     case "awards.claim": valid = identifier(d.task); break;

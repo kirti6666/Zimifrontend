@@ -110,6 +110,24 @@ The server persists configured host welcomes as normal chat messages with
 | `wallet.balance` | `{coins?, earned?}` | Updates balances everywhere |
 | `verification.status` | `{status}` | Moves the verification screen on |
 
+## Staff verification calls (host applicants)
+
+Before approving a host application, staff video-call the applicant from the admin
+dashboard. The server refuses to approve a pending application until a call has
+connected for at least 10 seconds.
+
+| Step | Server | App |
+| --- | --- | --- |
+| Staff start the call | socket `verification:call` `{_id, status: "ringing"}` (replayed on reconnect) | `verify.incoming {callId}` opens `web/verification-call.js` |
+| Applicant answers | `POST /verification-calls/:id/accept` | camera and mic start first; then `verify.connected {callId, peerId: "zimi-team"}` starts the `media.js` call session |
+| Staff offer and candidates | socket `verification:signal` | arrive as `rtc.signal` from `zimi-team` |
+| Applicant answer and candidates | `POST /verification-calls/:id/signal` | the bridge routes this call's `rtc.signal` there, not to the socket |
+| Decline or hang up | `POST /verification-calls/:id/end` | `verify.end {callId}` |
+| Ended, missed or answered elsewhere | socket `verification:call` `{status}` | `verify.ended {callId, status}` closes the overlay |
+
+These never use the member-call messages (`call.*`), so host-access rules for
+member calls do not apply to an applicant answering staff.
+
 ## Not covered yet
 
 - Video and audio: the call screens show photos where video goes. A video SDK
