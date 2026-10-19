@@ -60,6 +60,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "themes.select": valid = typeof d.themeId === "string" && /^[a-f\d]{24}$/i.test(d.themeId) && Object.keys(d).every(key => ["themeId", "requestId"].includes(key)); break;
     case "themes.premium.checkout": valid = idempotency(d.idempotencyKey) && Object.keys(d).every(key => key === "idempotencyKey"); break;
     case "profile.settings.load": valid = true; break;
+    case "profile.load": valid = identifier(d.id) && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
+    case "profile.posts.load": valid = identifier(d.id) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["id", "page", "requestId"].includes(key)); break;
     case "profile.settings.save": case "settings.set": valid = settingsPatch(d); break;
     case "privacy.save": valid = privacyPatch(d); break;
     case "blocked.load": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
@@ -95,7 +97,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
-    case "follow.set": valid = identifier(d.id) && boolean(d.on); break;
+    case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "chats.readAll": valid = true; break;

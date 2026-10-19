@@ -79,6 +79,22 @@ export interface Host {
   stream?: HomeStream | null;
 }
 
+/** Public identity and relationship data, never the target's account settings. */
+export interface PublicProfile extends Host {
+  followingCount: number;
+  joined: string;
+  interests: string[];
+  level?: number;
+  crown?: boolean;
+}
+
+export interface PublicPosts {
+  posts: UserPost[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface HomeStream {
   id: string;
   hostId: string;

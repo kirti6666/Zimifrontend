@@ -95,6 +95,7 @@ const page = (demo) =>
   read("web/call-setup.css") +
   read("web/verification-call.css") +
   read("web/offline.css") +
+  read("web/public-profile.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -119,6 +120,7 @@ const page = (demo) =>
   "\n" + read("web/navigation.js") +
   "\n" + read("web/icons.js") +
   "\n" + read("web/offline.js") +
+  "\n" + read("web/public-profile.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

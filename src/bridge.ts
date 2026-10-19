@@ -6,7 +6,7 @@ import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnect
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { parseLiveLink, parseWebMessage } from "./web-message";
@@ -54,11 +54,13 @@ export type WebMessage =
   | { type: "verification.submit"; data: Record<string, unknown> }
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
   | { type: "profile.settings.load"; data: Record<string, never> }
+  | { type: "profile.load"; data: { id: string; requestId?: number } }
+  | { type: "profile.posts.load"; data: { id: string; page?: number; requestId?: number } }
   | { type: "profile.settings.save" | "settings.set"; data: ProfileSettingsPatch & { requestId?: number } }
   | { type: "privacy.save"; data: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">> & { requestId?: number } }
   | { type: "blocked.load"; data: { page?: number } }
   | { type: "block.set"; data: { id: string; blocked: boolean; requestId?: number } }
-  | { type: "follow.set"; data: { id: string; on: boolean } }
+  | { type: "follow.set"; data: { id: string; on: boolean; requestId?: number } }
   | { type: "chat.open"; data: { with: string } }
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
@@ -77,7 +79,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "blocked" | "themes";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "blocked" | "themes";
 export type AppMessage =
   | { type: "session"; data: Account }
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
@@ -93,7 +95,7 @@ export type AppMessage =
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string } }
   | { type: "data.loaded"; data: Record<string, never> }
-  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; error?: string } }
+  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
@@ -108,12 +110,16 @@ export type AppMessage =
   | { type: "themes.error"; data: { action: string; message: string; code?: string; requestId?: number } }
   | { type: "themes.premium.checkout" | "themes.premium.purchase"; data: Purchase }
   | { type: "data.profileSettings"; data: ProfileSettings }
+  | { type: "data.publicProfile"; data: { id: string; profile: PublicProfile; requestId?: number } }
+  | { type: "data.publicPosts"; data: PublicPosts & { id: string; requestId?: number } }
   | { type: "profile.settings.saved"; data: { settings: ProfileSettings; requestId?: number } }
   | { type: "profile.settings.error" | "privacy.error"; data: { message: string; requestId?: number } }
   | { type: "privacy.saved"; data: { privacy: PrivacySettings; requestId?: number } }
   | { type: "data.blocked"; data: BlockedUsers }
   | { type: "block.saved"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "block.error"; data: { id: string; blocked: boolean; message: string; requestId?: number } }
+  | { type: "follow.saved"; data: { id: string; on: boolean; requestId?: number } }
+  | { type: "follow.error"; data: { id: string; on: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
   | { type: "host.access"; data: { approved: boolean; role: Role; serverRole?: ServerRole; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
@@ -188,6 +194,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let hostAccount: Account | undefined;
   let accountRole: ServerRole | undefined;
   const chatPeers = new Map<string, Host>();
+  const publicFollows = new Map<string, { on: boolean; revision: number; sessionVersion: number }>();
   const threadPermissions = new Map<string, { canSend: boolean; reason?: string }>();
   let hostRevision = 0;
   let hostChecking = false;
@@ -288,7 +295,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); }
+    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
@@ -350,7 +357,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     // require explicit permission because welcomes do not unlock manual replies.
     threadPermissions.set(peerId, { canSend: data.canSend ?? accountRole === "user", reason: data.sendDisabledReason });
   };
-  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string } = {}) => {
+  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
     const latest = () => current(version) && getSessionVersion() === sessionVersion && readRequests.get(resource) === requestId;
@@ -385,6 +392,20 @@ export function createBridge(post: (msg: AppMessage) => void) {
     void rememberDefaultTheme(theme);
   };
   const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), data => emit({ type: "data.profileSettings", data }));
+  const loadPublicProfile = (id: string, requestId?: number) => {
+    const followRevision = publicFollows.get(id)?.revision ?? 0;
+    return readResource("publicProfile", () => api.publicProfile(id), profile => {
+      const acknowledged = publicFollows.get(id);
+      // A read already in flight may predate a follow committed while it loads.
+      // Preserve the acknowledged relationship without starting another load.
+      if (acknowledged && acknowledged.sessionVersion === getSessionVersion() && acknowledged.revision !== followRevision && profile.following !== acknowledged.on) {
+        profile = { ...profile, following: acknowledged.on, ...(typeof profile.followers === "number" ? { followers: Math.max(0, profile.followers + (acknowledged.on ? 1 : -1)) } : {}) };
+      }
+      chatPeers.set(id, profile);
+      emit({ type: "data.publicProfile", data: { id, profile, requestId } });
+    }, { id, requestId });
+  };
+  const loadPublicPosts = (id: string, page = 1, requestId?: number) => readResource("publicPosts", () => api.publicPosts(id, page), data => emit({ type: "data.publicPosts", data: { ...data, id, requestId } }), { id, page, requestId });
   const loadBlocked = (page = 1) => readResource("blocked", () => api.blockedUsers(page), data => emit({ type: "data.blocked", data }), { page });
   const deliverProfileSettings = (settings: ProfileSettings) => {
     // A GET started before this committed write cannot restore old preferences.
@@ -615,6 +636,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "profile.settings.load": return loadProfileSettings();
+      case "profile.load": return loadPublicProfile(msg.data.id, msg.data.requestId);
+      case "profile.posts.load": return loadPublicPosts(msg.data.id, msg.data.page, msg.data.requestId);
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
       case "rtc.signal": case "stream.signal": case "stream.ready": {
@@ -868,7 +891,21 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       }
-      case "follow.set": return quietly(api.follow(msg.data.id, msg.data.on), msg.type);
+      case "follow.set": {
+        const { id, on, requestId } = msg.data, sessionVersion = getSessionVersion();
+        try {
+          const result = await api.follow(id, on);
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            publicFollows.set(id, { on: result.following, revision: (publicFollows.get(id)?.revision ?? 0) + 1, sessionVersion });
+            emit({ type: "follow.saved", data: { id, on: result.following, requestId } });
+            quietly(loadProfileSettings(), "profile.settings.load");
+            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+          }
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "follow.error", data: { id, on, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
       case "chats.reload": return loadChats(msg.data.page);
       case "chats.readAll": {
         const data = await api.readAllChats();
@@ -1034,8 +1071,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" ? `:${msg.data.id}` : ""}`;
+      const serialized = ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

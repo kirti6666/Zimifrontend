@@ -114,6 +114,16 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
  --zf-top:color-mix(in srgb,var(--accent) 78%,var(--surface))}
 .zf-face .zf-skin{fill:var(--zf-skin)}.zf-face .zf-hair{fill:var(--zf-hair)}.zf-face .zf-top{fill:var(--zf-top)}
 .zh-profile{position:relative}.zp-avatar>.zf-face{border-radius:50%}
+/* One back button for the whole app: a 40px surface circle with a hairline border, as on call setup.
+   :root lifts it above each screen's own button rules; those classes only position it. */
+:root .zb-back{display:grid;place-items:center;flex:none;width:40px;height:40px;min-width:40px;min-height:40px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);touch-action:manipulation;transition:transform .15s ease}
+:root .zb-back:active:not(:disabled){transform:scale(.94)}
+:root .zb-back:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+:root .zb-back:disabled{opacity:.45;cursor:default}
+:root .zb-back>svg{width:21px;height:21px}
+/* On photos and video the same button is frosted glass, so it stays legible. */
+:root .zb-back.on-media{border-color:rgb(255 255 255 / .24);background:rgb(12 4 9 / .36);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+@media(prefers-reduced-motion:reduce){:root .zb-back{transition:none}:root .zb-back:active:not(:disabled){transform:none}}
 .pres{position:absolute;right:1px;bottom:1px;width:11px;height:11px;border-radius:99px;
  border:2px solid var(--canvas);background:var(--muted)}
 .pres.on{background:var(--online)}
@@ -488,8 +498,7 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
  linear-gradient(165deg,#25131d 0%,#100d12 55%,#050506 100%)}
 .voicecall::before{content:"";position:absolute;width:270px;height:270px;border-radius:50%;top:19%;left:50%;
  transform:translateX(-50%);background:rgba(255,46,147,.08);filter:blur(18px)}
-.voiceback{position:absolute;z-index:2;top:16px;left:16px;width:32px;height:32px;border:0;border-radius:50%;
- display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.82);background:rgba(255,255,255,.08)}
+.voiceback{position:absolute;z-index:2;top:16px;left:16px}
 .voiceorb{position:relative;z-index:1;padding:5px;border-radius:50%;border:2px solid rgba(255,92,174,.72);
  box-shadow:0 0 34px rgba(255,46,147,.28)}
 .voiceorb .avw{display:block}
@@ -720,9 +729,7 @@ button.acctrow:active{background:var(--raised)}
   linear-gradient(to bottom,rgba(0,0,0,.28),transparent 42%)}
 .hpcover .sh{position:absolute;inset:auto 0 0 0;height:62%;
  background:linear-gradient(to top,var(--canvas) 4%,rgba(var(--scrim),.35) 55%,transparent)}
-.hpc{position:absolute;top:12px;left:12px;z-index:3;width:32px;height:32px;border-radius:99px;
- display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);
- backdrop-filter:blur(8px);color:#fff}
+.hpc{position:absolute;top:12px;left:12px;z-index:3}
 .hplive{position:absolute;top:13px;right:12px;z-index:3;display:inline-flex;align-items:center;gap:5px;
  background:#1bc5a4;color:#fff;border-radius:99px;padding:4px 10px;font-size:10.5px;font-weight:800;
  box-shadow:0 3px 12px -4px rgba(30,169,82,.8)}
@@ -845,8 +852,6 @@ button.acctrow:active{background:var(--raised)}
  scroll-snap-stop:always;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .pvtop{position:absolute;top:0;left:0;right:0;z-index:4;display:flex;align-items:center;gap:10px;
  padding:14px;background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent)}
-.pvclose{width:34px;height:34px;border-radius:99px;flex:0 0 auto;display:flex;align-items:center;
- justify-content:center;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);color:#fff}
 .pvcount{margin-left:auto;font-size:11.5px;font-weight:700;color:rgba(255,255,255,.7);
  background:rgba(0,0,0,.4);border-radius:99px;padding:4px 10px;font-variant-numeric:tabular-nums}
 .pvplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
@@ -1425,7 +1430,7 @@ button.gpill[onclick]{cursor:pointer}
    goals: [gift target][mission] side by side; video tile on the right below */
 .vshade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,.08) 26%,transparent 45%,rgba(0,0,0,.85))}
 .ctop{position:relative;z-index:9;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 0}
-.cback,.ctop .morebtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
+.ctop .morebtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
  background:rgba(0,0,0,.38);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12)}
 .ctop .more{position:relative;top:auto;left:auto;margin:0}
 .ctop .morebtn.open{background:rgba(255,255,255,.92);color:#141216}
@@ -1700,13 +1705,13 @@ button.gpill[onclick]{cursor:pointer}
 }
 .ob-shell *, .ob-dialog * { box-sizing: border-box; }
 .ob-shell button, .ob-shell input, .ob-shell select, .ob-dialog button { font: inherit; }
-.ob-shell button, .ob-dialog button { min-height: 44px; }
-.ob-shell button, .ob-dialog button, .ob-upload {
+.ob-shell button:not(.zb-back), .ob-dialog button:not(.zb-back) { min-height: 44px; }
+.ob-shell button:not(.zb-back), .ob-dialog button:not(.zb-back), .ob-upload {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform .2s cubic-bezier(.2,.8,.25,1), background-color .2s, box-shadow .2s, border-color .2s, color .2s, opacity .2s;
 }
-.ob-shell button:active:not(:disabled), .ob-dialog button:active:not(:disabled), .ob-upload:active { transform: scale(.97); }
+.ob-shell button:active:not(:disabled):not(.zb-back), .ob-dialog button:active:not(:disabled):not(.zb-back), .ob-upload:active { transform: scale(.97); }
 /* Text fields, code boxes and selects show focus on their own border, like every other field. */
 .ob-shell button:focus-visible, .ob-shell a:focus-visible, .ob-shell input[type="checkbox"]:focus-visible,
 .ob-dialog button:focus-visible, .ob-dialog a:focus-visible, .ob-upload:focus-within { outline: 2px solid var(--ob-soft); outline-offset: 3px; }
@@ -1719,8 +1724,8 @@ button.gpill[onclick]{cursor:pointer}
 /* Step chrome: back, progress and help sit on frosted glass. */
 .ob-header, .ob-main, .ob-actions, .ob-footer { width: 100%; max-width: 500px; margin-inline: auto; }
 .ob-header { display: flex; align-items: center; gap: 14px; min-height: 40px; margin-bottom: 30px; }
-/* The app's back button (as on call setup): a 40px surface circle with a hairline border. */
-.ob-icon {
+/* Round preview controls; navigation uses the shared .zb-back component. */
+.ob-icon:not(.zb-back) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1733,7 +1738,7 @@ button.gpill[onclick]{cursor:pointer}
   color: var(--ink);
   background: var(--surface);
 }
-.ob-icon svg { width: 21px; height: 21px; }
+.ob-icon:not(.zb-back) svg { width: 21px; height: 21px; }
 .ob-progress { display: flex; align-items: center; flex: 1; gap: 6px; }
 .ob-progress span { position: relative; display: block; height: 5px; flex: 1; border-radius: 8px; background: var(--ob-edge); overflow: hidden; transition: box-shadow .3s; }
 .ob-progress span::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, var(--ob-pink), color-mix(in srgb, var(--ob-pink) 55%, var(--ob-soft))); transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
@@ -2011,7 +2016,7 @@ button.gpill[onclick]{cursor:pointer}
 @keyframes ob-toast-in { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
 @media (hover: hover) and (pointer: fine) {
   .ob-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 20px 34px -16px var(--ob-glow), 0 3px 8px -4px var(--ob-glow), inset 0 1px 0 rgb(255 255 255 / .22); }
-  .ob-secondary:hover, .ob-icon:hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
+  .ob-secondary:hover, .ob-icon:not(.zb-back):hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
   .ob-text-button:hover, .ob-resend button:hover:not(:disabled) { color: var(--ob-text); }
   .ob-role-switch button:hover:not(.selected), .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
   .ob-upload:hover { border-color: var(--ob-pink); }
@@ -2180,7 +2185,7 @@ button.gpill[onclick]{cursor:pointer}
 .kyc .ob-options button.selected { background: var(--accent); border-color: var(--accent); color: var(--cta-ink); }
 @media (prefers-reduced-motion: reduce) {
   .ob-shell *, .ob-shell *::before, .ob-shell *::after, .ob-dialog, .ob-dialog *, .ob-toast { animation: none !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
-  .ob-shell button:active:not(:disabled), .ob-dialog button:active:not(:disabled), .ob-upload:active { transform: none; opacity: .8; }
+  .ob-shell button:active:not(:disabled):not(.zb-back), .ob-dialog button:active:not(:disabled):not(.zb-back), .ob-upload:active { transform: none; opacity: .8; }
   .ob-spinner { border-color: currentColor; border-style: dotted; }
 }
 
@@ -2299,7 +2304,7 @@ button.gpill[onclick]{cursor:pointer}
 .zh-empty{text-align:center;padding:45px 20px;color:#c4a2b8}.zh-empty>svg{color:#ed308c;margin-bottom:15px}.zh-empty h3{font-size:18px;color:#f7dfea;margin-bottom:9px;letter-spacing:-.5px}.zh-empty p{font-size:12px;line-height:1.8;max-width:330px;margin:0 auto 18px}
 .zh-soft,.zh-load-more{border-radius:25px;padding:10px 17px;background:#422b3b;font-size:12px;font-weight:600;display:inline-flex;gap:6px;align-items:center;justify-content:center}.zh-load-more{display:flex;margin:25px auto 5px}
 .zh-error{padding:12px;border:1px solid #b64169;border-radius:12px;font-size:12px;line-height:1.7;margin-bottom:15px}.zh-error button{color:#ffafd3;margin-left:8px;text-decoration:underline}
-.zh-subheader{display:flex;align-items:center;gap:12px;height:63px;padding:0 17px}.zh-subheader h1{font-size:19px;letter-spacing:-.6px;font-weight:650}.zh-subheader>button{display:flex;width:28px;height:35px;align-items:center}.zh-subheader>span{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px}
+.zh-subheader{display:flex;align-items:center;gap:12px;height:63px;padding:0 17px}.zh-subheader h1{font-size:19px;letter-spacing:-.6px;font-weight:650}.zh-subheader>span{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px}
 .zh-notifications{padding:18px 17px;max-width:720px;margin:auto}.zh-notifications .zh-section-title h2{font-size:16px}
 .zh-notification{display:flex;position:relative;gap:12px;width:100%;text-align:left;padding:18px 12px;border-radius:14px;background:#2d1827;margin-bottom:9px}.zh-notification.unread{background:#412039}.zh-notification>span{color:#ff9cc9;padding-top:3px}.zh-notification>div{flex:1;min-width:0}.zh-notification h3{font-size:13px;margin-bottom:5px}.zh-notification p{font-size:12px;line-height:1.7;color:#dbbfd0;overflow-wrap:anywhere}.zh-notification time{display:block;font-size:10px;color:#ac809c;margin-top:9px}.zh-notification>i{background:#f4148c;border-radius:50%;width:6px;height:6px;flex:none;margin-top:7px}
 .zh-sheet-backdrop{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;background:#09030aba;backdrop-filter:blur(5px)}
@@ -2307,17 +2312,17 @@ button.gpill[onclick]{cursor:pointer}
 .zh-sheet-heading{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:22px}.zh-sheet-heading h2{font-size:18px;letter-spacing:-.4px}.zh-sheet-heading p{font-size:12px;color:#caa6bd;margin-top:6px}.zh-sheet-heading>button{font-size:26px;width:32px;height:32px;background:#492d40;border-radius:50%;flex:none;display:grid;place-items:center;line-height:1}
 .zh-gifts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px;margin:0 0 22px}.zh-gifts>button{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;border-radius:12px;padding:10px 2px;background:#402136}.zh-gifts>button>img{width:45px;height:45px;object-fit:contain}.zh-gifts>button>span{font-size:32px;height:45px}.zh-gifts b{font-size:10px;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.zh-gifts small{display:flex;align-items:center;gap:2px;font-size:10px;color:#ffc7e1}
 .zh-empty-small{font-size:13px;color:#c7a7bd;text-align:center;padding:30px 12px;line-height:1.8}.zh-full{width:100%}
-.zh-search-header{display:flex;align-items:center;gap:10px;padding:15px}.zh-search-header>button{display:flex;align-items:center;justify-content:center;width:27px;height:37px}.zh-search-header>div{display:flex;align-items:center;gap:9px;background:#392131;border:1px solid #593148;border-radius:25px;padding:11px 14px;flex:1}.zh-search-header input{font-size:12px;min-width:0}.zh-search-header input::placeholder{color:#bb8ca8}.zh-search{padding-top:15px}.zh-search-status{font-size:12px;color:#d3a4c0;margin:12px 0 19px}
+.zh-search-header{display:flex;align-items:center;gap:10px;padding:15px}.zh-search-header>div{display:flex;align-items:center;gap:9px;background:#392131;border:1px solid #593148;border-radius:25px;padding:11px 14px;flex:1}.zh-search-header input{font-size:12px;min-width:0}.zh-search-header input::placeholder{color:#bb8ca8}.zh-search{padding-top:15px}.zh-search-status{font-size:12px;color:#d3a4c0;margin:12px 0 19px}
 .zh-coins{padding:14px 20px 32px;max-width:720px;margin:0 auto}.zh-wallet-card{border-radius:20px;background:radial-gradient(ellipse at 90% 0,#6a2350,transparent 65%),#371d30;padding:25px;margin-bottom:30px;border:1px solid #54243f}.zh-wallet-card>span{font-size:12px;color:#e3bcd3}.zh-wallet-card h1{display:flex;gap:9px;align-items:center;font-size:39px;letter-spacing:-1px;margin:7px 0 12px}.zh-wallet-card p{font-size:12px;color:#dbb3cc}.zh-coins h2{font-size:23px;letter-spacing:-.7px}.zh-muted{font-size:12px;color:#c8a5bd;margin-top:7px}
 .zh-packs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:22px 0}.zh-packs>button{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 6px 14px;background:#372030;border:1px solid #4f2f43;border-radius:16px}.zh-packs>button.selected{border-color:#f42891;background:#51223e;box-shadow:0 0 0 1px #f4289130}.zh-packs svg{color:#ffbddc}.zh-packs strong{font-size:21px;letter-spacing:-.5px}.zh-packs span{font-size:9px;min-height:22px;color:#e7bed5;text-align:center}.zh-packs b{font-size:13px}
 .zh-payment-status{margin-top:20px;background:#361d2e;border-radius:14px;padding:16px}.zh-payment-status p{font-size:12px;line-height:1.7;margin-bottom:12px}.zh-coins-note{font-size:10px;color:#b38ea6;text-align:center;margin:16px 5px;line-height:1.7}
 .zh-broadcast{max-width:560px;margin:0 auto;padding:25px 22px 35px}.zh-broadcast h1{font-size:32px;letter-spacing:-1.2px;margin:10px 0 7px}.zh-broadcast>p{font-size:12px;color:#c6a0b8;line-height:1.8}.zh-camera-preview{height:220px;position:relative;background:radial-gradient(ellipse at center,#512440,#281322);border-radius:18px;overflow:hidden;margin:25px 0}.zh-camera-preview>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);z-index:1}.zh-camera-preview>span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;color:#ae6f94}.zh-camera-preview b{font-size:12px;max-width:85%;text-align:center}
 .zh-broadcast label{display:block;font-size:12px;font-weight:600;margin:16px 0}.zh-broadcast input,.zh-broadcast select{width:100%;margin-top:9px;border:1px solid #59344b;border-radius:11px;padding:13px 14px;font-size:13px;background:#321c2b;color:#fae4f0;outline:none}.zh-broadcast input::placeholder{color:#a27c94}.zh-broadcast>.zh-soft{margin-top:14px;background:transparent;color:#f4aecf}
 .zh-room{position:absolute;inset:0;display:flex;flex-direction:column;background:#120911;overflow:hidden;min-height:100%}.zh-room-video{position:absolute;inset:0}.zh-room-video>.zh-photo{opacity:.3}.zh-room-video>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.zh-room-video>video[data-zimi-local]{transform:scaleX(-1)}.zh-room-shade{position:absolute;inset:0;background:linear-gradient(180deg,#1c071975,transparent 30%,transparent 40%,#1c091ddb)}
-.zh-room-top{position:relative;display:flex;align-items:center;gap:7px;padding:17px 13px}.zh-room-top-title{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.zh-room-icon{height:32px;width:28px;display:grid;place-items:center}.zh-media-status{position:relative;text-align:center;font-size:12px;color:#fad5e8;max-width:90%;margin:6px auto 0;padding:5px 10px;background:#270c2080;border-radius:20px}.zh-media-status:empty{display:none}
+.zh-room-top{position:relative;display:flex;align-items:center;gap:7px;padding:17px 13px}.zh-room-top-title{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.zh-room-icon:not(.zb-back){height:32px;width:28px;display:grid;place-items:center}.zh-media-status{position:relative;text-align:center;font-size:12px;color:#fad5e8;max-width:90%;margin:6px auto 0;padding:5px 10px;background:#270c2080;border-radius:20px}.zh-media-status:empty{display:none}
 .zh-room-bottom{position:relative;margin-top:auto;padding:15px 17px 25px}.zh-room-bottom>h2{font-size:22px;letter-spacing:-.7px}.zh-room-bottom>p{font-size:12px;line-height:1.8}.zh-room-messages{max-height:170px;overflow:auto;margin:17px 0;font-size:12px;line-height:1.8;scrollbar-width:none}.zh-room-messages>p{margin-top:5px;overflow-wrap:anywhere}.zh-room-messages b{color:#ff9bcc;margin-right:5px}.zh-room-chat{display:flex;align-items:center;gap:9px}.zh-room-chat>input{background:#48233b9e;border:1px solid #8c537470;border-radius:25px;padding:13px;font-size:12px}.zh-room-chat>button{flex:none;color:#ffabd1}.zh-room-chat .zh-gift{width:41px;height:41px;flex-basis:41px}
 .zh-call-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.zh-call-local{transform:scaleX(-1)}
-.zh-precall{position:relative;min-height:100%;display:flex;flex-direction:column;padding:28px 23px 32px;overflow:hidden;background:#1b0b18;isolation:isolate}.zh-precall-photo{position:absolute;inset:0;z-index:-1}.zh-precall-photo>.zh-photo{opacity:.45}.zh-precall-shade{position:absolute;inset:0;background:linear-gradient(180deg,#160b2040,#251222b8 35%,#251020 60%,#210e1d 100%)}.zh-precall-back{width:32px;height:32px;display:grid;place-items:center;margin-bottom:40px}.zh-precall-content{width:100%;max-width:480px;margin:0 auto;text-align:center}.zh-precall-avatar{width:101px;height:101px;border:3px solid #f63294;border-radius:50%;overflow:hidden;margin:0 auto 20px;box-shadow:0 0 32px #f9329233}.zh-precall h1{font-size:29px;letter-spacing:-1px;margin-bottom:8px}.zh-precall h1 .zh-verified svg{width:21px;height:21px}.zh-precall-content>p{font-size:12px;color:#dcbad0;line-height:1.8}.zh-precall-status{display:inline-block;font-size:10px;margin:15px 0;color:#88edb3;background:#2451374f;border-radius:20px;padding:6px 12px}.zh-precall-details{background:#3b2033bb;border:1px solid #6c365328;border-radius:16px;padding:10px 17px;margin:21px 0;display:flex;flex-direction:column;gap:4px}.zh-precall-details>span{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:10px 0;color:#d6adc6}.zh-precall-details b{display:flex;align-items:center;color:#ffdeee;font-size:13px;gap:4px}.zh-precall-note{margin:0 0 20px}.zh-precall-content>.zh-soft{margin-top:13px;background:#38202f}.zh-call-pip{position:absolute;right:17px;top:80px;width:95px;height:140px;border:1px solid #a2758f66;border-radius:15px;overflow:hidden;background:#321528}.zh-call-pip video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.zh-call-pip>span{position:absolute;bottom:8px;left:10px;font-size:10px}.zh-call-controls{display:flex;justify-content:center;gap:18px}.zh-call-controls button{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:10px}.zh-call-controls button>svg{box-sizing:content-box;background:#5c3b53b5;padding:17px;border-radius:50%;width:22px;height:22px}.zh-call-controls .zh-end-call>svg{background:#ed3465}.zh-free-call{text-align:center;font-size:10px;margin-top:20px!important;color:#cba3bc}.zh-voice-person{position:absolute;inset:0;display:flex;flex-direction:column;gap:24px;align-items:center;justify-content:center}.zh-voice-person h2{font-size:25px;letter-spacing:-.7px}.zh-ready-illustration{height:180px;display:grid;place-items:center;color:#ff84bd}.zh-ready-illustration>svg{box-sizing:content-box;padding:35px;border:1px solid #61334e;border-radius:50%;background:radial-gradient(circle,#622441,#371d30);box-shadow:0 0 75px #f32c8e14}.zh-summary{text-align:center}.zh-summary .zh-precall-details{text-align:left}
+.zh-precall{position:relative;min-height:100%;display:flex;flex-direction:column;padding:28px 23px 32px;overflow:hidden;background:#1b0b18;isolation:isolate}.zh-precall-photo{position:absolute;inset:0;z-index:-1}.zh-precall-photo>.zh-photo{opacity:.45}.zh-precall-shade{position:absolute;inset:0;background:linear-gradient(180deg,#160b2040,#251222b8 35%,#251020 60%,#210e1d 100%)}.zh-precall-back{margin-bottom:40px}.zh-precall-content{width:100%;max-width:480px;margin:0 auto;text-align:center}.zh-precall-avatar{width:101px;height:101px;border:3px solid #f63294;border-radius:50%;overflow:hidden;margin:0 auto 20px;box-shadow:0 0 32px #f9329233}.zh-precall h1{font-size:29px;letter-spacing:-1px;margin-bottom:8px}.zh-precall h1 .zh-verified svg{width:21px;height:21px}.zh-precall-content>p{font-size:12px;color:#dcbad0;line-height:1.8}.zh-precall-status{display:inline-block;font-size:10px;margin:15px 0;color:#88edb3;background:#2451374f;border-radius:20px;padding:6px 12px}.zh-precall-details{background:#3b2033bb;border:1px solid #6c365328;border-radius:16px;padding:10px 17px;margin:21px 0;display:flex;flex-direction:column;gap:4px}.zh-precall-details>span{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:10px 0;color:#d6adc6}.zh-precall-details b{display:flex;align-items:center;color:#ffdeee;font-size:13px;gap:4px}.zh-precall-note{margin:0 0 20px}.zh-precall-content>.zh-soft{margin-top:13px;background:#38202f}.zh-call-pip{position:absolute;right:17px;top:80px;width:95px;height:140px;border:1px solid #a2758f66;border-radius:15px;overflow:hidden;background:#321528}.zh-call-pip video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.zh-call-pip>span{position:absolute;bottom:8px;left:10px;font-size:10px}.zh-call-controls{display:flex;justify-content:center;gap:18px}.zh-call-controls button{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:10px}.zh-call-controls button>svg{box-sizing:content-box;background:#5c3b53b5;padding:17px;border-radius:50%;width:22px;height:22px}.zh-call-controls .zh-end-call>svg{background:#ed3465}.zh-free-call{text-align:center;font-size:10px;margin-top:20px!important;color:#cba3bc}.zh-voice-person{position:absolute;inset:0;display:flex;flex-direction:column;gap:24px;align-items:center;justify-content:center}.zh-voice-person h2{font-size:25px;letter-spacing:-.7px}.zh-ready-illustration{height:180px;display:grid;place-items:center;color:#ff84bd}.zh-ready-illustration>svg{box-sizing:content-box;padding:35px;border:1px solid #61334e;border-radius:50%;background:radial-gradient(circle,#622441,#371d30);box-shadow:0 0 75px #f32c8e14}.zh-summary{text-align:center}.zh-summary .zh-precall-details{text-align:left}
 @media(min-width:600px){.zh-header{padding:0 max(24px,calc((100vw - 1040px)/2));height:74px}.zh-brand{font-size:22px}.zh-header-actions{gap:20px}.zh-home{padding:22px 24px 35px}.zh-stories{gap:22px}.zh-story{width:66px;flex-basis:66px}.zh-story-ring{width:66px;height:66px}.zh-filters{margin-top:24px;padding:0 24px;margin-left:-24px;margin-right:-24px}.zh-featured{height:470px}.zh-featured>.zh-photo{object-position:50% 31%}.zh-featured-bottom{left:25px;right:25px;bottom:23px}.zh-featured h1{font-size:32px}.zh-featured p{font-size:14px}.zh-featured-actions .zh-primary{flex:0 1 300px}.zh-rate{flex:0 0 140px}.zh-match{padding:22px 25px}.zh-match p{max-width:none}.zh-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}.zh-tile-media{height:260px}.zh-bonus{padding:17px 22px}.zh-bonus h3{font-size:13px}.zh-bonus p{font-size:12px}.zh-bonus>button{font-size:12px}.zh-room{max-width:700px;left:50%;transform:translateX(-50%);width:100%}.zh-tile h3{font-size:15px}.zh-tile p{font-size:12px}.zh-balance{font-size:12px}}
 @media(min-width:900px){.zh-home:not(.zh-explore){display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:0 28px}.zh-stage,.zh-filters,.zh-preview-note{grid-column:1/-1}.zh-featured{grid-column:1;grid-row:3 / span 2;height:490px}.zh-match{grid-column:1;margin:22px 0 0}.zh-trending{grid-column:2;grid-row:3 / span 3;margin-top:0}.zh-home:not(.zh-explore) .zh-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.zh-home:not(.zh-explore) .zh-tile-media{height:218px}.zh-bonus{grid-column:1/-1}.zh-explore .zh-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.zh-match h2{font-size:21px}}
 @media(max-width:350px){.zh-header{padding:0 12px;gap:6px}.zh-header-actions{gap:5px}.zh-brand{font-size:16px}.zh-brand>svg{width:22px}.zh-home{padding-left:12px;padding-right:12px}.zh-section-title h2{font-size:16px}.zh-section-title>span{font-size:8px}.zh-story{width:53px;flex-basis:53px}.zh-story-ring{width:53px;height:53px}.zh-stories{gap:12px}.zh-match{padding:16px 12px;gap:10px}.zh-match h2{font-size:16px}.zh-match>.zh-primary{min-width:74px;padding:10px}.zh-featured-actions>.zh-primary{font-size:11px}.zh-rate{flex-basis:32%}.zh-tile-media{height:188px}.zh-tile h3{font-size:12px}}
@@ -2451,9 +2456,9 @@ button.gpill[onclick]{cursor:pointer}
    Colours come from the theme tokens so every palette, light or dark, carries through. */
 .zc-thread{--zc-gutter:max(14px,calc(50% - 380px));position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--canvas);color:var(--ink)}
 .zc-thread-header{flex:none;display:flex;align-items:center;gap:4px;padding:8px max(10px,calc(50% - 390px)) 8px max(4px,calc(50% - 400px));border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
-.zc-thread-back,.zc-thread-actions>button,.zc-thread-more>button{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;color:var(--ink)}
+.zc-thread-actions>button,.zc-thread-more>button{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;color:var(--ink)}
 .zc-thread-person{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:3px;border-radius:14px;text-align:left}
-.zc-thread-person:active,.zc-thread-back:active,.zc-thread-actions>button:active{background:var(--surface)}
+.zc-thread-person:active,.zc-thread-actions>button:active{background:var(--surface)}
 .zc-thread-person .zc-avatar{width:40px;height:40px}
 .zc-thread .zc-avatar .zh-fallback>span{font-size:14px}
 .zc-thread-presence{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:var(--faint);border:2px solid var(--canvas)}
@@ -2864,14 +2869,14 @@ button.gpill[onclick]{cursor:pointer}
 .zi-icon[data-icon=info]{--zi-tap:zi-bounce;--zi-time:560ms}
 .zpc-setup{position:relative;isolation:isolate;display:flex;flex-direction:column;width:100%;max-width:480px;min-height:100%;margin:0 auto;padding:23px 24px 20px;color:var(--ink);background:var(--canvas);font-family:inherit;font-weight:var(--theme-font-weight,400);line-height:1.4;overflow:hidden}
 .zpc-setup button{font-family:inherit;touch-action:manipulation}.zpc-setup button:disabled{opacity:1;cursor:default}.zpc-setup button:focus-visible{outline:2px solid var(--accent-ink)!important;outline-offset:4px}.zpc-setup .zi-icon{flex-shrink:0}.zpc-ambient{position:absolute;z-index:-1;inset:0;pointer-events:none;background:radial-gradient(ellipse at 72% 16%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 43%),radial-gradient(ellipse at 14% 33%,color-mix(in srgb,var(--accent-ink) 9%,transparent),transparent 42%)}.zpc-ambient:after{content:'';position:absolute;width:430px;height:430px;border:1px solid color-mix(in srgb,var(--accent) 7%,transparent);border-radius:50%;top:-275px;right:-150px;box-shadow:0 0 0 55px color-mix(in srgb,var(--accent) 2%,transparent)}
-.zpc-header{display:flex;align-items:center;justify-content:space-between;gap:12px;height:40px;flex-shrink:0}.zpc-header>span:nth-child(2){font-size:calc(13px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700);letter-spacing:.1px;color:var(--ink);padding-left:24px}.zpc-back{width:39px;height:39px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink)}.zpc-private{display:flex;align-items:center;gap:5px;font-size:calc(10px * var(--theme-font-scale,1));font-weight:var(--theme-font-weight,400);color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:6px 9px;background:var(--surface)}
+.zpc-header{display:flex;align-items:center;justify-content:space-between;gap:12px;height:40px;flex-shrink:0}.zpc-header>span:nth-child(2){font-size:calc(13px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700);letter-spacing:.1px;color:var(--ink);padding-left:24px}.zpc-private{display:flex;align-items:center;gap:5px;font-size:calc(10px * var(--theme-font-scale,1));font-weight:var(--theme-font-weight,400);color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:6px 9px;background:var(--surface)}
 .zpc-profile{position:relative;display:flex;flex:1 0 auto;flex-direction:column;align-items:center;justify-content:center;padding:39px 0 30px;text-align:center;min-width:0}.zpc-avatar-wrap{position:relative;width:114px;height:114px;display:grid;place-items:center;margin:0 0 25px;flex:none}.zpc-orbit{position:absolute;inset:-13px;border:1px solid color-mix(in srgb,var(--accent) 12%,transparent);border-radius:50%}.zpc-orbit:before{content:'';position:absolute;inset:-14px;border:1px solid color-mix(in srgb,var(--accent) 5%,transparent);border-radius:50%}.zpc-orbit:after{content:'';position:absolute;left:15px;top:11px;width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px color-mix(in srgb,var(--accent) 43%,transparent)}.zpc-avatar{position:relative;width:108px;height:108px;border:3px solid var(--accent);border-radius:50%;overflow:hidden;background:radial-gradient(ellipse at 20% 10%,color-mix(in srgb,var(--accent) 24%,var(--raised)),var(--raised) 74%);box-shadow:0 0 36px color-mix(in srgb,var(--accent) 8%,transparent),0 9px 25px color-mix(in srgb,var(--ink) 12%,transparent);display:grid;place-items:center}.zpc-avatar>span{font-size:calc(34px * var(--theme-font-scale,1));letter-spacing:-1px;font-weight:var(--theme-heading-weight,700);color:var(--ink)}.zpc-avatar>img{position:absolute;width:100%;height:100%;inset:0;object-fit:cover;object-position:center 28%;border-radius:50%}.zpc-avatar.has-photo>span{visibility:hidden}.zpc-avatar.zpc-image-failed>span{visibility:visible}.zpc-avatar-badge{position:absolute;bottom:0;right:0;width:32px;height:32px;display:grid;place-items:center;border:3px solid var(--canvas);border-radius:50%;background:var(--cta);color:var(--cta-ink)}.zpc-eyebrow{font-size:calc(8px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700);letter-spacing:2px;color:var(--muted);margin-bottom:10px}.zpc-profile h1{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%;font-size:calc(29px * var(--theme-font-scale,1));line-height:1.2;font-weight:var(--theme-heading-weight,700);letter-spacing:-1px;color:var(--ink);overflow-wrap:anywhere;margin:0}.zpc-profile h1>.zh-verified{display:inline-flex;flex:none;vertical-align:middle}.zpc-profile h1 .zi-icon{width:19px;height:19px;color:var(--accent-ink)}.zpc-category{display:flex;justify-content:center;align-items:center;gap:7px;flex-wrap:wrap;font-size:calc(12px * var(--theme-font-scale,1));color:var(--muted);margin:9px 0 14px}.zpc-category>span{color:var(--muted)}.zpc-presence{display:inline-flex;align-items:center;gap:6px;font-size:calc(10px * var(--theme-font-scale,1));line-height:1;padding:8px 11px;border-radius:20px;font-weight:var(--theme-font-weight,400)}.zpc-presence>i{width:5px;height:5px;border-radius:50%;flex:none}.zpc-presence.is-online{color:var(--online);background:color-mix(in srgb,var(--online) 7%,var(--surface));border:1px solid color-mix(in srgb,var(--online) 22%,var(--line))}.zpc-presence.is-online>i{background:var(--online);box-shadow:0 0 6px color-mix(in srgb,var(--online) 27%,transparent)}.zpc-presence.is-offline{background:var(--surface);border:1px solid var(--line);color:var(--muted)}.zpc-presence.is-offline>i{background:var(--muted)}.zpc-presence.is-busy{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 7%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line))}.zpc-presence.is-busy>i{background:var(--accent)}.is-unavailable:not(.is-preparing) .zpc-avatar{border-color:var(--line)}.is-unavailable:not(.is-preparing) .zpc-avatar-badge{background:var(--raised);color:var(--muted)}
 .zpc-content{flex-shrink:0}.zpc-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.zpc-section-title h2{font-size:calc(12px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700);color:var(--ink)}.zpc-section-title>span{font-size:calc(7px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700);letter-spacing:.7px;color:var(--muted);white-space:nowrap}.zpc-modes{display:grid;grid-template-columns:1fr 1fr;gap:11px}.zpc-mode{position:relative;display:flex;align-items:center;gap:10px;min-height:88px;padding:16px 12px;text-align:left;border:1px solid var(--line);border-radius:17px;background:var(--surface);color:var(--ink);transition:background 150ms,border-color 150ms}.zpc-mode.selected{border-color:var(--accent);background:linear-gradient(115deg,color-mix(in srgb,var(--accent) 15%,var(--surface)),color-mix(in srgb,var(--accent) 7%,var(--surface)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 3%,transparent)}.zpc-mode-icon{width:34px;height:38px;display:grid;place-items:center;flex:none;color:var(--muted)}.zpc-mode.selected .zpc-mode-icon{color:var(--accent-ink)}.zpc-mode-copy{display:flex;flex-direction:column;gap:4px;min-width:0}.zpc-mode-copy>strong{font-size:calc(12px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700);color:var(--ink);white-space:nowrap}.zpc-mode-copy>small{font-size:calc(9px * var(--theme-font-scale,1));color:var(--muted);white-space:nowrap}.zpc-mode.selected .zpc-mode-copy>small{color:var(--muted)}.zpc-mode-check{position:absolute;right:8px;top:8px;width:12px;height:12px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--cta-ink)}.zpc-mode.selected .zpc-mode-check{background:var(--cta);border-color:var(--cta)}.zpc-mode[disabled]{cursor:wait;opacity:.7}
 .zpc-details{display:flex;align-items:center;justify-content:space-between;margin-top:16px;border-radius:17px;background:var(--surface);border:1px solid var(--line);padding:16px 19px;min-height:76px;gap:18px}.zpc-details>div{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;flex:1}.zpc-details>div:last-child{align-items:flex-end;text-align:right}.zpc-details>i{height:29px;width:1px;background:var(--line);flex:none}.zpc-details>div>span{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:calc(10px * var(--theme-font-scale,1))}.zpc-details>div>span>svg{color:var(--accent-ink)}.zpc-details strong{color:var(--ink);font-size:calc(15px * var(--theme-font-scale,1));line-height:1.1;font-weight:var(--theme-heading-weight,700);font-variant-numeric:tabular-nums}.zpc-details strong.zpc-free{color:var(--online)}.zpc-details strong small{font-size:calc(10px * var(--theme-font-scale,1));color:var(--muted);font-weight:var(--theme-font-weight,400)}.zpc-details strong small+small{display:block;margin-top:5px}.zpc-details [role=status]{display:inline-block;vertical-align:middle}
 .zpc-permission-note,.zpc-unavailable-note{display:flex;align-items:flex-start;justify-content:center;gap:9px;padding:0 4px;margin-top:20px;min-height:36px}.zpc-permission-note>svg{color:var(--muted);margin-top:3px}.zpc-permission-note>p,.zpc-unavailable-note>p{font-size:calc(10px * var(--theme-font-scale,1));color:var(--muted);line-height:1.7;max-width:280px}.zpc-permission-note p>span{color:var(--muted)}.zpc-unavailable-note>svg{color:var(--muted);margin-top:3px}.zpc-unavailable-note>p{color:var(--ink)}.zpc-unavailable-note p>span{color:var(--muted)}.zpc-preparing{display:flex;align-items:center;gap:12px;border-radius:14px;padding:13px 12px;background:var(--surface);border:1px solid var(--line);margin-top:17px}.zpc-preparing-icon{display:grid;place-items:center;background:var(--raised);border-radius:10px;width:37px;height:42px;color:var(--accent-ink);flex:none}.zpc-preparing>div:last-child{flex:1;min-width:0}.zpc-preparing strong{display:block;color:var(--ink);font-size:calc(11px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700)}.zpc-preparing p{font-size:calc(10px * var(--theme-font-scale,1));line-height:1.6;color:var(--muted);margin:3px 0 7px}.zpc-progress-skeleton{height:4px;width:100%;display:block;border-radius:4px;overflow:hidden}.zpc-progress-skeleton>i.zh-skeleton-shape{height:100%;width:100%;display:block;background-image:linear-gradient(100deg,var(--raised) 15%,color-mix(in srgb,var(--accent) 25%,var(--raised)) 45%,var(--raised) 80%)}.zpc-error{display:flex;align-items:flex-start;gap:9px;border-radius:13px;background:color-mix(in srgb,var(--theme-danger) 8%,var(--surface));border:1px solid color-mix(in srgb,var(--theme-danger) 30%,var(--line));margin-top:16px;padding:11px 12px;color:var(--theme-danger)}.zpc-error>svg{margin-top:2px;flex:none}.zpc-error strong{display:block;font-size:calc(11px * var(--theme-font-scale,1));margin-bottom:3px}.zpc-error p{font-size:calc(10px * var(--theme-font-scale,1));line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
 .zpc-actions{display:flex;flex-direction:column;gap:12px;flex-shrink:0;padding-top:24px}.zpc-primary{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:54px;border-radius:16px;background:var(--cta);color:var(--cta-ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700);box-shadow:0 8px 22px color-mix(in srgb,var(--cta) 13%,transparent);border:1px solid color-mix(in srgb,var(--cta) 60%,var(--line));padding:13px 15px}.zpc-primary>svg:last-child:not(:first-child){margin-left:auto;width:16px;color:var(--cta-ink)}.zpc-primary>svg:first-child:not(:last-child){margin-right:auto}.zpc-primary>span{margin-left:-21px}.zpc-primary[disabled]{background:var(--raised);color:var(--muted);border-color:var(--line);box-shadow:none}.zpc-primary[disabled]>svg:first-child{margin-right:0}.zpc-primary[disabled]>span{margin-left:0}.is-preparing .zpc-primary[disabled]{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 12%,var(--raised));border-color:color-mix(in srgb,var(--accent) 25%,var(--line))}.zpc-secondary,.zpc-cancel{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;border-radius:13px;color:var(--ink);font-size:calc(12px * var(--theme-font-scale,1));font-weight:var(--theme-heading-weight,700)}.zpc-secondary{background:var(--surface);border:1px solid var(--line)}.zpc-cancel{text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--line)}.zpc-footer-note{display:flex;align-items:center;justify-content:center;gap:5px;font-size:calc(9px * var(--theme-font-scale,1));color:var(--muted);min-height:19px}.zpc-demo{color:var(--muted);font-size:calc(8px * var(--theme-font-scale,1));text-align:center;line-height:1.4}.zpc-missing{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding-block:60px}.zpc-missing>h1{font-size:calc(26px * var(--theme-font-scale,1));color:var(--ink)}.zpc-missing>p{color:var(--muted);font-size:calc(13px * var(--theme-font-scale,1))}.zpc-missing>.zpc-primary{margin-top:14px}
 @media(min-width:600px){:root.zpc-active .app{background:radial-gradient(ellipse at 50% 40%,var(--surface),var(--canvas) 75%)}.zpc-setup{padding-inline:32px;border-inline:1px solid var(--line);box-shadow:0 0 80px color-mix(in srgb,var(--ink) 12%,transparent)}.zpc-profile{padding-block:40px}.zpc-profile h1{font-size:calc(32px * var(--theme-font-scale,1))}.zpc-avatar-wrap{width:125px;height:125px}.zpc-avatar{width:118px;height:118px}.zpc-content,.zpc-actions{width:100%;max-width:390px;margin-inline:auto}.zpc-mode{min-height:92px;padding-inline:17px}.zpc-mode-copy>strong{font-size:calc(13px * var(--theme-font-scale,1))}.zpc-mode-copy>small{font-size:calc(10px * var(--theme-font-scale,1))}.zpc-primary{min-height:56px}}
-@media(max-height:740px){.zpc-setup{padding:16px 22px 14px}.zpc-header{height:35px}.zpc-back{height:35px;width:35px}.zpc-profile{padding:23px 0 20px}.zpc-avatar-wrap{width:90px;height:90px;margin-bottom:18px}.zpc-avatar{width:86px;height:86px}.zpc-avatar>span{font-size:calc(29px * var(--theme-font-scale,1))}.zpc-avatar-badge{width:28px;height:28px}.zpc-avatar-badge>svg{width:14px;height:14px}.zpc-orbit{inset:-10px}.zpc-orbit:before{inset:-11px}.zpc-eyebrow{font-size:calc(7px * var(--theme-font-scale,1));margin-bottom:7px;letter-spacing:1.8px}.zpc-profile h1{font-size:calc(26px * var(--theme-font-scale,1))}.zpc-category{margin:7px 0 10px;font-size:calc(11px * var(--theme-font-scale,1))}.zpc-presence{font-size:calc(9px * var(--theme-font-scale,1));padding:7px 10px}.zpc-section-title{margin-bottom:10px}.zpc-section-title h2{font-size:calc(11px * var(--theme-font-scale,1))}.zpc-section-title>span{font-size:calc(6px * var(--theme-font-scale,1))}.zpc-mode{min-height:75px;padding:12px 10px;gap:7px;border-radius:14px}.zpc-mode-icon{width:30px}.zpc-mode-copy>strong{font-size:calc(11px * var(--theme-font-scale,1))}.zpc-mode-copy>small{font-size:calc(8px * var(--theme-font-scale,1))}.zpc-details{margin-top:12px;padding:13px 16px;min-height:65px;border-radius:14px}.zpc-permission-note,.zpc-unavailable-note{margin-top:14px}.zpc-actions{padding-top:18px;gap:9px}.zpc-primary{min-height:49px;font-size:calc(13px * var(--theme-font-scale,1));border-radius:14px}.zpc-preparing{padding:9px 11px;margin-top:12px}.zpc-error{margin-top:12px;padding-block:9px}}
+@media(max-height:740px){.zpc-setup{padding:16px 22px 14px}.zpc-profile{padding:23px 0 20px}.zpc-avatar-wrap{width:90px;height:90px;margin-bottom:18px}.zpc-avatar{width:86px;height:86px}.zpc-avatar>span{font-size:calc(29px * var(--theme-font-scale,1))}.zpc-avatar-badge{width:28px;height:28px}.zpc-avatar-badge>svg{width:14px;height:14px}.zpc-orbit{inset:-10px}.zpc-orbit:before{inset:-11px}.zpc-eyebrow{font-size:calc(7px * var(--theme-font-scale,1));margin-bottom:7px;letter-spacing:1.8px}.zpc-profile h1{font-size:calc(26px * var(--theme-font-scale,1))}.zpc-category{margin:7px 0 10px;font-size:calc(11px * var(--theme-font-scale,1))}.zpc-presence{font-size:calc(9px * var(--theme-font-scale,1));padding:7px 10px}.zpc-section-title{margin-bottom:10px}.zpc-section-title h2{font-size:calc(11px * var(--theme-font-scale,1))}.zpc-section-title>span{font-size:calc(6px * var(--theme-font-scale,1))}.zpc-mode{min-height:75px;padding:12px 10px;gap:7px;border-radius:14px}.zpc-mode-icon{width:30px}.zpc-mode-copy>strong{font-size:calc(11px * var(--theme-font-scale,1))}.zpc-mode-copy>small{font-size:calc(8px * var(--theme-font-scale,1))}.zpc-details{margin-top:12px;padding:13px 16px;min-height:65px;border-radius:14px}.zpc-permission-note,.zpc-unavailable-note{margin-top:14px}.zpc-actions{padding-top:18px;gap:9px}.zpc-primary{min-height:49px;font-size:calc(13px * var(--theme-font-scale,1));border-radius:14px}.zpc-preparing{padding:9px 11px;margin-top:12px}.zpc-error{margin-top:12px;padding-block:9px}}
 @media(max-width:360px){.zpc-setup{padding-inline:18px}.zpc-header>span:nth-child(2){font-size:calc(12px * var(--theme-font-scale,1));padding-left:16px}.zpc-profile h1{font-size:calc(25px * var(--theme-font-scale,1));letter-spacing:-.8px}.zpc-section-title>span{display:none}.zpc-modes{gap:9px}.zpc-mode{padding-inline:8px;gap:5px}.zpc-mode-icon{width:28px}.zpc-mode-icon>svg{width:20px;height:20px}.zpc-mode-copy>strong{font-size:calc(11px * var(--theme-font-scale,1))}.zpc-mode-copy>small{font-size:calc(8px * var(--theme-font-scale,1))}.zpc-details{padding-inline:15px}.zpc-permission-note p,.zpc-unavailable-note p{font-size:calc(9px * var(--theme-font-scale,1))}.zpc-eyebrow{font-size:calc(7px * var(--theme-font-scale,1))}}
 @media(max-height:610px){.zpc-profile{padding-block:20px}.zpc-setup{min-height:610px}.zpc-avatar-wrap{width:76px;height:76px;margin-bottom:16px}.zpc-avatar{width:72px;height:72px}.zpc-mode{min-height:68px}}
 @media(prefers-reduced-motion:reduce){.zpc-setup *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
@@ -2949,6 +2954,50 @@ button.gpill[onclick]{cursor:pointer}
 @keyframes zo-check{to{transform:rotate(360deg)}}
 @keyframes zo-float-chat{50%{transform:translateY(-5px) rotate(-7deg)}}
 @keyframes zo-float-heart{50%{transform:translateY(4px) rotate(5deg)}}
+.zu-page{max-width:1100px;margin:0 auto;padding-bottom:154px;color:var(--ink)}
+.zu-page .zh-photo-pending{background-image:linear-gradient(100deg,var(--raised) 20%,color-mix(in srgb,var(--ink) 10%,var(--raised)) 45%,var(--raised) 70%)}
+.zu-cover{height:238px;position:relative;overflow:hidden;background:var(--raised);border-radius:0 0 25px 25px;isolation:isolate}
+.zu-cover-photo{width:100%;height:100%;object-fit:cover;object-position:center 36%;display:block}
+.zu-cover-shade{position:absolute;inset:0;background:linear-gradient(180deg,#130c184a,transparent 38%,#130c184f);pointer-events:none}
+.zu-cover-art{position:absolute;inset:0;background:linear-gradient(125deg,color-mix(in srgb,var(--accent) 38%,var(--surface)),var(--surface) 65%,var(--raised))}
+.zu-cover-art>i{position:absolute;width:330px;height:330px;border:1px solid color-mix(in srgb,var(--accent-ink) 22%,transparent);border-radius:50%;right:-110px;top:-100px;transform:rotate(-22deg)}
+.zu-cover-art>i:nth-child(2){width:260px;height:260px;right:-75px;top:-65px}.zu-cover-art>i:nth-child(3){width:190px;height:190px;right:-40px;top:-30px;background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.zu-toolbar{position:absolute;inset:16px 18px auto;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:2;color:#fff}
+.zu-toolbar>span{font-size:13px;font-weight:600;letter-spacing:.2px;text-shadow:0 1px 10px #0008}
+.zu-toolbar-more{width:40px;height:40px;display:grid;place-items:center;border:1px solid #ffffff3d;border-radius:50%;background:#0c04095c;color:#fff;backdrop-filter:blur(10px)}
+.zu-presence{position:absolute;right:18px;bottom:18px;display:flex;align-items:center;gap:6px;color:#fff;background:#17101baa;border:1px solid #ffffff26;border-radius:30px;backdrop-filter:blur(12px);padding:7px 11px;font-size:10px;font-weight:600}
+.zu-presence>i{width:6px;height:6px;border-radius:50%;background:#c2b7c1}.zu-presence.is-online>i{background:#75ebba}.zu-presence.is-live{background:var(--accent);border-color:transparent}.zu-presence.is-live>i{background:var(--cta-ink)}
+.zu-layout{padding:0 20px}.zu-overview{position:relative;min-width:0}.zu-identity-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-top:-43px;position:relative;z-index:1}
+.zu-avatar{width:96px;height:96px;flex:none;border:5px solid var(--canvas);border-radius:50%;position:relative;background:var(--raised);box-shadow:0 8px 24px -14px #0008}
+.zu-avatar>img,.zu-avatar>.zf-face{height:100%;width:100%;object-fit:cover;border-radius:50%;display:block}
+.zu-verified{position:absolute;bottom:0;right:-1px;display:grid;place-items:center;width:27px;height:27px;border:3px solid var(--canvas);background:var(--accent);color:var(--cta-ink);border-radius:50%}
+.zu-follow{display:flex;justify-content:center;align-items:center;gap:6px;padding:10px 19px;min-height:42px;min-width:104px;margin-bottom:5px;background:var(--accent);color:var(--cta-ink);border-radius:12px;font-size:12px;font-weight:650;transition:transform 150ms}
+.zu-follow.is-following{background:var(--raised);color:var(--ink);border:1px solid var(--line)}
+.zu-identity{padding-top:16px}.zu-eyebrow{display:block;color:var(--accent-ink);font-size:9px;font-weight:700;letter-spacing:1.7px;margin-bottom:7px}
+.zu-identity h1{font-size:29px;line-height:1.2;letter-spacing:-1px;overflow-wrap:anywhere;font-weight:750}
+.zu-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:11px;line-height:1.5}.zu-meta>span{display:inline-flex;align-items:center;gap:4px}.zu-meta .zu-category{color:var(--accent-ink)}
+.zu-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:22px 0 19px;padding:17px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.zu-stats>div{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}.zu-stats>div+div{border-left:1px solid var(--line)}.zu-stats strong{font-size:20px;font-weight:700;line-height:1.15;letter-spacing:-.5px;max-width:100%;overflow-wrap:anywhere}.zu-stats span{font-size:10px;color:var(--muted)}
+.zu-bio{font-size:12px;color:var(--muted);line-height:1.8;white-space:pre-line;overflow-wrap:anywhere}
+.zu-languages{display:flex;align-items:flex-start;gap:7px;color:var(--muted);font-size:10px;line-height:1.6;margin-top:12px}.zu-languages>svg{flex:none;color:var(--accent-ink);margin-top:1px}
+.zu-gift{display:flex;align-items:center;gap:12px;width:100%;margin:22px 0 6px;padding:13px 14px;border:1px solid var(--line);border-radius:15px;text-align:left;background:linear-gradient(110deg,color-mix(in srgb,var(--accent) 7%,var(--surface)),var(--surface))}
+.zu-gift-icon{width:38px;height:38px;flex:none;border-radius:12px;background:var(--accent-wash);color:var(--accent-ink);display:grid;place-items:center}.zu-gift>span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:4px}.zu-gift b{font-size:12px;font-weight:600}.zu-gift small{font-size:10px;color:var(--muted)}.zu-gift>svg{color:var(--accent-ink)}
+.zu-content{min-width:0;margin-top:24px}.zu-live-card{display:flex;align-items:center;gap:11px;padding:14px;border:1px solid var(--accent-line);border-radius:15px;background:var(--accent-wash);margin-bottom:22px}.zu-live-symbol{display:grid;place-items:center;flex:none;color:var(--accent-ink)}.zu-live-card>div:nth-child(2){min-width:0;flex:1}.zu-live-card span{color:var(--accent-ink);font-size:8px;letter-spacing:1.1px;font-weight:700;display:flex;align-items:center;gap:5px}.zu-live-card span>i{width:5px;height:5px;border-radius:50%;background:var(--accent)}.zu-live-card h2{font-size:12px;line-height:1.5;letter-spacing:-.1px;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.zu-live-card p{font-size:9px;line-height:1.5;color:var(--muted)}.zu-live-card>button{display:flex;align-items:center;gap:4px;min-height:44px;font-size:10px;font-weight:650;flex:none;color:var(--accent-ink)}
+.zu-tabs{display:flex;align-items:center;gap:25px;border-bottom:1px solid var(--line);margin-bottom:18px}.zu-tabs>button{display:flex;align-items:center;justify-content:center;gap:7px;position:relative;min-height:48px;font-size:12px;font-weight:600;color:var(--muted);padding:0 1px 13px}.zu-tabs>button[aria-selected=true]{color:var(--ink)}.zu-tabs>button[aria-selected=true]::after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:3px;border-radius:3px;background:var(--accent)}.zu-tabs>button>span{background:var(--raised);color:var(--muted);font-size:9px;min-width:20px;line-height:18px;text-align:center;border-radius:6px;padding:0 4px}.zu-tabs>button[aria-selected=true]>svg{color:var(--accent-ink)}
+.zu-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.zu-photo{position:relative;display:block;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--raised);isolation:isolate;min-width:0}.zu-photo>img,.zu-photo>video{display:block;width:100%;height:100%;object-fit:cover;transition:transform 220ms}.zu-photo-shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 65%,#10091266)}.zu-photo-expand{position:absolute;right:8px;bottom:8px;width:23px;height:23px;display:grid;place-items:center;background:#17101b66;border:1px solid #ffffff38;color:#fff;border-radius:50%;backdrop-filter:blur(8px);transform:rotate(-45deg)}.zu-play{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:37px;height:37px;border-radius:50%;color:#fff;background:#17101b80}.zu-media-unavailable{display:none}.zu-photo.is-unavailable .zu-media-unavailable{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;font-size:9px;color:var(--muted);padding:8px}.zu-photo.is-unavailable>.zu-photo-expand{display:none}
+.zu-empty{text-align:center;display:flex;flex-direction:column;align-items:center;padding:34px 18px 28px;color:var(--muted)}.zu-empty>svg{margin-bottom:17px;color:var(--accent-ink)}.zu-empty h2{font-size:17px;font-weight:650;letter-spacing:-.4px;color:var(--ink);line-height:1.4;margin-bottom:8px}.zu-empty p{font-size:12px;line-height:1.8;max-width:285px}.zu-text-button{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin-top:10px;color:var(--accent-ink);font-weight:600;font-size:11px}
+.zu-about{padding:4px 0 8px}.zu-about section+section{margin-top:23px}.zu-about h2{font-size:17px;letter-spacing:-.35px;margin-bottom:10px}.zu-about h3{font-size:11px;font-weight:650;margin-bottom:10px}.zu-about section>p{font-size:12px;line-height:1.9;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere}.zu-interests{display:flex;flex-wrap:wrap;gap:7px}.zu-interests>span{padding:8px 11px;border:1px solid var(--line);border-radius:25px;font-size:10px;background:var(--surface)}.zu-details{margin-top:22px;padding:4px 15px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}.zu-details>div{display:flex;align-items:center;gap:12px;padding:15px 0;min-width:0}.zu-details>div+div{border-top:1px solid var(--line)}.zu-details>div>svg{color:var(--accent-ink);flex:none}.zu-details>div>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;font-size:10px;color:var(--muted)}.zu-details b{font-size:12px;line-height:1.5;font-weight:500;color:var(--ink);overflow-wrap:anywhere}.zu-details .zu-account-id{font-size:10px;font-variant-numeric:tabular-nums}.zu-trust{display:flex;align-items:center;justify-content:center;gap:6px;margin:20px 0 0;color:var(--muted);font-size:10px}
+.zu-actionbar{position:fixed;bottom:0;left:0;right:0;z-index:35;padding:13px 20px max(16px,env(safe-area-inset-bottom));background:color-mix(in srgb,var(--canvas) 94%,transparent);backdrop-filter:blur(18px);border-top:1px solid var(--line)}.zu-actionbar-inner{max-width:1060px;margin:auto}.zu-call-info{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}.zu-call-info>span{font-size:8px;letter-spacing:1px;font-weight:600;color:var(--muted)}.zu-call-info>strong{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:650}.zu-call-info>strong>svg{color:var(--accent-ink)}.zu-call-info small{font-size:9px;color:var(--muted);font-weight:400}.zu-action-buttons{display:flex;gap:9px}.zu-message,.zu-call{min-height:49px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:13px;font-size:12px;font-weight:650;padding:12px 14px}.zu-message{flex:1;background:var(--raised);border:1px solid var(--line)}.zu-call{flex:1.7;background:var(--accent);color:var(--cta-ink)}.zu-action-note{font-size:10px;color:var(--muted);text-align:center;margin-top:9px}
+.zu-page button:disabled,.zu-dialog button:disabled{opacity:.45;cursor:default;box-shadow:none}.zu-page :is(button,input,[tabindex]):focus-visible,.zu-dialog :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}.zu-icon-button{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:var(--raised);color:var(--ink)}
+.zu-error{padding:25px 0;color:var(--muted)}.zu-error h1{font-size:25px;letter-spacing:-.7px;color:var(--ink);margin-bottom:10px}.zu-error p{font-size:12px;line-height:1.8;margin-bottom:15px}.zu-inline-error{font-size:11px;line-height:1.6;color:var(--theme-danger,var(--accent-ink));margin:14px 0}.zu-secondary{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);font-size:12px;font-weight:600}.zu-load-more{display:block;min-height:44px;padding:11px 20px;margin:20px auto 0;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:12px;font-weight:600}.zu-post-error{text-align:center}
+.zu-profile-skeleton{padding-top:23px}.zu-skeleton-name{display:flex;flex-direction:column;gap:12px}.zu-skeleton-stats{display:flex;justify-content:space-around;gap:15px;border-block:1px solid var(--line);padding:18px 0;margin:22px 0}.zu-skeleton-stats>div{display:flex;flex-direction:column;align-items:center;gap:8px}.zu-profile-skeleton>div>.zh-skeleton-shape{margin-bottom:9px}.zu-skeleton-tags{display:flex;gap:8px;margin-top:15px}.zu-skeleton-gallery{margin-bottom:14px}
+.zu-dialog{position:fixed;inset:0;margin:auto;width:calc(100% - 32px);max-width:440px;max-height:calc(100dvh - 40px);overflow:auto;padding:22px;border:1px solid var(--line);border-radius:23px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0005}.zu-dialog::backdrop{background:#08030ca3;backdrop-filter:blur(6px)}.zu-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:18px}.zu-dialog h2{font-size:20px;letter-spacing:-.5px}.zu-dialog-intro{font-size:12px;line-height:1.8;color:var(--muted);margin-bottom:16px}.zu-id-field{display:block;font-size:10px;color:var(--muted)}.zu-id-field input{display:block;font-size:12px;padding:13px;border:1px solid var(--line);border-radius:12px;margin:8px 0 16px;background:var(--raised);width:100%}.zu-option{width:100%;min-height:50px;display:flex;align-items:center;gap:11px;font-size:12px;text-align:left;border-top:1px solid var(--line)}.zu-danger-text{color:var(--theme-danger,var(--accent-ink))}.zu-dialog-status{font-size:11px;line-height:1.6;color:var(--theme-danger,var(--accent-ink));margin-top:10px}.zu-block-symbol{display:grid;place-items:center;width:55px;height:55px;background:var(--raised);color:var(--accent-ink);border-radius:17px;margin-bottom:16px}.zu-dialog-actions{display:flex;gap:10px;margin-top:20px}.zu-dialog-actions>button{flex:1}.zu-block-confirm{min-height:44px;background:var(--theme-danger,var(--accent));color:var(--canvas);border-radius:12px;font-size:12px;font-weight:600;padding:12px}.zu-copy-helper{position:fixed;top:0;left:0;width:1px;height:1px;opacity:0}
+.zu-photo-dialog{max-width:620px}.zu-viewer{background:var(--canvas);border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center}.zu-viewer>img,.zu-viewer>video{width:100%;max-height:60dvh;object-fit:contain;display:block}.zu-caption{font-size:12px;color:var(--muted);line-height:1.8;margin-top:15px;overflow-wrap:anywhere}.zu-viewer-actions{display:flex;justify-content:space-between;gap:12px;margin-top:18px}
+@media(min-width:760px){.zu-page{padding:24px 28px 135px}.zu-cover{height:300px;border-radius:24px}.zu-cover-photo{object-position:center 40%}.zu-toolbar{inset:20px 22px auto}.zu-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:36px;padding:0 24px}.zu-identity-top{margin-top:-45px}.zu-avatar{width:108px;height:108px}.zu-identity{padding-top:20px}.zu-content{margin-top:28px}.zu-gallery{gap:10px}.zu-photo{border-radius:14px}.zu-tabs{gap:30px;margin-bottom:22px}.zu-live-card{flex-wrap:wrap}.zu-live-card>button{margin-left:auto}.zu-actionbar{padding:16px 35px}.zu-actionbar-inner{display:flex;align-items:center;justify-content:space-between;gap:25px}.zu-call-info{flex-direction:column;align-items:flex-start;gap:7px;margin:0}.zu-action-buttons{min-width:340px;margin-left:auto}.zu-action-note{max-width:190px;line-height:1.6;margin:0}.zu-about{padding-top:8px}.zu-bio{font-size:13px}.zu-presence{right:22px;bottom:22px}}
+@media(min-width:1050px){.zu-layout{grid-template-columns:320px minmax(0,1fr);gap:42px}.zu-cover{height:330px}.zu-gallery{gap:12px}.zu-photo{aspect-ratio:3/4}.zu-live-card{flex-wrap:nowrap}.zu-live-card>button{margin-left:0}}
+@media(max-width:350px){.zu-layout{padding:0 15px}.zu-cover{height:210px}.zu-toolbar{inset-inline:15px}.zu-identity h1{font-size:26px}.zu-live-card{gap:8px;padding:11px}.zu-live-symbol{display:none}.zu-live-card p{font-size:8px}.zu-call-info>span{font-size:7px;letter-spacing:.6px}.zu-actionbar{padding-inline:15px}.zu-call,.zu-message{font-size:11px;padding-inline:10px}.zu-action-buttons{gap:7px}.zu-gallery{gap:6px}.zu-photo{border-radius:9px}}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){.zu-photo:hover>img{transform:scale(1.035)}.zu-follow:active{transform:scale(.97)}}
+@media(prefers-reduced-motion:reduce){.zu-photo>img,.zu-photo>video,.zu-follow{transition:none}}
 </style>
 </head>
 <body>
@@ -5819,7 +5868,7 @@ function obLogin() {
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your Zimi account" : "Log in to Zimi"}">
-    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${I("back", 21)}</button>
+    <header class="ob-header">${backButton("obBack()", {attrs: a.busy || a.uploading ? "disabled" : ""})}
       ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : '<span class="ob-login-label">ZIMI LIVE</span>'}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">
@@ -6052,6 +6101,10 @@ document.addEventListener("error",e=>{const img=e.target;if(!(img instanceof HTM
  const holder=document.createElement("span"),illustration=face({gender:img.dataset.face});
  holder.innerHTML=img.dataset.faceWrap==="zh-fallback"?`<div class="zh-fallback">${illustration}</div>`:illustration;img.replaceWith(holder.firstChild)},true);
 
+/* The one back button used on every screen; `slot` keeps a screen's positioning class. */
+function backButton(onclick,{label="Back",media=false,slot="",attrs=""}={}){
+ return `<button type="button" class="zb-back${media?" on-media":""}${slot?" "+slot:""}" aria-label="${esc(label)}" onclick="${onclick}" ${attrs}>${I("back",21)}</button>`}
+
 /* Colour-forward avatar, for lists where the faces carry the page. */
 function avatarSource(h){return imageSrc(h===me?S.avatarData:h.avatarUrl)}
 function portrait(h){const src=avatarSource(h);
@@ -6126,6 +6179,7 @@ function go(v,id){
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
  if(v==="hcall")S.cel=S.hcel;
  S.more=0;
+ window.ZimiPublicProfile?.beforeNavigate(v,id);
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
@@ -6133,6 +6187,7 @@ function go(v,id){
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
+ window.ZimiPublicProfile?.afterNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
   S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
@@ -6235,8 +6290,9 @@ function postsFor(h){
   cap:CAPS[(h.seed+i)%CAPS.length]}));
 }
 
-function vHost(){return profilePage(asProfile(g(S.h),true),g(S.h))}
+function vHost(){if(window.ZimiPublicProfile)return window.ZimiPublicProfile.render();return profilePage(asProfile(g(S.h),true),g(S.h))}
 function vUser(){
+ if(window.ZimiPublicProfile)return window.ZimiPublicProfile.render();
  const u=sender(S.u);
  if(!u)return `<div class="empty">That supporter is no longer here.</div>`;
  return profilePage(asProfile(u,false),u);
@@ -6257,7 +6313,7 @@ function profilePage(p,raw,self){
  return `<div class="hp">
   <div class="hpcover">
    ${cover}
-   ${self?"":`<button class="hpc" aria-label="Back" onclick="${back}">${I("back",19)}</button>`}
+   ${self?"":`${backButton(back,{media:true,slot:"hpc"})}`}
    ${p.on?`<span class="hplive">Online</span>`:""}
   </div>
 
@@ -6325,7 +6381,7 @@ function vSetup(){
     <i>Viewers will see your profile photo</i></div>`}
   <div class="guide"></div>
   <div class="stopbar">
-   <button class="sicon" aria-label="Cancel" onclick="go('home')">${I("back",19)}</button>
+   ${backButton("go('home')",{label:"Cancel",media:true,slot:"sicon"})}
    <span style="flex:1"></span>
    <button class="sicon ${S.mic?"":"off"}" aria-pressed="${S.mic?"false":"true"}"
     aria-label="${S.mic?"Mute microphone":"Unmute microphone"}"
@@ -6428,7 +6484,7 @@ function stage(main,tile){
 /* One slim bar: back, timer (+ Home visibility for hosts), then earnings (hosts) and ⋯. */
 function topBar(host){
  return `<div class="ctop">
-  <button class="cback" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${I("back",17)}</button>
+  ${backButton(host?"hostEnd('end')":"endCall()",{label:"End call",media:true,slot:"cback"})}
   <span class="cstat"><i class="rec"></i><span id="ck">${clock(S.sec)}</span>
    ${host?`<span class="csep"></span><button class="cvis ${S.vis?"on":""}" aria-pressed="${!!S.vis}" aria-label="${S.vis?"Visible on Home, tap to hide":"Hidden from Home, tap to show"}" onclick="toggleVis()">${I(S.vis?"eye":"eyeoff",14)}${S.vis?"Visible":"Hidden"}</button>`:""}</span>
   <span style="flex:1"></span>
@@ -6469,7 +6525,7 @@ function vCall(){const h=g(S.h);
 function vVoice(){const h=g(S.h);
  if(window.ZimiHome)return homeCallView(false);
  return `<div class="voicecall">
-  <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
+  ${backButton("endCall()",{label:"End call",media:true,slot:"voiceback"})}
   <div class="voiceorb">${avc(h,104)}</div>
   <h2>${esc(h.n)}</h2>
   <p>Voice call</p>
@@ -6735,7 +6791,7 @@ function vPost(){
   </div>`).join("")}
  </div>
  <div class="pvtop">
-  <button class="pvclose" aria-label="Close" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
+  ${backButton(`go('host','${domId(h.id)}')`,{label:"Close",media:true,slot:"pvclose"})}
   <span class="pvcount" id="pvc">${(S.pi||0)+1} / ${posts.length}</span></div>
  `}
 
@@ -7006,7 +7062,7 @@ function vPrecall(){
  return `<div class="pcall">
  <div class="pcbg">${art(h.seed)}</div><span class="pcshade"></span>
  <div class="pctop">
-  <button class="pcic" aria-label="Back" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
+  ${backButton(`go('host','${domId(h.id)}')`,{media:true,slot:"pcic"})}
   <span class="pctitle">Video call</span>
   <span style="width:38px"></span></div>
 
@@ -7475,26 +7531,26 @@ function topFor(){
     <button class="ibtn" aria-label="Search creators" onclick="go('search')">${I("srch",19)}</button>
     <button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button></span></div>`}
  if(S.v==="search")return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('home')")}
    <span class="sfield">${I("srch",17)}
     <input id="sq" placeholder="Search creators by name" value="${esc(S.sq||"")}" oninput="S.sq=this.value;paintSearch()">
     ${S.sq?`<button aria-label="Clear" onclick="S.sq='';r()" style="color:var(--faint);font-size:16px">&times;</button>`:""}
    </span></div>`;
  if(S.v==="coins")return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('settings')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('settings')")}
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
   kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
  const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('${backTo}')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton(`go('${backTo}')`)}
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
    <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
  if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
-   <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('home')")}
    ${[["creators","Creators"],["family","Family"]].map(([k,l])=>
      `<button class="btab ${S.bt===k?"on":""}" onclick="S.bt='${k}';r()">${l}</button>`).join("")}</div>
   <div class="bctl">
@@ -7863,10 +7919,10 @@ function homeCheckout(){if((!DEMO&&(contentPending('catalog')||ContentLoading.ca
 function homeVerifyPayment(){if(Home.checkout?.merchantOrderId)Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId})}
 function homeBroadcast(){return `<section class="zh-broadcast"><span class="zh-eyebrow">YOUR STAGE IS READY</span><h1>Make it a moment.</h1><p>Share your world. Start a live conversation.</p><div class="zh-camera-preview"><video data-zimi-local autoplay muted playsinline></video><span>${hi('vid',38)}<b>${esc(Home.mediaStatus||'Camera preview')}</b></span></div><label>Give your live a title<input id="live-title" maxlength="120" placeholder="What’s happening today?" value="${esc(Home.draftTitle||'')}" oninput="Home.draftTitle=this.value"></label><label>Category<select id="live-category" onchange="Home.draftCategory=this.value">${Home.categories.map(c=>`<option ${Home.draftCategory===c?'selected':''} value="${esc(c)}">${esc(c)}</option>`).join('')}</select></label><button class="zh-primary zh-full" onclick="homeStartStream()" ${Home.streamBusy?'disabled':''}>${hi('broadcast',21)} ${Home.streamBusy?'Starting…':'Go Live'}</button><button class="zh-soft zh-full" onclick="go('setup')">${hi('ph',17)} Go online for 1-on-1 calls</button></section>`}
 async function homeStartStream(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.streamBusy)return;const title=(Home.draftTitle||'').trim();if(!title)return appNotice('Add a title for your live session.');Home.streamBusy=true;S.mic=1;S.cam=1;r();try{if(!DEMO)await window.ZimiMedia.prepare(true);if(S.v!=='broadcast'||!isApprovedHost()){window.ZimiMedia?.stop();Home.streamBusy=false;return}if(DEMO){Home.stream={id:'preview-live',title,category:Home.draftCategory||Home.categories[0],kind:'video',viewers:0};Home.hosting=true;Home.streamBusy=false;Home.mediaStatus='Design preview';go('live')}else Native.send('stream.start',{title,category:Home.draftCategory||Home.categories[0],kind:'video'})}catch(e){Home.streamBusy=false;Home.mediaStatus=e.message;r();appNotice(e.message)}}
-function homeLive(){if(window.zrLive)return zrLive();const stream=Home.stream;if(!stream)return '<div class="zh-empty">This session has ended.</div>';const h=g(S.h);return `<section class="zh-room"><div class="zh-room-video">${h&&!Home.hosting?homeCover(h):''}<video ${Home.hosting?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video><div class="zh-room-shade"></div></div><div class="zh-room-top"><button class="zh-room-icon" onclick="homeLeaveStream()" aria-label="${Home.hosting?'End broadcast':'Leave live'}">${hi('back',23)}</button><span class="zh-badge zh-live"><i></i> LIVE</span><span class="zh-viewers">${hi('eye',15)} ${homeCompact(stream.viewers)}</span><span class="zh-room-top-title">${esc(stream.title)}</span></div><p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><h2>${esc(Home.hosting?me.n:h?.n||'Live creator')} ${h?homeVerified(h):''}</h2><p>${esc(stream.title)}</p><div class="zh-room-messages" id="home-room-messages">${Home.messages.slice(-30).map(m=>`<p><b>${esc(m.name||'Viewer')}</b> ${esc(m.text)}</p>`).join('')}</div><form class="zh-room-chat" onsubmit="event.preventDefault();homeSendStreamMessage()"><input id="home-stream-message" maxlength="500" placeholder="Say something…" aria-label="Live chat message"><button aria-label="Send message">${hi('send',20)}</button>${!Home.hosting&&h?`<button type="button" class="zh-gift" onclick="homeGifts('${domId(h.id)}')" aria-label="Send a gift">${hi('gift',21)}</button>`:''}${Home.hosting?'<button type="button" onclick="homeLeaveStream()">End</button>':''}</form></div>${homeGiftSheet()}</section>`}
+function homeLive(){if(window.zrLive)return zrLive();const stream=Home.stream;if(!stream)return '<div class="zh-empty">This session has ended.</div>';const h=g(S.h);return `<section class="zh-room"><div class="zh-room-video">${h&&!Home.hosting?homeCover(h):''}<video ${Home.hosting?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video><div class="zh-room-shade"></div></div><div class="zh-room-top">${backButton("homeLeaveStream()",{label:Home.hosting?'End broadcast':'Leave live',media:true,slot:"zh-room-icon"})}<span class="zh-badge zh-live"><i></i> LIVE</span><span class="zh-viewers">${hi('eye',15)} ${homeCompact(stream.viewers)}</span><span class="zh-room-top-title">${esc(stream.title)}</span></div><p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><h2>${esc(Home.hosting?me.n:h?.n||'Live creator')} ${h?homeVerified(h):''}</h2><p>${esc(stream.title)}</p><div class="zh-room-messages" id="home-room-messages">${Home.messages.slice(-30).map(m=>`<p><b>${esc(m.name||'Viewer')}</b> ${esc(m.text)}</p>`).join('')}</div><form class="zh-room-chat" onsubmit="event.preventDefault();homeSendStreamMessage()"><input id="home-stream-message" maxlength="500" placeholder="Say something…" aria-label="Live chat message"><button aria-label="Send message">${hi('send',20)}</button>${!Home.hosting&&h?`<button type="button" class="zh-gift" onclick="homeGifts('${domId(h.id)}')" aria-label="Send a gift">${hi('gift',21)}</button>`:''}${Home.hosting?'<button type="button" onclick="homeLeaveStream()">End</button>':''}</form></div>${homeGiftSheet()}</section>`}
 function homeSendStreamMessage(){const input=document.getElementById('home-stream-message'),text=input?.value.trim();if(!text||!Home.stream)return;if(DEMO){Home.messages.push({id:String(Date.now()),name:'You',text});r();return}Native.send('stream.message',{streamId:Home.stream.id,text});input.value=''}
 function homeLeaveStream(){if(Home.stream)homeRequestStreamClose(Home.stream.id,Home.hosting);window.ZimiMedia?.stop();Home.stream=null;Home.streamBusy=false;Home.messages=[];Home.mediaStatus='';go('home');homeLoad()}
-function homePrecall(){if(window.zpcScreen)return zpcScreen();const h=g(S.h);if(!h)return homeEmpty();return `<section class="zh-precall"><div class="zh-precall-photo">${homeCover(h,true)}<div class="zh-precall-shade"></div></div><button class="zh-precall-back" onclick="go('home')" aria-label="Back">${hi('back',24)}</button><div class="zh-precall-content"><div class="zh-precall-avatar">${homeCover(h)}</div><h1>${esc(h.n)} ${homeVerified(h)}</h1><p>${esc(h.tag||h.cat||'Creator')}</p><span class="zh-precall-status">${h.available||DEMO?'Online · Ready to connect':'Currently unavailable'}</span><div class="zh-precall-details"><span>Call rate <b>${homeRate(h)}</b></span>${h.fee?`<span>Entry fee <b>${n(h.fee)} coins</b></span>`:''}<span>Your balance <b>${contentBalance()} coins</b></span></div><p class="zh-precall-note">Your camera and microphone are used only when you start the call. You can turn them off at any time.</p>${S.pcerr?`<p class="zh-error" role="alert">${esc(S.pcerr)}</p>`:''}<button class="zh-primary zh-full" onclick="homeStartCall(false)" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('vid',21)} ${Home.preparingCall?'Preparing camera…':'Start video call'}</button><button class="zh-soft zh-full" onclick="homeStartCall(true)" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('ph',18)} Voice call</button></div></section>`}
+function homePrecall(){if(window.zpcScreen)return zpcScreen();const h=g(S.h);if(!h)return homeEmpty();return `<section class="zh-precall"><div class="zh-precall-photo">${homeCover(h,true)}<div class="zh-precall-shade"></div></div>${backButton("go('home')",{media:true,slot:"zh-precall-back"})}<div class="zh-precall-content"><div class="zh-precall-avatar">${homeCover(h)}</div><h1>${esc(h.n)} ${homeVerified(h)}</h1><p>${esc(h.tag||h.cat||'Creator')}</p><span class="zh-precall-status">${h.available||DEMO?'Online · Ready to connect':'Currently unavailable'}</span><div class="zh-precall-details"><span>Call rate <b>${homeRate(h)}</b></span>${h.fee?`<span>Entry fee <b>${n(h.fee)} coins</b></span>`:''}<span>Your balance <b>${contentBalance()} coins</b></span></div><p class="zh-precall-note">Your camera and microphone are used only when you start the call. You can turn them off at any time.</p>${S.pcerr?`<p class="zh-error" role="alert">${esc(S.pcerr)}</p>`:''}<button class="zh-primary zh-full" onclick="homeStartCall(false)" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('vid',21)} ${Home.preparingCall?'Preparing camera…':'Start video call'}</button><button class="zh-soft zh-full" onclick="homeStartCall(true)" ${Home.preparingCall||(!h.available&&!DEMO)?'disabled':''}>${hi('ph',18)} Voice call</button></div></section>`}
 // The pending object is an intent token: navigating away and returning to the
 // same person never revives an earlier camera permission request.
 let homeCallPreparation = null;
@@ -7926,7 +7982,7 @@ async function homePrepareCall(view,id){
   }
 }
 async function homeAcceptCall(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(S.acceptingCall)return;const callId=S.caller?.callId;if(!callId)return;S.acceptingCall=true;Home.mediaStatus='Connecting…';r();try{await window.ZimiMedia.prepare(!S.caller.voice);if(S.v!=='ring'||S.caller?.callId!==callId||!isApprovedHost()){S.acceptingCall=false;window.ZimiMedia.stop();return}Native.send('call.accept',{callId})}catch(e){S.acceptingCall=false;appNotice(e.message);r()}}
-function homeCallView(host){if(window.zrCall)return zrCall(host);const p=host?S.caller:g(S.h),voice=host?S.caller?.voice:S.v==='voice';return `<section class="zh-room zh-call-room"><div class="zh-room-video">${voice?`<div class="zh-voice-person">${avc(p,110)}<h2>${esc(p.n)}</h2></div><video data-zimi-remote autoplay playsinline style="display:none"></video>`:`<video data-zimi-remote autoplay playsinline></video>`}<div class="zh-room-shade"></div></div><div class="zh-room-top"><button class="zh-room-icon" onclick="endCall()" aria-label="End call">${hi('back',23)}</button><span class="zh-viewers"><i class="zh-online-dot"></i><span id="ck">${clock(S.sec)}</span></span><span class="zh-room-top-title">${esc(p.n)} · ${voice?'Voice':'Video'} call</span></div>${!voice?'<div class="zh-call-pip"><video data-zimi-local autoplay muted playsinline></video><span>You</span></div>':''}<p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><div class="zh-call-controls"><button onclick="S.mic=S.mic?0:1;r()" aria-label="${S.mic?'Mute':'Unmute'} microphone" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',22)}<span>${S.mic?'Mute':'Unmute'}</span></button>${!voice?`<button onclick="toggleCam()" aria-label="${camOn()?'Turn camera off':'Turn camera on'}" aria-pressed="${!camOn()}">${hi(camOn()?'vid':'camoff',22)}<span>Camera</span></button>`:''}${!host?`<button onclick="homeGifts('${domId(p.id)}')" aria-label="Send a gift">${hi('gift',22)}<span>Gift</span></button>`:''}<button class="zh-end-call" onclick="endCall()" aria-label="End call">${hi('ph',23)}<span>End</span></button></div><p class="zh-free-call">${DEMO?'Design preview':S.callRate?`${n(S.callRate)} coins a minute · billed by the second`:'Free call · gifts are optional'}</p></div>${homeGiftSheet()}</section>`}
+function homeCallView(host){if(window.zrCall)return zrCall(host);const p=host?S.caller:g(S.h),voice=host?S.caller?.voice:S.v==='voice';return `<section class="zh-room zh-call-room"><div class="zh-room-video">${voice?`<div class="zh-voice-person">${avc(p,110)}<h2>${esc(p.n)}</h2></div><video data-zimi-remote autoplay playsinline style="display:none"></video>`:`<video data-zimi-remote autoplay playsinline></video>`}<div class="zh-room-shade"></div></div><div class="zh-room-top">${backButton("endCall()",{label:"End call",media:true,slot:"zh-room-icon"})}<span class="zh-viewers"><i class="zh-online-dot"></i><span id="ck">${clock(S.sec)}</span></span><span class="zh-room-top-title">${esc(p.n)} · ${voice?'Voice':'Video'} call</span></div>${!voice?'<div class="zh-call-pip"><video data-zimi-local autoplay muted playsinline></video><span>You</span></div>':''}<p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><div class="zh-call-controls"><button onclick="S.mic=S.mic?0:1;r()" aria-label="${S.mic?'Mute':'Unmute'} microphone" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',22)}<span>${S.mic?'Mute':'Unmute'}</span></button>${!voice?`<button onclick="toggleCam()" aria-label="${camOn()?'Turn camera off':'Turn camera on'}" aria-pressed="${!camOn()}">${hi(camOn()?'vid':'camoff',22)}<span>Camera</span></button>`:''}${!host?`<button onclick="homeGifts('${domId(p.id)}')" aria-label="Send a gift">${hi('gift',22)}<span>Gift</span></button>`:''}<button class="zh-end-call" onclick="endCall()" aria-label="End call">${hi('ph',23)}<span>End</span></button></div><p class="zh-free-call">${DEMO?'Design preview':S.callRate?`${n(S.callRate)} coins a minute · billed by the second`:'Free call · gifts are optional'}</p></div>${homeGiftSheet()}</section>`}
 function homeCallSetup(){return `<section class="zh-broadcast"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1><p>Go online so members can call you. Camera and microphone permission is requested when you accept a call.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy?'disabled':''}>${Home.presenceBusy?'Connecting…':'Go online for calls'}</button><button class="zh-soft zh-full" onclick="go('broadcast')">${hi('broadcast',20)} Start a public live instead</button></section>`}
 function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.presenceBusy)return;Home.presenceBusy=true;Native.send('presence.set',{online,visible:true});r()}
 function homeWaiting(){return `<section class="zh-broadcast"><span class="zh-eyebrow">OPEN TO CONNECTIONS</span><h1>You’re online.</h1><p>Members can discover you and start a call while you’re available.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="go('home')">Explore Zimi</button><button class="zh-soft zh-full" onclick="homeSetPresence(false)" ${Home.presenceBusy?'disabled':''}>Go offline</button><p class="zh-coins-note">Keep the app connected to receive incoming calls.</p></section>`}
@@ -7943,10 +7999,10 @@ function homeSearchView(){return `<section class="zh-home zh-search"><div class=
 function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','explore','chats','profile','settings','notifications'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{explore:()=>homeScreen(true),search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
   if(['home','explore','chats','profile','settings'].includes(S.v))return homeHeader();
-  if(S.v==='search')return `<header class="zh-search-header"><button aria-label="Back to home" onclick="go('home')">${hi('back',23)}</button><div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
+  if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   const title={notifications:'Notifications',broadcast:'Go Live',coins:'Your coins'}[S.v];
-  return title?`<header class="zh-subheader"><button onclick="go('home')" aria-label="Back to home">${hi('back',22)}</button><h1>${title}</h1>${S.v==='coins'?`<span>${hi('rings',15)} ${contentBalance()}</span>`:''}</header>`:null;
+  return title?`<header class="zh-subheader">${backButton("go('home')",{label:"Back to home"})}<h1>${title}</h1>${S.v==='coins'?`<span>${hi('rings',15)} ${contentBalance()}</span>`:''}</header>`:null;
 },afterRender:()=>{contentImagesReady();homeShowCloseError();if(Home.giftTo){const sheet=document.querySelector('.zh-sheet');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button')?.focus({preventScroll:true})}const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(['home','explore','chats','precall'].includes(S.v))r()});
@@ -8702,7 +8758,7 @@ function zpcScreen(){
   const permission=voice?'microphone':'camera & microphone';
   return `<section class="zpc-setup ${busy?'is-preparing':''} ${!available?'is-unavailable':''}" aria-label="Set up your private call">
     <div class="zpc-ambient" aria-hidden="true"></div>
-    <header class="zpc-header"><button class="zpc-back" onclick="go('home')" aria-label="Back">${hi('back',21)}</button><span>1-on-1 call</span><span class="zpc-private">${hi('lock',12)} Private</span></header>
+    <header class="zpc-header">${backButton("go('home')",{slot:"zpc-back"})}<span>1-on-1 call</span><span class="zpc-private">${hi('lock',12)} Private</span></header>
     <div class="zpc-profile">
       <div class="zpc-avatar-wrap"><div class="zpc-orbit" aria-hidden="true"></div><div class="zpc-avatar has-photo">${zpcPortrait(h)}</div><span class="zpc-avatar-badge" aria-hidden="true">${hi(voice?'ph':'vid',17)}</span></div>
       <span class="zpc-eyebrow">A LITTLE MORE PERSONAL</span>
@@ -8895,7 +8951,7 @@ function zcThreadMessages(d){const rows=(d.messages||[]).map(m=>({id:m.id,mine:!
 /* Inbox rows carry identity and presence; a known creator record adds rate and live status. */
 function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'Zimi member',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
 function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
-function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header"><button class="zc-thread-back" onclick="go('chats')" aria-label="Back">${hi('back',24)}</button><button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}')">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
+function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}')">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
 function zcThreadLive(h){if(!h.stream)return '';const id=domId(h.id),name=first(h.n),viewers=h.stream.viewers||h.viewers;return `<section class="zc-thread-live" aria-label="${esc(name)} is live now"><span class="zc-thread-live-cover">${homeCover(h)}<b><i></i>LIVE</b></span><div class="zc-thread-live-text"><h2><span>${esc(name)} is Live Now</span><i></i></h2><p>${esc(h.stream.title||h.tag||'Streaming now')}${viewers?' · '+homeCompact(viewers)+' watching':''}</p></div><div class="zc-thread-live-actions"><button class="zc-thread-join" onclick="homeOpen('${id}')">Join Stream</button>${!isHost()&&(h.available||DEMO)?`<button class="zc-thread-call" onclick="homeCall('${id}')">${hi('vid',18)} 1:1 Call${h.rate>0?` (${n(h.rate)}c/m)`:''}</button>`:''}</div></section>`}
 function zcThreadNote(h){return `<p class="zc-thread-note">${hi('lock',13)} Never share sign-in codes or payment details${h.verified?' · Creator ID verified':''}</p>`}
 function zcGiftCard(m,h){const x=m.gift||{},mark=x.image?`<img src="${x.image}" alt="">`:`<span>${x.html?giftGlyph(x.html):esc(x.emoji||'🎁')}</span>`;return `<div class="zc-gift-card"><div class="zc-gift-top"><span>${ci('sparkle',18)} ${m.mine?'Gift sent':'Gift received'}</span><b>${m.mine?'−':'+'}${n(x.coins)} Coins</b></div><div class="zc-gift-body"><span class="zc-gift-icon">${mark}<i>${ci('crown',13)}</i></span><div><h3>${esc(x.name||'Gift')}</h3><p>${m.mine?'Delivered to':'From'} ${esc(first(h.n))}</p></div></div></div>`}
@@ -9426,6 +9482,284 @@ window.ZimiOffline = (() => {
     },
   };
 })();
+
+/* Public profiles use server identity and relationship data. Preview fixtures stay in DEMO. */
+P.arrow = P.arrow || '<path d="M4 12h16m-6-6 6 6-6 6"/>';
+const Zu = { id:'', profile:null, loading:false, error:'', requestId:0, sequence:0,
+  tab:'posts', posts:[], total:0, page:0, limit:20, postsLoading:false, postsError:'', postsRequestId:0,
+  followBusy:false, followRequestId:0, followError:'', blockBusy:false, blockRequestId:0,
+  back:{view:'home'}, dialog:'', dialogFocus:null, gallery:0 };
+const zuPendingFollows=new Map(),zuPendingBlocks=new Map();
+const zuActive = () => ['host','user'].includes(S.v);
+const zuId = () => S.v === 'user' ? S.u : S.h;
+const zuKnown = id => g(id) || PEOPLE[id] || (DEMO ? sender(id) : null);
+const zuCurrent = () => Zu.id === zuId();
+const zuMatches = (d, posts=false) => d.id === Zu.id && d.requestId === (posts ? Zu.postsRequestId : Zu.requestId);
+const zuApproved = p => p?.verified === true && p?.serverRole === 'host';
+const zuMember = () => DEMO ? !isHost() : zcSelfRole() === 'user';
+const zuOffline = () => !!window.ZimiOffline?.isOffline();
+function zuPaint(){
+  if(!zuActive())return;
+  const focused=document.activeElement?.id;
+  r();
+  if(focused?.startsWith('zu-'))document.getElementById(focused)?.focus({preventScroll:true});
+}
+function zuDate(value,yearOnly=false){
+  if(!value)return '';
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?'':date.toLocaleDateString('en-IN',yearOnly?{year:'numeric'}:{month:'long',year:'numeric'});
+}
+function zuPeer(){
+  if(zuCurrent()&&Zu.profile)return Zu.profile;
+  const h=zuKnown(zuId());
+  if(!h)return null;
+  // Cached discovery/conversation identity may enable messaging while details load.
+  return {id:h.id,name:h.n,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,gender:h.gender,city:h.c,
+    role:h.role,serverRole:h.serverRole,verified:h.verified===true,about:h.about||'',category:h.cat,
+    online:!!h.on,availableForCall:!!h.available,ratePerMin:h.rate,stream:h.stream||null};
+}
+function zuRemember(profile){
+  const raw=homeRemember(profile);
+  raw.host=zuApproved(profile)?1:0;
+  raw.lang=(profile.languages||[]).join(', ');
+  raw.fol=profile.following?1:0;
+  S.following[profile.id]=!!profile.following;
+  if(!zuApproved(profile))PEOPLE[profile.id]={...raw,host:0};
+}
+function zuLoad(){
+  const id=zuId();if(!id)return;
+  Object.assign(Zu,{id,profile:null,loading:!DEMO,error:'',requestId:++Zu.sequence,tab:'posts',
+    posts:[],total:0,page:0,limit:20,postsLoading:false,postsError:'',postsRequestId:++Zu.sequence,
+    followBusy:zuPendingFollows.has(id),followRequestId:zuPendingFollows.get(id)||0,followError:'',
+    blockBusy:zuPendingBlocks.has(id),blockRequestId:zuPendingBlocks.get(id)||0});
+  if(DEMO){
+    const h=zuKnown(id);if(!h){Zu.error='This profile is no longer available.';return}
+    const host=!!h.verified||S.v==='host'&&h.host!==0;
+    Zu.profile={id,name:h.n,role:host?'host':'sender',serverRole:host?'host':'user',verified:host,
+      avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,gender:h.gender,city:h.c||'Mumbai',
+      about:host?'A little music, a little conversation, and a space to be yourself. Come say hello.':'Here for good conversations and discovering new favourites.',
+      category:host?h.cat||'Music':'',languages:['English','Hindi'],interests:host?['Music','Travel','Good conversations']:['Music','Photography'],
+      online:!!h.on,availableForCall:host&&!!h.available,ratePerMin:h.rate||0,stream:h.stream||null,
+      followers:host?12800:128,followingCount:host?186:42,following:!!S.following[id],joined:'2025-04-12T00:00:00Z',level:host?18:4,crown:false};
+    if(host){Zu.posts=[0,1,2].map((index)=>({id:'preview-post-'+index,kind:'photo',mediaUrl:OB_MEDIA[index],caption:['Good company. Better conversations.','A little glimpse of my everyday.','See you at the next live session.'][index]}));Zu.total=Zu.posts.length;Zu.page=1}
+    zuRemember(Zu.profile);
+  }else Native.send('profile.load',{id,requestId:Zu.requestId});
+}
+function zuRetry(){zuLoad();zuPaint()}
+function zuLoadPosts(more=false){
+  if(DEMO||Zu.postsLoading||!zuApproved(Zu.profile))return;
+  Zu.postsLoading=true;Zu.postsError='';Zu.postsRequestId=++Zu.sequence;
+  Native.send('profile.posts.load',{id:Zu.id,page:more?Zu.page+1:1,requestId:Zu.postsRequestId});
+  zuPaint();
+}
+function zuBack(){const back=Zu.back;go(back.view||'home',back.id)}
+function zuTab(tab){if(!['posts','about'].includes(tab))return;Zu.tab=tab;zuPaint()}
+function zuTabKeys(event){
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();zuTab(event.key==='Home'?'posts':event.key==='End'?'about':Zu.tab==='posts'?'about':'posts');
+  document.getElementById('zu-tab-'+Zu.tab)?.focus();
+}
+function zuFollow(){
+  const p=Zu.profile;if(!p||!zuApproved(p)||!zuMember()||Zu.loading||Zu.followBusy||zuOffline())return;
+  Zu.followBusy=true;Zu.followError='';Zu.followRequestId=++Zu.sequence;
+  zuPendingFollows.set(p.id,Zu.followRequestId);
+  const data={id:p.id,on:!p.following,requestId:Zu.followRequestId};
+  if(DEMO){zuFollowSaved(data);return}
+  Native.send('follow.set',data);zuPaint();
+}
+function zuFollowSaved(d){
+  if(d.requestId!==undefined&&zuPendingFollows.get(d.id)!==d.requestId)return;
+  zuPendingFollows.delete(d.id);
+  S.following[d.id]=!!d.on;
+  const known=zuKnown(d.id);if(known)known.fol=d.on?1:0;
+  if(d.id!==Zu.id||d.requestId!==Zu.followRequestId)return;
+  if(Zu.profile){const changed=Zu.profile.following!==!!d.on;Zu.profile.following=!!d.on;if(changed)Zu.profile.followers=Math.max(0,(Zu.profile.followers||0)+(d.on?1:-1))}
+  Zu.followBusy=false;Zu.followError='';zuPaint();
+}
+function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
+function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&p.availableForCall&&!zuOffline())homeCall(p.id)}
+function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
+function zuWatch(){const p=Zu.profile;if(p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
+
+function zuSkeleton(kind='profile'){
+  const shape=(width,height)=>skeletonLine(width,height);
+  if(kind==='posts')return `<div class="zu-gallery zu-skeleton-gallery" role="status" aria-label="Loading profile photos" aria-busy="true">${Array.from({length:3},()=>'<div class="zu-photo zh-skeleton-shape" aria-hidden="true"></div>').join('')}</div>`;
+  return `<div class="zu-profile-skeleton" role="status" aria-label="Loading profile details" aria-busy="true"><div aria-hidden="true"><div class="zu-skeleton-name">${shape('67%',28)}${shape('38%',13)}</div><div class="zu-skeleton-stats">${[1,2,3].map(()=>`<div>${shape('44px',24)}${shape('58px',10)}</div>`).join('')}</div>${shape('94%',13)}${shape('77%',13)}<div class="zu-skeleton-tags">${shape('85px',28)}${shape('95px',28)}</div></div></div>`;
+}
+function zuStatus(p){
+  if(Zu.loading||Zu.error)return '';
+  if(p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
+  return `<span class="zu-presence ${p.availableForCall?'is-online':''}"><i></i>${p.availableForCall?'Available for a call':p.online?'Online':'Currently offline'}</span>`;
+}
+function zuAvatar(p){
+  const source=imageSrc(p?.avatarUrl);
+  return source?`<img class="zh-photo-pending" src="${source}" alt="${esc(p.name||'Profile photo')}" data-face="${faceKind(p||{})}" decoding="async">`:face(p||{});
+}
+function zuIdentity(p){
+  const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember();
+  return `<aside class="zu-overview"><div class="zu-identity-top"><div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>
+    ${canFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${Zu.followBusy?'Updating…':p.following?'Following':'Follow'}</button>`:''}</div>
+    ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">${hi('refresh',17)} Try again</button></div>`:`
+    <div class="zu-identity"><span class="zu-eyebrow">${host?'CREATOR PROFILE':'MEMBER PROFILE'}</span><h1>${esc(p.name)}</h1>
+    <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
+    ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
+    <div class="zu-stats" aria-label="Profile statistics"><div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div><div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div></div>
+    <p class="zu-bio">${esc(p.about||'A new face. A new connection. Say hello when you’re ready.')}</p>
+    ${p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
+    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Make their day</b><small>Send a little appreciation</small></span>${hi('arrow',17)}</button>`:''}
+    </div>`}</aside>`;
+}
+function zuAbout(p){
+  return `<div class="zu-about"><section><h2>A little about ${esc(first(p.name||'this member'))}</h2><p>${esc(p.about||'They haven’t added an introduction yet.')}</p></section>
+    ${p.interests?.length?`<section><h3>Into these things</h3><div class="zu-interests">${p.interests.map(value=>`<span>${esc(value)}</span>`).join('')}</div></section>`:''}
+    <div class="zu-details">${p.languages?.length?`<div>${zi('language',18)}<span>Speaks<b>${p.languages.map(esc).join(', ')}</b></span></div>`:''}${p.city?`<div>${zi('location',18)}<span>Based in<b>${esc(p.city)}</b></span></div>`:''}${zuDate(p.joined)?`<div>${hi('clock',18)}<span>Part of Zimi since<b>${esc(zuDate(p.joined))}</b></span></div>`:''}
+    <div>${hi('user',18)}<span>Account ID<b class="zu-account-id">${esc(p.id)}</b></span><button class="zu-icon-button" aria-label="Copy account ID" onclick="zuCopyId()">${hi('copy',17)}</button></div></div>
+    ${zuApproved(p)?`<p class="zu-trust">${zi('shield',16)} Creator verified by Zimi Live</p>`:''}</div>`;
+}
+function zuMedia(post,index){
+  const src=imageSrc(post.mediaUrl),video=post.kind==='video';
+  return `<button class="zu-photo ${src?'':'is-unavailable'}" aria-label="Open ${video?'video':'photo'} ${index+1}${post.caption?': '+esc(post.caption):''}" onclick="zuOpenPhoto(${index})" ${src?'':'disabled'}>
+    ${src?(video?`<video src="${src}" muted playsinline preload="metadata" aria-hidden="true"></video>`:`<img class="zh-photo-pending" src="${src}" alt="${esc(post.caption||'Photo shared by '+Zu.profile.name)}" loading="lazy" decoding="async" onerror="this.hidden=true;this.parentElement.classList.add('is-unavailable')">`):''}
+    <span class="zu-media-unavailable">${ci('image',23)}<span>Media unavailable</span></span><span class="zu-photo-shade"></span>${video?`<span class="zu-play">${hi('play',19)}</span>`:''}<span class="zu-photo-expand">${hi('arrow',16)}</span></button>`;
+}
+function zuPosts(p){
+  if(!zuApproved(p))return `<div class="zu-empty">${ci('image',30)}<h2>A little more to discover</h2><p>This member hasn’t shared any public posts.</p><button class="zu-text-button" onclick="zuTab('about')">Get to know ${esc(first(p.name))} ${hi('arrow',15)}</button></div>`;
+  if(Zu.postsLoading&&!Zu.page)return zuSkeleton('posts');
+  return `${Zu.posts.length?`<div class="zu-gallery">${Zu.posts.map(zuMedia).join('')}</div>`:!Zu.postsError?`<div class="zu-empty">${ci('image',30)}<h2>The first moment is on its way</h2><p>Photos and updates from ${esc(first(p.name))} will appear here.</p></div>`:''}
+    ${Zu.postsError?`<div class="zu-error zu-post-error" role="alert"><p>${esc(Zu.postsError)}</p><button class="zu-secondary" onclick="zuLoadPosts(${!!Zu.page})">${hi('refresh',17)} Retry photos</button></div>`:''}
+    ${Zu.postsLoading?zuSkeleton('posts'):Zu.page*Zu.limit<Zu.total?'<button class="zu-load-more" onclick="zuLoadPosts(true)">Load more posts</button>':''}`;
+}
+function zuContent(p){
+  if(Zu.loading)return `<div class="zu-content">${zuSkeleton('posts')}</div>`;
+  if(Zu.error||!p)return '';
+  return `<div class="zu-content">${p.stream?`<section class="zu-live-card"><div class="zu-live-symbol">${hi('broadcast',24)}</div><div><span><i></i> LIVE RIGHT NOW</span><h2>${esc(p.stream.title||'Come join the conversation')}</h2><p>${n(p.stream.viewers||0)} watching · Drop in and say hello</p></div><button onclick="zuWatch()" ${zuOffline()?'disabled':''}>Join live ${hi('arrow',16)}</button></section>`:''}
+    <div class="zu-tabs" role="tablist" aria-label="Profile content" onkeydown="zuTabKeys(event)">${['posts','about'].map(tab=>`<button id="zu-tab-${tab}" role="tab" aria-selected="${Zu.tab===tab}" aria-controls="zu-panel" tabindex="${Zu.tab===tab?0:-1}" onclick="zuTab('${tab}')">${hi(tab==='posts'?'grid':'user',17)}${tab==='posts'?'Posts':'About'}${tab==='posts'&&zuApproved(p)?`<span>${Zu.postsLoading&&!Zu.page?'…':Zu.total}</span>`:''}</button>`).join('')}</div>
+    <div id="zu-panel" class="zu-panel" role="tabpanel" aria-labelledby="zu-tab-${Zu.tab}" tabindex="0">${Zu.tab==='about'?zuAbout(p):zuPosts(p)}</div></div>`;
+}
+function zuActions(p){
+  if(!p||Zu.error)return '';
+  const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
+  const messageBlocked=zuOffline()||!zcCanChat(p.id);
+  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
+    <div class="zu-action-buttons"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}</div>
+    ${!zuMember()&&!zcCanChat(p.id)?'<p class="zu-action-note">Creators can reply to existing member conversations.</p>':''}</div></div>`;
+}
+function zuScreen(){
+  const p=zuPeer(),cover=imageSrc(p?.coverUrl);
+  return `<section class="zu-page" aria-label="User profile"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:'<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i></div>'}<div class="zu-cover-shade"></div>
+    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span><button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button></header>${p?zuStatus(p):''}</div>
+    <div class="zu-layout">${zuIdentity(p||{})}${zuContent(p)}</div>${zuActions(p)}${homeGiftSheet()}</section>`;
+}
+
+function zuCloseDialog(){
+  const dialog=document.getElementById('zu-dialog');
+  if(dialog){dialog.querySelector('video')?.pause();dialog.close();dialog.remove()}
+  Zu.dialog='';
+}
+function zuDialog(title,body,kind){
+  const originFocus=document.getElementById('zu-dialog')?Zu.dialogFocus:document.activeElement;
+  zuCloseDialog();Zu.dialogFocus=originFocus;Zu.dialog=kind;
+  const dialog=document.createElement('dialog');dialog.id='zu-dialog';dialog.className='zu-dialog'+(kind==='photo'?' zu-photo-dialog':'');dialog.setAttribute('aria-labelledby','zu-dialog-title');
+  dialog.innerHTML=`<header><h2 id="zu-dialog-title">${title}</h2><button class="zu-icon-button" aria-label="Close" onclick="zuCloseDialog()">${hi('close',20)}</button></header>${body}`;
+  dialog.addEventListener('close',()=>{dialog.querySelector('video')?.pause();dialog.remove();if(document.getElementById('zu-dialog'))return;Zu.dialog='';if(originFocus?.isConnected)originFocus.focus({preventScroll:true})});
+  dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close()});
+  document.body.append(dialog);dialog.showModal();return dialog;
+}
+function zuOpenOptions(){
+  const p=zuPeer();if(!p||Zu.error)return;
+  zuDialog('Profile options',`<p class="zu-dialog-intro">${esc(p.name||'Zimi member')}</p><label class="zu-id-field">Account ID<input id="zu-copy-field" readonly value="${esc(p.id)}" aria-label="Account ID"></label><button class="zu-option" onclick="zuCopyId()">${hi('copy',18)} Copy account ID</button><button class="zu-option zu-danger-text" onclick="zuConfirmBlock()">${zi('shield',18)} Block user</button><p class="zu-dialog-status" role="status"></p>`,'options');
+}
+async function zuCopyId(){
+  const id=zuPeer()?.id;if(!id)return;
+  try{
+    if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(id);
+    else{const input=document.createElement('textarea');input.value=id;input.className='zu-copy-helper';(document.getElementById('zu-dialog')||document.body).append(input);input.select();const copied=document.execCommand('copy');input.remove();if(!copied)throw new Error('unavailable')}
+    appNotice('Account ID copied.');
+  }catch{if(!document.getElementById('zu-copy-field'))zuOpenOptions();const field=document.getElementById('zu-copy-field');field?.focus();field?.select();const status=document.querySelector('.zu-dialog-status');if(status)status.textContent='Select and copy the account ID above.'}
+}
+function zuConfirmBlock(){
+  const p=zuPeer();if(!p)return;
+  zuDialog('Block '+esc(first(p.name))+'?',`<div class="zu-block-symbol">${zi('shield',26)}</div><p class="zu-dialog-intro">You won’t see each other in discovery or be able to start new chats or calls. You can unblock them in Profile & Settings.</p><p class="zu-dialog-status" role="alert"></p><div class="zu-dialog-actions"><button class="zu-secondary" onclick="zuCloseDialog()">Cancel</button><button class="zu-block-confirm" onclick="zuBlock()" ${Zu.blockBusy?'disabled':''}>${Zu.blockBusy?'Blocking…':'Block user'}</button></div>`,'block');
+}
+function zuBlock(){
+  const p=zuPeer();if(!p||Zu.blockBusy||zuOffline())return;
+  Zu.blockBusy=true;Zu.blockRequestId=++Zu.sequence;
+  zuPendingBlocks.set(p.id,Zu.blockRequestId);
+  const button=document.querySelector('.zu-block-confirm');if(button){button.disabled=true;button.textContent='Blocking…'}
+  const status=document.querySelector('.zu-dialog-status');if(status)status.textContent='';
+  const data={id:p.id,blocked:true,requestId:Zu.blockRequestId};
+  if(DEMO){zuBlocked(data);return}Native.send('block.set',data);
+}
+function zuBlocked(d){
+  if(zuPendingBlocks.get(d.id)!==d.requestId)return;
+  zuPendingBlocks.delete(d.id);
+  if(d.id!==Zu.id||d.requestId!==Zu.blockRequestId||!d.blocked)return;
+  Zu.blockBusy=false;zuCloseDialog();if(zuActive()&&zuCurrent())go('home');appNotice('User blocked. You can manage blocked accounts in Settings.');
+}
+function zuOpenPhoto(index){
+  const post=Zu.posts[index];if(!post||!imageSrc(post.mediaUrl))return;
+  Zu.gallery=index;
+  const src=imageSrc(post.mediaUrl),video=post.kind==='video';
+  const dialog=zuDialog(`${video?'Video':'Photo'} ${index+1} of ${Zu.posts.length}`,`<div class="zu-viewer">${video?`<video src="${src}" controls playsinline preload="metadata"></video>`:`<img src="${src}" alt="${esc(post.caption||'Photo by '+Zu.profile.name)}">`}</div>${post.caption?`<p class="zu-caption">${esc(post.caption)}</p>`:''}<div class="zu-viewer-actions"><button class="zu-secondary" aria-label="Previous post" onclick="zuOpenPhoto(${index-1})" ${index===0?'disabled':''}>${hi('back',17)} Previous</button><button class="zu-secondary" aria-label="Next post" onclick="zuOpenPhoto(${index+1})" ${index===Zu.posts.length-1?'disabled':''}>Next ${hi('arrow',17)}</button></div>`,'photo');
+  dialog.addEventListener('keydown',event=>{if(event.target.tagName==='VIDEO')return;const next=event.key==='ArrowRight'?index+1:event.key==='ArrowLeft'?index-1:-1;if(next>=0&&next<Zu.posts.length){event.preventDefault();zuOpenPhoto(next)}});
+}
+
+Native.on('data.publicProfile',d=>{
+  if(!zuMatches(d))return;
+  Zu.profile=d.profile;Zu.loading=false;Zu.error='';zuRemember(d.profile);
+  if(zuApproved(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
+  zuPaint();
+});
+Native.on('data.publicPosts',d=>{
+  if(!zuMatches(d,true))return;
+  const rows=(d.posts||[]).filter(post=>imageSrc(post.mediaUrl));
+  Zu.posts=d.page>1?[...Zu.posts,...rows.filter(post=>!Zu.posts.some(old=>old.id===post.id))]:rows;
+  Zu.total=d.total||0;Zu.page=d.page||1;Zu.limit=d.limit||20;Zu.postsLoading=false;Zu.postsError='';zuPaint();
+});
+Native.on('data.loading',d=>{
+  if(d.resource==='publicProfile'&&zuMatches(d)){Zu.loading=!!d.loading;Zu.error=d.error||'';zuPaint()}
+  if(d.resource==='publicPosts'&&zuMatches(d,true)){Zu.postsLoading=!!d.loading;Zu.postsError=d.error||'';zuPaint()}
+});
+Native.on('data.home',d=>{
+  if(!zuActive()||!Zu.profile||Zu.loading)return;
+  const peer=[...(d.hosts||[]),...(d.stage||[]),d.featured].find(p=>p?.id===Zu.id);
+  if(!peer)return;
+  // Live discovery events may update availability without replacing profile
+  // counts, a pending relationship write, or the current gallery selection.
+  for(const key of ['online','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
+  zuPaint();
+});
+Native.on('follow.saved',zuFollowSaved);
+Native.on('follow.error',d=>{
+  if(zuPendingFollows.get(d.id)!==d.requestId)return;
+  zuPendingFollows.delete(d.id);
+  if(d.id!==Zu.id||d.requestId!==Zu.followRequestId)return;
+  Zu.followBusy=false;Zu.followError=d.message||'Could not update your follow. Please try again.';zuPaint();
+});
+Native.on('block.saved',zuBlocked);
+Native.on('block.error',d=>{
+  if(zuPendingBlocks.get(d.id)!==d.requestId)return;
+  zuPendingBlocks.delete(d.id);
+  if(d.id!==Zu.id||d.requestId!==Zu.blockRequestId)return;
+  Zu.blockBusy=false;const status=document.querySelector('.zu-dialog-status');if(status)status.textContent=d.message||'Could not block this user. Try again.';
+  const button=document.querySelector('.zu-block-confirm');if(button){button.disabled=false;button.textContent='Block user'}
+});
+// Catalog and gift outcomes otherwise repaint only the discovery screens.
+for(const type of ['data.catalog','gift.sent','wallet.balance'])Native.on(type,()=>{if(zuActive()&&Home.giftTo)zuPaint()});
+Native.on('gift.sent',()=>{if(zuActive())zuPaint()});
+Native.on('operation.error',d=>{if(zuActive()&&d.action==='gift.send')zuPaint()});
+Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.checking&&(Zu.error||Zu.postsError))zuRetry();else zuPaint()});
+for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();zuPendingFollows.clear();zuPendingBlocks.clear();Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
+window.ZimiPublicProfile={
+  render:zuScreen,
+  beforeNavigate(view,id){
+    zuCloseDialog();
+    if(['host','user'].includes(view)&&!(zuActive()&&id===zuId()))Zu.back={view:S.v,id:S.v==='user'?S.u:S.h};
+  },
+  afterNavigate(view){if(['host','user'].includes(view))zuLoad()},
+};
+if(DEMO&&previewMode==='profile'){S.v='host';S.h='aanya';S.loggedIn=1;zuLoad()}
 
 r();
 Native.send('ready',{demo:DEMO});

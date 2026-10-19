@@ -88,9 +88,9 @@
    Colours come from the theme tokens so every palette, light or dark, carries through. */
 .zc-thread{--zc-gutter:max(14px,calc(50% - 380px));position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--canvas);color:var(--ink)}
 .zc-thread-header{flex:none;display:flex;align-items:center;gap:4px;padding:8px max(10px,calc(50% - 390px)) 8px max(4px,calc(50% - 400px));border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
-.zc-thread-back,.zc-thread-actions>button,.zc-thread-more>button{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;color:var(--ink)}
+.zc-thread-actions>button,.zc-thread-more>button{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;color:var(--ink)}
 .zc-thread-person{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:3px;border-radius:14px;text-align:left}
-.zc-thread-person:active,.zc-thread-back:active,.zc-thread-actions>button:active{background:var(--surface)}
+.zc-thread-person:active,.zc-thread-actions>button:active{background:var(--surface)}
 .zc-thread-person .zc-avatar{width:40px;height:40px}
 .zc-thread .zc-avatar .zh-fallback>span{font-size:14px}
 .zc-thread-presence{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:var(--faint);border:2px solid var(--canvas)}

@@ -40,13 +40,13 @@
 }
 .ob-shell *, .ob-dialog * { box-sizing: border-box; }
 .ob-shell button, .ob-shell input, .ob-shell select, .ob-dialog button { font: inherit; }
-.ob-shell button, .ob-dialog button { min-height: 44px; }
-.ob-shell button, .ob-dialog button, .ob-upload {
+.ob-shell button:not(.zb-back), .ob-dialog button:not(.zb-back) { min-height: 44px; }
+.ob-shell button:not(.zb-back), .ob-dialog button:not(.zb-back), .ob-upload {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: transform .2s cubic-bezier(.2,.8,.25,1), background-color .2s, box-shadow .2s, border-color .2s, color .2s, opacity .2s;
 }
-.ob-shell button:active:not(:disabled), .ob-dialog button:active:not(:disabled), .ob-upload:active { transform: scale(.97); }
+.ob-shell button:active:not(:disabled):not(.zb-back), .ob-dialog button:active:not(:disabled):not(.zb-back), .ob-upload:active { transform: scale(.97); }
 /* Text fields, code boxes and selects show focus on their own border, like every other field. */
 .ob-shell button:focus-visible, .ob-shell a:focus-visible, .ob-shell input[type="checkbox"]:focus-visible,
 .ob-dialog button:focus-visible, .ob-dialog a:focus-visible, .ob-upload:focus-within { outline: 2px solid var(--ob-soft); outline-offset: 3px; }
@@ -59,8 +59,8 @@
 /* Step chrome: back, progress and help sit on frosted glass. */
 .ob-header, .ob-main, .ob-actions, .ob-footer { width: 100%; max-width: 500px; margin-inline: auto; }
 .ob-header { display: flex; align-items: center; gap: 14px; min-height: 40px; margin-bottom: 30px; }
-/* The app's back button (as on call setup): a 40px surface circle with a hairline border. */
-.ob-icon {
+/* Round preview controls; navigation uses the shared .zb-back component. */
+.ob-icon:not(.zb-back) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -73,7 +73,7 @@
   color: var(--ink);
   background: var(--surface);
 }
-.ob-icon svg { width: 21px; height: 21px; }
+.ob-icon:not(.zb-back) svg { width: 21px; height: 21px; }
 .ob-progress { display: flex; align-items: center; flex: 1; gap: 6px; }
 .ob-progress span { position: relative; display: block; height: 5px; flex: 1; border-radius: 8px; background: var(--ob-edge); overflow: hidden; transition: box-shadow .3s; }
 .ob-progress span::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, var(--ob-pink), color-mix(in srgb, var(--ob-pink) 55%, var(--ob-soft))); transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
@@ -351,7 +351,7 @@
 @keyframes ob-toast-in { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
 @media (hover: hover) and (pointer: fine) {
   .ob-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 20px 34px -16px var(--ob-glow), 0 3px 8px -4px var(--ob-glow), inset 0 1px 0 rgb(255 255 255 / .22); }
-  .ob-secondary:hover, .ob-icon:hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
+  .ob-secondary:hover, .ob-icon:not(.zb-back):hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
   .ob-text-button:hover, .ob-resend button:hover:not(:disabled) { color: var(--ob-text); }
   .ob-role-switch button:hover:not(.selected), .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
   .ob-upload:hover { border-color: var(--ob-pink); }
@@ -520,7 +520,7 @@
 .kyc .ob-options button.selected { background: var(--accent); border-color: var(--accent); color: var(--cta-ink); }
 @media (prefers-reduced-motion: reduce) {
   .ob-shell *, .ob-shell *::before, .ob-shell *::after, .ob-dialog, .ob-dialog *, .ob-toast { animation: none !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
-  .ob-shell button:active:not(:disabled), .ob-dialog button:active:not(:disabled), .ob-upload:active { transform: none; opacity: .8; }
+  .ob-shell button:active:not(:disabled):not(.zb-back), .ob-dialog button:active:not(:disabled):not(.zb-back), .ob-upload:active { transform: none; opacity: .8; }
   .ob-spinner { border-color: currentColor; border-style: dotted; }
 }
 

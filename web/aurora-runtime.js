@@ -123,6 +123,10 @@ document.addEventListener("error",e=>{const img=e.target;if(!(img instanceof HTM
  const holder=document.createElement("span"),illustration=face({gender:img.dataset.face});
  holder.innerHTML=img.dataset.faceWrap==="zh-fallback"?`<div class="zh-fallback">${illustration}</div>`:illustration;img.replaceWith(holder.firstChild)},true);
 
+/* The one back button used on every screen; `slot` keeps a screen's positioning class. */
+function backButton(onclick,{label="Back",media=false,slot="",attrs=""}={}){
+ return `<button type="button" class="zb-back${media?" on-media":""}${slot?" "+slot:""}" aria-label="${esc(label)}" onclick="${onclick}" ${attrs}>${I("back",21)}</button>`}
+
 /* Colour-forward avatar, for lists where the faces carry the page. */
 function avatarSource(h){return imageSrc(h===me?S.avatarData:h.avatarUrl)}
 function portrait(h){const src=avatarSource(h);
@@ -197,6 +201,7 @@ function go(v,id){
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
  if(v==="hcall")S.cel=S.hcel;
  S.more=0;
+ window.ZimiPublicProfile?.beforeNavigate(v,id);
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
@@ -204,6 +209,7 @@ function go(v,id){
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
+ window.ZimiPublicProfile?.afterNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
   S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
@@ -306,8 +312,9 @@ function postsFor(h){
   cap:CAPS[(h.seed+i)%CAPS.length]}));
 }
 
-function vHost(){return profilePage(asProfile(g(S.h),true),g(S.h))}
+function vHost(){if(window.ZimiPublicProfile)return window.ZimiPublicProfile.render();return profilePage(asProfile(g(S.h),true),g(S.h))}
 function vUser(){
+ if(window.ZimiPublicProfile)return window.ZimiPublicProfile.render();
  const u=sender(S.u);
  if(!u)return `<div class="empty">That supporter is no longer here.</div>`;
  return profilePage(asProfile(u,false),u);
@@ -328,7 +335,7 @@ function profilePage(p,raw,self){
  return `<div class="hp">
   <div class="hpcover">
    ${cover}
-   ${self?"":`<button class="hpc" aria-label="Back" onclick="${back}">${I("back",19)}</button>`}
+   ${self?"":`${backButton(back,{media:true,slot:"hpc"})}`}
    ${p.on?`<span class="hplive">Online</span>`:""}
   </div>
 
@@ -396,7 +403,7 @@ function vSetup(){
     <i>Viewers will see your profile photo</i></div>`}
   <div class="guide"></div>
   <div class="stopbar">
-   <button class="sicon" aria-label="Cancel" onclick="go('home')">${I("back",19)}</button>
+   ${backButton("go('home')",{label:"Cancel",media:true,slot:"sicon"})}
    <span style="flex:1"></span>
    <button class="sicon ${S.mic?"":"off"}" aria-pressed="${S.mic?"false":"true"}"
     aria-label="${S.mic?"Mute microphone":"Unmute microphone"}"
@@ -499,7 +506,7 @@ function stage(main,tile){
 /* One slim bar: back, timer (+ Home visibility for hosts), then earnings (hosts) and ⋯. */
 function topBar(host){
  return `<div class="ctop">
-  <button class="cback" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${I("back",17)}</button>
+  ${backButton(host?"hostEnd('end')":"endCall()",{label:"End call",media:true,slot:"cback"})}
   <span class="cstat"><i class="rec"></i><span id="ck">${clock(S.sec)}</span>
    ${host?`<span class="csep"></span><button class="cvis ${S.vis?"on":""}" aria-pressed="${!!S.vis}" aria-label="${S.vis?"Visible on Home, tap to hide":"Hidden from Home, tap to show"}" onclick="toggleVis()">${I(S.vis?"eye":"eyeoff",14)}${S.vis?"Visible":"Hidden"}</button>`:""}</span>
   <span style="flex:1"></span>
@@ -540,7 +547,7 @@ function vCall(){const h=g(S.h);
 function vVoice(){const h=g(S.h);
  if(window.ZimiHome)return homeCallView(false);
  return `<div class="voicecall">
-  <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
+  ${backButton("endCall()",{label:"End call",media:true,slot:"voiceback"})}
   <div class="voiceorb">${avc(h,104)}</div>
   <h2>${esc(h.n)}</h2>
   <p>Voice call</p>
@@ -806,7 +813,7 @@ function vPost(){
   </div>`).join("")}
  </div>
  <div class="pvtop">
-  <button class="pvclose" aria-label="Close" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
+  ${backButton(`go('host','${domId(h.id)}')`,{label:"Close",media:true,slot:"pvclose"})}
   <span class="pvcount" id="pvc">${(S.pi||0)+1} / ${posts.length}</span></div>
  `}
 
@@ -1077,7 +1084,7 @@ function vPrecall(){
  return `<div class="pcall">
  <div class="pcbg">${art(h.seed)}</div><span class="pcshade"></span>
  <div class="pctop">
-  <button class="pcic" aria-label="Back" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
+  ${backButton(`go('host','${domId(h.id)}')`,{media:true,slot:"pcic"})}
   <span class="pctitle">Video call</span>
   <span style="width:38px"></span></div>
 
@@ -1546,26 +1553,26 @@ function topFor(){
     <button class="ibtn" aria-label="Search creators" onclick="go('search')">${I("srch",19)}</button>
     <button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button></span></div>`}
  if(S.v==="search")return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('home')")}
    <span class="sfield">${I("srch",17)}
     <input id="sq" placeholder="Search creators by name" value="${esc(S.sq||"")}" oninput="S.sq=this.value;paintSearch()">
     ${S.sq?`<button aria-label="Clear" onclick="S.sq='';r()" style="color:var(--faint);font-size:16px">&times;</button>`:""}
    </span></div>`;
  if(S.v==="coins")return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('settings')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('settings')")}
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
   kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
  const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('${backTo}')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton(`go('${backTo}')`)}
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
    <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
  if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
-   <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('home')")}
    ${[["creators","Creators"],["family","Family"]].map(([k,l])=>
      `<button class="btab ${S.bt===k?"on":""}" onclick="S.bt='${k}';r()">${l}</button>`).join("")}</div>
   <div class="bctl">

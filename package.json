@@ -30,6 +30,7 @@
     "test:themes": "npm run build:web && node scripts/test-themes.cjs",
     "test:theme-consistency": "npm run build:web && node scripts/test-theme-consistency.cjs",
     "test:profile-settings": "npm run build:web && node scripts/test-profile-settings.cjs",
+    "test:public-profile": "npm run build:web && node scripts/test-public-profile.cjs",
     "test:icons": "npm run build:web && node scripts/test-icons.cjs",
     "build:admin": "node scripts/build-admin.mjs"
   },

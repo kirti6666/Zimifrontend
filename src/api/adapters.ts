@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -63,6 +63,29 @@ export function hostFrom(value: unknown): Host {
 }
 
 const count = (value: unknown) => Math.max(0, Math.floor(finite(value) ?? 0));
+export function publicProfileFrom(value: unknown): PublicProfile {
+  const profile = record(value);
+  if (!idOf(profile) || typeof profile.name !== "string" ||
+    [profile.followers, profile.following].some(value => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) ||
+    typeof profile.isFollowing !== "boolean") throw new ApiError("This profile could not be loaded. Try again.", 502);
+  // This route exposes phone verification and admin approval separately.
+  const verified = profile.role === "host" && profile.hostStatus === "approved" &&
+    (typeof profile.isVerifiedHost === "boolean" ? profile.isVerifiedHost : profile.isPhoneVerified === true);
+  return {
+    ...hostFrom({ ...profile, isVerifiedHost: verified }),
+    followingCount: profile.following as number,
+    joined: string(profile.createdAt),
+    interests: stringList(profile.interests),
+    ...(typeof profile.level === "number" && Number.isSafeInteger(profile.level) && profile.level >= 0 ? { level: profile.level } : {}),
+    ...(typeof profile.crown === "boolean" ? { crown: profile.crown } : {}),
+  };
+}
+export function publicPostsFrom(value: unknown): PublicPosts {
+  const data = record(value);
+  if ([data.total, data.page, data.limit].some(value => typeof value !== "number" || !Number.isSafeInteger(value)) ||
+    Number(data.total) < 0 || Number(data.page) < 1 || Number(data.limit) < 1) throw new ApiError("These posts could not be loaded. Try again.", 502);
+  return { posts: items(data).map(postFrom), total: data.total as number, page: data.page as number, limit: data.limit as number };
+}
 export function streamFrom(value: unknown, fallbackHost = ""): HomeStream {
   const stream = record(value), hostId = idOf(stream.hostId) || fallbackHost;
   return { id: idOf(stream), hostId, ...(stream.host && typeof stream.host === "object" ? { host: hostFrom(stream.host) } : stream.hostId && typeof stream.hostId === "object" ? { host: hostFrom(stream.hostId) } : {}),

@@ -430,7 +430,7 @@ function obLogin() {
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your Zimi account" : "Log in to Zimi"}">
-    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${I("back", 21)}</button>
+    <header class="ob-header">${backButton("obBack()", {attrs: a.busy || a.uploading ? "disabled" : ""})}
       ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : '<span class="ob-login-label">ZIMI LIVE</span>'}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">

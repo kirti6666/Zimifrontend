@@ -1206,6 +1206,75 @@ test('profile settings and privacy messages accept only supported preferences, n
   await settle(); assert.equal(h.calls.length, 0); h.bridge.close();
 });
 
+test('public profiles and posts validate target IDs and keep target/request metadata through loading and failure', async () => {
+  const h = harness();
+  for (const message of [
+    { type: 'profile.load', data: { id: '../member' } }, { type: 'profile.load', data: { id: 'host', url: 'https://example.test' } },
+    { type: 'profile.posts.load', data: { id: 'host', page: 0 } }, { type: 'profile.posts.load', data: { id: 'host', page: 1.5 } },
+    { type: 'profile.posts.load', data: { id: 'host', requestId: -1 } }, { type: 'follow.set', data: { id: 'host', on: true, role: 'host' } },
+  ]) { assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null); h.bridge.handle(message); }
+  assert.equal(h.calls.length, 0);
+  h.overrides.publicProfile = id => ({ id, name: 'Aster', role: 'host', serverRole: 'host', followingCount: 3, followers: 42, following: false, joined: '', interests: [] });
+  h.bridge.handle({ type: 'profile.load', data: { id: 'host', requestId: 5 } }); await settle();
+  assert.equal(h.find('data.publicProfile')[0].data.id, 'host'); assert.equal(h.find('data.publicProfile')[0].data.requestId, 5);
+  assert.deepEqual(h.find('data.loading').map(event => [event.data.resource, event.data.id, event.data.requestId, event.data.loading]), [['publicProfile', 'host', 5, true], ['publicProfile', 'host', 5, false]]);
+  h.overrides.publicPosts = () => { throw new h.ApiError('Posts are temporarily unavailable', 503); };
+  h.bridge.handle({ type: 'profile.posts.load', data: { id: 'host', page: 2, requestId: 6 } }); await settle();
+  const failure = h.find('data.loading').at(-1).data;
+  assert.equal(failure.id, 'host'); assert.equal(failure.page, 2); assert.equal(failure.requestId, 6); assert.equal(failure.loading, false); assert.equal(failure.error, 'Posts are temporarily unavailable');
+  assert.equal(h.find('data.publicPosts').length, 0, 'Media failure does not fabricate an empty gallery');
+  assert.equal(h.find('data.publicProfile').length, 1, 'A failed gallery does not remove the loaded identity');
+  h.bridge.close();
+});
+
+test('public profile and gallery reads suppress earlier people and previous sessions', async () => {
+  const h = harness(), old = deferred(), next = deferred(), oldPosts = deferred(), nextPosts = deferred();
+  h.overrides.publicProfile = id => id === 'old' ? old.promise : next.promise;
+  h.overrides.publicPosts = id => id === 'old' ? oldPosts.promise : nextPosts.promise;
+  for (const [id, requestId] of [['old', 1], ['next', 2]]) {
+    h.bridge.handle({ type: 'profile.load', data: { id, requestId } });
+    h.bridge.handle({ type: 'profile.posts.load', data: { id, requestId } });
+  }
+  old.resolve({ id: 'old' }); oldPosts.resolve({ posts: [], total: 0, page: 1, limit: 12 }); await settle();
+  assert.equal(h.find('data.publicProfile').length, 0); assert.equal(h.find('data.publicPosts').length, 0);
+  next.resolve({ id: 'next', name: 'Next' }); nextPosts.resolve({ posts: [{ id: 'next-post' }], total: 1, page: 1, limit: 12 }); await settle();
+  assert.equal(h.find('data.publicProfile')[0].data.id, 'next'); assert.equal(h.find('data.publicPosts')[0].data.posts[0].id, 'next-post');
+  const late = deferred(); h.overrides.publicProfile = () => late.promise;
+  h.bridge.handle({ type: 'profile.load', data: { id: 'late', requestId: 3 } });
+  await h.session.clearToken(); late.resolve({ id: 'late' }); await settle();
+  assert.equal(h.find('data.publicProfile').length, 1, 'Account changes retire profile reads'); h.bridge.close();
+});
+
+test('follow waits for acknowledgement, protects in-flight relationship reads and exposes recoverable write failures', async () => {
+  const h = harness(), write = deferred(), oldRead = deferred();
+  h.overrides.publicProfile = () => oldRead.promise;
+  h.overrides.follow = () => write.promise;
+  h.bridge.handle({ type: 'profile.load', data: { id: 'host', requestId: 3 } });
+  const message = { type: 'follow.set', data: { id: 'host', on: true, requestId: 4 } };
+  h.bridge.handle(message); h.bridge.handle(message); await settle();
+  assert.equal(h.count('follow'), 1, 'Duplicate pending follows are serialized per target'); assert.equal(h.find('follow.saved').length, 0);
+  write.resolve({ following: true }); await settle();
+  const saved = h.find('follow.saved')[0].data;
+  assert.equal(saved.id, 'host'); assert.equal(saved.on, true); assert.equal(saved.requestId, 4);
+  assert.equal(h.count('publicProfile'), 1, 'Acknowledging a follow does not start another profile skeleton'); assert.equal(h.count('profileSettings'), 1); assert.equal(h.count('home'), 1);
+  oldRead.resolve({ id: 'host', following: false, followers: 41 }); await settle();
+  assert.equal(h.find('data.publicProfile')[0].data.profile.following, true, 'An old relationship read cannot undo the acknowledged follow');
+  assert.equal(h.find('data.publicProfile')[0].data.profile.followers, 42, 'The acknowledged relationship updates the count once');
+  assert.equal(h.find('data.publicProfile')[0].data.requestId, 3);
+  h.overrides.follow = () => { throw new h.ApiError('Follow unavailable', 503); };
+  h.bridge.handle({ type: 'follow.set', data: { id: 'host', on: false, requestId: 5 } }); await settle();
+  const failure = h.find('follow.error')[0].data;
+  assert.equal(failure.id, 'host'); assert.equal(failure.on, false); assert.equal(failure.requestId, 5); assert.equal(failure.message, 'Follow unavailable');
+  assert.equal(h.find('follow.saved').length, 1); h.bridge.close();
+});
+
+test('follow acknowledgements never leak into a replacement account', async () => {
+  const h = harness(), write = deferred(); h.overrides.follow = () => write.promise;
+  h.bridge.handle({ type: 'follow.set', data: { id: 'host', on: true, requestId: 9 } });
+  await h.session.clearToken(); write.resolve({ following: true }); await settle();
+  assert.equal(h.find('follow.saved').length, 0); assert.equal(h.count('home'), 0); h.bridge.close();
+});
+
 test('profile settings reads report actual loading and never allow stale responses to replace the current summary', async () => {
   const h = harness(), old = deferred(), latest = deferred(); let reads = 0;
   h.overrides.profileSettings = () => ++reads === 1 ? old.promise : latest.promise;

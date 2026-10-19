@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -129,6 +129,12 @@ export const api = {
   },
   async presence() { const data = privacyFrom(await request("GET", "/safety")); return { online: data.allowRequests && data.showActivity, visible: data.discoverable }; },
   async profileSettings() { return profileSettingsFrom(await request("GET", "/account/settings")); },
+  async publicProfile(id: string) {
+    const profile = publicProfileFrom(await request("GET", `/users/${encodeURIComponent(id)}`));
+    if (profile.id !== id) throw new ApiError("This profile could not be loaded. Try again.", 502);
+    return profile;
+  },
+  async publicPosts(id: string, page = 1) { return publicPostsFrom(await request("GET", `/users/${encodeURIComponent(id)}/posts?page=${page}&limit=12`)); },
   async saveProfileSettings(input: ProfileSettingsPatch) { return profileSettingsFrom(await request("PATCH", "/account/settings", input)); },
   async savePrivacy(input: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">>) { return privacyFrom(await request("PATCH", "/safety", input)); },
   async blockedUsers(page = 1) { return blockedUsersFrom(await request("GET", `/users/blocked?page=${page}&limit=20`)); },
@@ -225,7 +231,11 @@ export const api = {
     const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}) }));
     return { id: idOf(message), text: typeof message.text === "string" ? message.text : text };
   },
-  follow: (id: string, on: boolean) => request<void>("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }),
+  async follow(id: string, on: boolean) {
+    const data = record(await request("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }));
+    if (typeof data.following !== "boolean") throw new ApiError("Your follow preference could not be confirmed. Try again.", 502);
+    return { following: data.following };
+  },
   async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
   async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
   async defaultTheme() { return themeFrom(record(await request("GET", "/themes/default", undefined, { auth: false })).theme); },

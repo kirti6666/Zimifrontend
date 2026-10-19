@@ -13,7 +13,7 @@ function zpcScreen(){
   const permission=voice?'microphone':'camera & microphone';
   return `<section class="zpc-setup ${busy?'is-preparing':''} ${!available?'is-unavailable':''}" aria-label="Set up your private call">
     <div class="zpc-ambient" aria-hidden="true"></div>
-    <header class="zpc-header"><button class="zpc-back" onclick="go('home')" aria-label="Back">${hi('back',21)}</button><span>1-on-1 call</span><span class="zpc-private">${hi('lock',12)} Private</span></header>
+    <header class="zpc-header">${backButton("go('home')",{slot:"zpc-back"})}<span>1-on-1 call</span><span class="zpc-private">${hi('lock',12)} Private</span></header>
     <div class="zpc-profile">
       <div class="zpc-avatar-wrap"><div class="zpc-orbit" aria-hidden="true"></div><div class="zpc-avatar has-photo">${zpcPortrait(h)}</div><span class="zpc-avatar-badge" aria-hidden="true">${hi(voice?'ph':'vid',17)}</span></div>
       <span class="zpc-eyebrow">A LITTLE MORE PERSONAL</span>
