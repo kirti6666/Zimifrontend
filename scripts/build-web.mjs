@@ -96,6 +96,7 @@ const page = (demo) =>
   read("web/verification-call.css") +
   read("web/offline.css") +
   read("web/public-profile.css") +
+  read("web/home-dashboard.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -110,6 +111,7 @@ const page = (demo) =>
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/home.js") +
+  "\n" + read("web/home-dashboard.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +

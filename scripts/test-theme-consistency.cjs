@@ -105,7 +105,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     const page = await open(member);
     for (const view of ['home', 'explore', 'chats', 'profile']) {
       await nav(page, view);
-      const rules = view === 'home' ? [bg('.zh-match', 'surface'), ...cta('.zh-match>.zh-primary')] : view === 'explore' ? [bg('.zh-tile-caption', 'surface')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : [bg('.zp-identity', 'surface'), ...cta('.zp-topup')];
+      const rules = view === 'home' ? [bg('.zh-home-match', 'surface'), ...cta('.zh-home-match>.zh-primary'), bg('.zh-person-card', 'surface'), ink('.zh-person-card h3')] : view === 'explore' ? [bg('.zh-tile-caption', 'surface')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : [bg('.zp-identity', 'surface'), ...cta('.zp-topup')];
       await mountedThemes(page, view, rules);
     }
     for (const view of ['wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {

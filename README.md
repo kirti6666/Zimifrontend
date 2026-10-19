@@ -201,11 +201,14 @@ rate limits, session recovery, and creator setup using mocked server responses.
 
 ## Home screen and admin controls
 
-The reference-based home lives in `web/home.js` and `web/home.css`. It includes
-live creator stories, category filters, a featured creator, matching, creator
-search, notifications, a reward banner, server-priced gifts, and PayPlus coin
-checkout. `web/media.js` handles camera/microphone capture and WebRTC media;
-authenticated HTTP and Socket.IO still run through `src/`.
+The compact Home layout lives in `web/home-dashboard.js` and
+`web/home-dashboard.css`. It includes search, call/chat shortcuts, live rooms,
+category filters, creator cards and matching. The configured featured creator
+leads the For you cards. Profiles, calls and live rooms have separate actions;
+approved hosts get a Go live shortcut and their eligible reward banner.
+Shared discovery, gifts and checkout flows remain in `web/home.js` / `web/home.css`.
+`web/media.js` handles camera/microphone capture and WebRTC media; authenticated
+HTTP and Socket.IO still run through `src/`.
 
 In the sibling **admin-dashboard**, open **Settings → Home screen** to choose
 the featured creator and reward mission or enable/disable matching. Creator
@@ -215,8 +218,9 @@ Mission eligibility and wallet credits are checked by the server.
 
 Run `npm run build:web` after changing web sources. Run `npm run test:home`
 for responsive interaction checks and real browser WebRTC tests using test
-devices. It also writes `home-preview-mobile.png`, `home-preview-phone.png`,
-and `home-preview-desktop.png` for review. Preview portraits/activity are demo
+devices. It also writes `artifacts/home-simple-mobile-dark.png`,
+`artifacts/home-simple-mobile-light.png` and `artifacts/home-simple-desktop.png`
+for review. Preview portraits/activity are demo
 fixtures only; the phone build starts empty and displays server data.
 
 Rebuild/install the native app (`npm run android` or `npm run ios`) to include

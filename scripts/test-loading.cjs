@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 
 const hostId = '507f1f77bcf86cd799439011';
 const secondId = '507f1f77bcf86cd799439021';
-const host = { id: hostId, name: 'Mira North', category: 'Music', online: true, verified: true, availableForCall: true, ratePerMin: 0,
+const host = { id: hostId, name: 'Mira North', role: 'host', serverRole: 'host', category: 'Music', online: true, verified: true, availableForCall: true, ratePerMin: 0,
   stream: { id: '507f1f77bcf86cd799439012', hostId, title: 'Evening acoustic set', category: 'Music', kind: 'video', viewers: 12, status: 'live' } };
 const second = { ...host, id: secondId, name: 'Asha Sen', stream: null };
 const feed = (hosts = [host], extra = {}) => ({ hosts, stage: hosts, featured: hosts[0] || null, total: hosts.length, page: 1, limit: 20,
@@ -48,7 +48,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
   try {
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
     assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
-    for (const label of ['Loading live creators', 'Loading featured creator', 'Loading video matches', 'Loading creators']) await visible(label);
+    for (const label of ['Loading live creators', 'Loading video matches', 'Loading creators']) await visible(label);
     assert.equal(await page.locator('.zh-tile').count(), 0, 'Initial content has no invented creator cards');
     assert.equal(await page.locator('.zh-empty,.zh-stage-empty').count(), 0, 'Pending is distinct from an empty feed');
     assert.equal(await page.locator('.zh-balance').innerText(), '', 'An unknown balance must not flash a fabricated zero');
@@ -141,7 +141,12 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.getByRole('button', { name: 'Home', exact: true }).click();
     // Even cached catalog content refreshes on opening its sheet or screen.
     await result('data.catalog', catalog, 'catalog');
-    await page.getByRole('button', { name: 'Send a gift to Mira North', exact: true }).click();
+    await page.getByRole('button', { name: 'View Mira North profile', exact: true }).first().click();
+    const publicRequest = await lastSent('profile.load');
+    await receive('data.publicProfile', { id: hostId, profile: { ...host, followers: 10, followingCount: 2, following: false }, requestId: publicRequest.requestId });
+    const postRequest = await lastSent('profile.posts.load');
+    await receive('data.publicPosts', { id: hostId, posts: [], total: 0, page: 1, limit: 20, requestId: postRequest.requestId });
+    await page.getByRole('button', { name: 'Send a gift', exact: true }).click();
     await visible('Loading gifts');
     assert.equal(await page.getByRole('button', { name: /Rose/ }).count(), 0);
     await result('data.catalog', catalog, 'catalog');
@@ -151,6 +156,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     assert.equal(await page.getByRole('button', { name: /Rose/ }).isEnabled(), false, 'Gift purchase waits for the real wallet');
     await result('wallet.balance', { coins: 1234, earningsPaise: 0 }, 'wallet');
     await page.getByRole('button', { name: 'Close gifts', exact: true }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
     await page.getByRole('button', { name: /^Wallet, / }).click();
     await visible('Loading coin packs');
     assert.equal(await page.getByRole('button', { name: 'Get 200 coins', exact: true }).count(), 0);
