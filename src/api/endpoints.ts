@@ -208,10 +208,13 @@ export const api = {
   acceptVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/accept`),
   endVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/end`),
   verificationSignal: (callId: string, signal: RtcPayload) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/signal`, signal),
-  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<Wallet> {
+  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string) {
     if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
-    await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey });
-    return api.wallet();
+    const receipt = record(await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey }));
+    if (!idOf(receipt) || typeof receipt.coins !== "number" || !Number.isSafeInteger(receipt.coins) || receipt.coins < 1) throw new ApiError("The gift confirmation could not be read. Retry to check this same gift.", 502);
+    // A confirmed transfer must not become a failed send if a subsequent wallet
+    // read loses its connection. The bridge refreshes the balance independently.
+    return { id: idOf(receipt), coins: receipt.coins };
   },
   /** Uploads a chat photo into the sender's own folder, then sends it. */
   async sendPhotoMessage(to: string, photo: string) {

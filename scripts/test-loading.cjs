@@ -152,8 +152,9 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.catalog', catalog, 'catalog');
     await gone('Loading gifts');
     assert.equal(await page.getByRole('button', { name: /Rose/ }).isEnabled(), true);
+    await page.getByRole('button', { name: /Rose/ }).click();
     await loading('wallet', true);
-    assert.equal(await page.getByRole('button', { name: /Rose/ }).isEnabled(), false, 'Gift purchase waits for the real wallet');
+    assert.equal(await page.getByRole('button', { name: 'Send gift', exact: true }).isEnabled(), false, 'Gift delivery waits for the real wallet');
     await result('wallet.balance', { coins: 1234, earningsPaise: 0 }, 'wallet');
     await page.getByRole('button', { name: 'Close gifts', exact: true }).click();
     await page.getByRole('button', { name: 'Back', exact: true }).click();

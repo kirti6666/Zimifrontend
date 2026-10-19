@@ -115,7 +115,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await receive(page, 'data.search', { q: '', hosts: [creator], page: 1, total: 1 });
     await mountedThemes(page, 'search', [bg('.zh-search-header>div', 'surfaceElevated'), ink('#sq')]);
     await nav(page, 'coins'); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'coins', [bg('.zh-wallet-card', 'surface'), ink('.zh-wallet-card>span', 'textMuted'), ink('.zh-wallet-card p', 'textMuted'), ...cta('.zh-coins>.zh-primary')], true);
+    await mountedThemes(page, 'coins', [bg('.zw-wallet', 'surface'), ink('.zw-wallet-main>div>span', 'textMuted'), ink('.zw-wallet p', 'textMuted'), ...cta('.zw-coins>.zh-primary')], true);
     await nav(page, 'thread');
     await receive(page, 'data.thread', { with: creator.id, canSend: true, messages: [{ id: 'thread-theme', from: creator.id, text: 'Hello from the server fixture', createdAt: new Date().toISOString() }] });
     await mountedThemes(page, 'thread', [bg('.zc-thread', 'background'), ink('.zc-thread'), bg('.zc-composer-field', 'surface'), ...cta('.zc-composer-send')], true);

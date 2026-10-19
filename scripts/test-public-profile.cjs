@@ -243,10 +243,11 @@ async function run() {
     await giftDialog.waitFor();
     await receive(page, 'data.catalog', { gifts: [{ id: id('51'), name: 'Rose', emoji: '🌹', coins: 10 }], packs: [], paymentsAvailable: false });
     await giftDialog.getByRole('button', { name: /Rose/ }).click();
+    await giftDialog.getByRole('button', { name: 'Send gift', exact: true }).click();
     const gift = await lastSent(page, 'gift.send');
     assert.equal(gift.to, creator.id); assert.equal(gift.gift, id('51')); assert.ok(gift.idempotencyKey);
     assert.equal(await giftDialog.isVisible(), true, 'Gift delivery waits for server confirmation');
-    await receive(page, 'gift.sent', { to: creator.id, gift: id('51'), coins: 10 });
+    await receive(page, 'gift.sent', { to: creator.id, gift: id('51'), coins: 10, idempotencyKey: gift.idempotencyKey });
     assert.equal(await giftDialog.count(), 0);
     console.log('PASS public profile: account copy, correctly targeted chat, call setup and gift delivery');
 

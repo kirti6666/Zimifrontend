@@ -173,7 +173,7 @@ export interface ProfileSettings {
 }
 export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
-export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; }
+export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
 export interface RtcPayload {
   description?: { type: "offer" | "answer"; sdp: string };
   candidate?: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string };

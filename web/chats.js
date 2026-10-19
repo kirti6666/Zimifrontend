@@ -116,7 +116,14 @@ function zcThreadSend(text){const input=document.getElementById('ti'),value=Stri
  if(editing){const m=zcFind(editing.id);Native.send('chat.edit',{to:S.h,id:editing.id,text:value});if(m)Object.assign(m,{text:value,edited:true});Chats.editing=null}
  else{const reply=Chats.reply;Native.send('chat.send',{to:S.h,text:value,...(reply?{replyTo:reply.id}:{})});S.msgs.push({id:'local-'+Date.now(),local:true,mine:true,text:value,at:new Date().toISOString(),status:'sent',...(reply?{reply:{...reply,deleted:false}}:{})});Chats.reply=null}
  if(text===undefined&&input){input.value='';Chats.drafts[S.h]='';input.focus()}zcThreadEmoji(false);zcPaintContext();paint()}
-function zcThreadGift(to,gift){if(S.v!=='thread'||S.h!==String(to)||!gift)return;const m={id:'gift-'+Date.now(),kind:'gift',mine:true,at:new Date().toISOString(),status:'sent',gift:{name:gift.name,emoji:gift.emoji||'',image:gift.mediaUrl?homeGiftUrl(gift.mediaUrl):'',coins:gift.coins}};(Chats.gifts[S.h]||=[]).push(m);S.msgs.push(m);paint();playGift(gift.name,gift.emoji||'🎁',gift.coins,'')}
+function zcThreadGift(to,gift,receipt={}){
+  if(!to||!gift)return;
+  const target=String(to),identity=receipt.idempotencyKey||receipt.id||receipt.transactionId,rows=Chats.gifts[target]||=[];
+  if(identity&&rows.some(message=>message.giftReceipt===String(identity)))return;
+  const m={id:'gift-'+(identity||crypto.randomUUID()),giftReceipt:identity?String(identity):'',kind:'gift',mine:true,at:receipt.createdAt||new Date().toISOString(),status:'sent',gift:{name:gift.name,emoji:gift.emoji||'',image:gift.mediaUrl?homeGiftUrl(gift.mediaUrl):'',coins:Number.isSafeInteger(receipt.coins)?receipt.coins:gift.coins}};
+  rows.push(m);
+  if(S.v==='thread'&&S.h===target){S.msgs.push(m);paint();playGift(gift.name,gift.emoji||'🎁',gift.coins,'')}
+}
 function zcThreadMenu(open){const menu=document.querySelector('.zc-thread-menu'),button=document.querySelector('.zc-thread-more>button');if(!menu||!button)return;const show=open??menu.hidden;menu.hidden=!show;button.setAttribute('aria-expanded',String(show));if(show)menu.querySelector('button')?.focus()}
 function zcThreadEmoji(open){const tray=document.getElementById('zc-emoji');if(!tray)return;tray.hidden=!(open??tray.hidden)}
 function zcThreadInsert(emoji){const input=document.getElementById('ti');if(!input)return;const end=input.selectionEnd??input.value.length;input.setRangeText(emoji,input.selectionStart??end,end,'end');Chats.drafts[S.h]=input.value;input.focus()}
@@ -129,7 +136,7 @@ function zcDemoThread(h){const name=first(h?.n||'there'),at=minutes=>new Date(Da
   {id:'demo-m5',kind:'voice',mine:false,at:at(1),duration:'0:42'},
   {id:'demo-m6',mine:true,status:'read',at:at(0),text:'Yes! Jumping on in 2 minutes, let me grab my headphones 🎧'}]}
 window.ZimiHome.views.thread=zcThread;
-Native.on('gift.sent',d=>zcThreadGift(d.to,Home.gifts.find(x=>x.id===d.gift)));
+Native.on('gift.sent',d=>zcThreadGift(d.to,d.giftDetails||window.ZimiCoins?.giftReceipt(d)||Home.gifts.find(x=>x.id===d.gift),d));
 /* A failed send cannot be matched to a request, so it marks the latest unconfirmed message. */
 /* Photos from members reach creators blurred; the creator chooses which ones to view, again on every visit. */
 function zcPhotoBubble(m,open=''){const src=imageSrc(m.imageUrl),img=src?`<img src="${src}" alt="" loading="lazy">`:'';if(!isHost()||m.mine||Chats.revealed[m.id])return `<div class="zc-photo"${open}>${img}${m.status==='sending'?'<span>Sending…</span>':''}</div>`;return `<button type="button" class="zc-photo is-blurred" onclick="zcRevealPhoto('${domId(m.id)}')" aria-label="Photo hidden. Tap to view">${img}<span>${hi('eye',18)} Tap to view</span></button>`}

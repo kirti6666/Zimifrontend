@@ -86,6 +86,25 @@ Vercel runs the same `npm run build` and serves `dist/`, per `vercel.json`.
 The website is the clickable preview: it fakes the other side of every call.
 The phone app is built from the same screens with that turned off.
 
+## Coins and gifts
+
+`web/coins.js` and `web/coins.css` provide the shared gold Zimi coin, wallet,
+coin packs, payment recovery, and gift selection. Selecting a gift does not
+spend coins; the separate Send action confirms it. Adding coins from a gift
+sheet keeps the current conversation, live stream, or call open.
+
+Prices and balances come from the authenticated API. Uncertain payment and gift
+retries reuse their original idempotency keys. Pending payment references are
+stored per account in native SecureStore and verified on restart. Successful
+gift delivery remains confirmed even if the subsequent wallet refresh fails.
+Transaction history reloads from the wallet ledger when opened; chat gift cards
+are session receipts rather than persistent chat messages.
+
+Run `npm run test:coins` for browser integration checks with a stubbed native
+bridge, and `npm run test:auth` for native bridge/API checks. These tests do not
+charge real money. Actual provider settlement still requires an authorized
+provider test transaction.
+
 ## Architecture
 
 The Aurora UI is a self-contained web bundle rendered inside a `react-native-webview`, so the interface is identical to the previous Next.js version.

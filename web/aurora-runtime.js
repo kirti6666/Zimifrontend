@@ -171,9 +171,10 @@ const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>'
  plus:'<path d="M12 5v14M5 12h14" stroke-linecap="round"/>',
  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/>',
  moon:'<path d="M20 14.2A8.2 8.2 0 019.8 4a8.4 8.4 0 102 10.4 8.2 8.2 0 008.2-.2z" stroke-linejoin="round"/>'};
+function coinIcon(size=20){return `<svg class="zi-icon zc-coin" data-icon="coin" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="25" r="22" fill="#A76512"/><circle cx="24" cy="23" r="21.5" fill="#E8AC32" stroke="#FCE29A"/><circle cx="24" cy="23" r="17.5" fill="#F6C653" stroke="#BC7F1B" stroke-width="1.5"/><path d="M10 18a15 15 0 0 1 24-7" stroke="#FFE9A5" stroke-width="2" stroke-linecap="round"/><path d="M15 15h18v5L22 29h11v5H15v-5l11-9H15z" fill="#B27615"/><path d="M15 13h18v5L22 27h11v5H15v-5l11-9H15z" fill="#FFF0B6"/><path d="m35 32 1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="#FFF0B6"/></svg>`}
 /* Every icon carries data-icon so icons.css can give it its own press animation. */
-const I=(k,s)=>`<svg class="zi-icon" data-icon="${k}" viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${P[k]}</svg>`;
-const coin=`<svg class="zi-icon" data-icon="coin" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc400" stroke="#ef9f00" stroke-width="1.3"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#fff178" stroke-width="1.2"/><path d="M12 7.4l1.35 2.73 3.02.44-2.18 2.12.52 3-2.71-1.43-2.71 1.43.52-3-2.18-2.12 3.02-.44z" fill="#fff3a1"/></svg>`;
+const I=(k,s)=>['coin','rings'].includes(k)?coinIcon(s||20):`<svg class="zi-icon" data-icon="${k}" viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${P[k]}</svg>`;
+const coin=coinIcon(17);
 /* One currency mark everywhere: balances, gifts, targets, calls and purchases. */
 const gem=coin;
 const th=()=>"";

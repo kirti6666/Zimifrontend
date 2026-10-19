@@ -226,6 +226,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.getByRole('button', { name: 'Send a gift', exact: true }).click();
     await settle('data.catalog', { gifts: [rose], packs: [], paymentsAvailable: false }, 'catalog');
     await page.getByRole('dialog', { name: 'Send a gift', exact: true }).getByRole('button').filter({ hasText: 'Rose' }).click();
+    await page.getByRole('button', { name: 'Send gift', exact: true }).click();
     assert.equal((await lastSent('gift.send')).gift, rose.id);
     assert.equal((await lastSent('gift.send')).inCall, false);
     assert.equal(await page.locator('.zc-gift-card').count(), 0, 'A gift card waits for server confirmation');

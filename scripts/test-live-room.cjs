@@ -117,6 +117,7 @@ async function previewChecks(browser, errors) {
   await button(viewer, 'Send a gift').click();
   const gifts = viewer.getByRole('dialog', { name: 'Send a gift' });
   await gifts.locator('.zh-gifts button').filter({ hasText: 'Rose' }).click();
+  await button(gifts, 'Send gift').click();
   assert.equal(await viewer.evaluate(() => S.bal), balance - 99, 'The preview gift updates the preview balance');
   assert.equal(await gifts.count(), 0);
   for (const [control, title] of [['Live viewers', 'Together, live'], ['Share live', 'Good moments are shared'], ['Leave live', 'Leave this live?']]) {
@@ -264,11 +265,12 @@ async function productionChecks(browser, errors) {
   await receive(page, 'data.catalog', { gifts: [rose], packs: [], paymentsAvailable: false });
   const gifts = page.getByRole('dialog', { name: 'Send a gift' });
   await gifts.getByRole('button').filter({ hasText: 'Test Rose' }).click();
+  await button(gifts, 'Send gift').click();
   const giftSent = await lastSent(page, 'gift.send');
   assert.equal(giftSent.gift, rose.id); assert.equal(giftSent.to, creator.id); assert.equal(giftSent.coins, 10);
   assert.equal(giftSent.streamId, stream.id); assert.equal(giftSent.inCall, false);
   assert.equal(await page.locator('.zr-gift-alert').count(), 0, 'Gifts do not invent an incoming gift event');
-  await receive(page, 'gift.sent', { id: 'gift-1' });
+  await receive(page, 'gift.sent', { id: 'gift-1', to: creator.id, gift: rose.id, idempotencyKey: giftSent.idempotencyKey });
   const gift = { id: 'gift-1', streamId: stream.id, senderId: member.user.id, senderName: member.user.name, giftName: rose.name, coins: 10, emoji: rose.emoji };
   await receive(page, 'stream.gift', gift);
   await receive(page, 'stream.gift', gift);

@@ -148,7 +148,10 @@ export function purchaseFrom(value: unknown): Purchase {
   const data = record(value), paymentUrl = string(data.paymentUrl);
   if (paymentUrl && !/^https:\/\/[^\s"'<>]+$/.test(paymentUrl)) throw new ApiError("Checkout did not return a secure payment address.", 502);
   const status = string(data.status);
-  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}), ...(data.kind === "premium" || data.kind === "coins" ? { kind: data.kind } : {}) };
+  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}), ...(data.kind === "premium" || data.kind === "coins" ? { kind: data.kind } : {}),
+    ...(idOf(data.packId) ? { packId: idOf(data.packId) } : {}), ...(typeof data.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(data.idempotencyKey) ? { idempotencyKey: data.idempotencyKey } : {}),
+    ...Object.fromEntries(["coins", "amountPaise", "payableAmountPaise"].filter(key => typeof data[key] === "number" && Number.isSafeInteger(data[key]) && Number(data[key]) >= 0).map(key => [key, data[key]])),
+    ...(typeof data.expiresAt === "string" && Number.isFinite(Date.parse(data.expiresAt)) ? { expiresAt: data.expiresAt } : {}) };
 }
 export function themeFrom(value: unknown): AppTheme {
   const data = record(value), colors = record(data.colors), typography = record(data.typography);

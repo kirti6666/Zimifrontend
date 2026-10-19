@@ -27,7 +27,9 @@ function contentRetry(key){
   if(key==='home')return homeLoad();
   if(key==='search')return homeSearchRequest();
   contentStart(key);contentRender(key);
-  if(key==='catalog')Native.send('catalog.load');
+  if(key==='wallet')Native.send('wallet.load');
+  else if(key==='transactions')Native.send('transactions.load');
+  else if(key==='catalog')Native.send('catalog.load');
   else if(key==='notifications')Native.send('notifications.load');
   else if(key==='thread')Native.send('chat.open',{with:S.h});
   else Native.send('data.reload');

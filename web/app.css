@@ -15,3 +15,6 @@
   min-height: 100%;
   overflow: visible !important;
 }
+
+/* Informational notices never block the action underneath them. */
+#app-notice{pointer-events:none}

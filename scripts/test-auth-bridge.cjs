@@ -16,6 +16,7 @@ const profileSettings = (appearance = 'dark') => ({ profile: { id: 'alice', name
 const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phone: '+919876543210', code: '123456', role: 'sender', signup: true, requestId } });
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
 const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
+const plain = value => JSON.parse(JSON.stringify(value));
 
 function harness(initialAppState = 'active', initialLink = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [];
@@ -52,7 +53,7 @@ function harness(initialAppState = 'active', initialLink = null) {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 7,
     getItem: key => disk.get(key) ?? null,
     getItemAsync: async key => disk.get(key) ?? null,
-    setItemAsync: async (key, value) => { disk.set(key, value); },
+    setItemAsync: async (key, value) => { if (overrides.setStorage) await overrides.setStorage(key, value); disk.set(key, value); },
     deleteItemAsync: async key => { if (overrides.deleteStorage) await overrides.deleteStorage(key); disk.delete(key); },
   };
   const jsx = (type, props) => ({ type, props });
@@ -83,7 +84,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => opened.push(url), getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
@@ -664,6 +665,153 @@ test('returning from provider checkout verifies the owned order and credits only
   assert.equal(h.find('wallet.balance')[0].data.coins, 475);
   h.activities.forEach(listener => listener('active')); await settle(); assert.equal(h.count('verifyPurchase'), 1);
   h.bridge.close(); assert.equal(h.activities.length, 0);
+});
+
+test('a confirmed gift stays successful when its independent wallet refresh fails', async () => {
+  const h = harness();
+  h.overrides.sendGift = () => ({ id: 'transfer-id', coins: 25 });
+  h.overrides.wallet = () => { throw new Error('Connection lost'); };
+  h.bridge.handle({ type: 'gift.send', data: { to: 'creator-id', gift: 'gift-id', coins: 1, inCall: false, idempotencyKey: 'gift-attempt-1' } });
+  await settle();
+  assert.deepEqual(plain(h.find('gift.sent')[0].data), { to: 'creator-id', gift: 'gift-id', idempotencyKey: 'gift-attempt-1', id: 'transfer-id', coins: 25 });
+  assert.equal(h.find('wallet.balance').length, 0, 'Never infer the balance from the gift price');
+  assert.deepEqual(h.find('operation.error').map(item => item.data.action), ['wallet.load']);
+  assert.equal(h.find('data.loading').at(-1).data.error, 'Something went wrong. Please try again.');
+  h.bridge.close();
+});
+
+test('gift retries share one request while distinct attempts retain their own acknowledgments', async () => {
+  const h = harness(), first = deferred(), second = deferred();
+  h.overrides.sendGift = to => to === 'first-host' ? first.promise : second.promise;
+  const send = { type: 'gift.send', data: { to: 'first-host', gift: 'gift-1', coins: 10, inCall: false, idempotencyKey: 'gift-attempt-1' } };
+  h.bridge.handle(send); h.bridge.handle(send);
+  h.bridge.handle({ type: 'gift.send', data: { ...send.data, to: 'second-host', gift: 'gift-2', idempotencyKey: 'gift-attempt-2' } });
+  assert.equal(h.count('sendGift'), 2);
+  second.resolve({ id: 'transfer-2', coins: 30 }); await settle();
+  first.resolve({ id: 'transfer-1', coins: 20 }); await settle();
+  assert.deepEqual(h.find('gift.sent').map(item => [item.data.to, item.data.gift, item.data.idempotencyKey, item.data.coins]), [['second-host', 'gift-2', 'gift-attempt-2', 30], ['first-host', 'gift-1', 'gift-attempt-1', 20]]);
+  h.bridge.close();
+});
+
+test('gift failures carry their own attempt and insufficient-coin code without confirming a spend', async () => {
+  const h = harness();
+  h.overrides.sendGift = () => { throw new h.ApiError('Not enough coins', 409, 'INSUFFICIENT_COINS'); };
+  const send = { type: 'gift.send', data: { to: 'host-id', gift: 'gift-id', coins: 10, inCall: false, idempotencyKey: 'gift-attempt-1' } };
+  h.bridge.handle(send); await settle();
+  assert.deepEqual(plain(h.find('operation.error')[0].data), { action: 'gift.send', message: 'Not enough coins', to: 'host-id', gift: 'gift-id', idempotencyKey: 'gift-attempt-1', status: 409, code: 'INSUFFICIENT_COINS' });
+  assert.equal(h.find('gift.sent').length, 0); assert.equal(h.count('wallet'), 0);
+  const pending = deferred(); h.overrides.sendGift = () => pending.promise;
+  h.bridge.handle(send); h.bridge.handle({ type: 'auth.logout', data: {} });
+  pending.resolve({ id: 'retired-transfer', coins: 10 }); await settle();
+  assert.equal(h.find('gift.sent').length, 0, 'A response from a signed-out identity cannot affect the next account');
+  h.bridge.close();
+});
+
+test('completed checkout retries update only the server balance and retain attempt correlation', async () => {
+  const h = harness();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS', coins: 100 });
+  h.overrides.wallet = () => ({ coins: 575, earningsPaise: 0 });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  assert.equal(h.find('wallet.checkout')[0].data.packId, 'pack-id'); assert.equal(h.find('wallet.checkout')[0].data.idempotencyKey, 'payment-attempt-1');
+  assert.equal(h.find('wallet.balance')[0].data.coins, 575); assert.equal(h.opened.length, 0);
+  h.overrides.checkout = () => { throw new h.ApiError('Start a new checkout', 502, 'PAYIN_PROVISIONING_FAILED'); };
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'next-pack', idempotencyKey: 'payment-attempt-2' } }); await settle();
+  assert.deepEqual(plain(h.find('operation.error')[0].data), { action: 'wallet.checkout', message: 'Start a new checkout', packId: 'next-pack', idempotencyKey: 'payment-attempt-2', status: 502, code: 'PAYIN_PROVISIONING_FAILED' });
+  h.bridge.close();
+});
+
+test('failed external payment launch preserves the checkout and supports manual verification', async () => {
+  const h = harness();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.openURL = () => { assert.equal(h.find('wallet.checkout').length, 1, 'Order must reach UI before external launch'); throw new Error('No handler'); };
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  assert.equal(h.find('operation.error')[0].data.code, 'PAYMENT_OPEN_FAILED');
+  assert.equal(h.find('operation.error')[0].data.idempotencyKey, 'payment-attempt-1');
+  h.overrides.verifyPurchase = () => { throw new h.ApiError('Check again shortly', 503, 'PAYIN_UNAVAILABLE'); };
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'zimi_order' } }); await settle();
+  assert.equal(h.find('operation.error')[1].data.merchantOrderId, 'zimi_order');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.find('wallet.purchase')[0].data.status, 'SUCCESS'); assert.equal(h.find('wallet.purchase')[0].data.idempotencyKey, 'payment-attempt-1');
+  h.bridge.close();
+});
+
+test('pending payments survive a native restart and are verified only for their owning account', async () => {
+  const h = harness(), cache = h.load('src/payment-cache.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), [{ orderId: 'zimi_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' }]);
+  h.bridge.close();
+  const restarted = h.bridgeModule.createBridge(message => h.posts.push(message));
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  restarted.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.equal(h.count('verifyPurchase'), 1); assert.equal(h.opened.length, 1, 'Recovery never reopens or initiates a charge');
+  assert.equal(h.find('wallet.purchase')[0].data.status, 'PENDING', 'Restore the unconfirmed order before waiting for a provider response');
+  assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS');
+  assert.equal(h.find('wallet.purchase').at(-1).data.packId, 'pack-id'); assert.equal(h.find('wallet.purchase').at(-1).data.idempotencyKey, 'payment-attempt-1');
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), []);
+  restarted.close();
+  await cache.rememberPendingPayment('alice', { orderId: 'private_order', kind: 'coins' });
+  h.overrides.me = () => ({ ...account('bob'), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair('bob'));
+  const otherAccount = h.bridgeModule.createBridge(message => h.posts.push(message));
+  otherAccount.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.equal(h.count('verifyPurchase'), 1, 'Bob cannot restore Alice\'s pending order');
+  otherAccount.close();
+});
+
+test('failed payment verification after restart keeps its recovered order available for the same-key retry', async () => {
+  const h = harness(), cache = h.load('src/payment-cache.ts');
+  await h.session.setSessionTokens(tokenPair());
+  await cache.rememberPendingPayment('alice', { orderId: 'recover_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' });
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.overrides.verifyPurchase = () => {
+    assert.equal(h.find('wallet.purchase')[0].data.merchantOrderId, 'recover_order', 'Recovery state must exist before verification starts');
+    throw new h.ApiError('Payment verification is temporarily unavailable', 503, 'PAYIN_UNAVAILABLE');
+  };
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.deepEqual(plain(h.find('wallet.purchase')[0].data), { purchaseId: '', merchantOrderId: 'recover_order', kind: 'coins', status: 'PENDING', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' });
+  assert.equal(h.find('operation.error').at(-1).data.merchantOrderId, 'recover_order');
+  assert.equal((await cache.readPendingPayments('alice')).length, 1);
+  assert.equal(h.opened.length, 0, 'Restoring a reference never launches or creates a payment');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase-id', merchantOrderId: 'recover_order', status: 'SUCCESS' });
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'recover_order' } }); await settle();
+  assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS');
+  assert.equal(h.find('wallet.purchase').at(-1).data.idempotencyKey, 'payment-attempt-1');
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), []);
+  h.bridge.close();
+});
+
+test('wallet refresh has its own loading state and cannot accept a client balance', async () => {
+  const h = harness(), pending = deferred();
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'wallet.load', data: { coins: 99999 } })), null);
+  h.overrides.wallet = () => pending.promise;
+  h.bridge.handle({ type: 'wallet.load', data: {} });
+  assert.equal(h.find('data.loading')[0].data.resource, 'wallet'); assert.equal(h.find('data.loading')[0].data.loading, true);
+  pending.resolve({ coins: 73, earningsPaise: 0 }); await settle();
+  assert.equal(h.find('wallet.balance')[0].data.coins, 73); assert.equal(h.find('data.loading').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('transaction history reloads independently and discards older ledger responses', async () => {
+  const h = harness(), older = deferred();
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'transactions.load', data: { userId: 'other-account' } })), null);
+  h.overrides.transactions = () => older.promise;
+  h.bridge.handle({ type: 'transactions.load', data: {} });
+  assert.equal(h.find('data.loading')[0].data.resource, 'transactions'); assert.equal(h.find('data.loading')[0].data.loading, true);
+  h.overrides.transactions = () => ({ items: [{ id: 'latest-gift', label: 'Rose', coins: -25 }] });
+  h.bridge.handle({ type: 'transactions.load', data: {} }); await settle();
+  older.resolve({ items: [{ id: 'older-purchase', coins: 200 }] }); await settle();
+  assert.equal(h.find('data.transactions').length, 1); assert.equal(h.find('data.transactions')[0].data.items[0].id, 'latest-gift');
+  assert.equal(h.count('home'), 0); assert.equal(h.count('wallet'), 0, 'Opening history only reloads the ledger');
+  h.overrides.transactions = () => { throw new h.ApiError('Ledger unavailable', 503); };
+  h.bridge.handle({ type: 'transactions.load', data: {} }); await settle();
+  assert.equal(h.find('data.loading').at(-1).data.error, 'Ledger unavailable');
+  assert.equal(h.find('operation.error').at(-1).data.action, 'transactions.load');
+  h.bridge.close();
 });
 
 test('realtime home invalidation retains the category and refreshes first page', async () => {
