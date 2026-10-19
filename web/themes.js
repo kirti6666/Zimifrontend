@@ -17,7 +17,6 @@ ZThemes.boot=ztSafe(window.__zimiThemeCache?.account?.theme)?window.__zimiThemeC
 function ztCurrent(){const catalog=ZThemes.catalog,theme=catalog?.items.find(x=>x.id===catalog.selectedThemeId&&x.active!==false&&(!x.isPremium||catalog.premium?.active));if(theme&&ztSafe(theme))return theme;const boot=ZThemes.boot;if(boot&&(!ZThemes.accountId||ZThemes.accountId===boot.id))return boot.theme;return ZThemes.default||ZThemeOriginal}
 function ztApply(animate=false){
   const root=document.documentElement;
-  if(['welcome','login'].includes(S.v)){if(root.dataset.themeId){ZThemeVars.forEach(key=>root.style.removeProperty(key));['--theme-font','--theme-font-scale','--theme-font-weight','--theme-heading-weight'].forEach(key=>root.style.removeProperty(key));['themeId','themeInk','themePrimary','themeContrast','themeSurface','themeRaised'].forEach(key=>delete root.dataset[key]);root.classList.remove('zt-transition');ZThemes.signature=''}return}
   const theme=ztCurrent(),c=theme.colors,t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
   root.classList.toggle('zp-light',theme.mode==='light');if(root.dataset.theme!==theme.mode)root.dataset.theme=theme.mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
   for(const [key,value] of Object.entries({themeInk:c.text,themePrimary:c.primary,themeContrast:c.primaryContrast,themeSurface:c.surface,themeRaised:c.surfaceElevated}))if(root.dataset[key]!==value)root.dataset[key]=value;

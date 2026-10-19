@@ -153,7 +153,7 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     await receive(page, 'data.themes', { ...premium, selectedThemeId: premium.items[2].id });
     await page.evaluate(() => logout());
     assert.equal(await page.evaluate(() => ZThemes.catalog), null, 'Explicit logout clears the catalog even without session.none');
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.themeId), undefined);
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.themeId), '000000000000000000000001', 'Signed-out screens show the default theme, never the previous account’s');
     await page.evaluate(() => { go('login'); S.auth = { step: 'otp', requestId: 42, phone: '9000000000' }; });
     await receive(page, 'auth.ok', { ...user, user: { ...user.user, id: '507f1f77bcf86cd799439012' }, requestId: 42 });
     await receive(page, 'themes.error', { action: 'themes.load', message: 'New account catalog unavailable' });

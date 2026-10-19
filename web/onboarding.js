@@ -1,13 +1,14 @@
 /* Onboarding stays a classic script: the rendered controls call these globals.
    Only the preview accepts a simulated OTP; native actions wait for the bridge. */
 const OB_MEDIA = ["__OB_PORTRAIT_1__", "__OB_PORTRAIT_2__", "__OB_PORTRAIT_3__"];
+const OB_HEART = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 20.6s-7.4-4.4-9.3-8.9C1.3 8.5 3.3 5 6.8 5c2.1 0 3.6 1.1 4.5 2.5C12.2 6.1 13.7 5 15.8 5c3.5 0 5.5 3.5 4.1 6.7-1.9 4.5-7.9 8.9-7.9 8.9z"/></svg>';
 const OB_INTERESTS = [
   ["🎵", "Music"], ["💃", "Dance"], ["💬", "Conversations"], ["🎬", "Movies"],
   ["✈️", "Travel"], ["🎤", "Singing"], ["🎮", "Gaming"], ["😂", "Comedy"],
   ["✨", "Astrology"], ["💪", "Fitness"], ["🤝", "New friends"], ["🏏", "Cricket"],
   ["👗", "Style"], ["🍳", "Cooking"], ["📚", "Books"], ["🌿", "Wellness"]
 ];
-let obPreviousTheme = null, obRenderKey = "", obRequestTimer, obDialogTrigger, obSwipe, obSequence = 0, obRateTimer, obCountryList = [], obCountrySearchTimer = 0;
+let obRenderKey = "", obRequestTimer, obDialogTrigger, obSwipe, obSequence = 0, obRateTimer, obCountryList = [], obCountrySearchTimer = 0;
 const obLimits = {};
 const obIsCreator = () => !!S.auth.creatorIntent || isHost();
 const obMatches = data => data.requestId === undefined || data.requestId === S.auth.requestId;
@@ -84,19 +85,8 @@ function obRestoreScreen() {
 }
 const obArrow = () => '<svg class="zi-icon" data-icon="arrow" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function obHaptic(kind = "selection") { Native.send("ui.haptic", { kind }); }
-function obSyncTheme() {
-  const active = S.v === "welcome" || S.v === "login";
-  if (active && obPreviousTheme === null) {
-    obPreviousTheme = document.documentElement.dataset.theme || "light";
-    document.documentElement.dataset.theme = "dark";
-    document.documentElement.dataset.canvas = "#190d19";
-  } else if (!active && obPreviousTheme !== null) {
-    document.documentElement.dataset.theme = obPreviousTheme;
-    delete document.documentElement.dataset.canvas;
-    obPreviousTheme = null;
-  }
-  document.documentElement.classList.toggle("ob-active", active);
-}
+// Sign-up screens use the active theme too; this only marks them for full-bleed backgrounds.
+function obSyncTheme() { document.documentElement.classList.toggle("ob-active", S.v === "welcome" || S.v === "login"); }
 function obAfterRender() {
   obTrackRate();
   if (S.v !== "login" && S.v !== "welcome") { obRenderKey = ""; return; }
@@ -141,8 +131,9 @@ function obDeckMarkup() {
       <div class="ob-card-top"><span class="ob-live-tag"><i></i> YOUR NEXT HELLO</span><span class="ob-card-heart" aria-hidden="true">${I("heart", 18)}</span></div>
       <div class="ob-card-bottom"><small>${tags}</small><b>${title}</b><p>${copy}</p></div></div>
     <span class="ob-floating ob-wave" aria-hidden="true">👋</span>
+    <span class="ob-hearts" aria-hidden="true">${OB_HEART.repeat(3)}</span>
     <span class="ob-floating ob-spark" aria-hidden="true">${I("vid", 22)}</span>
-    <div class="ob-deck-controls"><button class="ob-icon" aria-label="Previous community preview" onclick="obDeck(-1)">${I("back", 17)}</button>
+    <div class="ob-deck-controls"><button class="ob-icon" aria-label="Previous community preview" onclick="obDeck(-1)">${hi("back", 17)}</button>
       <div class="ob-dots" aria-label="Preview ${index + 1} of 3">${cards.map((_, i) => `<button class="${i === index ? "selected" : ""}" aria-label="Show preview ${i + 1}" aria-pressed="${i === index}" onclick="obDeck(${i},true)"><span></span></button>`).join("")}</div>
       <button class="ob-icon" aria-label="Next community preview" onclick="obDeck(1)">${obArrow()}</button></div>`;
 }
@@ -159,7 +150,8 @@ function obWelcome() {
   if (S.sessionState) return obRestoreScreen();
   const host = S.wsel === "host";
   return `<section class="ob-shell ob-welcome" aria-label="Welcome to Zimi Live">
-    ${S.notice ? `<p class="ob-session-notice" role="status">${esc(S.notice)}</p>` : ""}<div class="ob-brand"><span>${I("vid", 21)}</span><b>zimi</b><small>LIVE</small></div>
+    ${S.notice ? `<p class="ob-session-notice" role="status">${esc(S.notice)}</p>` : ""}
+    <header class="ob-welcome-top"><div class="ob-brand"><span>${I("vid", 19)}</span><b>zimi</b><small>LIVE</small></div><button class="ob-top-login" onclick="obStart('login')">Log in</button></header>
     <div class="ob-welcome-grid">
       <div class="ob-intro">
         <h1 class="ob-hero-heading">A little hello.<br><em>A real connection.</em></h1>
@@ -169,7 +161,6 @@ function obWelcome() {
         <button class="${host ? "" : "selected"}" aria-pressed="${!host}" onclick="obSelectRole('sender',this)">${I("heart", 17)} I'm here to connect</button>
         <button class="${host ? "selected" : ""}" aria-pressed="${host}" onclick="obSelectRole('host',this)">${I("vid", 17)} I'm a creator</button></div>
         <button id="ob-start" class="ob-primary" onclick="obStart('signup')">${host ? "Start creating" : "Find your people"}${obArrow()}</button>
-        <button class="ob-text-button" onclick="obStart('login')">Already part of Zimi? <b>Log in</b></button>
         <div class="ob-trust"><span>${I("lock", 13)} 18+ community</span></div></div>
     </div><p class="ob-desktop-note">A small hello. A world of possibilities.</p>
   </section>`;
@@ -407,16 +398,16 @@ function obLogin() {
   const step = a.step, number = ({ phone: 1, otp: 1, profile: 2, photos: 3, interests: 4 })[step] || 1;
   let title, description = "", content, actions;
   if (step === "phone") {
-    title = !signup ? "Good to see you again." : host ? "Your creator journey starts here." : "Your next hello starts here.";
+    title = !signup ? "Good to see you <em>again</em>." : host ? "Your creator <em>journey</em> starts here." : "Your next <em>hello</em> starts here.";
     description = "Enter your number. We’ll text you a code to get you in.";
     content = `<form class="ob-form" onsubmit="event.preventDefault();obSendOtp()"><label class="ob-label" for="ph">Mobile number</label><div class="ob-phone-field">${obCountryButton(!!a.busy)}<input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="${obPhonePlaceholder()}" maxlength="18" value="${esc(a.phone || "")}" aria-describedby="ob-phone-hint ob-error" oninput="obPhoneInput(this)" ${a.busy ? "disabled" : ""}></div><p class="ob-field-hint" id="ob-phone-hint">${I("lock", 13)} Used to verify your account.</p><button type="submit" hidden tabindex="-1">Send code</button></form>`;
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
-    title = "Check your messages."; description = `Enter the six-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
-    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>Edit phone number ${I("back", 13)}</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
+    title = "Check your <em>messages</em>."; description = `Enter the six-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
+    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${hi("back", 16)} Edit phone number</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
-    title = "Let’s make it yours.";
+    title = "Let’s make it <em>yours</em>.";
     content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "What should we call you?"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error"></div>
       <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="S.auth.email=this.value" aria-describedby="ob-error"></div>
       ${host ? `<div class="ob-field"><label for="pc">Your thing</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error"><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
@@ -424,15 +415,15 @@ function obLogin() {
       <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error"><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
     actions = obButton("Next, your photos", "obNextProfile()");
   } else if (step === "photos") {
-    title = "Put a face to your hello."; description = "Add at least three clear photos of yourself.";
+    title = "Put a face to your <em>hello</em>."; description = "Add at least three clear photos of yourself.";
     content = obPhotoContent(); actions = obButton(a.uploading ? "Preparing your photos…" : "Looking good. Continue", "obNextPhotos()", a.uploading || a.photos.length < MIN_PHOTOS);
   } else {
-    title = "Find your kind of energy."; description = `<span id="ob-interest-count" aria-live="polite">${obInterestCount()}</span>`;
+    title = "Find your kind of <em>energy</em>."; description = `<span id="ob-interest-count" aria-live="polite">${obInterestCount()}</span>`;
     content = `<div class="ob-interests" aria-label="Your interests">${OB_INTERESTS.map(([emoji, label], i) => `<button class="ob-interest ${a.interests.includes(label) ? "selected" : ""}" aria-pressed="${a.interests.includes(label)}" onclick="obToggleInterest(${i},this)" ${a.busy ? "disabled" : ""}><span aria-hidden="true">${emoji}</span>${label}<span class="ob-chip-check" aria-hidden="true">${I("check", 13)}</span></button>`).join("")}</div>`;
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your Zimi account" : "Log in to Zimi"}">
-    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${I("back", 22)}</button>
+    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${hi("back", 21)}</button>
       ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : '<span class="ob-login-label">ZIMI LIVE</span>'}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">

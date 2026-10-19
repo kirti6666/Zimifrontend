@@ -55,10 +55,10 @@ const withThemeCache = (page: string, cache: ThemeCache) =>
 
 export default function App() {
   const cache = useMemo(() => readThemeCache(), []);
-  const cached = cache.account?.theme;
+  const cached = cache.account?.theme ?? cache.default;
   const page = useMemo(() => html && withThemeCache(html, cache), [cache]);
   const [theme, setTheme] = useState<Theme>(cached?.mode ?? "dark");
-  const [canvasOverride, setCanvasOverride] = useState<string | null>(cached?.colors.background ?? "#190d19");
+  const [canvasOverride, setCanvasOverride] = useState<string | null>(cached?.colors.background ?? "#210f1d");
   const [palette, setPalette] = useState<NativePalette>(cached ? { ink: cached.colors.text, primary: cached.colors.primary, contrast: cached.colors.primaryContrast, surface: cached.colors.surface, raised: cached.colors.surfaceElevated } : {});
   const [failure, setFailure] = useState<string | null>(null);
   const webRef = useRef<WebView>(null);
