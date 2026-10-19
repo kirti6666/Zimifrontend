@@ -48,7 +48,7 @@ function obApplyAccount(account) {
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
   me.n = u.name || ""; S.editName = me.n; me.c = u.city || ""; me.about = u.about || "";
-  S.editCity = me.c; S.editAbout = me.about;
+  S.editCity = me.c; S.editAbout = me.about; me.gender = u.gender || ""; S.editGender = me.gender;
   S.avatarData = obPhotoUrl(u.avatarUrl || "");
   S.coverData = obPhotoUrl(u.coverUrl || ""); S.mediaDirty = {};
   S.creatorSetup = u.onboardingPreference === "creator" || ["pending", "rejected", "suspended"].includes(u.hostStatus);
@@ -59,7 +59,7 @@ function obApplyAccount(account) {
 }
 function obResumeOnboarding(account, desiredCreator) {
   const u = account.user || {};
-  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", langs: u.languages || [], interests: u.interests || [], photos: (u.photos || []).map(p => obPhotoUrl(p.url)).filter(Boolean), featured: 0, adult: !!u.adultConfirmed, cat: u.category || "" };
+  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", langs: u.languages || [], interests: u.interests || [], photos: (u.photos || []).map(p => obPhotoUrl(p.url)).filter(Boolean), featured: 0, adult: !!u.adultConfirmed, cat: u.category || "", gender: u.gender || "" };
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
@@ -72,7 +72,7 @@ function obResetSession(message = "") {
   S.caller = null; S.callId = null; S.u = null; S.h = null; S.sum = null; S.pdone = 0; S.pamt = ""; S.giftedTo = {};
   S.mediaDirty = {}; S.mediaPreparing = false; S.mediaError = ""; S.profileRequestId = null; S.profileProgress = ""; S.postDraftData = ""; S.postCaption = ""; S.postPublishing = false; S.postRequestId = null; S.postError = "";
   const notice = document.getElementById("app-notice"); if (notice) notice.remove();
-  S.dataError = ""; S.realtimeError = ""; S.kycBusy = false; S.kerr = ""; S.profileSaving = false; S.following = {}; S.blocked = []; S.bal = 0; me.n = ""; me.about = ""; me.c = "";
+  S.dataError = ""; S.realtimeError = ""; S.kycBusy = false; S.kerr = ""; S.profileSaving = false; S.following = {}; S.blocked = []; S.bal = 0; me.n = ""; me.about = ""; me.c = ""; me.gender = ""; S.editGender = "";
   S.editName = ""; S.editAbout = ""; S.editCity = ""; S.acct.sender.earn = 0; S.acct.host.earn = 0;
   S.acct.sender.kyc = "none"; S.acct.host.kyc = "none";
   if (!DEMO) { H.length = 0; EXTRA.length = 0; CH.length = 0; TXNS.length = 0; CALLS.length = 0; Object.keys(PEOPLE).forEach(key => delete PEOPLE[key]); S.missed = { sender: [], host: [] }; }
@@ -133,7 +133,7 @@ function obDeckMarkup() {
     <span class="ob-floating ob-wave" aria-hidden="true">👋</span>
     <span class="ob-hearts" aria-hidden="true">${OB_HEART.repeat(3)}</span>
     <span class="ob-floating ob-spark" aria-hidden="true">${I("vid", 22)}</span>
-    <div class="ob-deck-controls"><button class="ob-icon" aria-label="Previous community preview" onclick="obDeck(-1)">${hi("back", 17)}</button>
+    <div class="ob-deck-controls"><button class="ob-icon" aria-label="Previous community preview" onclick="obDeck(-1)">${I("back", 17)}</button>
       <div class="ob-dots" aria-label="Preview ${index + 1} of 3">${cards.map((_, i) => `<button class="${i === index ? "selected" : ""}" aria-label="Show preview ${i + 1}" aria-pressed="${i === index}" onclick="obDeck(${i},true)"><span></span></button>`).join("")}</div>
       <button class="ob-icon" aria-label="Next community preview" onclick="obDeck(1)">${obArrow()}</button></div>`;
 }
@@ -281,6 +281,11 @@ function obSignedIn() {
   if (creator && !isHost()) { S.creatorSetup = true; S.kf = { name: me.n, bio: me.about, langs: (S.user || {}).languages || [] }; }
   go(creator && !isHost() ? "kyc" : "home");
 }
+function obPickGender(value, button) {
+  S.auth.gender = value;
+  button.parentElement.removeAttribute("aria-invalid");
+  button.parentElement.querySelectorAll("button").forEach(b => { const on = b === button; b.classList.toggle("selected", on); b.setAttribute("aria-pressed", String(on)); });
+}
 function obToggleLanguage(value, button) {
   const list = S.auth.langs;
   list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
@@ -291,6 +296,7 @@ function obNextProfile() {
   a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim(); a.adult = document.getElementById("p18").checked;
   if (a.name.length < 2) return obSetError("Use at least two characters for your name.", "pn");
   if (!okEmail(a.email)) return obSetError("Add a valid email address.", "pe");
+  if (!a.gender) return obSetError("Choose Woman, Man or Prefer not to say.", "pg");
   if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
   if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
   if (!a.adult) return obSetError("You need to be 18 or older to join Zimi.", "p18");
@@ -357,18 +363,18 @@ function obToggleInterest(index, button) {
 function obInterestCount() { const n = S.auth.interests.length; return n ? `${n} picked. Add as many as you like.` : "Pick as many as you like."; }
 function obFinish(skip = false) {
   const a = S.auth; if (a.busy) return;
-  if (!a.verified || !a.name || !okEmail(a.email) || !a.adult) return obStep("profile");
+  if (!a.verified || !a.name || !okEmail(a.email) || !a.gender || !a.adult) return obStep("profile");
   if (a.photos.length < MIN_PHOTOS) return obStep("photos");
   if (skip) a.interests = [];
   const photos = [a.photos[a.featured || 0], ...a.photos.filter((_, i) => i !== (a.featured || 0))];
-  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, photos, category: a.cat || undefined, langs: a.langs, interests: a.interests, adultConfirmed: !!a.adult, preferredRole: obIsCreator() ? "creator" : "member" };
+  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, photos, category: a.cat || undefined, langs: a.langs, interests: a.interests, gender: a.gender, adultConfirmed: !!a.adult, preferredRole: obIsCreator() ? "creator" : "member" };
   if (DEMO) { Native.send("profile.save", profile); return obComplete(); }
   obRequest("profile.save", profile);
 }
 function obComplete(account) {
   const a = S.auth; clearTimeout(obRequestTimer); obHaptic("success");
   const creator = obIsCreator();
-  me.n = a.name; S.editName = a.name; S.avatarData = a.photos[a.featured || 0]; S.interests = a.interests.slice();
+  me.n = a.name; S.editName = a.name; me.gender = a.gender; S.editGender = a.gender; S.avatarData = a.photos[a.featured || 0]; S.interests = a.interests.slice();
   if (account) obApplyAccount(account);
   if (creator) { me.tag = a.cat; S.creatorSetup = true; S.fromSignup = 1; S.kf = { ...S.kf, name: a.name, email: a.email, langs: a.langs, category: a.cat, bio: "", photos: account ? (account.user.photos || []).map(p => p.url) : a.photos }; }
   S.loggedIn = 1; S.auth = { step: "phone" }; go(creator ? "kyc" : "home");
@@ -404,12 +410,13 @@ function obLogin() {
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
     title = "Check your <em>messages</em>."; description = `Enter the six-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
-    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${hi("back", 16)} Edit phone number</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
+    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${I("back", 16)} Edit phone number</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
     title = "Let’s make it <em>yours</em>.";
     content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "What should we call you?"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error"></div>
       <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="S.auth.email=this.value" aria-describedby="ob-error"></div>
+      <div class="ob-field ob-inline"><span class="ob-label" id="pg-label">I am</span><div class="ob-segment" id="pg" role="group" aria-labelledby="pg-label" aria-describedby="ob-error" tabindex="-1">${GENDERS.map(([value, label]) => `<button type="button" class="${a.gender === value ? "selected" : ""}" aria-pressed="${a.gender === value}" onclick="obPickGender('${value}',this)">${label}</button>`).join("")}</div></div>
       ${host ? `<div class="ob-field"><label for="pc">Your thing</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error"><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
       <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obLanguages()}</div>
       <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error"><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
@@ -423,7 +430,7 @@ function obLogin() {
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your Zimi account" : "Log in to Zimi"}">
-    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${hi("back", 21)}</button>
+    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${I("back", 21)}</button>
       ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : '<span class="ob-login-label">ZIMI LIVE</span>'}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">

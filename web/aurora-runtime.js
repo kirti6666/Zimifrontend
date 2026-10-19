@@ -109,21 +109,29 @@ function artC(sd,r){const[a,b,c]=HUES[sd%HUES.length],x=25+(sd%5)*12,y=20+(sd%4)
   <ellipse cx="150" cy="200" rx="160" ry="62" fill="none" stroke="${a}" stroke-width="1.4"/>
   <ellipse cx="150" cy="200" rx="104" ry="38" fill="none" stroke="#fff" stroke-opacity=".35"/></g></svg>`}
 
+/* A missing or broken profile photo becomes an illustration matching the person's
+   chosen gender, in the active theme's colors; neutral when they didn't say. */
+const GENDERS=[["female","Woman"],["male","Man"],["undisclosed","Prefer not to say"]];
+const FACES={
+ female:'<path class="zf-hair" d="M37 54c0-19 10-31 23-31s23 12 23 31c0 10 2 18 6 26-7 5-17 7-26 6l-3-5-3 5c-9 1-19-1-26-6 4-8 6-16 6-26z"/><path class="zf-top" d="M16 120c3-22 20-35 44-35s41 13 44 35z"/><path class="zf-skin" d="M52 72h16v12c0 3.6-3.6 6-8 6s-8-2.4-8-6z"/><ellipse class="zf-skin" cx="60" cy="52" rx="17.5" ry="20.5"/><path class="zf-hair" d="M42.5 51c1-13 8.5-20.5 18-20.5 8.6 0 15.6 6 17.4 15-7.6.4-15-2.6-20-8-3 6.4-8.6 11.4-15.4 13.5z"/>',
+ male:'<path class="zf-top" d="M10 120c2-25 22-40 50-40s48 15 50 40z"/><path class="zf-skin" d="M51 70h18v13c0 4-4 6.5-9 6.5s-9-2.5-9-6.5z"/><ellipse class="zf-skin" cx="60" cy="50" rx="19.5" ry="22"/><path class="zf-hair" d="M40.5 47c-1.5-15 7-25 19.5-25 13 0 21 9 19.5 24-2-6-6-9.5-11.5-11-5 3-12.5 4.5-20 3.5-4 1.5-6.5 4.5-7.5 8.5z"/>',
+ neutral:'<path class="zf-top" d="M14 120c2-24 20-38 46-38s44 14 46 38z"/><path class="zf-skin" d="M51 70h18v13c0 4-4 6.5-9 6.5s-9-2.5-9-6.5z"/><circle class="zf-skin" cx="60" cy="50" r="21"/>'};
+function faceKind(h){return h?.gender==="female"||h?.gender==="male"?h.gender:"neutral"}
+function face(h){const k=faceKind(h);return `<svg class="zf-face" data-face="${k}" viewBox="0 0 120 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${FACES[k]}</svg>`}
+// Photos that fail later (expired link, offline) swap to the same illustration.
+document.addEventListener("error",e=>{const img=e.target;if(!(img instanceof HTMLImageElement)||!img.dataset.face)return;
+ const holder=document.createElement("span"),illustration=face({gender:img.dataset.face});
+ holder.innerHTML=img.dataset.faceWrap==="zh-fallback"?`<div class="zh-fallback">${illustration}</div>`:illustration;img.replaceWith(holder.firstChild)},true);
+
 /* Colour-forward avatar, for lists where the faces carry the page. */
 function avatarSource(h){return imageSrc(h===me?S.avatarData:h.avatarUrl)}
-function portrait(h,colored=false){const src=avatarSource(h);
- return src?`<img class="art" src="${src}" alt="${esc(h.n||"Profile photo")}" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:colored?artC(h.seed):art(h.seed)}
-function avc(h,s){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
- if(avatarSource(h))return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h,true)}</span>`;
- return `<span class="av" style="width:${s}px;height:${s}px">${artC(h.seed,"99px")}
- <span class="disp" style="position:relative;color:#fff;font-weight:700;font-size:${Math.round(s*.36)}px;
-  text-shadow:0 1px 4px rgba(0,0,0,.5)">${esc(i)}</span></span>`}
+function portrait(h){const src=avatarSource(h);
+ return src?`<img class="art" src="${src}" alt="${esc(h.n||"Profile photo")}" data-face="${faceKind(h)}" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:face(h)}
+function avc(h,s){return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h)}</span>`}
 
-function av(h,s,ring){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
+function av(h,s,ring){
  const pres=ring==="none"?"":`<span class="pres ${h.live?"live":h.on?"on":""}"></span>`;
- if(avatarSource(h))return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`;
- return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${art(h.seed,"99px")}
- <span class="disp" style="position:relative;color:rgba(255,255,255,.92);font-weight:600;font-size:${Math.round(s*.36)}px">${esc(i)}</span></span>${pres}</span>`}
+ return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`}
 const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>',
  chat:'<path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v7a2.5 2.5 0 01-2.5 2.5H10l-4.4 3.3A1 1 0 014 18.5z" stroke-linejoin="round"/>',
  user:'<circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 19.5c1.3-3.8 4-5.7 7.5-5.7s6.2 1.9 7.5 5.7" stroke-linecap="round"/>',
@@ -276,10 +284,10 @@ function sender(id){
 /* Hosts and senders render through the same profile shape. */
 function asProfile(x,isHost){
  return isHost
-  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
+  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,gender:x.gender,
      lvl:(x.seed%40)+8,recv:lifetime(x),sent:((x.seed*409)%260+18)*1000,
      fol:x.v,following:(x.seed%400)+90}
-  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
+  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,gender:x.gender,
      lvl:x.lvl,recv:x.recv,sent:x.sent,fol:x.v,following:x.hosts*7};
 }
 function mvpsFor(h){
@@ -374,7 +382,7 @@ function profilePage(p,raw,self){
 
 /* The hosts a sender backs, biggest first. */
 function backedFor(u){
- return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,
+ return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,gender:h.gender,
   c:Math.round(((u.seed*173+i*577)%420+60)*1000/(i*0.4+1))}))
   .sort((a,b)=>b.c-a.c).slice(0,8);
 }
@@ -912,19 +920,20 @@ function publishPost(){
 }
 function saveProfile(){
  if(S.profileSaving||S.mediaPreparing||S.postPublishing)return;
- const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim()};
+ const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim(),...(S.editGender?{gender:S.editGender}:{})};
  if(profile.name.length<2)return appNotice("Use at least two characters for your name.");
- if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;return go(S.editBack||"profile")}
+ if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;me.gender=S.editGender||me.gender;return go(S.editBack||"profile")}
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
-function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]).slice(0,2).join(""),busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
+function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
  <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:artC(me.seed+17)}
   <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
-  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview">`:esc(initials)}</span>
+  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview" data-face="${faceKind({gender:S.editGender||me.gender})}">`:face({gender:S.editGender||me.gender})}</span>
    <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></div>
  ${S.mediaPreparing?'<p role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error" role="alert">${esc(S.mediaError)}</div>`:""}
  <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
+ <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
@@ -936,7 +945,7 @@ function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]
 
 function vProfile(){
  const host=isHost();
- const p={id:"me",n:me.n,seed:me.seed,on:1,host,lvl:7,tag:host?"Host":"Supporter",c:me.c,
+ const p={id:"me",n:me.n,seed:me.seed,on:1,host,lvl:7,tag:host?"Host":"Supporter",c:me.c,gender:me.gender,
   verified:host&&A().kyc==="verified",
   recv:host?2090372+A().earn-184250:A().earn,sent:246000+(S.gifted||0),fol:host?"2.4K":"38",following:181};
  return profilePage(p,me,true)}
@@ -1610,12 +1619,12 @@ const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:p.availableForCall===true,
-  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
  return PEOPLE[id]={id,n:p.name||"Zimi user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
-  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */
 function knowHost(p){const h=hostFrom(p);if(!g(h.id))EXTRA.push(h);return h}

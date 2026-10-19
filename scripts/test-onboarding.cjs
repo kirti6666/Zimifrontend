@@ -131,6 +131,7 @@ async function enterCode(page) {
 async function fillBasics(page, host = false) {
   await page.locator('#pn').fill(host ? 'Creator Test' : 'Onboarding Test');
   await page.locator('#pe').fill('onboarding@example.test');
+  await page.getByRole('button', { name: host ? 'Man' : 'Woman', exact: true }).click();
   await page.locator('#p18').check();
   if (host) {
     // Category/language are required for creators; choose visible controls.
@@ -190,6 +191,10 @@ async function previewFlow() {
   await action(page, 'obNextProfile').click();
   assert.equal((await state(page)).step, 'profile', 'Invalid basics must stay in profile');
   assert.equal(await page.locator('#pn').inputValue(), 'Draft name', 'Validation must preserve the entered name');
+  await page.locator('#pe').fill('draft@example.test');
+  await action(page, 'obNextProfile').click();
+  assert.match((await state(page)).err, /Woman, Man or Prefer not to say/, 'Sign-up asks how the member identifies');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'pg', 'The missing choice receives focus');
   await fillBasics(page);
   await remember(page, 'photos-empty');
   const next = action(page, 'obNextPhotos');
@@ -325,6 +330,7 @@ async function nativeFlow() {
   assert.equal(saves[0].data.onboarding, true, 'Onboarding saves must request explicit completion feedback');
   assert.equal(saves[0].data.adultConfirmed, true, 'Adult confirmation must reach the validated backend profile');
   assert.equal(saves[0].data.preferredRole, 'member', 'Member preference is metadata, not a permission grant');
+  assert.equal(saves[0].data.gender, 'female', 'The chosen gender is saved with the profile');
   assert.equal(await page.evaluate(() => window.__messages.some(message => message.type === 'ui.haptic')), true, 'Touch interactions must reach the native haptic bridge');
   console.log('PASS native bridge: send/verify acknowledgements, delivery error, save error/retry, completion');
 }
@@ -374,10 +380,11 @@ async function nativeSessionRecovery() {
   assert.equal(await page.evaluate(() => window.__messages.at(-1).type), 'session.resume');
   await receive(page, 'session', {
     requiresOnboarding: true, verification: 'none',
-    user: { id: 'resume-user', name: 'Saved Creator', role: 'sender', email: 'saved@example.test', onboardingPreference: 'creator', languages: ['English'], interests: ['Music'], category: 'Music', adultConfirmed: true },
+    user: { id: 'resume-user', name: 'Saved Creator', role: 'sender', email: 'saved@example.test', onboardingPreference: 'creator', languages: ['English'], interests: ['Music'], category: 'Music', gender: 'male', adultConfirmed: true },
   });
   await step(page, 'profile');
   assert.equal(await page.locator('#pn').inputValue(), 'Saved Creator', 'An unfinished server profile resumes its saved name');
+  assert.equal(await page.getByRole('button', { name: 'Man', exact: true }).getAttribute('aria-pressed'), 'true', 'A saved gender choice resumes');
   assert.equal(await page.locator('#pe').inputValue(), 'saved@example.test');
   assert.equal(await page.locator('#p18').isChecked(), true);
   assert.equal((await state(page)).creatorIntent, true, 'Server setup preference resumes creator onboarding');

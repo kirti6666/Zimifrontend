@@ -247,6 +247,15 @@
 .ob-options { display: flex; gap: 8px; flex-wrap: wrap; }
 .ob-options button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 15px; border: 1px solid var(--ob-edge); border-radius: 999px; color: var(--ob-text); background: var(--ob-field); font-size: 13px; font-weight: 600; }
 .ob-options button.selected { color: var(--ob-on-pink); border-color: var(--ob-pink); background: var(--ob-pink); box-shadow: 0 8px 18px -12px var(--ob-glow); }
+/* "I am": three choices in one row; the longest label gets the most room. */
+.ob-field.ob-inline { flex-direction: row; align-items: center; gap: 12px; }
+.ob-inline > .ob-label { flex: none; }
+.ob-inline > .ob-segment { flex: 1; min-width: 0; }
+.ob-segment { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-field); }
+.ob-segment:focus { outline: none; }
+.ob-segment[aria-invalid="true"] { border-color: var(--ob-danger); }
+.ob-segment button { min-width: 0; min-height: 40px !important; padding: 6px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 13px !important; font-weight: 650 !important; line-height: 1.2; }
+.ob-segment button.selected { color: var(--ob-on-pink); background: var(--ob-pink); box-shadow: 0 6px 14px -10px var(--ob-glow); }
 .ob-check { display: flex; align-items: flex-start; gap: 11px; color: var(--ob-muted); font-size: 13px; line-height: 1.55; cursor: pointer; padding: 8px 0; min-height: 44px; }
 .ob-check input { accent-color: var(--ob-pink); width: 20px; height: 20px; flex: 0 0 20px; margin: 0; border-radius: 6px; }
 .ob-check a { color: var(--ob-soft); }
@@ -344,7 +353,7 @@
   .ob-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 20px 34px -16px var(--ob-glow), 0 3px 8px -4px var(--ob-glow), inset 0 1px 0 rgb(255 255 255 / .22); }
   .ob-secondary:hover, .ob-icon:hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
   .ob-text-button:hover, .ob-resend button:hover:not(:disabled) { color: var(--ob-text); }
-  .ob-role-switch button:hover:not(.selected) { color: var(--ob-text); }
+  .ob-role-switch button:hover:not(.selected), .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
   .ob-upload:hover { border-color: var(--ob-pink); }
   .ob-thumb:hover { border-color: var(--ob-pink); }
 }
@@ -417,6 +426,7 @@
   .ob-brand { font-size: 23px; }
   .ob-top-login { padding: 0 15px; }
   .ob-role-switch button { font-size: 12px !important; gap: 5px; }
+  .ob-segment button { font-size: 12px !important; padding-inline: 4px; }
   .ob-interest { padding: 10px 12px; font-size: 12.5px !important; gap: 6px; }
   .ob-interests { gap: 8px 6px; }
   .ob-options button { padding-inline: 13px; }
@@ -463,11 +473,25 @@
   .ob-footer { margin-top: 12px; }
   .ob-error { margin-top: 12px; padding: 9px 12px; }
 }
+/* Phones like 360x707: a denser rhythm keeps even the creator profile, with an error showing, on one screen. */
+@media (max-height: 800px) and (max-width: 599px) {
+  .ob-header { margin-bottom: 12px; }
+  .ob-content { margin-top: 14px; }
+  .ob-form { gap: 10px; margin-top: 14px; }
+  .ob-form > .ob-label { margin-bottom: -4px; }
+  .ob-field { gap: 4px; }
+  .ob-label + .ob-options { margin-top: 4px; }
+  .ob-options { gap: 6px; }
+  .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 44px; padding-block: 9px; }
+  .ob-segment { padding: 3px; }
+  .ob-segment button { min-height: 36px !important; padding-block: 4px; }
+  .ob-actions { padding-top: 12px; }
+  .ob-actions .ob-primary { min-height: 52px; }
+  .ob-error { margin-top: 8px; padding: 7px 12px; }
+}
 @media (max-height: 680px) and (max-width: 599px) {
   .ob-showcase { height: 215px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 190px; }
-  .ob-header { margin-bottom: 12px; }
-  .ob-form { gap: 12px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
   .ob-shell { min-height: 100dvh; padding-top: 16px; }

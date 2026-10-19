@@ -106,6 +106,14 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 [data-theme="dark"] .nav{background:rgba(23,23,26,.94);box-shadow:0 8px 28px -13px rgba(0,0,0,.9)}
 .avw{position:relative;flex:0 0 auto;display:inline-flex}
 .av{position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:99px;overflow:hidden;flex:0 0 auto}
+/* Illustrated stand-in for a missing profile photo, in the active theme's colors. */
+.zf-face{position:absolute;inset:0;display:block;width:100%;height:100%;
+ background:radial-gradient(circle at 30% 18%,color-mix(in srgb,var(--accent) 30%,var(--raised)),var(--raised) 72%);
+ --zf-skin:color-mix(in srgb,var(--accent-ink) 38%,var(--surface));
+ --zf-hair:color-mix(in srgb,var(--accent) 62%,#000);
+ --zf-top:color-mix(in srgb,var(--accent) 78%,var(--surface))}
+.zf-face .zf-skin{fill:var(--zf-skin)}.zf-face .zf-hair{fill:var(--zf-hair)}.zf-face .zf-top{fill:var(--zf-top)}
+.zh-profile{position:relative}.zp-avatar>.zf-face{border-radius:50%}
 .pres{position:absolute;right:1px;bottom:1px;width:11px;height:11px;border-radius:99px;
  border:2px solid var(--canvas);background:var(--muted)}
 .pres.on{background:var(--online)}
@@ -623,6 +631,9 @@ html{scroll-behavior:smooth}
 .editavatar img{width:100%;height:100%;object-fit:cover}.editavatar .mediaedit{right:-5px;bottom:-2px;width:25px;height:25px;background:var(--accent)}
 .editgroup{margin-top:17px}.editlabel{display:block;margin:0 2px 7px;color:var(--faint);font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .editinput{width:100%;min-height:43px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px;font-size:13px;outline:none}
+.editchoices{display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.editchoices>button{min-height:35px;border-radius:9px;color:var(--muted);font-size:13px;font-weight:600}
+.editchoices>button.on{background:var(--accent);color:var(--cta-ink)}
 textarea.editinput{height:82px;resize:none;font:inherit;color:var(--ink)}
 .editinput:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
 .editposts{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
@@ -1896,6 +1907,15 @@ button.gpill[onclick]{cursor:pointer}
 .ob-options { display: flex; gap: 8px; flex-wrap: wrap; }
 .ob-options button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 15px; border: 1px solid var(--ob-edge); border-radius: 999px; color: var(--ob-text); background: var(--ob-field); font-size: 13px; font-weight: 600; }
 .ob-options button.selected { color: var(--ob-on-pink); border-color: var(--ob-pink); background: var(--ob-pink); box-shadow: 0 8px 18px -12px var(--ob-glow); }
+/* "I am": three choices in one row; the longest label gets the most room. */
+.ob-field.ob-inline { flex-direction: row; align-items: center; gap: 12px; }
+.ob-inline > .ob-label { flex: none; }
+.ob-inline > .ob-segment { flex: 1; min-width: 0; }
+.ob-segment { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-field); }
+.ob-segment:focus { outline: none; }
+.ob-segment[aria-invalid="true"] { border-color: var(--ob-danger); }
+.ob-segment button { min-width: 0; min-height: 40px !important; padding: 6px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 13px !important; font-weight: 650 !important; line-height: 1.2; }
+.ob-segment button.selected { color: var(--ob-on-pink); background: var(--ob-pink); box-shadow: 0 6px 14px -10px var(--ob-glow); }
 .ob-check { display: flex; align-items: flex-start; gap: 11px; color: var(--ob-muted); font-size: 13px; line-height: 1.55; cursor: pointer; padding: 8px 0; min-height: 44px; }
 .ob-check input { accent-color: var(--ob-pink); width: 20px; height: 20px; flex: 0 0 20px; margin: 0; border-radius: 6px; }
 .ob-check a { color: var(--ob-soft); }
@@ -1993,7 +2013,7 @@ button.gpill[onclick]{cursor:pointer}
   .ob-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 20px 34px -16px var(--ob-glow), 0 3px 8px -4px var(--ob-glow), inset 0 1px 0 rgb(255 255 255 / .22); }
   .ob-secondary:hover, .ob-icon:hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
   .ob-text-button:hover, .ob-resend button:hover:not(:disabled) { color: var(--ob-text); }
-  .ob-role-switch button:hover:not(.selected) { color: var(--ob-text); }
+  .ob-role-switch button:hover:not(.selected), .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
   .ob-upload:hover { border-color: var(--ob-pink); }
   .ob-thumb:hover { border-color: var(--ob-pink); }
 }
@@ -2066,6 +2086,7 @@ button.gpill[onclick]{cursor:pointer}
   .ob-brand { font-size: 23px; }
   .ob-top-login { padding: 0 15px; }
   .ob-role-switch button { font-size: 12px !important; gap: 5px; }
+  .ob-segment button { font-size: 12px !important; padding-inline: 4px; }
   .ob-interest { padding: 10px 12px; font-size: 12.5px !important; gap: 6px; }
   .ob-interests { gap: 8px 6px; }
   .ob-options button { padding-inline: 13px; }
@@ -2112,11 +2133,25 @@ button.gpill[onclick]{cursor:pointer}
   .ob-footer { margin-top: 12px; }
   .ob-error { margin-top: 12px; padding: 9px 12px; }
 }
+/* Phones like 360x707: a denser rhythm keeps even the creator profile, with an error showing, on one screen. */
+@media (max-height: 800px) and (max-width: 599px) {
+  .ob-header { margin-bottom: 12px; }
+  .ob-content { margin-top: 14px; }
+  .ob-form { gap: 10px; margin-top: 14px; }
+  .ob-form > .ob-label { margin-bottom: -4px; }
+  .ob-field { gap: 4px; }
+  .ob-label + .ob-options { margin-top: 4px; }
+  .ob-options { gap: 6px; }
+  .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 44px; padding-block: 9px; }
+  .ob-segment { padding: 3px; }
+  .ob-segment button { min-height: 36px !important; padding-block: 4px; }
+  .ob-actions { padding-top: 12px; }
+  .ob-actions .ob-primary { min-height: 52px; }
+  .ob-error { margin-top: 8px; padding: 7px 12px; }
+}
 @media (max-height: 680px) and (max-width: 599px) {
   .ob-showcase { height: 215px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 190px; }
-  .ob-header { margin-bottom: 12px; }
-  .ob-form { gap: 12px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
   .ob-shell { min-height: 100dvh; padding-top: 16px; }
@@ -5402,7 +5437,7 @@ function obApplyAccount(account) {
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
   me.n = u.name || ""; S.editName = me.n; me.c = u.city || ""; me.about = u.about || "";
-  S.editCity = me.c; S.editAbout = me.about;
+  S.editCity = me.c; S.editAbout = me.about; me.gender = u.gender || ""; S.editGender = me.gender;
   S.avatarData = obPhotoUrl(u.avatarUrl || "");
   S.coverData = obPhotoUrl(u.coverUrl || ""); S.mediaDirty = {};
   S.creatorSetup = u.onboardingPreference === "creator" || ["pending", "rejected", "suspended"].includes(u.hostStatus);
@@ -5413,7 +5448,7 @@ function obApplyAccount(account) {
 }
 function obResumeOnboarding(account, desiredCreator) {
   const u = account.user || {};
-  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", langs: u.languages || [], interests: u.interests || [], photos: (u.photos || []).map(p => obPhotoUrl(p.url)).filter(Boolean), featured: 0, adult: !!u.adultConfirmed, cat: u.category || "" };
+  S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", langs: u.languages || [], interests: u.interests || [], photos: (u.photos || []).map(p => obPhotoUrl(p.url)).filter(Boolean), featured: 0, adult: !!u.adultConfirmed, cat: u.category || "", gender: u.gender || "" };
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
@@ -5426,7 +5461,7 @@ function obResetSession(message = "") {
   S.caller = null; S.callId = null; S.u = null; S.h = null; S.sum = null; S.pdone = 0; S.pamt = ""; S.giftedTo = {};
   S.mediaDirty = {}; S.mediaPreparing = false; S.mediaError = ""; S.profileRequestId = null; S.profileProgress = ""; S.postDraftData = ""; S.postCaption = ""; S.postPublishing = false; S.postRequestId = null; S.postError = "";
   const notice = document.getElementById("app-notice"); if (notice) notice.remove();
-  S.dataError = ""; S.realtimeError = ""; S.kycBusy = false; S.kerr = ""; S.profileSaving = false; S.following = {}; S.blocked = []; S.bal = 0; me.n = ""; me.about = ""; me.c = "";
+  S.dataError = ""; S.realtimeError = ""; S.kycBusy = false; S.kerr = ""; S.profileSaving = false; S.following = {}; S.blocked = []; S.bal = 0; me.n = ""; me.about = ""; me.c = ""; me.gender = ""; S.editGender = "";
   S.editName = ""; S.editAbout = ""; S.editCity = ""; S.acct.sender.earn = 0; S.acct.host.earn = 0;
   S.acct.sender.kyc = "none"; S.acct.host.kyc = "none";
   if (!DEMO) { H.length = 0; EXTRA.length = 0; CH.length = 0; TXNS.length = 0; CALLS.length = 0; Object.keys(PEOPLE).forEach(key => delete PEOPLE[key]); S.missed = { sender: [], host: [] }; }
@@ -5487,7 +5522,7 @@ function obDeckMarkup() {
     <span class="ob-floating ob-wave" aria-hidden="true">👋</span>
     <span class="ob-hearts" aria-hidden="true">${OB_HEART.repeat(3)}</span>
     <span class="ob-floating ob-spark" aria-hidden="true">${I("vid", 22)}</span>
-    <div class="ob-deck-controls"><button class="ob-icon" aria-label="Previous community preview" onclick="obDeck(-1)">${hi("back", 17)}</button>
+    <div class="ob-deck-controls"><button class="ob-icon" aria-label="Previous community preview" onclick="obDeck(-1)">${I("back", 17)}</button>
       <div class="ob-dots" aria-label="Preview ${index + 1} of 3">${cards.map((_, i) => `<button class="${i === index ? "selected" : ""}" aria-label="Show preview ${i + 1}" aria-pressed="${i === index}" onclick="obDeck(${i},true)"><span></span></button>`).join("")}</div>
       <button class="ob-icon" aria-label="Next community preview" onclick="obDeck(1)">${obArrow()}</button></div>`;
 }
@@ -5635,6 +5670,11 @@ function obSignedIn() {
   if (creator && !isHost()) { S.creatorSetup = true; S.kf = { name: me.n, bio: me.about, langs: (S.user || {}).languages || [] }; }
   go(creator && !isHost() ? "kyc" : "home");
 }
+function obPickGender(value, button) {
+  S.auth.gender = value;
+  button.parentElement.removeAttribute("aria-invalid");
+  button.parentElement.querySelectorAll("button").forEach(b => { const on = b === button; b.classList.toggle("selected", on); b.setAttribute("aria-pressed", String(on)); });
+}
 function obToggleLanguage(value, button) {
   const list = S.auth.langs;
   list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
@@ -5645,6 +5685,7 @@ function obNextProfile() {
   a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim(); a.adult = document.getElementById("p18").checked;
   if (a.name.length < 2) return obSetError("Use at least two characters for your name.", "pn");
   if (!okEmail(a.email)) return obSetError("Add a valid email address.", "pe");
+  if (!a.gender) return obSetError("Choose Woman, Man or Prefer not to say.", "pg");
   if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
   if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
   if (!a.adult) return obSetError("You need to be 18 or older to join Zimi.", "p18");
@@ -5711,18 +5752,18 @@ function obToggleInterest(index, button) {
 function obInterestCount() { const n = S.auth.interests.length; return n ? `${n} picked. Add as many as you like.` : "Pick as many as you like."; }
 function obFinish(skip = false) {
   const a = S.auth; if (a.busy) return;
-  if (!a.verified || !a.name || !okEmail(a.email) || !a.adult) return obStep("profile");
+  if (!a.verified || !a.name || !okEmail(a.email) || !a.gender || !a.adult) return obStep("profile");
   if (a.photos.length < MIN_PHOTOS) return obStep("photos");
   if (skip) a.interests = [];
   const photos = [a.photos[a.featured || 0], ...a.photos.filter((_, i) => i !== (a.featured || 0))];
-  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, photos, category: a.cat || undefined, langs: a.langs, interests: a.interests, adultConfirmed: !!a.adult, preferredRole: obIsCreator() ? "creator" : "member" };
+  const profile = { onboarding: true, role: S.role, name: a.name, email: a.email, photos, category: a.cat || undefined, langs: a.langs, interests: a.interests, gender: a.gender, adultConfirmed: !!a.adult, preferredRole: obIsCreator() ? "creator" : "member" };
   if (DEMO) { Native.send("profile.save", profile); return obComplete(); }
   obRequest("profile.save", profile);
 }
 function obComplete(account) {
   const a = S.auth; clearTimeout(obRequestTimer); obHaptic("success");
   const creator = obIsCreator();
-  me.n = a.name; S.editName = a.name; S.avatarData = a.photos[a.featured || 0]; S.interests = a.interests.slice();
+  me.n = a.name; S.editName = a.name; me.gender = a.gender; S.editGender = a.gender; S.avatarData = a.photos[a.featured || 0]; S.interests = a.interests.slice();
   if (account) obApplyAccount(account);
   if (creator) { me.tag = a.cat; S.creatorSetup = true; S.fromSignup = 1; S.kf = { ...S.kf, name: a.name, email: a.email, langs: a.langs, category: a.cat, bio: "", photos: account ? (account.user.photos || []).map(p => p.url) : a.photos }; }
   S.loggedIn = 1; S.auth = { step: "phone" }; go(creator ? "kyc" : "home");
@@ -5758,12 +5799,13 @@ function obLogin() {
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
     title = "Check your <em>messages</em>."; description = `Enter the six-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
-    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${hi("back", 16)} Edit phone number</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
+    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${I("back", 16)} Edit phone number</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
     title = "Let’s make it <em>yours</em>.";
     content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "What should we call you?"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error"></div>
       <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="S.auth.email=this.value" aria-describedby="ob-error"></div>
+      <div class="ob-field ob-inline"><span class="ob-label" id="pg-label">I am</span><div class="ob-segment" id="pg" role="group" aria-labelledby="pg-label" aria-describedby="ob-error" tabindex="-1">${GENDERS.map(([value, label]) => `<button type="button" class="${a.gender === value ? "selected" : ""}" aria-pressed="${a.gender === value}" onclick="obPickGender('${value}',this)">${label}</button>`).join("")}</div></div>
       ${host ? `<div class="ob-field"><label for="pc">Your thing</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error"><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
       <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obLanguages()}</div>
       <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error"><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
@@ -5777,7 +5819,7 @@ function obLogin() {
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your Zimi account" : "Log in to Zimi"}">
-    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${hi("back", 21)}</button>
+    <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${I("back", 21)}</button>
       ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : '<span class="ob-login-label">ZIMI LIVE</span>'}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">
@@ -5996,21 +6038,29 @@ function artC(sd,r){const[a,b,c]=HUES[sd%HUES.length],x=25+(sd%5)*12,y=20+(sd%4)
   <ellipse cx="150" cy="200" rx="160" ry="62" fill="none" stroke="${a}" stroke-width="1.4"/>
   <ellipse cx="150" cy="200" rx="104" ry="38" fill="none" stroke="#fff" stroke-opacity=".35"/></g></svg>`}
 
+/* A missing or broken profile photo becomes an illustration matching the person's
+   chosen gender, in the active theme's colors; neutral when they didn't say. */
+const GENDERS=[["female","Woman"],["male","Man"],["undisclosed","Prefer not to say"]];
+const FACES={
+ female:'<path class="zf-hair" d="M37 54c0-19 10-31 23-31s23 12 23 31c0 10 2 18 6 26-7 5-17 7-26 6l-3-5-3 5c-9 1-19-1-26-6 4-8 6-16 6-26z"/><path class="zf-top" d="M16 120c3-22 20-35 44-35s41 13 44 35z"/><path class="zf-skin" d="M52 72h16v12c0 3.6-3.6 6-8 6s-8-2.4-8-6z"/><ellipse class="zf-skin" cx="60" cy="52" rx="17.5" ry="20.5"/><path class="zf-hair" d="M42.5 51c1-13 8.5-20.5 18-20.5 8.6 0 15.6 6 17.4 15-7.6.4-15-2.6-20-8-3 6.4-8.6 11.4-15.4 13.5z"/>',
+ male:'<path class="zf-top" d="M10 120c2-25 22-40 50-40s48 15 50 40z"/><path class="zf-skin" d="M51 70h18v13c0 4-4 6.5-9 6.5s-9-2.5-9-6.5z"/><ellipse class="zf-skin" cx="60" cy="50" rx="19.5" ry="22"/><path class="zf-hair" d="M40.5 47c-1.5-15 7-25 19.5-25 13 0 21 9 19.5 24-2-6-6-9.5-11.5-11-5 3-12.5 4.5-20 3.5-4 1.5-6.5 4.5-7.5 8.5z"/>',
+ neutral:'<path class="zf-top" d="M14 120c2-24 20-38 46-38s44 14 46 38z"/><path class="zf-skin" d="M51 70h18v13c0 4-4 6.5-9 6.5s-9-2.5-9-6.5z"/><circle class="zf-skin" cx="60" cy="50" r="21"/>'};
+function faceKind(h){return h?.gender==="female"||h?.gender==="male"?h.gender:"neutral"}
+function face(h){const k=faceKind(h);return `<svg class="zf-face" data-face="${k}" viewBox="0 0 120 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${FACES[k]}</svg>`}
+// Photos that fail later (expired link, offline) swap to the same illustration.
+document.addEventListener("error",e=>{const img=e.target;if(!(img instanceof HTMLImageElement)||!img.dataset.face)return;
+ const holder=document.createElement("span"),illustration=face({gender:img.dataset.face});
+ holder.innerHTML=img.dataset.faceWrap==="zh-fallback"?`<div class="zh-fallback">${illustration}</div>`:illustration;img.replaceWith(holder.firstChild)},true);
+
 /* Colour-forward avatar, for lists where the faces carry the page. */
 function avatarSource(h){return imageSrc(h===me?S.avatarData:h.avatarUrl)}
-function portrait(h,colored=false){const src=avatarSource(h);
- return src?`<img class="art" src="${src}" alt="${esc(h.n||"Profile photo")}" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:colored?artC(h.seed):art(h.seed)}
-function avc(h,s){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
- if(avatarSource(h))return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h,true)}</span>`;
- return `<span class="av" style="width:${s}px;height:${s}px">${artC(h.seed,"99px")}
- <span class="disp" style="position:relative;color:#fff;font-weight:700;font-size:${Math.round(s*.36)}px;
-  text-shadow:0 1px 4px rgba(0,0,0,.5)">${esc(i)}</span></span>`}
+function portrait(h){const src=avatarSource(h);
+ return src?`<img class="art" src="${src}" alt="${esc(h.n||"Profile photo")}" data-face="${faceKind(h)}" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:face(h)}
+function avc(h,s){return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h)}</span>`}
 
-function av(h,s,ring){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
+function av(h,s,ring){
  const pres=ring==="none"?"":`<span class="pres ${h.live?"live":h.on?"on":""}"></span>`;
- if(avatarSource(h))return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`;
- return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${art(h.seed,"99px")}
- <span class="disp" style="position:relative;color:rgba(255,255,255,.92);font-weight:600;font-size:${Math.round(s*.36)}px">${esc(i)}</span></span>${pres}</span>`}
+ return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`}
 const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>',
  chat:'<path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v7a2.5 2.5 0 01-2.5 2.5H10l-4.4 3.3A1 1 0 014 18.5z" stroke-linejoin="round"/>',
  user:'<circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 19.5c1.3-3.8 4-5.7 7.5-5.7s6.2 1.9 7.5 5.7" stroke-linecap="round"/>',
@@ -6163,10 +6213,10 @@ function sender(id){
 /* Hosts and senders render through the same profile shape. */
 function asProfile(x,isHost){
  return isHost
-  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
+  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,gender:x.gender,
      lvl:(x.seed%40)+8,recv:lifetime(x),sent:((x.seed*409)%260+18)*1000,
      fol:x.v,following:(x.seed%400)+90}
-  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
+  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,gender:x.gender,
      lvl:x.lvl,recv:x.recv,sent:x.sent,fol:x.v,following:x.hosts*7};
 }
 function mvpsFor(h){
@@ -6261,7 +6311,7 @@ function profilePage(p,raw,self){
 
 /* The hosts a sender backs, biggest first. */
 function backedFor(u){
- return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,
+ return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,gender:h.gender,
   c:Math.round(((u.seed*173+i*577)%420+60)*1000/(i*0.4+1))}))
   .sort((a,b)=>b.c-a.c).slice(0,8);
 }
@@ -6799,19 +6849,20 @@ function publishPost(){
 }
 function saveProfile(){
  if(S.profileSaving||S.mediaPreparing||S.postPublishing)return;
- const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim()};
+ const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim(),...(S.editGender?{gender:S.editGender}:{})};
  if(profile.name.length<2)return appNotice("Use at least two characters for your name.");
- if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;return go(S.editBack||"profile")}
+ if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;me.gender=S.editGender||me.gender;return go(S.editBack||"profile")}
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
-function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]).slice(0,2).join(""),busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
+function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
  <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:artC(me.seed+17)}
   <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
-  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview">`:esc(initials)}</span>
+  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview" data-face="${faceKind({gender:S.editGender||me.gender})}">`:face({gender:S.editGender||me.gender})}</span>
    <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></div>
  ${S.mediaPreparing?'<p role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error" role="alert">${esc(S.mediaError)}</div>`:""}
  <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
+ <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
@@ -6823,7 +6874,7 @@ function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]
 
 function vProfile(){
  const host=isHost();
- const p={id:"me",n:me.n,seed:me.seed,on:1,host,lvl:7,tag:host?"Host":"Supporter",c:me.c,
+ const p={id:"me",n:me.n,seed:me.seed,on:1,host,lvl:7,tag:host?"Host":"Supporter",c:me.c,gender:me.gender,
   verified:host&&A().kyc==="verified",
   recv:host?2090372+A().earn-184250:A().earn,sent:246000+(S.gifted||0),fol:host?"2.4K":"38",following:181};
  return profilePage(p,me,true)}
@@ -7497,12 +7548,12 @@ const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:p.availableForCall===true,
-  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
  return PEOPLE[id]={id,n:p.name||"Zimi user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
-  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */
 function knowHost(p){const h=hostFrom(p);if(!g(h.id))EXTRA.push(h);return h}
@@ -7748,7 +7799,7 @@ function hi(name,size=20){return `<svg class="zi-icon" data-icon="${name}" width
 function homeCompact(value){const x=Math.max(0,Number(value)||0);return x>=1000?(x/1000).toFixed(x>=10000?0:1).replace(/\.0$/,'')+'k':n(x)}
 function homeCreator(p){const h=hostFrom(p);return {...h,verified:!!p.verified,available:!!p.availableForCall,about:p.about||'',stream:p.stream||null,viewers:p.stream?.viewers||0}}
 function homeRemember(p){const h=homeCreator(p),old=H.find(x=>x.id===h.id);if(old)Object.assign(old,h);else H.push(h);return h}
-function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl);return src?`<img class="zh-photo zh-photo-pending" src="${src}" alt="${esc(h.n)}" loading="${priority?'eager':'lazy'}" decoding="async">`:`<div class="zh-fallback">${artC(h.seed)}<span>${esc(h.n.split(' ').map(x=>x[0]).slice(0,2).join(''))}</span></div>`}
+function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl);return src?`<img class="zh-photo zh-photo-pending" src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}" data-face-wrap="zh-fallback" loading="${priority?'eager':'lazy'}" decoding="async">`:`<div class="zh-fallback">${face(h)}</div>`}
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
 function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:'<span class="zh-badge zh-offline">Offline</span>'}
@@ -7767,7 +7818,7 @@ function homeContentError(){return !DEMO&&(Home.error||ContentLoading.home.error
 
 function homeFilter(value){Home.filter=value;homeLoad()}
 function homeList(){let list=Home.hosts;if(DEMO){if(Home.filter==='instant')list=list.filter(h=>h.available);else if(Home.categories.includes(Home.filter))list=list.filter(h=>h.cat===Home.filter)}return list}
-function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="Zimi Live home">${hi('sun',27)}<span>Zimi<span>Live</span></span></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button><button class="zh-profile" onclick="go('profile')" aria-label="Your profile">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="">`:hi('user',19)}</button></div></header>`}
+function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="Zimi Live home">${hi('sun',27)}<span>Zimi<span>Live</span></span></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button><button class="zh-profile" onclick="go('profile')" aria-label="Your profile">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="" data-face="${faceKind(me)}">`:face(me)}</button></div></header>`}
 function homeNav(){
   const el=document.getElementById('nav');
   if(!['home','explore','chats','profile','settings','notifications'].includes(S.v))return false;
@@ -8487,7 +8538,7 @@ function zrIdentity(p,host,call){
 }
 function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p?homeCover(p,true):''}${voice?`<div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>Just you. Just a conversation.</span></div><audio data-zimi-remote autoplay></audio>`:`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
 function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${gift.mediaUrl?`<img src="${homeGiftUrl(gift.mediaUrl)}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>+${n(gift.coins)} coins received</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
-function zrSupporterStrip(){return `<div class="zr-supporters">${Room.supporters.slice(0,2).map((p,i)=>`<button onclick="zrOpen('supporters')">${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl},23)}<b class="zr-rank">${i+1}</b><strong>${esc(p.name)}</strong><span>${homeCompact(p.coins)}</span></button>`).join('')}<button class="zr-explore" onclick="zrOpen('supporters')">${hi('cup',14)} Supporters ${hi('chev',12)}</button></div>`}
+function zrSupporterStrip(){return `<div class="zr-supporters">${Room.supporters.slice(0,2).map((p,i)=>`<button onclick="zrOpen('supporters')">${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl,gender:p.gender},23)}<b class="zr-rank">${i+1}</b><strong>${esc(p.name)}</strong><span>${homeCompact(p.coins)}</span></button>`).join('')}<button class="zr-explore" onclick="zrOpen('supporters')">${hi('cup',14)} Supporters ${hi('chev',12)}</button></div>`}
 function zrGoal(){if(!Room.goalEnabled)return '';const percent=Math.min(100,Math.round(Room.received/Room.goal*100));return `<button class="zr-goal" onclick="zrOpen('goal')" aria-label="Edit session gift goal"><span>${hi('mic',15)}<strong>Goal: ${esc(Room.goalTitle)}</strong><small>${homeCompact(Room.received)} / ${homeCompact(Room.goal)} coins (${percent}%)</small></span><span class="zr-progress" role="progressbar" aria-label="Session gift goal" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></span></button>`}
 function zrTool(icon,label,action,badge='',active=false){return `<button type="button" class="zr-tool ${active?'is-active':''}" onclick="${action}" aria-label="${esc(label)}" ${['Mute','Unmute','Camera off','Camera on'].includes(label)?`aria-pressed="${active}"`:''}><span>${hi(icon,21)}${badge?`<b>${esc(badge)}</b>`:''}</span><small>${esc(label)}</small></button>`}
 function zrTools(){return `<aside class="zr-tools" aria-label="Broadcast controls">${zrTool('flip','Flip',"zrFlip()")}${zrTool(S.mic?'mic':'micoff',S.mic?'Mute':'Unmute',"zrMic()",'',!S.mic)}${zrTool(S.cam?'vid':'camoff',S.cam?'Camera off':'Camera on',"zrCamera()",'',!S.cam)}${zrTool('queue','Queue',"zrOpen('queue')",Room.queueCount||'')}${zrTool('sliders','Settings',"zrOpen('settings')")}</aside>`}
@@ -8517,7 +8568,7 @@ function zrSheet(){
     content=`<p class="zr-sheet-note">${host?'Accepting a request ends your public live and starts a private video call.':'Your host will accept when they’re ready. The public live ends when the private call starts.'} Calls are free.</p>`;
     if(Room.queueLoading)content+=contentSkeleton('rows','Loading call requests',2);
     else if(Room.queueError)content+=`<div class="zh-error" role="alert">${esc(Room.queueError)}<button onclick="zrLoadQueue();r()">Retry</button></div>`;
-    else if(host)content+=Room.requests.length?Room.requests.map((q,i)=>`<div class="zr-queue-row">${zrAvatar({n:q.name,seed:i+18,avatarUrl:q.avatarUrl},40)}<div><strong>${esc(q.name)}</strong><small>#${i+1} in queue · Video call</small></div><button class="zr-decline" onclick="zrDecline('${domId(q.id)}')" aria-label="Decline ${esc(q.name)}" ${Room.busy?'disabled':''}>${hi('close',18)}</button><button class="zr-pink" onclick="zrAccept('${domId(q.id)}')" ${Room.busy?'disabled':''}>Accept</button></div>`).join(''):'<div class="zr-empty">'+hi('queue',32)+'<strong>You’re all caught up</strong><p>Private call requests will appear here.</p></div>';
+    else if(host)content+=Room.requests.length?Room.requests.map((q,i)=>`<div class="zr-queue-row">${zrAvatar({n:q.name,seed:i+18,avatarUrl:q.avatarUrl,gender:q.gender},40)}<div><strong>${esc(q.name)}</strong><small>#${i+1} in queue · Video call</small></div><button class="zr-decline" onclick="zrDecline('${domId(q.id)}')" aria-label="Decline ${esc(q.name)}" ${Room.busy?'disabled':''}>${hi('close',18)}</button><button class="zr-pink" onclick="zrAccept('${domId(q.id)}')" ${Room.busy?'disabled':''}>Accept</button></div>`).join(''):'<div class="zr-empty">'+hi('queue',32)+'<strong>You’re all caught up</strong><p>Private call requests will appear here.</p></div>';
     else content+=Room.ownRequestId?`<div class="zr-empty">${hi('vid',34)}<strong>Request sent</strong><p>You can keep enjoying the live while you wait.</p></div><button class="zr-wide zr-secondary" onclick="zrCancel()" ${Room.busy?'disabled':''}>Cancel request</button>`:`<button class="zr-wide zr-pink" onclick="zrRequest()" ${Room.busy?'disabled':''}>${hi('vid',18)} Request a private video call</button>`;
   }else if(sheet==='settings'){
     title='Live studio';content=`<div class="zr-setting-row"><div><strong>Microphone</strong><small>${S.mic?'Your audience can hear you':'Your microphone is muted'}</small></div><button class="zr-secondary" onclick="zrMic()">${S.mic?'Mute':'Unmute'}</button></div><div class="zr-setting-row"><div><strong>Camera</strong><small>${S.cam?'Your camera is on':'Your camera is off'}</small></div><button class="zr-secondary" onclick="zrCamera()">${S.cam?'Turn off':'Turn on'}</button></div><button class="zr-wide zr-secondary" onclick="zrOpen('goal')">${hi('gift',18)} Set a session gift goal</button><button class="zr-wide zr-secondary" onclick="zrOpen('appearance')">${hi('sliders',18)} Camera preview appearance</button><button class="zr-wide zr-danger" onclick="zrExit()">End broadcast</button>`;
@@ -8526,7 +8577,7 @@ function zrSheet(){
   }else if(sheet==='goal'){
     title='Your session goal';content=`<p class="zr-sheet-note">Track gifts received during this live on your studio screen.</p><form onsubmit="event.preventDefault();zrSaveGoal()"><label>What are you working toward?<input id="zr-goal-title" maxlength="48" value="${esc(Room.goalTitle)}" required></label><label>Goal in coins<input id="zr-goal-amount" type="number" min="1" max="100000000" value="${Room.goal}" required></label><button class="zr-wide zr-pink">Save goal</button>${Room.goalEnabled?'<button type="button" class="zr-wide zr-secondary" onclick="Room.goalEnabled=false;zrClose()">Hide goal</button>':''}</form>`;
   }else if(sheet==='supporters'){
-    title='Session supporters';content=`<p class="zr-sheet-note">A little appreciation goes a long way. Gifts received since you joined this room.</p>${Room.supporters.length?Room.supporters.map((p,i)=>`<div class="zr-supporter-row"><b>${i+1}</b>${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl},38)}<strong>${esc(p.name)}</strong><span>${hi('diamond',15)} ${n(p.coins)}</span></div>`).join(''):'<div class="zr-empty">'+hi('gift',34)+'<strong>Make the first moment</strong><p>Supporters appear here when a gift arrives.</p></div>'}`;
+    title='Session supporters';content=`<p class="zr-sheet-note">A little appreciation goes a long way. Gifts received since you joined this room.</p>${Room.supporters.length?Room.supporters.map((p,i)=>`<div class="zr-supporter-row"><b>${i+1}</b>${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl,gender:p.gender},38)}<strong>${esc(p.name)}</strong><span>${hi('diamond',15)} ${n(p.coins)}</span></div>`).join(''):'<div class="zr-empty">'+hi('gift',34)+'<strong>Make the first moment</strong><p>Supporters appear here when a gift arrives.</p></div>'}`;
   }else if(sheet==='audience'){
     title='Together, live';content=`<div class="zr-empty">${hi('people',36)}<strong>${n(Home.stream?.viewers||0)} watching now</strong><p>${n(Room.likes)} hearts received since you joined.</p></div>${!host?`<button class="zr-wide zr-pink" onclick="zrReact()">${hi('heart',18)} Send some love</button>`:''}`;
   }else if(sheet==='emoji'){
@@ -8586,7 +8637,7 @@ function zrReceiveGift(d){
   const coins=Number(d.totalCoins??d.coins??d.amount)||0,gift=typeof d.gift==='object'?d.gift:null;
   const name=d.senderName||d.from?.name||d.sender?.name||d.name||'A supporter',userId=d.senderId||d.from?.id||d.from||d.sender?.id||name;
   const previous=Room.gift;Room.gift={name,giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,coins,combo:previous?.name===name?previous.combo+1:1};
-  Room.received+=coins;let p=Room.supporters.find(x=>x.id===userId);if(p)p.coins+=coins;else Room.supporters.push({id:userId,name,coins,avatarUrl:d.senderAvatarUrl||d.sender?.avatarUrl});Room.supporters.sort((a,b)=>b.coins-a.coins);
+  Room.received+=coins;let p=Room.supporters.find(x=>x.id===userId);if(p)p.coins+=coins;else Room.supporters.push({id:userId,name,coins,avatarUrl:d.senderAvatarUrl||d.sender?.avatarUrl,gender:d.senderGender||d.sender?.gender});Room.supporters.sort((a,b)=>b.coins-a.coins);
   if(zrIsCall()){S.rmsgs.push(['gift',name,`sent ${Room.gift.emoji} ${Room.gift.giftName}`]);if(S.v==='hcall'){S.earned=(S.earned||0)+coins;S.recvN=(S.recvN||0)+1;S.gifted=(S.gifted||0)+coins}}
   if(S.v==='live'||zrIsCall())r();
 }
@@ -8608,8 +8659,8 @@ Native.on('stream.privateCall',async d=>{
   if(Home.stream?.id!==d.streamId){Native.send('call.end',{callId:d.callId,reason:'left_room'});return}
   const host=Home.hosting;Room.transition=d.callId;Home.stream=null;Home.hosting=false;Home.pendingClose=null;Home.messages=[];Room.sheet='';Room.busy=false;window.ZimiMedia.stop();S.callId=d.callId;S.mic=1;S.cam=1;S.scam=1;Home.mediaStatus='Preparing your private call…';
   S.callRate=d.rate||0;
-  if(host)S.caller={id:d.peerId,n:d.peer?.name||'Viewer',avatarUrl:d.peer?.avatarUrl,seed:seedOf(d.peerId),callId:d.callId,voice:false};
-  else{homeRemember({id:d.peerId,name:d.peer?.name||'Creator',avatarUrl:d.peer?.avatarUrl});S.h=d.peerId}
+  if(host)S.caller={id:d.peerId,n:d.peer?.name||'Viewer',avatarUrl:d.peer?.avatarUrl,gender:d.peer?.gender,seed:seedOf(d.peerId),callId:d.callId,voice:false};
+  else{homeRemember({id:d.peerId,name:d.peer?.name||'Creator',avatarUrl:d.peer?.avatarUrl,gender:d.peer?.gender});S.h=d.peerId}
   go(host?'hcall':'call',host?undefined:d.peerId);
   try{await window.ZimiMedia.prepare(true);if(Room.transition!==d.callId||!zrIsCall()||S.callId!==d.callId)return;Native.receive({type:'call.connected',data:d});r()}
   catch(error){if(Room.transition===d.callId){Native.send('call.end',{callId:d.callId,reason:'media_failed'});if(zrIsCall())endCall(true);appNotice(error.message)}}
@@ -8641,20 +8692,19 @@ if(DEMO&&callPreview){S.scam=1;S.mic=1;Home.mediaStatus='Design preview'}
 const CallSetup = { mode: 'video', peerId: '', wasOpen: false };
 Object.assign(homeIcons,{arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>'});
 function zpcMode(mode){if(Home.preparingCall||!['video','voice'].includes(mode))return;CallSetup.mode=mode;S.pcerr='';r();document.querySelector(`[data-call-mode="${mode}"]`)?.focus({preventScroll:true})}
-function zpcInitials(name){const words=String(name||'Creator').trim().split(/\s+/).map(word=>word.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean);return (words.length>1?words[0][0]+words.at(-1)[0]:words[0]?.slice(0,2)||'Z').toUpperCase()}
-function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}">`:''}
+function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}">`:face(h)}
 function zpcScreen(){
   const h=g(S.h);if(!h)return `<section class="zpc-setup"><div class="zpc-missing">${hi('user',40)}<h1>Creator unavailable</h1><p>This profile could not be loaded.</p><button class="zpc-primary" onclick="go('home')">Back to Home</button></div></section>`;
   if(CallSetup.peerId!==h.id){CallSetup.peerId=h.id;CallSetup.mode='video'}
   const busy=!!Home.preparingCall,voice=busy?!!Home.preparingVoice:CallSetup.mode==='voice',available=!!h.available;
   // A paid call needs one minute of coins to start; the server enforces the same rule.
   const short=available&&!busy&&h.rate>0&&S.bal<h.rate;
-  const permission=voice?'microphone':'camera & microphone',hasPhoto=!!imageSrc(h.avatarUrl||h.coverUrl);
+  const permission=voice?'microphone':'camera & microphone';
   return `<section class="zpc-setup ${busy?'is-preparing':''} ${!available?'is-unavailable':''}" aria-label="Set up your private call">
     <div class="zpc-ambient" aria-hidden="true"></div>
     <header class="zpc-header"><button class="zpc-back" onclick="go('home')" aria-label="Back">${hi('back',21)}</button><span>1-on-1 call</span><span class="zpc-private">${hi('lock',12)} Private</span></header>
     <div class="zpc-profile">
-      <div class="zpc-avatar-wrap"><div class="zpc-orbit" aria-hidden="true"></div><div class="zpc-avatar ${hasPhoto?'has-photo':''}"><span aria-hidden="${hasPhoto?'true':'false'}">${esc(zpcInitials(h.n))}</span>${zpcPortrait(h)}</div><span class="zpc-avatar-badge" aria-hidden="true">${hi(voice?'ph':'vid',17)}</span></div>
+      <div class="zpc-avatar-wrap"><div class="zpc-orbit" aria-hidden="true"></div><div class="zpc-avatar has-photo">${zpcPortrait(h)}</div><span class="zpc-avatar-badge" aria-hidden="true">${hi(voice?'ph':'vid',17)}</span></div>
       <span class="zpc-eyebrow">A LITTLE MORE PERSONAL</span>
       <h1>${esc(h.n)} ${homeVerified(h)}</h1>
       <p class="zpc-category">${esc(h.cat||h.tag||'Creator')}${h.c?`<span>·</span>${esc(h.c)}`:''}</p>
@@ -8669,9 +8719,7 @@ function zpcScreen(){
     <footer class="zpc-actions">${short?`<button class="zpc-primary" onclick="go('coins')">${hi('coins',21)} <span>Buy coins to call</span>${hi('arrow',18)}</button>`:`<button class="zpc-primary" onclick="homeStartCall(${voice})" ${busy||!available?'disabled':''}>${hi(voice?'ph':'vid',21)} <span>${busy?voice?'Preparing microphone…':'Preparing camera…':!available?'Currently unavailable':voice?'Start voice call':'Start video call'}</span>${!busy&&available?hi('arrow',18):''}</button>`}${busy?'<button class="zpc-cancel" onclick="homeCancelPrepare()">Cancel preparation</button>':!available?'<button class="zpc-secondary" onclick="go(\'explore\')">Explore creators '+hi('arrow',16)+'</button>':`<p class="zpc-footer-note">${hi('lock',11)} Your time. Your conversation.</p>`}${DEMO?'<span class="zpc-demo">Interactive preview · no real call is placed</span>':''}</footer>
   </section>`;
 }
-function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open;
-  const img=document.querySelector('.zpc-avatar>img');if(img){const fallback=()=>{img.hidden=true;img.parentElement?.classList.add('zpc-image-failed');img.previousElementSibling?.setAttribute('aria-hidden','false')};img.addEventListener('error',fallback,{once:true});if(img.complete&&!img.naturalWidth)fallback()}
-}
+function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open}
 document.addEventListener('aurora:navigate',()=>{if(S.v==='precall'&&!Home.preparingCall){CallSetup.mode='video';CallSetup.peerId=S.h;r()}});
 if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const offline=previewMode==='precall-offline';
@@ -8952,7 +9000,7 @@ function zpRow(icon,title,detail,action,extra=''){return `<button type="button" 
 function zpGroup(title,rows){return `<section class="zp-group"><h2>${title}</h2><div class="zp-group-card">${rows}</div></section>`}
 function zpIdentity(){
   const data=ZProfile.data,p=data?.profile||{},stats=data?.stats||{},standing=data?.standing||{},name=p.name||S.user?.name||me.n||'Your profile',bio=p.bio??S.user?.about??me.about,city=p.city??S.user?.city??me.c,id=S.user?.id||p.id||'',avatar=S.avatarData||(DEMO?OB_MEDIA[0]:''),approved=isApprovedHost();
-  return `<section class="zp-identity" aria-label="Your profile"><div class="zp-person"><button class="zp-avatar" onclick="zpGo('editprofile')" aria-label="Change profile photo">${imageSrc(avatar)?`<img class="zh-photo-pending" src="${imageSrc(avatar)}" alt="${esc(name)}">`:`<span class="zp-initials">${esc(name.split(' ').map(x=>x[0]).slice(0,2).join(''))}</span>`}${approved?`<span class="zp-verified" aria-label="Admin approved host">${hi('verified',15)}</span>`:''}<span class="zp-camera">${zi('camera',14)}</span></button><div class="zp-person-text"><h2>${esc(name)}</h2><p class="zp-id">${id?'ID · '+esc(id.slice(-8)):'Your Zimi account'}${standing.level?` · Level ${zpNumber(standing.level)}`:''}${standing.crown?` · <span class="zp-crown">${ci('crown',12)}Crown</span>`:''}</p><p>${zi('location',12)} ${esc(city||'Add your location')}</p></div></div><div class="zp-stats">${[['people','Fans',stats.fans],['follow','Following',stats.following],['gift','Gifts sent',stats.giftsSent],['gift','Gifts received',stats.giftsReceived]].map(([icon,label,value])=>`<div>${zi(icon,14)}<b>${zpPending()?skeletonLine('34px',12):ZProfile.error?'—':zpNumber(value)}</b><span>${label}</span></div>`).join('')}</div><div class="zp-bio">${esc(bio||'A little about you goes a long way. Add your introduction in Edit profile.')}</div></section>`;
+  return `<section class="zp-identity" aria-label="Your profile"><div class="zp-person"><button class="zp-avatar" onclick="zpGo('editprofile')" aria-label="Change profile photo">${imageSrc(avatar)?`<img class="zh-photo-pending" src="${imageSrc(avatar)}" alt="${esc(name)}" data-face="${faceKind(me)}">`:face(me)}${approved?`<span class="zp-verified" aria-label="Admin approved host">${hi('verified',15)}</span>`:''}<span class="zp-camera">${zi('camera',14)}</span></button><div class="zp-person-text"><h2>${esc(name)}</h2><p class="zp-id">${id?'ID · '+esc(id.slice(-8)):'Your Zimi account'}${standing.level?` · Level ${zpNumber(standing.level)}`:''}${standing.crown?` · <span class="zp-crown">${ci('crown',12)}Crown</span>`:''}</p><p>${zi('location',12)} ${esc(city||'Add your location')}</p></div></div><div class="zp-stats">${[['people','Fans',stats.fans],['follow','Following',stats.following],['gift','Gifts sent',stats.giftsSent],['gift','Gifts received',stats.giftsReceived]].map(([icon,label,value])=>`<div>${zi(icon,14)}<b>${zpPending()?skeletonLine('34px',12):ZProfile.error?'—':zpNumber(value)}</b><span>${label}</span></div>`).join('')}</div><div class="zp-bio">${esc(bio||'A little about you goes a long way. Add your introduction in Edit profile.')}</div></section>`;
 }
 function zpWallet(){return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>${zi('wallet',13)} Wallet balance</h2><div class="zp-balance"><strong>${contentBalance()}</strong><span>Coins</span></div></div><button class="zp-topup" onclick="zpGo('coins')">${hi('plus',17)} Top Up</button></div><div class="zp-wallet-actions"><button onclick="${isApprovedHost()?"zpOpen('earnings')":"zpGo('wallet')"}">${zi('cash',18)}<span>${isApprovedHost()?'Earnings & Wallet':'Wallet & Activity'}</span></button><button onclick="zpOpen('gifts')">${hi('gift',18)} Gift History</button></div></section>`}
 function zpAvailability(){const on=!!ZProfile.data?.privacy?.allowRequests&&!!ZProfile.data?.privacy?.showActivity;return `<div class="zp-row"><span class="zp-row-icon">${hi('ph',18)}</span><span class="zp-row-text"><b>1-on-1 Call Availability</b><small>${ZProfile.presenceBusy?'Updating availability':on?'Online · Members can call you':'Offline'}</small></span><button type="button" class="zp-switch ${on?'is-on':''}" role="switch" aria-label="1-on-1 Call Availability" aria-checked="${on}" onclick="zpAvailabilitySet(${!on})" ${ZProfile.presenceBusy||zpPending()?'disabled':''}>${ZProfile.presenceBusy?'<span class="zh-skeleton-shape"></span>':'<i></i>'}</button></div>`}

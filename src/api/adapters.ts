@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, AppTheme, BlockedUsers, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -22,6 +22,8 @@ export function items(value: unknown): unknown[] {
 export function verificationOf(status: unknown): Verification {
   return status === "approved" ? "verified" : status === "pending" ? "pending" : status === "rejected" || status === "suspended" ? "rejected" : "none";
 }
+export const genderOf = (value: unknown): { gender?: Gender } =>
+  value === "female" || value === "male" || value === "undisclosed" ? { gender: value } : {};
 export function accountFrom(value: unknown): Account {
   const data = record(value), user = record(data.user), id = idOf(user);
   if (!id) throw new ApiError("Your account could not be loaded. Please try signing in again.", 502);
@@ -31,7 +33,7 @@ export function accountFrom(value: unknown): Account {
       id, name: string(user.name), role: user.role === "host" && user.hostStatus === "approved" && user.isVerifiedHost === true ? "host" : "sender",
       ...(user.role === "user" || user.role === "host" || user.role === "admin" ? { serverRole: user.role } : {}),
       city: string(user.city), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), photos,
-      languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), adultConfirmed: user.adultConfirmed === true,
+      languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), ...genderOf(user.gender), adultConfirmed: user.adultConfirmed === true,
       ...(user.onboardingPreference === "creator" || user.onboardingPreference === "member" ? { onboardingPreference: user.onboardingPreference } : {}),
       hostStatus: string(user.hostStatus),
       isVerifiedHost: user.isVerifiedHost === true,
@@ -50,7 +52,7 @@ export function hostFrom(value: unknown): Host {
   return {
     id: idOf(host), name: string(host.name), city: string(host.city), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
     languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.entryFee), followers: finite(host.followers),
-    about: string(host.bio), verified: host.isVerifiedHost === true,
+    about: string(host.bio), verified: host.isVerifiedHost === true, ...genderOf(host.gender),
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
     ...(host.role === "user" || host.role === "host" || host.role === "admin" ? { serverRole: host.role } : {}),
     ...(typeof (host.isOnline ?? host.online) === "boolean" ? { online: (host.isOnline ?? host.online) as boolean } : {}), ...(typeof host.live === "boolean" ? { live: host.live } : {}),

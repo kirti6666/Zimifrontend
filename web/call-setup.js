@@ -3,20 +3,19 @@
 const CallSetup = { mode: 'video', peerId: '', wasOpen: false };
 Object.assign(homeIcons,{arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>'});
 function zpcMode(mode){if(Home.preparingCall||!['video','voice'].includes(mode))return;CallSetup.mode=mode;S.pcerr='';r();document.querySelector(`[data-call-mode="${mode}"]`)?.focus({preventScroll:true})}
-function zpcInitials(name){const words=String(name||'Creator').trim().split(/\s+/).map(word=>word.replace(/[^\p{L}\p{N}]/gu,'')).filter(Boolean);return (words.length>1?words[0][0]+words.at(-1)[0]:words[0]?.slice(0,2)||'Z').toUpperCase()}
-function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}">`:''}
+function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}">`:face(h)}
 function zpcScreen(){
   const h=g(S.h);if(!h)return `<section class="zpc-setup"><div class="zpc-missing">${hi('user',40)}<h1>Creator unavailable</h1><p>This profile could not be loaded.</p><button class="zpc-primary" onclick="go('home')">Back to Home</button></div></section>`;
   if(CallSetup.peerId!==h.id){CallSetup.peerId=h.id;CallSetup.mode='video'}
   const busy=!!Home.preparingCall,voice=busy?!!Home.preparingVoice:CallSetup.mode==='voice',available=!!h.available;
   // A paid call needs one minute of coins to start; the server enforces the same rule.
   const short=available&&!busy&&h.rate>0&&S.bal<h.rate;
-  const permission=voice?'microphone':'camera & microphone',hasPhoto=!!imageSrc(h.avatarUrl||h.coverUrl);
+  const permission=voice?'microphone':'camera & microphone';
   return `<section class="zpc-setup ${busy?'is-preparing':''} ${!available?'is-unavailable':''}" aria-label="Set up your private call">
     <div class="zpc-ambient" aria-hidden="true"></div>
     <header class="zpc-header"><button class="zpc-back" onclick="go('home')" aria-label="Back">${hi('back',21)}</button><span>1-on-1 call</span><span class="zpc-private">${hi('lock',12)} Private</span></header>
     <div class="zpc-profile">
-      <div class="zpc-avatar-wrap"><div class="zpc-orbit" aria-hidden="true"></div><div class="zpc-avatar ${hasPhoto?'has-photo':''}"><span aria-hidden="${hasPhoto?'true':'false'}">${esc(zpcInitials(h.n))}</span>${zpcPortrait(h)}</div><span class="zpc-avatar-badge" aria-hidden="true">${hi(voice?'ph':'vid',17)}</span></div>
+      <div class="zpc-avatar-wrap"><div class="zpc-orbit" aria-hidden="true"></div><div class="zpc-avatar has-photo">${zpcPortrait(h)}</div><span class="zpc-avatar-badge" aria-hidden="true">${hi(voice?'ph':'vid',17)}</span></div>
       <span class="zpc-eyebrow">A LITTLE MORE PERSONAL</span>
       <h1>${esc(h.n)} ${homeVerified(h)}</h1>
       <p class="zpc-category">${esc(h.cat||h.tag||'Creator')}${h.c?`<span>·</span>${esc(h.c)}`:''}</p>
@@ -31,9 +30,7 @@ function zpcScreen(){
     <footer class="zpc-actions">${short?`<button class="zpc-primary" onclick="go('coins')">${hi('coins',21)} <span>Buy coins to call</span>${hi('arrow',18)}</button>`:`<button class="zpc-primary" onclick="homeStartCall(${voice})" ${busy||!available?'disabled':''}>${hi(voice?'ph':'vid',21)} <span>${busy?voice?'Preparing microphone…':'Preparing camera…':!available?'Currently unavailable':voice?'Start voice call':'Start video call'}</span>${!busy&&available?hi('arrow',18):''}</button>`}${busy?'<button class="zpc-cancel" onclick="homeCancelPrepare()">Cancel preparation</button>':!available?'<button class="zpc-secondary" onclick="go(\'explore\')">Explore creators '+hi('arrow',16)+'</button>':`<p class="zpc-footer-note">${hi('lock',11)} Your time. Your conversation.</p>`}${DEMO?'<span class="zpc-demo">Interactive preview · no real call is placed</span>':''}</footer>
   </section>`;
 }
-function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open;
-  const img=document.querySelector('.zpc-avatar>img');if(img){const fallback=()=>{img.hidden=true;img.parentElement?.classList.add('zpc-image-failed');img.previousElementSibling?.setAttribute('aria-hidden','false')};img.addEventListener('error',fallback,{once:true});if(img.complete&&!img.naturalWidth)fallback()}
-}
+function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open}
 document.addEventListener('aurora:navigate',()=>{if(S.v==='precall'&&!Home.preparingCall){CallSetup.mode='video';CallSetup.peerId=S.h;r()}});
 if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const offline=previewMode==='precall-offline';

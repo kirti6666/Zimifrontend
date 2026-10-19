@@ -6,7 +6,7 @@ import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnect
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { parseLiveLink, parseWebMessage } from "./web-message";
@@ -156,7 +156,7 @@ export type AppMessage =
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
-  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string } }
+  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string; senderGender?: Gender } }
   | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */

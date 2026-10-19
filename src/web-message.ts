@@ -89,7 +89,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
         (d.photos === undefined || (Array.isArray(d.photos) && d.photos.length <= 6 && d.photos.every(photo =>
           typeof photo === "string" && photo.length <= 2 * 1024 * 1024 && (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(photo) || /^https:\/\/[^\s"'<>]+$/.test(photo))))) &&
         (d.langs === undefined || strings(d.langs, 20)) && (d.interests === undefined || strings(d.interests, 20)) &&
-        (d.onboarding === undefined || boolean(d.onboarding)) && (d.adultConfirmed === undefined || boolean(d.adultConfirmed));
+        (d.onboarding === undefined || boolean(d.onboarding)) && (d.adultConfirmed === undefined || boolean(d.adultConfirmed)) &&
+        (d.gender === undefined || d.gender === "female" || d.gender === "male" || d.gender === "undisclosed");
       break;
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;

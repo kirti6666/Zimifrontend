@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -70,7 +70,8 @@ export const api = {
         name: profile.name.trim(), onboarding: {
           ...(email ? { email } : {}), photoKeys, languages, interests,
           ...(typeof profile.category === "string" && profile.category ? { category: profile.category } : {}),
-          ...(profile.preferredRole === "creator" || profile.preferredRole === "member" ? { preferredRole: profile.preferredRole } : {}), adultConfirmed: true,
+          ...(profile.preferredRole === "creator" || profile.preferredRole === "member" ? { preferredRole: profile.preferredRole } : {}),
+          ...genderOf(profile.gender), adultConfirmed: true,
         },
       });
       ensureSession(version);
@@ -88,7 +89,7 @@ export const api = {
     if (profile.cover === null) media.coverKey = null;
     else if (profile.cover !== undefined) { media.coverKey = await uploadMedia(profile.cover as string, "cover", version); onProgress?.(++done, total); }
     ensureSession(version);
-    await request("PATCH", "/profile", { name: profile.name.trim(), ...(typeof profile.city === "string" ? { city: profile.city.trim() } : {}), ...(typeof profile.about === "string" ? { bio: profile.about.trim() } : {}), ...media });
+    await request("PATCH", "/profile", { name: profile.name.trim(), ...(typeof profile.city === "string" ? { city: profile.city.trim() } : {}), ...(typeof profile.about === "string" ? { bio: profile.about.trim() } : {}), ...genderOf(profile.gender), ...media });
     ensureSession(version);
     // A /me read started before this mutation must not hide the saved media.
     pendingProfile = undefined;

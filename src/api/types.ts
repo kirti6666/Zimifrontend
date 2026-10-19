@@ -3,6 +3,8 @@
    Native.on handlers), so a renamed field shows up as a type error here. */
 
 export type Role = "sender" | "host";
+/* Self-chosen; picks a matching illustration when someone has no photo. */
+export type Gender = "female" | "male" | "undisclosed";
 export type ServerRole = "user" | "host" | "admin";
 export type Verification = "none" | "pending" | "verified" | "rejected";
 
@@ -22,6 +24,7 @@ export interface User {
   languages?: string[];
   interests?: string[];
   category?: string;
+  gender?: Gender;
   adultConfirmed?: boolean;
   onboardingPreference?: "creator" | "member";
   hostStatus?: string;
@@ -61,6 +64,7 @@ export interface Host {
   age?: number;
   avatarUrl?: string;
   coverUrl?: string;
+  gender?: Gender;
   ratePerMin?: number;
   entryFee?: number;
   online?: boolean;
@@ -114,9 +118,9 @@ export interface HomeData {
 }
 export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; }
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
-export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
+export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; gender?: Gender | null; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
-export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string }; }
+export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string; gender?: Gender | null }; }
 export interface StreamReaction { id: string; streamId: string; userId: string; emoji: string; }
 export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
