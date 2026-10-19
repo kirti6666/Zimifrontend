@@ -41,8 +41,20 @@ Accepting a queued request emits `stream.privateCall
 The screen stops public media, prepares camera/microphone, opens the private call
 and starts ordinary WebRTC signaling. It must deduplicate the socket and HTTP
 acceptance copies by call ID. No automatic `call.connected` event precedes that
-media preparation. The backend currently has no per-minute call billing; display
-the private call as free.
+media preparation.
+
+## Call charges
+
+Staff set the price in coins per minute in the admin dashboard (0 keeps calls free).
+A call keeps the price it was placed at. The server bills whole seconds once the host
+answers, `ceil(seconds × price / 60)` coins, charging every 10 seconds while the call
+lasts, so `wallet.balance` drops as people talk. Starting or requesting a paid call
+needs one minute of coins; otherwise the request fails with `INSUFFICIENT_COINS`
+and the setup screen offers **Buy coins to call** instead. When the coins run out,
+the server ends the call and `call.ended` carries `reason: "out_of_coins"`. The call
+screen shows the price and a running cost (an estimate between charges); the summary
+shows the server's charge when it arrives. New accounts can receive free welcome
+coins, also set by staff.
 
 ## Setup
 
@@ -73,7 +85,11 @@ for it (login, call failed).
 | Start a call, call back | `POST /calls` `{to, voice}` | `{callId}` |
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
-| Send a message | `POST /chats/:id` `{text}` | – |
+| Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
+| Send a photo | `POST /media/upload-url` `{purpose: "chat"}`, PUT to storage, then `POST /chats/:id` `{imageKey}` | – |
+| Reply to a message | `POST /chats/:id` `{text, replyTo}` | The message, with a `reply` quote |
+| Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
+| Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `PUT /follows/:id` `{on}` | – |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
@@ -103,12 +119,42 @@ The server persists configured host welcomes as normal chat messages with
 | Event | Data | What the screen does |
 | --- | --- | --- |
 | `call.incoming` | `{callId, from: Person}` | Full-screen ring, or a banner during a call |
-| `call.connected` | `{callId}` | Caller moves from "Calling…" into the call |
-| `call.ended` | `{callId}` | Call ends and the summary opens; a ringing call becomes a missed call |
+| `call.connected` | `{callId, rate?}` | Caller moves from "Calling…" into the call; `rate` is the coins per minute of a paid call |
+| `call.ended` | `{callId, coins?, reason?}` | Call ends and the summary opens with the coins charged; a ringing call becomes a missed call |
 | `gift.received` | `{gift, coins, from}` | Gift animation and earnings on the host's call screen |
 | `chat.message` | `{from, name, text, inCall?, automated?}` | Adds to the call chat or the open chat; automated welcomes are labeled |
 | `wallet.balance` | `{coins?, earned?}` | Updates balances everywhere |
 | `verification.status` | `{status}` | Moves the verification screen on |
+
+## Hidden chat text
+
+The server replaces phone numbers and abusive words in private, in-call and live chat
+with `█` characters before saving or delivering a message (`backend/src/lib/moderation.ts`).
+The screens draw every run of `█` as a blur that cannot be selected or copied
+(`escChat` in `web/aurora-runtime.js`). When something was hidden from a message the
+user just sent, the app posts `chat.sent {to, sent, text, inCall}` so the sender's bubble
+shows what was delivered, with a short notice.
+
+Photos members send (`chat.photo {to, photo}`, a resized JPEG from the photo picker) reach creators
+blurred with **Tap to view**.
+
+Tapping a sent message opens its options: **Reply**, **Edit** (your own text), and **Delete for everyone**
+(your own) or **Delete for me** (someone else's). The screens post `chat.send {replyTo}`, `chat.edit {to, id, text}`
+and `chat.delete {to, id, everyone}`; the app answers with `chat.updated {with, message}` or `chat.removed {id}`,
+and the socket events `chat:message-updated` and `chat:message-hidden` keep both people and other devices in step.
+Every sent message gets its server ID back in `chat.sent` / `chat.photoSent`, so it has options straight away.
+The **+** button holds **Photo** and **Emoji**. Each photo stays blurred until the creator taps it, and blurs again the
+next time the conversation is opened. Members see photos creators send, and their own, normally.
+
+## Private screens
+
+Screenshots and screen recordings are blocked while a video or voice call, a staff
+verification call, the chat list or a conversation is open. After every render the
+screens send `screen.secure {on}` when this changes (and once on load), and
+`App.tsx` turns `expo-screen-capture` on or off. On Android the screen shows black
+in screenshots, recordings and the recent-apps view; iOS 13+ blocks screenshots
+and recordings. Other screens, including public live rooms, can still be captured.
+A camera pointed at the phone can still record the screen.
 
 ## Staff verification calls (host applicants)
 
@@ -130,9 +176,6 @@ member calls do not apply to an applicant answering staff.
 
 ## Not covered yet
 
-- Video and audio: the call screens show photos where video goes. A video SDK
-  (for example Agora or ZEGOCLOUD) plus camera and microphone permissions is
-  needed in the React Native shell.
 - Incoming calls while the app is closed: needs push notifications and the
   Android incoming-call screen in the React Native shell.
 - Coin purchases use PayPlus checkout. Coins are credited only by the server,
@@ -140,8 +183,6 @@ member calls do not apply to an applicant answering staff.
   Play's payments policy may require Play Billing (or its alternative billing
   programme) for coins sold inside the Android app; check before release.
 - Google sign-in: shows "isn't available yet".
-- Photos are sent inline as data URLs; large uploads should move to direct
-  uploads with signed URLs.
 - Your own level and crown come from `GET /account/settings` as `standing`
   (`{level, crown}`; thresholds, crown amount and window are set in the admin
   dashboard). The crown is held while gifts sent in the window reach the

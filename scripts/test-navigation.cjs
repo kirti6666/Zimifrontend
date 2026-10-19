@@ -167,7 +167,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
       await seed(access, account);
       assert.equal(await access.locator('.zh-nav button').count(), 4, `${label} has member navigation`);
       assert.equal(await access.getByRole('button', { name: /^Go live$/i }).count(), 0, `${label} cannot see Go Live`);
-      assert.equal(await access.locator('.zh-story-create,.zh-create').count(), 0);
+      assert.equal(await access.locator('[aria-label="Start a live broadcast"],.zh-create').count(), 0);
       await navigate(access, 'wallet');
       assert.equal(await access.locator('.earnbox').count(), 0, `${label} cannot see host earnings`);
       assert.equal(await access.getByRole('button', { name: /Withdraw/i }).count(), 0, `${label} cannot see withdrawal controls`);
@@ -201,7 +201,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     }
     await seed(access, approved);
     assert.equal(await access.locator('.zh-nav button').count(), 5);
-    assert.equal(await access.locator('.zh-story-create').count(), 1);
+    assert.equal(await access.getByRole('button', { name: 'Start a live broadcast', exact: true }).count(), 1);
     await navigate(access, 'wallet');
     assert.equal(await access.locator('.earnbox').count(), 1, 'Approved hosts retain their earnings card');
     assert.equal(await access.getByRole('button', { name: /Withdraw/i }).count(), 1);
@@ -221,7 +221,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     assert.ok(!['broadcast', 'setup', 'waiting'].includes(await current(access)), 'Admin revocation exits a host-only setup immediately');
     await navigate(access, 'home');
     assert.equal(await access.locator('.zh-nav button').count(), 4, 'Admin revocation removes the host tab');
-    assert.equal(await access.locator('.zh-story-create,.zh-create').count(), 0, 'Admin revocation removes all Go Live entry points');
+    assert.equal(await access.locator('[aria-label="Start a live broadcast"],.zh-create').count(), 0, 'Admin revocation removes all Go Live entry points');
     await access.evaluate(() => {
       const stop = window.ZimiMedia.stop;
       window.ZimiMedia.stop = (...args) => { window.__mediaStopped = (window.__mediaStopped || 0) + 1; return stop(...args); };

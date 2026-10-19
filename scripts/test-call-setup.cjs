@@ -151,9 +151,14 @@ async function assertLayout(page, label) {
       }
     }
     await page.setViewportSize({ width: 320, height: 640 });
-    await receive(page, 'data.home', homeData({ ...host, name: 'Sara Alexandra AVeryLongUnbrokenCreatorNameThatMustNotOverflowTheScreen', tag: 'Fitness, wellbeing, and a thoughtful conversation about everything you love' }));
+    await receive(page, 'data.home', homeData({ ...host, gender: 'female', name: 'Sara Alexandra AVeryLongUnbrokenCreatorNameThatMustNotOverflowTheScreen', tag: 'Fitness, wellbeing, and a thoughtful conversation about everything you love' }));
     await assertLayout(page, 'long name and no photo');
-    assert.equal(await page.locator(`${setupSelector} img`).count(), 0, 'A creator without a photo uses the designed initials fallback');
+    assert.equal(await page.locator(`${setupSelector} img`).count(), 0, 'A creator without a photo shows no broken image');
+    assert.equal(await page.locator(`${setupSelector} .zpc-avatar .zf-face`).getAttribute('data-face'), 'female', 'A creator without a photo gets the illustration for her chosen gender');
+    await receive(page, 'data.home', homeData({ ...host, gender: 'male', avatarUrl: 'https://media.example.test/expired.jpg' }));
+    await page.locator(`${setupSelector} .zpc-avatar .zf-face`).waitFor();
+    assert.equal(await page.locator(`${setupSelector} .zpc-avatar .zf-face`).getAttribute('data-face'), 'male', 'A photo that fails to load becomes the matching illustration');
+    assert.equal(await page.locator(`${setupSelector} .zpc-avatar img`).count(), 0, 'No broken image remains');
     await receive(page, 'data.home', homeData({ ...host, name: 'Sara <img src=x onerror=alert(1)>' }));
     assert.equal(await page.locator(`${setupSelector} img[onerror], ${setupSelector} script`).count(), 0, 'Creator content is escaped');
     assert.match(await page.locator(`${setupSelector} h1`).innerText(), /<img src=x/);

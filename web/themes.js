@@ -10,10 +10,13 @@ const ZThemeVars=['--canvas','--deep','--surface','--raised','--line','--ink','-
 if(window.CSS?.registerProperty)for(const name of ZThemeVars){try{CSS.registerProperty({name,syntax:'<color>',inherits:true,initialValue:'#210f1d'})}catch{}}
 if(window.CSS?.registerProperty)document.documentElement.dataset.themeInterpolation='true';
 function ztSafe(theme){return !!theme&&/^[a-zA-Z0-9_-]{1,80}$/.test(theme.id||'')&&['light','dark'].includes(theme.mode)&&ZThemeColorKeys.every(key=>/^#[0-9a-f]{6}$/i.test(theme.colors?.[key]))&&Object.hasOwn(ZThemeFonts,theme.typography?.fontFamily)&&Number.isFinite(theme.typography.fontScale)&&theme.typography.fontScale>=.9&&theme.typography.fontScale<=1.15&&['400','500','600'].includes(theme.typography.fontWeight)&&['600','700','800'].includes(theme.typography.headingWeight)}
-function ztCurrent(){const catalog=ZThemes.catalog,theme=catalog?.items.find(x=>x.id===catalog.selectedThemeId&&x.active!==false&&(!x.isPremium||catalog.premium?.active));if(theme&&ztSafe(theme))return theme;const mode=ZProfile.data?.preferences?.appearance;return mode==='light'||(mode==='system'&&matchMedia('(prefers-color-scheme: light)').matches)?ZThemeRose:ZThemeOriginal}
+// The admin default and this account's theme from the last launch, embedded by the app before first paint.
+ZThemes.default=ztSafe(window.__zimiThemeCache?.default)?window.__zimiThemeCache.default:null;
+ZThemes.boot=ztSafe(window.__zimiThemeCache?.account?.theme)?window.__zimiThemeCache.account:null;
+/* Until the server catalog answers: the account's last theme, then the admin default. */
+function ztCurrent(){const catalog=ZThemes.catalog,theme=catalog?.items.find(x=>x.id===catalog.selectedThemeId&&x.active!==false&&(!x.isPremium||catalog.premium?.active));if(theme&&ztSafe(theme))return theme;const boot=ZThemes.boot;if(boot&&(!ZThemes.accountId||ZThemes.accountId===boot.id))return boot.theme;return ZThemes.default||ZThemeOriginal}
 function ztApply(animate=false){
   const root=document.documentElement;
-  if(['welcome','login'].includes(S.v)){if(root.dataset.themeId){ZThemeVars.forEach(key=>root.style.removeProperty(key));['--theme-font','--theme-font-scale','--theme-font-weight','--theme-heading-weight'].forEach(key=>root.style.removeProperty(key));['themeId','themeInk','themePrimary','themeContrast','themeSurface','themeRaised'].forEach(key=>delete root.dataset[key]);root.classList.remove('zt-transition');ZThemes.signature=''}return}
   const theme=ztCurrent(),c=theme.colors,t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
   root.classList.toggle('zp-light',theme.mode==='light');if(root.dataset.theme!==theme.mode)root.dataset.theme=theme.mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
   for(const [key,value] of Object.entries({themeInk:c.text,themePrimary:c.primary,themeContrast:c.primaryContrast,themeSurface:c.surface,themeRaised:c.surfaceElevated}))if(root.dataset[key]!==value)root.dataset[key]=value;
@@ -56,14 +59,17 @@ function ztCheckout(){
 }
 function ztVerify(){if(ZThemes.checkoutBusy||!ZThemes.checkout?.merchantOrderId)return;ZThemes.checkoutBusy=true;ZThemes.error='';ztPaint();Native.send('themes.premium.verify',{merchantOrderId:ZThemes.checkout.merchantOrderId})}
 function ztPayment(data){ZThemes.checkoutBusy=false;ZThemes.checkout=data;if(['SUCCESS','FAILED','REVERTED'].includes(data.status))ZThemes.attempt='';ztPaint()}
-function ztReset(){clearTimeout(ZThemes.transitionTimer);document.documentElement.classList.remove('zt-transition');ZThemes.signature='';ZThemes.requestId++;Object.assign(ZThemes,{catalog:null,loading:false,error:'',saving:'',checkout:null,checkoutBusy:false,attempt:'',accountId:'',refreshView:null});ztApply()}
+function ztClear(){clearTimeout(ZThemes.transitionTimer);document.documentElement.classList.remove('zt-transition');ZThemes.signature='';ZThemes.requestId++;Object.assign(ZThemes,{catalog:null,loading:false,error:'',saving:'',checkout:null,checkoutBusy:false,attempt:'',accountId:'',refreshView:null})}
+function ztReset(){ZThemes.boot=null;ztClear();ztApply()}
+function ztAccount(id){if(ZThemes.accountId!==(id||'')){ztClear();ZThemes.accountId=id||'';ztApply()}}
 Native.on('data.themes',ztAccept);
+Native.on('theme.default',theme=>{if(!ztSafe(theme))return;ZThemes.default=theme;ztApply(true);ztPaint()});
 Native.on('themes.selected',data=>{if(data.requestId!==ZThemes.requestId)return;const id=ZThemes.saving;ZThemes.saving='';ztAccept(data.catalog);document.getElementById('zt-theme-'+id)?.focus({preventScroll:true});appNotice('Theme applied.')});
 Native.on('themes.error',data=>{if(data.requestId!=null&&data.requestId!==ZThemes.requestId)return;ZThemes.error=data.message||'Your theme could not be updated. Please try again.';if(data.action==='themes.select'){ZThemes.saving='';appNotice(ZThemes.error)}if(data.action==='themes.load')ZThemes.loading=false;if(data.action==='themes.premium.checkout'||data.action==='themes.premium.verify')ZThemes.checkoutBusy=false;if(data.action==='themes.premium.checkout'&&data.code==='PAYIN_PROVISIONING_FAILED'){ZThemes.attempt='';ZThemes.checkout=null;ZThemes.error='Checkout could not start. Please try again.'}ztPaint()});
 Native.on('data.loading',data=>{if(data.resource!=='themes')return;ZThemes.loading=!!data.loading;ZThemes.error=data.error||'';ztPaint()});
 Native.on('themes.premium.checkout',ztPayment);Native.on('themes.premium.purchase',ztPayment);
 Native.on('session.none',ztReset);Native.on('session.expired',ztReset);
-Native.on('session',data=>{if(ZThemes.accountId!==data.user?.id){ztReset();ZThemes.accountId=data.user?.id||''}});
+Native.on('session',data=>ztAccount(data.user?.id));
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{if(event.matches)document.documentElement.classList.remove('zt-transition')});
-window.ZimiThemes={apply:ztApply,label:ztLabel,open:ztOpen,content:ztContent,reset:ztReset,account(id){if(ZThemes.accountId!==id){ztReset();ZThemes.accountId=id||''}}};
+window.ZimiThemes={apply:ztApply,label:ztLabel,open:ztOpen,content:ztContent,reset:ztReset,account:ztAccount};
 if(DEMO){ZThemes.catalog={selectedThemeId:ZThemeOriginal.id,premium:{active:false,pricePaise:19900,currency:'INR',paymentsAvailable:false,purchaseType:'lifetime'},items:[ZThemeOriginal,ZThemeRose,{...ZThemeOriginal,id:'000000000000000000000003',name:'Midnight Ocean',description:'Deep blue calm, a brighter point of view.',isDefault:false,isPremium:true,colors:{background:'#101b2d',surface:'#192a42',surfaceElevated:'#223951',text:'#edf6ff',textMuted:'#b5cada',primary:'#88d9ee',primaryContrast:'#102030',secondary:'#88d9ee',border:'#466078',success:'#69d5aa',danger:'#ffacb8'},typography:{fontFamily:'rounded',fontScale:1,fontWeight:'400',headingWeight:'700'}},{...ZThemeOriginal,id:'000000000000000000000004',name:'Amber Silk',description:'Warm neutrals with an editorial touch.',isDefault:false,isPremium:true,mode:'light',colors:{background:'#fff9ef',surface:'#ffffff',surfaceElevated:'#f3e7d1',text:'#3b2a1e',textMuted:'#79644e',primary:'#815016',primaryContrast:'#ffffff',secondary:'#815016',border:'#ccbba3',success:'#237d51',danger:'#b63146'},typography:{fontFamily:'serif',fontScale:1.05,fontWeight:'400',headingWeight:'700'}}]}}

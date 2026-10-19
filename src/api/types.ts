@@ -3,6 +3,8 @@
    Native.on handlers), so a renamed field shows up as a type error here. */
 
 export type Role = "sender" | "host";
+/* Self-chosen; picks a matching illustration when someone has no photo. */
+export type Gender = "female" | "male" | "undisclosed";
 export type ServerRole = "user" | "host" | "admin";
 export type Verification = "none" | "pending" | "verified" | "rejected";
 
@@ -22,6 +24,7 @@ export interface User {
   languages?: string[];
   interests?: string[];
   category?: string;
+  gender?: Gender;
   adultConfirmed?: boolean;
   onboardingPreference?: "creator" | "member";
   hostStatus?: string;
@@ -61,6 +64,7 @@ export interface Host {
   age?: number;
   avatarUrl?: string;
   coverUrl?: string;
+  gender?: Gender;
   ratePerMin?: number;
   entryFee?: number;
   online?: boolean;
@@ -73,6 +77,22 @@ export interface Host {
   verified?: boolean;
   availableForCall?: boolean;
   stream?: HomeStream | null;
+}
+
+/** Public identity and relationship data, never the target's account settings. */
+export interface PublicProfile extends Host {
+  followingCount: number;
+  joined: string;
+  interests: string[];
+  level?: number;
+  crown?: boolean;
+}
+
+export interface PublicPosts {
+  posts: UserPost[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface HomeStream {
@@ -114,9 +134,9 @@ export interface HomeData {
 }
 export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; }
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
-export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
+export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; gender?: Gender | null; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
-export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string }; }
+export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string; gender?: Gender | null }; }
 export interface StreamReaction { id: string; streamId: string; userId: string; emoji: string; }
 export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
@@ -153,7 +173,7 @@ export interface ProfileSettings {
 }
 export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
-export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; }
+export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
 export interface RtcPayload {
   description?: { type: "offer" | "answer"; sdp: string };
   candidate?: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string };
@@ -183,7 +203,8 @@ export interface ChatSummary {
   last: string;
   time: string;
   unread: number;
-  lastKind: "text";
+  lastKind: "text" | "image";
+  lastDeleted?: boolean;
   lastMine: boolean;
   lastAutomated: boolean;
   lastAt: string;
@@ -206,7 +227,11 @@ export interface Message {
   text: string;
   time: string;
   createdAt?: string;
-  kind?: "text";
+  kind?: "text" | "image";
+  imageUrl?: string;
+  edited?: boolean;
+  deleted?: boolean; // deleted for everyone; only a placeholder remains
+  reply?: { id: string; mine: boolean; text: string; image: boolean; deleted: boolean };
   automated?: boolean;
   status?: "sent" | "read"; // own messages only: whether the other person has read it
 }

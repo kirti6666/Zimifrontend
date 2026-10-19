@@ -63,7 +63,7 @@ const root = path.resolve(__dirname, '..');
       return { rendererResults, safeId, feedSafe, imageSafe, editSafe, gallerySafe, searchSafe, captionSafe, traySafe, executions: window.__xss };
     });
     // The conversation thread is rendered by the chats layer, which builds on the home layer.
-    for (const file of ['host-access.js', 'loading.js', 'home.js', 'chats.js']) {
+    for (const file of ['host-access.js', 'loading.js', 'coins.js', 'home.js', 'chats.js']) {
       await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
     }
     Object.assign(result, await page.evaluate(() => {

@@ -94,6 +94,10 @@ const page = (demo) =>
   read("web/live-room.css") +
   read("web/call-setup.css") +
   read("web/verification-call.css") +
+  read("web/offline.css") +
+  read("web/public-profile.css") +
+  read("web/home-dashboard.css") +
+  read("web/coins.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -108,6 +112,8 @@ const page = (demo) =>
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/home.js") +
+  "\n" + read("web/home-dashboard.js") +
+  "\n" + read("web/coins.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +
@@ -117,6 +123,8 @@ const page = (demo) =>
   "\n" + read("web/themes.js") +
   "\n" + read("web/navigation.js") +
   "\n" + read("web/icons.js") +
+  "\n" + read("web/offline.js") +
+  "\n" + read("web/public-profile.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

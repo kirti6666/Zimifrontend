@@ -16,14 +16,26 @@ const profileSettings = (appearance = 'dark') => ({ profile: { id: 'alice', name
 const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phone: '+919876543210', code: '123456', role: 'sender', signup: true, requestId } });
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
 const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
+const plain = value => JSON.parse(JSON.stringify(value));
 
 function harness(initialAppState = 'active', initialLink = null) {
-  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [];
+  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [];
   const overrides = {};
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
   }
-  const client = { ApiError, errorMessage: (error) => error instanceof ApiError ? error.message : 'Something went wrong. Please try again.' };
+  const connectionListeners = new Set();
+  let connectionStatus;
+  const connection = {
+    listeners: connectionListeners,
+    emit: status => { connectionStatus = status; for (const listener of connectionListeners) listener(status); },
+  };
+  const client = {
+    ApiError, errorMessage: (error) => error instanceof ApiError ? error.message : 'Something went wrong. Please try again.',
+    getConnectionStatus: () => connectionStatus,
+    onConnectionChanged: listener => { connectionListeners.add(listener); return () => connectionListeners.delete(listener); },
+    checkConnection: async () => { calls.push({ name: 'checkConnection', args: [] }); return overrides.checkConnection ? overrides.checkConnection() : true; },
+  };
   const defaults = {
     me: () => account(), verifyOtp: () => ({ ...account(), tokens: tokenPair(), isNew: true }),
     sendOtp: () => ({ resendAfter: 60, expiresIn: 300 }), saveProfile: () => account(),
@@ -39,8 +51,9 @@ function harness(initialAppState = 'active', initialLink = null) {
   } });
   const storage = {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 7,
+    getItem: key => disk.get(key) ?? null,
     getItemAsync: async key => disk.get(key) ?? null,
-    setItemAsync: async (key, value) => { disk.set(key, value); },
+    setItemAsync: async (key, value) => { if (overrides.setStorage) await overrides.setStorage(key, value); disk.set(key, value); },
     deleteItemAsync: async key => { if (overrides.deleteStorage) await overrides.deleteStorage(key); disk.delete(key); },
   };
   const jsx = (type, props) => ({ type, props });
@@ -71,10 +84,11 @@ function harness(initialAppState = 'active', initialLink = null) {
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => opened.push(url), getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
+      if (id === 'expo-screen-capture') return { preventScreenCaptureAsync: async key => capture.push(['prevent', key]), allowScreenCaptureAsync: async key => capture.push(['allow', key]) };
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
@@ -91,8 +105,36 @@ function harness(initialAppState = 'active', initialLink = null) {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, effects, opened, signals, activities, links, shares };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, connection };
 }
+
+test('connection status follows the current WebView and retry never reloads account data', async () => {
+  const h = harness();
+  h.connection.emit({ connected: false, checking: false });
+  assert.equal(h.find('connection.status').length, 0, 'Do not post into an unready document');
+  h.bridge.handle({ type: 'ready', data: { demo: false } });
+  await settle();
+  assert.equal(h.find('connection.status').at(-1).data.connected, false, 'Replay the current connection after readiness');
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'connection.check', data: { url: 'https://other.example' } })), null);
+  h.overrides.checkConnection = () => {
+    h.connection.emit({ connected: false, checking: true });
+    h.connection.emit({ connected: true, checking: false });
+    return true;
+  };
+  const before = h.calls.length;
+  h.bridge.handle({ type: 'connection.check', data: {} });
+  await settle();
+  assert.deepEqual(h.calls.slice(before).map(call => call.name), ['checkConnection']);
+  assert.equal(h.find('connection.status').at(-1).data.connected, true);
+  h.bridge.documentLoading();
+  const count = h.find('connection.status').length;
+  h.connection.emit({ connected: false, checking: false });
+  assert.equal(h.find('connection.status').length, count);
+  h.bridge.close();
+  assert.equal(h.connection.listeners.size, 0);
+  h.connection.emit({ connected: true, checking: false });
+  assert.equal(h.find('connection.status').length, count);
+});
 
 test('login and session restoration never post access or refresh credentials to the WebView', async () => {
   const h = harness();
@@ -391,6 +433,28 @@ test('native App refuses external document navigation and messages before privil
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
+test('the app page alone turns screenshot protection on and off for private screens', async () => {
+  const h = harness();
+  const tree = h.load('App.tsx').default();
+  function findWeb(node) {
+    if (!node || typeof node !== 'object') return null;
+    if (node.type === 'WebView') return node;
+    for (const child of [node.props?.children].flat()) { const found = findWeb(child); if (found) return found; }
+    return null;
+  }
+  const web = findWeb(tree);
+  const send = (url, data) => web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type: 'screen.secure', data }) } });
+  send('https://evil.example/', { on: false });
+  send('https://aurora.localhost/', { on: 'yes' });
+  assert.deepEqual(h.capture, [], 'Other pages and malformed messages cannot change protection');
+  send('https://aurora.localhost/', { on: true });
+  send('https://aurora.localhost/', { on: false });
+  await settle();
+  assert.deepEqual(h.capture.map(([action]) => action), ['prevent', 'allow']);
+  assert.equal(new Set(h.capture.map(([, key]) => key)).size, 1, 'Both use one key, so allowing undoes exactly this protection');
+  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
+});
+
 test('Android origin-only WebView messages reach OTP and haptic handlers', async () => {
   const h = harness();
   const tree = h.load('App.tsx').default();
@@ -437,6 +501,59 @@ test('home requests discard stale filters and never replace enriched feed with l
   assert.equal(h.find('data.home').length, 1);
   assert.equal(h.find('data.home')[0].data.hosts[0].id, 'talk-host');
   assert.equal(h.count('hosts'), 0);
+  h.bridge.close();
+});
+
+test('chat text the server partly hid is reported back as delivered, and photos are sent through the same checks', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user', isPhoneVerified: true }, requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.thread = () => ({ messages: [], canSend: true });
+  h.overrides.sendMessage = () => ({ id: 'message-1', text: 'call ██████████' });
+  h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'call 9876543210' } });
+  await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent').map(post => post.data))), [{ to: 'host-1', sent: 'call 9876543210', text: 'call ██████████', id: 'message-1', inCall: false }]);
+  h.overrides.sendMessage = () => ({ id: 'message-2', text: 'hello' });
+  h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'hello' } });
+  await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent')[1].data)), { to: 'host-1', sent: 'hello', text: 'hello', id: 'message-2', inCall: false }, 'Every sent message learns its server ID, for reply, edit and delete');
+  const photo = 'data:image/png;base64,' + Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]).toString('base64');
+  h.overrides.sendPhotoMessage = () => ({ id: 'photo-1' });
+  h.bridge.handle({ type: 'chat.photo', data: { to: 'host-1', photo } });
+  await settle();
+  assert.equal(h.count('sendPhotoMessage'), 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.photoSent').map(post => post.data))), [{ to: 'host-1', id: 'photo-1' }]);
+  for (const data of [{ to: 'host-1', photo: 'https://example.test/x.png' }, { to: 'host-1', photo: 'data:image/svg+xml;base64,PHN2Zz4=' }, { to: '', photo }])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'chat.photo', data })), null, 'Only a JPEG, PNG or WebP photo from the page can be sent');
+  h.bridge.close();
+});
+
+test('replies, edits and deletes reach the server and come back to the screen', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user', isPhoneVerified: true }, requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.thread = () => ({ messages: [], canSend: true });
+  h.overrides.sendMessage = () => ({ id: 'reply-1', text: 'Yes!' });
+  h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'Yes!', replyTo: 'question-1' } });
+  await settle();
+  assert.equal(h.calls.find(call => call.name === 'sendMessage').args[3], 'question-1', 'A reply names the message it answers');
+  h.overrides.editMessage = () => ({ _id: 'reply-1', senderId: 'alice', recipientId: 'host-1', text: 'Yes, at 9!', editedAt: '2026-10-17T10:00:00.000Z' });
+  h.bridge.handle({ type: 'chat.edit', data: { to: 'host-1', id: 'reply-1', text: 'Yes, at 9!' } });
+  await settle();
+  const edited = JSON.parse(JSON.stringify(h.find('chat.updated').at(-1).data));
+  assert.deepEqual([edited.with, edited.message.id, edited.message.text, edited.message.edited, edited.message.mine], ['host-1', 'reply-1', 'Yes, at 9!', true, true]);
+  h.overrides.deleteMessage = () => ({ _id: 'reply-1', senderId: 'alice', recipientId: 'host-1', text: '', deletedAt: '2026-10-17T10:01:00.000Z' });
+  h.bridge.handle({ type: 'chat.delete', data: { to: 'host-1', id: 'reply-1', everyone: true } });
+  await settle();
+  assert.equal(h.find('chat.updated').at(-1).data.message.deleted, true);
+  h.bridge.handle({ type: 'chat.delete', data: { to: 'host-1', id: 'other-1', everyone: false } });
+  await settle();
+  assert.deepEqual(h.calls.filter(call => call.name === 'deleteMessage').map(call => call.args[2]), [true, false]);
+  assert.equal(h.find('chat.removed').at(-1).data.id, 'other-1', 'Deleting for me removes it from this screen only');
+  for (const message of [{ type: 'chat.edit', data: { to: 'host-1', id: '', text: 'x' } }, { type: 'chat.delete', data: { to: 'host-1', id: 'm', everyone: 'yes' } }, { type: 'chat.send', data: { to: 'host-1', text: 'hi', replyTo: 42 } }])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null, 'Malformed reply, edit and delete messages are refused');
   h.bridge.close();
 });
 
@@ -548,6 +665,153 @@ test('returning from provider checkout verifies the owned order and credits only
   assert.equal(h.find('wallet.balance')[0].data.coins, 475);
   h.activities.forEach(listener => listener('active')); await settle(); assert.equal(h.count('verifyPurchase'), 1);
   h.bridge.close(); assert.equal(h.activities.length, 0);
+});
+
+test('a confirmed gift stays successful when its independent wallet refresh fails', async () => {
+  const h = harness();
+  h.overrides.sendGift = () => ({ id: 'transfer-id', coins: 25 });
+  h.overrides.wallet = () => { throw new Error('Connection lost'); };
+  h.bridge.handle({ type: 'gift.send', data: { to: 'creator-id', gift: 'gift-id', coins: 1, inCall: false, idempotencyKey: 'gift-attempt-1' } });
+  await settle();
+  assert.deepEqual(plain(h.find('gift.sent')[0].data), { to: 'creator-id', gift: 'gift-id', idempotencyKey: 'gift-attempt-1', id: 'transfer-id', coins: 25 });
+  assert.equal(h.find('wallet.balance').length, 0, 'Never infer the balance from the gift price');
+  assert.deepEqual(h.find('operation.error').map(item => item.data.action), ['wallet.load']);
+  assert.equal(h.find('data.loading').at(-1).data.error, 'Something went wrong. Please try again.');
+  h.bridge.close();
+});
+
+test('gift retries share one request while distinct attempts retain their own acknowledgments', async () => {
+  const h = harness(), first = deferred(), second = deferred();
+  h.overrides.sendGift = to => to === 'first-host' ? first.promise : second.promise;
+  const send = { type: 'gift.send', data: { to: 'first-host', gift: 'gift-1', coins: 10, inCall: false, idempotencyKey: 'gift-attempt-1' } };
+  h.bridge.handle(send); h.bridge.handle(send);
+  h.bridge.handle({ type: 'gift.send', data: { ...send.data, to: 'second-host', gift: 'gift-2', idempotencyKey: 'gift-attempt-2' } });
+  assert.equal(h.count('sendGift'), 2);
+  second.resolve({ id: 'transfer-2', coins: 30 }); await settle();
+  first.resolve({ id: 'transfer-1', coins: 20 }); await settle();
+  assert.deepEqual(h.find('gift.sent').map(item => [item.data.to, item.data.gift, item.data.idempotencyKey, item.data.coins]), [['second-host', 'gift-2', 'gift-attempt-2', 30], ['first-host', 'gift-1', 'gift-attempt-1', 20]]);
+  h.bridge.close();
+});
+
+test('gift failures carry their own attempt and insufficient-coin code without confirming a spend', async () => {
+  const h = harness();
+  h.overrides.sendGift = () => { throw new h.ApiError('Not enough coins', 409, 'INSUFFICIENT_COINS'); };
+  const send = { type: 'gift.send', data: { to: 'host-id', gift: 'gift-id', coins: 10, inCall: false, idempotencyKey: 'gift-attempt-1' } };
+  h.bridge.handle(send); await settle();
+  assert.deepEqual(plain(h.find('operation.error')[0].data), { action: 'gift.send', message: 'Not enough coins', to: 'host-id', gift: 'gift-id', idempotencyKey: 'gift-attempt-1', status: 409, code: 'INSUFFICIENT_COINS' });
+  assert.equal(h.find('gift.sent').length, 0); assert.equal(h.count('wallet'), 0);
+  const pending = deferred(); h.overrides.sendGift = () => pending.promise;
+  h.bridge.handle(send); h.bridge.handle({ type: 'auth.logout', data: {} });
+  pending.resolve({ id: 'retired-transfer', coins: 10 }); await settle();
+  assert.equal(h.find('gift.sent').length, 0, 'A response from a signed-out identity cannot affect the next account');
+  h.bridge.close();
+});
+
+test('completed checkout retries update only the server balance and retain attempt correlation', async () => {
+  const h = harness();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS', coins: 100 });
+  h.overrides.wallet = () => ({ coins: 575, earningsPaise: 0 });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  assert.equal(h.find('wallet.checkout')[0].data.packId, 'pack-id'); assert.equal(h.find('wallet.checkout')[0].data.idempotencyKey, 'payment-attempt-1');
+  assert.equal(h.find('wallet.balance')[0].data.coins, 575); assert.equal(h.opened.length, 0);
+  h.overrides.checkout = () => { throw new h.ApiError('Start a new checkout', 502, 'PAYIN_PROVISIONING_FAILED'); };
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'next-pack', idempotencyKey: 'payment-attempt-2' } }); await settle();
+  assert.deepEqual(plain(h.find('operation.error')[0].data), { action: 'wallet.checkout', message: 'Start a new checkout', packId: 'next-pack', idempotencyKey: 'payment-attempt-2', status: 502, code: 'PAYIN_PROVISIONING_FAILED' });
+  h.bridge.close();
+});
+
+test('failed external payment launch preserves the checkout and supports manual verification', async () => {
+  const h = harness();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.openURL = () => { assert.equal(h.find('wallet.checkout').length, 1, 'Order must reach UI before external launch'); throw new Error('No handler'); };
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  assert.equal(h.find('operation.error')[0].data.code, 'PAYMENT_OPEN_FAILED');
+  assert.equal(h.find('operation.error')[0].data.idempotencyKey, 'payment-attempt-1');
+  h.overrides.verifyPurchase = () => { throw new h.ApiError('Check again shortly', 503, 'PAYIN_UNAVAILABLE'); };
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'zimi_order' } }); await settle();
+  assert.equal(h.find('operation.error')[1].data.merchantOrderId, 'zimi_order');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.find('wallet.purchase')[0].data.status, 'SUCCESS'); assert.equal(h.find('wallet.purchase')[0].data.idempotencyKey, 'payment-attempt-1');
+  h.bridge.close();
+});
+
+test('pending payments survive a native restart and are verified only for their owning account', async () => {
+  const h = harness(), cache = h.load('src/payment-cache.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), [{ orderId: 'zimi_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' }]);
+  h.bridge.close();
+  const restarted = h.bridgeModule.createBridge(message => h.posts.push(message));
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  restarted.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.equal(h.count('verifyPurchase'), 1); assert.equal(h.opened.length, 1, 'Recovery never reopens or initiates a charge');
+  assert.equal(h.find('wallet.purchase')[0].data.status, 'PENDING', 'Restore the unconfirmed order before waiting for a provider response');
+  assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS');
+  assert.equal(h.find('wallet.purchase').at(-1).data.packId, 'pack-id'); assert.equal(h.find('wallet.purchase').at(-1).data.idempotencyKey, 'payment-attempt-1');
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), []);
+  restarted.close();
+  await cache.rememberPendingPayment('alice', { orderId: 'private_order', kind: 'coins' });
+  h.overrides.me = () => ({ ...account('bob'), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair('bob'));
+  const otherAccount = h.bridgeModule.createBridge(message => h.posts.push(message));
+  otherAccount.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.equal(h.count('verifyPurchase'), 1, 'Bob cannot restore Alice\'s pending order');
+  otherAccount.close();
+});
+
+test('failed payment verification after restart keeps its recovered order available for the same-key retry', async () => {
+  const h = harness(), cache = h.load('src/payment-cache.ts');
+  await h.session.setSessionTokens(tokenPair());
+  await cache.rememberPendingPayment('alice', { orderId: 'recover_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' });
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.overrides.verifyPurchase = () => {
+    assert.equal(h.find('wallet.purchase')[0].data.merchantOrderId, 'recover_order', 'Recovery state must exist before verification starts');
+    throw new h.ApiError('Payment verification is temporarily unavailable', 503, 'PAYIN_UNAVAILABLE');
+  };
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.deepEqual(plain(h.find('wallet.purchase')[0].data), { purchaseId: '', merchantOrderId: 'recover_order', kind: 'coins', status: 'PENDING', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' });
+  assert.equal(h.find('operation.error').at(-1).data.merchantOrderId, 'recover_order');
+  assert.equal((await cache.readPendingPayments('alice')).length, 1);
+  assert.equal(h.opened.length, 0, 'Restoring a reference never launches or creates a payment');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase-id', merchantOrderId: 'recover_order', status: 'SUCCESS' });
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'recover_order' } }); await settle();
+  assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS');
+  assert.equal(h.find('wallet.purchase').at(-1).data.idempotencyKey, 'payment-attempt-1');
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), []);
+  h.bridge.close();
+});
+
+test('wallet refresh has its own loading state and cannot accept a client balance', async () => {
+  const h = harness(), pending = deferred();
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'wallet.load', data: { coins: 99999 } })), null);
+  h.overrides.wallet = () => pending.promise;
+  h.bridge.handle({ type: 'wallet.load', data: {} });
+  assert.equal(h.find('data.loading')[0].data.resource, 'wallet'); assert.equal(h.find('data.loading')[0].data.loading, true);
+  pending.resolve({ coins: 73, earningsPaise: 0 }); await settle();
+  assert.equal(h.find('wallet.balance')[0].data.coins, 73); assert.equal(h.find('data.loading').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('transaction history reloads independently and discards older ledger responses', async () => {
+  const h = harness(), older = deferred();
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'transactions.load', data: { userId: 'other-account' } })), null);
+  h.overrides.transactions = () => older.promise;
+  h.bridge.handle({ type: 'transactions.load', data: {} });
+  assert.equal(h.find('data.loading')[0].data.resource, 'transactions'); assert.equal(h.find('data.loading')[0].data.loading, true);
+  h.overrides.transactions = () => ({ items: [{ id: 'latest-gift', label: 'Rose', coins: -25 }] });
+  h.bridge.handle({ type: 'transactions.load', data: {} }); await settle();
+  older.resolve({ items: [{ id: 'older-purchase', coins: 200 }] }); await settle();
+  assert.equal(h.find('data.transactions').length, 1); assert.equal(h.find('data.transactions')[0].data.items[0].id, 'latest-gift');
+  assert.equal(h.count('home'), 0); assert.equal(h.count('wallet'), 0, 'Opening history only reloads the ledger');
+  h.overrides.transactions = () => { throw new h.ApiError('Ledger unavailable', 503); };
+  h.bridge.handle({ type: 'transactions.load', data: {} }); await settle();
+  assert.equal(h.find('data.loading').at(-1).data.error, 'Ledger unavailable');
+  assert.equal(h.find('operation.error').at(-1).data.action, 'transactions.load');
+  h.bridge.close();
 });
 
 test('realtime home invalidation retains the category and refreshes first page', async () => {
@@ -1090,6 +1354,75 @@ test('profile settings and privacy messages accept only supported preferences, n
   await settle(); assert.equal(h.calls.length, 0); h.bridge.close();
 });
 
+test('public profiles and posts validate target IDs and keep target/request metadata through loading and failure', async () => {
+  const h = harness();
+  for (const message of [
+    { type: 'profile.load', data: { id: '../member' } }, { type: 'profile.load', data: { id: 'host', url: 'https://example.test' } },
+    { type: 'profile.posts.load', data: { id: 'host', page: 0 } }, { type: 'profile.posts.load', data: { id: 'host', page: 1.5 } },
+    { type: 'profile.posts.load', data: { id: 'host', requestId: -1 } }, { type: 'follow.set', data: { id: 'host', on: true, role: 'host' } },
+  ]) { assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null); h.bridge.handle(message); }
+  assert.equal(h.calls.length, 0);
+  h.overrides.publicProfile = id => ({ id, name: 'Aster', role: 'host', serverRole: 'host', followingCount: 3, followers: 42, following: false, joined: '', interests: [] });
+  h.bridge.handle({ type: 'profile.load', data: { id: 'host', requestId: 5 } }); await settle();
+  assert.equal(h.find('data.publicProfile')[0].data.id, 'host'); assert.equal(h.find('data.publicProfile')[0].data.requestId, 5);
+  assert.deepEqual(h.find('data.loading').map(event => [event.data.resource, event.data.id, event.data.requestId, event.data.loading]), [['publicProfile', 'host', 5, true], ['publicProfile', 'host', 5, false]]);
+  h.overrides.publicPosts = () => { throw new h.ApiError('Posts are temporarily unavailable', 503); };
+  h.bridge.handle({ type: 'profile.posts.load', data: { id: 'host', page: 2, requestId: 6 } }); await settle();
+  const failure = h.find('data.loading').at(-1).data;
+  assert.equal(failure.id, 'host'); assert.equal(failure.page, 2); assert.equal(failure.requestId, 6); assert.equal(failure.loading, false); assert.equal(failure.error, 'Posts are temporarily unavailable');
+  assert.equal(h.find('data.publicPosts').length, 0, 'Media failure does not fabricate an empty gallery');
+  assert.equal(h.find('data.publicProfile').length, 1, 'A failed gallery does not remove the loaded identity');
+  h.bridge.close();
+});
+
+test('public profile and gallery reads suppress earlier people and previous sessions', async () => {
+  const h = harness(), old = deferred(), next = deferred(), oldPosts = deferred(), nextPosts = deferred();
+  h.overrides.publicProfile = id => id === 'old' ? old.promise : next.promise;
+  h.overrides.publicPosts = id => id === 'old' ? oldPosts.promise : nextPosts.promise;
+  for (const [id, requestId] of [['old', 1], ['next', 2]]) {
+    h.bridge.handle({ type: 'profile.load', data: { id, requestId } });
+    h.bridge.handle({ type: 'profile.posts.load', data: { id, requestId } });
+  }
+  old.resolve({ id: 'old' }); oldPosts.resolve({ posts: [], total: 0, page: 1, limit: 12 }); await settle();
+  assert.equal(h.find('data.publicProfile').length, 0); assert.equal(h.find('data.publicPosts').length, 0);
+  next.resolve({ id: 'next', name: 'Next' }); nextPosts.resolve({ posts: [{ id: 'next-post' }], total: 1, page: 1, limit: 12 }); await settle();
+  assert.equal(h.find('data.publicProfile')[0].data.id, 'next'); assert.equal(h.find('data.publicPosts')[0].data.posts[0].id, 'next-post');
+  const late = deferred(); h.overrides.publicProfile = () => late.promise;
+  h.bridge.handle({ type: 'profile.load', data: { id: 'late', requestId: 3 } });
+  await h.session.clearToken(); late.resolve({ id: 'late' }); await settle();
+  assert.equal(h.find('data.publicProfile').length, 1, 'Account changes retire profile reads'); h.bridge.close();
+});
+
+test('follow waits for acknowledgement, protects in-flight relationship reads and exposes recoverable write failures', async () => {
+  const h = harness(), write = deferred(), oldRead = deferred();
+  h.overrides.publicProfile = () => oldRead.promise;
+  h.overrides.follow = () => write.promise;
+  h.bridge.handle({ type: 'profile.load', data: { id: 'host', requestId: 3 } });
+  const message = { type: 'follow.set', data: { id: 'host', on: true, requestId: 4 } };
+  h.bridge.handle(message); h.bridge.handle(message); await settle();
+  assert.equal(h.count('follow'), 1, 'Duplicate pending follows are serialized per target'); assert.equal(h.find('follow.saved').length, 0);
+  write.resolve({ following: true }); await settle();
+  const saved = h.find('follow.saved')[0].data;
+  assert.equal(saved.id, 'host'); assert.equal(saved.on, true); assert.equal(saved.requestId, 4);
+  assert.equal(h.count('publicProfile'), 1, 'Acknowledging a follow does not start another profile skeleton'); assert.equal(h.count('profileSettings'), 1); assert.equal(h.count('home'), 1);
+  oldRead.resolve({ id: 'host', following: false, followers: 41 }); await settle();
+  assert.equal(h.find('data.publicProfile')[0].data.profile.following, true, 'An old relationship read cannot undo the acknowledged follow');
+  assert.equal(h.find('data.publicProfile')[0].data.profile.followers, 42, 'The acknowledged relationship updates the count once');
+  assert.equal(h.find('data.publicProfile')[0].data.requestId, 3);
+  h.overrides.follow = () => { throw new h.ApiError('Follow unavailable', 503); };
+  h.bridge.handle({ type: 'follow.set', data: { id: 'host', on: false, requestId: 5 } }); await settle();
+  const failure = h.find('follow.error')[0].data;
+  assert.equal(failure.id, 'host'); assert.equal(failure.on, false); assert.equal(failure.requestId, 5); assert.equal(failure.message, 'Follow unavailable');
+  assert.equal(h.find('follow.saved').length, 1); h.bridge.close();
+});
+
+test('follow acknowledgements never leak into a replacement account', async () => {
+  const h = harness(), write = deferred(); h.overrides.follow = () => write.promise;
+  h.bridge.handle({ type: 'follow.set', data: { id: 'host', on: true, requestId: 9 } });
+  await h.session.clearToken(); write.resolve({ following: true }); await settle();
+  assert.equal(h.find('follow.saved').length, 0); assert.equal(h.count('home'), 0); h.bridge.close();
+});
+
 test('profile settings reads report actual loading and never allow stale responses to replace the current summary', async () => {
   const h = harness(), old = deferred(), latest = deferred(); let reads = 0;
   h.overrides.profileSettings = () => ++reads === 1 ? old.promise : latest.promise;
@@ -1236,6 +1569,28 @@ test('theme selection waits for the server and retires preexisting catalog reads
   assert.equal(h.find('data.themes').length, 1);
   assert.equal(h.find('data.themes')[0].data.selectedThemeId, '000000000000000000000002');
   assert.equal(h.find('data.loading').filter(event => event.data.resource === 'themes').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('the admin default reaches signed-out screens and each account theme is cached until sign-out', async () => {
+  const h = harness(), cache = () => h.load('src/theme-cache.ts').readThemeCache();
+  const theme = (id, name, mode) => ({ id, slug: '', name, description: '', isPremium: false, active: true, isDefault: false, sortOrder: 0, mode,
+    colors: { background: '#fbf5ee', surface: '#fffcf8', surfaceElevated: '#f8e3e5', text: '#3a272e', textMuted: '#76606a', primary: '#b03d66', primaryContrast: '#ffffff', secondary: '#933459', border: '#ead3d2', success: '#2b7a57', danger: '#b5364c' },
+    typography: { fontFamily: 'system', fontScale: 1, fontWeight: '400', headingWeight: '700' } });
+  h.overrides.defaultTheme = () => theme('000000000000000000000005', 'Blush & Cream', 'light');
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  assert.equal(h.find('theme.default')[0].data.name, 'Blush & Cream', 'Signed-out screens receive the admin default');
+  assert.equal(cache().default.name, 'Blush & Cream', 'The default is kept for the next launch');
+  const rose = theme('000000000000000000000002', 'Soft Rose', 'light');
+  h.overrides.themes = () => ({ ...themeCatalog(false, rose.id), items: [rose] });
+  h.overrides.verifyOtp = () => ({ ...account(), requiresOnboarding: false, tokens: tokenPair(), isNew: false });
+  h.bridge.handle(verifyMessage()); await settle(); await settle();
+  assert.deepEqual([cache().account.id, cache().account.theme.name], ['alice', 'Soft Rose'], 'The signed-in theme is kept for the next launch');
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); await settle();
+  assert.equal(cache().account, undefined, 'Signing out forgets the account theme');
+  assert.equal(cache().default.name, 'Blush & Cream', 'Signing out keeps the admin default');
+  h.disk.set('zimi.theme.v1', '{"default":{"id":"x","colors":{"primary":"red;position:fixed"}}');
+  assert.equal(JSON.stringify(cache()), '{}', 'A corrupt or unsafe entry reads as empty');
   h.bridge.close();
 });
 
@@ -1443,7 +1798,7 @@ test('accepted calls allow the first host message with server-verified call cont
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'No active call',inCall:true}});await settle();assert.equal(h.count('sendMessage'),0);
   h.live[0].onEvent({type:'call.connected',data:{callId:'accepted-call',initiator:false,peerId:'member',voice:false}});
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'Hello on our call',inCall:true}});await settle();
-  assert.equal(h.count('sendMessage'),1);assert.deepEqual(h.calls.find(call=>call.name==='sendMessage').args,['member','Hello on our call','accepted-call']);
+  assert.equal(h.count('sendMessage'),1);assert.deepEqual(h.calls.find(call=>call.name==='sendMessage').args,['member','Hello on our call','accepted-call',undefined]);
   assert.equal(h.count('thread'),1,'The active call bypasses only the cached conversation restriction');
   h.live[0].onEvent({type:'call.ended',data:{callId:'accepted-call'}});
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'After call',inCall:true}});h.bridge.handle({type:'chat.send',data:{to:'member',text:'Ordinary message'}});await settle();

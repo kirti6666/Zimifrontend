@@ -116,10 +116,9 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     }
     await page.getByText('2 new', { exact: true }).waitFor();
     assert.match((await names())[0], /Rohan Patel/);
-    await selectTab('Creators');
-    assert.equal(await rows().count(), 2);
-    assert.ok((await names()).every(text => !text.includes('Rohan')));
-    await selectTab('1-on-1 Calls');
+    assert.deepEqual(await page.getByRole('tab').allInnerTexts(), ['All', 'Unread', 'Calls', 'Missed calls'], 'Four plain filters, without counts');
+    assert.equal(await page.locator('.zc-pulse,.zc-match-footer').count(), 0, 'Speed matching stays on Home, not in the chat list');
+    await selectTab('Calls');
     assert.equal(await rows().count(), 1);
     assert.match((await names())[0], /Mira North/);
     await selectTab('Unread');
@@ -227,6 +226,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.getByRole('button', { name: 'Send a gift', exact: true }).click();
     await settle('data.catalog', { gifts: [rose], packs: [], paymentsAvailable: false }, 'catalog');
     await page.getByRole('dialog', { name: 'Send a gift', exact: true }).getByRole('button').filter({ hasText: 'Rose' }).click();
+    await page.getByRole('button', { name: 'Send gift', exact: true }).click();
     assert.equal((await lastSent('gift.send')).gift, rose.id);
     assert.equal((await lastSent('gift.send')).inCall, false);
     assert.equal(await page.locator('.zc-gift-card').count(), 0, 'A gift card waits for server confirmation');
@@ -256,14 +256,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.locator('.zc-available .zc-person').filter({ hasText: 'Mira' }).click();
     assert.equal(await page.evaluate(() => S.v), 'precall');
     assert.equal(await page.evaluate(() => S.h), mira.id);
-    await navigate('chats');
-    const started = await sentCount('call.start');
-    await page.getByRole('button', { name: 'Start Pulse', exact: true }).click();
-    assert.equal(await sentCount('call.match'), 1);
-    assert.equal(await sentCount('call.start'), started, 'Matching never silently places a call');
-    await receive('call.matched', { host: mira });
-    assert.equal(await page.evaluate(() => S.v), 'precall');
-    console.log('PASS chats: real thread navigation, new contact picker, available creator and Pulse confirmation');
+    console.log('PASS chats: real thread navigation, new contact picker and available creator');
 
     await navigate('chats');
     await loadChats({ ...chatData(conversations.slice(0, 2)), total: 3 });

@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, AppTheme, BlockedUsers, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppNotification, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -22,6 +22,8 @@ export function items(value: unknown): unknown[] {
 export function verificationOf(status: unknown): Verification {
   return status === "approved" ? "verified" : status === "pending" ? "pending" : status === "rejected" || status === "suspended" ? "rejected" : "none";
 }
+export const genderOf = (value: unknown): { gender?: Gender } =>
+  value === "female" || value === "male" || value === "undisclosed" ? { gender: value } : {};
 export function accountFrom(value: unknown): Account {
   const data = record(value), user = record(data.user), id = idOf(user);
   if (!id) throw new ApiError("Your account could not be loaded. Please try signing in again.", 502);
@@ -31,7 +33,7 @@ export function accountFrom(value: unknown): Account {
       id, name: string(user.name), role: user.role === "host" && user.hostStatus === "approved" && user.isVerifiedHost === true ? "host" : "sender",
       ...(user.role === "user" || user.role === "host" || user.role === "admin" ? { serverRole: user.role } : {}),
       city: string(user.city), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), photos,
-      languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), adultConfirmed: user.adultConfirmed === true,
+      languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), ...genderOf(user.gender), adultConfirmed: user.adultConfirmed === true,
       ...(user.onboardingPreference === "creator" || user.onboardingPreference === "member" ? { onboardingPreference: user.onboardingPreference } : {}),
       hostStatus: string(user.hostStatus),
       isVerifiedHost: user.isVerifiedHost === true,
@@ -50,7 +52,7 @@ export function hostFrom(value: unknown): Host {
   return {
     id: idOf(host), name: string(host.name), city: string(host.city), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
     languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.entryFee), followers: finite(host.followers),
-    about: string(host.bio), verified: host.isVerifiedHost === true,
+    about: string(host.bio), verified: host.isVerifiedHost === true, ...genderOf(host.gender),
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
     ...(host.role === "user" || host.role === "host" || host.role === "admin" ? { serverRole: host.role } : {}),
     ...(typeof (host.isOnline ?? host.online) === "boolean" ? { online: (host.isOnline ?? host.online) as boolean } : {}), ...(typeof host.live === "boolean" ? { live: host.live } : {}),
@@ -61,6 +63,29 @@ export function hostFrom(value: unknown): Host {
 }
 
 const count = (value: unknown) => Math.max(0, Math.floor(finite(value) ?? 0));
+export function publicProfileFrom(value: unknown): PublicProfile {
+  const profile = record(value);
+  if (!idOf(profile) || typeof profile.name !== "string" ||
+    [profile.followers, profile.following].some(value => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) ||
+    typeof profile.isFollowing !== "boolean") throw new ApiError("This profile could not be loaded. Try again.", 502);
+  // This route exposes phone verification and admin approval separately.
+  const verified = profile.role === "host" && profile.hostStatus === "approved" &&
+    (typeof profile.isVerifiedHost === "boolean" ? profile.isVerifiedHost : profile.isPhoneVerified === true);
+  return {
+    ...hostFrom({ ...profile, isVerifiedHost: verified }),
+    followingCount: profile.following as number,
+    joined: string(profile.createdAt),
+    interests: stringList(profile.interests),
+    ...(typeof profile.level === "number" && Number.isSafeInteger(profile.level) && profile.level >= 0 ? { level: profile.level } : {}),
+    ...(typeof profile.crown === "boolean" ? { crown: profile.crown } : {}),
+  };
+}
+export function publicPostsFrom(value: unknown): PublicPosts {
+  const data = record(value);
+  if ([data.total, data.page, data.limit].some(value => typeof value !== "number" || !Number.isSafeInteger(value)) ||
+    Number(data.total) < 0 || Number(data.page) < 1 || Number(data.limit) < 1) throw new ApiError("These posts could not be loaded. Try again.", 502);
+  return { posts: items(data).map(postFrom), total: data.total as number, page: data.page as number, limit: data.limit as number };
+}
 export function streamFrom(value: unknown, fallbackHost = ""): HomeStream {
   const stream = record(value), hostId = idOf(stream.hostId) || fallbackHost;
   return { id: idOf(stream), hostId, ...(stream.host && typeof stream.host === "object" ? { host: hostFrom(stream.host) } : stream.hostId && typeof stream.hostId === "object" ? { host: hostFrom(stream.hostId) } : {}),
@@ -123,7 +148,10 @@ export function purchaseFrom(value: unknown): Purchase {
   const data = record(value), paymentUrl = string(data.paymentUrl);
   if (paymentUrl && !/^https:\/\/[^\s"'<>]+$/.test(paymentUrl)) throw new ApiError("Checkout did not return a secure payment address.", 502);
   const status = string(data.status);
-  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}), ...(data.kind === "premium" || data.kind === "coins" ? { kind: data.kind } : {}) };
+  return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}), ...(data.kind === "premium" || data.kind === "coins" ? { kind: data.kind } : {}),
+    ...(idOf(data.packId) ? { packId: idOf(data.packId) } : {}), ...(typeof data.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(data.idempotencyKey) ? { idempotencyKey: data.idempotencyKey } : {}),
+    ...Object.fromEntries(["coins", "amountPaise", "payableAmountPaise"].filter(key => typeof data[key] === "number" && Number.isSafeInteger(data[key]) && Number(data[key]) >= 0).map(key => [key, data[key]])),
+    ...(typeof data.expiresAt === "string" && Number.isFinite(Date.parse(data.expiresAt)) ? { expiresAt: data.expiresAt } : {}) };
 }
 export function themeFrom(value: unknown): AppTheme {
   const data = record(value), colors = record(data.colors), typography = record(data.typography);
@@ -165,7 +193,7 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
       ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
       ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
-      lastKind: "text" as const, lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastKind: last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
       lastAutomated: last.automated === true,
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
@@ -173,14 +201,23 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : chats.reduce((sum, chat) => sum + chat.unread, 0),
     unreadConversations: typeof data.unreadConversations === "number" ? count(data.unreadConversations) : chats.filter(chat => chat.unread > 0).length };
 }
+/** One chat message as the screens show it, including its edit, delete and reply state. */
+export function messageFrom(value: unknown, userId: string): Message {
+  const message = record(value);
+  const mine = idOf(message.senderId) === userId;
+  const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+  const reply = message.reply && typeof message.reply === "object" ? record(message.reply) : undefined;
+  return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
+    ...(imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
+    ...(message.editedAt ? { edited: true } : {}), ...(message.deletedAt ? { deleted: true } : {}),
+    ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, deleted: reply.deleted === true } } : {}),
+    ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
+}
 export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {
   const data = record(value);
   return { ...(typeof data.canSend === "boolean" ? { canSend: data.canSend } : {}),
     ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
-    messages: items(data).map(record).reverse().map(message => {
-    const mine = idOf(message.senderId) === userId;
-    return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt), kind: "text" as const, automated: message.automated === true, ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
-  }),
+    messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
 export function callsFrom(value: unknown, userId: string): { calls: CallRecord[] } {
@@ -197,6 +234,9 @@ export function walletFrom(value: unknown): Wallet {
   if (!Number.isSafeInteger(wallet.coins) || !Number.isSafeInteger(wallet.earningsPaise) || (wallet.coins as number) < 0 || (wallet.earningsPaise as number) < 0) throw new ApiError("Your wallet could not be loaded. Try again.", 502);
   return { coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number, reservedPaise: finite(wallet.reservedPaise) };
 }
+export const coinCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
+/** Coins per minute locked onto a paid call; free calls carry none. */
+export const callPrice = (call: Record<string, unknown>) => coinCount(call.coinsPerMinute) ? { rate: coinCount(call.coinsPerMinute) } : {};
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
   return { items: items(value).map(record).map(tx => {
     const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);
@@ -206,7 +246,7 @@ export function transactionsFrom(value: unknown): { items: Transaction[] } {
     return {
       title: string(tx.description) || type.replace(/_/g, " "), time: timeOf(tx.createdAt), coins, amountPaise,
       ...(monetaryPurchase ? { displayAmountPaise: type === "purchase" ? -Math.abs(amountPaise) : Math.abs(amountPaise) } : {}),
-      kind: type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
+      kind: type.startsWith("call") ? "call" : type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
     };
   }) };
 }

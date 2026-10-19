@@ -2,11 +2,16 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { idOf, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callPrice, coinCount, genderOf, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 
 export interface ServerEvent { type: string; data?: Record<string, unknown> }
+/** What an ended call cost, and whether it ended because the caller's coins ran out. */
+const callCharge = (call: Record<string, unknown>) => ({
+  ...(coinCount(call.coinsPerMinute) ? { coins: coinCount(call.coinsCharged) } : {}),
+  ...(call.endReason === "out_of_coins" ? { reason: "out_of_coins" } : {}),
+});
 /** The staff side of a verification call, as the call's media peer. */
 export const VERIFY_PEER = "zimi-team";
 export type RealtimeConnection = (() => void) & { setActive?: (active: boolean) => void; send?: (event: "webrtc:signal" | "stream:signal" | "stream:ready", data: RtcPayload & { callId?: string; streamId?: string; to?: string }) => Promise<void> };
@@ -62,20 +67,36 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
       const call = record(payload), callId = idOf(call);
       if (!callId || !userId) return;
       if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: { id: idOf(call.callerId), name: "" }, kind: call.kind, voice: call.kind === "audio" });
-      else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio" });
-      else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId });
+      else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call) });
+      else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId, ...callCharge(call) });
     } catch { /* Ignore malformed events instead of corrupting screen state. */ }
   });
   socket.on("chat:message", payload => {
     try {
       const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
       if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
-      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt), kind: "text", automated: message.automated === true,
+      const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+      if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt),
+        ...(imageUrl ? { kind: "image", imageUrl } : { kind: "text" }), automated: message.automated === true,
+        ...(message.reply && typeof message.reply === "object" ? { reply: messageFrom(message, userId).reply } : {}),
         ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
       });
       // Sender echoes also update the list, including messages sent on another device.
       emit("chats.updated", {});
     } catch { /* Ignore malformed events. */ }
+  });
+  // An edit or a delete for everyone, from either person.
+  socket.on("chat:message-updated", payload => {
+    try {
+      const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
+      if (!userId || !idOf(message) || (from !== userId && to !== userId)) return;
+      emit("chat.updated", { with: from === userId ? to : from, message: messageFrom(message, userId) });
+      emit("chats.updated", {});
+    } catch { /* Ignore malformed events. */ }
+  });
+  // A message this account deleted for itself on another device.
+  socket.on("chat:message-hidden", payload => {
+    try { const id = idOf(record(payload)); if (id) { emit("chat.removed", { id }); emit("chats.updated", {}); } } catch { /* Ignore malformed events. */ }
   });
   socket.on("chat:read", payload => {
     try {
@@ -91,6 +112,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
         gift: string(gift.giftName) || idOf(gift.giftId) || "Gift", coins: gift.coins, from: idOf(gift.senderId),
         id: idOf(gift), streamId: idOf(gift.streamId), giftId: idOf(gift.giftId), giftName: string(gift.giftName),
         senderName: string(gift.senderName), emoji: string(gift.emoji), mediaUrl: string(gift.mediaUrl), senderAvatarUrl: string(gift.senderAvatarUrl),
+        senderGender: genderOf(gift.senderGender).gender,
       });
       refreshWallet();
     } catch { /* Ignore malformed events. */ }

@@ -205,6 +205,15 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(uploads.length, 0, 'A sign-in change cancels post upload and publication'); finished();
 
   reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/chat', key: 'chats/member-id/photo.png' }, body => assert.equal(body.purpose, 'chat'));
+  expect('POST', '/chats/host-id', { _id: 'photo-message', text: '', image: { url: 'https://cdn.example.test/chat.png' } }, body => assert.deepEqual(plain(body), { imageKey: 'chats/member-id/photo.png' }));
+  await api.sendPhotoMessage('host-id', png);
+  assert.equal(uploads.length, 1, 'Chat photos go straight to storage, then only the key is sent'); finished();
+  const photoThread = adapters.messagesFrom({ items: [{ _id: 'photo-message', senderId: 'host-id', text: '', image: { url: 'https://cdn.example.test/chat.png' } }] }, 'member-id').messages[0];
+  assert.deepEqual([photoThread.kind, photoThread.imageUrl], ['image', 'https://cdn.example.test/chat.png']);
+  assert.equal(adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id', name: 'Creator' }], lastMessage: { text: '', kind: 'image' } }] }, 'member-id').chats[0].lastKind, 'image');
+
+  reset();
   expect('GET', '/auth/me', { user }); await api.me();
   expect('GET', '/hosts?limit=100', { items: [{ _id: 'host-id', name: 'Creator', avatar: { url: 'https://cdn.example.test/creator.jpg' }, coverUrl: 'https://cdn.example.test/cover.jpg' }] });
   const hosts = await api.hosts(); assert.equal(hosts.hosts[0].id, 'host-id'); assert.equal(hosts.hosts[0].ratePerMin, undefined);
@@ -248,7 +257,27 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/calls/call-id/end', {}); await api.declineCall('call-id');
   expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello' })); await api.sendMessage('host-id', 'Hello');
   expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello in our call', callId: 'accepted-call' })); await api.sendMessage('host-id', 'Hello in our call', 'accepted-call');
-  expect('POST', '/users/host-id/follow', {}, body => assert.deepEqual(plain(body), { following: true })); await api.follow('host-id', true);
+  expect('POST', '/users/host-id/follow', { following: true }, body => assert.deepEqual(plain(body), { following: true })); assert.equal((await api.follow('host-id', true)).following, true);
+  expect('POST', '/users/host-id/follow', {}); await assert.rejects(api.follow('host-id', true), /could not be confirmed/, 'Follow needs an explicit acknowledgement');
+
+  const publicHost = { _id: 'host-id', name: 'Aster', role: 'host', hostStatus: 'approved', isPhoneVerified: true,
+    bio: 'Live music and conversation', avatar: { url: 'https://cdn.example.test/avatar.jpg' }, coverUrl: 'https://cdn.example.test/cover.jpg',
+    city: 'Pune', followers: 42, following: 3, isFollowing: true, level: 4, crown: false, createdAt: '2026-01-01T00:00:00.000Z',
+    languages: ['English', 'Hindi'], interests: ['Music'], category: 'Music', callRateCoinsPerMinute: 35, isOnline: true, availableForCall: true, stream: null };
+  expect('GET', '/users/host-id', publicHost);
+  const publicProfile = await api.publicProfile('host-id');
+  assert.equal(publicProfile.id, 'host-id'); assert.equal(publicProfile.followingCount, 3); assert.equal(publicProfile.followers, 42); assert.equal(publicProfile.following, true);
+  assert.equal(publicProfile.role, 'host'); assert.equal(publicProfile.serverRole, 'host'); assert.equal(publicProfile.verified, true);
+  assert.equal(publicProfile.joined, publicHost.createdAt); assert.equal(publicProfile.ratePerMin, 35); assert.equal(publicProfile.availableForCall, true);
+  assert.deepEqual(plain(publicProfile.interests), ['Music']);
+  assert.equal(adapters.publicProfileFrom({ ...publicHost, isVerifiedHost: false }).verified, false, 'Explicit server approval overrides legacy verification');
+  assert.equal(adapters.publicProfileFrom({ ...publicHost, role: 'user', isVerifiedHost: true }).verified, false, 'A member never gains creator authority');
+  for (const invalid of [{ ...publicHost, followers: undefined }, { ...publicHost, following: -1 }, { ...publicHost, isFollowing: undefined }]) assert.throws(() => adapters.publicProfileFrom(invalid), /could not be loaded/, 'Missing counts never become invented zeroes');
+  expect('GET', '/users/different-id', publicHost); await assert.rejects(api.publicProfile('different-id'), /could not be loaded/, 'A mismatched target profile is refused');
+  expect('GET', '/users/host-id/posts?page=2&limit=12', { items: [{ _id: 'post-id', kind: 'photo', mediaUrl: 'https://cdn.example.test/post.jpg', caption: 'A song for today' }], total: 13, page: 2, limit: 12 });
+  const publicPosts = await api.publicPosts('host-id', 2);
+  assert.equal(publicPosts.posts[0].caption, 'A song for today'); assert.equal(publicPosts.total, 13); assert.equal(publicPosts.page, 2);
+  assert.throws(() => adapters.publicPostsFrom({ items: [], total: undefined, page: 1, limit: 12 }), /could not be loaded/);
   finished();
   reset();
   await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
@@ -302,13 +331,15 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('GET', '/gifts?limit=100', { items: [{ _id: giftId, name: 'Rose', emoji: 'rose', coins: 25 }] });
   expect('GET', '/coins/packs', { items: [{ _id: packId, name: 'Starter', coins: 100, pricePaise: 9900 }], paymentsAvailable: true });
   const catalog = await api.catalog(); assert.equal(catalog.gifts[0].id, giftId); assert.equal(catalog.packs[0].pricePaise, 9900); assert.equal(catalog.paymentsAvailable, true);
-  expect('POST', '/gifts/send', {}, body => { assert.deepEqual(plain(body), { recipientId: 'creator-id', giftId, quantity: 1, streamId: 'stream-id', idempotencyKey: 'gift-attempt-1' }); assert.equal(body.coins, undefined, 'Price must come from the server catalog'); });
-  expect('GET', '/wallet', { coins: 75, earningsPaise: 0 });
-  assert.equal((await api.sendGift('creator-id', giftId, 1, undefined, 'stream-id', 'gift-attempt-1')).coins, 75);
+  expect('POST', '/gifts/send', { _id: 'transfer-id', coins: 25 }, body => { assert.deepEqual(plain(body), { recipientId: 'creator-id', giftId, quantity: 1, streamId: 'stream-id', idempotencyKey: 'gift-attempt-1' }); assert.equal(body.coins, undefined, 'Price must come from the server catalog'); });
+  assert.deepEqual(plain(await api.sendGift('creator-id', giftId, 1, undefined, 'stream-id', 'gift-attempt-1')), { id: 'transfer-id', coins: 25 }, 'A committed gift returns its server receipt without depending on a second network request');
+  expect('POST', '/gifts/send', {});
+  await assert.rejects(api.sendGift('creator-id', giftId, 1, undefined, undefined, 'gift-attempt-2'), /confirmation could not be read/, 'Malformed confirmation remains retryable with the same key');
   expect('POST', '/missions/mission-id/claim', {}); expect('GET', '/wallet', { coins: 275, earningsPaise: 0 });
   assert.equal((await api.claimAward('mission-id')).coins, 275);
-  expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'pending', paymentUrl: 'https://checkout.example.test/pay' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
-  assert.equal((await api.checkout(packId, 'payment-attempt-1')).status, 'PENDING');
+  expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'created', paymentUrl: 'https://checkout.example.test/pay', packId, coins: 100, amountPaise: 9900, payableAmountPaise: 10000, expiresAt: '2026-10-20T12:00:00.000Z', idempotencyKey: 'payment-attempt-1' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
+  const checkout = await api.checkout(packId, 'payment-attempt-1');
+  assert.equal(checkout.status, 'PENDING'); assert.equal(checkout.packId, packId); assert.equal(checkout.coins, 100); assert.equal(checkout.amountPaise, 9900); assert.equal(checkout.payableAmountPaise, 10000); assert.equal(checkout.idempotencyKey, 'payment-attempt-1'); assert.equal(checkout.expiresAt, '2026-10-20T12:00:00.000Z');
   expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'paid' });
   assert.equal((await api.verifyPurchase('zimi_order')).status, 'SUCCESS');
   assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);
@@ -337,11 +368,15 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
     { type: 'purchase_reversal', coins: -100, amountPaise: -9900 },
     { type: 'gift_sent', coins: -25, amountPaise: 0 },
     { type: 'gift_received', coins: 0, amountPaise: 500 },
+    { type: 'call_charge', coins: -150, amountPaise: 0 },
+    { type: 'call_earning', coins: 0, amountPaise: 3000 },
+    { type: 'welcome_bonus', coins: 100, amountPaise: 0 },
   ] }).items;
+  assert.deepEqual(transactions.slice(6).map(tx => [tx.kind, tx.coins]), [['call', -150], ['call', 0], ['reward', 100]], 'Call charges and welcome coins are labelled');
   assert.equal(transactions[0].displayAmountPaise, -19950); assert.equal(transactions[0].amountPaise, 19950);
   assert.equal(transactions[1].displayAmountPaise, 19950); assert.equal(transactions[1].amountPaise, -19950);
-  assert.deepEqual(transactions.slice(2).map(tx => tx.displayAmountPaise), [undefined, undefined, undefined, undefined]);
-  assert.deepEqual(transactions.map(tx => tx.coins), [0, 0, 100, -100, -25, 0]);
+  assert.deepEqual(transactions.slice(2, 6).map(tx => tx.displayAmountPaise), [undefined, undefined, undefined, undefined]);
+  assert.deepEqual(transactions.slice(0, 6).map(tx => tx.coins), [0, 0, 100, -100, -25, 0]);
   assert.deepEqual(transactions.filter(tx => tx.kind === 'gift').map(tx => tx.coins), [-25, 0]);
   expect('POST', '/streams/stream-id/join', { count: 13 });
   expect('GET', '/streams/stream-id', { _id: 'stream-id', hostId: creator._id, host: creator, title: 'Acoustic night', viewers: 13 });
@@ -389,6 +424,23 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   const giftCount=events.filter(event=>event.type==='gift.received').length;
   socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
+  socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'accepted', kind: 'video', coinsPerMinute: 60 });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.connected', data: { callId: 'paid-call', initiator: true, peerId: 'host-id', voice: false, rate: 60 } }, 'A paid call carries its price');
+  socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged: 150, endReason: 'out_of_coins' });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'paid-call', coins: 150, reason: 'out_of_coins' } }, 'An ended call reports its charge and why it ended');
+  socket.emitServer('call:updated', { _id: 'free-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 0, coinsCharged: 0 });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'free-call' } }, 'Free calls report no charge');
+  socket.emitServer('chat:message-updated', { _id: 'm-1', senderId: 'host-id', recipientId: 'member-id', text: 'Edited words', editedAt: chatAt, reply: { _id: 'm-0', senderId: 'member-id', text: 'Question', image: false, deleted: false } });
+  const update = events.filter(event => event.type === 'chat.updated').at(-1);
+  assert.equal(update.data.with, 'host-id');
+  assert.deepEqual([update.data.message.text, update.data.message.edited, update.data.message.reply.mine, update.data.message.reply.text], ['Edited words', true, true, 'Question']);
+  socket.emitServer('chat:message-updated', { _id: 'm-2', senderId: 'stranger', recipientId: 'other-user', text: 'Not ours' });
+  assert.equal(events.filter(event => event.type === 'chat.updated').length, 1, 'Updates to other conversations are ignored');
+  socket.emitServer('chat:message-hidden', { _id: 'm-3', conversationId: 'conversation-id' });
+  assert.equal(events.filter(event => event.type === 'chat.removed').at(-1).data.id, 'm-3');
+  const deletedMessage = adapters.messageFrom({ _id: 'm-4', senderId: 'member-id', text: '', deletedAt: chatAt }, 'member-id');
+  assert.deepEqual([deletedMessage.deleted, deletedMessage.mine, deletedMessage.text], [true, true, '']);
+  assert.equal(adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id', name: 'Creator' }], lastMessage: { text: '', deleted: true } }] }, 'member-id').chats[0].lastDeleted, true);
   for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
     socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });
   }

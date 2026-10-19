@@ -109,21 +109,33 @@ function artC(sd,r){const[a,b,c]=HUES[sd%HUES.length],x=25+(sd%5)*12,y=20+(sd%4)
   <ellipse cx="150" cy="200" rx="160" ry="62" fill="none" stroke="${a}" stroke-width="1.4"/>
   <ellipse cx="150" cy="200" rx="104" ry="38" fill="none" stroke="#fff" stroke-opacity=".35"/></g></svg>`}
 
+/* A missing or broken profile photo becomes an illustration matching the person's
+   chosen gender, in the active theme's colors; neutral when they didn't say. */
+const GENDERS=[["female","Woman"],["male","Man"],["undisclosed","Prefer not to say"]];
+const FACES={
+ female:'<path class="zf-hair" d="M37 54c0-19 10-31 23-31s23 12 23 31c0 10 2 18 6 26-7 5-17 7-26 6l-3-5-3 5c-9 1-19-1-26-6 4-8 6-16 6-26z"/><path class="zf-top" d="M16 120c3-22 20-35 44-35s41 13 44 35z"/><path class="zf-skin" d="M52 72h16v12c0 3.6-3.6 6-8 6s-8-2.4-8-6z"/><ellipse class="zf-skin" cx="60" cy="52" rx="17.5" ry="20.5"/><path class="zf-hair" d="M42.5 51c1-13 8.5-20.5 18-20.5 8.6 0 15.6 6 17.4 15-7.6.4-15-2.6-20-8-3 6.4-8.6 11.4-15.4 13.5z"/>',
+ male:'<path class="zf-top" d="M10 120c2-25 22-40 50-40s48 15 50 40z"/><path class="zf-skin" d="M51 70h18v13c0 4-4 6.5-9 6.5s-9-2.5-9-6.5z"/><ellipse class="zf-skin" cx="60" cy="50" rx="19.5" ry="22"/><path class="zf-hair" d="M40.5 47c-1.5-15 7-25 19.5-25 13 0 21 9 19.5 24-2-6-6-9.5-11.5-11-5 3-12.5 4.5-20 3.5-4 1.5-6.5 4.5-7.5 8.5z"/>',
+ neutral:'<path class="zf-top" d="M14 120c2-24 20-38 46-38s44 14 46 38z"/><path class="zf-skin" d="M51 70h18v13c0 4-4 6.5-9 6.5s-9-2.5-9-6.5z"/><circle class="zf-skin" cx="60" cy="50" r="21"/>'};
+function faceKind(h){return h?.gender==="female"||h?.gender==="male"?h.gender:"neutral"}
+function face(h){const k=faceKind(h);return `<svg class="zf-face" data-face="${k}" viewBox="0 0 120 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${FACES[k]}</svg>`}
+// Photos that fail later (expired link, offline) swap to the same illustration.
+document.addEventListener("error",e=>{const img=e.target;if(!(img instanceof HTMLImageElement)||!img.dataset.face)return;
+ const holder=document.createElement("span"),illustration=face({gender:img.dataset.face});
+ holder.innerHTML=img.dataset.faceWrap==="zh-fallback"?`<div class="zh-fallback">${illustration}</div>`:illustration;img.replaceWith(holder.firstChild)},true);
+
+/* The one back button used on every screen; `slot` keeps a screen's positioning class. */
+function backButton(onclick,{label="Back",media=false,slot="",attrs=""}={}){
+ return `<button type="button" class="zb-back${media?" on-media":""}${slot?" "+slot:""}" aria-label="${esc(label)}" onclick="${onclick}" ${attrs}>${I("back",21)}</button>`}
+
 /* Colour-forward avatar, for lists where the faces carry the page. */
 function avatarSource(h){return imageSrc(h===me?S.avatarData:h.avatarUrl)}
-function portrait(h,colored=false){const src=avatarSource(h);
- return src?`<img class="art" src="${src}" alt="${esc(h.n||"Profile photo")}" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:colored?artC(h.seed):art(h.seed)}
-function avc(h,s){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
- if(avatarSource(h))return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h,true)}</span>`;
- return `<span class="av" style="width:${s}px;height:${s}px">${artC(h.seed,"99px")}
- <span class="disp" style="position:relative;color:#fff;font-weight:700;font-size:${Math.round(s*.36)}px;
-  text-shadow:0 1px 4px rgba(0,0,0,.5)">${esc(i)}</span></span>`}
+function portrait(h){const src=avatarSource(h);
+ return src?`<img class="art" src="${src}" alt="${esc(h.n||"Profile photo")}" data-face="${faceKind(h)}" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:face(h)}
+function avc(h,s){return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h)}</span>`}
 
-function av(h,s,ring){const i=h.n.split(" ").map(w=>w[0]).slice(0,2).join("");
+function av(h,s,ring){
  const pres=ring==="none"?"":`<span class="pres ${h.live?"live":h.on?"on":""}"></span>`;
- if(avatarSource(h))return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`;
- return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${art(h.seed,"99px")}
- <span class="disp" style="position:relative;color:rgba(255,255,255,.92);font-weight:600;font-size:${Math.round(s*.36)}px">${esc(i)}</span></span>${pres}</span>`}
+ return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`}
 const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>',
  chat:'<path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v7a2.5 2.5 0 01-2.5 2.5H10l-4.4 3.3A1 1 0 014 18.5z" stroke-linejoin="round"/>',
  user:'<circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 19.5c1.3-3.8 4-5.7 7.5-5.7s6.2 1.9 7.5 5.7" stroke-linecap="round"/>',
@@ -159,9 +171,10 @@ const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>'
  plus:'<path d="M12 5v14M5 12h14" stroke-linecap="round"/>',
  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/>',
  moon:'<path d="M20 14.2A8.2 8.2 0 019.8 4a8.4 8.4 0 102 10.4 8.2 8.2 0 008.2-.2z" stroke-linejoin="round"/>'};
+function coinIcon(size=20){return `<svg class="zi-icon zc-coin" data-icon="coin" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="25" r="22" fill="#A76512"/><circle cx="24" cy="23" r="21.5" fill="#E8AC32" stroke="#FCE29A"/><circle cx="24" cy="23" r="17.5" fill="#F6C653" stroke="#BC7F1B" stroke-width="1.5"/><path d="M10 18a15 15 0 0 1 24-7" stroke="#FFE9A5" stroke-width="2" stroke-linecap="round"/><path d="M15 15h18v5L22 29h11v5H15v-5l11-9H15z" fill="#B27615"/><path d="M15 13h18v5L22 27h11v5H15v-5l11-9H15z" fill="#FFF0B6"/><path d="m35 32 1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="#FFF0B6"/></svg>`}
 /* Every icon carries data-icon so icons.css can give it its own press animation. */
-const I=(k,s)=>`<svg class="zi-icon" data-icon="${k}" viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${P[k]}</svg>`;
-const coin=`<svg class="zi-icon" data-icon="coin" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffc400" stroke="#ef9f00" stroke-width="1.3"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#fff178" stroke-width="1.2"/><path d="M12 7.4l1.35 2.73 3.02.44-2.18 2.12.52 3-2.71-1.43-2.71 1.43.52-3-2.18-2.12 3.02-.44z" fill="#fff3a1"/></svg>`;
+const I=(k,s)=>['coin','rings'].includes(k)?coinIcon(s||20):`<svg class="zi-icon" data-icon="${k}" viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${P[k]}</svg>`;
+const coin=coinIcon(17);
 /* One currency mark everywhere: balances, gifts, targets, calls and purchases. */
 const gem=coin;
 const th=()=>"";
@@ -189,6 +202,7 @@ function go(v,id){
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
  if(v==="hcall")S.cel=S.hcel;
  S.more=0;
+ window.ZimiPublicProfile?.beforeNavigate(v,id);
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
@@ -196,8 +210,9 @@ function go(v,id){
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
+ window.ZimiPublicProfile?.afterNavigate(v);
  if(v==="call"||v==="voice"){S.sec=0;S.gifted=0;S.favGot=0;S.cmp=0;S.swap=0;
-  S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
+  S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
  if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
@@ -276,10 +291,10 @@ function sender(id){
 /* Hosts and senders render through the same profile shape. */
 function asProfile(x,isHost){
  return isHost
-  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
+  ? {id:x.id,n:x.n,seed:x.seed,on:x.on,tag:x.tag,c:x.c,host:1,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,gender:x.gender,
      lvl:(x.seed%40)+8,recv:lifetime(x),sent:((x.seed*409)%260+18)*1000,
      fol:x.v,following:(x.seed%400)+90}
-  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,
+  : {id:x.id,n:x.n,seed:x.seed,on:1,tag:x.tag,c:x.c,host:0,avatarUrl:x.avatarUrl,coverUrl:x.coverUrl,gender:x.gender,
      lvl:x.lvl,recv:x.recv,sent:x.sent,fol:x.v,following:x.hosts*7};
 }
 function mvpsFor(h){
@@ -298,8 +313,9 @@ function postsFor(h){
   cap:CAPS[(h.seed+i)%CAPS.length]}));
 }
 
-function vHost(){return profilePage(asProfile(g(S.h),true),g(S.h))}
+function vHost(){if(window.ZimiPublicProfile)return window.ZimiPublicProfile.render();return profilePage(asProfile(g(S.h),true),g(S.h))}
 function vUser(){
+ if(window.ZimiPublicProfile)return window.ZimiPublicProfile.render();
  const u=sender(S.u);
  if(!u)return `<div class="empty">That supporter is no longer here.</div>`;
  return profilePage(asProfile(u,false),u);
@@ -320,7 +336,7 @@ function profilePage(p,raw,self){
  return `<div class="hp">
   <div class="hpcover">
    ${cover}
-   ${self?"":`<button class="hpc" aria-label="Back" onclick="${back}">${I("back",19)}</button>`}
+   ${self?"":`${backButton(back,{media:true,slot:"hpc"})}`}
    ${p.on?`<span class="hplive">Online</span>`:""}
   </div>
 
@@ -374,7 +390,7 @@ function profilePage(p,raw,self){
 
 /* The hosts a sender backs, biggest first. */
 function backedFor(u){
- return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,
+ return H.concat(EXTRA).map((h,i)=>({id:h.id,n:h.n,seed:h.seed,on:h.on,live:h.live,host:1,avatarUrl:h.avatarUrl,coverUrl:h.coverUrl,gender:h.gender,
   c:Math.round(((u.seed*173+i*577)%420+60)*1000/(i*0.4+1))}))
   .sort((a,b)=>b.c-a.c).slice(0,8);
 }
@@ -388,7 +404,7 @@ function vSetup(){
     <i>Viewers will see your profile photo</i></div>`}
   <div class="guide"></div>
   <div class="stopbar">
-   <button class="sicon" aria-label="Cancel" onclick="go('home')">${I("back",19)}</button>
+   ${backButton("go('home')",{label:"Cancel",media:true,slot:"sicon"})}
    <span style="flex:1"></span>
    <button class="sicon ${S.mic?"":"off"}" aria-pressed="${S.mic?"false":"true"}"
     aria-label="${S.mic?"Mute microphone":"Unmute microphone"}"
@@ -491,7 +507,7 @@ function stage(main,tile){
 /* One slim bar: back, timer (+ Home visibility for hosts), then earnings (hosts) and ⋯. */
 function topBar(host){
  return `<div class="ctop">
-  <button class="cback" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${I("back",17)}</button>
+  ${backButton(host?"hostEnd('end')":"endCall()",{label:"End call",media:true,slot:"cback"})}
   <span class="cstat"><i class="rec"></i><span id="ck">${clock(S.sec)}</span>
    ${host?`<span class="csep"></span><button class="cvis ${S.vis?"on":""}" aria-pressed="${!!S.vis}" aria-label="${S.vis?"Visible on Home, tap to hide":"Hidden from Home, tap to show"}" onclick="toggleVis()">${I(S.vis?"eye":"eyeoff",14)}${S.vis?"Visible":"Hidden"}</button>`:""}</span>
   <span style="flex:1"></span>
@@ -532,7 +548,7 @@ function vCall(){const h=g(S.h);
 function vVoice(){const h=g(S.h);
  if(window.ZimiHome)return homeCallView(false);
  return `<div class="voicecall">
-  <button class="voiceback" aria-label="End call" onclick="endCall()">${I("back",18)}</button>
+  ${backButton("endCall()",{label:"End call",media:true,slot:"voiceback"})}
   <div class="voiceorb">${avc(h,104)}</div>
   <h2>${esc(h.n)}</h2>
   <p>Voice call</p>
@@ -576,7 +592,7 @@ function paintFeed(){
  const f=document.getElementById("rfeed");
  if(!f)return;
  f.innerHTML=S.rmsgs.map(([k,w,t])=>`<div class="lvmsg ${["me","host","sys","gift"].includes(k)?k:"host"}">
-  ${w?`<span class="who">${esc(w)}</span>`:""}<span class="txt">${esc(t)}</span></div>`).join("");
+  ${w?`<span class="who">${esc(w)}</span>`:""}<span class="txt">${escChat(t)}</span></div>`).join("");
  f.scrollTop=f.scrollHeight;
 }
 
@@ -658,6 +674,7 @@ function playGift(l,e,v,k,label){
 }
 
 function tick(){if(!["call","voice"].includes(S.v))return;const h=g(S.h);
+ const cost=document.getElementById("zr-call-cost");if(cost&&window.zrCallCost)cost.textContent=zrCallCost(false);
  const c=document.getElementById("ck");if(c)c.textContent=String(Math.floor(S.sec/60)).padStart(2,"0")+":"+String(S.sec%60).padStart(2,"0");
  const b=document.getElementById("bl");if(b)b.innerHTML=gem+n(S.bal);
  const lc=document.querySelector(".idpill .co.coins");
@@ -797,7 +814,7 @@ function vPost(){
   </div>`).join("")}
  </div>
  <div class="pvtop">
-  <button class="pvclose" aria-label="Close" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
+  ${backButton(`go('host','${domId(h.id)}')`,{label:"Close",media:true,slot:"pvclose"})}
   <span class="pvcount" id="pvc">${(S.pi||0)+1} / ${posts.length}</span></div>
  `}
 
@@ -879,6 +896,8 @@ function vHelp(){return `<div class="acct">
  <div class="s11 muted" style="padding:14px 3px;text-align:center">Typical reply time: under 24 hours</div></div>`}
 
 const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+/* The server replaces phone numbers and abusive words in chat with █; they show as a blur, never as text. */
+const escChat=v=>esc(v).replace(/█+/g,m=>`<span class="chat-hidden" role="img" aria-label="Hidden">${m}</span>`);
 // IDs enter inline handlers, so accept only identifier characters rather than
 // relying on HTML escaping (which is decoded before JavaScript runs).
 const domId=v=>/^[a-zA-Z0-9_-]{1,128}$/.test(String(v??""))?String(v):"";
@@ -909,19 +928,20 @@ function publishPost(){
 }
 function saveProfile(){
  if(S.profileSaving||S.mediaPreparing||S.postPublishing)return;
- const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim()};
+ const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim(),...(S.editGender?{gender:S.editGender}:{})};
  if(profile.name.length<2)return appNotice("Use at least two characters for your name.");
- if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;return go(S.editBack||"profile")}
+ if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;me.gender=S.editGender||me.gender;return go(S.editBack||"profile")}
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
-function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]).slice(0,2).join(""),busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
+function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
  <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:artC(me.seed+17)}
   <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
-  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview">`:esc(initials)}</span>
+  <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview" data-face="${faceKind({gender:S.editGender||me.gender})}">`:face({gender:S.editGender||me.gender})}</span>
    <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></div>
  ${S.mediaPreparing?'<p role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error" role="alert">${esc(S.mediaError)}</div>`:""}
  <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
+ <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
@@ -933,7 +953,7 @@ function vEditProfile(){const initials=(S.editName||me.n).split(" ").map(x=>x[0]
 
 function vProfile(){
  const host=isHost();
- const p={id:"me",n:me.n,seed:me.seed,on:1,host,lvl:7,tag:host?"Host":"Supporter",c:me.c,
+ const p={id:"me",n:me.n,seed:me.seed,on:1,host,lvl:7,tag:host?"Host":"Supporter",c:me.c,gender:me.gender,
   verified:host&&A().kyc==="verified",
   recv:host?2090372+A().earn-184250:A().earn,sent:246000+(S.gifted||0),fol:host?"2.4K":"38",following:181};
  return profilePage(p,me,true)}
@@ -1065,7 +1085,7 @@ function vPrecall(){
  return `<div class="pcall">
  <div class="pcbg">${art(h.seed)}</div><span class="pcshade"></span>
  <div class="pctop">
-  <button class="pcic" aria-label="Back" onclick="go('host','${domId(h.id)}')">${I("back",19)}</button>
+  ${backButton(`go('host','${domId(h.id)}')`,{media:true,slot:"pcic"})}
   <span class="pctitle">Video call</span>
   <span style="width:38px"></span></div>
 
@@ -1253,6 +1273,7 @@ function feeChip(){
  return S.feeOk?`${I("check",13)}<span>Entry fee ${gem}${MY_FEE} received</span>`
   :`${I("clock",13)}<span>Entry fee ${gem}${MY_FEE} unlocks in <b>${clock(left)}</b></span>`}
 function paintHostTick(){
+ const cost=document.getElementById("zr-call-cost");if(cost&&window.zrCallCost)cost.textContent=zrCallCost(true);
  const c=document.getElementById("ck");if(c)c.textContent=clock(S.sec);
  const fc=document.getElementById("fee");if(fc){if(feeShown()){fc.innerHTML=feeChip();fc.classList.toggle("ok",!!S.feeOk)}else fc.remove()}
  const e=document.getElementById("earn");if(e)e.innerHTML=`${gem}+${kfmt(Math.round(S.earned))}`
@@ -1262,7 +1283,11 @@ function paintHostTick(){
 /* remote: the other side hung up, so there is nothing to tell the server */
 function endCall(remote){
  if(window.ZimiMedia)window.ZimiMedia.stop();
- if(!remote)Native.send("call.end",{callId:S.v==="hcall"?S.caller.callId:S.callId});
+ const callId=S.v==="hcall"?S.caller.callId:S.callId,rate=S.callRate||0,end=S.callEnd?.callId===callId?S.callEnd:null;
+ /* Until the server reports the charge, estimate it the way it bills: whole seconds at the call's price. */
+ const charge={callId,rate,coins:end?.coins??Math.ceil(S.sec*rate/60),outOfCoins:end?.reason==='out_of_coins'};
+ S.callRate=0;S.callEnd=null;
+ if(!remote)Native.send("call.end",{callId});
  if(S.v==="hcall"){
   logFee();
   const mins=Math.max(1,Math.ceil(S.sec/60)),earned=Math.round(S.earned);
@@ -1270,12 +1295,12 @@ function endCall(remote){
   const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
   S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
   if(DEMO)A().earn+=earned;
-  S.sum={k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
+  S.sum={...charge,k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
    done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
  } else {
   const h=g(S.h);
   S.rate=0;
-  S.sum={k:"sender",h:h.id,sec:S.sec,spent:S.spent+(S.gifted||0),giftV:S.gifted||0,gifts:S.giftN||0};
+  S.sum={...charge,k:"sender",h:h.id,sec:S.sec,spent:S.spent+(S.gifted||0),giftV:S.gifted||0,gifts:S.giftN||0};
  }
  go("summary")}
 
@@ -1529,26 +1554,26 @@ function topFor(){
     <button class="ibtn" aria-label="Search creators" onclick="go('search')">${I("srch",19)}</button>
     <button class="tbadge" aria-label="Leaderboard" onclick="go('board')">${I("cup",19)}</button></span></div>`}
  if(S.v==="search")return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('home')")}
    <span class="sfield">${I("srch",17)}
     <input id="sq" placeholder="Search creators by name" value="${esc(S.sq||"")}" oninput="S.sq=this.value;paintSearch()">
     ${S.sq?`<button aria-label="Clear" onclick="S.sq='';r()" style="color:var(--faint);font-size:16px">&times;</button>`:""}
    </span></div>`;
  if(S.v==="coins")return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('settings')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('settings')")}
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
   kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
  const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
-   <button aria-label="Back" onclick="go('${backTo}')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton(`go('${backTo}')`)}
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
    <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
  if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
-   <button aria-label="Back" onclick="go('home')" style="color:var(--muted);display:flex;flex:0 0 auto">${I("back",21)}</button>
+   ${backButton("go('home')")}
    ${[["creators","Creators"],["family","Family"]].map(([k,l])=>
      `<button class="btab ${S.bt===k?"on":""}" onclick="S.bt='${k}';r()">${l}</button>`).join("")}</div>
   <div class="bctl">
@@ -1563,6 +1588,9 @@ function appNotice(message){
  notice.textContent=message||"That action could not be completed. Please try again.";
  clearTimeout(appNoticeTimer);appNoticeTimer=setTimeout(()=>notice.remove(),7000);
 }
+/* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
+let zimiSecured=null;
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call");if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
@@ -1588,7 +1616,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1599,12 +1627,12 @@ const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:p.availableForCall===true,
-  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
  return PEOPLE[id]={id,n:p.name||"Zimi user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
-  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),
+  avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */
 function knowHost(p){const h=hostFrom(p);if(!g(h.id))EXTRA.push(h);return h}
@@ -1657,6 +1685,7 @@ Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
+ S.callRate=d.rate||0;
  if(S.v==="dial"){S.callId=d.callId;go(d.voice?'voice':"call",S.h)}
  else if(S.v==="dialback"){S.caller.callId=d.callId;go("hcall")}
  else if(S.v==="ring"&&S.caller.callId===d.callId){S.callId=d.callId;S.acceptingCall=false;go('hcall')}
@@ -1673,6 +1702,9 @@ Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Nativ
  S.ringBack=S.v;S.caller=c;go("ring")});
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
+ /* The server's charge replaces the summary's estimate once it arrives. */
+ if(S.v==='summary'&&S.sum?.callId===id){if(d.coins!=null)S.sum.coins=d.coins;if(d.reason==='out_of_coins')S.sum.outOfCoins=true;return r()}
+ S.callEnd={callId:id,coins:d.coins,reason:d.reason};
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
@@ -1683,7 +1715,7 @@ Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
 Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
  if(["call","hcall","voice"].includes(S.v)&&String(d.from)===String(S.v==="hcall"?S.caller?.id:S.h)){S.rmsgs.push(["host",first(d.name||(S.v==="hcall"?S.caller?.n:g(S.h)?.n)||"Them"),d.text]);if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
+ if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,kind:d.kind,imageUrl:d.imageUrl,reply:d.reply||null,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");
