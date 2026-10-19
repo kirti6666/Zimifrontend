@@ -16,7 +16,7 @@
  --gold:#ffc02e;
  --shadow:0 1px 2px rgb(0 0 0/.5),0 14px 30px -18px rgb(0 0 0/.85);
 }
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:Inter,system-ui,sans-serif;background:var(--canvas);color:var(--ink);
  height:100dvh;overflow:hidden;-webkit-font-smoothing:antialiased}
 .disp{font-family:"Poppins",Inter,sans-serif;font-weight:800;letter-spacing:-.03em}
