@@ -173,6 +173,25 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     assert.match(await page.locator('.acctcard').innerText(), /Coin pack[\s\S]*\+500/);
     await receive(page, 'session.none', {});
     console.log('PASS idempotent checkout, pending verification, authoritative entitlement, revocation, unsafe data and logout cleanup');
+
+    // Before the catalog answers: the account's cached theme, never another account's, else the admin default.
+    const cached = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    cached.on('pageerror', error => errors.push(error.message));
+    await cached.route('https://**/*', route => route.abort());
+    const blush = { ...fixture.items[1], id: '000000000000000000000005', name: 'Blush & Cream' };
+    await cached.addInitScript(cache => { window.__sent = []; window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) }; window.__zimiThemeCache = cache; },
+      { default: blush, account: { id: user.user.id, theme: fixture.items[1] } });
+    await cached.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
+    await receive(cached, 'session', user);
+    await cached.evaluate(() => go('home'));
+    const paintedId = () => cached.evaluate(() => document.documentElement.dataset.themeId);
+    assert.equal(await paintedId(), fixture.items[1].id, 'A restored account paints its last theme before the catalog arrives');
+    await receive(cached, 'session', { ...user, user: { ...user.user, id: '507f1f77bcf86cd799439099' } });
+    assert.equal(await paintedId(), blush.id, 'Another account never inherits the cached theme; it gets the admin default');
+    await receive(cached, 'theme.default', { ...blush, id: '000000000000000000000006' });
+    assert.equal(await paintedId(), '000000000000000000000006', 'A changed admin default applies without waiting for a catalog');
+    await cached.close();
+    console.log('PASS cached account theme, account isolation and the admin default before the catalog arrives');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

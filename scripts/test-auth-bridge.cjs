@@ -39,6 +39,7 @@ function harness(initialAppState = 'active', initialLink = null) {
   } });
   const storage = {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 7,
+    getItem: key => disk.get(key) ?? null,
     getItemAsync: async key => disk.get(key) ?? null,
     setItemAsync: async (key, value) => { disk.set(key, value); },
     deleteItemAsync: async key => { if (overrides.deleteStorage) await overrides.deleteStorage(key); disk.delete(key); },
@@ -1312,6 +1313,28 @@ test('theme selection waits for the server and retires preexisting catalog reads
   assert.equal(h.find('data.themes').length, 1);
   assert.equal(h.find('data.themes')[0].data.selectedThemeId, '000000000000000000000002');
   assert.equal(h.find('data.loading').filter(event => event.data.resource === 'themes').at(-1).data.loading, false);
+  h.bridge.close();
+});
+
+test('the admin default reaches signed-out screens and each account theme is cached until sign-out', async () => {
+  const h = harness(), cache = () => h.load('src/theme-cache.ts').readThemeCache();
+  const theme = (id, name, mode) => ({ id, slug: '', name, description: '', isPremium: false, active: true, isDefault: false, sortOrder: 0, mode,
+    colors: { background: '#fbf5ee', surface: '#fffcf8', surfaceElevated: '#f8e3e5', text: '#3a272e', textMuted: '#76606a', primary: '#b03d66', primaryContrast: '#ffffff', secondary: '#933459', border: '#ead3d2', success: '#2b7a57', danger: '#b5364c' },
+    typography: { fontFamily: 'system', fontScale: 1, fontWeight: '400', headingWeight: '700' } });
+  h.overrides.defaultTheme = () => theme('000000000000000000000005', 'Blush & Cream', 'light');
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  assert.equal(h.find('theme.default')[0].data.name, 'Blush & Cream', 'Signed-out screens receive the admin default');
+  assert.equal(cache().default.name, 'Blush & Cream', 'The default is kept for the next launch');
+  const rose = theme('000000000000000000000002', 'Soft Rose', 'light');
+  h.overrides.themes = () => ({ ...themeCatalog(false, rose.id), items: [rose] });
+  h.overrides.verifyOtp = () => ({ ...account(), requiresOnboarding: false, tokens: tokenPair(), isNew: false });
+  h.bridge.handle(verifyMessage()); await settle(); await settle();
+  assert.deepEqual([cache().account.id, cache().account.theme.name], ['alice', 'Soft Rose'], 'The signed-in theme is kept for the next launch');
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); await settle();
+  assert.equal(cache().account, undefined, 'Signing out forgets the account theme');
+  assert.equal(cache().default.name, 'Blush & Cream', 'Signing out keeps the admin default');
+  h.disk.set('zimi.theme.v1', '{"default":{"id":"x","colors":{"primary":"red;position:fixed"}}');
+  assert.equal(JSON.stringify(cache()), '{}', 'A corrupt or unsafe entry reads as empty');
   h.bridge.close();
 });
 

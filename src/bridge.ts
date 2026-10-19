@@ -6,8 +6,9 @@ import { ApiError, errorMessage } from "./api/client";
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
+import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { approvedHost } from "./host-access";
 
@@ -100,6 +101,7 @@ export type AppMessage =
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> }
   | { type: "data.catalog"; data: Catalog }
   | { type: "data.themes"; data: ThemeCatalog }
+  | { type: "theme.default"; data: AppTheme }
   | { type: "themes.selected"; data: { catalog: ThemeCatalog; requestId?: number } }
   | { type: "themes.error"; data: { action: string; message: string; code?: string; requestId?: number } }
   | { type: "themes.premium.checkout" | "themes.premium.purchase"; data: Purchase }
@@ -365,7 +367,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const loadNotifications = () => readResource("notifications", () => api.notifications(), data => emit({ type: "data.notifications", data }));
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
-  const loadThemes = () => readResource("themes", () => api.themes(), data => emit({ type: "data.themes", data }));
+  // The next launch paints this account's theme before the catalog arrives.
+  const rememberTheme = (catalog: ThemeCatalog) => {
+    const theme = catalog.items.find(item => item.id === catalog.selectedThemeId);
+    if (accountId && theme) void rememberAccountTheme(accountId, theme);
+  };
+  const loadThemes = () => readResource("themes", () => api.themes(), data => { emit({ type: "data.themes", data }); rememberTheme(data); });
+  const loadDefaultTheme = async () => {
+    const theme = await api.defaultTheme();
+    if (closed || !theme) return;
+    emit({ type: "theme.default", data: theme });
+    void rememberDefaultTheme(theme);
+  };
   const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), data => emit({ type: "data.profileSettings", data }));
   const loadBlocked = (page = 1) => readResource("blocked", () => api.blockedUsers(page), data => emit({ type: "data.blocked", data }), { page });
   const deliverProfileSettings = (settings: ProfileSettings) => {
@@ -525,6 +538,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
     epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
+    void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
   });
   const restoreSession = async () => {
@@ -536,7 +550,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     try {
       const token = await getToken();
       if (!current(version)) return;
-      if (!token) { emit({ type: "session.none", data: {} }); return; }
+      if (!token) { void forgetAccountTheme(); emit({ type: "session.none", data: {} }); return; }
       let revision = hostRevision;
       let account = await api.me();
       while (current(version) && sessionVersion === getSessionVersion() && revision !== hostRevision) {
@@ -555,7 +569,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
   async function handle(msg: WebMessage) {
     const version = epoch;
     switch (msg.type) {
-      case "ready": webReady = !msg.data.demo; if (webReady) await restoreSession(); return;
+      case "ready":
+        webReady = !msg.data.demo;
+        if (webReady) { void loadDefaultTheme().catch(() => {}); await restoreSession(); }
+        return;
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "home.reload": return loadHome(msg.data);
@@ -575,6 +592,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
             // Reads started before this committed selection cannot restore an older choice.
             readRequests.set("themes", (readRequests.get("themes") ?? 0) + 1);
             emit({ type: "data.themes", data: catalog });
+            rememberTheme(catalog);
             emit({ type: "data.loading", data: { resource: "themes", loading: false } });
             emit({ type: "themes.selected", data: { catalog, requestId } });
           }
@@ -722,6 +740,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const clearedVersion = getSessionVersion();
         accountId = undefined; hostStatus = undefined;
         hostRevision++; hostChecking = false; hostAccount = undefined; activeHostCall = false;
+        void forgetAccountTheme();
         // Revocation must still run if secure-storage deletion fails. Local
         // invalidation is synchronous; this captured credential cannot revoke
         // a newer login, and network completion never clears its session.

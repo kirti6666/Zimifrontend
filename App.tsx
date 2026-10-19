@@ -8,6 +8,7 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import html from "./assets/aurora-bundle";
 import { createBridge, postToWeb } from "./src/bridge";
+import { readThemeCache, type ThemeCache } from "./src/theme-cache";
 import { isTrustedDocument, parseWebMessage } from "./src/web-message";
 
 /* Matches --canvas in web/aurora.css for each theme. */
@@ -48,10 +49,17 @@ const THEME_BRIDGE = `
 true;
 `;
 
+/* Part of the page itself: Android may run injected scripts only after the first paint. */
+const withThemeCache = (page: string, cache: ThemeCache) =>
+  page.replace("<head>", `<head><script>window.__zimiThemeCache=${JSON.stringify(cache).replace(/</g, "\\u003c")}</script>`);
+
 export default function App() {
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [canvasOverride, setCanvasOverride] = useState<string | null>("#190d19");
-  const [palette, setPalette] = useState<NativePalette>({});
+  const cache = useMemo(() => readThemeCache(), []);
+  const cached = cache.account?.theme;
+  const page = useMemo(() => html && withThemeCache(html, cache), [cache]);
+  const [theme, setTheme] = useState<Theme>(cached?.mode ?? "dark");
+  const [canvasOverride, setCanvasOverride] = useState<string | null>(cached?.colors.background ?? "#190d19");
+  const [palette, setPalette] = useState<NativePalette>(cached ? { ink: cached.colors.text, primary: cached.colors.primary, contrast: cached.colors.primaryContrast, surface: cached.colors.surface, raised: cached.colors.surfaceElevated } : {});
   const [failure, setFailure] = useState<string | null>(null);
   const webRef = useRef<WebView>(null);
   const lastHapticAt = useRef(0);
@@ -117,7 +125,7 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={[styles.safe, { backgroundColor: canvas }]}>
         <StatusBar style={theme === "dark" ? "light" : "dark"} />
-        {failure || !html ? (
+        {failure || !page ? (
           <View style={styles.center}>
             <Text style={[styles.failTitle, { color: ink }]}>Zimi Live could not start</Text>
             <Text style={[styles.failBody, { color: ink }]}>
@@ -132,7 +140,7 @@ export default function App() {
             ref={webRef}
             style={[styles.web, { backgroundColor: canvas }]}
             originWhitelist={["https://aurora.localhost", "about:blank"]}
-            source={{ html, baseUrl: "https://aurora.localhost/" }}
+            source={{ html: page, baseUrl: "https://aurora.localhost/" }}
             onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
             setSupportMultipleWindows={false}
             allowFileAccess={false}
