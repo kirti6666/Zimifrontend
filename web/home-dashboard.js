@@ -25,19 +25,53 @@ function homeDashboardLive(){
 function homeDashboardCard(h){
   const id=domId(h.id),live=!!h.stream,available=!!h.available&&!isHost();
   const status=live?'Live':h.available?'Available':h.on?'Online':'Offline';
-  const action=live?`homeOpen('${id}')`:available?`homeCall('${id}')`:`go('host','${id}')`;
-  const label=live?'Join live':available?'Call':'View profile';
-  const accessible=live?`Watch ${h.n} live`:available?`Call ${h.n}`:`View ${h.n} profile`;
+  const unavailable=isHost()?'Video calls are available from a member account':!h.available?'This creator is not taking calls right now':'';
   return `<article class="zh-tile zh-person-card">
     <button type="button" class="zh-person-profile" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')">
       <div class="zh-person-photo">${homeCover(h)}<span class="zh-person-status ${live?'is-live':h.available?'is-available':''}">${live||h.available?'<i></i>':''}${status}</span></div>
-      <div class="zh-person-info"><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.cat||h.tag||'Creator')}</p></div>
+      <div class="zh-person-info"><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.cat||h.tag||'Creator')}</p>${live?`<span class="zh-person-watching">${hi('eye',12)} ${homeCompact(h.viewers)} watching</span>`:''}</div>
     </button>
-    <footer class="zh-person-footer">${live?`<span class="zh-person-cost"><small>Watching</small><b>${homeCompact(h.viewers)}</b></span>`:available?`<span class="zh-person-cost"><small>Call rate</small><b>${homeRate(h)}</b></span>`:''}<button type="button" class="zh-person-action" aria-label="${esc(accessible)}" onclick="${action}">${hi(live?'play':available?'vid':'user',16)} ${label}</button></footer>
+    <footer class="zh-person-footer"><button type="button" class="zh-person-action" aria-label="Video call ${esc(h.n)}" title="${esc(unavailable||'Review your video call')}" onclick="homeDashboardCall('${id}')" ${available?'':'disabled'}>${hi('vid',17)} Video call</button></footer>
   </article>`;
 }
+function homeDashboardCall(id){
+  const h=g(id);
+  if(!h||!h.available||isHost()||Home.dashboardCall||Home.streamBusy||Home.preparingCall)return;
+  if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');
+  // Review cost and balance before joining a room, requesting a call or capture.
+  Home.dashboardSetup={hostId:id,streamId:h.stream?.id||null};
+  S.pcerr='';
+  homeCall(id);
+}
+function homeDashboardConfirmCall(){
+  const setup=Home.dashboardSetup,h=g(S.h);
+  if(S.v!=='precall'||!setup||setup.hostId!==S.h||Home.dashboardCall||Home.streamBusy||Home.preparingCall||isHost())return;
+  if(!h?.available||h.stream?.id!==setup.streamId){S.pcerr='This live session is no longer available. Please choose a creator from Home.';r();return}
+  if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');
+  if(!homeCallFundsReady(h))return;
+  // A broadcaster accepts through the room queue, only after explicit approval
+  // of the price and a matching membership acknowledgement from the server.
+  Home.dashboardCall={hostId:setup.hostId,streamId:setup.streamId};
+  homeOpen(setup.hostId);
+  if(DEMO)homeDashboardRequestCall(Home.stream);
+}
+function homeDashboardRequestCall(stream){
+  const pending=Home.dashboardCall;
+  if(!pending||stream?.id!==pending.streamId||S.v!=='live'||S.h!==pending.hostId||Home.hosting)return;
+  Home.dashboardCall=null;
+  if(isHost())return;
+  zrRequest();zrOpen('queue');
+}
+Native.on('stream.opened',d=>{if(!d.hosting)homeDashboardRequestCall(d.stream)});
+Native.on('operation.error',d=>{if(d.action==='stream.join')Home.dashboardCall=null});
+document.addEventListener('aurora:navigate',()=>{
+  const setup=Home.dashboardSetup;
+  if(setup&&(S.v!=='precall'||S.h!==setup.hostId))Home.dashboardSetup=null;
+  const pending=Home.dashboardCall;
+  if(pending&&(S.v!=='live'||Home.stream?.id!==pending.streamId||S.h!==pending.hostId))Home.dashboardCall=null;
+});
 function homeDashboardSkeleton(){
-  return `<div class="zh-skeleton" role="status" aria-label="Loading creators" aria-busy="true"><div class="zh-grid" aria-hidden="true">${Array.from({length:4},()=>`<div class="zh-person-card zh-person-placeholder"><div class="zh-person-photo zh-skeleton-shape"></div><div class="zh-person-info">${skeletonLine('70%',15)}${skeletonLine('45%',11)}</div><div class="zh-person-footer">${skeletonLine('42%',30)}${skeletonLine('46%',38)}</div></div>`).join('')}</div></div>`;
+  return `<div class="zh-skeleton" role="status" aria-label="Loading creators" aria-busy="true"><div class="zh-grid" aria-hidden="true">${Array.from({length:4},()=>`<div class="zh-person-card zh-person-placeholder"><div class="zh-person-photo zh-skeleton-shape"></div><div class="zh-person-info">${skeletonLine('70%',15)}${skeletonLine('45%',11)}</div><div class="zh-person-footer">${skeletonLine('100%',44)}</div></div>`).join('')}</div></div>`;
 }
 function homeDashboardMatch(){
   if(isHost()||!Home.speedMatchEnabled||homeContentError())return '';

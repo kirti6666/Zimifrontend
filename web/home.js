@@ -7,7 +7,7 @@ const Home = {
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
   notifications: [], unreadCount: 0, gifts: [], packs: [], paymentsAvailable: false,
   matching: false, giftTo: null, giftBusy: false, claiming: false,
-  stream: null, hosting: false, streamBusy: false, messages: [], mediaStatus: '',
+  stream: null, hosting: false, streamBusy: false, dashboardCall: null, dashboardSetup: null, messages: [], mediaStatus: '',
   preparingCall: false, preparingVoice: false,
   checkout: null, checkoutBusy: false, packId: '', notifyLoading: false
 };
@@ -93,10 +93,24 @@ function homePrecall(){if(window.zpcScreen)return zpcScreen();const h=g(S.h);if(
 // same person never revives an earlier camera permission request.
 let homeCallPreparation = null;
 function homeCallUnavailable(id){return !g(id)||(!DEMO&&!g(id).available)}
+function homeCallFundsReady(h){
+  if(!h)return false;
+  if(h.rate>0&&!coinWalletReady()){r();return false}
+  if(h.rate>0&&S.bal<h.rate){r();return false}
+  return true;
+}
 function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
   if(isHost()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
+  const setup=Home.dashboardSetup,h=g(S.h);
+  if(setup?.hostId===S.h){
+    if(setup.streamId)return homeDashboardConfirmCall();
+    // If the creator went live while this review was open, show the changed
+    // request flow before accepting confirmation. Do not ring a broadcaster.
+    if(h.stream){setup.streamId=h.stream.id;S.pcerr='';r();return}
+  }
+  if(!homeCallFundsReady(g(S.h)))return;
   S.nextCallVoice=!!voice;S.callId=null;S.pcerr='';
   return go('dial',S.h);
 }
@@ -180,7 +194,7 @@ Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);ho
 Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
 Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=isApprovedHost()&&d.online?1:0;S.vis=isApprovedHost()&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}});
 Native.on('call.created',d=>{S.callId=d.callId});
-Native.on('stream.opened',d=>{Home.streamBusy=false;if(d.hosting&&!isApprovedHost()){Native.send('stream.end',{streamId:d.stream.id});window.ZimiMedia?.stop();return}if(!['live','broadcast'].includes(S.v)){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.stream=d.stream;Home.hosting=d.hosting;Home.messages=d.messages||[];Home.mediaStatus='Connecting video…';go('live');window.ZimiMedia?.openStream(d.stream,d.hosting)});
+Native.on('stream.opened',d=>{if(Home.dashboardCall&&d.stream.id!==Home.dashboardCall.streamId){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.streamBusy=false;if(d.hosting&&!isApprovedHost()){Native.send('stream.end',{streamId:d.stream.id});window.ZimiMedia?.stop();return}if(!['live','broadcast'].includes(S.v)){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.stream=d.stream;Home.hosting=d.hosting;Home.messages=d.messages||[];Home.mediaStatus='Connecting video…';go('live');window.ZimiMedia?.openStream(d.stream,d.hosting)});
 Native.on('stream.message',d=>{if(Home.stream?.id!==d.streamId)return;if(!Home.messages.some(x=>x.id===d.id))Home.messages.push(d);if(Home.messages.length>200)Home.messages.splice(0,Home.messages.length-200);if(S.v==='live'&&window.zrPaintMessages){zrPaintMessages();return}if(S.v==='live'){const input=document.getElementById('home-stream-message'),draft=input?.value;r();const next=document.getElementById('home-stream-message');if(next&&draft)next.value=draft}});
 Native.on('stream.viewers',d=>{if(Home.stream?.id===d.streamId){Home.stream.viewers=d.count;if(S.v==='live'){const counter=document.querySelector('[data-room-viewers]');if(counter)counter.textContent=homeCompact(d.count);else r()}}const h=H.find(h=>h.stream?.id===d.streamId);if(h){h.viewers=d.count;h.stream.viewers=d.count}});
 Native.on('stream.ended',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError=''}if(Home.stream?.id===d.streamId){window.ZimiMedia?.stop();Home.stream=null;go('home');appNotice('This live session has ended.');homeLoad()}});
@@ -208,7 +222,7 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','explore','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
+function homeReset(){homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));

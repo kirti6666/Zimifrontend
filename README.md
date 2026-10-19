@@ -225,6 +225,14 @@ The compact Home layout lives in `web/home-dashboard.js` and
 category filters, creator cards and matching. The configured featured creator
 leads the For you cards. Profiles, calls and live rooms have separate actions;
 approved hosts get a Go live shortcut and their eligible reward banner.
+Home discovery shows one creator per row at every screen size, with no pricing
+on cards. Live now uses side-by-side cards in one horizontally scrollable row.
+Video call opens a confirmation screen with the current rate and wallet balance.
+Paid calls require a loaded balance and at least one minute of coins; members
+can retry a failed balance load or buy coins when needed. Confirming a live
+host joins their room and sends one private-call request after membership is
+confirmed. Unavailable calls stay disabled; tapping a creator photo opens their
+profile. Leaving confirmation starts no call and sends no request.
 Shared discovery, gifts and checkout flows remain in `web/home.js` / `web/home.css`.
 `web/media.js` handles camera/microphone capture and WebRTC media; authenticated
 HTTP and Socket.IO still run through `src/`.
