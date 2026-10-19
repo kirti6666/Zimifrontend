@@ -247,6 +247,78 @@ test('timeouts cover body downloads and do not retry mutating calls', async () =
   assert.equal(h.calls[0].init.signal.aborted, true);
 });
 
+test('reachability distinguishes transport failures from HTTP, configuration and session errors', async () => {
+  const h = harness(), states = [];
+  const stop = h.client.onConnectionChanged(state => states.push({ ...state }));
+  h.client.onConnectionChanged(() => { throw new Error('An observer must not interrupt a request'); });
+  h.setFetch(() => { throw new Error('Offline'); });
+  await assert.rejects(h.client.request('GET', '/public', undefined, { auth: false }), e => e.code === 'NETWORK_ERROR');
+  assert.deepEqual(states, [{ connected: false, checking: false }]);
+  for (const status of [401, 429, 503]) {
+    h.setFetch(() => json(status, { success: false }));
+    await assert.rejects(h.client.request('GET', '/public', undefined, { auth: false }), e => e.status === status);
+    assert.equal(h.client.getConnectionStatus().connected, true, `${status} proves HTTP reachability`);
+  }
+  const count = states.length;
+  await assert.rejects(h.client.request('GET', '/private'), e => e.code === 'SESSION_EXPIRED');
+  await assert.rejects(h.client.request('GET', '//invalid', undefined, { auth: false }), e => e.code === 'INVALID_REQUEST');
+  assert.equal(states.length, count);
+  stop();
+  h.setFetch(() => { throw new Error('Offline again'); });
+  await assert.rejects(h.client.request('GET', '/public', undefined, { auth: false }));
+  assert.equal(states.length, count, 'Unsubscribed screens stop receiving reachability');
+  const invalid = harness({ apiUrl: '' });
+  await assert.rejects(invalid.client.checkConnection(), e => e.code === 'API_CONFIGURATION');
+  assert.equal(invalid.client.getConnectionStatus(), undefined);
+  assert.equal(invalid.calls.length, 0);
+});
+
+test('connection retry is one bounded public request without account credentials', async () => {
+  const h = harness(), states = [], gate = deferred();
+  await h.session.setSessionTokens(tokens());
+  h.client.onConnectionChanged(state => states.push({ ...state }));
+  h.setFetch(() => gate.promise);
+  const first = h.client.checkConnection(), duplicate = h.client.checkConnection();
+  assert.equal(first, duplicate);
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].url, 'http://192.168.1.6:5000/health');
+  assert.equal(h.calls[0].init.headers.Authorization, undefined);
+  assert.equal(h.calls[0].init.body, undefined);
+  assert.equal(h.calls[0].init.credentials, 'omit');
+  assert.equal(h.calls[0].init.redirect, 'error');
+  assert.equal(h.calls[0].init.cache, 'no-store');
+  assert.equal(states[0].checking, true);
+  gate.resolve(json(503, { success: false }));
+  assert.equal(await first, true, 'A server response is reachable even if its health check is unavailable');
+  assert.deepEqual(states.at(-1), { connected: true, checking: false });
+  assert.equal(await h.session.getToken(), tokens().accessToken);
+  h.setFetch(() => { throw new Error('Connection dropped'); });
+  assert.equal(await h.client.checkConnection(), false);
+  assert.deepEqual(states.at(-1), { connected: false, checking: false });
+  const stalled = harness({ timeoutMs: 15 });
+  stalled.setFetch(() => new Promise(() => {}));
+  assert.equal(await stalled.client.checkConnection(), false);
+  assert.equal(stalled.calls[0].init.signal.aborted, true);
+  assert.equal(stalled.client.getConnectionStatus().checking, false);
+});
+
+test('old request failures and late responses cannot override connection recovery or a timeout', async () => {
+  const h = harness(), old = deferred();
+  h.setFetch(url => url.endsWith('/old') ? old.promise : ok({}));
+  const pending = h.client.request('GET', '/old', undefined, { auth: false });
+  const rejected = assert.rejects(pending, e => e.code === 'NETWORK_ERROR');
+  await h.client.checkConnection();
+  old.reject(new Error('Stale outage'));
+  await rejected;
+  assert.equal(h.client.getConnectionStatus().connected, true);
+  const stalled = harness({ timeoutMs: 15 }), late = deferred();
+  stalled.setFetch(() => late.promise);
+  await assert.rejects(stalled.client.request('GET', '/public', undefined, { auth: false }), e => e.code === 'REQUEST_TIMEOUT');
+  late.resolve(ok({}));
+  await flush();
+  assert.equal(stalled.client.getConnectionStatus().connected, false, 'An aborted request cannot announce a late recovery');
+});
+
 test('rate errors preserve code and the longest Retry-After without automatic retries', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokens());

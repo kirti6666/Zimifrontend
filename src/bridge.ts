@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import type WebView from "react-native-webview";
 import { AppState, Linking, Share } from "react-native";
 
-import { ApiError, errorMessage } from "./api/client";
+import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
@@ -23,6 +23,7 @@ export type WebMessage =
   | { type: "ready"; data: { demo: boolean } }
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
+  | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
   | { type: "notifications.load" | "catalog.load" | "rtc.config"; data: Record<string, never> }
@@ -94,6 +95,7 @@ export type AppMessage =
   | { type: "data.loaded"; data: Record<string, never> }
   | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; error?: string } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
+  | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
   | { type: "data.home"; data: HomeData }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
@@ -202,6 +204,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const authWork = new Set<string>();
   const current = (version: number) => !closed && version === epoch;
   const emit = (message: AppMessage) => { if (!closed) post(message); };
+  const stopConnection = onConnectionChanged(data => {
+    if (webReady) emit({ type: "connection.status", data });
+  });
   const metadata = (error: unknown) => ({
     message: errorMessage(error),
     ...(error instanceof ApiError ? { code: error.code, retryAfterSeconds: error.retryAfterSeconds } : {}),
@@ -571,8 +576,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
     switch (msg.type) {
       case "ready":
         webReady = !msg.data.demo;
-        if (webReady) { void loadDefaultTheme().catch(() => {}); await restoreSession(); }
+        if (webReady) {
+          const connection = getConnectionStatus();
+          if (connection) emit({ type: "connection.status", data: connection });
+          void loadDefaultTheme().catch(() => {}); await restoreSession();
+        }
         return;
+      case "connection.check": await checkConnection(); return;
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "home.reload": return loadHome(msg.data);
@@ -1033,6 +1043,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
         operationError(error, msg.type);
       }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); activity?.remove(); linkSubscription.remove(); stopLive(); },
+    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopLive(); },
   };
 }

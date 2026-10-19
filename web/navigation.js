@@ -7,7 +7,7 @@ window.ZimiNavigation=(()=>{
   function cancel(){sequence++;if(animation){animation.cancel();animation=null}document.getElementById('screen')?.removeAttribute('data-tab-transition')}
   function before(view){
     const from=S.v,scroller=document.getElementById('scroll-root');
-    if(tabs.includes(from))positions.set(from,scroller?.scrollTop||0);
+    if(tabs.includes(from))positions.set(from,window.ZimiOffline?.scrollPosition()??scroller?.scrollTop??0);
     cancel();
     return {from,to:view,animate:from!==view&&tabs.includes(from)&&tabs.includes(view),direction:tabs.indexOf(view)>tabs.indexOf(from)?1:-1,sequence};
   }
@@ -15,6 +15,7 @@ window.ZimiNavigation=(()=>{
     if(!change||change.sequence!==sequence||S.v!==change.to)return;
     if(tabs.includes(change.to)){
       const top=positions.get(change.to)||0;
+      if(window.ZimiOffline?.restoreScroll(top))return;
       if(window.zimiScrollTo)window.zimiScrollTo(top);
       else document.getElementById('scroll-root').scrollTop=top;
     }

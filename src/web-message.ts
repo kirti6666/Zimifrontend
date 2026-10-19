@@ -52,6 +52,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
   switch (message.type) {
     case "ready": valid = boolean(d.demo); break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
+    case "connection.check": valid = Object.keys(d).length === 0; break;
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": case "catalog.load": case "rtc.config": valid = true; break;

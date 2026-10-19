@@ -25,12 +25,77 @@ export interface RequestOptions {
 }
 
 const TIMEOUT_MS = 15000;
+const CONNECTION_TIMEOUT_MS = 8000;
 const NETWORK_MESSAGE = "Can't reach Zimi Live. Check your connection and try again.";
 const SESSION_MESSAGE = "Your session has expired. Please sign in again.";
 const PUBLIC_AUTH_PATHS = new Set(["/auth/otp/request", "/auth/otp/verify", "/auth/refresh"]);
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 let refreshing: { generation: number; promise: Promise<string> } | undefined;
+
+export interface ConnectionStatus { connected: boolean; checking: boolean }
+const connectionListeners = new Set<(status: ConnectionStatus) => void>();
+let connectionStatus: ConnectionStatus | undefined;
+let connectionAttempt = 0, observedAttempt = 0;
+let connectionCheck: Promise<boolean> | undefined;
+let checkingConnection = false;
+
+/** Reachability of our server, independent of Socket.IO or device Wi-Fi state. */
+export const getConnectionStatus = (): ConnectionStatus | undefined => connectionStatus && { ...connectionStatus };
+export function onConnectionChanged(listener: (status: ConnectionStatus) => void): () => void {
+  connectionListeners.add(listener);
+  return () => { connectionListeners.delete(listener); };
+}
+function publishConnection(connected: boolean, attempt: number) {
+  // A request started before a successful retry must not put the recovered UI offline.
+  if (attempt < observedAttempt) return;
+  observedAttempt = attempt;
+  const status = { connected, checking: checkingConnection };
+  if (connectionStatus?.connected === status.connected && connectionStatus.checking === status.checking) return;
+  connectionStatus = status;
+  for (const listener of connectionListeners) {
+    try { listener({ ...status }); } catch { /* UI observers must not break requests. */ }
+  }
+}
+
+/** A public, bounded probe. Never read, refresh, or transmit account credentials. */
+export function checkConnection(): Promise<boolean> {
+  if (connectionCheck) return connectionCheck;
+  if (API_CONFIGURATION_ERROR) return Promise.reject(new ApiError(API_CONFIGURATION_ERROR, 0, "API_CONFIGURATION"));
+  const attempt = ++connectionAttempt, abort = new AbortController();
+  checkingConnection = true;
+  publishConnection(connectionStatus?.connected ?? true, attempt);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      abort.abort();
+      reject(new ApiError("The connection check took too long.", 0, "REQUEST_TIMEOUT"));
+    }, CONNECTION_TIMEOUT_MS);
+  });
+  connectionCheck = (async () => {
+    try {
+      await Promise.race([
+        fetch(new URL("/health", API_URL).href, {
+          method: "GET", headers: { Accept: "application/json" }, signal: abort.signal,
+          credentials: "omit", redirect: "error", cache: "no-store",
+        }),
+        timeout,
+      ]);
+      // Any HTTP status proves the server is reachable. Service errors remain in their own UI.
+      publishConnection(true, attempt);
+      return true;
+    } catch {
+      publishConnection(false, attempt);
+      return false;
+    } finally {
+      clearTimeout(timer);
+      checkingConnection = false;
+      publishConnection(connectionStatus?.connected ?? false, observedAttempt);
+      connectionCheck = undefined;
+    }
+  })();
+  return connectionCheck;
+}
 
 function retryDelay(response: Response, body: unknown): number | undefined {
   const header = response.headers.get("Retry-After");
@@ -63,6 +128,7 @@ async function exchange<T>(method: Method, path: string, body?: unknown, token?:
     throw new ApiError("The request address is invalid.", 0, "INVALID_REQUEST");
   }
   const abort = new AbortController();
+  const attempt = ++connectionAttempt;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
@@ -86,6 +152,7 @@ async function exchange<T>(method: Method, path: string, body?: unknown, token?:
           redirect: "error",
           cache: "no-store",
         });
+        if (!abort.signal.aborted) publishConnection(true, attempt);
         if (response.status === 204) return undefined as T;
         // The deadline covers the response body too, including a stalled JSON download.
         const raw = await response.text();
@@ -104,7 +171,11 @@ async function exchange<T>(method: Method, path: string, body?: unknown, token?:
       timeout,
     ]);
   } catch (error) {
-    if (error instanceof ApiError) throw error;
+    if (error instanceof ApiError) {
+      if (error.code === "NETWORK_ERROR" || error.code === "REQUEST_TIMEOUT") publishConnection(false, attempt);
+      throw error;
+    }
+    publishConnection(false, attempt);
     throw new ApiError(NETWORK_MESSAGE, 0, "NETWORK_ERROR");
   } finally { clearTimeout(timer); }
 }

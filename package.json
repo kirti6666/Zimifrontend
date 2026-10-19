@@ -24,6 +24,7 @@
     "test:chat-actions": "npm run build:web && node scripts/test-chat-actions.cjs",
     "test:verification": "npm run build:web && node scripts/test-verification-call.cjs",
     "test:loading": "npm run build:web && node scripts/test-loading.cjs",
+    "test:offline": "npm run build:web && node scripts/test-offline.cjs",
     "test:chats": "npm run build:web && node scripts/test-chats.cjs",
     "test:navigation": "npm run build:web && node scripts/test-navigation.cjs",
     "test:themes": "npm run build:web && node scripts/test-themes.cjs",

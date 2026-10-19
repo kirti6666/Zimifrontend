@@ -2732,6 +2732,7 @@ button.gpill[onclick]{cursor:pointer}
 .zi-icon[data-icon=gift]{--zi-tap:zi-wiggle;--zi-origin:50% 90%;--zi-time:620ms}
 .zi-icon[data-icon=location]{--zi-tap:zi-drop;--zi-origin:50% 100%;--zi-time:520ms}
 .zi-icon[data-icon=copy]{--zi-tap:zi-copy;--zi-time:380ms}
+.zi-icon:is([data-icon=wifi],[data-icon=wifiOff]){--zi-tap:zi-glow;--zi-time:520ms}
 
 @media(prefers-reduced-motion:no-preference){
   .zi-icon{transition:transform 240ms cubic-bezier(.34,1.56,.64,1)}
@@ -2868,6 +2869,51 @@ button.gpill[onclick]{cursor:pointer}
 .zv-controls .zv-end{width:66px;height:66px;background:#ef3154}
 @keyframes zv-pulse{0%{box-shadow:0 0 0 0 #ffffff33,0 0 0 0 #ffffff1a}100%{box-shadow:0 0 0 18px #ffffff00,0 0 0 36px #ffffff00}}
 @media(prefers-reduced-motion:reduce){.zv-badge{animation:none}}
+/* Self-contained artwork stays available without a network or image cache. */
+.zo-offline[hidden],.zo-banner[hidden],#screen.zo-covered{display:none!important}
+#scroll-root.zo-full{display:flex;flex-direction:column}
+.zo-offline{flex:1;display:flex;align-items:center;justify-content:center;padding:26px 24px 22px;color:var(--ink);background:radial-gradient(ellipse at 50% 30%,color-mix(in srgb,var(--accent) 6%,transparent),transparent 62%)}
+.zo-content{width:100%;max-width:340px;text-align:center}
+.zo-eyebrow{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1.6px}
+.zo-eyebrow>i{width:6px;height:6px;background:var(--muted);border-radius:50%}
+.zo-illustration{height:216px;width:260px;max-width:100%;position:relative;margin:8px auto 2px;display:grid;place-items:center;isolation:isolate}
+.zo-orbit{position:absolute;border:1px solid color-mix(in srgb,var(--accent) 11%,var(--line));border-radius:50%;z-index:-1}
+.zo-orbit-outer{width:214px;height:214px;border-style:dashed;opacity:.65}
+.zo-orbit-inner{width:172px;height:172px;background:color-mix(in srgb,var(--accent) 4%,transparent)}
+.zo-signal{position:relative;width:126px;height:126px;border-radius:39px;display:grid;place-items:center;transform:rotate(-8deg);color:var(--accent-ink);background:linear-gradient(140deg,var(--surface),color-mix(in srgb,var(--accent) 13%,var(--surface)));border:1px solid color-mix(in srgb,var(--accent) 20%,var(--surface));box-shadow:0 14px 28px -15px color-mix(in srgb,var(--accent) 35%,transparent),inset 0 1px 1px color-mix(in srgb,var(--ink) 4%,transparent)}
+.zo-signal>svg{transform:rotate(8deg);stroke-width:1.35}
+.zo-pause{position:absolute;right:-10px;bottom:-7px;width:37px;height:37px;display:flex;align-items:center;justify-content:center;gap:4px;background:var(--accent);border:4px solid var(--canvas);border-radius:50%;transform:rotate(8deg)}
+.zo-pause>i{height:11px;width:3px;border-radius:2px;background:var(--cta-ink)}
+.zo-satellite{position:absolute;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);color:var(--muted);box-shadow:0 4px 12px #00000005}
+.zo-satellite-chat{width:43px;height:43px;border-radius:14px;left:11px;top:40px;transform:rotate(-13deg)}
+.zo-satellite-heart{width:36px;height:36px;border-radius:12px;right:8px;bottom:43px;color:var(--accent-ink);transform:rotate(12deg)}
+.zo-spark{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.35}
+.zo-spark-one{top:36px;right:43px}.zo-spark-two{bottom:28px;left:66px;width:4px;height:4px}
+.zo-offline h1{font-size:30px;line-height:1.25;letter-spacing:-1.1px;margin:13px 0 12px;font-weight:750}
+.zo-description{font-size:13px;line-height:1.8;color:var(--muted);margin:0 auto 25px}
+.zo-retry{display:flex;align-items:center;justify-content:center;gap:9px;min-height:49px;border-radius:14px;background:var(--accent);color:var(--cta-ink);font-size:13px;font-weight:700;padding:13px 20px;transition:transform 160ms,opacity 160ms}
+.zo-offline .zo-retry{width:100%;box-shadow:0 7px 18px -10px color-mix(in srgb,var(--accent) 70%,transparent)}
+.zo-retry:not(:disabled):active{transform:scale(.98)}
+.zo-retry:disabled{opacity:.65;cursor:wait}
+.zo-status{font-size:10px;line-height:1.6;min-height:16px;color:var(--muted);margin-top:11px}
+.zo-tip{display:flex;align-items:center;gap:14px;text-align:left;margin-top:27px;padding:17px 18px;border:1px solid var(--line);border-radius:15px;background:color-mix(in srgb,var(--surface) 80%,transparent)}
+.zo-tip>svg{flex:none;color:var(--accent-ink)}
+.zo-tip h2{font-size:12px;font-weight:650;margin:0 0 5px;letter-spacing:-.1px}
+.zo-tip p{font-size:11px;color:var(--muted);line-height:1.7}
+.zo-footnote{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:25px;color:var(--muted);font-size:10px;line-height:1.5}
+.zo-footnote svg{color:var(--accent-ink);opacity:.75}
+.zo-banner{flex:none;display:flex;align-items:center;gap:10px;margin:12px 14px;padding:12px;border-radius:13px;border:1px solid var(--accent-line);background:var(--accent-wash);color:var(--ink)}
+.zo-banner-icon{display:flex;color:var(--accent-ink);flex:none}
+.zo-banner>div{flex:1;min-width:0}.zo-banner strong{font-size:12px;font-weight:650}.zo-banner p{font-size:10px;color:var(--muted);line-height:1.5;margin-top:3px}
+.zo-banner .zo-retry{flex:none;min-height:40px;font-size:11px;padding:9px 11px;border-radius:10px}.zo-banner .zo-retry>svg{display:none}
+.zo-disconnected .app-network-note{display:none}
+@media(min-width:700px){.zo-offline{padding:32px}.zo-content{max-width:360px}.zo-illustration{margin-top:17px;margin-bottom:8px}.zo-banner{max-width:760px;width:calc(100% - 28px);margin-left:auto;margin-right:auto}}
+@media(max-height:730px){.zo-offline{padding-top:20px;padding-bottom:20px}.zo-illustration{height:167px;margin-top:6px}.zo-orbit-outer{height:165px;width:165px}.zo-orbit-inner{height:135px;width:135px}.zo-signal{height:106px;width:106px;border-radius:32px}.zo-signal>svg{width:65px;height:65px}.zo-satellite-chat{left:26px;top:28px}.zo-satellite-heart{right:25px;bottom:26px}.zo-description{margin-bottom:18px}.zo-offline h1{margin-top:6px;font-size:27px}.zo-tip{margin-top:18px;padding:13px 15px}.zo-footnote{margin-top:18px}}
+@media(prefers-reduced-motion:no-preference){.zo-retry:disabled>svg{animation:zo-check 1.4s linear infinite}.zo-satellite-chat{animation:zo-float-chat 5s ease-in-out infinite}.zo-satellite-heart{animation:zo-float-heart 5s ease-in-out -2.5s infinite}}
+@media(prefers-reduced-motion:reduce){.zo-retry{transition:none}}
+@keyframes zo-check{to{transform:rotate(360deg)}}
+@keyframes zo-float-chat{50%{transform:translateY(-5px) rotate(-7deg)}}
+@keyframes zo-float-heart{50%{transform:translateY(4px) rotate(5deg)}}
 </style>
 </head>
 <body>
@@ -7440,7 +7486,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -9086,7 +9132,7 @@ window.ZimiNavigation=(()=>{
   function cancel(){sequence++;if(animation){animation.cancel();animation=null}document.getElementById('screen')?.removeAttribute('data-tab-transition')}
   function before(view){
     const from=S.v,scroller=document.getElementById('scroll-root');
-    if(tabs.includes(from))positions.set(from,scroller?.scrollTop||0);
+    if(tabs.includes(from))positions.set(from,window.ZimiOffline?.scrollPosition()??scroller?.scrollTop??0);
     cancel();
     return {from,to:view,animate:from!==view&&tabs.includes(from)&&tabs.includes(view),direction:tabs.indexOf(view)>tabs.indexOf(from)?1:-1,sequence};
   }
@@ -9094,6 +9140,7 @@ window.ZimiNavigation=(()=>{
     if(!change||change.sequence!==sequence||S.v!==change.to)return;
     if(tabs.includes(change.to)){
       const top=positions.get(change.to)||0;
+      if(window.ZimiOffline?.restoreScroll(top))return;
       if(window.zimiScrollTo)window.zimiScrollTo(top);
       else document.getElementById('scroll-root').scrollTop=top;
     }
@@ -9142,6 +9189,194 @@ window.ZimiIcons=(()=>{
   document.addEventListener('animationend',event=>{const icon=event.target;if(icon.classList?.contains('zi-tap')&&event.animationName.startsWith('zi-')){icon.classList.remove('zi-tap');icon.style.removeProperty('animation-delay')}},true);
   new MutationObserver(resume).observe(document.documentElement,{childList:true,subtree:true});
   return {play};
+})();
+
+/* Connectivity is separate from host availability and the live-update socket.
+   Keep the current screen mounted so losing the network never erases a draft. */
+window.ZimiOffline = (() => {
+  P.wifi = '<path d="M3 8.5a14 14 0 0 1 18 0M6.5 12a9 9 0 0 1 11 0M10 15.5a3.5 3.5 0 0 1 4 0" stroke-linecap="round"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/>';
+  P.wifiOff = '<path d="m3 3 18 18M2.5 8.5a15 15 0 0 1 3.1-1.9M9.5 5.5a15 15 0 0 1 12 3M6 12a9.5 9.5 0 0 1 3-1.8M13.5 10a9.5 9.5 0 0 1 4.5 2M9.5 15.5a4 4 0 0 1 5 0" stroke-linecap="round"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/>';
+  const fullViews = new Set(['home', 'explore', 'search', 'notifications', 'welcome']);
+  let browserOffline = navigator.onLine === false;
+  let serverOffline = false;
+  let preview = DEMO && previewMode === 'offline';
+  let checking = false;
+  let attempted = false;
+  let poll;
+  let previousFocus;
+  let savedScroll = 0;
+  let covered = false;
+  let renderedKey = '';
+  if (preview && S.v === 'welcome') { S.v = 'home'; S.loggedIn = 1; }
+
+  const disconnected = () => browserOffline || serverOffline || preview;
+  const nativeAvailable = () => !!window.ReactNativeWebView;
+  const icon = (name, size = 20) => hi(name, size);
+
+  function illustration() {
+    return `<div class="zo-illustration" aria-hidden="true">
+      <span class="zo-orbit zo-orbit-outer"></span><span class="zo-orbit zo-orbit-inner"></span>
+      <span class="zo-satellite zo-satellite-chat">${icon('chat', 23)}</span>
+      <span class="zo-satellite zo-satellite-heart">${icon('heart', 20)}</span>
+      <span class="zo-spark zo-spark-one"></span><span class="zo-spark zo-spark-two"></span>
+      <div class="zo-signal">${icon('wifiOff', 76)}<span class="zo-pause"><i></i><i></i></span></div>
+    </div>`;
+  }
+
+  function schedule() {
+    clearTimeout(poll);
+    // A real reachability request, only while the visible app is disconnected.
+    if (disconnected() && !preview && !DEMO && nativeAvailable() && !checking && !document.hidden) {
+      poll = setTimeout(check, 15000);
+    }
+  }
+
+  function render() {
+    const root = document.getElementById('scroll-root');
+    const screen = document.getElementById('screen');
+    if (!root || !screen) return;
+    let panel = document.getElementById('zimi-offline-screen');
+    let banner = document.getElementById('zimi-offline-banner');
+    if (!panel) {
+      panel = document.createElement('section');
+      panel.id = 'zimi-offline-screen';
+      panel.className = 'zo-offline';
+      panel.hidden = true;
+      panel.setAttribute('aria-labelledby', 'zo-title');
+      root.prepend(panel);
+      banner = document.createElement('aside');
+      banner.id = 'zimi-offline-banner';
+      banner.className = 'zo-banner';
+      banner.hidden = true;
+      // As an app flex child this reserves space without moving a thread's
+      // composer or a call's controls below the viewport.
+      root.before(banner);
+    }
+    const offline = disconnected();
+    const full = offline && fullViews.has(S.v);
+    const noInternet = browserOffline || preview;
+    const title = noInternet ? "You're offline" : 'Connection lost';
+    const key = [offline, full, noInternet, checking, attempted].join(':');
+    const focusInPanel = panel.contains(document.activeElement);
+    const focusInBanner = banner.contains(document.activeElement);
+    const rebuilding = offline && key !== renderedKey;
+    if (full && !covered) {
+      // Capture before display/inert changes can blur the input or clamp scroll.
+      savedScroll = root.scrollTop;
+      previousFocus = screen.contains(document.activeElement) ? document.activeElement : null;
+    }
+    if (offline && key !== renderedKey) {
+      const label = checking ? 'Checking connection…' : 'Try again';
+      const retry = `<button class="zo-retry" onclick="ZimiOffline.retry()" ${checking ? 'disabled' : ''}>${icon('refresh', 19)}<span>${label}</span></button>`;
+      panel.innerHTML = `<div class="zo-content">
+        <span class="zo-eyebrow"><i></i>${noInternet ? 'OFFLINE MODE' : 'CONNECTION PAUSED'}</span>
+        ${illustration()}
+        <h1 id="zo-title" tabindex="-1">${title}</h1>
+        <p class="zo-description">${noInternet ? 'A little pause in the connection.<br>Your people will be here when you’re back.' : 'We can’t reach Zimi Live right now.<br>Let’s get you back to your people.'}</p>
+        ${retry}
+        <p class="zo-status" role="status" aria-live="polite">${checking ? 'Finding our way back to you…' : attempted ? 'Still no connection. Give it another try.' : 'Live moments are one connection away.'}</p>
+        <div class="zo-tip">${icon('wifi', 23)}<div><h2>Let’s reconnect</h2><p>Check your Wi-Fi or mobile data.<br>Make sure airplane mode is off.</p></div></div>
+        <div class="zo-footnote">${icon('heart', 14)}<span>A little patience. More good moments.</span></div>
+      </div>`;
+      banner.innerHTML = `<span class="zo-banner-icon">${icon('wifiOff', 22)}</span><div><strong>${title}</strong><p role="status" tabindex="-1">${checking ? 'Checking your connection…' : 'Reconnect to get the latest updates.'}</p></div>${retry}`;
+    }
+    renderedKey = key;
+    panel.hidden = !full;
+    banner.hidden = !offline || full;
+    root.classList.toggle('zo-full', full);
+    document.documentElement.classList.toggle('zo-disconnected', offline);
+    screen.classList.toggle('zo-covered', full);
+    screen.inert = full;
+    if (full && !covered) {
+      root.scrollTop = 0;
+      if (previousFocus) panel.querySelector('h1')?.focus({ preventScroll: true });
+    } else if (!full && covered) {
+      root.scrollTop = savedScroll;
+    }
+    if (!offline && (focusInPanel || focusInBanner)) {
+      if (previousFocus?.isConnected && !previousFocus.closest('[hidden]')) previousFocus.focus({ preventScroll: true });
+      else { screen.tabIndex = -1; screen.focus({ preventScroll: true }); }
+    } else if (offline && rebuilding && (focusInPanel || focusInBanner)) {
+      const surface = full ? panel : banner;
+      (surface.querySelector('.zo-retry:not(:disabled)') || surface.querySelector('h1,[role=status]'))?.focus({ preventScroll: true });
+    }
+    if (!full) previousFocus = null;
+    covered = full;
+    schedule();
+  }
+
+  function recovered(wasOffline) {
+    render();
+    if (!wasOffline || disconnected()) return;
+    attempted = false;
+    // Refresh reads only. Never replay a message, purchase, gift, or call action.
+    if (!DEMO && nativeAvailable()) {
+      if (S.loggedIn) {
+        Native.send('data.reload');
+        // These contextual reads are not part of the shared lists reload.
+        if (S.v === 'search') homeSearchRequest();
+        if (S.v === 'thread' && S.h) Native.send('chat.open', { with: S.h });
+      }
+      else if (S.sessionState === 'error' || S.sessionState === 'restoring') Native.send('session.resume');
+    }
+    appNotice('You’re back online. Welcome back!');
+  }
+
+  function check() {
+    if (checking || !disconnected()) return;
+    clearTimeout(poll);
+    if (nativeAvailable() && !DEMO) {
+      checking = true;
+      render();
+      Native.send('connection.check');
+    } else {
+      const wasOffline = disconnected();
+      browserOffline = navigator.onLine === false;
+      if (!browserOffline) { preview = false; serverOffline = false; }
+      recovered(wasOffline);
+    }
+  }
+
+  function retry() { attempted = true; check(); }
+
+  Native.on('connection.status', data => {
+    const wasOffline = disconnected();
+    checking = data.checking === true;
+    if (!checking) {
+      serverOffline = data.connected === false;
+      // A completed native HTTP response is stronger evidence than a stale
+      // WebView navigator flag. A later offline event can still override it.
+      if (data.connected === true) browserOffline = false;
+    }
+    recovered(wasOffline);
+  });
+  Native.on('operation.error', data => {
+    if (data.action === 'connection.check') { checking = false; attempted = true; render(); }
+  });
+  window.addEventListener('offline', () => { browserOffline = true; checking = false; render(); });
+  window.addEventListener('online', () => {
+    const wasOffline = disconnected();
+    browserOffline = false;
+    if (wasOffline && nativeAvailable() && !DEMO) {
+      serverOffline = true;
+      check();
+    } else recovered(wasOffline);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && disconnected()) check();
+    else schedule();
+  });
+  window.addEventListener('pagehide', () => clearTimeout(poll));
+  return {
+    render, retry, isOffline: disconnected,
+    scrollPosition: () => covered ? savedScroll : null,
+    restoreScroll(top) {
+      if (!covered) return false;
+      savedScroll = top;
+      document.getElementById('scroll-root').scrollTop = 0;
+      return true;
+    },
+  };
 })();
 
 r();

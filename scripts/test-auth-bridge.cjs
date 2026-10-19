@@ -23,7 +23,18 @@ function harness(initialAppState = 'active', initialLink = null) {
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
   }
-  const client = { ApiError, errorMessage: (error) => error instanceof ApiError ? error.message : 'Something went wrong. Please try again.' };
+  const connectionListeners = new Set();
+  let connectionStatus;
+  const connection = {
+    listeners: connectionListeners,
+    emit: status => { connectionStatus = status; for (const listener of connectionListeners) listener(status); },
+  };
+  const client = {
+    ApiError, errorMessage: (error) => error instanceof ApiError ? error.message : 'Something went wrong. Please try again.',
+    getConnectionStatus: () => connectionStatus,
+    onConnectionChanged: listener => { connectionListeners.add(listener); return () => connectionListeners.delete(listener); },
+    checkConnection: async () => { calls.push({ name: 'checkConnection', args: [] }); return overrides.checkConnection ? overrides.checkConnection() : true; },
+  };
   const defaults = {
     me: () => account(), verifyOtp: () => ({ ...account(), tokens: tokenPair(), isNew: true }),
     sendOtp: () => ({ resendAfter: 60, expiresIn: 300 }), saveProfile: () => account(),
@@ -93,8 +104,36 @@ function harness(initialAppState = 'active', initialLink = null) {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, connection };
 }
+
+test('connection status follows the current WebView and retry never reloads account data', async () => {
+  const h = harness();
+  h.connection.emit({ connected: false, checking: false });
+  assert.equal(h.find('connection.status').length, 0, 'Do not post into an unready document');
+  h.bridge.handle({ type: 'ready', data: { demo: false } });
+  await settle();
+  assert.equal(h.find('connection.status').at(-1).data.connected, false, 'Replay the current connection after readiness');
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'connection.check', data: { url: 'https://other.example' } })), null);
+  h.overrides.checkConnection = () => {
+    h.connection.emit({ connected: false, checking: true });
+    h.connection.emit({ connected: true, checking: false });
+    return true;
+  };
+  const before = h.calls.length;
+  h.bridge.handle({ type: 'connection.check', data: {} });
+  await settle();
+  assert.deepEqual(h.calls.slice(before).map(call => call.name), ['checkConnection']);
+  assert.equal(h.find('connection.status').at(-1).data.connected, true);
+  h.bridge.documentLoading();
+  const count = h.find('connection.status').length;
+  h.connection.emit({ connected: false, checking: false });
+  assert.equal(h.find('connection.status').length, count);
+  h.bridge.close();
+  assert.equal(h.connection.listeners.size, 0);
+  h.connection.emit({ connected: true, checking: false });
+  assert.equal(h.find('connection.status').length, count);
+});
 
 test('login and session restoration never post access or refresh credentials to the WebView', async () => {
   const h = harness();
