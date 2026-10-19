@@ -1682,7 +1682,8 @@ button.gpill[onclick]{cursor:pointer}
   transition: transform .2s cubic-bezier(.2,.8,.25,1), background .2s, box-shadow .2s, border-color .2s, color .2s, opacity .2s;
 }
 .ob-shell button:active:not(:disabled), .ob-dialog button:active:not(:disabled), .ob-upload:active { transform: scale(.96); }
-.ob-shell button:focus-visible, .ob-shell a:focus-visible, .ob-shell input:focus-visible, .ob-shell select:focus-visible,
+/* Text fields, code boxes and selects show focus on their own border, like every other field. */
+.ob-shell button:focus-visible, .ob-shell a:focus-visible, .ob-shell input[type="checkbox"]:focus-visible,
 .ob-dialog button:focus-visible, .ob-dialog a:focus-visible, .ob-upload:focus-within {
   outline: 3px solid #ff81bd;
   outline-offset: 4px;
