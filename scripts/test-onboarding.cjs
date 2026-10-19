@@ -134,7 +134,7 @@ async function fillBasics(page, host = false) {
   await page.locator('#p18').check();
   if (host) {
     // Category/language are required for creators; choose visible controls.
-    await page.getByRole('button', { name: 'Music', exact: true }).click();
+    await page.getByLabel('Your thing').selectOption('Music');
     await page.getByRole('button', { name: 'English', exact: true }).click();
   }
   await action(page, 'obNextProfile').click();

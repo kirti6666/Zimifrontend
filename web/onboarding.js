@@ -130,8 +130,6 @@ function obSelectRole(role, button) {
   });
   const cta = document.getElementById("ob-start");
   if (cta) cta.innerHTML = (role === "host" ? "Start creating" : "Find your people") + obArrow();
-  const hint = document.getElementById("ob-role-hint");
-  if (hint) hint.textContent = role === "host" ? "Share your talent. Make every conversation yours." : "Discover creators. Find a conversation that clicks.";
 }
 function obDeckMarkup() {
   const index = S.obDeck || 0;
@@ -163,18 +161,16 @@ function obWelcome() {
   return `<section class="ob-shell ob-welcome" aria-label="Welcome to Zimi Live">
     ${S.notice ? `<p class="ob-session-notice" role="status">${esc(S.notice)}</p>` : ""}<div class="ob-brand"><span>${I("vid", 21)}</span><b>zimi</b><small>LIVE</small></div>
     <div class="ob-welcome-grid">
-      <div class="ob-intro"><span class="ob-eyebrow"><i></i> LESS SCROLLING. MORE CONNECTION.</span>
+      <div class="ob-intro">
         <h1 class="ob-hero-heading">A little hello.<br><em>A real connection.</em></h1>
-        <p class="ob-description">Meet creators who get your vibe.<br>One call can make your day.</p>
-        <div class="ob-pills"><span>${I("vid", 14)} One-on-one</span><span>${I("heart", 14)} Your kind of people</span></div></div>
+        <p class="ob-description">Meet creators who get your vibe.<br>One call can make your day.</p></div>
       <div class="ob-showcase" aria-label="Community previews">${obDeckMarkup()}</div>
       <div class="ob-welcome-actions"><div class="ob-role-switch" aria-label="Choose your account type">
         <button class="${host ? "" : "selected"}" aria-pressed="${!host}" onclick="obSelectRole('sender',this)">${I("heart", 17)} I'm here to connect</button>
         <button class="${host ? "selected" : ""}" aria-pressed="${host}" onclick="obSelectRole('host',this)">${I("vid", 17)} I'm a creator</button></div>
-        <p id="ob-role-hint" class="ob-role-hint">${host ? "Share your talent. Make every conversation yours." : "Discover creators. Find a conversation that clicks."}</p>
         <button id="ob-start" class="ob-primary" onclick="obStart('signup')">${host ? "Start creating" : "Find your people"}${obArrow()}</button>
         <button class="ob-text-button" onclick="obStart('login')">Already part of Zimi? <b>Log in</b></button>
-        <div class="ob-trust"><span>${I("lock", 13)} Your space to connect</span><span>18+ community</span></div></div>
+        <div class="ob-trust"><span>${I("lock", 13)} 18+ community</span></div></div>
     </div><p class="ob-desktop-note">A small hello. A world of possibilities.</p>
   </section>`;
 }
@@ -294,21 +290,17 @@ function obSignedIn() {
   if (creator && !isHost()) { S.creatorSetup = true; S.kf = { name: me.n, bio: me.about, langs: (S.user || {}).languages || [] }; }
   go(creator && !isHost() ? "kyc" : "home");
 }
-function obToggleOption(kind, value, button) {
-  const a = S.auth;
-  if (kind === "cat") a.cat = value;
-  else { const list = a.langs; list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value); }
-  button.parentElement.querySelectorAll("button").forEach(b => {
-    const selected = kind === "cat" ? b.dataset.value === a.cat : a.langs.includes(b.dataset.value);
-    b.classList.toggle("selected", selected); b.setAttribute("aria-pressed", String(selected));
-  });
+function obToggleLanguage(value, button) {
+  const list = S.auth.langs;
+  list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
+  button.classList.toggle("selected", list.includes(value)); button.setAttribute("aria-pressed", String(list.includes(value)));
 }
 function obNextProfile() {
   const a = S.auth;
   a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim(); a.adult = document.getElementById("p18").checked;
   if (a.name.length < 2) return obSetError("Use at least two characters for your name.", "pn");
   if (!okEmail(a.email)) return obSetError("Add a valid email address.", "pe");
-  if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.");
+  if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
   if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
   if (!a.adult) return obSetError("You need to be 18 or older to join Zimi.", "p18");
   obStep("photos");
@@ -369,10 +361,9 @@ function obToggleInterest(index, button) {
   list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
   button.classList.toggle("selected", list.includes(value)); button.setAttribute("aria-pressed", String(list.includes(value)));
   const count = document.getElementById("ob-interest-count");
-  if (count) count.textContent = list.length ? `${list.length} ${list.length === 1 ? "interest" : "interests"} picked` : "Make it feel like you";
-  const hint = document.getElementById("ob-interest-hint");
-  if (hint) hint.textContent = list.length ? "A little more of what you love." : "Pick a few favorites, or explore everything.";
+  if (count) count.textContent = obInterestCount();
 }
+function obInterestCount() { const n = S.auth.interests.length; return n ? `${n} picked. Add as many as you like.` : "Pick as many as you like."; }
 function obFinish(skip = false) {
   const a = S.auth; if (a.busy) return;
   if (!a.verified || !a.name || !okEmail(a.email) || !a.adult) return obStep("profile");
@@ -397,7 +388,7 @@ function obButton(text, handler, disabled = false) {
   const left = kind ? obWait(kind) : 0, idle = kind === "auth.sendOtp" ? "Send my code" : "Verify & continue";
   return `<button ${kind ? `id="ob-auth-submit" data-idle-label="${idle}"` : ""} class="ob-primary" ${disabled || left ? "disabled" : ""} onclick="${handler}">${S.auth.busy || S.auth.uploading ? '<span class="ob-spinner" aria-hidden="true"></span>' : ""}${left && !S.auth.busy ? `Try again in ${obDuration(left)}` : text}${S.auth.busy || S.auth.uploading || left ? "" : obArrow()}</button>`;
 }
-function obOptions(kind, values) { return `<div class="ob-options">${values.map(value => { const selected = kind === "cat" ? S.auth.cat === value : S.auth.langs.includes(value); return `<button type="button" data-value="${value}" class="${selected ? "selected" : ""}" aria-pressed="${selected}" onclick="obToggleOption('${kind}','${value}',this)">${value}</button>`; }).join("")}</div>`; }
+function obLanguages() { return `<div class="ob-options">${LANGS.map(value => { const selected = S.auth.langs.includes(value); return `<button type="button" class="${selected ? "selected" : ""}" aria-pressed="${selected}" onclick="obToggleLanguage('${value}',this)">${value}</button>`; }).join("")}</div>`; }
 function obPhotoContent() {
   const a = S.auth, count = a.photos.length, index = a.featured || 0;
   return `<input hidden id="ob-photos" type="file" accept="image/*" multiple onchange="obUpload(event)"><input hidden id="ob-camera" type="file" accept="image/*" capture="user" onchange="obUpload(event)">
@@ -414,42 +405,40 @@ function obLogin() {
   if (a.step === "choose") a.step = "phone";
   if (a.step === "sprofile") a.step = "profile";
   const step = a.step, number = ({ phone: 1, otp: 1, profile: 2, photos: 3, interests: 4 })[step] || 1;
-  let title, description, content, actions, eyebrow = signup ? `STEP ${number} OF 4` : "WELCOME BACK";
+  let title, description = "", content, actions;
   if (step === "phone") {
-    title = signup ? "Your next hello starts here." : "Good to see you again.";
+    title = !signup ? "Good to see you again." : host ? "Your creator journey starts here." : "Your next hello starts here.";
     description = "Enter your number. We’ll text you a code to get you in.";
-    content = `<div class="ob-note">${I("chat", 22)}<div><b>${host ? "Your creator journey starts here" : "Good conversations start with you"}</b><p>${host ? "Set up your space, then meet your audience." : "A few details. A whole new circle."}</p></div><span class="ob-note-dot"></span></div>
-      <form class="ob-form" onsubmit="event.preventDefault();obSendOtp()"><label class="ob-label" for="ph">Mobile number</label><div class="ob-phone-field">${obCountryButton(!!a.busy)}<input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="${obPhonePlaceholder()}" maxlength="18" value="${esc(a.phone || "")}" aria-describedby="ob-phone-hint ob-error" oninput="obPhoneInput(this)" ${a.busy ? "disabled" : ""}></div><p class="ob-field-hint" id="ob-phone-hint">${I("lock", 13)} Used to verify your account.</p><button type="submit" hidden tabindex="-1">Send code</button></form>`;
+    content = `<form class="ob-form" onsubmit="event.preventDefault();obSendOtp()"><label class="ob-label" for="ph">Mobile number</label><div class="ob-phone-field">${obCountryButton(!!a.busy)}<input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="${obPhonePlaceholder()}" maxlength="18" value="${esc(a.phone || "")}" aria-describedby="ob-phone-hint ob-error" oninput="obPhoneInput(this)" ${a.busy ? "disabled" : ""}></div><p class="ob-field-hint" id="ob-phone-hint">${I("lock", 13)} Used to verify your account.</p><button type="submit" hidden tabindex="-1">Send code</button></form>`;
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
     title = "Check your messages."; description = `Enter the six-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
     content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>Edit phone number ${I("back", 13)}</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
-    title = "Let’s make it yours."; description = "A name, a few details, and a little of your personality.";
+    title = "Let’s make it yours.";
     content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "What should we call you?"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error"></div>
       <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="S.auth.email=this.value" aria-describedby="ob-error"></div>
-      ${host ? `<div><span class="ob-label">Your thing</span>${obOptions("cat", CATS)}</div>` : ""}
-      <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obOptions("langs", LANGS)}</div>
+      ${host ? `<div class="ob-field"><label for="pc">Your thing</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error"><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
+      <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obLanguages()}</div>
       <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error"><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
     actions = obButton("Next, your photos", "obNextProfile()");
   } else if (step === "photos") {
-    title = "Put a face to your hello."; description = "Add at least three clear photos of yourself. Pick your favorite to lead the way.";
+    title = "Put a face to your hello."; description = "Add at least three clear photos of yourself.";
     content = obPhotoContent(); actions = obButton(a.uploading ? "Preparing your photos…" : "Looking good. Continue", "obNextPhotos()", a.uploading || a.photos.length < MIN_PHOTOS);
   } else {
-    title = "Find your kind of energy."; description = "What makes you light up? Pick as many as you like."; eyebrow = "ONE LAST THING";
-    content = `<div class="ob-interests" aria-label="Your interests">${OB_INTERESTS.map(([emoji, label], i) => `<button class="ob-interest ${a.interests.includes(label) ? "selected" : ""}" aria-pressed="${a.interests.includes(label)}" onclick="obToggleInterest(${i},this)" ${a.busy ? "disabled" : ""}><span aria-hidden="true">${emoji}</span>${label}<span class="ob-chip-check" aria-hidden="true">${I("check", 13)}</span></button>`).join("")}</div>
-      <div class="ob-note ob-selection-note" aria-live="polite">${I("heart", 22)}<div><b id="ob-interest-count">${a.interests.length ? `${a.interests.length} ${a.interests.length === 1 ? "interest" : "interests"} picked` : "Make it feel like you"}</b><p id="ob-interest-hint">${a.interests.length ? "A little more of what you love." : "Pick a few favorites, or explore everything."}</p></div><span class="ob-note-dot"></span></div>`;
+    title = "Find your kind of energy."; description = `<span id="ob-interest-count" aria-live="polite">${obInterestCount()}</span>`;
+    content = `<div class="ob-interests" aria-label="Your interests">${OB_INTERESTS.map(([emoji, label], i) => `<button class="ob-interest ${a.interests.includes(label) ? "selected" : ""}" aria-pressed="${a.interests.includes(label)}" onclick="obToggleInterest(${i},this)" ${a.busy ? "disabled" : ""}><span aria-hidden="true">${emoji}</span>${label}<span class="ob-chip-check" aria-hidden="true">${I("check", 13)}</span></button>`).join("")}</div>`;
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your Zimi account" : "Log in to Zimi"}">
     <header class="ob-header"><button class="ob-icon" aria-label="Back" onclick="obBack()" ${a.busy || a.uploading ? "disabled" : ""}>${I("back", 22)}</button>
       ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : '<span class="ob-login-label">ZIMI LIVE</span>'}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
-    <div class="ob-main"><div class="ob-eyebrow"><span><i></i>${eyebrow}</span>${step === "photos" ? '<b>3 photos minimum</b>' : step === "phone" ? `<b>${host ? "CREATOR" : "LET’S CONNECT"}</b>` : ""}</div>
-      <h1 class="ob-heading" tabindex="-1">${title}</h1><p class="ob-description">${description}</p>
+    <div class="ob-main">
+      <h1 class="ob-heading" tabindex="-1">${title}</h1>${description ? `<p class="ob-description">${description}</p>` : ""}
       <div class="ob-content">${content}</div>${obErrorMarkup()}<div class="ob-actions">${actions}</div>
-      ${step === "phone" ? '<p class="ob-footer">Standard SMS rates may apply.<br>A little hello is just a few taps away.</p>' : ''}
+      ${step === "phone" ? '<p class="ob-footer">Standard SMS rates may apply.</p>' : ''}
     </div></section>`;
 }
 function obShowHelp() {

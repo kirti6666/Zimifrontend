@@ -117,12 +117,6 @@
 .ob-footer button { display: inline; padding: 5px 1px; color: var(--ob-muted); text-decoration: underline; text-underline-offset: 3px; }
 .ob-error { display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; margin: 16px 0 0; border: 1px solid #f65c923d; border-radius: 13px; background: #84264129; color: #ffc0d6; font-size: 12px; line-height: 1.6; animation: ob-error-in .25s ease-out; }
 .ob-error:empty { display: none; }
-.ob-note { display: flex; align-items: center; gap: 12px; padding: 15px; background: #281725; border: 1px solid #ffd0e809; border-radius: 16px; font-size: 12px; line-height: 1.55; color: var(--ob-muted); }
-.ob-note > svg { padding: 10px; width: 42px; height: 42px; border-radius: 50%; background: #ffc5e215; color: var(--ob-soft); }
-.ob-note b, .ob-note strong { display: block; color: var(--ob-text); font-weight: 650; }
-.ob-note p { margin: 0; }
-.ob-note > div { min-width: 0; }
-.ob-note .ob-status-dot, .ob-note-dot { width: 7px; height: 7px; margin-left: auto; flex: 0 0 7px; border-radius: 50%; background: #ff63ac; box-shadow: 0 0 10px #ff63ac44; }
 
 /* Welcome: a tactile, editorial card deck with locally bundled portrait assets. */
 .ob-welcome { padding-top: 24px; background: radial-gradient(ellipse 100% 47% at 52% 0, #651b4a85, transparent), radial-gradient(ellipse 75% 35% at 95% 65%, #5a13552e, transparent), #190c1a; }
@@ -134,13 +128,9 @@
 .ob-brand small { align-self: center; margin: 2px 0 0 3px; padding: 4px 6px; border: 1px solid #fa5cac3b; border-radius: 5px; font-size: 8px; line-height: 1; letter-spacing: .1em; color: var(--ob-soft); }
 .ob-welcome-grid { display: grid; grid-template-areas: "intro" "showcase" "actions"; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: 480px; margin: auto; }
 .ob-intro { grid-area: intro; text-align: center; }
-.ob-intro .ob-eyebrow { margin-bottom: 12px; padding: 0; background: transparent; color: #cf97b4; font-size: 9px; letter-spacing: .15em; }
 .ob-hero-heading { font-size: clamp(31px, 8.9vw, 43px); line-height: 1.1; letter-spacing: -.057em; font-weight: 750; }
 .ob-hero-heading em, .ob-hero-heading span { color: #ff76b7; font-style: normal; }
 .ob-intro .ob-description { max-width: 330px; margin: 12px auto 0; font-size: 13px; line-height: 1.6; color: #bb97af; }
-.ob-pills { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.ob-pills > * { display: flex; align-items: center; gap: 5px; border-radius: 30px; padding: 5px 9px; border: 1px solid #e8a4cd19; font-size: 9px; line-height: 1.2; color: #d3a9c0; }
-.ob-pills svg { width: 11px; height: 11px; color: #ed78b0; }
 .ob-showcase { grid-area: showcase; position: relative; height: clamp(274px, 36dvh, 340px); width: 100%; max-width: 430px; margin: 3px auto 0; perspective: 1100px; touch-action: pan-y; }
 .ob-showcase::before { content: ""; position: absolute; inset: 6% 8% 11%; background: radial-gradient(ellipse, #bb1a8b37, transparent 68%); filter: blur(13px); z-index: -1; }
 .ob-card { position: absolute; overflow: hidden; border-radius: 23px; background: #36212d; box-shadow: 0 20px 35px -14px #000b; border: 1px solid #fdd2e81a; }
@@ -183,7 +173,6 @@
 .ob-role-switch button svg { width: 15px; height: 15px; }
 .ob-role-switch button.selected { color: #ffe1f0; background: #3d1e35; border-color: #f5b0d419; box-shadow: 0 3px 8px #0002; }
 .ob-welcome-actions > .ob-text-button { margin-top: -4px; }
-.ob-role-hint { margin: -1px 0 2px; color: #b08a9f; font-size: 10px; line-height: 1.6; text-align: center; }
 .ob-trust { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px 18px; font-size: 9px; color: #9d778f; font-weight: 550; line-height: 1.5; }
 .ob-trust > span { display: inline-flex; align-items: center; gap: 5px; }
 .ob-trust svg { width: 11px; height: 11px; color: #b481a0; }
@@ -198,9 +187,11 @@
   background: var(--ob-raised); color: var(--ob-text); font-size: 16px; line-height: 1.3; outline: none;
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
+.ob-field select { appearance: none; padding-right: 44px; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: right 22px center, right 17px center; background-size: 5px 5px; background-repeat: no-repeat; }
+.ob-field select:has(option[value=""]:checked) { color: #93738a; }
 .ob-field input::placeholder { color: #93738a; opacity: 1; }
 .ob-phone-field input::placeholder { color: #ad8aa1; opacity: 1; font-size: 14px; font-weight: 450; letter-spacing: 0; }
-.ob-field input:focus, .ob-field select:focus, .ob-phone-field input:focus { border-color: #f02b90; background: #3c2438; box-shadow: 0 0 0 3px #ec07851a; }
+.ob-field input:focus, .ob-field select:focus, .ob-phone-field input:focus { border-color: #f02b90; background-color: #3c2438; box-shadow: 0 0 0 3px #ec07851a; }
 .ob-field input[aria-invalid="true"], .ob-phone-field input[aria-invalid="true"] { border-color: #ff689a; }
 .ob-form > .ob-label { margin-bottom: -10px; }
 .ob-phone-field + .ob-field-hint { margin-top: -12px; }
@@ -284,8 +275,6 @@
 .ob-chip-check { position: absolute; display: block; top: 6px; right: 6px; width: 9px; height: 9px; opacity: 0; transition: opacity .15s; }
 .ob-chip-check svg { width: 9px; height: 9px; }
 .ob-interest.selected .ob-chip-check { opacity: 1; }
-.ob-selection-note { margin-top: 30px; }
-.ob-selection-note .ob-note { min-height: 70px; }
 
 /* Native dialog semantics, with an inset sheet on small screens. */
 .ob-dialog { --ob-soft: #ffafd1; position: fixed; inset: 0; width: min(440px, calc(100vw - 32px)); max-height: min(78dvh, 620px); margin: auto; padding: 24px; border: 1px solid #e1a2c430; border-radius: 25px; color: #fce8f3; background: #291726; box-shadow: 0 30px 90px #0008; overflow: auto; overscroll-behavior: contain; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -358,11 +347,8 @@
   .ob-brand small { font-size: 9px; padding: 5px 7px; }
   .ob-welcome-grid { max-width: 1120px; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); grid-template-areas: "intro showcase" "actions showcase"; column-gap: clamp(42px, 7vw, 100px); row-gap: 27px; align-items: center; margin-block: auto; }
   .ob-intro { text-align: left; align-self: end; padding-top: 12px; }
-  .ob-intro .ob-eyebrow { font-size: 10px; margin-bottom: 23px; }
   .ob-hero-heading { font-size: clamp(48px, 5.5vw, 72px); line-height: 1.045; letter-spacing: -.06em; }
   .ob-intro .ob-description { max-width: 370px; margin: 22px 0 0; font-size: 15px; line-height: 1.7; }
-  .ob-pills { justify-content: flex-start; margin-top: 24px; gap: 9px; }
-  .ob-pills > * { padding: 7px 11px; font-size: 10px; }
   .ob-showcase { max-width: 470px; height: clamp(435px, 58dvh, 570px); margin-top: 30px; }
   .ob-card { border-radius: 30px; }
   .ob-card-main { width: 71%; left: 14.5%; height: 86%; }
@@ -397,8 +383,6 @@
   .ob-description { font-size: 13px; }
   .ob-hero-heading { font-size: 31px; }
   .ob-intro .ob-description { font-size: 12px; }
-  .ob-pills { gap: 5px; margin-top: 12px; }
-  .ob-pills > * { font-size: 8px; padding: 5px 7px; }
   .ob-showcase { height: 269px; }
   .ob-brand { margin-bottom: 18px; }
   .ob-interest { padding: 11px 12px; font-size: 12px !important; gap: 6px; }
@@ -419,13 +403,40 @@
   .ob-welcome { padding-top: 18px; padding-bottom: 20px; }
   .ob-brand { margin-bottom: 16px; }
   .ob-welcome-grid { gap: 11px; }
-  .ob-intro .ob-eyebrow { margin-bottom: 9px; }
   .ob-hero-heading { font-size: clamp(29px, 8.3vw, 36px); }
   .ob-intro .ob-description { margin-top: 10px; }
-  .ob-pills { margin-top: 11px; }
   .ob-showcase { height: 250px; }
   .ob-welcome-actions { gap: 6px; }
   .ob-welcome-actions > .ob-primary { min-height: 52px; }
+}
+/* Short phones: every sign-up step fits on one screen, without scrolling. */
+@media (max-height: 820px) and (max-width: 599px) {
+  .ob-shell:not(.ob-welcome) { padding-top: 14px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .ob-header { margin-bottom: 18px; }
+  .ob-description { margin-top: 8px; }
+  .ob-content { margin-top: 20px; }
+  .ob-form { gap: 14px; margin-top: 18px; }
+  .ob-form > .ob-label { margin-bottom: -6px; }
+  .ob-field { gap: 6px; }
+  .ob-label + .ob-options { margin-top: 6px; }
+  .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 48px; padding-block: 11px; }
+  .ob-options button { min-height: 44px; padding-block: 8px; }
+  .ob-check { padding: 4px 0; }
+  .ob-otp input { height: 56px; }
+  .ob-photo-layout { min-height: 0; margin-top: 18px; }
+  .ob-upload, .ob-featured, .ob-photo-empty { min-height: 220px; }
+  .ob-preview-heading { margin: 16px 0 10px; }
+  .ob-interests { margin-top: 18px; gap: 8px 6px; }
+  .ob-interest { min-height: 44px; padding-block: 9px; }
+  .ob-actions { margin-top: 18px; }
+  .ob-footer { margin-top: 14px; }
+  .ob-error { margin-top: 12px; padding: 9px 12px; }
+}
+@media (max-height: 680px) and (max-width: 599px) {
+  .ob-showcase { height: 215px; }
+  .ob-upload, .ob-featured, .ob-photo-empty { min-height: 190px; }
+  .ob-header { margin-bottom: 12px; }
+  .ob-form { gap: 12px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
   .ob-shell { min-height: 100dvh; padding-top: 16px; }
