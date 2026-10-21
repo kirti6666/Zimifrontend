@@ -128,6 +128,18 @@ bridge, and `npm run test:auth` for native bridge/API checks. These tests do not
 charge real money. Actual provider settlement still requires an authorized
 provider test transaction.
 
+## Android Back navigation
+
+Android's system Back button is routed from `App.tsx` to
+`web/navigation.js`. It dismisses the foreground photo, dialog, or menu first,
+then uses the screen's existing Back action. Main tabs return to Home. Calls
+and live rooms require their existing leave confirmation; unfinished voice
+recordings stay open. Back on Home or Welcome asks before closing the app.
+Run `npm run test:back-navigation` for browser and native bridge regressions.
+
+After changing this behavior, reload an Expo development session. An installed
+release APK needs a rebuilt app containing the updated JavaScript bundle.
+
 ## Architecture
 
 The Aurora UI is a self-contained web bundle rendered inside a `react-native-webview`, so the interface is identical to the previous Next.js version.
@@ -337,6 +349,31 @@ authenticated account.
 Run `npm run test:profile-settings` to rebuild and check account actions, saves,
 search, filters, keyboard interactions, and responsive layouts. The tests use a
 simulated native bridge and save preview screenshots under `artifacts/`.
+
+## Notification center
+
+`web/notifications.js` and `web/notifications.css` provide a compact notification
+list with All/Today/Yesterday/Earlier tabs. The filter button reveals
+search, All/Unread/Read status, personal/announcement audiences, date ranges,
+newest/oldest sorting, full-message details, selection, read/unread updates, and
+mark all read. Selection controls appear after tapping Select. Filters run on the
+server before pagination. Read changes wait
+for acknowledgment; failures remain retryable. Loading more keeps existing rows
+visible, and realtime updates refresh the inbox or offer a Show updates button
+while someone is searching or selecting. Details support Android Back and Escape.
+Notification preferences open the existing account settings dialog.
+
+The backend `/notifications` endpoint accepts `q`, `status`, `audience`, `since`, `before`,
+`sort`, `page`, and `limit`. `since` is inclusive and `before` is exclusive, so
+the date tabs use the device's local midnight boundaries. Its `total` is filtered;
+`totalCount` and `unreadCount`
+cover the user's entire accessible inbox. `/notifications/read` accepts either
+`{ ids, read }` (up to 100 selected notices) or `{ all: true }` for the entire
+inbox. Notification records are shared; read receipts belong to each user.
+
+Run `npm run test:notifications` for the mocked-native browser suite and responsive
+screenshots in `artifacts/notifications-*.png`. Backend integration coverage is in
+`../backend/tests/notifications.test.ts`. Rebuild the app bundle after UI edits.
 
 ## Themes and premium appearance
 

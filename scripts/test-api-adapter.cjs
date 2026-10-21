@@ -432,6 +432,24 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('POST', '/notifications/read', {}, body => assert.deepEqual(plain(body), { ids: ['note-id'] }));
   expect('GET', '/notifications?limit=100', { items: [{ _id: 'note-id', title: 'From admin', body: 'Event tonight', read: true }] });
   assert.equal((await api.readNotifications(['note-id'])).items[0].read, true);
+  const noteSince = '2026-10-01T00:00:00.000Z';
+  expect('GET', `/notifications?limit=20&page=2&q=event%20%26%20music&status=unread&audience=personal&since=${encodeURIComponent(noteSince)}&sort=oldest`, {
+    items: [{ _id: 'personal-note', userId: 'member-id', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince }],
+    total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20,
+  });
+  const filteredNotes = await api.notifications({ page: 2, q: 'event & music', status: 'unread', audience: 'personal', since: noteSince, sort: 'oldest' });
+  assert.deepEqual(plain(filteredNotes), { items: [{ id: 'personal-note', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince, audience: 'personal' }], total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20 });
+  assert.equal(adapters.notificationsFrom({ items: [{ _id: 'global-note', userId: null }] }).items[0].audience, 'announcements');
+  const noteBefore = '2026-10-02T00:00:00.000Z';
+  expect('GET', `/notifications?limit=20&since=${encodeURIComponent(noteSince)}&before=${encodeURIComponent(noteBefore)}`, { items: [], total: 0, totalCount: 40, unreadCount: 25, page: 1, limit: 20 });
+  assert.equal((await api.notifications({ since: noteSince, before: noteBefore })).items.length, 0, 'A bounded date tab sends its inclusive start and exclusive end to the API');
+  expect('GET', `/notifications?limit=20&before=${encodeURIComponent(noteSince)}`, { items: [], total: 0, totalCount: 40, unreadCount: 25, page: 1, limit: 20 });
+  await api.notifications({ before: noteSince });
+  for (const input of [{ ids: ['note-id'], read: false }, { all: true, read: true }]) {
+    expect('POST', '/notifications/read', { count: 1, unreadCount: 3, totalCount: 5 }, body => assert.deepEqual(plain(body), input));
+    assert.deepEqual(plain(await api.updateNotificationRead(input)), { count: 1, unreadCount: 3, totalCount: 5 });
+  }
+  for (const response of [{}, { count: 1, unreadCount: -1, totalCount: 5 }, { count: 1, unreadCount: 6, totalCount: 5 }]) assert.throws(() => adapters.notificationReadFrom(response), /notification status could not be confirmed/);
   const giftId = '0123456789abcdef01234567', packId = '1123456789abcdef01234567';
   expect('GET', '/gifts?limit=100', { items: [{ _id: giftId, name: 'Rose', emoji: 'rose', coins: 25 }] });
   expect('GET', '/coins/packs', { items: [{ _id: packId, name: 'Starter', coins: 100, pricePaise: 9900 }], paymentsAvailable: true });
@@ -536,6 +554,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const giftCount=events.filter(event=>event.type==='gift.received').length;
   socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
+  for (const event of ['notification:new', 'notifications:read']) {
+    const beforeNotification = events.length;
+    socket.emitServer(event, { userId: 'member-id', title: 'Socket data does not populate the inbox', unreadCount: 900 });
+    assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, ...(event === 'notification:new' ? [{ type: 'home.updated', data: {} }] : [])], 'Notification socket signals refresh authenticated data without trusting payload counts or text');
+  }
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'accepted', kind: 'video', coinsPerMinute: 60 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.connected', data: { callId: 'paid-call', initiator: true, peerId: 'host-id', voice: false, rate: 60 } }, 'A paid call carries its price');
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged: 150, endReason: 'out_of_coins' });

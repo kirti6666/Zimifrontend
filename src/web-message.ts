@@ -32,6 +32,20 @@ const phoneNumber = (d: Record<string, unknown>) => typeof d.phone === "string" 
   (d.dialCode === undefined || (typeof d.dialCode === "string" && /^\+[1-9]\d{0,2}$/.test(d.dialCode) && d.phone.startsWith(d.dialCode)));
 const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
 const voiceClientId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
+const notificationIds = (value: unknown) => Array.isArray(value) && value.length > 0 && value.length <= 100 && value.every(identifier) && new Set(value).size === value.length;
+const isoTimestamp = (value: unknown) => typeof value === "string" && value.length <= 40 &&
+  /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value) &&
+  Number.isFinite(Date.parse(value)) && new Date(`${value.slice(0, 10)}T00:00:00.000Z`).toISOString().slice(0, 10) === value.slice(0, 10);
+const notificationQuery = (data: Record<string, unknown>) => Object.keys(data).every(key => ["page", "limit", "q", "status", "audience", "since", "before", "sort", "requestId"].includes(key)) &&
+  (data.page === undefined || (Number.isInteger(data.page) && Number(data.page) >= 1 && Number(data.page) <= 10000)) &&
+  (data.limit === undefined || (Number.isInteger(data.limit) && Number(data.limit) >= 1 && Number(data.limit) <= 100)) &&
+  (data.q === undefined || (typeof data.q === "string" && data.q.length <= 100)) &&
+  (data.status === undefined || ["all", "unread", "read"].includes(String(data.status))) &&
+  (data.audience === undefined || ["all", "personal", "announcements"].includes(String(data.audience))) &&
+  (data.sort === undefined || ["newest", "oldest"].includes(String(data.sort))) &&
+  (data.since === undefined || isoTimestamp(data.since)) &&
+  (data.before === undefined || isoTimestamp(data.before)) &&
+  (data.since === undefined || data.before === undefined || Date.parse(data.since as string) < Date.parse(data.before as string));
 const settingsPatch = (data: Record<string, unknown>) => {
   const keys = Object.keys(data).filter(key => key !== "requestId");
   return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city"].includes(key)) &&
@@ -58,11 +72,13 @@ export function parseWebMessage(raw: string): WebMessage | null {
   let valid = false;
   switch (message.type) {
     case "ready": valid = boolean(d.demo); break;
+    case "app.exit.request": valid = Object.keys(d).length === 0; break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
     case "connection.check": case "wallet.load": case "transactions.load": valid = Object.keys(d).length === 0; break;
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
-    case "notifications.load": case "catalog.load": case "rtc.config": valid = true; break;
+    case "notifications.load": valid = notificationQuery(d); break;
+    case "catalog.load": case "rtc.config": valid = true; break;
     case "themes.load": valid = Object.keys(d).length === 0; break;
     case "themes.select": valid = typeof d.themeId === "string" && /^[a-f\d]{24}$/i.test(d.themeId) && Object.keys(d).every(key => ["themeId", "requestId"].includes(key)); break;
     case "themes.premium.checkout": valid = idempotency(d.idempotencyKey) && Object.keys(d).every(key => key === "idempotencyKey"); break;
@@ -73,7 +89,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "privacy.save": valid = privacyPatch(d); break;
     case "blocked.load": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "block.set": valid = identifier(d.id) && boolean(d.blocked); break;
-    case "notifications.read": valid = Array.isArray(d.ids) && d.ids.length > 0 && d.ids.length <= 100 && d.ids.every(identifier); break;
+    case "notifications.read": valid = notificationIds(d.ids) && Object.keys(d).every(key => ["ids", "requestId"].includes(key)); break;
+    case "notifications.unread": valid = notificationIds(d.ids) && d.requestId !== undefined && Object.keys(d).every(key => ["ids", "requestId"].includes(key)); break;
+    case "notifications.readAll": valid = d.requestId !== undefined && Object.keys(d).every(key => key === "requestId"); break;
     case "call.match": valid = d.category === undefined || category(d.category); break;
     case "rtc.signal": valid = identifier(d.callId) && rtcSignal(d); break;
     case "stream.signal": valid = identifier(d.streamId) && identifier(d.to) && rtcSignal(d); break;

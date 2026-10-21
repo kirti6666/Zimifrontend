@@ -19,7 +19,7 @@ const themeCatalog = (premium = false, selectedThemeId = '0000000000000000000000
 const plain = value => JSON.parse(JSON.stringify(value));
 
 function harness(initialAppState = 'active', initialLink = null) {
-  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [], backs = [];
+  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
@@ -85,7 +85,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { BackHandler: { addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
@@ -106,7 +106,7 @@ function harness(initialAppState = 'active', initialLink = null) {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, connection };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, alerts, exits, connection };
 }
 
 test('connection status follows the current WebView and retry never reloads account data', async () => {
@@ -656,7 +656,7 @@ test('retiring a document, account or bridge prevents photo saves and stale conf
   }
 });
 
-test('Android Back closes only the trusted active photo viewer and resets on reload or failure', () => {
+function nativeAppHarness() {
   const h = harness(), tree = h.load('App.tsx').default();
   const findWeb = node => {
     if (!node || typeof node !== 'object') return null;
@@ -666,20 +666,63 @@ test('Android Back closes only the trusted active photo viewer and resets on rel
   };
   const web = findWeb(tree), received = [];
   web.props.ref.current = { injectJavaScript: script => vm.runInNewContext(script, { window: { zimiReceive: raw => received.push(JSON.parse(raw)) } }), reload() {} };
-  const send = (data, url = 'https://aurora.localhost/') => web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type: 'chat.photoViewer', data }) } });
-  assert.equal(h.backs[0](), false, 'Normal app Back behavior is unchanged');
-  send({ open: true }, 'https://evil.test/'); assert.equal(h.backs[0](), false);
-  send({ open: 'yes' }); assert.equal(h.backs[0](), false);
-  send({ open: true });
+  const send = (type, data = {}, url = 'https://aurora.localhost/') => web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type, data }) } });
+  const close = () => { h.effects.forEach(cleanup => cleanup?.()); h.bridge.close(); };
+  return { h, web, received, send, close };
+}
+
+test('Android Back forwards every press to the ready trusted document and resets on loading or failure', async () => {
+  const { h, web, received, send, close } = nativeAppHarness();
+  assert.equal(h.backs[0](), false, 'An unready document cannot intercept Back');
+  send('ready', { demo: false }, 'https://evil.test/'); assert.equal(h.backs[0](), false);
+  send('ready', { demo: 'false' }); assert.equal(h.backs[0](), false);
+  send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), false, 'Photo state cannot establish readiness');
+  send('ready', { demo: false });
   for (const listener of h.activities) listener('inactive');
-  assert.equal(h.backs[0](), true, 'A permission dialog does not discard photo viewer state');
+  assert.equal(h.backs[0](), true, 'Temporary native dialogs do not discard document readiness');
   assert.deepEqual(received.at(-1), { type: 'app.back', data: {} });
-  assert.equal(h.backs[0](), false, 'The close event consumes only one Back press');
-  send({ open: true }); send({ open: false }); assert.equal(h.backs[0](), false);
-  for (const reset of [() => web.props.onLoadStart(), () => web.props.onError({ nativeEvent: { description: 'fixture failure' } }), () => web.props.onRenderProcessGone()]) {
-    send({ open: true }); reset(); assert.equal(h.backs[0](), false, 'A retired WebView cannot intercept Back');
+  assert.equal(h.backs[0](), true, 'Repeated presses must navigate instead of falling through to Android exit');
+  send('chat.photoViewer', { open: false }); assert.equal(h.backs[0](), true, 'Back works outside photo viewers');
+  assert.equal(received.filter(message => message.type === 'app.back').length, 3);
+  for (const reset of [() => web.props.onLoadStart(), () => web.props.onError({ nativeEvent: { description: 'fixture failure' } }), () => web.props.onRenderProcessGone(), () => web.props.onContentProcessDidTerminate()]) {
+    reset(); assert.equal(h.backs[0](), false, 'A retired WebView cannot intercept Back');
+    send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), false);
+    send('ready', { demo: false }); assert.equal(h.backs[0](), true, 'The new document restores navigation after ready');
   }
-  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close(); assert.equal(h.backs.length, 0);
+  assert.equal(h.exits.length, 0, 'Native Back never exits a ready app directly');
+  await settle(); close(); assert.equal(h.backs.length, 0);
+});
+
+test('app exit requests require valid trusted readiness and one explicit native confirmation', async () => {
+  const { h, web, send, close } = nativeAppHarness();
+  for (const data of [{ confirmed: true }, { requestId: 1 }, [], null, { route: 'home' }]) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.exit.request', data })), null);
+  }
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.exit.request', data: {} })));
+  h.bridge.handle({ type: 'app.exit.request', data: {} }); await settle();
+  assert.equal(h.calls.length, 0, 'The API bridge leaves exit requests to the native shell');
+  send('app.exit.request'); assert.equal(h.alerts.length, 0, 'Ignore requests before document readiness');
+  send('ready', { demo: false });
+  send('app.exit.request', {}, 'https://evil.test/');
+  send('app.exit.request', { confirmed: true }); assert.equal(h.alerts.length, 0);
+  send('app.exit.request'); send('app.exit.request');
+  assert.equal(h.alerts.length, 1, 'Repeated Back responses do not stack confirmation dialogs');
+  assert.equal(h.alerts[0][0], 'Close Zimi Live?');
+  assert.deepEqual(plain(h.alerts[0][2].map(button => button.text)), ['Cancel', 'Close app']);
+  assert.equal(h.exits.length, 0);
+  h.alerts[0][2][0].onPress(); assert.equal(h.exits.length, 0, 'Cancel keeps the app open');
+  send('app.exit.request'); assert.equal(h.alerts.length, 2);
+  h.alerts[1][3].onDismiss();
+  send('app.exit.request'); assert.equal(h.alerts.length, 3, 'Dismissing the native dialog allows another request');
+  h.alerts[2][2][1].onPress(); h.alerts[2][2][1].onPress();
+  assert.equal(h.exits.length, 1, 'Only an explicit Close app press exits, once');
+  send('app.exit.request'); const stale = h.alerts.at(-1);
+  web.props.onLoadStart(); stale[2][1].onPress(); assert.equal(h.exits.length, 1, 'Reload invalidates old confirmations');
+  send('app.exit.request'); assert.equal(h.alerts.length, 4);
+  send('ready', { demo: false }); send('app.exit.request'); assert.equal(h.alerts.length, 5, 'A new document can request its own confirmation');
+  stale[2][0].onPress(); send('app.exit.request'); assert.equal(h.alerts.length, 5, 'Old callbacks cannot clear a newer confirmation');
+  h.alerts.at(-1)[2][1].onPress(); assert.equal(h.exits.length, 2);
+  await settle(); close();
 });
 
 test('voice messages validate recording limits and reject arbitrary upload metadata', () => {
@@ -1584,6 +1627,130 @@ test('profile settings and privacy messages accept only supported preferences, n
   for (const message of invalid) { assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)), null); h.bridge.handle(message); }
   for (const data of [{ matchCategory: null }, { appearance: 'system' }, { languages: ['English', 'हिन्दी'] }, { city: '' }]) assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.settings.save', data })));
   await settle(); assert.equal(h.calls.length, 0); h.bridge.close();
+});
+
+test('notification filters and mutations reject malformed data before making requests', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  for (const data of [{ page: 0 }, { page: 1.5 }, { page: 10001 }, { limit: 0 }, { limit: 101 }, { q: 'x'.repeat(101) }, { status: 'archived' }, { audience: 'admin' }, { since: 'yesterday' }, { since: '2026-99-99T00:00:00Z' }, { since: '2026-02-31T00:00:00Z' }, { sort: 'random' }, { userId: 'other-user' }, { requestId: -1 }]) {
+    const message = { type: 'notifications.load', data }; assert.equal(parse(message), null); h.bridge.handle(message);
+  }
+  for (const type of ['notifications.read', 'notifications.unread']) {
+    for (const ids of [[], ['../note'], ['note', 'note'], Array.from({ length: 101 }, (_, i) => `note-${i}`)]) assert.equal(parse({ type, data: { ids, requestId: 1 } }), null);
+    assert.equal(parse({ type, data: { ids: ['note'], requestId: 1, userId: 'other-user' } }), null);
+  }
+  assert.equal(parse({ type: 'notifications.unread', data: { ids: ['note'] } }), null);
+  assert.equal(parse({ type: 'notifications.readAll', data: {} }), null);
+  assert.equal(parse({ type: 'notifications.readAll', data: { requestId: 1, ids: ['note'] } }), null);
+  assert.ok(parse({ type: 'notifications.read', data: { ids: ['note'] } }), 'Legacy read messages remain valid');
+  assert.ok(parse({ type: 'notifications.load', data: { page: 2, limit: 20, q: 'music', status: 'unread', audience: 'personal', since: '2026-10-01T00:00:00.000Z', sort: 'oldest', requestId: 4 } }));
+  assert.ok(parse({ type: 'notifications.load', data: { since: '2026-10-01T05:30:00+05:30' } }));
+  for (const data of [
+    { before: 'yesterday' }, { before: '2026-02-31T00:00:00Z' },
+    { since: '2026-10-02T00:00:00Z', before: '2026-10-01T00:00:00Z' },
+    { since: '2026-10-01T00:00:00Z', before: '2026-10-01T05:30:00+05:30' },
+  ]) { const message = { type: 'notifications.load', data }; assert.equal(parse(message), null); h.bridge.handle(message); }
+  assert.ok(parse({ type: 'notifications.load', data: { before: '2026-10-01T00:00:00.000Z' } }));
+  assert.ok(parse({ type: 'notifications.load', data: { since: '2026-10-01T05:30:00+05:30', before: '2026-10-02T00:00:00.000Z' } }));
+  assert.equal(h.calls.length, 0); h.bridge.close();
+});
+
+test('notification queries correlate load states and discard stale filters, accounts and documents', async () => {
+  const h = harness(), old = deferred(), next = deferred();
+  h.overrides.notifications = query => query.status === 'read' ? old.promise : next.promise;
+  h.bridge.handle({ type: 'notifications.load', data: { status: 'read', page: 1, requestId: 1 } });
+  h.bridge.handle({ type: 'notifications.load', data: { status: 'unread', page: 2, requestId: 2 } });
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'notifications').map(call => call.args)), [[{ status: 'read', page: 1 }], [{ status: 'unread', page: 2 }]], 'Request metadata is not sent to the API');
+  old.resolve({ items: [{ id: 'old' }] }); await settle(); assert.equal(h.find('data.notifications').length, 0);
+  next.resolve({ items: [{ id: 'new' }], page: 2 }); await settle();
+  assert.equal(h.find('data.notifications')[0].data.requestId, 2); assert.equal(h.find('data.notifications')[0].data.items[0].id, 'new');
+  assert.deepEqual(h.find('data.loading').map(event => [event.data.requestId, event.data.page, event.data.loading]), [[1, 1, true], [2, 2, true], [2, 2, false]]);
+  const lateDocument = deferred(); h.overrides.notifications = () => lateDocument.promise;
+  h.bridge.handle({ type: 'notifications.load', data: { requestId: 3 } }); h.bridge.documentLoading(); lateDocument.resolve({ items: [{ id: 'retired-document' }] }); await settle();
+  assert.equal(h.find('data.notifications').length, 1);
+  const lateAccount = deferred(); h.overrides.notifications = () => lateAccount.promise;
+  h.bridge.handle({ type: 'notifications.load', data: { requestId: 4 } }); await h.session.clearToken(); lateAccount.resolve({ items: [{ id: 'retired-account' }] }); await settle();
+  assert.equal(h.find('data.notifications').length, 1); h.bridge.close();
+});
+
+test('global notification refresh preserves the owned filter and request while refreshing from page one', async () => {
+  const h = harness(), older = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'data.reload', data: {} }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'notifications').at(-1).args), [null], 'Legacy background loads have no filter before the inbox owns one');
+  h.overrides.notifications = query => query?.page === 3 ? older.promise : { items: [{ id: 'matching-note' }], page: query?.page || 1, unreadCount: 4 };
+  const query = { q: 'my update', status: 'unread', audience: 'personal', since: '2026-10-01T00:00:00.000Z', before: '2026-10-02T00:00:00.000Z', sort: 'oldest', page: 3, limit: 20 };
+  h.bridge.handle({ type: 'notifications.load', data: { ...query, requestId: 15 } });
+  h.bridge.handle({ type: 'data.reload', data: {} }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'notifications').at(-1).args), [{ ...query, page: 1 }]);
+  assert.equal(h.find('data.notifications').at(-1).data.requestId, 15); assert.equal(h.find('data.notifications').at(-1).data.page, 1);
+  const states = h.find('data.loading').filter(event => event.data.resource === 'notifications').slice(-2);
+  assert.deepEqual(states.map(event => [event.data.requestId, event.data.page, event.data.loading]), [[15, 1, true], [15, 1, false]]);
+  const delivered = h.find('data.notifications').length;
+  older.resolve({ items: [{ id: 'old-page' }], page: 3 }); await settle();
+  assert.equal(h.find('data.notifications').length, delivered, 'The older page cannot append after background refresh restarts the filter'); h.bridge.close();
+});
+
+test('notification query ownership is cleared by document, logout and account replacement', async () => {
+  for (const retirement of ['document', 'logout', 'account']) {
+    const h = harness(); await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({ type: 'notifications.load', data: { q: 'private previous search', status: 'read', requestId: 20 } }); await settle();
+    if (retirement === 'document') h.bridge.documentLoading();
+    else if (retirement === 'logout') { h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); await h.session.setSessionTokens(tokenPair('bob')); }
+    else { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('bob')); }
+    h.bridge.handle({ type: 'data.reload', data: {} }); await settle();
+    assert.deepEqual(plain(h.calls.filter(call => call.name === 'notifications').at(-1).args), [null], `${retirement} retires the prior inbox query`);
+    assert.equal(h.find('data.notifications').at(-1).data.requestId, undefined); h.bridge.close();
+  }
+});
+
+test('notification load failures stay correlated instead of sending an unkeyed stale search error', async () => {
+  const h = harness(); h.overrides.notifications = () => { throw new h.ApiError('Prior search unavailable', 503); };
+  h.bridge.handle({ type: 'notifications.load', data: { q: 'previous query', requestId: 27 } }); await settle();
+  const failed = h.find('data.loading').at(-1).data;
+  assert.equal(failed.requestId, 27); assert.equal(failed.error, 'Prior search unavailable'); assert.equal(failed.loading, false);
+  assert.equal(h.find('operation.error').length, 0, 'A debouncing UI can ignore the retired request without a generic error ending its new skeleton');
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'notifications.load', data: { q: 'owned retry', requestId: 28 } }); await settle();
+  h.bridge.handle({ type: 'data.reload', data: {} }); await settle();
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'notifications').at(-1).data.requestId, 28);
+  assert.equal(h.find('operation.error').length, 0, 'Background failures keep the same inbox request correlation');
+  assert.ok(h.find('data.error').length, 'Global refresh can still report an aggregate failure');
+  h.bridge.handle({ type: 'notifications.load', data: {} }); await settle();
+  assert.equal(h.find('operation.error').at(-1).data.action, 'notifications.load', 'Legacy messages retain generic error behavior'); h.bridge.close();
+});
+
+test('notification read actions wait for acknowledgement, preserve write failures and keep inbox loads independent', async () => {
+  const h = harness(), write = deferred(); h.overrides.updateNotificationRead = () => write.promise;
+  const message = { type: 'notifications.unread', data: { ids: ['note'], requestId: 5 } };
+  h.bridge.handle(message); h.bridge.handle(message); await settle();
+  assert.equal(h.count('updateNotificationRead'), 1); assert.equal(h.find('notifications.saved').length, 0);
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'notifications').length, 0);
+  write.resolve({ count: 1, unreadCount: 3, totalCount: 8 }); await settle();
+  assert.deepEqual(plain(h.find('notifications.saved')[0].data), { ids: ['note'], read: false, requestId: 5, count: 1, unreadCount: 3, totalCount: 8 });
+  assert.equal(h.count('home'), 1); assert.equal(h.count('notifications'), 0, 'The web inbox owns its current query');
+  h.overrides.updateNotificationRead = () => ({ count: 3, unreadCount: 0, totalCount: 8 });
+  h.bridge.handle({ type: 'notifications.readAll', data: { requestId: 6 } }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'updateNotificationRead').at(-1).args), [{ all: true, read: true }]);
+  assert.equal(h.find('notifications.saved').at(-1).data.all, true);
+  h.overrides.updateNotificationRead = () => { throw new h.ApiError('Notification update unavailable', 503); };
+  h.bridge.handle({ type: 'notifications.read', data: { ids: ['note'], requestId: 7 } }); await settle();
+  assert.deepEqual(plain(h.find('notifications.error')[0].data), { requestId: 7, message: 'Notification update unavailable' });
+  assert.equal(h.find('operation.error').length, 0); assert.equal(h.find('data.loading').filter(event => event.data.resource === 'notifications').length, 0);
+  h.overrides.readNotifications = () => ({ items: [{ id: 'legacy', read: true }], unreadCount: 0 });
+  h.bridge.handle({ type: 'notifications.read', data: { ids: ['legacy'] } }); await settle();
+  assert.equal(h.count('readNotifications'), 1); assert.equal(h.find('data.notifications').at(-1).data.items[0].id, 'legacy'); h.bridge.close();
+});
+
+test('notification mutation results and failures never leak to replacement documents or accounts', async () => {
+  for (const retirement of ['document', 'account']) {
+    for (const failure of [false, true]) {
+      const h = harness(), write = deferred(); h.overrides.updateNotificationRead = () => write.promise;
+      h.bridge.handle({ type: 'notifications.read', data: { ids: ['note'], requestId: 8 } });
+      if (retirement === 'document') h.bridge.documentLoading(); else await h.session.clearToken();
+      if (failure) write.reject(new h.ApiError('Old error', 503)); else write.resolve({ count: 1, unreadCount: 0, totalCount: 1 });
+      await settle(); assert.equal(h.find('notifications.saved').length, 0); assert.equal(h.find('notifications.error').length, 0); assert.equal(h.count('home'), 0); h.bridge.close();
+    }
+  }
 });
 
 test('public profiles and posts validate target IDs and keep target/request metadata through loading and failure', async () => {

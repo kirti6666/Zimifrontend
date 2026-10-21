@@ -6,7 +6,7 @@ import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnect
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
@@ -23,13 +23,17 @@ import { approvedHost } from "./host-access";
 /* Screens -> app. */
 export type WebMessage =
   | { type: "ready"; data: { demo: boolean } }
+  | { type: "app.exit.request"; data: Record<string, never> }
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
   | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
-  | { type: "notifications.load" | "catalog.load" | "rtc.config"; data: Record<string, never> }
-  | { type: "notifications.read"; data: { ids: string[] } }
+  | { type: "catalog.load" | "rtc.config"; data: Record<string, never> }
+  | { type: "notifications.load"; data: NotificationsQuery & { requestId?: number } }
+  | { type: "notifications.read"; data: { ids: string[]; requestId?: number } }
+  | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
+  | { type: "notifications.readAll"; data: { requestId: number } }
   | { type: "call.match"; data: { category?: string } }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string } }
@@ -111,7 +115,10 @@ export type AppMessage =
   | { type: "data.home"; data: HomeData }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
   | { type: "home.updated"; data: Record<string, never> }
-  | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> }
+  | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> & { requestId?: number } }
+  | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
+  | { type: "notifications.error"; data: { requestId: number; message: string } }
+  | { type: "notifications.changed"; data: Record<string, never> }
   | { type: "data.catalog"; data: Catalog }
   | { type: "data.themes"; data: ThemeCatalog }
   | { type: "theme.default"; data: AppTheme }
@@ -214,6 +221,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let activeHostCall = false;
   let publishingAt: number | undefined;
   let homeQuery: HomeQuery = {};
+  let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
   let streamRequestsRevision = 0;
@@ -371,9 +379,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
     threadPermissions.set(peerId, { canSend: data.canSend ?? accountRole === "user", reason: data.sendDisabledReason });
   };
   const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number } = {}) => {
-    const version = epoch, sessionVersion = getSessionVersion(), requestId = (readRequests.get(resource) ?? 0) + 1;
+    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
-    const latest = () => current(version) && getSessionVersion() === sessionVersion && readRequests.get(resource) === requestId;
+    const latest = () => current(version) && getSessionVersion() === sessionVersion && documentRevision === document && readRequests.get(resource) === requestId;
     let failure: string | undefined;
     emit({ type: "data.loading", data: { resource, loading: true, ...context } });
     try {
@@ -390,7 +398,29 @@ export function createBridge(post: (msg: AppMessage) => void) {
     homeQuery = query;
     return readResource("home", () => api.home(query), data => { rememberHomePeers(data); emit({ type: "data.home", data }); }, { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}) });
   };
-  const loadNotifications = () => readResource("notifications", () => api.notifications(), data => emit({ type: "data.notifications", data }));
+  const loadNotifications = (query?: NotificationsQuery, requestId?: number, ownQuery = false) => {
+    if (notificationQueryOwner && (!current(notificationQueryOwner.epoch) || notificationQueryOwner.sessionVersion !== getSessionVersion() || notificationQueryOwner.document !== documentRevision)) notificationQueryOwner = undefined;
+    if (ownQuery) notificationQueryOwner = { query: { ...query }, requestId, epoch, sessionVersion: getSessionVersion(), document: documentRevision };
+    else if (notificationQueryOwner && query === undefined && requestId === undefined) {
+      // Global retries must refresh the visible filter, not replace it with an
+      // uncorrelated all-inbox response that also retires its in-flight read.
+      query = { ...notificationQueryOwner.query, page: 1 };
+      requestId = notificationQueryOwner.requestId;
+    }
+    return readResource("notifications", () => api.notifications(query), data => emit({ type: "data.notifications", data: { ...data, ...(requestId !== undefined ? { requestId } : {}) } }), { page: query?.page ?? 1, ...(requestId !== undefined ? { requestId } : {}) });
+  };
+  const updateNotifications = async (input: NotificationReadPatch, requestId: number) => {
+    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
+    try {
+      const result = await api.updateNotificationRead(input);
+      if (!applicable()) return;
+      emit({ type: "notifications.saved", data: { ...input, ...result, requestId } });
+      quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+    } catch (error) {
+      if (applicable()) emit({ type: "notifications.error", data: { requestId, message: errorMessage(error) } });
+    }
+  };
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
   // The next launch paints this account's theme before the catalog arrives.
   const rememberTheme = (catalog: ThemeCatalog) => {
@@ -598,7 +628,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; notificationQueryOwner = undefined; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -649,8 +679,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const q = msg.data.q, page = msg.data.page ?? 1;
         return readResource("search", () => api.home({ q, mode: "popular", page }), data => { rememberHomePeers(data); emit({ type: "data.search", data: { q, hosts: data.hosts, total: data.total, page: data.page } }); }, { q, page });
       }
-      case "notifications.load": return loadNotifications();
-      case "notifications.read": return readResource("notifications", () => api.readNotifications(msg.data.ids), data => emit({ type: "data.notifications", data }));
+      case "notifications.load": {
+        const { requestId, ...query } = msg.data;
+        return loadNotifications(Object.keys(query).length ? query : undefined, requestId, requestId !== undefined || Object.keys(query).length > 0);
+      }
+      case "notifications.read": return msg.data.requestId === undefined
+        ? readResource("notifications", () => api.readNotifications(msg.data.ids), data => emit({ type: "data.notifications", data }))
+        : updateNotifications({ ids: msg.data.ids, read: true }, msg.data.requestId);
+      case "notifications.unread": return updateNotifications({ ids: msg.data.ids, read: false }, msg.data.requestId);
+      case "notifications.readAll": return updateNotifications({ all: true, read: true }, msg.data.requestId);
       case "catalog.load": return loadCatalog();
       case "themes.load": return loadThemes();
       case "themes.select": {
@@ -803,7 +840,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; pendingPurchases.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
+          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; notificationQueryOwner = undefined; pendingPurchases.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
@@ -819,7 +856,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; pendingPurchases.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; notificationQueryOwner = undefined; pendingPurchases.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -1007,7 +1044,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "", reply: sent?.reply ?? null } }); quietly(loadChats(), "chats.reload"); }
         return;
       }
-      case "chat.photoViewer": return; // The native shell owns Android Back handling.
+      case "app.exit.request": return; // The native shell owns exit confirmation.
+      case "chat.photoViewer": return; // Accepted for compatibility; the page owns Back navigation.
       case "chat.photoDownload": {
         const { to, id, requestId } = msg.data;
         const sessionVersion = getSessionVersion(), revision = documentRevision;
@@ -1150,16 +1188,20 @@ export function createBridge(post: (msg: AppMessage) => void) {
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; },
+    documentLoading: () => { webReady = false; documentRevision++; notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : ""}`;
+      const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
+      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {
         if (!current(version)) return;
+        // Its correlated data.loading failure already reached the current
+        // query. An unkeyed error could finish a newer debounced search.
+        if (msg.type === "notifications.load" && msg.data.requestId !== undefined) return;
         const context = msg.type === "gift.send" ? { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "chat.voice" ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }

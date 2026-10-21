@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -104,9 +104,16 @@ export function homeFrom(value: unknown): HomeData {
     categories: stringList(data.categories), broadcasterCount: count(data.broadcasterCount), availableCount: count(data.availableCount),
     speedMatchEnabled: data.speedMatchEnabled === true, bonus: data.bonus ? missionFrom(data.bonus) : null, unreadCount: count(data.unreadNotifications) };
 }
-export function notificationsFrom(value: unknown): { items: AppNotification[]; unreadCount: number } {
-  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt) }));
-  return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length };
+export function notificationsFrom(value: unknown): NotificationsData {
+  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: idOf(note.userId) ? "personal" as const : "announcements" as const }));
+  return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length,
+    total: typeof data.total === "number" ? count(data.total) : list.length, totalCount: typeof data.totalCount === "number" ? count(data.totalCount) : typeof data.total === "number" ? count(data.total) : list.length,
+    page: count(data.page) || 1, limit: count(data.limit) || 100 };
+}
+export function notificationReadFrom(value: unknown): NotificationReadResult {
+  const data = record(value);
+  if ([data.count, data.unreadCount, data.totalCount].some(value => !Number.isSafeInteger(value) || Number(value) < 0) || Number(data.unreadCount) > Number(data.totalCount)) throw new ApiError("Your notification status could not be confirmed. Refresh and try again.", 502);
+  return { count: data.count as number, unreadCount: data.unreadCount as number, totalCount: data.totalCount as number };
 }
 export function privacyFrom(value: unknown): PrivacySettings {
   const data = record(value);

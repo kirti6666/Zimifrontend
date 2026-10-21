@@ -3029,6 +3029,8 @@ button.gpill[onclick]{cursor:pointer}
 .zi-icon[data-icon=send]{--zi-tap:zi-fly;--zi-time:520ms}
 .zi-icon[data-icon=download]{--zi-tap:zi-nudge-down;--zi-time:380ms}
 .zi-icon[data-icon=photoClose]{--zi-tap:zi-turn;--zi-turn:90deg;--zi-time:320ms}
+.zi-icon[data-icon=close]{--zi-tap:zi-turn;--zi-turn:90deg;--zi-time:320ms}
+.zi-icon:is([data-icon=check],[data-icon=checks]){--zi-tap:zi-glow;--zi-time:360ms}
 .zi-icon:is([data-icon=zoomIn],[data-icon=zoomOut],[data-icon=expand]){--zi-tap:zi-glow;--zi-time:360ms}
 .zi-icon:is([data-icon=stop],[data-icon=playFill],[data-icon=pause]){--zi-tap:zi-glow;--zi-time:360ms}
 .zi-icon[data-icon=up]{--zi-tap:zi-rise;--zi-time:520ms}
@@ -3776,6 +3778,94 @@ button.gpill[onclick]{cursor:pointer}
 @media(max-width:350px){.zw-coins{padding-left:14px;padding-right:14px}.zw-wallet{padding:16px}.zw-wallet-main>svg{width:62px;height:62px}.zw-wallet-main p{max-width:150px;line-height:1.6}.zw-gift-balance small{display:none}:root[data-theme-id] .zh-sheet.zw-sheet{padding-left:14px;padding-right:14px}.zw-embedded{padding-left:0;padding-right:0}.zw-buy{font-size:12px}.zw-buy>span{font-size:11px}}
 
 .zw-recovery{padding:14px;border:1px solid var(--line);border-radius:14px;margin:12px 0;background:var(--raised)}.zw-recovery p{font-size:12px;line-height:1.6;margin:0 0 10px;color:var(--muted)}.zw-recovery button{font-size:12px;min-height:40px}.zw-history>svg:last-child{transform:rotate(-90deg)}
+/* A quiet inbox: compact date tabs and one readable list. Advanced controls
+   are disclosed only when requested. All colors follow the account theme. */
+.zn-page{max-width:680px;margin:0 auto;padding:10px 18px 32px;color:var(--ink);font:13px/1.5 var(--theme-font,Inter,sans-serif);font-size:calc(13px * var(--theme-font-scale,1))}
+.zn-page *,.zn-dialog *{box-sizing:border-box}
+.zn-page button,.zn-dialog button{font:inherit;cursor:pointer;color:inherit}
+.zn-page button:disabled,.zn-dialog button:disabled{opacity:.4;cursor:default}
+.zn-page button:focus-visible,.zn-page input:focus-visible,.zn-page select:focus-visible,.zn-dialog button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.zn-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;margin-bottom:5px}
+.zn-period-tabs{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.zn-period-tabs button{border:0;border-radius:18px;background:var(--raised);padding:7px 12px;min-height:34px;font-size:.8em;font-weight:500}
+.zn-period-tabs button.on{background:var(--ink);color:var(--canvas)}
+.zn-filter-toggle{display:grid;place-items:center;position:relative;flex:none;width:42px;height:44px;background:transparent;border:0;border-radius:12px;color:var(--muted)!important}
+.zn-filter-toggle.active,.zn-filter-toggle[aria-expanded=true]{color:var(--accent-ink)!important;background:var(--raised)}
+.zn-filter-toggle i{position:absolute;top:6px;right:5px;width:5px;height:5px;border-radius:50%;background:var(--accent-ink)}
+.zn-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px;color:var(--muted);font-size:.77em;padding:0 3px;margin-bottom:8px}
+.zn-summary>div{display:flex;align-items:center;gap:14px}
+.zn-summary button{border:0;background:transparent;min-height:40px;font-size:inherit;padding:4px 0;color:var(--muted)}
+.zn-summary .zn-mark-all{color:var(--accent-ink)}
+.zn-summary button:last-child{color:var(--ink)}
+:root[data-theme-id] .zn-page .zh-notification,.zn-page .zh-notification{display:flex;align-items:center;gap:0;padding:0;margin:0 0 4px;width:100%;border:0;border-radius:10px;background:transparent;color:var(--ink);text-align:left;transition:background .15s}
+:root[data-theme-id] .zn-page .zh-notification.unread,.zn-page .zh-notification.unread{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+:root[data-theme-id] .zn-page .zh-notification.zn-selected{background:color-mix(in srgb,var(--accent) 13%,var(--canvas));outline:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))}
+.zn-notice-main{display:flex;align-items:flex-start;gap:13px;flex:1;min-width:0;padding:16px 12px;border:0;background:transparent;text-align:left;border-radius:10px}
+.zn-notice-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;background:color-mix(in srgb,var(--accent) 12%,var(--canvas));color:var(--accent-ink);border-radius:50%;margin-top:2px}
+.zn-notice-content{display:block;position:relative;min-width:0;flex:1}
+.zn-notice-heading{display:flex;align-items:baseline;gap:12px;justify-content:space-between}
+.zn-page .zh-notification h3{font-size:.95em;font-weight:500;line-height:1.5;letter-spacing:0;color:var(--ink);margin:0 0 4px;overflow-wrap:anywhere}
+:root[data-theme-id] .zn-page .zh-notification h3{font-weight:500}
+:root[data-theme-id] .zn-page .zh-notification.unread h3,.zn-page .zh-notification.unread h3{font-weight:600}
+.zn-page .zh-notification p{max-width:440px;font-size:.86em;line-height:1.55;margin:0;padding-right:16px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.zn-page .zh-notification time{flex:none;font-size:.67em;font-weight:400;color:var(--muted);white-space:nowrap;line-height:1.5;margin-top:2px}
+.zn-unread-dot{position:absolute;right:3px;bottom:5px;width:5px;height:5px;background:var(--accent-ink);border-radius:50%}
+.zn-checkbox{display:flex;align-items:center;justify-content:center;flex:none;width:32px;min-height:44px;cursor:pointer;margin-left:4px}
+.zn-checkbox input{width:16px;height:16px;margin:0;accent-color:var(--accent-ink);cursor:pointer}
+.zn-checkbox+.zn-notice-main{padding-left:4px;gap:10px}
+.zn-selection-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.8em;color:var(--muted);margin:0 2px 12px}
+.zn-selection-heading button{min-height:36px;background:transparent;border:0;color:var(--accent-ink);font-size:inherit}
+.zn-selection{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;border-radius:10px;background:var(--raised);padding:8px 12px;margin:0 0 12px;font-size:.8em}
+.zn-selection strong{margin-right:auto}
+.zn-selection button{min-height:40px;border:0;background:transparent;color:var(--accent-ink);font-size:inherit}
+.zn-selection-clear{width:32px;display:grid;place-items:center}
+.zn-feedback{font-size:.8em;color:var(--accent-ink);line-height:1.6}
+.zn-feedback:not(:empty){margin:8px 3px 12px}
+.zn-inline-error,.zn-live-update{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 14px;margin:10px 0;font-size:.85em}
+.zn-inline-error p{margin:0;flex:1;line-height:1.6;color:var(--theme-danger)}
+.zn-inline-error button,.zn-live-update button,#zn-detail-status button{border:0;min-height:40px;background:transparent;color:var(--accent-ink)}
+.zn-empty{text-align:center;padding:65px 24px 45px;margin-top:5px}
+.zn-empty-icon{display:grid;place-items:center;width:62px;height:62px;background:var(--raised);border-radius:50%;color:var(--accent-ink);margin:0 auto 20px}
+.zn-empty h3{font-size:1.2em;font-weight:600;margin:0 0 10px;color:var(--ink)}
+.zn-empty p{font-size:.9em;line-height:1.8;color:var(--muted);max-width:280px;margin:0 auto 20px}
+.zn-primary{min-height:44px;padding:9px 18px;border:0;border-radius:22px;background:var(--ink);color:var(--canvas)!important;font-weight:500!important;font-size:.9em!important}
+.zn-load-more{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;border:0;border-radius:12px;background:transparent;width:100%;margin:16px 0;color:var(--accent-ink)!important;font-size:.85em!important}
+.zn-preview-note{text-align:center;color:var(--muted);font-size:.75em;margin:24px 0}
+.zn-page .zh-skeleton-row{border:0;border-radius:10px;margin:4px 0;min-height:87px;padding:16px 12px;background:transparent}
+.zn-page .zh-skeleton-avatar{width:34px;height:34px;flex-basis:34px;border-radius:50%}
+.zn-controls{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin:8px 0 14px}
+.zn-controls[hidden]{display:none}
+.zn-search{display:flex;align-items:center;gap:9px;min-height:44px;background:var(--canvas);border:1px solid var(--line);border-radius:10px;padding:0 11px;color:var(--muted)}
+.zn-search svg{flex:none}
+.zn-search input{font:inherit;font-size:.9em;min-width:0;width:100%;height:44px;border:0;outline:0;background:transparent;color:var(--ink)}
+.zn-search:focus-within{border-color:var(--accent-ink)}
+.zn-search input::placeholder{color:var(--muted);opacity:1}
+.zn-filter-label{font-size:.76em;font-weight:500;color:var(--muted);margin:15px 0 7px}
+.zn-status,.zn-audience{display:flex;flex-wrap:wrap;gap:6px}
+.zn-status button,.zn-audience button{min-height:38px;padding:7px 12px;background:var(--canvas);border:1px solid var(--line);border-radius:20px;color:var(--muted);font-size:.79em;font-weight:500}
+.zn-status button.on,.zn-audience button.on{background:var(--raised);color:var(--accent-ink);border-color:var(--accent-ink)}
+.zn-filter-row{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-top:15px}
+.zn-filter-row label{flex:1;min-width:0;display:grid;gap:6px}
+.zn-filter-row label>span{font-size:.76em;font-weight:500;color:var(--muted)}
+.zn-filter-row select{font:inherit;font-size:.84em;min-height:44px;width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 22px 8px 9px;background:var(--canvas);color:var(--ink);color-scheme:inherit}
+.zn-filter-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px;margin-top:12px}
+.zn-filter-actions button{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--muted);min-height:40px;padding:4px;font-size:.77em}
+.zn-filter-actions button:first-child{color:var(--accent-ink)}
+.zn-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 64px);padding:0;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);font:calc(13px * var(--theme-font-scale,1))/1.6 var(--theme-font,Inter,sans-serif);box-shadow:0 24px 80px #0004;overflow:auto;overscroll-behavior:contain}
+.zn-dialog::backdrop{background:#0006;backdrop-filter:blur(3px)}
+.zn-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px 12px 22px;border-bottom:1px solid var(--line);font-size:.85em;font-weight:500;color:var(--muted)}
+.zn-dialog-heading button{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:var(--ink)}
+.zn-detail-content{padding:24px}
+.zn-detail-icon{width:48px;height:48px;display:grid;place-items:center;background:var(--raised);color:var(--accent-ink);border-radius:50%;margin-bottom:20px}
+.zn-detail-content>.zn-tag{color:var(--accent-ink);font-weight:500;font-size:.78em}
+.zn-detail-content h2{font-size:1.4em;line-height:1.5;font-weight:600;margin:8px 0;overflow-wrap:anywhere}
+.zn-detail-content time{font-size:.75em;color:var(--muted)}
+.zn-detail-content>p{white-space:pre-wrap;overflow-wrap:anywhere;margin:24px 0;line-height:1.85;color:var(--ink)}
+#zn-detail-status{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:12px;font-size:.8em;color:var(--muted)}
+@media(hover:hover){.zn-notice-main:hover{background:color-mix(in srgb,var(--accent) 4%,transparent)}.zn-filter-toggle:hover{background:var(--raised)}}
+@media(min-width:761px){.zn-page{padding-top:18px}.zn-notice-main{padding:19px 14px}.zn-notice-icon{width:38px;height:38px}.zn-page .zh-notification h3{font-size:1em}.zn-page .zh-notification p{font-size:.9em}}
+@media(max-width:360px){.zn-page{padding:8px 12px 24px}.zn-period-tabs{gap:5px}.zn-period-tabs button{padding:7px 9px;font-size:.75em}.zn-filter-toggle{width:36px}.zn-notice-main{gap:10px;padding:14px 9px}.zn-notice-icon{width:30px;height:30px}.zn-notice-heading{gap:8px}.zn-page .zh-notification h3{font-size:.9em}.zn-controls{padding:12px}.zn-audience button{padding:7px 9px}.zn-filter-row{gap:8px}}
+@media(prefers-reduced-motion:reduce){.zn-page *,.zn-dialog *{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -8561,6 +8651,7 @@ function contentRetry(key){
   if(key==='blocked')return zpBlockedLoad();
   if(key==='home')return homeLoad();
   if(key==='search')return homeSearchRequest();
+  if(key==='notifications'&&window.ZimiNotifications)return window.ZimiNotifications.load();
   contentStart(key);contentRender(key);
   if(key==='wallet')Native.send('wallet.load');
   else if(key==='transactions')Native.send('transactions.load');
@@ -8583,6 +8674,7 @@ function contentRender(key){
 }
 Native.on('data.loading',d=>{
   if(!ContentLoading[d.resource])return;
+  if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(d.resource==='search'&&d.q!==(S.sq||''))return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
   if(d.resource==='home'){Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.loaded=true;Home.error=d.error||''}}
@@ -8591,6 +8683,7 @@ Native.on('data.loading',d=>{
 });
 /* Results also settle placeholders when received from an older native shell. */
 for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
+  if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;
   Object.assign(ContentLoading[key],{loading:false,error:''});
@@ -8619,6 +8712,9 @@ const Home = {
   checkout: null, checkoutBusy: false, packId: '', notifyLoading: false
 };
 const homeIcons = {
+  close:'<path d="m6 6 12 12M6 18 18 6"/>',
+  checks:'<path d="m2 12 5 5L18 6M10 15l2 2L23 6"/>',
+  arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
   house:'<path d="M4 10.2a2 2 0 0 1 .72-1.54l6-5.06a2 2 0 0 1 2.56 0l6 5.06a2 2 0 0 1 .72 1.54V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9.5 21v-5.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V21"/>',
   explore:'<circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5z"/>',
@@ -8656,7 +8752,7 @@ function homeContentError(){return !DEMO&&(Home.error||ContentLoading.home.error
 
 function homeFilter(value){Home.filter=value;homeLoad()}
 function homeList(){let list=Home.hosts;if(DEMO){if(Home.filter==='instant')list=list.filter(h=>h.available);else if(Home.categories.includes(Home.filter))list=list.filter(h=>h.cat===Home.filter)}return list}
-function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="Zimi Live home">${hi('sun',27)}<span>Zimi<span>Live</span></span></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button><button class="zh-profile" onclick="go('profile')" aria-label="Your profile">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="" data-face="${faceKind(me)}">`:face(me)}</button></div></header>`}
+function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="Zimi Live home">${hi('sun',27)}<span>Zimi<span>Live</span></span></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
 function homeNav(){
   const el=document.getElementById('nav');
   if(!['home','explore','chats','profile','settings','notifications'].includes(S.v))return false;
@@ -8681,10 +8777,10 @@ function homeCall(id){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return a
 function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
 function homeClaim(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
-function homeNotifications(){Home.notifyLoading=!DEMO;if(!DEMO)contentStart('notifications');go('notifications');if(DEMO)r();else Native.send('notifications.load')}
+function homeNotifications(){return window.ZimiNotifications.open()}
 
-function homeMarkRead(id){if(DEMO){Home.notifications.forEach(x=>{if(!id||x.id===id)x.read=true});Home.unreadCount=Home.notifications.filter(x=>!x.read).length;r();return}const ids=id?[id]:Home.notifications.filter(x=>!x.read).map(x=>x.id);if(ids.length)Native.send('notifications.read',{ids})}
-function homeNotificationsView(){const surface=DEMO?null:contentSurface('notifications','rows','Loading notifications');return `<section class="zh-notifications"><div class="zh-section-title"><h2>Your updates</h2>${!surface&&Home.unreadCount?'<button onclick="homeMarkRead()">Mark all read</button>':''}</div>${surface??(Home.notifications.length?Home.notifications.map(item=>`<button class="zh-notification ${item.read?'':'unread'}" onclick="homeMarkRead('${domId(item.id)}')"><span>${hi('bell',20)}</span><div><h3>${esc(item.title)}</h3><p>${esc(item.body)}</p><time>${esc(homeTime(item.createdAt))}</time></div>${item.read?'':'<i></i>'}</button>`).join(''):`<div class="zh-empty">${hi('bell',32)}<h3>You're all caught up</h3><p>Your Zimi notifications will appear here.</p></div>`)}</section>`}
+function homeMarkRead(id){znUpdate(true,id?[id]:null,!id)}
+function homeNotificationsView(){return znView()}
 
 function homeTime(value){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('en-IN',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
 function homeRequestStreamClose(streamId,hosting){if(DEMO)return;Home.pendingClose={streamId,hosting};Home.closeError='';Native.send(hosting?'stream.end':'stream.leave',{streamId})}
@@ -8793,7 +8889,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
 },afterRender:()=>{contentImagesReady();homeShowCloseError();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(['home','explore','chats','precall'].includes(S.v))r()});
-Native.on('data.notifications',d=>{Home.notifyLoading=false;Home.notifications=d.items||[];Home.unreadCount=d.unreadCount||0;if(['home','explore','notifications'].includes(S.v))r()});
+Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
 Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
 Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||Home.giftTo)r()});
@@ -8829,7 +8925,7 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','explore','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
@@ -10585,7 +10681,8 @@ window.ZimiChatPhoto = (() => {
   const matches = data => current && data.to === current.peer && data.id === current.id && data.requestId === current.requestId && current.busy;
   Native.on('chat.photoDownloaded', data => { if (matches(data)) { current.busy = false; current.saved = true; controls(); obHaptic('success'); } });
   Native.on('operation.error', data => { if (data.action === 'chat.photoDownload' && matches(data)) { current.busy = false; current.saveError = data.message || 'Photo could not be saved. Please try again.'; controls(); } });
-  Native.on('app.back', () => close());
+  // Android Back is dispatched once by ZimiNavigation, which closes this
+  // viewer before considering navigation in the underlying conversation.
   ['chat.updated', 'chat.removed', 'chat.photoSent', 'data.thread', 'data.chats'].forEach(type => Native.on(type, sync));
   ['session.none', 'session.expired', 'session'].forEach(type => Native.on(type, () => close(false)));
   document.addEventListener('aurora:navigate', () => close(false));
@@ -10818,6 +10915,188 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event
 window.ZimiThemes={apply:ztApply,label:ztLabel,open:ztOpen,content:ztContent,reset:ztReset,account:ztAccount};
 if(DEMO){ZThemes.catalog={selectedThemeId:ZThemeOriginal.id,premium:{active:false,pricePaise:19900,currency:'INR',paymentsAvailable:false,purchaseType:'lifetime'},items:[ZThemeOriginal,ZThemeRose,{...ZThemeOriginal,id:'000000000000000000000003',name:'Midnight Ocean',description:'Deep blue calm, a brighter point of view.',isDefault:false,isPremium:true,colors:{background:'#101b2d',surface:'#192a42',surfaceElevated:'#223951',text:'#edf6ff',textMuted:'#b5cada',primary:'#88d9ee',primaryContrast:'#102030',secondary:'#88d9ee',border:'#466078',success:'#69d5aa',danger:'#ffacb8'},typography:{fontFamily:'rounded',fontScale:1,fontWeight:'400',headingWeight:'700'}},{...ZThemeOriginal,id:'000000000000000000000004',name:'Amber Silk',description:'Warm neutrals with an editorial touch.',isDefault:false,isPremium:true,mode:'light',colors:{background:'#fff9ef',surface:'#ffffff',surfaceElevated:'#f3e7d1',text:'#3b2a1e',textMuted:'#79644e',primary:'#815016',primaryContrast:'#ffffff',secondary:'#815016',border:'#ccbba3',success:'#237d51',danger:'#b63146'},typography:{fontFamily:'serif',fontScale:1.05,fontWeight:'400',headingWeight:'700'}}]}}
 
+/* The inbox queries the server before paging. Read state changes only after an
+   acknowledgment; personal and announcement audiences come from the API. */
+const ZNotices={q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,limit:20,total:0,totalCount:0,loaded:false,sequence:0,requestId:0,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,detail:null,accountId:'',changed:false,filtersOpen:false,selecting:false};
+function znAccepts(data){return data.requestId==null||data.requestId===ZNotices.requestId}
+function znBusy(){return !DEMO&&contentPending('notifications')}
+function znFiltered(){return !!(ZNotices.q.trim()||ZNotices.status!=='all'||ZNotices.audience!=='all'||ZNotices.period!=='all')}
+function znBounds(){
+  if(ZNotices.period==='all')return {};
+  const today=new Date();today.setHours(0,0,0,0);
+  const yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);
+  if(ZNotices.period==='yesterday')return {since:yesterday.toISOString(),before:today.toISOString()};
+  if(ZNotices.period==='earlier')return {before:yesterday.toISOString()};
+  if(ZNotices.period==='week')today.setDate(today.getDate()-6);
+  if(ZNotices.period==='month')today.setDate(today.getDate()-29);
+  return {since:today.toISOString()};
+}
+function znLoad(more=false,keepMessage=false){
+  if(more&&(znBusy()||ZNotices.pending))return;
+  clearTimeout(ZNotices.timer);ZNotices.timer=null;
+  const page=more?ZNotices.page+1:1;
+  if(!more){ZNotices.selected.clear();ZNotices.changed=false;if(!keepMessage)ZNotices.message=''}
+  const query={q:ZNotices.q.trim(),status:ZNotices.status,audience:ZNotices.audience,sort:ZNotices.sort,page,limit:ZNotices.limit,requestId:++ZNotices.sequence};
+  const bounds=znBounds();Object.assign(query,bounds);
+  ZNotices.requestId=query.requestId;Home.notifyLoading=!DEMO;
+  contentStart('notifications',{page});
+  if(DEMO){
+    const all=ZNotices.demo||[],items=all.filter(item=>(query.status==='all'||item.read===(query.status==='read'))&&(query.audience==='all'||item.audience===query.audience)&&(!bounds.since||Date.parse(item.createdAt)>=Date.parse(bounds.since))&&(!bounds.before||Date.parse(item.createdAt)<Date.parse(bounds.before))&&(`${item.title} ${item.body}`).toLowerCase().includes(query.q.toLowerCase())).sort((a,b)=>(Date.parse(b.createdAt)-Date.parse(a.createdAt))*(query.sort==='oldest'?-1:1));
+    Object.assign(ContentLoading.notifications,{loading:false,error:''});
+    znReceive({...query,items:items.slice((page-1)*query.limit,page*query.limit),total:items.length,totalCount:all.length,unreadCount:all.filter(item=>!item.read).length});return;
+  }
+  if(S.v==='notifications')r();Native.send('notifications.load',query);
+}
+function znOpen(){go('notifications');znLoad()}
+function znPreferences(){if(!DEMO&&!ZProfile.data)zpLoad();zpOpen('notifications')}
+function znToggleFilters(){ZNotices.filtersOpen=!ZNotices.filtersOpen;r();if(ZNotices.filtersOpen)document.getElementById('zn-search')?.focus({preventScroll:true})}
+function znToggleSelecting(){if(ZNotices.pending)return;ZNotices.selecting=!ZNotices.selecting;ZNotices.selected.clear();r()}
+function znRelative(item){const date=new Date(item.createdAt),age=Math.max(0,Date.now()-date.getTime());if(!Number.isFinite(age))return '';if(age<60000)return 'Now';if(age<3600000)return Math.floor(age/60000)+'m ago';if(age<86400000)return Math.floor(age/3600000)+'h ago';if(age<604800000)return Math.floor(age/86400000)+'d ago';return date.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
+function znFilter(key,value){
+  const values={status:['all','unread','read'],audience:['all','personal','announcements'],period:['all','today','yesterday','earlier','week','month'],sort:['newest','oldest']};
+  if(!values[key]?.includes(value)||ZNotices.pending)return;
+  ZNotices[key]=value;ZNotices.message='';znLoad();
+}
+function znSearch(value){
+  ZNotices.q=value.slice(0,100);ZNotices.selected.clear();ZNotices.message='';
+  clearTimeout(ZNotices.timer);
+  // Retire the previous response immediately, including during the debounce.
+  ZNotices.requestId=++ZNotices.sequence;
+  contentStart('notifications',{page:1});
+  znPaintResults();
+  ZNotices.timer=setTimeout(()=>znLoad(),250);
+}
+function znResetFilters(){Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',message:''});znLoad()}
+function znReceive(data){
+  if(!znAccepts(data))return;
+  Home.notifyLoading=false;
+  const items=Array.isArray(data.items)?data.items:[],page=data.page||1;
+  const byId=new Map((page>1?Home.notifications:[]).map(item=>[item.id,item]));
+  for(const item of items)if(item?.id)byId.set(item.id,item);
+  Home.notifications=[...byId.values()];Home.unreadCount=Math.max(0,Number(data.unreadCount)||0);
+  Object.assign(ZNotices,{page,total:Math.max(0,Number(data.total??items.length)||0),totalCount:Math.max(0,Number(data.totalCount??data.total??items.length)||0),loaded:true});
+  Object.assign(ContentLoading.notifications,{loading:false,error:'',page});
+  if(['notifications','home','explore','chats','profile','settings'].includes(S.v))r();
+}
+function znSelection(id,checked){
+  if(ZNotices.pending)return;
+  if(checked&&ZNotices.selected.size>=100){appNotice('Select up to 100 notifications at a time.');r();return}
+  if(checked)ZNotices.selected.add(id);else ZNotices.selected.delete(id);
+  r();
+}
+function znClearSelection(){ZNotices.selected.clear();r()}
+function znSelectLoaded(){const items=Home.notifications.slice(0,100);const selected=items.length&&items.every(item=>ZNotices.selected.has(item.id));ZNotices.selected.clear();if(!selected)items.forEach(item=>ZNotices.selected.add(item.id));r()}
+function znUpdate(read,ids,all=false){
+  if(ZNotices.pending||(!all&&!ids?.length))return;
+  const action=all?'notifications.readAll':read?'notifications.read':'notifications.unread';
+  const request={requestId:++ZNotices.sequence,...(all?{}:{ids:[...new Set(ids)].slice(0,100)})};
+  ZNotices.pending={action,request,read,all};ZNotices.lastMutation=ZNotices.pending;ZNotices.mutationError='';ZNotices.message='';
+  if(DEMO){
+    for(const item of ZNotices.demo)if(all||request.ids.includes(item.id))item.read=read;
+    znSaved({...request,all,read,unreadCount:ZNotices.demo.filter(item=>!item.read).length,totalCount:ZNotices.demo.length});return;
+  }
+  r();znPaintDetailStatus();Native.send(action,request);
+}
+function znRetryUpdate(){const previous=ZNotices.lastMutation;if(previous)znUpdate(previous.read,previous.request.ids,previous.all)}
+function znSaved(data){
+  const pending=ZNotices.pending;if(!pending||pending.request.requestId!==data.requestId)return;
+  Home.unreadCount=Math.max(0,Number(data.unreadCount)||0);ZNotices.totalCount=Math.max(0,Number(data.totalCount)||0);
+  if(ZNotices.detail&&(pending.all||pending.request.ids?.includes(ZNotices.detail.id)))ZNotices.detail.read=pending.read;
+  ZNotices.message=pending.all?'All notifications marked as read.':`Notification${pending.request.ids.length===1?'':'s'} marked as ${pending.read?'read':'unread'}.`;
+  ZNotices.pending=null;ZNotices.lastMutation=null;ZNotices.mutationError='';ZNotices.selected.clear();znPaintDetailStatus();znLoad(false,true);
+}
+function znError(data){
+  if(!ZNotices.pending||ZNotices.pending.request.requestId!==data.requestId)return;
+  ZNotices.pending=null;ZNotices.mutationError=data.message||'Your update could not be saved. Please try again.';
+  if(S.v==='notifications')r();znPaintDetailStatus();
+}
+function znAudience(item){return item.audience==='announcements'?'Announcements':'For you'}
+function znDate(item){const date=new Date(item.createdAt);return Number.isNaN(date.getTime())?'Date unavailable':date.toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'})}
+function znRow(item){
+  const id=esc(item.id),disabled=ZNotices.pending?'disabled':'',selected=ZNotices.selected.has(item.id);
+  return `<article class="zh-notification ${item.read?'':'unread'} ${selected?'zn-selected':''}" data-notification-id="${id}">
+    ${ZNotices.selecting?`<label class="zn-checkbox"><input type="checkbox" aria-label="Select notification: ${esc(item.title)}" ${selected?'checked':''} ${disabled} onchange="znSelection(this.closest('[data-notification-id]').dataset.notificationId,this.checked)"></label>`:''}
+    <button class="zn-notice-main" onclick="znDetails(this.closest('[data-notification-id]').dataset.notificationId)" aria-label="Open notification: ${esc(item.title)}">
+      <span class="zn-notice-icon">${hi(item.audience==='announcements'?'broadcast':'bell',18)}</span>
+      <span class="zn-notice-content"><span class="zn-notice-heading"><h3>${esc(item.title)}</h3><time datetime="${esc(item.createdAt||'')}" title="${esc(znDate(item))}">${esc(znRelative(item))}</time></span><p>${esc(item.body)}</p>${!item.read?'<span class="zn-unread-dot" aria-label="Unread"></span>':''}</span>
+    </button></article>`;
+}
+function znResults(){
+  const state=ContentLoading.notifications,loading=znBusy(),more=state.page>1;
+  if(loading&&!more)return contentSkeleton('rows','Loading notifications',4);
+  if(state.error&&!more)return `<div class="zn-empty zn-load-error" role="alert"><span class="zn-empty-icon">${hi('refresh',30)}</span><h3>Unable to load your updates</h3><p>${esc(state.error)}</p><button class="zn-primary" onclick="znLoad()">Retry</button></div>`;
+  let list=Home.notifications.map(znRow).join('');
+  if(!list&&!loading)list=`<div class="zn-empty"><span class="zn-empty-icon">${hi(znFiltered()?'srch':'checks',32)}</span><h3>${znFiltered()?'No matching notifications':"You're all caught up"}</h3><p>${znFiltered()?'Try another search or adjust your filters to find an update.':'New personal updates and community announcements will appear here.'}</p>${znFiltered()?'<button class="zn-primary" onclick="znResetFilters()">Reset filters</button>':''}</div>`;
+  if(loading&&more)list+=contentSkeleton('rows','Loading more notifications',2);
+  else if(state.error&&more)list+=`<div class="zn-inline-error" role="alert"><p>${esc(state.error)}</p><button onclick="znLoad(true)">Retry loading more</button></div>`;
+  else if(Home.notifications.length<ZNotices.total)list+=`<button class="zn-load-more" onclick="znLoad(true)" ${ZNotices.pending?'disabled':''}>Load more notifications ${hi('arrow',16)}</button>`;
+  return list;
+}
+function znPaintResults(){const results=document.getElementById('zn-results');if(results)results.innerHTML=znResults();const bulk=document.getElementById('zn-bulk');if(bulk)bulk.innerHTML=znBulk()}
+function znBulk(){if(!ZNotices.selected.size)return '';const disabled=ZNotices.pending?'disabled':'';return `<div class="zn-selection" role="group" aria-label="Selected notifications"><strong>${ZNotices.selected.size} selected</strong><button onclick="znUpdate(true,[...ZNotices.selected])" ${disabled}>Mark selected read</button><button onclick="znUpdate(false,[...ZNotices.selected])" ${disabled}>Mark selected unread</button><button class="zn-selection-clear" aria-label="Clear selection" title="Clear selection" onclick="znClearSelection()" ${disabled}>${hi('close',18)}</button></div>`}
+function znCaptureFocus(){const active=document.activeElement;if(!active?.closest('.zn-page'))return;ZNotices.focus={id:active.id,aria:active.getAttribute('aria-label'),start:active.selectionStart,end:active.selectionEnd}}
+function znAfterRender(){
+  const focus=ZNotices.focus;ZNotices.focus=null;if(S.v!=='notifications'||!focus)return;
+  const node=focus.id?document.getElementById(focus.id):[...document.querySelectorAll('.zn-page [aria-label]')].find(el=>el.getAttribute('aria-label')===focus.aria);
+  if(node&&!node.disabled){node.focus({preventScroll:true});if(node.setSelectionRange&&focus.start!=null)node.setSelectionRange(focus.start,focus.end)}
+}
+function znView(){
+  znCaptureFocus();
+  const disabled=ZNotices.pending?'disabled':'',busy=znBusy(),known=ZNotices.loaded;
+  const activeFilters=!!(ZNotices.q.trim()||ZNotices.status!=='all'||ZNotices.audience!=='all'||ZNotices.sort!=='newest'||['week','month'].includes(ZNotices.period));
+  return `<section class="zn-page" aria-label="Notification inbox">
+    <div class="zn-toolbar"><div class="zn-period-tabs" role="group" aria-label="Notification dates">${[['all','All'],['today','Today'],['yesterday','Yesterday'],['earlier','Earlier']].map(([key,label])=>`<button aria-pressed="${ZNotices.period===key}" class="${ZNotices.period===key?'on':''}" onclick="znFilter('period','${key}')" ${disabled}>${label}</button>`).join('')}</div><button class="zn-filter-toggle ${activeFilters?'active':''}" aria-label="Filter notifications" aria-expanded="${ZNotices.filtersOpen}" aria-controls="zn-filters" onclick="znToggleFilters()">${ci('sliders',19)}${activeFilters?'<i></i>':''}</button></div>
+    <div class="zn-controls" id="zn-filters" ${ZNotices.filtersOpen?'':'hidden'}>
+      <div class="zn-search">${hi('srch',18)}<input id="zn-search" aria-label="Search notifications" maxlength="100" placeholder="Search notifications" value="${esc(ZNotices.q)}" oninput="znSearch(this.value)" ${disabled}></div>
+      <div class="zn-filter-label">Read status</div><div class="zn-status" role="group" aria-label="Notification status">${[['all','All'],['unread','Unread'],['read','Read']].map(([key,label])=>`<button aria-pressed="${ZNotices.status===key}" class="${ZNotices.status===key?'on':''}" onclick="znFilter('status','${key}')" ${disabled}>${label}</button>`).join('')}</div>
+      <div class="zn-filter-label">Updates</div><div class="zn-audience" role="group" aria-label="Notification audience">${[['all','All updates'],['personal','For you'],['announcements','Announcements']].map(([key,label])=>`<button aria-pressed="${ZNotices.audience===key}" class="${ZNotices.audience===key?'on':''}" onclick="znFilter('audience','${key}')" ${disabled}>${label}</button>`).join('')}</div>
+      <div class="zn-filter-row"><label><span>Time period</span><select aria-label="Time period" id="zn-period" onchange="znFilter('period',this.value)" ${disabled}>${[['all','All time'],['today','Today'],['yesterday','Yesterday'],['earlier','Earlier'],['week','Last 7 days'],['month','Last 30 days']].map(([key,label])=>`<option value="${key}" ${ZNotices.period===key?'selected':''}>${label}</option>`).join('')}</select></label><label><span>Sort by</span><select aria-label="Sort notifications" id="zn-sort" onchange="znFilter('sort',this.value)" ${disabled}><option value="newest" ${ZNotices.sort==='newest'?'selected':''}>Newest first</option><option value="oldest" ${ZNotices.sort==='oldest'?'selected':''}>Oldest first</option></select></label></div>
+      <div class="zn-filter-actions"><button aria-label="Clear notification filters" onclick="znResetFilters()" ${disabled}>Reset filters</button><button aria-label="Refresh notifications" onclick="znLoad()" ${busy||ZNotices.pending?'disabled':''}>${hi('refresh',16)}Refresh</button><button aria-label="Notification preferences" onclick="znPreferences()">${hi('set',16)}Preferences</button></div>
+    </div>
+    <div class="zn-summary"><span>${busy?'Loading&hellip;':known?(znFiltered()?`${n(ZNotices.total)} matching`:Home.unreadCount?`${n(Home.unreadCount)} unread`:'All caught up'):''}</span><div><button class="zn-mark-all" onclick="znUpdate(true,null,true)" ${!known||!Home.unreadCount||ZNotices.pending?'disabled':''}>Mark all read</button><button aria-label="${ZNotices.selecting?'Done selecting':'Select notifications'}" onclick="znToggleSelecting()" ${disabled}>${ZNotices.selecting?'Done':'Select'}</button></div></div>
+    ${ZNotices.changed?'<div class="zn-live-update"><span>New updates available</span><button onclick="znLoad()">Show updates</button></div>':''}
+    ${ZNotices.selecting?`<div class="zn-selection-heading"><span>Select updates to manage</span><button onclick="znSelectLoaded()" ${busy||ZNotices.pending?'disabled':''}>${Home.notifications.slice(0,100).length&&Home.notifications.slice(0,100).every(item=>ZNotices.selected.has(item.id))?'Deselect all':'Select all'}${Home.notifications.length>100?' (first 100)':''}</button></div>`:''}
+    <div id="zn-bulk">${znBulk()}</div><div class="zn-feedback" role="status">${ZNotices.pending?'Saving&hellip;':esc(ZNotices.message)}</div>
+    ${ZNotices.mutationError?`<div class="zn-inline-error" role="alert"><p>${esc(ZNotices.mutationError)}</p><button onclick="znRetryUpdate()">Retry update</button></div>`:''}
+    <div id="zn-results">${znResults()}</div>${DEMO?'<p class="zn-preview-note">Design preview &middot; sample notifications</p>':''}
+  </section>`;
+}
+function znDetails(id){
+  const item=Home.notifications.find(entry=>entry.id===id);if(!item)return;
+  znCloseDetail();ZNotices.detail={...item};
+  const dialog=document.createElement('dialog');dialog.id='zn-detail';dialog.className='zn-dialog';dialog.setAttribute('aria-label','Notification details');
+  dialog.innerHTML=`<div class="zn-dialog-heading"><span>Notification details</span><button aria-label="Close notification" onclick="znCloseDetail()">${hi('close',21)}</button></div><div class="zn-detail-content"><span class="zn-detail-icon">${hi(item.audience==='announcements'?'broadcast':'bell',30)}</span><span class="zn-tag">${znAudience(item)}</span><h2>${esc(item.title)}</h2><time>${esc(znDate(item))}</time><p>${esc(item.body)}</p><div id="zn-detail-status" role="status"></div></div>`;
+  dialog.addEventListener('close',()=>{dialog.remove();if(document.getElementById('zn-detail'))return;ZNotices.detail=null;const row=[...document.querySelectorAll('.zh-notification[data-notification-id]')].find(node=>node.dataset.notificationId===id);row?.querySelector('.zn-notice-main')?.focus({preventScroll:true})});
+  dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)znCloseDetail()}});
+  document.body.append(dialog);dialog.showModal();znPaintDetailStatus();
+  if(!item.read&&!ZNotices.pending)znUpdate(true,[id]);
+}
+function znPaintDetailStatus(){
+  const el=document.getElementById('zn-detail-status'),item=ZNotices.detail;if(!el||!item)return;
+  const status=ZNotices.pending?'Saving&hellip;':ZNotices.mutationError?`${esc(ZNotices.mutationError)} <button onclick="znRetryUpdate()">Retry update</button>`:item.read?'Read':'Unread';
+  el.innerHTML=`<span>${status}</span><button class="zn-detail-toggle" aria-label="Mark as ${item.read?'unread':'read'}: ${esc(item.title)}" ${ZNotices.pending?'disabled':''} onclick="znUpdate(!ZNotices.detail.read,[ZNotices.detail.id])">Mark as ${item.read?'unread':'read'}</button>`;
+}
+function znCloseDetail(){const dialog=document.getElementById('zn-detail');if(dialog){dialog.close();dialog.remove()}ZNotices.detail=null}
+function znReset(){clearTimeout(ZNotices.timer);znCloseDetail();Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,total:0,totalCount:0,loaded:false,requestId:++ZNotices.sequence,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,changed:false,accountId:'',filtersOpen:false,selecting:false});Home.notifications=[];Home.unreadCount=0}
+window.ZimiNotifications={open:znOpen,load:znLoad,receive:znReceive,accepts:znAccepts,reset:znReset};
+ZimiHome.views.notifications=znView;
+const znPreviousAfterRender=ZimiHome.afterRender;
+ZimiHome.afterRender=()=>{znPreviousAfterRender();znAfterRender()};
+Native.on('notifications.saved',znSaved);Native.on('notifications.error',znError);
+Native.on('notifications.changed',()=>{ZNotices.changed=true;if(S.v!=='notifications'||ZNotices.pending)return;if(ZNotices.selected.size||ZNotices.detail||document.activeElement?.id==='zn-search'||znBusy()){r();return}znLoad()});
+Native.on('session.none',znReset);Native.on('session.expired',znReset);
+for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(ZNotices.accountId&&ZNotices.accountId!==id)znReset();ZNotices.accountId=id});
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='notifications'){clearTimeout(ZNotices.timer);ZNotices.timer=null;znCloseDetail()}});
+if(DEMO){
+  const now=Date.now();ZNotices.demo=[
+    {id:'demo-note-1',title:'A space that feels like you',body:'Your notification center brings personal updates and community announcements together. Use filters to find what you need, or catch up at your own pace.',audience:'personal',read:false,createdAt:new Date(now-12*60000).toISOString()},
+    {id:'demo-note-2',title:'Find your next favorite conversation',body:'Discover the people, music and stories that make Zimi Live special. Explore the community and make a new connection.',audience:'announcements',read:false,createdAt:new Date(now-90*60000).toISOString()},
+    {id:'demo-note-3',title:'Make your profile your own',body:'A great introduction starts with you. Visit your profile to update your photo, bio and the details you want to share.',audience:'personal',read:false,createdAt:new Date(now-26*3600000).toISOString()},
+    {id:'demo-note-4',title:'Welcome to the community',body:'Good conversations start with kindness. Take a moment to get familiar with our community guidelines and help everyone feel welcome.',audience:'announcements',read:true,createdAt:new Date(now-50*3600000).toISOString()},
+    {id:'demo-note-5',title:'Your Zimi journey starts here',body:'Welcome to Zimi Live. Your personal updates will always have a home in this inbox.',audience:'personal',read:true,createdAt:new Date(now-9*86400000).toISOString()}
+  ];Home.notifications=[...ZNotices.demo];Home.unreadCount=3;ZNotices.total=ZNotices.totalCount=5;ZNotices.loaded=true;
+}
+
 /* Animate the live content once per tab change, never on a data refresh. */
 window.ZimiNavigation=(()=>{
   const tabs=['home','explore','chats','profile'];
@@ -10848,9 +11127,52 @@ window.ZimiNavigation=(()=>{
     current.finished.then(()=>{if(animation===current){animation=null;screen.removeAttribute('data-tab-transition')}},()=>{});
   }
   function reset(){cancel();positions.clear()}
+  /* Android has no browser history for this single-document WebView. Handle
+     one foreground layer per press, using the same cleanup as its UI control. */
+  function back(){
+    if(document.getElementById('zc-photo-viewer')){window.ZimiChatPhoto.close();return}
+    const dialog=[...document.querySelectorAll('dialog[open]')].at(-1);
+    if(dialog){
+      if(typeof dialog.requestClose==='function')dialog.requestClose();
+      else if(dialog.dispatchEvent(new Event('cancel',{cancelable:true})))dialog.close();
+      return;
+    }
+    // A verification call owns its camera and server session. Back must not
+    // dismiss the overlay while leaving that session running behind a screen.
+    if(document.getElementById('zv-call')){appNotice('Use the call controls to decline or end your verification call.');return}
+    if(document.getElementById('zr-link-overlay')){zrLinkDismiss();return}
+    if(Home.giftTo){
+      if(CoinUI.topup){CoinUI.topup=false;coinPaint()}
+      else homeCloseGifts();
+      return;
+    }
+    if(Room.sheet){zrClose();return}
+    if(Chats.menu){zcCloseMenu();return}
+    if(Chats.composeOpen||Chats.filtersOpen){zcCloseDialogs();return}
+    if(document.querySelector('.zc-thread-menu:not([hidden])')){zcThreadMenu(false);return}
+    if(document.querySelector('#zc-attach:not([hidden])')){zcThreadAttach(false);return}
+    if(document.querySelector('#zc-emoji:not([hidden])')){zcThreadEmoji(false);return}
+    if(S.sh||S.tray||S.more){S.sh=0;S.tray=0;S.more=0;r();return}
+    if(window.ZimiChatVoice?.active()){appNotice('Send or cancel your voice message before leaving.');return}
+    if(S.v==='thread'&&(Chats.reply||Chats.editing)){zcCancelContext();return}
+    if(Home.preparingCall){homeCancelPrepare();return}
+    if(Room.transition){appNotice('Your call is connecting. Please wait for the call controls.');return}
+    if(['live','call','voice','hcall'].includes(S.v)){zrExit();return}
+    if(['dial','dialback'].includes(S.v)){cancelDial();return}
+    if(S.v==='ring'){window.ZimiMedia?.stop();declineRing();return}
+    if(S.v==='login'){if(S.auth)obBack();return}
+    // Reuse screen-specific destinations (including public-profile return
+    // routes), and respect disabled Back controls during an in-flight save.
+    const control=[...document.querySelectorAll('#top .zb-back,#screen .zb-back')].find(button=>button.getClientRects().length&&!button.closest('[hidden],[inert]'));
+    if(control){if(!control.disabled)control.click();return}
+    if(['home','welcome'].includes(S.v)){Native.send('app.exit.request');return}
+    if(S.v==='summary')S.callId=null;
+    go(S.loggedIn?'home':'welcome');
+  }
   reduced.addEventListener?.('change',()=>{if(reduced.matches)cancel()});
+  Native.on('app.back',back);
   Native.on('session.none',reset);Native.on('session.expired',reset);
-  return {before,after,reset};
+  return {before,after,reset,back};
 })();
 
 /* Icon press animations (styles in icons.css). A press on a control plays its icon's animation.

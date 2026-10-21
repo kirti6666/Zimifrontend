@@ -311,7 +311,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.getByRole('button',{name:/Notifications/}).click();
     await receive('data.notifications',{items:[{id:'507f1f77bcf86cd799439016',title:'A real update',body:'Welcome back',createdAt:new Date().toISOString(),read:false}],unreadCount:1});
     await real.getByRole('button',{name:'Mark all read',exact:true}).click();
-    assert.deepEqual(await real.evaluate(()=>window.__sent.filter(m=>m.type==='notifications.read').at(-1)?.data.ids),['507f1f77bcf86cd799439016']);
+    assert.equal(typeof await real.evaluate(()=>window.__sent.filter(m=>m.type==='notifications.readAll').at(-1)?.data.requestId),'number');
     await real.getByRole('button',{name:'Home',exact:true}).click();
     await real.getByRole('button',{name:/Wallet, /}).click();
     await receive('data.catalog',catalog);

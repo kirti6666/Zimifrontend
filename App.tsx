@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppState, BackHandler, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, BackHandler, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ScreenCapture from "expo-screen-capture";
 import { StatusBar } from "expo-status-bar";
@@ -63,23 +63,26 @@ export default function App() {
   const [failure, setFailure] = useState<string | null>(null);
   const webRef = useRef<WebView>(null);
   const lastHapticAt = useRef(0);
-  const photoViewerOpen = useRef(false);
-  const updatePhotoViewer = useCallback((open: boolean) => {
-    photoViewerOpen.current = open;
-  }, []);
+  const webReady = useRef(false);
+  const exitConfirmation = useRef<object | null>(null);
 
   // Everything the screens ask of the server goes through src/bridge.ts.
   const bridge = useMemo(() => createBridge((msg) => postToWeb(webRef, msg)), []);
+  const documentLoading = useCallback(() => {
+    webReady.current = false;
+    exitConfirmation.current = null;
+    bridge.documentLoading();
+  }, [bridge]);
   useEffect(() => bridge.close, [bridge]);
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (!photoViewerOpen.current) return false;
-      updatePhotoViewer(false);
+      if (!webReady.current) return false;
+      // The page owns its screens and overlays; WebView history cannot see them.
       postToWeb(webRef, { type: "app.back", data: {} });
       return true;
     });
     return () => subscription.remove();
-  }, [updatePhotoViewer]);
+  }, []);
   useEffect(() => {
     // Native app switching can precede WebView visibility changes. Give voice
     // capture/playback an explicit cleanup signal when the app loses focus.
@@ -89,12 +92,30 @@ export default function App() {
     return () => subscription.remove();
   }, []);
 
+  const requestExit = useCallback(() => {
+    if (!webReady.current || exitConfirmation.current) return;
+    const confirmation = {};
+    exitConfirmation.current = confirmation;
+    const dismiss = () => {
+      if (exitConfirmation.current !== confirmation) return false;
+      exitConfirmation.current = null;
+      return webReady.current;
+    };
+    Alert.alert("Close Zimi Live?", "Are you sure you want to close the app?", [
+      { text: "Cancel", style: "cancel", onPress: dismiss },
+      { text: "Close app", onPress: () => { if (dismiss()) BackHandler.exitApp(); } },
+    ], { cancelable: true, onDismiss: dismiss });
+  }, []);
+
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     if (!isTrustedDocument(event.nativeEvent.url)) return;
     const msg = parseWebMessage(event.nativeEvent.data);
     if (!msg) return;
-    if (msg.type === "chat.photoViewer") {
-      updatePhotoViewer(msg.data.open);
+    if (msg.type === "ready") {
+      webReady.current = true;
+      bridge.handle(msg);
+    } else if (msg.type === "app.exit.request") {
+      requestExit();
     } else if (msg.type === "theme") {
       if (msg.data.theme === "light" || msg.data.theme === "dark") setTheme(msg.data.theme);
       const color = msg.data.canvas;
@@ -122,24 +143,22 @@ export default function App() {
       // Video calls and chats: screenshots and screen recordings show nothing while they are open.
       void (msg.data.on ? ScreenCapture.preventScreenCaptureAsync(PRIVATE_SCREEN) : ScreenCapture.allowScreenCaptureAsync(PRIVATE_SCREEN)).catch(() => {});
     } else bridge.handle(msg);
-  }, [bridge, updatePhotoViewer]);
+  }, [bridge, requestExit]);
 
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {
-    updatePhotoViewer(false);
-    bridge.documentLoading();
+    documentLoading();
     setFailure(event.nativeEvent.description || "The Zimi Live bundle failed to load.");
-  }, [bridge, updatePhotoViewer]);
+  }, [documentLoading]);
 
   // The WebView's renderer can be killed under memory pressure; reload instead
   // of leaving a blank view behind. Returning true tells Android we handled it.
   const reload = useCallback(() => {
-    updatePhotoViewer(false);
-    bridge.documentLoading();
+    documentLoading();
     setFailure(null);
     webRef.current?.reload();
     return true;
-  }, [bridge, updatePhotoViewer]);
+  }, [documentLoading]);
 
   const canvas = canvasOverride ?? CANVAS[theme];
   const ink = palette.ink ?? INK[theme];
@@ -179,7 +198,7 @@ export default function App() {
               allowUniversalAccessFromFileURLs={false}
               mixedContentMode="never"
               injectedJavaScript={THEME_BRIDGE}
-              onLoadStart={() => { updatePhotoViewer(false); bridge.documentLoading(); }}
+              onLoadStart={documentLoading}
               onMessage={onMessage}
               onError={onError}
               onRenderProcessGone={reload}
@@ -191,7 +210,6 @@ export default function App() {
                     <View style={styles.loadingHeader}>
                       <Text style={[styles.loadingBrand, { color: ink }]}>Zimi<Text style={{ color: primary }}>Live</Text></Text>
                       <View style={[styles.loadingPill, { backgroundColor: placeholder }]} />
-                      <View style={[styles.loadingProfile, { backgroundColor: placeholder }]} />
                     </View>
                     <View style={[styles.loadingHeading, { backgroundColor: placeholder }]} />
                     <View style={styles.loadingStories}>
@@ -248,7 +266,6 @@ const styles = StyleSheet.create({
   loadingHeader: { flexDirection: "row", alignItems: "center", gap: 12, height: 48, marginBottom: 20 },
   loadingBrand: { fontSize: 21, fontWeight: "800", flex: 1, letterSpacing: -0.6 },
   loadingPill: { width: 65, height: 30, borderRadius: 20 },
-  loadingProfile: { width: 32, height: 32, borderRadius: 16 },
   loadingHeading: { width: "52%", height: 16, borderRadius: 6, marginBottom: 18 },
   loadingStories: { flexDirection: "row", justifyContent: "space-between", gap: 8, marginBottom: 26 },
   loadingStory: { flex: 1, alignItems: "center", gap: 9 },

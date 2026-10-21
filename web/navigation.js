@@ -28,7 +28,50 @@ window.ZimiNavigation=(()=>{
     current.finished.then(()=>{if(animation===current){animation=null;screen.removeAttribute('data-tab-transition')}},()=>{});
   }
   function reset(){cancel();positions.clear()}
+  /* Android has no browser history for this single-document WebView. Handle
+     one foreground layer per press, using the same cleanup as its UI control. */
+  function back(){
+    if(document.getElementById('zc-photo-viewer')){window.ZimiChatPhoto.close();return}
+    const dialog=[...document.querySelectorAll('dialog[open]')].at(-1);
+    if(dialog){
+      if(typeof dialog.requestClose==='function')dialog.requestClose();
+      else if(dialog.dispatchEvent(new Event('cancel',{cancelable:true})))dialog.close();
+      return;
+    }
+    // A verification call owns its camera and server session. Back must not
+    // dismiss the overlay while leaving that session running behind a screen.
+    if(document.getElementById('zv-call')){appNotice('Use the call controls to decline or end your verification call.');return}
+    if(document.getElementById('zr-link-overlay')){zrLinkDismiss();return}
+    if(Home.giftTo){
+      if(CoinUI.topup){CoinUI.topup=false;coinPaint()}
+      else homeCloseGifts();
+      return;
+    }
+    if(Room.sheet){zrClose();return}
+    if(Chats.menu){zcCloseMenu();return}
+    if(Chats.composeOpen||Chats.filtersOpen){zcCloseDialogs();return}
+    if(document.querySelector('.zc-thread-menu:not([hidden])')){zcThreadMenu(false);return}
+    if(document.querySelector('#zc-attach:not([hidden])')){zcThreadAttach(false);return}
+    if(document.querySelector('#zc-emoji:not([hidden])')){zcThreadEmoji(false);return}
+    if(S.sh||S.tray||S.more){S.sh=0;S.tray=0;S.more=0;r();return}
+    if(window.ZimiChatVoice?.active()){appNotice('Send or cancel your voice message before leaving.');return}
+    if(S.v==='thread'&&(Chats.reply||Chats.editing)){zcCancelContext();return}
+    if(Home.preparingCall){homeCancelPrepare();return}
+    if(Room.transition){appNotice('Your call is connecting. Please wait for the call controls.');return}
+    if(['live','call','voice','hcall'].includes(S.v)){zrExit();return}
+    if(['dial','dialback'].includes(S.v)){cancelDial();return}
+    if(S.v==='ring'){window.ZimiMedia?.stop();declineRing();return}
+    if(S.v==='login'){if(S.auth)obBack();return}
+    // Reuse screen-specific destinations (including public-profile return
+    // routes), and respect disabled Back controls during an in-flight save.
+    const control=[...document.querySelectorAll('#top .zb-back,#screen .zb-back')].find(button=>button.getClientRects().length&&!button.closest('[hidden],[inert]'));
+    if(control){if(!control.disabled)control.click();return}
+    if(['home','welcome'].includes(S.v)){Native.send('app.exit.request');return}
+    if(S.v==='summary')S.callId=null;
+    go(S.loggedIn?'home':'welcome');
+  }
   reduced.addEventListener?.('change',()=>{if(reduced.matches)cancel()});
+  Native.on('app.back',back);
   Native.on('session.none',reset);Native.on('session.expired',reset);
-  return {before,after,reset};
+  return {before,after,reset,back};
 })();

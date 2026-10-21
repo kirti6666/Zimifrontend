@@ -245,7 +245,8 @@ window.ZimiChatPhoto = (() => {
   const matches = data => current && data.to === current.peer && data.id === current.id && data.requestId === current.requestId && current.busy;
   Native.on('chat.photoDownloaded', data => { if (matches(data)) { current.busy = false; current.saved = true; controls(); obHaptic('success'); } });
   Native.on('operation.error', data => { if (data.action === 'chat.photoDownload' && matches(data)) { current.busy = false; current.saveError = data.message || 'Photo could not be saved. Please try again.'; controls(); } });
-  Native.on('app.back', () => close());
+  // Android Back is dispatched once by ZimiNavigation, which closes this
+  // viewer before considering navigation in the underlying conversation.
   ['chat.updated', 'chat.removed', 'chat.photoSent', 'data.thread', 'data.chats'].forEach(type => Native.on(type, sync));
   ['session.none', 'session.expired', 'session'].forEach(type => Native.on(type, () => close(false)));
   document.addEventListener('aurora:navigate', () => close(false));

@@ -26,6 +26,7 @@ function contentRetry(key){
   if(key==='blocked')return zpBlockedLoad();
   if(key==='home')return homeLoad();
   if(key==='search')return homeSearchRequest();
+  if(key==='notifications'&&window.ZimiNotifications)return window.ZimiNotifications.load();
   contentStart(key);contentRender(key);
   if(key==='wallet')Native.send('wallet.load');
   else if(key==='transactions')Native.send('transactions.load');
@@ -48,6 +49,7 @@ function contentRender(key){
 }
 Native.on('data.loading',d=>{
   if(!ContentLoading[d.resource])return;
+  if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(d.resource==='search'&&d.q!==(S.sq||''))return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
   if(d.resource==='home'){Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.loaded=true;Home.error=d.error||''}}
@@ -56,6 +58,7 @@ Native.on('data.loading',d=>{
 });
 /* Results also settle placeholders when received from an older native shell. */
 for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
+  if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;
   Object.assign(ContentLoading[key],{loading:false,error:''});
