@@ -255,18 +255,20 @@ rate limits, session recovery, and creator setup using mocked server responses.
 
 ## Home screen and admin controls
 
-The compact Home layout lives in `web/home-dashboard.js` and
-`web/home-dashboard.css`. Home contains only Live hosts and Online hosts, with
-search available from the Home header. Both sections show one host per row at
-every screen size, with Chat and Call actions; live hosts also have Watch live.
-Live hosts appear only in the live section, and offline hosts are excluded.
-The native Home feed requests `mode=online`, which filters active hosts on the
-server before pagination. Explore keeps its separate discovery filters.
+The Home layout lives in `web/home-dashboard.js` and `web/home-dashboard.css`.
+It uses live-host circles, filter chips, a large featured photo card, and a
+two-column grid. Layout follows the supplied reference; colors and typography
+follow the selected app theme. Search stays in the Home header.
+Every host has Chat and Call actions; live photos and circles open the stream.
+The featured host is excluded from the grid, and offline hosts are excluded.
+Popular requests `mode=online`; Instant Call requests `mode=instant`; categories
+request `mode=online` plus the category. Filtering happens before pagination.
+Home and Explore keep independent filter selections.
 Call opens a confirmation screen with the current rate and wallet balance.
 Paid calls require a loaded balance and at least one minute of coins; members
 can retry a failed balance load or buy coins when needed. Confirming a live
 host joins their room and sends one private-call request after membership is
-confirmed. Unavailable calls stay disabled; tapping a creator photo opens their
+confirmed. Unavailable calls stay disabled; tapping a creator's name opens their
 profile. Leaving confirmation starts no call and sends no request.
 Shared discovery, gifts and checkout flows remain in `web/home.js` / `web/home.css`.
 `web/media.js` handles camera/microphone capture and WebRTC media; authenticated

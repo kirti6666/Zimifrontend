@@ -31,9 +31,11 @@ keeps it identical to the original Next.js version.
 
 ## Rules that matter
 
-- Keep Home focused on Live hosts and Online hosts with Chat and Call actions.
-  Search belongs in the Home header; do not duplicate it inside the feed. Filter
-  active hosts on the server before pagination and list each host only once.
+- Home uses live-host circles, Popular/Instant Call/category chips, a featured
+  photo card and a two-column host grid, with Chat and Call actions. Use the
+  selected theme's colors. Search belongs in the Home header. Filter active
+  hosts on the server before pagination; feature a host once across hero/grid.
+  Live circles are navigation shortcuts and can repeat a host from the feed.
 - Show the branded Home header only on Home. Explore, Chats, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
   the same size across those main screens; Notifications and the Themes page

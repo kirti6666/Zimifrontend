@@ -100,6 +100,34 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.home', feed(), 'home', { page: 1 });
     console.log('PASS loading: initial feed, unknown balance, realtime refresh, filters, pagination, failure and retry');
 
+    // Home keeps an active-only filter independently of Explore's broader discovery filter.
+    await page.evaluate(() => homeDashboardFilter('Talk'));
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online', category: 'Talk' });
+    assert.equal(await page.evaluate(() => Home.filter), 'Music', 'Home filters preserve the Explore selection');
+    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
+    await navigate('explore');
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Music' });
+    await result('data.home', feed(), 'home', { page: 1 });
+    await navigate('home');
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online', category: 'Talk' });
+    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
+    await page.evaluate(() => homeDashboardFilter('instant'));
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'instant' }, 'Instant Call clears the category constraint');
+    await result('data.home', feed(), 'home', { page: 1 });
+    const homeRequests = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
+    await page.evaluate(() => { homeDashboardFilter('instant'); homeDashboardFilter('unknown category'); });
+    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeRequests,
+      'Repeated and invalid filters do not trigger requests');
+    await page.evaluate(() => homeDashboardFilter('popular'));
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online' }, 'Popular restores the active-only feed');
+    await result('data.home', feed(), 'home', { page: 1 });
+    console.log('PASS loading: independent Home and Explore filters, active-only queries and filter validation');
+
     // Search starts immediately on input, ignores responses for older queries and supports clearing.
     await page.getByRole('button', { name: 'Search creators', exact: true }).click();
     await visible('Finding creators');
