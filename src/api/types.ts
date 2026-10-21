@@ -203,7 +203,7 @@ export interface ChatSummary {
   last: string;
   time: string;
   unread: number;
-  lastKind: "text" | "image";
+  lastKind: "text" | "image" | "voice";
   lastDeleted?: boolean;
   lastMine: boolean;
   lastAutomated: boolean;
@@ -227,11 +227,13 @@ export interface Message {
   text: string;
   time: string;
   createdAt?: string;
-  kind?: "text" | "image";
+  kind?: "text" | "image" | "voice";
   imageUrl?: string;
+  audioUrl?: string;
+  durationMs?: number;
   edited?: boolean;
   deleted?: boolean; // deleted for everyone; only a placeholder remains
-  reply?: { id: string; mine: boolean; text: string; image: boolean; deleted: boolean };
+  reply?: { id: string; mine: boolean; text: string; image: boolean; voice?: boolean; deleted: boolean };
   automated?: boolean;
   status?: "sent" | "read"; // own messages only: whether the other person has read it
 }

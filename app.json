@@ -15,19 +15,22 @@
           "NSAllowsArbitraryLoads": false,
           "NSAllowsLocalNetworking": false
         },
-        "NSCameraUsageDescription": "Zimi Live uses your camera for video calls, live broadcasts, and profile photos when you choose to use these features.",
-        "NSMicrophoneUsageDescription": "Zimi Live uses your microphone when you start or join an audio or video call, or host a live broadcast.",
-        "NSPhotoLibraryUsageDescription": "Zimi Live lets you choose photos from your library for your profile."
+        "NSCameraUsageDescription": "Zimi Live uses your camera when you take a chat or profile photo, start a video call, or host a live broadcast.",
+        "NSMicrophoneUsageDescription": "Zimi Live uses your microphone when you record a voice message, start or join an audio or video call, or host a live broadcast.",
+        "NSPhotoLibraryUsageDescription": "Zimi Live lets you choose photos from your library to send in chats or add to your profile.",
+        "NSPhotoLibraryAddUsageDescription": "Zimi Live saves a chat photo to your library when you tap Download."
       }
     },
     "android": {
       "package": "com.aurora.liveapp",
       "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"],
+      "blockedPermissions": ["android.permission.READ_MEDIA_VISUAL_USER_SELECTED"],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
       "expo-secure-store",
+      ["expo-media-library", { "savePhotosPermission": "Zimi Live saves a chat photo to your library when you tap Download.", "photosPermission": "Zimi Live lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
       "./plugins/with-onboarding-camera",
       "./plugins/with-development-network"
     ]

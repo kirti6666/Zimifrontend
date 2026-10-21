@@ -1,0 +1,47 @@
+/* A compact composer keeps text and controls together above the keyboard. */
+.zc-composer{padding:10px max(12px,calc(50% - 384px)) 12px}
+.zc-composer[hidden]{display:none}
+.zc-composer-field{height:54px;gap:2px;padding:4px 5px;border:1px solid var(--line);background:var(--surface)}
+.zc-composer-field:focus-within{background:var(--surface);border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.zc-composer-field>input{height:42px;padding:0 6px;color:var(--ink);caret-color:var(--accent-ink)}
+.zc-composer-field>.zc-composer-icon{width:40px;height:44px;color:var(--muted)}
+.zc-composer-field>.zc-composer-gift{color:var(--accent-ink)}
+.zc-composer-field>.zc-composer-send{width:44px;height:44px;background:var(--accent);color:var(--cta-ink);box-shadow:none}
+.zc-composer-field>.zc-composer-send.is-mic{background:transparent;color:var(--ink)}
+.zc-composer-field>button:disabled{opacity:.4}
+.zc-composer-field>button:focus-visible,.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+#zc-recording{flex:none;min-width:0}
+.zc-thread.zc-is-recording .zc-chips{display:none}
+.zc-recorder{margin:10px var(--zc-gutter) 12px;padding:14px 12px 10px;border:1px solid var(--line);border-radius:22px;background:var(--surface)}
+.zc-recording-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 5px 8px;color:var(--ink)}
+.zc-recording-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650}
+.zc-recording-line>time{font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;color:var(--muted)}
+.zc-recording-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:zc-recording-glow 1.2s ease-in-out infinite}
+.zc-recording-controls{display:flex;align-items:center;gap:8px;min-height:48px}
+.zc-recording-controls>button{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;color:var(--muted)}
+.zc-recording-controls>.zc-recording-stop,.zc-recording-controls>.zc-recording-send{background:var(--accent);color:var(--cta-ink)}
+.zc-recording-controls>.zc-recording-play{background:var(--raised);color:var(--accent-ink)}
+.zc-recording-controls>button:disabled{opacity:.35}
+.zc-recording-pulse{display:flex;align-items:center;justify-content:center;flex:1;gap:5px;height:40px;overflow:hidden}
+.zc-recording-pulse>span{width:4px;height:20px;border-radius:8px;background:var(--accent);animation:zc-recording-pulse .85s ease-in-out infinite alternate}
+.zc-recording-pulse>span:nth-child(2n){height:30px;animation-delay:-.3s}
+.zc-recording-pulse>span:nth-child(3n){height:12px;animation-delay:-.6s}
+.zc-recording-wait{flex:1;min-width:0;padding:0 10px}
+.zc-recording-hint,.zc-recording-error{margin:8px 4px 0;font-size:11.5px;line-height:1.5;color:var(--muted)}
+.zc-recording-error{color:var(--theme-danger,var(--accent-ink))}
+.zc-voice{width:min(64vw,280px);padding:10px 12px 12px;border:1px solid var(--line)}
+.zc-msg.mine .zc-voice{border-radius:20px 20px 6px 20px;background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.zc-voice-top{margin-bottom:5px;gap:4px;font-size:11px;letter-spacing:0;text-transform:none}
+.zc-voice-options{display:grid;place-items:center;flex:none;width:32px;height:32px;margin:-5px -5px 0 0;border-radius:50%;color:var(--muted)}
+.zc-voice-body{gap:10px}
+.zc-voice-play{width:44px;height:44px;box-shadow:none}
+.zc-voice-play:disabled{opacity:.4}
+.zc-voice-progress{display:block;flex:1;min-width:20px;height:5px;overflow:hidden;border-radius:99px;background:color-mix(in srgb,var(--muted) 22%,transparent)}
+.zc-voice-progress>i{display:block;width:var(--voice-progress,0%);height:100%;border-radius:inherit;background:var(--accent-ink)}
+.zc-voice-body>time{color:var(--muted);font-size:12px}
+.zc-flash .zc-voice{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent)}
+@keyframes zc-recording-pulse{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+@keyframes zc-recording-glow{50%{opacity:.4}}
+@media(max-width:350px){.zc-composer-field{gap:0}.zc-composer-field>.zc-composer-icon{width:36px}.zc-composer-field>input{padding:0 4px;font-size:14px}.zc-recording-hint{font-size:11px}}
+@media(max-height:600px){.zc-is-recording .zc-thread-live{display:none}.zc-recorder{margin-top:6px;margin-bottom:8px}}
+@media(prefers-reduced-motion:reduce){.zc-recording-pulse>span,.zc-recording-dot{animation:none}}

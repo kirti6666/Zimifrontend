@@ -193,7 +193,7 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
       ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
       ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
-      lastKind: last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastKind: last.kind === "voice" ? "voice" as const : last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
       lastAutomated: last.automated === true,
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
@@ -206,11 +206,13 @@ export function messageFrom(value: unknown, userId: string): Message {
   const message = record(value);
   const mine = idOf(message.senderId) === userId;
   const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+  const audio = message.audio && typeof message.audio === "object" ? record(message.audio) : undefined;
+  const audioUrl = string(audio?.url), durationMs = finite(audio?.durationMs);
   const reply = message.reply && typeof message.reply === "object" ? record(message.reply) : undefined;
   return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
-    ...(imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
+    ...(audioUrl ? { kind: "voice" as const, audioUrl, ...(durationMs !== undefined ? { durationMs } : {}) } : imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
     ...(message.editedAt ? { edited: true } : {}), ...(message.deletedAt ? { deleted: true } : {}),
-    ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, deleted: reply.deleted === true } } : {}),
+    ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, ...(reply.voice === true ? { voice: true } : {}), deleted: reply.deleted === true } } : {}),
     ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
 }
 export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {

@@ -2607,11 +2607,101 @@ button.gpill[onclick]{cursor:pointer}
 .zc-msg-stack[data-message-id] :is(.bub,.zc-photo,.zc-reply){-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .zc-msg-stack[data-message-id] img{-webkit-user-drag:none}
 .zc-msg-stack.zc-swiping{transition:none;user-select:none;-webkit-user-select:none}
-.zc-swipe-cue{position:absolute;left:-34px;top:9px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--muted);opacity:var(--reply-progress,0);pointer-events:none}
+.zc-swipe-cue{position:absolute;left:-34px;top:9px;display:none;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--muted);opacity:var(--reply-progress,0);pointer-events:none}
+.zc-swiping>.zc-swipe-cue{display:grid}
+.zc-msg.mine .zc-swipe-cue{left:auto;right:-34px}
 .zc-swipe-ready>.zc-swipe-cue{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 18%,var(--surface))}
 @media(prefers-reduced-motion:reduce){.zc-msg-stack{transition:none}.zc-flash .bub,.zc-flash .zc-photo{transition:none}}
 .zc-attach{display:flex;gap:8px;padding:8px var(--zc-gutter) 0}.zc-attach[hidden]{display:none}
 .zc-attach>button{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:12px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}.zc-attach>button:disabled{opacity:.45}.zc-attach>button svg{color:var(--accent-ink)}
+/* A compact composer keeps text and controls together above the keyboard. */
+.zc-composer{padding:10px max(12px,calc(50% - 384px)) 12px}
+.zc-composer[hidden]{display:none}
+.zc-composer-field{height:54px;gap:2px;padding:4px 5px;border:1px solid var(--line);background:var(--surface)}
+.zc-composer-field:focus-within{background:var(--surface);border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.zc-composer-field>input{height:42px;padding:0 6px;color:var(--ink);caret-color:var(--accent-ink)}
+.zc-composer-field>.zc-composer-icon{width:40px;height:44px;color:var(--muted)}
+.zc-composer-field>.zc-composer-gift{color:var(--accent-ink)}
+.zc-composer-field>.zc-composer-send{width:44px;height:44px;background:var(--accent);color:var(--cta-ink);box-shadow:none}
+.zc-composer-field>.zc-composer-send.is-mic{background:transparent;color:var(--ink)}
+.zc-composer-field>button:disabled{opacity:.4}
+.zc-composer-field>button:focus-visible,.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+#zc-recording{flex:none;min-width:0}
+.zc-thread.zc-is-recording .zc-chips{display:none}
+.zc-recorder{margin:10px var(--zc-gutter) 12px;padding:14px 12px 10px;border:1px solid var(--line);border-radius:22px;background:var(--surface)}
+.zc-recording-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 5px 8px;color:var(--ink)}
+.zc-recording-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650}
+.zc-recording-line>time{font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;color:var(--muted)}
+.zc-recording-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:zc-recording-glow 1.2s ease-in-out infinite}
+.zc-recording-controls{display:flex;align-items:center;gap:8px;min-height:48px}
+.zc-recording-controls>button{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;color:var(--muted)}
+.zc-recording-controls>.zc-recording-stop,.zc-recording-controls>.zc-recording-send{background:var(--accent);color:var(--cta-ink)}
+.zc-recording-controls>.zc-recording-play{background:var(--raised);color:var(--accent-ink)}
+.zc-recording-controls>button:disabled{opacity:.35}
+.zc-recording-pulse{display:flex;align-items:center;justify-content:center;flex:1;gap:5px;height:40px;overflow:hidden}
+.zc-recording-pulse>span{width:4px;height:20px;border-radius:8px;background:var(--accent);animation:zc-recording-pulse .85s ease-in-out infinite alternate}
+.zc-recording-pulse>span:nth-child(2n){height:30px;animation-delay:-.3s}
+.zc-recording-pulse>span:nth-child(3n){height:12px;animation-delay:-.6s}
+.zc-recording-wait{flex:1;min-width:0;padding:0 10px}
+.zc-recording-hint,.zc-recording-error{margin:8px 4px 0;font-size:11.5px;line-height:1.5;color:var(--muted)}
+.zc-recording-error{color:var(--theme-danger,var(--accent-ink))}
+.zc-voice{width:min(64vw,280px);padding:10px 12px 12px;border:1px solid var(--line)}
+.zc-msg.mine .zc-voice{border-radius:20px 20px 6px 20px;background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.zc-voice-top{margin-bottom:5px;gap:4px;font-size:11px;letter-spacing:0;text-transform:none}
+.zc-voice-options{display:grid;place-items:center;flex:none;width:32px;height:32px;margin:-5px -5px 0 0;border-radius:50%;color:var(--muted)}
+.zc-voice-body{gap:10px}
+.zc-voice-play{width:44px;height:44px;box-shadow:none}
+.zc-voice-play:disabled{opacity:.4}
+.zc-voice-progress{display:block;flex:1;min-width:20px;height:5px;overflow:hidden;border-radius:99px;background:color-mix(in srgb,var(--muted) 22%,transparent)}
+.zc-voice-progress>i{display:block;width:var(--voice-progress,0%);height:100%;border-radius:inherit;background:var(--accent-ink)}
+.zc-voice-body>time{color:var(--muted);font-size:12px}
+.zc-flash .zc-voice{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent)}
+@keyframes zc-recording-pulse{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
+@keyframes zc-recording-glow{50%{opacity:.4}}
+@media(max-width:350px){.zc-composer-field{gap:0}.zc-composer-field>.zc-composer-icon{width:36px}.zc-composer-field>input{padding:0 4px;font-size:14px}.zc-recording-hint{font-size:11px}}
+@media(max-height:600px){.zc-is-recording .zc-thread-live{display:none}.zc-recorder{margin-top:6px;margin-bottom:8px}}
+@media(prefers-reduced-motion:reduce){.zc-recording-pulse>span,.zc-recording-dot{animation:none}}
+.zc-photo-wrap{position:relative;width:min(62vw,240px)}
+.zc-photo-wrap>.zc-photo{width:100%}
+.zc-photo-options{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#0009;color:#fff}
+.zc-photo>.zc-photo-view-hint{top:auto;left:auto;right:8px;bottom:8px;transform:none;width:30px;height:30px;border-radius:8px;background:#0008;color:#fff}
+.zc-photo-wrap button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+#zc-photo-viewer{position:fixed;inset:0;z-index:9000;background:var(--canvas);color:var(--ink);overscroll-behavior:none;color-scheme:inherit}
+.zc-photo-viewer{position:relative;isolation:isolate;display:flex;flex-direction:column;width:100%;height:100%;min-height:0;overflow:hidden;outline:none}
+.zc-photo-backdrop{position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 65%),var(--canvas)}
+.zc-photo-viewer>header{flex:none;display:flex;align-items:center;gap:8px;padding:16px 12px 12px}
+.zc-photo-avatar{position:relative;flex:none;width:38px;height:38px;overflow:hidden;border-radius:50%;background:var(--raised)}
+.zc-photo-avatar>.face{width:100%;height:100%}
+.zc-photo-sender{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.zc-photo-sender>b{font-size:16px;line-height:1.2;font-weight:650;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zc-photo-sender>span{font-size:12px;line-height:1.2;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zc-photo-viewer button{display:inline-flex;align-items:center;justify-content:center;flex:none;gap:7px;min-width:44px;min-height:44px;border-radius:50%;color:var(--ink)}
+.zc-photo-viewer button:disabled{opacity:.35}
+.zc-photo-viewer button:focus-visible,.zc-photo-stage:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-3px}
+.zc-photo-viewer .zc-photo-save.is-saving{color:var(--accent-ink)}
+.zc-photo-media{flex:1;position:relative;display:grid;place-items:center;min-height:0;margin:12px;isolation:isolate}
+.zc-photo-stage{position:relative;width:100%;height:100%;max-width:100%;max-height:100%;overflow:hidden;border-radius:22px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;background:var(--surface);outline:none}
+.zc-photo-stage.is-zoomed{cursor:grab}
+.zc-photo-stage.is-zoomed:active{cursor:grabbing}
+.zc-photo-full{position:absolute;left:50%;top:50%;max-width:none;max-height:none;object-fit:contain;transform-origin:center;pointer-events:none;-webkit-user-drag:none;will-change:transform}
+.zc-photo-viewer [hidden]{display:none!important}
+.zc-photo-loading{position:absolute;inset:0;display:grid;place-items:stretch}
+.zc-photo-loading>.zh-skeleton-shape{border-radius:22px;background-color:var(--raised)}
+.zc-photo-stage>.zc-photo-retry{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:0 18px;border-radius:99px;background:var(--raised);white-space:nowrap;font-size:13px}
+.zc-photo-viewer>footer{flex:none;padding:0 12px 22px}
+.zc-photo-zoom-controls{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:6px;padding:4px;border:1px solid var(--line);border-radius:99px;background:color-mix(in srgb,var(--surface) 95%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 4px 20px #0002}
+.zc-photo-zoom-controls>button{color:var(--ink)}
+.zc-photo-zoom-controls>[data-photo-reset]{min-width:72px;border-radius:99px;font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
+.zc-photo-viewer-status{min-height:18px;margin:0 8px 12px;text-align:center;font-size:11px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.zc-photo-reply-bar{display:flex;align-items:center;gap:8px;min-height:54px;padding:5px 6px;border-radius:99px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.zc-photo-reply-bar>[data-photo-camera]{width:44px;height:44px;background:var(--accent);color:var(--cta-ink)}
+.zc-photo-reply-bar>input{flex:1;min-width:0;width:0;height:44px;margin:0;padding:0 4px;border:0;border-radius:0;background:transparent;outline:none;color:var(--ink);caret-color:var(--accent-ink);font:inherit;font-size:16px;line-height:1.4;box-shadow:none}
+.zc-photo-reply-bar>input::placeholder{color:var(--muted);opacity:1}
+#zc-photo-viewer .zc-photo-reply-bar>input:focus-visible{outline:none}
+.zc-photo-reply-bar:focus-within{box-shadow:0 0 0 1px var(--accent-ink)}
+.zc-photo-reply-bar>[data-photo-send]{width:44px;height:44px;background:var(--accent);color:var(--cta-ink)}
+@media(max-width:350px){.zc-photo-viewer>header{gap:5px;padding-inline:6px}.zc-photo-avatar{width:34px;height:34px}.zc-photo-sender>b{font-size:15px}.zc-photo-sender>span{font-size:11px}.zc-photo-stage{border-radius:18px}}
+@media(max-height:500px){.zc-photo-viewer>header{padding-block:4px}.zc-photo-media{margin-block:6px}.zc-photo-viewer>footer{padding-bottom:6px}.zc-photo-viewer-status{margin-bottom:4px;font-size:10px}}
 /* Shared chrome has one geometry on every main tab. Screen CSS owns only content. */
 .zh-app .nav.zh-nav{display:grid;grid-template-columns:repeat(var(--nav-count,4),minmax(0,1fr));align-items:end;justify-items:center;gap:0;width:100%;max-width:none;height:74px;min-height:74px;flex-shrink:0;margin:0;padding:8px max(14px,calc((100vw - 640px)/2)) 11px;border:0;border-radius:0;background:#210f1c;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
 .zh-app .zh-nav>button{display:flex;position:relative;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;max-width:120px;height:49px;padding:0;color:#d8b8ca;font-size:10px;line-height:13px;font-weight:600;transition:color 180ms ease,background-color 180ms ease;isolation:isolate}
@@ -2775,6 +2865,10 @@ button.gpill[onclick]{cursor:pointer}
 .zi-icon[data-icon=ph]{--zi-tap:zi-ring;--zi-time:600ms}
 .zi-icon:is([data-icon=heart],[data-icon=follow]){--zi-tap:zi-beat;--zi-time:560ms}
 .zi-icon[data-icon=send]{--zi-tap:zi-fly;--zi-time:520ms}
+.zi-icon[data-icon=download]{--zi-tap:zi-nudge-down;--zi-time:380ms}
+.zi-icon[data-icon=photoClose]{--zi-tap:zi-turn;--zi-turn:90deg;--zi-time:320ms}
+.zi-icon:is([data-icon=zoomIn],[data-icon=zoomOut],[data-icon=expand]){--zi-tap:zi-glow;--zi-time:360ms}
+.zi-icon:is([data-icon=stop],[data-icon=playFill],[data-icon=pause]){--zi-tap:zi-glow;--zi-time:360ms}
 .zi-icon[data-icon=up]{--zi-tap:zi-rise;--zi-time:520ms}
 .zi-icon:is([data-icon=back],[data-icon=reply]){--zi-tap:zi-nudge-left;--zi-time:380ms}
 .zi-icon:is([data-icon=logout],[data-icon=arrow]){--zi-tap:zi-nudge-right;--zi-time:380ms}
@@ -8215,7 +8309,7 @@ Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
 Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
  if(["call","hcall","voice"].includes(S.v)&&String(d.from)===String(S.v==="hcall"?S.caller?.id:S.h)){S.rmsgs.push(["host",first(d.name||(S.v==="hcall"?S.caller?.n:g(S.h)?.n)||"Them"),d.text]);if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,kind:d.kind,imageUrl:d.imageUrl,reply:d.reply||null,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
+ if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,kind:d.kind,imageUrl:d.imageUrl,audioUrl:d.audioUrl,durationMs:d.durationMs,reply:d.reply||null,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");
@@ -9599,6 +9693,12 @@ const chatIcons={
   more:'<circle cx="12" cy="5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="19" r="1.3" fill="currentColor"/>',
   add:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
   up:'<path d="M12 19V5M6 11l6-6 6 6"/>',
+  send:'<path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/>',
+  stop:'<rect x="5" y="5" width="14" height="14" rx="3" fill="currentColor" stroke="none"/>',
+  download:'<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>',
+  zoomIn:'<circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5M7 10.5h7M10.5 7v7"/>',
+  zoomOut:'<circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5M7 10.5h7"/>',
+  expand:'<path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/>',
   reply:'<path d="m9 5-6 6 6 6M3 11h10a7 7 0 0 1 7 7"/>',
   edit:'<path d="m16 3 5 5M4 20l5-1L21 7a2.1 2.1 0 0 0-5-5L4 14zM4 20h16"/>',
   trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
@@ -9638,7 +9738,7 @@ function zcRows(){const q=Chats.query.trim().toLowerCase();let rows=Chats.rows.f
 });return rows.sort((a,b)=>Chats.sort==='name'?a.user.name.localeCompare(b.user.name):Chats.sort==='unread'&&(a.unread||b.unread)?b.unread-a.unread:(Date.parse(b.lastAt)||0)-(Date.parse(a.lastAt)||0))}
 function zcTabs(){const tabs=[['all','All'],['unread','Unread'],['calls','Calls'],['missed','Missed calls']];return `<div class="zc-tabs" role="tablist" aria-label="Conversation categories">${tabs.map(([key,label])=>`<button role="tab" aria-selected="${Chats.filter===key}" class="${Chats.filter===key?'selected':''}" onclick="zcSetFilter('${key}')">${label}</button>`).join('')}</div>`}
 function zcSetFilter(value){Chats.filter=value;r()}
-function zcRow(c){const h=zcPerson(c),bot=DEMO&&c.bot;return `<button class="zc-row rowlink ${c.unread?'zc-unread':''}" onclick="${bot?'homeNotifications()':`zcOpen('${domId(h.id)}')`}" aria-label="${esc(h.n)}${c.lastAutomated===true?', automated welcome':''}${c.unread?', '+c.unread+' unread messages':''}"><span class="zc-avatar-wrap">${bot?`<span class="zc-avatar zc-bot">${ci('robot',30)}</span><span class="zc-bot-label">BOT</span>`:zcPhoto(h)+`<i class="zc-presence ${h.on?'online':''}" aria-label="${h.on?'Online':'Offline'}"></i>`}</span><span class="zc-row-body"><span class="zc-row-heading"><span class="zc-name">${esc(h.n)}${bot?' '+hi('shield',17):''}</span><time datetime="${esc(c.lastAt||'')}">${esc(zcTime(c))}</time></span><span class="zc-row-preview"><span class="zc-message ${c.lastKind==='gift'?'zc-gift-message':''}">${c.lastKind==='gift'?hi('gift',17):c.lastKind==='voice'?hi('mic',17):c.lastKind==='image'?ci('image',17):c.lastKind==='call'?hi('ph',17):c.lastMine?ci(c.lastStatus==='read'?'checks':'check',17):''}<span>${c.lastDeleted?'Message deleted':escChat(c.last||(c.lastKind==='image'?'Photo':'Start a conversation'))}</span></span>${c.unread?`<span class="zc-unread-count">${c.unread>99?'99+':n(c.unread)}</span>`:''}</span>${c.lastAutomated===true?'<span class="zc-automated">Automated welcome</span>':''}</span></button>`}
+function zcRow(c){const h=zcPerson(c),bot=DEMO&&c.bot;return `<button class="zc-row rowlink ${c.unread?'zc-unread':''}" onclick="${bot?'homeNotifications()':`zcOpen('${domId(h.id)}')`}" aria-label="${esc(h.n)}${c.lastAutomated===true?', automated welcome':''}${c.unread?', '+c.unread+' unread messages':''}"><span class="zc-avatar-wrap">${bot?`<span class="zc-avatar zc-bot">${ci('robot',30)}</span><span class="zc-bot-label">BOT</span>`:zcPhoto(h)+`<i class="zc-presence ${h.on?'online':''}" aria-label="${h.on?'Online':'Offline'}"></i>`}</span><span class="zc-row-body"><span class="zc-row-heading"><span class="zc-name">${esc(h.n)}${bot?' '+hi('shield',17):''}</span><time datetime="${esc(c.lastAt||'')}">${esc(zcTime(c))}</time></span><span class="zc-row-preview"><span class="zc-message ${c.lastKind==='gift'?'zc-gift-message':''}">${c.lastKind==='gift'?hi('gift',17):c.lastKind==='voice'?hi('mic',17):c.lastKind==='image'?ci('image',17):c.lastKind==='call'?hi('ph',17):c.lastMine?ci(c.lastStatus==='read'?'checks':'check',17):''}<span>${c.lastDeleted?'Message deleted':escChat(c.last||(c.lastKind==='image'?'Photo':c.lastKind==='voice'?'Voice message':'Start a conversation'))}</span></span>${c.unread?`<span class="zc-unread-count">${c.unread>99?'99+':n(c.unread)}</span>`:''}</span>${c.lastAutomated===true?'<span class="zc-automated">Automated welcome</span>':''}</span></button>`}
 function zcSkeleton(){return `<div class="zc-inbox-skeleton" role="status" aria-label="Loading conversations" aria-busy="true"><div aria-hidden="true">${Array.from({length:6},()=>`<div class="zc-row zc-skeleton-row"><span class="zh-skeleton-shape zc-avatar"></span><span class="zc-row-body"><span class="zc-row-heading">${skeletonLine('60%',17)}${skeletonLine('36px',10)}</span>${skeletonLine('90%',12)}</span></div>`).join('')}</div></div>`}
 function zcList(){
   if(Chats.filter==='missed')return missedList();
@@ -9684,7 +9784,7 @@ document.addEventListener('aurora:navigate',()=>{if(S.v!=='chats'){Chats.compose
    history holds text only, so gifts confirmed during this session are merged in as cards. */
 function zcClock(m){const at=new Date(m.at||'');return Number.isNaN(at.getTime())?m.time||'':at.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}
 function zcDay(value){const at=new Date(value||'');if(!value||Number.isNaN(at.getTime()))return '';const today=new Date(),yesterday=new Date();yesterday.setDate(today.getDate()-1);if(at.toDateString()===today.toDateString())return 'Today';if(at.toDateString()===yesterday.toDateString())return 'Yesterday';return at.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',...(at.getFullYear()===today.getFullYear()?{}:{year:'numeric'})})}
-function zcThreadMessages(d){const rows=(d.messages||[]).map(m=>({id:m.id,mine:!!m.mine,text:String(m.text??''),time:m.time||'',at:m.createdAt||'',status:m.status,automated:m.automated===true,edited:m.edited===true,deleted:m.deleted===true,reply:m.reply||null,...(m.kind==='image'&&m.imageUrl?{kind:'image',imageUrl:String(m.imageUrl)}:{})})),gifts=Chats.gifts[String(d.with)]||[];return gifts.length?[...rows,...gifts].sort((a,b)=>(Date.parse(a.at)||0)-(Date.parse(b.at)||0)):rows}
+function zcThreadMessages(d){const rows=(d.messages||[]).map(m=>({id:m.id,mine:!!m.mine,text:String(m.text??''),time:m.time||'',at:m.createdAt||'',status:m.status,automated:m.automated===true,edited:m.edited===true,deleted:m.deleted===true,reply:m.reply||null,...(m.kind==='image'&&m.imageUrl?{kind:'image',imageUrl:String(m.imageUrl)}:{}),...(m.kind==='voice'&&m.audioUrl?{kind:'voice',audioUrl:String(m.audioUrl),durationMs:m.durationMs}:{})})),gifts=Chats.gifts[String(d.with)]||[];return gifts.length?[...rows,...gifts].sort((a,b)=>(Date.parse(a.at)||0)-(Date.parse(b.at)||0)):rows}
 /* Inbox rows carry identity and presence; a known creator record adds rate and live status. */
 function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'Zimi member',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
 function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
@@ -9692,12 +9792,11 @@ function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header
 function zcThreadLive(h){if(!h.stream)return '';const id=domId(h.id),name=first(h.n),viewers=h.stream.viewers||h.viewers;return `<section class="zc-thread-live" aria-label="${esc(name)} is live now"><span class="zc-thread-live-cover">${homeCover(h)}<b><i></i>LIVE</b></span><div class="zc-thread-live-text"><h2><span>${esc(name)} is Live Now</span><i></i></h2><p>${esc(h.stream.title||h.tag||'Streaming now')}${viewers?' · '+homeCompact(viewers)+' watching':''}</p></div><div class="zc-thread-live-actions"><button class="zc-thread-join" onclick="homeOpen('${id}')">Join Stream</button>${!isHost()&&(h.available||DEMO)?`<button class="zc-thread-call" onclick="homeCall('${id}')">${hi('vid',18)} 1:1 Call${h.rate>0?` (${n(h.rate)}c/m)`:''}</button>`:''}</div></section>`}
 function zcThreadNote(h){return `<p class="zc-thread-note">${hi('lock',13)} Never share sign-in codes or payment details${h.verified?' · Creator ID verified':''}</p>`}
 function zcGiftCard(m,h){const x=m.gift||{},mark=x.image?`<img src="${x.image}" alt="">`:`<span>${x.html?giftGlyph(x.html):esc(x.emoji||'🎁')}</span>`;return `<div class="zc-gift-card"><div class="zc-gift-top"><span>${ci('sparkle',18)} ${m.mine?'Gift sent':'Gift received'}</span><b>${m.mine?'−':'+'}${n(x.coins)} Coins</b></div><div class="zc-gift-body"><span class="zc-gift-icon">${mark}<i>${ci('crown',13)}</i></span><div><h3>${esc(x.name||'Gift')}</h3><p>${m.mine?'Delivered to':'From'} ${esc(first(h.n))}</p></div></div></div>`}
-const zcWave=[10,16,24,30,20,28,14,22,30,18,12,20,26,16,10,22,14,8,18,12,24,16,10,14,8];
-function zcVoiceMemo(m){const playing=Chats.playing===m.id;return `<div class="zc-voice ${playing?'playing':''}"><div class="zc-voice-top"><span>${hi('mic',16)} Voice memo</span><b>1.0x</b></div><div class="zc-voice-body"><button class="zc-voice-play" data-voice="${domId(m.id)}" aria-label="${playing?'Pause':'Play'} voice memo" aria-pressed="${playing}" onclick="zcVoiceToggle(this,'${domId(m.id)}')">${ci(playing?'pause':'playFill',20)}</button><span class="zc-wave" aria-hidden="true">${zcWave.map((v,i)=>`<i class="${i<9?'on':''}" style="height:${v}px;--zc-i:${i}"></i>`).join('')}</span><time>${esc(m.duration||'')}</time></div></div>`}
-function zcVoiceToggle(button,id){const m=S.msgs.find(x=>x.id===id);if(!m)return;Chats.playing=Chats.playing===id?'':id;button.closest('.zc-voice').outerHTML=zcVoiceMemo(m);document.querySelector(`[data-voice="${CSS.escape(id)}"]`)?.focus()}
+function zcVoiceMemo(m){return window.ZimiChatVoice?.messageView(m)||''}
+function zcVoiceToggle(button,id){window.ZimiChatVoice?.play(id)}
 function zcBubble(m,h){
  const tick=m.mine&&m.status!=='failed'?`<span class="zc-tick ${m.status==='read'?'read':''}" role="img" aria-label="${m.status==='read'?'Read':'Sent'}">${ci(m.status==='read'?'checks':'check',16)}</span>`:'',actionable=zcActionable(m);
- const open=actionable?` role="button" tabindex="0" aria-haspopup="dialog" aria-description="Swipe right to reply, or hold for message options" onclick="if(event.detail===0)zcMessageMenu('${domId(m.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();zcMessageMenu('${domId(m.id)}')}"`:'';
+ const open=actionable?` role="button" tabindex="0" aria-haspopup="dialog" aria-description="Swipe ${m.mine?'left':'right'} to reply, or hold for message options" onclick="if(event.detail===0)zcMessageMenu('${domId(m.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();zcMessageMenu('${domId(m.id)}')}"`:'';
  const meta=`<span class="zc-meta">${m.automated===true?'<span class="zc-automated">Automated welcome</span>':''}${m.edited&&!m.deleted?'<span class="zc-edited">Edited</span>':''}${m.status==='failed'?'<b>Not sent</b>':`<time${m.at?` datetime="${esc(m.at)}"`:''}>${esc(zcClock(m))}</time>`}${tick}</span>`;
  const body=m.deleted?`<div class="bub zc-deleted">${m.mine?'You deleted this message':'This message was deleted'}</div>`:m.kind==='gift'?zcGiftCard(m,h):m.kind==='voice'?zcVoiceMemo(m):m.kind==='image'?zcPhotoBubble(m,open):`<div class="bub"${open}>${escChat(m.text)}</div>`;
  return `<div class="zc-msg ${m.mine?'mine':'theirs'} zc-msg-${m.kind||'text'}" id="zc-m-${domId(m.id)}">${m.mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack"${actionable?` data-message-id="${domId(m.id)}"`:''}>${actionable?`<span class="zc-swipe-cue" aria-hidden="true">${ci('reply',18)}</span>`:''}${!m.deleted?zcQuote(m.reply,h,m.mine):''}${body}${meta}</div></div>`
@@ -9705,10 +9804,16 @@ function zcBubble(m,h){
 function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;if(!S.msgs.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return S.msgs.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+zcBubble(m,h)}).join('')}
 function zcThreadChips(){const chips=[['🔥','Love it',"zcThreadSend('Love it 🔥')"],['💖','Thank you',"zcThreadSend('Thank you! 💖')"]];return `<div class="zc-chips" role="group" aria-label="Quick replies">${chips.map(([emoji,label,action])=>`<button ${action.startsWith("zcThreadSend")?"data-chat-send":""} ${action.startsWith("zcThreadSend")&&zcThreadBlocked()?"disabled":""} onclick="${action}"><span aria-hidden="true">${emoji}</span>${label}</button>`).join('')}</div>`}
 const zcEmoji=['😊','😂','😍','🥰','🔥','💖','👏','🙌','🎶','🎧','✨','🙏'];
-function zcThreadComposer(h){return `<p id="zc-send-status" class="zc-thread-note" role="status" ${!zcThreadBlocked()?"hidden":""}>${esc(zcThreadBlocked())}</p><div id="zc-context">${zcContextView(h)}</div><div id="zc-attach" class="zc-attach" role="menu" aria-label="Add to your message" hidden onkeydown="if(event.key==='Escape'){zcThreadAttach(false);document.querySelector('.zc-composer-add')?.focus()}"><button role="menuitem" data-chat-send ${zcThreadBlocked()?"disabled":""} onclick="zcPickPhoto()">${ci('image',20)}<span>Photo</span></button><button role="menuitem" onclick="zcThreadAttach(false);zcThreadEmoji(true)"><span aria-hidden="true">😊</span><span>Emoji</span></button></div><div id="zc-emoji" class="zc-emoji" role="group" aria-label="Emoji" hidden>${zcEmoji.map(e=>`<button onclick="zcThreadInsert('${e}')" aria-label="Insert ${e}">${e}</button>`).join('')}</div><div class="zc-composer"><button class="zc-composer-icon zc-composer-add" aria-label="Add a photo or emoji" aria-haspopup="menu" aria-expanded="false" aria-controls="zc-attach" onclick="zcThreadAttach()">${ci('add',26)}</button>${isHost()?'':`<button class="zc-composer-icon zc-composer-gift" aria-label="Send a gift" onclick="homeGifts('${domId(h.id)}')">${hi('gift',24)}</button>`}<div class="zc-composer-field"><input id="ti" placeholder="Type a message to ${esc(first(h.n))}" aria-label="Message ${esc(h.n)}" maxlength="2000" autocomplete="off" value="${esc(Chats.drafts[S.h]||'')}" oninput="Chats.drafts[S.h]=this.value" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();zcThreadSend()}"><input id="zc-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="zcSendPhoto(this)"></div><button class="zc-composer-send" data-chat-send ${zcThreadBlocked()?"disabled":""} aria-label="Send message" onclick="zcThreadSend()">${ci('up',22)}</button></div>`}
+function zcThreadComposer(h){
+ const text=Chats.drafts[S.h]||'',send=!!text.trim()||!!Chats.editing,recording=window.ZimiChatVoice?.active();
+ return `<p id="zc-send-status" class="zc-thread-note" role="status" ${!zcThreadBlocked()?"hidden":""}>${esc(zcThreadBlocked())}</p><div id="zc-context">${zcContextView(h)}</div><div id="zc-attach" class="zc-attach" role="menu" aria-label="Add to your message" hidden onkeydown="if(event.key==='Escape'){zcThreadAttach(false);document.querySelector('.zc-composer-add')?.focus()}"><button role="menuitem" data-chat-send ${zcThreadBlocked()?"disabled":""} onclick="zcPickPhoto()">${ci('image',20)}<span>Photo</span></button><button role="menuitem" onclick="zcThreadAttach(false);zcThreadEmoji(true)"><span aria-hidden="true">&#128522;</span><span>Emoji</span></button></div><div id="zc-emoji" class="zc-emoji" role="group" aria-label="Emoji" hidden>${zcEmoji.map(e=>`<button onclick="zcThreadInsert('${e}')" aria-label="Insert ${e}">${e}</button>`).join('')}</div><div id="zc-recording">${window.ZimiChatVoice?.view()||''}</div><div class="zc-composer" ${recording?'hidden':''}><div class="zc-composer-field"><button class="zc-composer-icon zc-composer-add" aria-label="Add a photo or emoji" aria-haspopup="menu" aria-expanded="false" aria-controls="zc-attach" onclick="zcThreadAttach()">${ci('add',24)}</button><input id="ti" placeholder="Message&#8230;" aria-label="Message ${esc(h.n)}" maxlength="2000" autocomplete="off" value="${esc(text)}" oninput="zcComposerInput()" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();zcThreadSend()}"><input id="zc-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="zcSendPhoto(this)">${isHost()?'':`<button class="zc-composer-icon zc-composer-gift" aria-label="Send a gift" onclick="homeGifts('${domId(h.id)}')">${hi('gift',22)}</button>`}<button class="zc-composer-send ${send?'':'is-mic'}" data-chat-send ${zcThreadBlocked()?"disabled":""} aria-label="${send?'Send message':'Record voice message'}" onclick="zcComposerAction()">${ci(send?'send':'mic',22)}</button></div></div>`
+}
+function zcComposerInput(){const input=document.getElementById('ti');if(input)Chats.drafts[S.h]=input.value;zcUpdateComposer()}
+function zcUpdateComposer(){const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
+function zcComposerAction(){if(document.getElementById('ti')?.value.trim()||Chats.editing)zcThreadSend();else window.ZimiChatVoice?.start()}
 function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips()}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
-function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send]").forEach(button=>{button.disabled=!!reason;button.title=reason});const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
-function zcPaintThread(scrollToEnd=false){zcUpdateSendControls();const f=document.getElementById('tf');if(!f)return;const nearBottom=f.scrollHeight-f.scrollTop-f.clientHeight<80,scroll=f.scrollTop;f.innerHTML=zcThreadList(zcThreadPerson());f.scrollTop=scrollToEnd||nearBottom?f.scrollHeight:scroll;contentImagesReady()}
+function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send]").forEach(button=>{button.disabled=!!reason;button.title=reason});zcUpdateComposer();const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
+function zcPaintThread(scrollToEnd=false){zcUpdateSendControls();const f=document.getElementById('tf');if(!f)return;const nearBottom=f.scrollHeight-f.scrollTop-f.clientHeight<80,scroll=f.scrollTop;f.innerHTML=zcThreadList(zcThreadPerson());f.scrollTop=scrollToEnd||nearBottom?f.scrollHeight:scroll;contentImagesReady();window.ZimiChatVoice?.paintPlayback();window.ZimiChatPhoto?.sync()}
 /* Quick replies pass their text; the composer sends and clears its draft. */
 function zcThreadSend(text){const input=document.getElementById('ti'),value=String(text??input?.value??'').trim().slice(0,2000);if(!value||!S.h)return;const reason=zcThreadBlocked();if(reason){appNotice(reason);return}
  if(Chats.reply&&!zcCanReply(zcFind(Chats.reply.id))){zcClearContext();appNotice('That message is no longer available to reply to.');return}
@@ -9726,62 +9831,83 @@ function zcThreadGift(to,gift,receipt={}){
 }
 function zcThreadMenu(open){const menu=document.querySelector('.zc-thread-menu'),button=document.querySelector('.zc-thread-more>button');if(!menu||!button)return;const show=open??menu.hidden;menu.hidden=!show;button.setAttribute('aria-expanded',String(show));if(show)menu.querySelector('button')?.focus()}
 function zcThreadEmoji(open){const tray=document.getElementById('zc-emoji');if(!tray)return;tray.hidden=!(open??tray.hidden)}
-function zcThreadInsert(emoji){const input=document.getElementById('ti');if(!input)return;const end=input.selectionEnd??input.value.length;input.setRangeText(emoji,input.selectionStart??end,end,'end');Chats.drafts[S.h]=input.value;input.focus()}
+function zcThreadInsert(emoji){const input=document.getElementById('ti');if(!input)return;const end=input.selectionEnd??input.value.length;input.setRangeText(emoji,input.selectionStart??end,end,'end');Chats.drafts[S.h]=input.value;zcUpdateComposer();input.focus()}
 /* Preview-only conversation matching the design reference. */
 function zcDemoThread(h){const name=first(h?.n||'there'),at=minutes=>new Date(Date.now()-minutes*60000).toISOString();return [
   {id:'demo-m1',mine:true,status:'read',at:at(4),text:`Hey ${name}! Loved your acoustic guitar intro earlier today 🔥`},
   {id:'demo-m2',mine:false,at:at(3),text:'Thank you so much! 😊 Getting ready for the evening live set. Are you joining?'},
   {id:'demo-m3',kind:'gift',mine:true,status:'read',at:at(2),gift:{name:'Super Diamond Crown',emoji:'💎',coins:250}},
   {id:'demo-m4',mine:false,at:at(1),text:'Omg thank you for the crown!! You’re incredible! 💖 Let’s do a quick video call if you’re free!'},
-  {id:'demo-m5',kind:'voice',mine:false,at:at(1),duration:'0:42'},
+  {id:'demo-m5',kind:'voice',mine:false,at:at(1),durationMs:42000},
   {id:'demo-m6',mine:true,status:'read',at:at(0),text:'Yes! Jumping on in 2 minutes, let me grab my headphones 🎧'}]}
 window.ZimiHome.views.thread=zcThread;
 Native.on('gift.sent',d=>zcThreadGift(d.to,d.giftDetails||window.ZimiCoins?.giftReceipt(d)||Home.gifts.find(x=>x.id===d.gift),d));
 /* A failed send cannot be matched to a request, so it marks the latest unconfirmed message. */
 /* Photos from members reach creators blurred; the creator chooses which ones to view, again on every visit. */
-function zcPhotoBubble(m,open=''){const src=imageSrc(m.imageUrl),img=src?`<img src="${src}" alt="" loading="lazy">`:'';if(!isHost()||m.mine||Chats.revealed[m.id])return `<div class="zc-photo"${open}>${img}${m.status==='sending'?'<span>Sending…</span>':''}</div>`;return `<button type="button" class="zc-photo is-blurred" onclick="zcRevealPhoto('${domId(m.id)}')" aria-label="Photo hidden. Tap to view">${img}<span>${hi('eye',18)} Tap to view</span></button>`}
+function zcPhotoBubble(m){const src=imageSrc(m.imageUrl),img=src?`<img src="${src}" alt="" loading="lazy">`:'',blurred=isHost()&&!m.mine&&!Chats.revealed[m.id],id=domId(m.id);return `<div class="zc-photo-wrap"><button type="button" class="zc-photo ${blurred?'is-blurred':''}" aria-haspopup="dialog" aria-label="${blurred?'Photo hidden. Tap to view':'Open photo'}" aria-description="Swipe ${m.mine?'left':'right'} to reply, or hold for message options" onclick="${blurred?`zcRevealPhoto('${id}')`:`ZimiChatPhoto.open('${id}')`}" ${src?'':'disabled'}>${img}${blurred?`<span>${hi('eye',18)} Tap to view</span>`:m.status==='sending'?'<span>Sending…</span>':`<span class="zc-photo-view-hint" aria-hidden="true">${ci('expand',17)}</span>`}</button>${zcActionable(m)?`<button class="zc-photo-options" aria-label="Photo message options" aria-haspopup="dialog" onclick="zcMessageMenu('${id}')">${ci('more',18)}</button>`:''}</div>`}
 function zcRevealPhoto(id){Chats.revealed[id]=true;paint()}
 /* Sent messages (with a server ID) can be replied to, edited and deleted; gifts and pending messages cannot. */
-function zcActionable(m){return !!m?.id&&!m.local&&!m.deleted&&m.kind!=='gift'&&m.kind!=='voice'&&m.status!=='sending'&&m.status!=='failed'}
+function zcActionable(m){return !!m?.id&&!m.local&&!m.deleted&&m.kind!=='gift'&&m.status!=='sending'&&m.status!=='failed'}
 function zcCanReply(m){return zcActionable(m)&&!zcThreadBlocked()}
-function zcCanEdit(m){return zcCanReply(m)&&m.mine&&!m.automated&&m.kind!=='image'}
-function zcQuote(r,h,mine){if(!r)return '';const author=r.mine?'You':first(h.n),what=r.deleted?'Deleted message':r.text?escChat(r.text):r.image?'Photo':'Message';return `<div class="zc-reply"><span class="zc-reply-label">${ci('reply',13)}${mine?'You replied':esc(first(h.n))+' replied'}</span><button type="button" class="zc-quote" aria-label="View original message from ${esc(author)}" onclick="event.stopPropagation();zcJump('${domId(r.id)}')"><b>${esc(author)}</b><span>${what}</span></button></div>`}
-function zcJump(id){const el=document.getElementById('zc-m-'+id);if(!el){appNotice('The original message is not in the loaded conversation.');return}el.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});el.classList.add('zc-flash');el.querySelector('.bub[tabindex],.zc-photo[tabindex]')?.focus({preventScroll:true});setTimeout(()=>el.classList.remove('zc-flash'),1400)}
+function zcCanEdit(m){return zcCanReply(m)&&m.mine&&!m.automated&&m.kind!=='image'&&m.kind!=='voice'}
+function zcQuote(r,h,mine){if(!r)return '';const author=r.mine?'You':first(h.n),what=r.deleted?'Deleted message':r.text?escChat(r.text):r.image?'Photo':r.voice?'Voice message':'Message';return `<div class="zc-reply"><span class="zc-reply-label">${ci('reply',13)}${mine?'You replied':esc(first(h.n))+' replied'}</span><button type="button" class="zc-quote" aria-label="View original message from ${esc(author)}" onclick="event.stopPropagation();zcJump('${domId(r.id)}')"><b>${esc(author)}</b><span>${what}</span></button></div>`}
+function zcJump(id){const el=document.getElementById('zc-m-'+id);if(!el){appNotice('The original message is not in the loaded conversation.');return}el.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});el.classList.add('zc-flash');el.querySelector('.bub[tabindex],.zc-photo')?.focus({preventScroll:true});setTimeout(()=>el.classList.remove('zc-flash'),1400)}
 const zcFind=id=>S.msgs.find(x=>String(x.id)===String(id));
 function zcMessageMenu(id){if(!zcActionable(zcFind(id))||(Chats.menu===id&&document.querySelector('.zc-message-menu')))return;Chats.menu=id;zcPaintMenu();document.querySelector('.zc-message-menu button')?.focus({preventScroll:true})}
-function zcCloseMenu(){const id=Chats.menu;Chats.menu='';zcPaintMenu();if(id)document.querySelector(`#zc-m-${CSS.escape(String(id))} :is(.bub[tabindex],.zc-photo)`)?.focus({preventScroll:true})}
+function zcCloseMenu(){const id=Chats.menu;Chats.menu='';zcPaintMenu();if(id)document.querySelector(`#zc-m-${CSS.escape(String(id))} :is(.bub[tabindex],.zc-photo,.zc-voice-options)`)?.focus({preventScroll:true})}
 function zcPaintMenu(){const root=document.getElementById('zc-menu-root');if(root)root.innerHTML=zcMessageMenuView()}
 function zcMessageMenuView(){
  const m=Chats.menu&&zcFind(Chats.menu);if(!zcActionable(m))return '';
  const id=domId(m.id),items=[zcCanReply(m)&&['Reply',`zcStartReply('${id}')`,'reply'],zcCanEdit(m)&&['Edit',`zcStartEdit('${id}')`,'edit'],m.mine&&['Delete for everyone',`zcDeleteMessage('${id}',true)`,'trash','danger'],['Delete for me',`zcDeleteMessage('${id}',false)`,'trash','danger']].filter(Boolean);
- return `<div class="zc-overlay" onclick="if(event.target===this)zcCloseMenu()"><section class="zc-dialog zc-message-menu" role="dialog" aria-modal="true" aria-label="Message options" onkeydown="zcMenuKeys(event)"><span class="zc-menu-handle" aria-hidden="true"></span><p class="zc-menu-preview">${m.kind==='image'&&!m.text?'Photo':escChat(m.text)}</p>${items.map(([label,action,icon,tone])=>`<button class="${tone||''}" onclick="${action}">${ci(icon,21)}<span>${label}</span></button>`).join('')}<button class="zc-menu-cancel" onclick="zcCloseMenu()">Cancel</button></section></div>`
+ return `<div class="zc-overlay" onclick="if(event.target===this)zcCloseMenu()"><section class="zc-dialog zc-message-menu" role="dialog" aria-modal="true" aria-label="Message options" onkeydown="zcMenuKeys(event)"><span class="zc-menu-handle" aria-hidden="true"></span><p class="zc-menu-preview">${m.kind==='voice'?'Voice message':m.kind==='image'&&!m.text?'Photo':escChat(m.text)}</p>${items.map(([label,action,icon,tone])=>`<button class="${tone||''}" onclick="${action}">${ci(icon,21)}<span>${label}</span></button>`).join('')}<button class="zc-menu-cancel" onclick="zcCloseMenu()">Cancel</button></section></div>`
 }
 function zcMenuKeys(event){if(event.key==='Escape'){event.preventDefault();event.stopPropagation();zcCloseMenu();return}if(event.key!=='Tab')return;const buttons=[...event.currentTarget.querySelectorAll('button')],first=buttons[0],last=buttons.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}}
-function zcStartReply(id){const m=zcFind(id);Chats.menu='';zcPaintMenu();if(!zcCanReply(m))return;Chats.contextPeer=S.h;Chats.editing=null;Chats.reply={id:m.id,mine:!!m.mine,text:m.text||'',image:m.kind==='image'};zcThreadAttach(false);zcThreadEmoji(false);zcPaintContext();document.getElementById('ti')?.focus({preventScroll:true})}
-function zcStartEdit(id){const m=zcFind(id);Chats.menu='';zcPaintMenu();if(!zcCanEdit(m))return;Chats.reply=null;Chats.editing={id:m.id,text:m.text};zcPaintContext();const input=document.getElementById('ti');if(input){input.value=m.text;input.focus();input.setSelectionRange(input.value.length,input.value.length)}}
-function zcCancelContext(){const editing=Chats.editing;Chats.reply=null;Chats.editing=null;zcPaintContext();const input=document.getElementById('ti');if(editing&&input){input.value='';Chats.drafts[S.h]=''}input?.focus()}
-function zcPaintContext(){const root=document.getElementById('zc-context');if(root)root.innerHTML=zcContextView(zcThreadPerson())}
+function zcStartReply(id){const m=zcFind(id);Chats.menu='';zcPaintMenu();if(!zcCanReply(m))return;if(window.ZimiChatVoice&&!ZimiChatVoice.canChangeReply())return appNotice('Retry or cancel your voice message before changing the reply.');Chats.contextPeer=S.h;Chats.editing=null;Chats.reply={id:m.id,mine:!!m.mine,text:m.text||'',image:m.kind==='image',voice:m.kind==='voice'};zcThreadAttach(false);zcThreadEmoji(false);zcPaintContext();document.getElementById('ti')?.focus({preventScroll:true})}
+function zcStartEdit(id){const m=zcFind(id);Chats.menu='';zcPaintMenu();if(!zcCanEdit(m))return;if(window.ZimiChatVoice?.active())return appNotice('Finish or cancel your voice recording before editing a message.');Chats.reply=null;Chats.editing={id:m.id,text:m.text};zcPaintContext();const input=document.getElementById('ti');if(input){input.value=m.text;input.focus();input.setSelectionRange(input.value.length,input.value.length)}zcUpdateComposer()}
+function zcCancelContext(){if(window.ZimiChatVoice&&!ZimiChatVoice.canChangeReply())return appNotice('Retry or cancel your voice message before changing the reply.');const editing=Chats.editing;Chats.reply=null;Chats.editing=null;zcPaintContext();const input=document.getElementById('ti');if(editing&&input){input.value='';Chats.drafts[S.h]=''}zcUpdateComposer();input?.focus()}
+function zcPaintContext(){window.ZimiChatVoice?.setReply(Chats.reply);const root=document.getElementById('zc-context');if(root)root.innerHTML=zcContextView(zcThreadPerson())}
 function zcClearContext(){Chats.reply=null;Chats.editing=null;zcPaintContext()}
-function zcContextView(h){const r=Chats.reply,e=Chats.editing;if(!r&&!e)return '';return `<div class="zc-context" role="status" aria-live="polite"><span class="zc-context-icon" aria-hidden="true">${ci(e?'edit':'reply',20)}</span><div><b>${e?'Edit message':r.mine?'Replying to yourself':'Replying to '+esc(first(h.n))}</b><span>${e?escChat(e.text):r.text?escChat(r.text):r.image?'Photo':''}</span></div><button aria-label="${e?'Cancel editing':'Cancel reply'}" onclick="zcCancelContext()">×</button></div>`}
+function zcContextView(h){const r=Chats.reply,e=Chats.editing;if(!r&&!e)return '';return `<div class="zc-context" role="status" aria-live="polite"><span class="zc-context-icon" aria-hidden="true">${ci(e?'edit':'reply',20)}</span><div><b>${e?'Edit message':r.mine?'Replying to yourself':'Replying to '+esc(first(h.n))}</b><span>${e?escChat(e.text):r.text?escChat(r.text):r.image?'Photo':r.voice?'Voice message':''}</span></div><button aria-label="${e?'Cancel editing':'Cancel reply'}" onclick="zcCancelContext()">×</button></div>`}
 function zcRefreshReplies(original){
- for(const message of S.msgs)if(message.reply&&String(message.reply.id)===String(original.id))message.reply={...message.reply,text:original.deleted?'':original.text||'',image:!original.deleted&&original.kind==='image',deleted:!!original.deleted};
- if(String(Chats.reply?.id)===String(original.id)){if(original.deleted)Chats.reply=null;else Object.assign(Chats.reply,{text:original.text||'',image:original.kind==='image'})}
+ for(const message of S.msgs)if(message.reply&&String(message.reply.id)===String(original.id))message.reply={...message.reply,text:original.deleted?'':original.text||'',image:!original.deleted&&original.kind==='image',voice:!original.deleted&&original.kind==='voice',deleted:!!original.deleted};
+ if(String(Chats.reply?.id)===String(original.id)){if(original.deleted)Chats.reply=null;else Object.assign(Chats.reply,{text:original.text||'',image:original.kind==='image',voice:original.kind==='voice'})}
  if(original.deleted&&String(Chats.editing?.id)===String(original.id))Chats.editing=null;
  zcPaintContext()
 }
-function zcDeleteMessage(id,everyone){const m=zcFind(id);Chats.menu='';zcPaintMenu();if(!zcActionable(m)||!S.h||(everyone&&!m.mine))return;Native.send('chat.delete',{to:S.h,id:m.id,everyone});if(everyone){Object.assign(m,{deleted:true,text:'',imageUrl:'',kind:'text',edited:false});zcRefreshReplies(m)}else{S.msgs=S.msgs.filter(x=>x!==m);if(String(Chats.reply?.id)===String(id)||String(Chats.editing?.id)===String(id))zcClearContext()}paint()}
+function zcDeleteMessage(id,everyone){const m=zcFind(id);Chats.menu='';zcPaintMenu();if(!zcActionable(m)||!S.h||(everyone&&!m.mine))return;window.ZimiChatVoice?.remove(m.id);Native.send('chat.delete',{to:S.h,id:m.id,everyone});if(everyone){Object.assign(m,{deleted:true,text:'',imageUrl:'',audioUrl:'',durationMs:0,kind:'text',edited:false});zcRefreshReplies(m)}else{S.msgs=S.msgs.filter(x=>x!==m);if(String(Chats.reply?.id)===String(id)||String(Chats.editing?.id)===String(id))zcClearContext()}paint()}
 /* "+" holds the extras: a photo or an emoji. */
 function zcThreadAttach(open){const menu=document.getElementById('zc-attach'),button=document.querySelector('.zc-composer-add');if(!menu||!button)return;const show=open??menu.hidden;menu.hidden=!show;button.setAttribute('aria-expanded',String(show));if(show){zcThreadEmoji(false);menu.querySelector('button:not(:disabled)')?.focus()}}
-function zcPickPhoto(){zcThreadAttach(false);document.getElementById('zc-photo-input')?.click()}
-async function zcSendPhoto(input){const file=input.files&&input.files[0];input.value='';if(!file||!S.h)return;const reason=zcThreadBlocked();if(reason)return appNotice(reason);const to=S.h,reply=Chats.reply?{...Chats.reply}:null;try{const photo=await obReadPhoto(file);if(S.h===to&&reply&&!zcCanReply(zcFind(reply.id)))throw new Error('That message is no longer available to reply to.');Native.send('chat.photo',{to,photo,...(reply?{replyTo:reply.id}:{})});if(S.v==='thread'&&S.h===to){S.msgs.push({id:'local-'+crypto.randomUUID(),local:true,mine:true,kind:'image',imageUrl:photo,text:'',at:new Date().toISOString(),status:'sending',...(reply?{reply:{...reply,deleted:false}}:{})});if(Chats.reply?.id===reply?.id)Chats.reply=null;zcPaintContext();paint()}}catch(error){appNotice(error.message)}}
+function zcPickPhoto(){
+ zcThreadAttach(false);const input=document.getElementById('zc-photo-input');if(!input)return;
+ delete input.zcPhotoIntent;if(S.v!=='thread'||!S.h)return;
+ const reason=zcThreadBlocked();if(reason)return appNotice(reason);
+ if(Chats.reply&&!zcCanReply(zcFind(Chats.reply.id)))return appNotice('That message is no longer available to reply to.');
+ // A native chooser can outlive navigation, a deleted original, or an account
+ // change. Bind its intent to this exact input before handing over to the OS.
+ const intent=input.zcPhotoIntent={to:S.h,owner:S.user,reply:Chats.reply?{...Chats.reply}:null,replyContext:Chats.reply};
+ input.oncancel=()=>{if(input.zcPhotoIntent===intent)delete input.zcPhotoIntent};
+ input.value='';input.click()
+}
+async function zcSendPhoto(input){
+ const intent=input.zcPhotoIntent,file=input.files&&input.files[0];delete input.zcPhotoIntent;input.value='';
+ if(!file||!intent)return;
+ const {to,owner,reply,replyContext}=intent,current=()=>S.v==='thread'&&S.h===to&&S.user===owner;
+ const validate=()=>{const reason=zcThreadBlocked();if(reason)throw new Error(reason);if(reply&&!zcCanReply(zcFind(reply.id)))throw new Error('That message is no longer available to reply to.')};
+ try{
+  if(!current())return;validate();const photo=await obReadPhoto(file);if(!current())return;validate();
+  const original=reply&&zcFind(reply.id),quote=original?{...reply,text:original.text||'',image:original.kind==='image',voice:original.kind==='voice',deleted:false}:null;
+  Native.send('chat.photo',{to,photo,...(reply?{replyTo:reply.id}:{})});
+  if(current()){S.msgs.push({id:'local-'+crypto.randomUUID(),local:true,mine:true,kind:'image',imageUrl:photo,text:'',at:new Date().toISOString(),status:'sending',...(quote?{reply:quote}:{})});if(Chats.reply===replyContext)Chats.reply=null;zcPaintContext();paint()}
+ }catch(error){if(current())appNotice(error.message)}
+}
 Native.on('chat.photoSent',d=>{const m=S.msgs.find(x=>x.local&&x.kind==='image'&&x.status==='sending');if(m&&S.h===String(d.to)){m.status='sent';if(d.id){m.id=d.id;m.local=false}if(d.reply!==undefined)m.reply=d.reply;paint()}});
 /* An edit or a delete for everyone, from either person or another device. */
-Native.on('chat.updated',d=>{const u=d.message;if(!u||S.v!=='thread'||S.h!==String(d.with))return;const m=zcFind(u.id);if(m){Object.assign(m,{text:u.text,edited:!!u.edited,deleted:!!u.deleted,kind:u.kind,imageUrl:u.imageUrl});if(u.reply!==undefined)m.reply=u.reply}zcRefreshReplies(u);if(u.deleted&&String(Chats.menu)===String(u.id)){Chats.menu='';zcPaintMenu()}paint()});
+Native.on('chat.updated',d=>{const u=d.message;if(!u||S.v!=='thread'||S.h!==String(d.with))return;const m=zcFind(u.id);if(m){Object.assign(m,{text:u.text,edited:!!u.edited,deleted:!!u.deleted,kind:u.kind,imageUrl:u.imageUrl,audioUrl:u.audioUrl,durationMs:u.durationMs});if(u.reply!==undefined)m.reply=u.reply}zcRefreshReplies(u);if(u.deleted&&String(Chats.menu)===String(u.id)){Chats.menu='';zcPaintMenu()}paint()});
 Native.on('chat.removed',d=>{const before=S.msgs.length;S.msgs=S.msgs.filter(x=>String(x.id)!==String(d.id));if(String(Chats.reply?.id)===String(d.id)||String(Chats.editing?.id)===String(d.id))zcClearContext();if(String(Chats.menu)===String(d.id)){Chats.menu='';zcPaintMenu()}if(S.msgs.length!==before)paint()});
 /* The server hid a phone number or abusive word: show the sender exactly what was delivered. */
 Native.on('chat.sent',d=>{const changed=d.text!==d.sent;if(d.inCall){const m=changed&&[...S.rmsgs].reverse().find(x=>x[0]==='me'&&x[2]===d.sent);if(m){m[2]=d.text;paintFeed()}}else{const m=S.msgs.find(x=>x.local&&x.mine&&x.kind!=='image'&&x.text===d.sent&&x.status!=='failed');if(m&&S.h===String(d.to)){m.text=d.text;if(d.id){m.id=d.id;m.local=false}if(d.reply!==undefined)m.reply=d.reply;paint()}}if(changed)appNotice('Phone numbers and abusive words are hidden in chat.')});
 Native.on('operation.error',d=>{if(d.action==='chat.photo'&&S.v==='thread'){const m=S.msgs.find(x=>x.local&&x.kind==='image'&&x.status==='sending');if(m){m.status='failed';paint()}return}if(d.action!=='chat.send'||S.v!=='thread')return;const m=[...S.msgs].reverse().find(x=>x.local&&x.status==='sent');if(m){m.status='failed';paint()}});
-/* Rightward gestures select a reply; vertical intent remains native scrolling.
+/* Swipe own messages left and incoming messages right; vertical intent remains native scrolling.
    Event delegation survives history redraws without attaching one listener per message. */
 let zcGesture=null,zcSuppressedClick=null;
 function zcEndGesture(event,commit=false){
@@ -9799,17 +9925,18 @@ document.addEventListener('pointerdown',event=>{
  if(zcGesture){zcEndGesture();return}
  if(S.v!=='thread'||event.button!==0||event.isPrimary===false||event.target.closest?.('a,input,textarea,.zc-meta'))return;
  const stack=event.target.closest?.('.zc-msg-stack[data-message-id]');if(!stack)return;
- const id=stack.dataset.messageId;if(!zcActionable(zcFind(id)))return;
- // A short outgoing bubble sits near the right edge. Keep the gesture reachable
- // without asking the finger to travel beyond the screen.
- const distance=Math.min(64,Math.max(16,(document.documentElement.clientWidth-event.clientX-8)*.65));
- const gesture={stack,id,peer:S.h,pointerId:event.pointerId,x:event.clientX,y:event.clientY,distance,moved:false,held:false,armed:false,feedback:false,timer:null};
+ const id=stack.dataset.messageId,message=zcFind(id);if(!zcActionable(message))return;
+ const direction=message.mine?-1:1;
+ // Measure travel toward the reply direction so touches near either edge stay reachable.
+ const room=direction<0?event.clientX-8:document.documentElement.clientWidth-event.clientX-8;
+ const distance=Math.min(64,Math.max(16,room*.65));
+ const gesture={stack,id,peer:S.h,pointerId:event.pointerId,x:event.clientX,y:event.clientY,direction,distance,moved:false,held:false,armed:false,feedback:false,timer:null};
  zcGesture=gesture;
  gesture.timer=setTimeout(()=>{if(zcGesture!==gesture||!stack.isConnected||gesture.peer!==S.h)return;gesture.held=true;zcMessageMenu(id);obHaptic('light')},450)
 },{passive:true});
 document.addEventListener('pointermove',event=>{
  const gesture=zcGesture;if(!gesture||gesture.pointerId!==event.pointerId||gesture.held)return;
- const dx=event.clientX-gesture.x,dy=Math.abs(event.clientY-gesture.y);
+ const dx=(event.clientX-gesture.x)*gesture.direction,dy=Math.abs(event.clientY-gesture.y);
  if(!gesture.moved){
   if((dy>10&&dy>=Math.abs(dx))||dx< -10){gesture.moved=true;zcEndGesture(event);return}
   if(dx<=10||dx<dy*1.35)return;
@@ -9821,7 +9948,7 @@ document.addEventListener('pointermove',event=>{
  if(dy>48&&dy>dx){zcEndGesture(event);return}
  gesture.armed=dx>=gesture.distance;gesture.stack.classList.toggle('zc-swipe-ready',gesture.armed);
  if(gesture.armed&&!gesture.feedback){gesture.feedback=true;obHaptic('light')}
- gesture.stack.style.setProperty('--reply-shift',Math.max(0,Math.min(72,dx*.75))+'px');
+ gesture.stack.style.setProperty('--reply-shift',gesture.direction*Math.max(0,Math.min(72,dx*.75))+'px');
  gesture.stack.style.setProperty('--reply-progress',Math.max(0,Math.min(1,dx/gesture.distance)));
  if(event.cancelable)event.preventDefault()
 },{passive:false});
@@ -9846,6 +9973,465 @@ if(DEMO){
   Chats.rows=people.map((p,i)=>{const user={...p,role:p.bot?'sender':'host',category:i===0?'Music':i===4?'Gaming':'Talk',avatarUrl:OB_MEDIA[p.photo],availableForCall:!!p.online};knowHost(user);return {id:'demo-chat-'+i,user,bot:p.bot,last:previews[i],lastKind:['call','gift','text','system','text','voice'][i],lastMine:i===2||i===4,lastStatus:i===2?'read':'sent',lastAt:new Date(Date.now()-[2,14,60,180,1440,10080][i]*60000).toISOString(),displayTime:times[i],unread:[2,1,0,1,0,0][i],hasCalls:i===0||i===2}});
   Chats.total=Chats.rows.length;Chats.unreadConversations=3;CH.splice(0,CH.length,...Chats.rows.map(c=>[c.user.id,c.last,c.displayTime,c.unread]));
 }
+
+/* Recording stays in the WebView; authenticated uploads go through the native
+   bridge. Microphone access begins only after an explicit press on Record. */
+window.ZimiChatVoice = (() => {
+  const MAX_MS = 120000, MAX_BYTES = 5 * 1024 * 1024;
+  const formats = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm'];
+  let generation = 0, timer = null, playback = null;
+  const urls = new Set();
+  const state = { phase: 'idle', peer: '', stream: null, recorder: null, chunks: [], bytes: 0, started: 0, durationMs: 0, data: '', url: '', clientId: '', reply: null, error: '', attempted: false };
+  const active = () => state.phase !== 'idle' && state.peer === S.h && S.v === 'thread';
+  const elapsed = () => Math.min(MAX_MS, Math.max(0, Date.now() - state.started));
+  const time = ms => { const seconds = Math.floor(Math.max(0, Number(ms) || 0) / 1000); return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0'); };
+  const stopTracks = stream => stream?.getTracks().forEach(track => { track.onended = null; track.stop(); });
+  const revoke = url => { if (urls.delete(url)) URL.revokeObjectURL(url); };
+  function source(value) {
+    if (typeof value !== 'string') return '';
+    if (urls.has(value)) return value;
+    return /^https:\/\/[^\s"'<>]+$/.test(value) ? value : '';
+  }
+  function stopPlayback() {
+    const old = playback; playback = null; Chats.playing = '';
+    if (old) { old.audio.pause(); old.audio.removeAttribute?.('src'); old.audio.load?.(); }
+    paintPlayback();
+  }
+  function paintPlayback() {
+    document.querySelectorAll('[data-voice]').forEach(button => {
+      const playing = playback?.id === button.dataset.voice && !playback.audio.paused;
+      button.setAttribute('aria-label', (playing ? 'Pause' : 'Play') + ' voice message');
+      button.setAttribute('aria-pressed', String(playing));
+      button.innerHTML = ci(playing ? 'pause' : 'playFill', 20);
+      const card = button.closest('.zc-voice');
+      card?.classList.toggle('playing', !!playing);
+      const progress = card?.querySelector('.zc-voice-progress');
+      if (progress) progress.style.setProperty('--voice-progress', playback?.id === button.dataset.voice ? progressPercent() + '%' : '0%');
+    });
+    const preview = document.querySelector('[data-voice-preview]');
+    if (preview) {
+      const playing = playback?.id === 'preview' && !playback.audio.paused;
+      preview.setAttribute('aria-label', playing ? 'Pause recording' : 'Play recording');
+      preview.innerHTML = ci(playing ? 'pause' : 'playFill', 22);
+      const progress = document.querySelector('#zc-recording .zc-voice-progress');
+      if (progress) progress.style.setProperty('--voice-progress', playback?.id === 'preview' ? progressPercent() + '%' : '0%');
+    }
+  }
+  function progressPercent() {
+    if (!playback) return 0;
+    const duration = Number.isFinite(playback.audio.duration) && playback.audio.duration > 0 ? playback.audio.duration : playback.durationMs / 1000;
+    return duration > 0 ? Math.min(100, playback.audio.currentTime / duration * 100) : 0;
+  }
+  async function playAudio(id, url, durationMs) {
+    if (playback?.id === id) {
+      const current = playback;
+      if (!current.audio.paused) { current.audio.pause(); paintPlayback(); return; }
+      try { await current.audio.play(); if (playback === current) paintPlayback(); else current.audio.pause(); }
+      catch { if (playback === current) { stopPlayback(); appNotice('This recording could not be played. Please try again.'); } }
+      return;
+    }
+    stopPlayback();
+    const src = source(url); if (!src) return appNotice('This voice message is not available to play.');
+    const audio = new Audio(src), current = { id, audio, durationMs };
+    playback = current; Chats.playing = id; audio.preload = 'metadata';
+    audio.ontimeupdate = () => { if (playback === current) paintPlayback(); };
+    audio.onended = () => { if (playback === current) stopPlayback(); };
+    audio.onerror = () => { if (playback === current) { stopPlayback(); appNotice('This recording could not be played. Please try again.'); } };
+    try { await audio.play(); if (playback === current) paintPlayback(); else audio.pause(); }
+    catch { if (playback === current) { stopPlayback(); appNotice('This recording could not be played. Please try again.'); } }
+  }
+  function play(id) { const m = zcFind(id); if (m && !m.deleted && !m.local) return playAudio(id, m.audioUrl, m.durationMs); }
+  function togglePreview() { if (active() && state.phase === 'preview') return playAudio('preview', state.url, state.durationMs); }
+  function messageView(m) {
+    const playing = playback?.id === m.id && !playback.audio.paused, available = !m.local && !!source(m.audioUrl), options = zcActionable(m);
+    return `<div class="zc-voice ${playing ? 'playing' : ''}"><div class="zc-voice-top"><span>${hi('mic',15)} Voice message</span>${options ? `<button class="zc-voice-options" aria-label="Voice message options" aria-haspopup="dialog" onclick="zcMessageMenu('${domId(m.id)}')">${ci('more',18)}</button>` : ''}</div><div class="zc-voice-body"><button class="zc-voice-play" data-voice="${domId(m.id)}" aria-label="${playing ? 'Pause' : 'Play'} voice message" aria-pressed="${playing}" ${available ? '' : 'disabled'} onclick="ZimiChatVoice.play('${domId(m.id)}')">${ci(playing ? 'pause' : 'playFill',20)}</button><span class="zc-voice-progress" aria-hidden="true"><i></i></span><time>${esc(time(m.durationMs))}</time></div></div>`;
+  }
+  function view() {
+    if (!active()) return '';
+    const recording = state.phase === 'recording', preview = state.phase === 'preview', sending = state.phase === 'sending';
+    return `<section class="zc-recorder" aria-label="Voice recording"><div class="zc-recording-line"><span class="zc-recording-label" role="status">${recording ? '<i class="zc-recording-dot"></i>Recording' : preview ? 'Voice message' : sending ? 'Sending voice message…' : state.phase === 'permission' ? 'Allow microphone access…' : 'Preparing recording…'}</span><time id="zc-recording-time">${time(recording ? elapsed() : state.durationMs)}</time></div><div class="zc-recording-controls"><button class="zc-recording-cancel" aria-label="Cancel recording" onclick="ZimiChatVoice.cancel()" ${sending ? 'disabled' : ''}>${ci('trash',22)}</button>${recording ? `<div class="zc-recording-pulse" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><button class="zc-recording-stop" aria-label="Stop recording" onclick="ZimiChatVoice.stop()">${ci('stop',22)}</button>` : preview ? `<button class="zc-recording-play" data-voice-preview aria-label="Play recording" onclick="ZimiChatVoice.togglePreview()">${ci('playFill',22)}</button><span class="zc-voice-progress" aria-hidden="true"><i></i></span><button class="zc-recording-send" aria-label="Send voice message" onclick="ZimiChatVoice.send()">${ci('send',22)}</button>` : `<div class="zc-recording-wait" role="status" aria-label="${sending ? 'Uploading voice message' : 'Preparing microphone'}">${skeletonLine('100%',18)}</div>`}</div>${state.error ? `<p class="zc-recording-error" role="alert">${esc(state.error)}</p>` : `<p class="zc-recording-hint">${recording ? 'Up to 2 minutes · Stop to review before sending' : preview ? 'Listen before sending, or delete and record again' : sending ? 'Your recording is being uploaded' : 'Your microphone is used only while recording'}</p>`}</section>`;
+  }
+  function render() {
+    const root = document.getElementById('zc-recording'); if (root) root.innerHTML = view();
+    const composer = document.querySelector('.zc-composer'); if (composer) composer.hidden = active();
+    document.querySelector('.zc-thread')?.classList.toggle('zc-is-recording', active());
+    paintPlayback();
+  }
+  function cancel() {
+    ++generation; clearInterval(timer); timer = null;
+    const recorder = state.recorder; state.recorder = null;
+    if (recorder && recorder.state !== 'inactive') { try { recorder.stop(); } catch {} }
+    stopTracks(state.stream); stopPlayback();
+    const local = S.msgs?.find(m => m.local && m.clientId === state.clientId);
+    if (local?.status === 'failed') S.msgs = S.msgs.filter(m => m !== local);
+    if (!local || local.status !== 'sending') revoke(state.url);
+    Object.assign(state, { phase: 'idle', peer: '', stream: null, chunks: [], bytes: 0, started: 0, durationMs: 0, data: '', url: '', clientId: '', reply: null, error: '', attempted: false });
+    render(); if (local?.status === 'failed' && S.v === 'thread') paint();
+  }
+  function fail(message) { cancel(); appNotice(message); }
+  function readAudio(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error('The recording could not be prepared. Please record it again.')); reader.readAsDataURL(blob); }); }
+  async function start() {
+    if (state.phase !== 'idle' || S.v !== 'thread') return;
+    const reason = zcThreadBlocked(); if (reason) return appNotice(reason);
+    if (Chats.editing) return appNotice('Finish editing your message before recording.');
+    if (DEMO) return appNotice('Voice recording is available in the connected app.');
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return appNotice('Voice recording is unavailable on this device. Update your app or system WebView.');
+    const mimeType = formats.find(type => MediaRecorder.isTypeSupported(type));
+    if (!mimeType) return appNotice('This device does not support a compatible recording format.');
+    stopPlayback(); zcThreadAttach(false); zcThreadEmoji(false); document.getElementById('ti')?.blur();
+    const token = ++generation;
+    Object.assign(state, { phase: 'permission', peer: S.h, reply: Chats.reply ? { ...Chats.reply } : null, clientId: crypto.randomUUID(), error: '' });
+    render();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+      if (token !== generation || S.v !== 'thread' || S.h !== state.peer || document.hidden) { stopTracks(stream); if (token === generation) cancel(); return; }
+      state.stream = stream;
+      const recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 64000 });
+      Object.assign(state, { stream, recorder, phase: 'recording', chunks: [], bytes: 0, started: Date.now(), durationMs: 0 });
+      recorder.ondataavailable = event => {
+        if (token !== generation || !event.data?.size) return;
+        state.bytes += event.data.size;
+        if (state.bytes > MAX_BYTES) { fail('This recording is too large. Please record a shorter voice message.'); return; }
+        state.chunks.push(event.data);
+      };
+      recorder.onerror = () => { if (token === generation) fail('Recording stopped unexpectedly. Please try again.'); };
+      recorder.onstop = async () => {
+        if (token !== generation) return;
+        clearInterval(timer); timer = null; stopTracks(stream); state.stream = null; state.recorder = null;
+        state.durationMs ||= elapsed();
+        if (state.durationMs < 500) { fail('Hold on a little longer—record at least half a second.'); return; }
+        const blob = new Blob(state.chunks, { type: recorder.mimeType || mimeType });
+        if (!blob.size || blob.size > MAX_BYTES) { fail('The recording is empty or too large. Please try again.'); return; }
+        state.phase = 'preparing'; render();
+        try {
+          const data = await readAudio(blob); if (token !== generation) return;
+          const url = URL.createObjectURL(blob); urls.add(url);
+          Object.assign(state, { phase: 'preview', data, url, chunks: [] }); render();
+          document.querySelector('[data-voice-preview]')?.focus({ preventScroll: true });
+        } catch (error) { if (token === generation) fail(error.message); }
+      };
+      stream.getTracks().forEach(track => { track.onended = () => { if (token === generation && state.phase === 'recording') stop(); }; });
+      recorder.start(250);
+      timer = setInterval(() => { const label = document.getElementById('zc-recording-time'); if (label) label.textContent = time(elapsed()); if (elapsed() >= MAX_MS) stop(); }, 250);
+      render(); obHaptic('light'); document.querySelector('.zc-recording-stop')?.focus({ preventScroll: true });
+    } catch (error) {
+      if (token !== generation) return;
+      fail(['NotAllowedError','PermissionDeniedError'].includes(error.name) ? 'Microphone access was denied. Allow it in your device settings to record a voice message.' : error.name === 'NotFoundError' ? 'No microphone was found on this device.' : 'The microphone could not start. Close other recordings or calls and try again.');
+    }
+  }
+  function stop() {
+    if (state.phase !== 'recording') return;
+    state.durationMs = elapsed(); state.phase = 'preparing'; clearInterval(timer); timer = null;
+    try { if (state.recorder?.state !== 'inactive') state.recorder.stop(); stopTracks(state.stream); render(); }
+    catch { fail('The recording could not be stopped. Please try again.'); }
+  }
+  function send() {
+    if (!active() || state.phase !== 'preview' || !state.data) return;
+    const reason = zcThreadBlocked(); if (reason) return appNotice(reason);
+    if (!state.attempted && state.reply && !zcCanReply(zcFind(state.reply.id))) return appNotice('The message you were replying to is no longer available. Cancel the reply before sending.');
+    stopPlayback(); state.phase = 'sending'; state.error = ''; state.attempted = true;
+    let local = S.msgs.find(m => m.local && m.clientId === state.clientId);
+    if (local) local.status = 'sending';
+    else { local = { id: 'local-' + state.clientId, clientId: state.clientId, local: true, mine: true, kind: 'voice', audioUrl: state.url, durationMs: state.durationMs, text: '', at: new Date().toISOString(), status: 'sending', reply: state.reply ? { ...state.reply } : null }; S.msgs.push(local); }
+    render(); zcPaintThread(true);
+    Native.send('chat.voice', { to: state.peer, audio: state.data, durationMs: Math.round(state.durationMs), clientId: state.clientId, ...(state.reply ? { replyTo: state.reply.id } : {}) });
+  }
+  function canChangeReply() { return !active() || !state.attempted; }
+  function setReply(reply) { if (active() && !state.attempted) state.reply = reply ? { ...reply } : null; }
+  function remove(id) { if (playback?.id === id) stopPlayback(); }
+  Native.on('chat.voiceSent', data => {
+    if (!data.message?.id) return;
+    if (S.v === 'thread' && S.h === String(data.to)) {
+      const local = S.msgs.find(m => m.local && m.clientId === data.clientId);
+      const existing = S.msgs.find(m => !m.local && m.id === data.message.id), target = existing || local;
+      if (target) {
+        const old = local?.audioUrl;
+        Object.assign(target, data.message, { local: false, mine: true, status: 'sent', at: data.message.createdAt || target.at, audioUrl: data.message.audioUrl || '', durationMs: data.message.durationMs || 0 });
+        if (local && local !== target) S.msgs = S.msgs.filter(m => m !== local);
+        revoke(old);
+      } else S.msgs.push({ ...data.message, mine: true, status: 'sent', at: data.message.createdAt || new Date().toISOString() });
+    }
+    if (data.clientId === state.clientId && String(data.to) === state.peer) {
+      if (Chats.reply?.id === state.reply?.id) { Chats.reply = null; zcPaintContext(); }
+      cancel();
+    }
+    if (S.v === 'thread' && S.h === String(data.to)) zcPaintThread(true);
+  });
+  Native.on('operation.error', data => {
+    if (data.action !== 'chat.voice') return;
+    if (S.h === String(data.to)) { const local = S.msgs.find(m => m.local && m.clientId === data.clientId); if (local) { local.status = 'failed'; if (S.v === 'thread') paint(); } }
+    if (data.clientId === state.clientId && String(data.to) === state.peer) { state.phase = 'preview'; state.error = data.message || 'Voice message not sent. Tap Send to retry.'; render(); }
+  });
+  Native.on('chat.updated', data => { if (data.message?.deleted && playback?.id === data.message.id) stopPlayback(); });
+  Native.on('chat.removed', data => { if (playback?.id === data.id) stopPlayback(); });
+  const reset = () => { cancel(); urls.forEach(revoke); };
+  Native.on('session.none', reset); Native.on('session.expired', reset);
+  document.addEventListener('aurora:navigate', () => { if (S.v !== 'thread' || (state.peer && state.peer !== S.h)) reset(); else stopPlayback(); });
+  const background = () => { if (['permission','recording','preparing'].includes(state.phase)) cancel(); stopPlayback(); };
+  Native.on('app.background', background);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) background(); });
+  window.addEventListener('pagehide', reset);
+  const afterRender = window.ZimiHome.afterRender;
+  window.ZimiHome.afterRender = () => { afterRender(); render(); };
+  return { start, stop, cancel, send, togglePreview, play, view, messageView, active, render, setReply, canChangeReply, remove, paintPlayback };
+})();
+
+/* Full-size chat photos stay in the protected chat screen. Saving uses a server
+   message ID through the native bridge, never a URL supplied by this viewer. */
+window.ZimiChatPhoto = (() => {
+  let current = null, sequence = 0;
+  chatIcons.photoClose = '<path d="m5 5 14 14M19 5 5 19"/>';
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const photo = id => { const m = zcFind(id); return m && !m.deleted && m.kind === 'image' && imageSrc(m.imageUrl) ? m : null; };
+  function sentAt(m) {
+    const date = new Date(m.at || m.createdAt), now = new Date();
+    if (!Number.isFinite(date.getTime())) return m.local ? 'Sending photo' : 'Photo';
+    const days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(date.getFullYear(), date.getMonth(), date.getDate())) / 86400000);
+    if (days === 0) return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (days === 1) return 'Yesterday';
+    if (days > 1 && days < 7) return `${days} days ago`;
+    return date.toLocaleDateString([], { day: 'numeric', month: 'short', ...(date.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
+  }
+  function close(restore = true) {
+    const old = current; if (!old) return;
+    current = null; old.resize.disconnect(); old.root.remove();
+    old.main.inert = old.wasInert;
+    Native.send('chat.photoViewer', { open: false });
+    if (restore && S.v === 'thread' && S.h === old.peer) {
+      const target = old.focus?.isConnected ? old.focus : document.querySelector(`#zc-m-${CSS.escape(old.id)} .zc-photo`);
+      target?.focus({ preventScroll: true });
+    }
+  }
+  function sync() {
+    if (!current) return;
+    // The photo-send acknowledgement replaces a local ID on the same message.
+    // Keep its open preview and enable Download once the server ID is known.
+    const m = photo(current.id) || (S.msgs.includes(current.message) && photo(current.message.id));
+    if (S.v !== 'thread' || S.h !== current.peer || !m || m.imageUrl !== current.src) close(false);
+    else { current.id = m.id; current.message = m; controls(); }
+  }
+  function bounds() {
+    const c = current; if (!c) return;
+    c.x = clamp(c.x, -Math.max(0, (c.width * c.scale - c.stage.clientWidth) / 2), Math.max(0, (c.width * c.scale - c.stage.clientWidth) / 2));
+    c.y = clamp(c.y, -Math.max(0, (c.height * c.scale - c.stage.clientHeight) / 2), Math.max(0, (c.height * c.scale - c.stage.clientHeight) / 2));
+  }
+  function controls() {
+    const c = current; if (!c) return;
+    const ready = !c.loading && !c.error;
+    const disable = (button, disabled) => {
+      if (disabled && document.activeElement === button) c.stage.focus({ preventScroll: true });
+      button.disabled = disabled;
+    };
+    disable(c.root.querySelector('[data-photo-zoom-in]'), !ready || c.scale >= 4);
+    disable(c.root.querySelector('[data-photo-zoom-out]'), !ready || c.scale <= 1);
+    const reset = c.root.querySelector('[data-photo-reset]'); disable(reset, !ready); reset.textContent = Math.round(c.scale * 100) + '%';
+    const m = photo(c.id), save = c.root.querySelector('[data-photo-save]');
+    disable(save, !ready || !m || !!m.local || m.status === 'failed' || m.status === 'sending' || c.busy);
+    save.setAttribute('aria-busy', String(c.busy));
+    save.classList.toggle('is-saving', c.busy);
+    save.title = c.busy ? 'Saving photo' : 'Download photo';
+    const canReply = !!m && S.v === 'thread' && S.h === c.peer && zcCanReply(m);
+    disable(c.input, !canReply);
+    disable(c.root.querySelector('[data-photo-camera]'), !canReply);
+    const send = c.root.querySelector('[data-photo-send]');
+    send.hidden = !c.input.value.trim(); disable(send, !canReply);
+    c.input.placeholder = canReply ? 'Reply…' : 'Reply unavailable';
+    const status = c.root.querySelector('.zc-photo-viewer-status'), statusText = c.loading ? 'Loading photo…' : c.error || c.saveError || (c.busy ? 'Saving photo to your gallery…' : c.saved ? 'Photo saved to gallery' : m?.local ? 'Available to download after sending' : 'Pinch or double-tap to zoom');
+    if (status.textContent !== statusText) status.textContent = statusText;
+    c.stage.setAttribute('aria-busy', String(c.loading));
+    c.root.querySelector('.zc-photo-loading').hidden = !c.loading;
+    c.root.querySelector('[data-photo-retry]').hidden = !c.error;
+  }
+  function paint() {
+    const c = current; if (!c) return;
+    bounds();
+    c.image.style.width = c.width + 'px'; c.image.style.height = c.height + 'px';
+    c.image.style.transform = `translate(calc(-50% + ${c.x}px),calc(-50% + ${c.y}px)) scale(${c.scale})`;
+    c.stage.classList.toggle('is-zoomed', c.scale > 1); controls();
+  }
+  function fit() {
+    const c = current; if (!c || !c.image.naturalWidth || !c.image.naturalHeight) return;
+    const ratio = Math.min(c.media.clientWidth / c.image.naturalWidth, c.media.clientHeight / c.image.naturalHeight);
+    c.width = c.image.naturalWidth * ratio; c.height = c.image.naturalHeight * ratio;
+    c.stage.style.width = c.width + 'px'; c.stage.style.height = c.height + 'px'; paint();
+  }
+  function point(clientX, clientY) {
+    const box = current.stage.getBoundingClientRect();
+    return { x: clientX - box.left - box.width / 2, y: clientY - box.top - box.height / 2 };
+  }
+  function zoom(value, anchor = { x: 0, y: 0 }) {
+    const c = current; if (!c || c.loading || c.error) return;
+    const next = clamp(value, 1, 4), ratio = next / c.scale;
+    c.x = anchor.x - (anchor.x - c.x) * ratio; c.y = anchor.y - (anchor.y - c.y) * ratio;
+    c.scale = next; paint();
+  }
+  function reset() { if (current) { current.x = 0; current.y = 0; zoom(1); } }
+  function beginGesture(c) {
+    const points = [...c.pointers.values()];
+    if (points.length >= 2) {
+      const [a, b] = points; c.multi = true; c.lastTap = null;
+      c.gesture = { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, midpoint: point((a.x + b.x) / 2, (a.y + b.y) / 2), scale: c.scale, x: c.x, y: c.y };
+    } else if (points.length) c.gesture = { point: points[0], x: c.x, y: c.y };
+    else c.gesture = null;
+  }
+  function bindGestures(c) {
+    c.stage.addEventListener('pointerdown', event => {
+      if (current !== c || c.loading || c.error || event.button !== 0) return;
+      event.preventDefault();
+      if (!c.pointers.size) { c.multi = false; c.moved = false; c.started = Date.now(); }
+      c.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      c.stage.setPointerCapture(event.pointerId); beginGesture(c);
+    });
+    c.stage.addEventListener('pointermove', event => {
+      if (current !== c || !c.pointers.has(event.pointerId)) return;
+      event.preventDefault(); c.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const g = c.gesture;
+      if (c.pointers.size >= 2 && g.distance) {
+        const [a, b] = [...c.pointers.values()], midpoint = point((a.x + b.x) / 2, (a.y + b.y) / 2);
+        c.scale = clamp(g.scale * Math.hypot(a.x - b.x, a.y - b.y) / g.distance, 1, 4);
+        const ratio = c.scale / g.scale;
+        c.x = midpoint.x - (g.midpoint.x - g.x) * ratio; c.y = midpoint.y - (g.midpoint.y - g.y) * ratio;
+        c.moved = true; paint();
+      } else if (g.point) {
+        const dx = event.clientX - g.point.x, dy = event.clientY - g.point.y;
+        if (Math.hypot(dx, dy) > 6) c.moved = true;
+        if (c.scale > 1) { c.x = g.x + dx; c.y = g.y + dy; paint(); }
+      }
+    });
+    const end = event => {
+      if (current !== c || !c.pointers.has(event.pointerId)) return;
+      c.pointers.delete(event.pointerId);
+      if (event.type === 'pointerup' && !c.pointers.size && !c.multi && !c.moved && Date.now() - c.started < 350) {
+        const last = c.lastTap;
+        if (last && Date.now() - last.at < 350 && Math.hypot(event.clientX - last.x, event.clientY - last.y) < 30) {
+          zoom(c.scale > 1 ? 1 : 2.5, point(event.clientX, event.clientY)); c.lastTap = null;
+        } else c.lastTap = { at: Date.now(), x: event.clientX, y: event.clientY };
+      }
+      if (c.stage.hasPointerCapture(event.pointerId)) c.stage.releasePointerCapture(event.pointerId);
+      beginGesture(c);
+    };
+    c.stage.addEventListener('pointerup', end); c.stage.addEventListener('pointercancel', end);
+    c.stage.addEventListener('lostpointercapture', end);
+    c.stage.addEventListener('dblclick', event => event.preventDefault());
+    c.stage.addEventListener('contextmenu', event => event.preventDefault());
+    c.stage.addEventListener('wheel', event => { event.preventDefault(); zoom(c.scale * (event.deltaY < 0 ? 1.15 : 1 / 1.15), point(event.clientX, event.clientY)); }, { passive: false });
+  }
+  function load(c) {
+    c.loading = true; c.error = ''; c.image.hidden = true; controls();
+    c.image.onload = () => { if (current !== c) return; c.loading = false; c.image.hidden = false; fit(); };
+    c.image.onerror = () => { if (current !== c) return; c.loading = false; c.error = 'Photo could not load. Check your connection and retry.'; controls(); };
+    c.image.src = c.src;
+  }
+  function open(id) {
+    const m = photo(id); if (!m || S.v !== 'thread') return;
+    if (window.ZimiChatVoice?.active()) return appNotice('Finish or cancel your voice recording before opening a photo.');
+    if (isHost() && !m.mine && !Chats.revealed[id]) { zcRevealPhoto(id); return; }
+    close(false); zcEndGesture(); Chats.menu = ''; zcPaintMenu();
+    const focus = document.activeElement; focus?.blur();
+    const root = document.createElement('div'); root.id = 'zc-photo-viewer';
+    const sender = m.mine ? me : zcThreadPerson();
+    root.innerHTML = `<section class="zc-photo-viewer" role="dialog" aria-modal="true" aria-label="Photo viewer" tabindex="-1">
+      <div class="zc-photo-backdrop" aria-hidden="true"></div>
+      <header><button aria-label="Close photo" onclick="ZimiChatPhoto.close()">${ci('photoClose',27)}</button>
+        <span class="zc-photo-avatar" aria-hidden="true">${portrait(sender)}</span><div class="zc-photo-sender"><b>${m.mine ? 'You' : esc(sender.n)}</b><span>${esc(sentAt(m))}</span></div>
+        <button aria-label="Photo zoom controls" aria-expanded="false" aria-controls="zc-photo-zoom" onclick="ZimiChatPhoto.toggleZoom()">${ci('zoomIn',25)}</button>
+        <button class="zc-photo-save" data-photo-save aria-label="Download photo" onclick="ZimiChatPhoto.download()" disabled>${ci('download',25)}</button>
+      </header>
+      <div class="zc-photo-media"><div class="zc-photo-stage" tabindex="0" role="group" aria-label="Photo zoom area">
+        <div class="zc-photo-loading" role="status" aria-label="Loading photo"><div class="zh-skeleton-shape"></div></div><img class="zc-photo-full" alt="Chat photo" draggable="false" hidden>
+        <button class="zc-photo-retry" data-photo-retry onclick="ZimiChatPhoto.retry()" hidden>Retry loading photo</button>
+      </div><div id="zc-photo-zoom" class="zc-photo-zoom-controls" role="group" aria-label="Photo zoom" hidden>
+        <button data-photo-zoom-out aria-label="Zoom out" onclick="ZimiChatPhoto.zoomBy(-.5)">${ci('zoomOut',22)}</button><button data-photo-reset aria-label="Reset zoom" onclick="ZimiChatPhoto.reset()">100%</button><button data-photo-zoom-in aria-label="Zoom in" onclick="ZimiChatPhoto.zoomBy(.5)">${ci('zoomIn',22)}</button>
+      </div></div>
+      <footer><p class="zc-photo-viewer-status" role="status" aria-live="polite"></p><form class="zc-photo-reply-bar" onsubmit="event.preventDefault();ZimiChatPhoto.sendReply()">
+        <button type="button" data-photo-camera aria-label="Reply with photo" onclick="ZimiChatPhoto.photoReply()">${zi('camera',25)}</button>
+        <input id="zc-photo-reply" aria-label="Reply to photo" placeholder="Reply…" maxlength="2000" enterkeyhint="send" autocomplete="off" oninput="ZimiChatPhoto.updateReply()">
+        <button type="submit" data-photo-send aria-label="Send reply" hidden>${ci('up',23)}</button>
+      </form></footer></section>`;
+    const main = document.querySelector('main.app');
+    const c = current = { root, main, wasInert: main.inert, focus, message: m, peer: S.h, id, src: m.imageUrl, scale: 1, x: 0, y: 0, width: 0, height: 0, loading: true, error: '', saveError: '', busy: false, saved: false, requestId: 0, pointers: new Map(), lastTap: null };
+    main.inert = true; document.body.appendChild(root);
+    c.stage = root.querySelector('.zc-photo-stage'); c.image = root.querySelector('.zc-photo-full');
+    c.media = root.querySelector('.zc-photo-media'); c.input = root.querySelector('#zc-photo-reply');
+    c.resize = new ResizeObserver(fit); c.resize.observe(c.media); bindGestures(c);
+    root.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
+      if (event.key === 'Tab') {
+        const buttons = [...root.querySelectorAll('button:not(:disabled),input:not(:disabled),[tabindex="0"]')].filter(el => el.getClientRects().length && !el.closest('[hidden]')), first = buttons[0], last = buttons.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+      if (event.target.matches('input,textarea,[contenteditable]')) {
+        if (event.key === 'Enter') { event.preventDefault(); if (!event.isComposing) sendReply(); }
+        return;
+      }
+      if (['+', '=', '-', '0', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault(); event.stopPropagation();
+        if (event.key === '+' || event.key === '=') zoom(c.scale + .5);
+        else if (event.key === '-') zoom(c.scale - .5);
+        else if (event.key === '0') reset();
+        else { c.x += event.key === 'ArrowLeft' ? 40 : event.key === 'ArrowRight' ? -40 : 0; c.y += event.key === 'ArrowUp' ? 40 : event.key === 'ArrowDown' ? -40 : 0; paint(); }
+      }
+    });
+    Native.send('chat.photoViewer', { open: true }); load(c); root.querySelector('[aria-label="Close photo"]').focus({ preventScroll: true });
+  }
+  function toggleZoom() {
+    if (!current) return;
+    const panel = current.root.querySelector('#zc-photo-zoom'); panel.hidden = !panel.hidden;
+    current.root.querySelector('[aria-controls="zc-photo-zoom"]').setAttribute('aria-expanded', String(!panel.hidden));
+  }
+  function replyTarget() {
+    const c = current, m = c && photo(c.id);
+    return c && S.v === 'thread' && S.h === c.peer && zcCanReply(m) ? { c, m } : null;
+  }
+  function chatContext() {
+    return { reply: Chats.reply, editing: Chats.editing, contextPeer: Chats.contextPeer, text: document.getElementById('ti')?.value };
+  }
+  function restoreContext(previous) {
+    Chats.reply = previous.reply && zcCanReply(zcFind(previous.reply.id)) ? previous.reply : null;
+    Chats.editing = previous.editing && zcCanEdit(zcFind(previous.editing.id)) ? previous.editing : null;
+    Chats.contextPeer = previous.contextPeer;
+    if (previous.text !== undefined) Chats.drafts[S.h] = previous.text;
+    zcPaintContext(); zcUpdateComposer();
+  }
+  function sendReply() {
+    const target = replyTarget(); if (!target) return;
+    const { c, m } = target, text = c.input.value.trim(); if (!text) return;
+    // The viewer's composer is independent: keep any existing chat draft/edit.
+    const previous = chatContext();
+    close(false); zcStartReply(m.id);
+    if (Chats.reply?.id !== m.id) return;
+    zcThreadSend(text);
+    restoreContext(previous);
+  }
+  function photoReply() {
+    const target = replyTarget(); if (!target) return;
+    const previous = chatContext();
+    close(false); zcStartReply(target.m.id);
+    // The picker captures its own reply intent synchronously. Restore the chat
+    // context before selection/cancellation so an unfinished edit stays an edit.
+    try { if (Chats.reply?.id === target.m.id) zcPickPhoto(); }
+    finally { restoreContext(previous); }
+  }
+  function download() {
+    const c = current; if (!c || c.busy || c.loading || c.error) return;
+    const m = photo(c.id); if (!m || m.local || m.status === 'sending' || m.status === 'failed' || S.h !== c.peer) return;
+    if (DEMO || !window.ReactNativeWebView) return appNotice('Open this photo in the connected app to download it.');
+    c.requestId = ++sequence; c.busy = true; c.saved = false; c.saveError = ''; controls();
+    Native.send('chat.photoDownload', { to: c.peer, id: c.id, requestId: c.requestId });
+  }
+  const matches = data => current && data.to === current.peer && data.id === current.id && data.requestId === current.requestId && current.busy;
+  Native.on('chat.photoDownloaded', data => { if (matches(data)) { current.busy = false; current.saved = true; controls(); obHaptic('success'); } });
+  Native.on('operation.error', data => { if (data.action === 'chat.photoDownload' && matches(data)) { current.busy = false; current.saveError = data.message || 'Photo could not be saved. Please try again.'; controls(); } });
+  Native.on('app.back', () => close());
+  ['chat.updated', 'chat.removed', 'chat.photoSent', 'data.thread', 'data.chats'].forEach(type => Native.on(type, sync));
+  ['session.none', 'session.expired', 'session'].forEach(type => Native.on(type, () => close(false)));
+  document.addEventListener('aurora:navigate', () => close(false));
+  window.addEventListener('pagehide', () => close(false));
+  const afterRender = window.ZimiHome.afterRender;
+  window.ZimiHome.afterRender = () => { afterRender(); sync(); };
+  return { open, close, sync, download, reset, toggleZoom, sendReply, photoReply, updateReply: controls, zoomBy: delta => { if (current) zoom(current.scale + delta); }, retry: () => { if (current) load(current); } };
+})();
 
 /* Account settings use server summaries; sample identities exist only in preview. */
 const ZProfile={data:null,requested:false,error:'',dialog:'',draft:{},saving:false,saveError:'',requestId:0,presenceBusy:false,privacyBusy:false,blocked:[],blockedTotal:0,blockedPage:1,blockBusy:'',wallet:null};

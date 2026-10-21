@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, BackHandler, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ScreenCapture from "expo-screen-capture";
 import { StatusBar } from "expo-status-bar";
@@ -63,16 +63,39 @@ export default function App() {
   const [failure, setFailure] = useState<string | null>(null);
   const webRef = useRef<WebView>(null);
   const lastHapticAt = useRef(0);
+  const photoViewerOpen = useRef(false);
+  const updatePhotoViewer = useCallback((open: boolean) => {
+    photoViewerOpen.current = open;
+  }, []);
 
   // Everything the screens ask of the server goes through src/bridge.ts.
   const bridge = useMemo(() => createBridge((msg) => postToWeb(webRef, msg)), []);
   useEffect(() => bridge.close, [bridge]);
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (!photoViewerOpen.current) return false;
+      updatePhotoViewer(false);
+      postToWeb(webRef, { type: "app.back", data: {} });
+      return true;
+    });
+    return () => subscription.remove();
+  }, [updatePhotoViewer]);
+  useEffect(() => {
+    // Native app switching can precede WebView visibility changes. Give voice
+    // capture/playback an explicit cleanup signal when the app loses focus.
+    const subscription = AppState.addEventListener("change", state => {
+      if (state !== "active") postToWeb(webRef, { type: "app.background", data: {} });
+    });
+    return () => subscription.remove();
+  }, []);
 
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     if (!isTrustedDocument(event.nativeEvent.url)) return;
     const msg = parseWebMessage(event.nativeEvent.data);
     if (!msg) return;
-    if (msg.type === "theme") {
+    if (msg.type === "chat.photoViewer") {
+      updatePhotoViewer(msg.data.open);
+    } else if (msg.type === "theme") {
       if (msg.data.theme === "light" || msg.data.theme === "dark") setTheme(msg.data.theme);
       const color = msg.data.canvas;
       setCanvasOverride(typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : null);
@@ -99,20 +122,24 @@ export default function App() {
       // Video calls and chats: screenshots and screen recordings show nothing while they are open.
       void (msg.data.on ? ScreenCapture.preventScreenCaptureAsync(PRIVATE_SCREEN) : ScreenCapture.allowScreenCaptureAsync(PRIVATE_SCREEN)).catch(() => {});
     } else bridge.handle(msg);
-  }, [bridge]);
+  }, [bridge, updatePhotoViewer]);
 
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {
+    updatePhotoViewer(false);
+    bridge.documentLoading();
     setFailure(event.nativeEvent.description || "The Zimi Live bundle failed to load.");
-  }, []);
+  }, [bridge, updatePhotoViewer]);
 
   // The WebView's renderer can be killed under memory pressure; reload instead
   // of leaving a blank view behind. Returning true tells Android we handled it.
   const reload = useCallback(() => {
+    updatePhotoViewer(false);
+    bridge.documentLoading();
     setFailure(null);
     webRef.current?.reload();
     return true;
-  }, []);
+  }, [bridge, updatePhotoViewer]);
 
   const canvas = canvasOverride ?? CANVAS[theme];
   const ink = palette.ink ?? INK[theme];
@@ -152,7 +179,7 @@ export default function App() {
               allowUniversalAccessFromFileURLs={false}
               mixedContentMode="never"
               injectedJavaScript={THEME_BRIDGE}
-              onLoadStart={() => bridge.documentLoading()}
+              onLoadStart={() => { updatePhotoViewer(false); bridge.documentLoading(); }}
               onMessage={onMessage}
               onError={onError}
               onRenderProcessGone={reload}

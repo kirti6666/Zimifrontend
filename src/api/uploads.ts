@@ -2,6 +2,7 @@ import { getSessionVersion } from "../session";
 import { ApiError, request } from "./client";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 export function ensureSession(version: number): void {
   if (getSessionVersion() !== version) throw new ApiError("Your sign-in changed. Please try again.", 401);
@@ -34,12 +35,38 @@ export function decodePhoto(source: string): { contentType: string; bytes: Array
   if (!signatureMatches) throw new ApiError("This photo could not be read. Choose a different image.", 400);
   return { contentType: type, bytes: bytes.buffer };
 }
-function safeUploadUrl(raw: string): string {
+/** Recorder codecs are transport metadata; signed uploads use the base MIME. */
+export function decodeAudio(source: string): { contentType: string; bytes: ArrayBuffer } {
+  if (typeof source !== "string") throw new ApiError("Record a valid voice message.", 400);
+  const comma = source.indexOf(","), header = source.slice(0, comma), encoded = source.slice(comma + 1);
+  const matched = /^data:(audio\/(?:webm|mp4|ogg))(?:;codecs=(?:opus|mp4a\.40\.2))?;base64$/.exec(header);
+  if (!matched || !encoded || encoded.length > Math.ceil(MAX_AUDIO_BYTES / 3) * 4 || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new ApiError("Record a WebM, MP4 or Ogg voice message smaller than 5 MB.", 400);
+  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+  const length = encoded.length / 4 * 3 - padding;
+  if (length <= 0 || length > MAX_AUDIO_BYTES) throw new ApiError("Voice messages must be smaller than 5 MB.", 400);
+  const bytes = new Uint8Array(length);
+  let cursor = 0;
+  for (let index = 0; index < encoded.length; index += 4) {
+    const a = ALPHABET.indexOf(encoded[index]), b = ALPHABET.indexOf(encoded[index + 1]);
+    const c = ALPHABET.indexOf(encoded[index + 2]), d = ALPHABET.indexOf(encoded[index + 3]);
+    const bits = a << 18 | b << 12 | Math.max(0, c) << 6 | Math.max(0, d);
+    if (cursor < length) bytes[cursor++] = bits >>> 16 & 255;
+    if (cursor < length) bytes[cursor++] = bits >>> 8 & 255;
+    if (cursor < length) bytes[cursor++] = bits & 255;
+  }
+  const contentType = matched[1];
+  const signatureMatches = contentType === "audio/webm" ? [26, 69, 223, 163].every((byte, index) => bytes[index] === byte)
+    : contentType === "audio/ogg" ? [79, 103, 103, 83].every((byte, index) => bytes[index] === byte)
+      : bytes.length >= 12 && [102, 116, 121, 112].every((byte, index) => bytes[index + 4] === byte);
+  if (!signatureMatches) throw new ApiError("This voice recording could not be read. Record it again.", 400);
+  return { contentType, bytes: bytes.buffer };
+}
+function safeUploadUrl(raw: string, media = "photo"): string {
   let url: URL;
-  try { url = new URL(raw); } catch { throw new ApiError("The photo upload service returned an invalid address.", 502); }
+  try { url = new URL(raw); } catch { throw new ApiError(`The ${media} upload service returned an invalid address.`, 502); }
   const development = typeof __DEV__ !== "undefined" && __DEV__;
   const local = /^(localhost|127\.0\.0\.1|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(url.hostname);
-  if ((url.protocol !== "https:" && !(development && local && url.protocol === "http:")) || url.username || url.password || url.hash) throw new ApiError("The photo upload address must use a secure connection.", 502);
+  if ((url.protocol !== "https:" && !(development && local && url.protocol === "http:")) || url.username || url.password || url.hash) throw new ApiError(`The ${media} upload address must use a secure connection.`, 502);
   return url.toString();
 }
 type PhotoPurpose = "avatar" | "cover" | "post" | "chat";
@@ -62,6 +89,23 @@ async function sendPhoto(source: string, version: number, route: string, purpose
 }
 export function uploadMedia(source: string, purpose: PhotoPurpose, version: number): Promise<string> {
   return sendPhoto(source, version, "/media/upload-url", purpose);
+}
+export async function uploadAudio(source: string, version: number): Promise<string> {
+  ensureSession(version);
+  const { contentType, bytes } = decodeAudio(source);
+  const upload = await request<{ uploadUrl: string; key: string }>("POST", "/media/upload-url", { purpose: "chat-audio", contentType, contentLength: bytes.byteLength });
+  ensureSession(version);
+  if (!upload || typeof upload.uploadUrl !== "string" || typeof upload.key !== "string" || !upload.key) throw new ApiError("The voice upload could not be prepared. Try again.", 502);
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch(safeUploadUrl(upload.uploadUrl, "voice"), { method: "PUT", headers: { "Content-Type": contentType }, body: bytes, credentials: "omit", redirect: "error", signal: controller.signal });
+    if (!response.ok) throw new ApiError("Your voice message could not be uploaded. Please try again.", response.status);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(controller.signal.aborted ? "Voice upload timed out. Check your connection and try again." : "Your voice message could not be uploaded. Check your connection and try again.", 0);
+  } finally { clearTimeout(timeout); }
+  ensureSession(version);
+  return upload.key;
 }
 export async function uploadPhotos(sources: string[], version: number, progress?: (done: number, total: number) => void, existingPhotos: { key: string; url: string }[] = []): Promise<string[]> {
   if (sources.length < 3 || sources.length > 6) throw new ApiError("Choose between 3 and 6 photos to continue.", 400);

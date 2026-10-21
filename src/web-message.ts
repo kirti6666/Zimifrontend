@@ -11,6 +11,12 @@ const amount = (value: unknown) => typeof value === "number" && Number.isFinite(
 const identifier = (value: unknown) => text(value) && /^[a-zA-Z0-9_-]+$/.test(value as string);
 const strings = (value: unknown, max: number) => Array.isArray(value) && value.length <= max && value.every(item => text(item, 100));
 const photoData = (value: unknown) => typeof value === "string" && value.length <= 2 * 1024 * 1024 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value);
+const audioData = (value: unknown) => {
+  if (typeof value !== "string" || value.length > Math.ceil(5 * 1024 * 1024 / 3) * 4 + 100) return false;
+  const comma = value.indexOf(","), header = value.slice(0, comma), encoded = value.slice(comma + 1);
+  if (!/^data:audio\/(webm|mp4|ogg)(?:;codecs=(?:opus|mp4a\.40\.2))?;base64$/.test(header) || !encoded || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) return false;
+  return encoded.length / 4 * 3 - (encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0) <= 5 * 1024 * 1024;
+};
 const category = (value: unknown) => ["Dance", "Gaming", "Music", "Talk", "Astrology", "Fitness", "Comedy"].includes(String(value));
 const rtcSignal = (data: Record<string, unknown>) => {
   if (Boolean(data.description) === Boolean(data.candidate)) return false;
@@ -25,6 +31,7 @@ const rtcSignal = (data: Record<string, unknown>) => {
 const phoneNumber = (d: Record<string, unknown>) => typeof d.phone === "string" && /^\+[1-9]\d{5,14}$/.test(d.phone) &&
   (d.dialCode === undefined || (typeof d.dialCode === "string" && /^\+[1-9]\d{0,2}$/.test(d.dialCode) && d.phone.startsWith(d.dialCode)));
 const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
+const voiceClientId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 const settingsPatch = (data: Record<string, unknown>) => {
   const keys = Object.keys(data).filter(key => key !== "requestId");
   return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city"].includes(key)) &&
@@ -105,6 +112,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "chat.edit": valid = identifier(d.to) && identifier(d.id) && typeof d.text === "string" && d.text.length <= 4000; break;
     case "chat.delete": valid = identifier(d.to) && identifier(d.id) && boolean(d.everyone); break;
     case "chat.photo": valid = identifier(d.to) && photoData(d.photo) && (d.replyTo === undefined || identifier(d.replyTo)); break;
+    case "chat.photoDownload": valid = identifier(d.to) && identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["to", "id", "requestId"].includes(key)); break;
+    case "chat.photoViewer": valid = boolean(d.open) && Object.keys(d).every(key => key === "open"); break;
+    case "chat.voice": valid = identifier(d.to) && audioData(d.audio) && Number.isInteger(d.durationMs) && Number(d.durationMs) >= 500 && Number(d.durationMs) <= 120000 && voiceClientId(d.clientId) && (d.replyTo === undefined || identifier(d.replyTo)) && Object.keys(d).every(key => ["to", "audio", "durationMs", "clientId", "replyTo"].includes(key)); break;
     case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && amount(d.coins) && boolean(d.inCall) && (d.streamId === undefined || identifier(d.streamId)) && (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)); break;
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;
     case "call.accept": case "call.decline": case "verify.accept": case "verify.end": valid = identifier(d.callId); break;

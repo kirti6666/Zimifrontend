@@ -1715,7 +1715,7 @@ Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
 Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
  if(["call","hcall","voice"].includes(S.v)&&String(d.from)===String(S.v==="hcall"?S.caller?.id:S.h)){S.rmsgs.push(["host",first(d.name||(S.v==="hcall"?S.caller?.n:g(S.h)?.n)||"Them"),d.text]);if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,kind:d.kind,imageUrl:d.imageUrl,reply:d.reply||null,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
+ if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,kind:d.kind,imageUrl:d.imageUrl,audioUrl:d.audioUrl,durationMs:d.durationMs,reply:d.reply||null,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
  const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");

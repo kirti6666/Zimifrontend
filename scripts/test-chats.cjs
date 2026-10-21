@@ -62,7 +62,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     for (const width of [320, 373, 630, 1280]) {
       await preview.setViewportSize({ width, height: 844 });
       assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `The thread does not overflow at ${width}px`);
-      assert.equal(await preview.getByRole('button', { name: 'Send message', exact: true }).isVisible(), true);
+      assert.equal(await preview.getByRole('button', { name: 'Record voice message', exact: true }).isVisible(), true, 'An empty composer offers voice recording');
       await preview.screenshot({ path: path.join(os.tmpdir(), `zimi-thread-preview-${width}.png`) });
     }
     await preview.getByRole('button', { name: 'More options', exact: true }).click();
@@ -253,7 +253,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00', automated: true }], readAt: new Date().toISOString() }, 'thread');
     assert.match(await page.locator('#tf').innerText(), /A real thread response/);
     assert.equal(await page.locator('#tf .zc-automated').textContent(), 'Automated welcome', 'Initial history retains automated welcome labels');
-    const draft = page.getByPlaceholder('Type a message to Mira', { exact: true });
+    const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     await draft.fill('Keep this unsent draft');
     const openedBeforeIncoming = await sentCount('chat.open');
     await receive('chat.message', { from: mira.id, text: 'A new message in the active thread', id: id('31'), createdAt: new Date().toISOString(), automated: true });
@@ -355,7 +355,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
 
     await loadChats(chatData());
     await page.evaluate(value => go('thread', value), mira.id);
-    const guardedDraft = page.getByPlaceholder('Type a message to Mira', { exact: true });
+    const guardedDraft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     const sendButton = page.getByRole('button', { name: 'Send message', exact: true });
     const quickReply = page.getByRole('button', { name: 'Love it', exact: true });
     const sendsBeforeGuard = await sentCount('chat.send');
@@ -432,7 +432,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal((await lastSent('chat.open')).with, rohan.id, 'Existing member conversations remain accessible to approved creators');
     await settle('data.thread', { with: rohan.id, messages: [], canSend: true }, 'thread');
     await page.evaluate(() => document.getElementById('app-notice')?.remove());
-    await page.getByPlaceholder('Type a message to Rohan', { exact: true }).fill('A creator replies to an existing member');
+    await page.getByRole('textbox', { name: 'Message Rohan Patel', exact: true }).fill('A creator replies to an existing member');
     await page.getByRole('button', { name: 'Send message', exact: true }).click();
     assert.equal((await lastSent('chat.send')).to, rohan.id);
 

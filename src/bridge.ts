@@ -11,6 +11,7 @@ import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpir
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
 import { parseLiveLink, parseWebMessage } from "./web-message";
+import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
@@ -69,6 +70,9 @@ export type WebMessage =
   | { type: "chats.readAll"; data: Record<string, never> }
   | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string } }
   | { type: "chat.photo"; data: { to: string; photo: string; replyTo?: string } }
+  | { type: "chat.photoDownload"; data: { to: string; id: string; requestId: number } }
+  | { type: "chat.photoViewer"; data: { open: boolean } }
+  | { type: "chat.voice"; data: { to: string; audio: string; durationMs: number; clientId: string; replyTo?: string } }
   | { type: "chat.edit"; data: { to: string; id: string; text: string } }
   | { type: "chat.delete"; data: { to: string; id: string; everyone: boolean } }
   | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
@@ -84,6 +88,8 @@ export type WebMessage =
    wallet.balance, verification.status) come straight from the server socket. */
 export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "blocked" | "themes";
 export type AppMessage =
+  | { type: "app.background"; data: Record<string, never> }
+  | { type: "app.back"; data: Record<string, never> }
   | { type: "session"; data: Account }
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
   | { type: "session.error" | "session.expired"; data: { message: string } }
@@ -96,7 +102,7 @@ export type AppMessage =
   | { type: "post.saved"; data: { post: UserPost; requestId?: number } }
   | { type: "post.error"; data: { message: string; requestId?: number } }
   | { type: "data.posts"; data: { posts: UserPost[] } }
-  | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } }
+  | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } }
   | { type: "data.loaded"; data: Record<string, never> }
   | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
@@ -155,6 +161,8 @@ export type AppMessage =
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null } }
   | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null } }
+  | { type: "chat.photoDownloaded"; data: { to: string; id: string; requestId: number } }
+  | { type: "chat.voiceSent"; data: { to: string; clientId: string; message: Message } }
   | { type: "chat.updated"; data: { with: string; message: Message } }
   | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
@@ -166,7 +174,7 @@ export type AppMessage =
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
   | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string; senderGender?: Gender } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text" | "image"; imageUrl?: string; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text" | "image" | "voice"; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -189,6 +197,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let closed = false;
   let restoring = false;
   let webReady = false, sessionAvailable = false, runtimeLinkReceived = false;
+  let documentRevision = 0;
+  const photoDownloads = new Map<string, Promise<void>>();
   let linkRevision = 0;
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
   let loadingStreamLink: { revision: number; epoch: number } | undefined;
@@ -221,7 +231,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     message: errorMessage(error),
     ...(error instanceof ApiError ? { code: error.code, retryAfterSeconds: error.retryAfterSeconds } : {}),
   });
-  const operationError = (error: unknown, action?: string, context: { to?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } = {}) => {
+  const operationError = (error: unknown, action?: string, context: { to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } = {}) => {
     if (action?.startsWith("themes.")) emit({ type: "themes.error", data: { message: errorMessage(error), action, ...(error instanceof ApiError ? { code: error.code } : {}) } });
     else emit({ type: "operation.error", data: { message: errorMessage(error), action, ...context, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
   };
@@ -997,6 +1007,33 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "", reply: sent?.reply ?? null } }); quietly(loadChats(), "chats.reload"); }
         return;
       }
+      case "chat.photoViewer": return; // The native shell owns Android Back handling.
+      case "chat.photoDownload": {
+        const { to, id, requestId } = msg.data;
+        const sessionVersion = getSessionVersion(), revision = documentRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && revision === documentRevision;
+        const key = `${version}:${sessionVersion}:${revision}:${to}:${id}`;
+        let work = photoDownloads.get(key);
+        if (!work) {
+          work = downloadChatPhoto(to, id, applicable);
+          photoDownloads.set(key, work);
+        }
+        try {
+          await work;
+          if (applicable()) emit({ type: "chat.photoDownloaded", data: { to, id, requestId } });
+        } catch (error) {
+          if (applicable()) operationError(error, msg.type, { to, id, requestId });
+        } finally {
+          if (photoDownloads.get(key) === work) photoDownloads.delete(key);
+        }
+        return;
+      }
+      case "chat.voice": {
+        if (!(await requireThreadSend(msg.data.to, version))) return;
+        const message = await api.sendVoiceMessage(msg.data.to, msg.data.audio, msg.data.durationMs, msg.data.clientId, msg.data.replyTo);
+        if (current(version)) { emit({ type: "chat.voiceSent", data: { to: msg.data.to, clientId: msg.data.clientId, message } }); quietly(loadChats(), "chats.reload"); }
+        return;
+      }
       case "chat.edit": {
         await requireChatPair(msg.data.to);
         if (!current(version)) return;
@@ -1113,17 +1150,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
 
   return {
-    documentLoading: () => { webReady = false; },
+    documentLoading: () => { webReady = false; documentRevision++; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
-      const serialized = ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : ""}`;
+      const serialized = ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {
         if (!current(version)) return;
         const context = msg.type === "gift.send" ? { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey }
+          : msg.type === "chat.voice" ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId } : {};
         operationError(error, msg.type, context);

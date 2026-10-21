@@ -38,7 +38,7 @@ const threadRows = () => [
     const row = messageId => page.locator(`#zc-m-${messageId}`);
     const stack = messageId => row(messageId).locator('.zc-msg-stack');
     const quote = messageId => row(messageId).locator('.zc-quote');
-    const action = messageId => row(messageId).locator('[aria-haspopup="dialog"]');
+    const action = messageId => row(messageId).locator('.bub[aria-haspopup="dialog"],.zc-photo[aria-haspopup="dialog"]');
     const menu = page.getByRole('dialog', { name: 'Message options' });
     const replyContext = page.locator('.zc-context');
     const input = page.locator('#ti');
@@ -62,7 +62,8 @@ const threadRows = () => [
       await target.scrollIntoViewIfNeeded();
       const bounds = await target.boundingBox();
       assert.ok(bounds, 'The message has a visible drag surface');
-      const x = bounds.x + Math.min(24, bounds.width / 3);
+      const inset = Math.min(24, bounds.width / 3);
+      const x = bounds.x + (dx < 0 ? bounds.width - inset : inset);
       const y = bounds.y + Math.min(bounds.height / 2, 20);
       await page.mouse.move(x, y);
       await page.mouse.down();
@@ -78,16 +79,28 @@ const threadRows = () => [
       await page.screenshot({ path: file });
       screenshots.push(file);
     };
+    const assertSwipeCue = async (messageId, direction) => {
+      const metrics = await stack(messageId).evaluate(element => {
+        const cue = element.querySelector('.zc-swipe-cue');
+        const bubble = element.getBoundingClientRect();
+        const bounds = cue.getBoundingClientRect();
+        return { opacity: Number(getComputedStyle(cue).opacity), shift: new DOMMatrix(getComputedStyle(element).transform).m41, bubbleLeft: bubble.left, bubbleRight: bubble.right, cueLeft: bounds.left, cueRight: bounds.right, viewport: innerWidth };
+      });
+      assert.ok(metrics.opacity > 0, 'A reply cue appears while swiping');
+      assert.ok(metrics.shift * direction > 0, 'The bubble follows the allowed reply direction');
+      assert.ok(direction < 0 ? metrics.cueLeft >= metrics.bubbleRight : metrics.cueRight <= metrics.bubbleLeft, 'The reply cue appears behind the moving bubble');
+      assert.ok(metrics.cueLeft >= 0 && metrics.cueRight <= metrics.viewport, 'The reply cue stays within the phone viewport');
+    };
 
     await receive('session', member);
     await receive('data.home', { hosts: [mira, asha], stage: [], featured: mira, total: 2, page: 1, categories: ['Music'], availableCount: 2 });
     await reset();
 
-    // Swipe in either message direction selects exactly the original message.
+    // Incoming messages reply on a right swipe; own messages reply on a left swipe.
     assert.match(await stack(messages.incoming).evaluate(element => getComputedStyle(element).touchAction), /(?:^| )pan-y(?: |$)/, 'Message gestures retain native vertical scrolling');
     await input.fill('Keep this draft while choosing a reply');
     await startDrag(messages.incoming, 82);
-    assert.ok(await row(messages.incoming).locator('.zc-swipe-cue').evaluate(element => Number(getComputedStyle(element).opacity) > 0), 'A reply cue appears while swiping');
+    await assertSwipeCue(messages.incoming, 1);
     await saveScreenshot('zimi-chat-replies-swipe-390.png');
     await page.mouse.up();
     assert.equal(await selectedReply(), messages.incoming);
@@ -96,22 +109,33 @@ const threadRows = () => [
     await assertNoMenu('Swiping must not open message options on pointer release');
     await cancelReply();
     assert.equal(await input.inputValue(), 'Keep this draft while choosing a reply', 'Cancelling a reply preserves the draft');
-    await drag(messages.own, 82);
+    await startDrag(messages.own, -82);
+    await assertSwipeCue(messages.own, -1);
+    await saveScreenshot('zimi-chat-replies-own-left-swipe-390.png');
+    await page.mouse.up();
     assert.equal(await selectedReply(), messages.own);
     assert.match(await replyContext.innerText(), /Replying to yourself/);
     await cancelReply();
 
-    await drag(messages.incoming, 63);
-    await assertNoReply('A 63 CSS-pixel drag does not reach the reply threshold');
-    await drag(messages.incoming, 72);
-    assert.equal(await selectedReply(), messages.incoming, 'A drag past 64 CSS pixels reaches the reply threshold');
-    await cancelReply();
+    for (const [messageId, dx, label] of [[messages.own, 82, 'Own right swipe'], [messages.incoming, -82, 'Incoming left swipe']]) {
+      await drag(messageId, dx);
+      await assertNoReply(`${label} cannot select a reply`);
+      await assertNoMenu(`${label} cannot open message options`);
+    }
+
+    for (const [messageId, direction] of [[messages.incoming, 1], [messages.own, -1]]) {
+      await drag(messageId, direction * 63);
+      await assertNoReply('A 63 CSS-pixel drag does not reach the reply threshold in either allowed direction');
+      await drag(messageId, direction * 72);
+      assert.equal(await selectedReply(), messageId, 'A drag past 64 CSS pixels reaches the reply threshold in either allowed direction');
+      await cancelReply();
+    }
 
     // Aborted and scrolling gestures never become a reply or an accidental tap menu.
     for (const gesture of [
       { label: 'Short horizontal drag', dx: 35, dy: 0 },
       { label: 'Vertical scroll intent', dx: 18, dy: 80 },
-      { label: 'Leftward drag', dx: -35, dy: 0 },
+      { label: 'Incoming leftward drag', dx: -35, dy: 0 },
       { label: 'Diagonal scroll intent', dx: 75, dy: 100 },
     ]) {
       await drag(messages.incoming, gesture.dx, gesture.dy);
@@ -152,19 +176,25 @@ const threadRows = () => [
       try { await menu.waitFor({ state: 'visible' }); }
       finally { await touchEnd(); }
     };
-    for (const messageId of [messages.incoming, messages.own]) {
-      await touchDrag(messageId, 84, 0);
+    for (const [messageId, dx] of [[messages.incoming, 84], [messages.own, -84]]) {
+      await touchDrag(messageId, dx, 0);
       assert.equal(await selectedReply(), messageId, 'A real touch swipe selects its incoming or own original message');
       await assertNoMenu('Touch swipe release cannot open message options');
       await cancelReply();
     }
+    for (const [messageId, dx, label] of [[messages.own, 84, 'Own right swipe'], [messages.incoming, -84, 'Incoming left swipe']]) {
+      await touchDragFrom(await touchPoint(stack(messageId), true), dx, 0);
+      await assertNoReply(`${label} cannot select a reply on real touch input`);
+      await assertNoMenu(`${label} cannot open options on touch release`);
+    }
 
     await reset([{ id: messages.shortOwn, mine: true, text: 'Hi', createdAt: at(1), status: 'read' }]);
     const edgeStart = await touchPoint(action(messages.shortOwn), true);
-    const edgeTravel = Math.min(64, page.viewportSize().width - 8 - edgeStart.x);
-    assert.ok(edgeTravel >= 16 && edgeTravel < 64, 'The short own bubble leaves less than 64px of rightward room');
-    await touchDragFrom(edgeStart, edgeTravel, 0);
-    assert.equal(await selectedReply(), messages.shortOwn, 'A short own message can be swiped from its center without leaving the screen');
+    assert.ok(page.viewportSize().width - 8 - edgeStart.x < 64, 'The short own bubble leaves less than 64px of rightward room');
+    const edgeTravel = Math.min(84, edgeStart.x - 8);
+    assert.ok(edgeTravel >= 64 && edgeStart.x - edgeTravel >= 8, 'The short own bubble has enough leftward room to reply within the screen');
+    await touchDragFrom(edgeStart, -edgeTravel, 0);
+    assert.equal(await selectedReply(), messages.shortOwn, 'A short own message can be swiped left from its center without leaving the screen');
     await assertNoMenu('An edge-constrained touch swipe cannot open options');
     await cancelReply();
 
@@ -203,16 +233,36 @@ const threadRows = () => [
       { id: messages.ownPhoto, label: 'Own photo', options: ['Reply', 'Delete for everyone', 'Delete for me', 'Cancel'] },
       { id: messages.incomingPhoto, label: 'Incoming photo', options: incomingOptions },
     ];
-    // A plain touch tap leaves messages alone; real touch-and-hold owns the options.
+    // Text taps leave messages alone; photo taps open their viewer. Holds own options.
     // Tap first so a preceding long press cannot hide a click bug via suppression.
     for (const message of messageCases) {
       await touchTap(action(message.id));
       await assertNoMenu(`${message.label}: a regular touch tap does not open options`);
       await assertNoReply(`${message.label}: a regular touch tap does not select a reply`);
+      if ([messages.ownPhoto, messages.incomingPhoto].includes(message.id)) {
+        const viewer = page.getByRole('dialog', { name: 'Photo viewer', exact: true });
+        await viewer.waitFor();
+        await touchTap(viewer.getByRole('button', { name: 'Close photo', exact: true }));
+        await viewer.waitFor({ state: 'detached' });
+        await action(message.id).focus();
+        await page.keyboard.press('Enter');
+        await viewer.waitFor();
+        await assertNoMenu(`${message.label}: Enter opens the photo viewer without message options`);
+        await page.keyboard.press('Escape');
+        await viewer.waitFor({ state: 'detached' });
+      }
+    }
+    for (const [messageId, dx] of [[messages.ownPhoto, -84], [messages.incomingPhoto, 84]]) {
+      await touchDrag(messageId, dx, 0);
+      assert.equal(await selectedReply(), messageId, 'Photo messages use the same ownership-based reply direction as text');
+      await assertNoMenu('A photo swipe opens no message options');
+      assert.equal(await page.getByRole('dialog', { name: 'Photo viewer', exact: true }).count(), 0, 'A photo reply swipe opens no viewer');
+      await cancelReply();
     }
     for (const message of messageCases) {
       await touchHold(action(message.id));
       assert.equal(await page.evaluate(() => Chats.menu), message.id, `${message.label}: the held message owns the options`);
+      assert.equal(await page.getByRole('dialog', { name: 'Photo viewer', exact: true }).count(), 0, 'Holding a message opens options without a photo viewer');
       assert.deepEqual(await menu.getByRole('button').allInnerTexts(), message.options, `${message.label}: touch-and-hold respects edit/delete permissions`);
       if (message.id === messages.own) {
         await saveScreenshot('zimi-chat-options-own-touch-390.png');
@@ -230,7 +280,7 @@ const threadRows = () => [
 
     // Swiping or holding a quote acts on its enclosing message, while tapping jumps.
     await reset();
-    await touchDragFrom(await touchPoint(quote(messages.quoted)), 84, 0);
+    await touchDragFrom(await touchPoint(quote(messages.quoted)), -84, 0);
     assert.equal(await selectedReply(), messages.quoted, 'Swiping a quote replies to the enclosing own message, not the quoted original');
     await assertNoMenu('Swiping a quote opens no options');
     assert.equal(await row(messages.incoming).evaluate(element => element.classList.contains('zc-flash')), false, 'Swiping a quote does not accidentally jump to its original');
@@ -307,7 +357,7 @@ const threadRows = () => [
       paint();
     }, messages);
     for (const messageId of [messages.local, messages.failed, messages.deleted]) {
-      await drag(messageId, 82);
+      await drag(messageId, messageId === messages.deleted ? 82 : -82);
       await assertNoReply('Pending, failed and deleted messages cannot be swiped into a reply');
       assert.equal(await row(messageId).locator('[aria-haspopup="dialog"]').count(), 0, 'Unavailable messages expose no action trigger');
       await page.evaluate(value => zcStartReply(value), messageId);
@@ -346,7 +396,9 @@ const threadRows = () => [
       const context = canvas.getContext('2d'); context.fillStyle = '#7459ca'; context.fillRect(0, 0, 48, 48);
       return canvas.toDataURL('image/png').split(',')[1];
     }), 'base64');
-    await page.locator('#zc-photo-input').setInputFiles({ name: 'reply-fixture.png', mimeType: 'image/png', buffer: photo });
+    const photoChooser = page.waitForEvent('filechooser');
+    await page.evaluate(() => zcPickPhoto());
+    await (await photoChooser).setFiles({ name: 'reply-fixture.png', mimeType: 'image/png', buffer: photo });
     await page.waitForFunction(() => __sent.some(message => message.type === 'chat.photo'));
     const photoRequest = await last('chat.photo');
     assert.equal(photoRequest.to, mira.id);
@@ -394,7 +446,7 @@ const threadRows = () => [
       await assertKeyboardLayout(`${width}px reopened normal composer`, false);
 
       const replyId = width === 390 ? messages.own : messages.incoming;
-      await touchDrag(replyId, 84, 0);
+      await touchDrag(replyId, replyId === messages.own ? -84 : 84, 0);
       assert.equal(await selectedReply(), replyId, 'Swiping while the keyboard is open selects the intended original');
       assert.equal(await input.inputValue(), normalDraft, 'Choosing a reply with the keyboard open preserves the draft');
       await input.press('End');
@@ -441,15 +493,24 @@ const threadRows = () => [
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });
       await page.evaluate(() => { const thread = document.getElementById('tf'); thread.scrollTop = thread.scrollHeight; });
+      await startDrag(messages.own, -82);
+      await assertSwipeCue(messages.own, -1);
+      if (width === 320) await saveScreenshot('zimi-chat-replies-own-left-swipe-320.png');
+      await page.mouse.up();
+      assert.equal(await selectedReply(), messages.own, 'Own left swipe works at both phone widths');
+      await startDrag(messages.incoming, 82);
+      await assertSwipeCue(messages.incoming, 1);
+      await page.mouse.up();
+      assert.equal(await selectedReply(), messages.incoming, 'Incoming right swipe works at both phone widths');
       const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, page: document.documentElement.scrollWidth, thread: document.getElementById('tf').clientWidth, threadScroll: document.getElementById('tf').scrollWidth }));
       assert.ok(dimensions.page <= dimensions.viewport + 1, `Reply UI fits the ${width}px viewport`);
-      assert.ok(dimensions.threadScroll <= dimensions.thread + 1, `Quotes do not overflow the ${width}px message list`);
+      assert.ok(dimensions.threadScroll <= dimensions.thread + 1, `Quotes do not overflow the ${width}px message list (${JSON.stringify(dimensions)})`);
       assert.ok(await page.getByRole('button', { name: 'Cancel reply', exact: true }).isVisible());
       assert.ok(await page.getByRole('button', { name: 'Send message', exact: true }).isVisible());
       await saveScreenshot(`zimi-chat-replies-${width}.png`);
     }
     assert.deepEqual(errors, [], 'Reply interactions must not produce browser errors');
-    console.log('PASS chat replies: mouse/touch swipe including short own messages, native touch scroll, cancellation, touch tap/hold permissions, quote swipe/hold/tap, keyboard quote navigation, live edit/delete, navigation, text/photo reply acknowledgement, repeated keyboard viewport resizing, and 390/320px layout.');
+    console.log('PASS chat replies: own-left/incoming-right mouse/touch swipes including short own messages and photos, opposite-direction rejection, cue placement, native touch scroll, cancellation, touch tap/hold permissions, quote swipe/hold/tap, keyboard quote navigation, live edit/delete, navigation, text/photo reply acknowledgement, repeated keyboard viewport resizing, and 390/320px layout.');
     console.log(screenshots.join('\n'));
   } catch (error) {
     if (page) await page.screenshot({ path: path.join(os.tmpdir(), 'zimi-chat-replies-failure.png') }).catch(() => {});

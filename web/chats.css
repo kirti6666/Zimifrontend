@@ -236,7 +236,9 @@
 .zc-msg-stack[data-message-id] :is(.bub,.zc-photo,.zc-reply){-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .zc-msg-stack[data-message-id] img{-webkit-user-drag:none}
 .zc-msg-stack.zc-swiping{transition:none;user-select:none;-webkit-user-select:none}
-.zc-swipe-cue{position:absolute;left:-34px;top:9px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--muted);opacity:var(--reply-progress,0);pointer-events:none}
+.zc-swipe-cue{position:absolute;left:-34px;top:9px;display:none;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--muted);opacity:var(--reply-progress,0);pointer-events:none}
+.zc-swiping>.zc-swipe-cue{display:grid}
+.zc-msg.mine .zc-swipe-cue{left:auto;right:-34px}
 .zc-swipe-ready>.zc-swipe-cue{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 18%,var(--surface))}
 @media(prefers-reduced-motion:reduce){.zc-msg-stack{transition:none}.zc-flash .bub,.zc-flash .zc-photo{transition:none}}
 .zc-attach{display:flex;gap:8px;padding:8px var(--zc-gutter) 0}.zc-attach[hidden]{display:none}

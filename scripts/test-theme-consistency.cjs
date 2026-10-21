@@ -118,6 +118,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await mountedThemes(page, 'coins', [bg('.zw-wallet', 'surface'), ink('.zw-wallet-main>div>span', 'textMuted'), ink('.zw-wallet p', 'textMuted'), ...cta('.zw-coins>.zh-primary')], true);
     await nav(page, 'thread');
     await receive(page, 'data.thread', { with: creator.id, canSend: true, messages: [{ id: 'thread-theme', from: creator.id, text: 'Hello from the server fixture', createdAt: new Date().toISOString() }] });
+    await page.getByRole('textbox', { name: /^Message / }).fill('A themed message draft');
     await mountedThemes(page, 'thread', [bg('.zc-thread', 'background'), ink('.zc-thread'), bg('.zc-composer-field', 'surface'), ...cta('.zc-composer-send')], true);
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
     await mountedThemes(page, 'thread gifts', [bg('.zh-sheet', 'surface'), ink('.zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated'), ink('.zh-sheet-heading p', 'textMuted')]);

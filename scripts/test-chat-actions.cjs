@@ -113,7 +113,11 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
     await add.click();
     await page.getByRole('menuitem', { name: 'Emoji' }).click();
     await page.getByRole('group', { name: 'Emoji' }).waitFor();
-    assert.equal(await page.locator('.zc-composer-field button').count(), 0, 'The text field has no photo button of its own any more');
+    const composer = page.locator('.zc-composer-field');
+    assert.equal(await composer.getByRole('button', { name: 'Add a photo or emoji', exact: true }).count(), 1, 'The attachment control sits inside the shared composer');
+    assert.equal(await composer.getByRole('button', { name: 'Send a gift', exact: true }).count(), 1);
+    assert.equal(await composer.getByRole('button', { name: 'Record voice message', exact: true }).count(), 1, 'An empty composer has one recording action');
+    assert.equal(await composer.getByRole('button', { name: 'Send message', exact: true }).count(), 0);
     assert.deepEqual(errors, []);
     console.log('PASS chat actions: options per message, reply with quote, edit with Edited label, delete for everyone and for me, live deletes, and Photo/Emoji under +');
   } finally {

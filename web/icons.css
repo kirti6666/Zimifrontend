@@ -12,6 +12,10 @@
 .zi-icon[data-icon=ph]{--zi-tap:zi-ring;--zi-time:600ms}
 .zi-icon:is([data-icon=heart],[data-icon=follow]){--zi-tap:zi-beat;--zi-time:560ms}
 .zi-icon[data-icon=send]{--zi-tap:zi-fly;--zi-time:520ms}
+.zi-icon[data-icon=download]{--zi-tap:zi-nudge-down;--zi-time:380ms}
+.zi-icon[data-icon=photoClose]{--zi-tap:zi-turn;--zi-turn:90deg;--zi-time:320ms}
+.zi-icon:is([data-icon=zoomIn],[data-icon=zoomOut],[data-icon=expand]){--zi-tap:zi-glow;--zi-time:360ms}
+.zi-icon:is([data-icon=stop],[data-icon=playFill],[data-icon=pause]){--zi-tap:zi-glow;--zi-time:360ms}
 .zi-icon[data-icon=up]{--zi-tap:zi-rise;--zi-time:520ms}
 .zi-icon:is([data-icon=back],[data-icon=reply]){--zi-tap:zi-nudge-left;--zi-time:380ms}
 .zi-icon:is([data-icon=logout],[data-icon=arrow]){--zi-tap:zi-nudge-right;--zi-time:380ms}
