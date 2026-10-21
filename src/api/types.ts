@@ -117,7 +117,7 @@ export interface Mission {
   claimed: boolean;
   endsAt: string;
 }
-export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant"; page?: number; }
+export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant" | "online"; page?: number; }
 export interface HomeData {
   hosts: Host[];
   stage: Host[];
@@ -132,7 +132,11 @@ export interface HomeData {
   bonus: Mission | null;
   unreadCount: number;
 }
-export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; }
+export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; audience: "personal" | "announcements"; }
+export interface NotificationsQuery { page?: number; limit?: number; q?: string; status?: "all" | "unread" | "read"; audience?: "all" | "personal" | "announcements"; since?: string; before?: string; sort?: "newest" | "oldest"; }
+export interface NotificationsData { items: AppNotification[]; total: number; unreadCount: number; totalCount: number; page: number; limit: number; }
+export interface NotificationReadPatch { ids?: string[]; all?: true; read: boolean; }
+export interface NotificationReadResult { count: number; unreadCount: number; totalCount: number; }
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
 export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; gender?: Gender | null; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
@@ -203,7 +207,7 @@ export interface ChatSummary {
   last: string;
   time: string;
   unread: number;
-  lastKind: "text" | "image";
+  lastKind: "text" | "image" | "voice";
   lastDeleted?: boolean;
   lastMine: boolean;
   lastAutomated: boolean;
@@ -227,11 +231,13 @@ export interface Message {
   text: string;
   time: string;
   createdAt?: string;
-  kind?: "text" | "image";
+  kind?: "text" | "image" | "voice";
   imageUrl?: string;
+  audioUrl?: string;
+  durationMs?: number;
   edited?: boolean;
   deleted?: boolean; // deleted for everyone; only a placeholder remains
-  reply?: { id: string; mine: boolean; text: string; image: boolean; deleted: boolean };
+  reply?: { id: string; mine: boolean; text: string; image: boolean; voice?: boolean; deleted: boolean };
   automated?: boolean;
   status?: "sent" | "read"; // own messages only: whether the other person has read it
 }

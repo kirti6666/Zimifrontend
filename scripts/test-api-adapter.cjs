@@ -64,10 +64,13 @@ function expect(method, route, data, check, extra = {}) { expected.push({ method
 function finished() { assert.equal(expected.length, 0, 'Every expected server call was made'); }
 const user = { id: 'member-id', role: 'user', hostStatus: 'none', name: 'Asha', isVerifiedHost: false, onboardingStatus: 'pending', photos: [], languages: [], interests: [] };
 const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0]).toString('base64');
+const voiceBytes = Buffer.from([26, 69, 223, 163, 0, 1, 2, 3]);
+const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base64');
 
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const adapters = load('src/api/adapters.ts');
+  const media = load('src/api/uploads.ts');
   assert.deepEqual(plain(phonePayload('+91 98765 43210')), { country_code: '+91', phone: '9876543210' });
   assert.throws(() => phonePayload('+91 5467985456'), /Indian/, 'India keeps its mobile number check');
   assert.deepEqual(plain(phonePayload('+14155550123', '+1')), { country_code: '+1', phone: '4155550123' });
@@ -207,11 +210,103 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   reset();
   expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/chat', key: 'chats/member-id/photo.png' }, body => assert.equal(body.purpose, 'chat'));
   expect('POST', '/chats/host-id', { _id: 'photo-message', text: '', image: { url: 'https://cdn.example.test/chat.png' } }, body => assert.deepEqual(plain(body), { imageKey: 'chats/member-id/photo.png' }));
-  await api.sendPhotoMessage('host-id', png);
+  assert.deepEqual(plain(await api.sendPhotoMessage('host-id', png)), { id: 'photo-message', reply: null });
   assert.equal(uploads.length, 1, 'Chat photos go straight to storage, then only the key is sent'); finished();
+  reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/chat-reply', key: 'chats/member-id/reply.png' }, body => assert.equal(body.purpose, 'chat'));
+  expect('POST', '/chats/host-id', {
+    _id: 'photo-reply', senderId: 'member-id', text: '', image: { url: 'https://cdn.example.test/chat-reply.png' },
+    reply: { id: 'question-1', senderId: 'host-id', text: '', image: false, deleted: true },
+  }, body => assert.deepEqual(plain(body), { imageKey: 'chats/member-id/reply.png', replyTo: 'question-1' }));
+  assert.deepEqual(plain(await api.sendPhotoMessage('host-id', png, 'question-1')), {
+    id: 'photo-reply', reply: { id: 'question-1', mine: false, text: '', image: false, deleted: true },
+  }, 'A photo keeps its reply target and the authoritative deletion state returned after upload');
+  assert.equal(uploads.length, 1); finished();
   const photoThread = adapters.messagesFrom({ items: [{ _id: 'photo-message', senderId: 'host-id', text: '', image: { url: 'https://cdn.example.test/chat.png' } }] }, 'member-id').messages[0];
   assert.deepEqual([photoThread.kind, photoThread.imageUrl], ['image', 'https://cdn.example.test/chat.png']);
   assert.equal(adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id', name: 'Creator' }], lastMessage: { text: '', kind: 'image' } }] }, 'member-id').chats[0].lastKind, 'image');
+
+  for (const [mime, bytes, header] of [
+    ['audio/webm', voiceBytes, 'audio/webm;codecs=opus'],
+    ['audio/ogg', Buffer.from([79,103,103,83,0,1,2,3]), 'audio/ogg;codecs=opus'],
+    ['audio/mp4', Buffer.from([0,0,0,24,102,116,121,112,77,52,65,32]), 'audio/mp4;codecs=mp4a.40.2'],
+  ]) {
+    const decoded = media.decodeAudio(`data:${header};base64,${bytes.toString('base64')}`);
+    assert.equal(decoded.contentType, mime, 'Recorder codecs are removed from the canonical upload MIME');
+    assert.deepEqual(Buffer.from(decoded.bytes), bytes);
+  }
+  for (const audio of ['https://example.test/audio.webm', 'data:audio/wav;base64,AAAA', 'data:audio/webm;base64,', 'data:audio/webm;base64,AAAA=', 'data:audio/webm;base64,AA!A', 'data:audio/webm;codecs=h264;base64,AAAA', png.replace('image/png', 'audio/webm'), 'data:audio/mp4;base64,AAAAAA==']) {
+    assert.throws(() => media.decodeAudio(audio), /voice|recording/, 'Invalid or mismatched recording bytes cannot be uploaded');
+  }
+  const oversizedVoice = 'data:audio/webm;base64,' + Buffer.alloc(5 * 1024 * 1024 + 1).toString('base64');
+  assert.throws(() => media.decodeAudio(oversizedVoice), /5 MB/);
+
+  reset();
+  expect('GET', '/chats/host-id/messages/photo-id/photo', { url: 'https://cdn.example.test/chat/photo.png' });
+  assert.equal(await api.chatPhotoUrl('host-id', 'photo-id'), 'https://cdn.example.test/chat/photo.png');
+  expect('GET', '/chats/host%2Fid/messages/photo%2Fid/photo', { url: 'https://cdn.example.test/chat/photo.png' });
+  await api.chatPhotoUrl('host/id', 'photo/id');
+  for (const unsafe of [undefined, 'http://cdn.example.test/photo.png', 'file:///private/photo.png', 'https://user:secret@cdn.example.test/photo.png', 'https://cdn.example.test/photo.png#fragment', 'https://cdn.example.test\\@evil.test/photo.png', 'https://[broken']) {
+    expect('GET', '/chats/host-id/messages/photo-id/photo', { url: unsafe });
+    await assert.rejects(api.chatPhotoUrl('host-id', 'photo-id'), /secure download/);
+  }
+  expect('GET', '/chats/host-id/messages/photo-id/photo', undefined, undefined, { error: new ApiError('Photo no longer available', 404) });
+  await assert.rejects(api.chatPhotoUrl('host-id', 'photo-id'), error => error.status === 404);
+  expect('GET', '/chats/host-id/messages/photo-id/photo', { url: 'https://cdn.example.test/chat/photo.png' }, undefined, { run: () => version++ });
+  await assert.rejects(api.chatPhotoUrl('host-id', 'photo-id'), /sign-in changed/);
+
+  const voiceDto = { _id: 'voice-message', senderId: 'member-id', recipientId: 'host-id', text: '', kind: 'voice', createdAt: '2026-10-21T09:00:00.000Z',
+    audio: { key: 'chat-audio/member-id/clip.webm', url: 'https://cdn.example.test/clip.webm', mimeType: 'audio/webm', durationMs: 2300 },
+    reply: { id: 'earlier-voice', senderId: 'host-id', text: '', image: false, voice: true, deleted: false } };
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/clip?signature=temporary', key: voiceDto.audio.key }, body => assert.deepEqual(plain(body), { purpose: 'chat-audio', contentType: 'audio/webm', contentLength: voiceBytes.length }));
+  expect('POST', '/chats/host-id', voiceDto, body => assert.deepEqual(plain(body), { audioKey: voiceDto.audio.key, durationMs: 2300, clientId: 'voice-attempt-1', replyTo: 'earlier-voice' }));
+  const sentVoice = await api.sendVoiceMessage('host-id', voice, 2300, 'voice-attempt-1', 'earlier-voice');
+  assert.equal(sentVoice.kind, 'voice'); assert.equal(sentVoice.audioUrl, voiceDto.audio.url); assert.equal(sentVoice.durationMs, 2300); assert.equal(sentVoice.mine, true);
+  assert.deepEqual(plain(sentVoice.reply), { id: 'earlier-voice', mine: false, text: '', image: false, voice: true, deleted: false });
+  assert.equal(uploads.length, 1); assert.equal(uploads[0].options.headers['Content-Type'], 'audio/webm');
+  assert.equal(uploads[0].options.credentials, 'omit'); assert.equal(uploads[0].options.redirect, 'error');
+  assert.equal(uploads[0].options.headers.Authorization, undefined); assert.deepEqual(Buffer.from(uploads[0].options.body), voiceBytes);
+  finished();
+  const voiceHistory = adapters.messagesFrom({ items: [voiceDto] }, 'member-id').messages[0];
+  assert.deepEqual(plain(voiceHistory), plain(sentVoice), 'Voice send and history use the same representation');
+  assert.equal(adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id' }], lastMessage: { text: '', kind: 'voice' } }] }, 'member-id').chats[0].lastKind, 'voice');
+
+  reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/retry.webm', key: voiceDto.audio.key });
+  expect('POST', '/chats/host-id', undefined, undefined, { error: new ApiError('Connection lost after send', 0) });
+  await assert.rejects(api.sendVoiceMessage('host-id', voice, 2300, 'voice-retry-1'), /Connection lost/);
+  expect('POST', '/chats/host-id', voiceDto, body => assert.deepEqual(plain(body), { audioKey: voiceDto.audio.key, durationMs: 2300, clientId: 'voice-retry-1' }));
+  assert.equal((await api.sendVoiceMessage('host-id', voice, 2300, 'voice-retry-1')).id, 'voice-message');
+  assert.equal(uploads.length, 1, 'A retry reuses the uploaded object and server idempotency ID'); finished();
+  expect('POST', '/chats/host-id', { ...voiceDto, audio: undefined, text: '', deletedAt: '2026-10-21T09:01:00.000Z' }, body => assert.equal(body.clientId, 'voice-retry-1'));
+  const deletedVoice = await api.sendVoiceMessage('host-id', voice, 2300, 'voice-retry-1');
+  assert.equal(deletedVoice.id, voiceDto._id); assert.equal(deletedVoice.deleted, true); assert.equal(deletedVoice.audioUrl, undefined);
+  assert.equal(uploads.length, 1, 'A replay of a deleted successful send resolves to its tombstone without another upload'); finished();
+  await assert.rejects(api.sendVoiceMessage('another-host', voice, 2300, 'voice-retry-1'), /earlier send/);
+  await assert.rejects(api.sendVoiceMessage('host-id', voice, 2400, 'voice-retry-1'), /earlier send/);
+
+  reset();
+  for (const duration of [0, 499, 120001, 1000.5, NaN, '1000']) await assert.rejects(api.sendVoiceMessage('host-id', voice, duration, 'voice-invalid-duration'), /half a second/);
+  for (const clientId of ['', undefined, '../other', 'x'.repeat(129)]) await assert.rejects(api.sendVoiceMessage('host-id', voice, 1000, clientId), /Record a new/);
+  await assert.rejects(api.sendVoiceMessage('host-id', png, 1000, 'voice-invalid-audio'), /voice message/);
+  assert.equal(requests.length, 0, 'Invalid voice data fails before signing or uploading');
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/failed.webm', key: voiceDto.audio.key });
+  uploadError = new Error('offline');
+  await assert.rejects(api.sendVoiceMessage('host-id', voice, 1000, 'voice-upload-failed'), /Check your connection/);
+  assert.equal(requests.length, 1, 'Upload failure cannot create a message'); finished();
+  reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'http://public.example.test/clip.webm', key: voiceDto.audio.key });
+  await assert.rejects(api.sendVoiceMessage('host-id', voice, 1000, 'voice-insecure-upload'), /secure connection/);
+  assert.equal(uploads.length, 0); finished();
+  reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/retired.webm', key: voiceDto.audio.key }, undefined, { run: () => version++ });
+  await assert.rejects(api.sendVoiceMessage('host-id', voice, 1000, 'voice-retired-session'), /sign-in changed/);
+  assert.equal(uploads.length, 0, 'A session change during signing cancels upload and message creation'); finished();
+  reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/next-session.webm', key: 'chat-audio/member-id/next.webm' });
+  expect('POST', '/chats/host-id', voiceDto, body => assert.equal(body.audioKey, 'chat-audio/member-id/next.webm'));
+  await api.sendVoiceMessage('host-id', voice, 2300, 'voice-retry-1');
+  assert.equal(uploads.length, 1, 'Cached upload keys do not cross session versions'); finished();
 
   reset();
   expect('GET', '/auth/me', { user }); await api.me();
@@ -255,8 +350,18 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/calls', { _id: 'call-id' }, body => assert.deepEqual(plain(body), { calleeId: 'host-id', kind: 'audio' }));
   assert.equal((await api.startCall('host-id', true)).callId, 'call-id');
   expect('POST', '/calls/call-id/end', {}); await api.declineCall('call-id');
-  expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello' })); await api.sendMessage('host-id', 'Hello');
+  expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello' })); assert.equal((await api.sendMessage('host-id', 'Hello')).reply, null);
   expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello in our call', callId: 'accepted-call' })); await api.sendMessage('host-id', 'Hello in our call', 'accepted-call');
+  expect('POST', '/chats/host-id', { _id: 'text-reply', senderId: 'member-id', text: 'Delivered words', reply: { id: 'question-1', senderId: 'host-id', text: 'Updated question', image: false, deleted: false } },
+    body => assert.deepEqual(plain(body), { text: 'Original words', replyTo: 'question-1' }));
+  assert.deepEqual(plain(await api.sendMessage('host-id', 'Original words', undefined, 'question-1')), {
+    id: 'text-reply', text: 'Delivered words', reply: { id: 'question-1', mine: false, text: 'Updated question', image: false, deleted: false },
+  }, 'Sending returns both moderated message text and the current server quote');
+  expect('POST', '/chats/host-id', { _id: 'own-photo-reply', senderId: 'member-id', text: 'My photo', reply: { id: 'own-photo', senderId: 'member-id', text: '', image: true, deleted: false } },
+    body => assert.deepEqual(plain(body), { text: 'My photo', callId: 'accepted-call', replyTo: 'own-photo' }));
+  assert.deepEqual(plain((await api.sendMessage('host-id', 'My photo', 'accepted-call', 'own-photo')).reply), {
+    id: 'own-photo', mine: true, text: '', image: true, deleted: false,
+  }, 'A reply to the sender\'s own photo keeps its ownership and photo label');
   expect('POST', '/users/host-id/follow', { following: true }, body => assert.deepEqual(plain(body), { following: true })); assert.equal((await api.follow('host-id', true)).following, true);
   expect('POST', '/users/host-id/follow', {}); await assert.rejects(api.follow('host-id', true), /could not be confirmed/, 'Follow needs an explicit acknowledgement');
 
@@ -291,6 +396,11 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.equal(home.hosts[0].ratePerMin, 0, 'Free calls must not invent a per-minute charge');
   assert.equal(home.hosts[0].stream.hostId, creator._id); assert.equal(home.hosts[0].verified, true);
   assert.equal(home.availableCount, 3); assert.equal(home.bonus.progress, 5); assert.equal(home.unreadCount, 4);
+  expect('GET', '/home?mode=online&page=2&limit=20', { items: [{ ...creator, stream: null, availableForCall: false }], stage: [], featured: null, total: 21, page: 2, limit: 20 });
+  const onlineHome = await api.home({ mode: 'online', page: 2 });
+  assert.equal(onlineHome.total, 21); assert.equal(onlineHome.page, 2);
+  assert.equal(onlineHome.hosts[0].online, true); assert.equal(onlineHome.hosts[0].availableForCall, false);
+  assert.equal(onlineHome.hosts[0].live, false, 'Home eligibility is independent from call or streaming availability');
   expect('GET', '/home/match?category=Music', { host: creator });
   assert.equal((await api.matchHost('Music')).host.id, creator._id);
   expect('PATCH', '/safety', { allowRequests: false, showActivity: false, discoverable: true }, body => assert.deepEqual(plain(body), { allowRequests: false, showActivity: false, discoverable: true }));
@@ -327,6 +437,24 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/notifications/read', {}, body => assert.deepEqual(plain(body), { ids: ['note-id'] }));
   expect('GET', '/notifications?limit=100', { items: [{ _id: 'note-id', title: 'From admin', body: 'Event tonight', read: true }] });
   assert.equal((await api.readNotifications(['note-id'])).items[0].read, true);
+  const noteSince = '2026-10-01T00:00:00.000Z';
+  expect('GET', `/notifications?limit=20&page=2&q=event%20%26%20music&status=unread&audience=personal&since=${encodeURIComponent(noteSince)}&sort=oldest`, {
+    items: [{ _id: 'personal-note', userId: 'member-id', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince }],
+    total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20,
+  });
+  const filteredNotes = await api.notifications({ page: 2, q: 'event & music', status: 'unread', audience: 'personal', since: noteSince, sort: 'oldest' });
+  assert.deepEqual(plain(filteredNotes), { items: [{ id: 'personal-note', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince, audience: 'personal' }], total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20 });
+  assert.equal(adapters.notificationsFrom({ items: [{ _id: 'global-note', userId: null }] }).items[0].audience, 'announcements');
+  const noteBefore = '2026-10-02T00:00:00.000Z';
+  expect('GET', `/notifications?limit=20&since=${encodeURIComponent(noteSince)}&before=${encodeURIComponent(noteBefore)}`, { items: [], total: 0, totalCount: 40, unreadCount: 25, page: 1, limit: 20 });
+  assert.equal((await api.notifications({ since: noteSince, before: noteBefore })).items.length, 0, 'A bounded date tab sends its inclusive start and exclusive end to the API');
+  expect('GET', `/notifications?limit=20&before=${encodeURIComponent(noteSince)}`, { items: [], total: 0, totalCount: 40, unreadCount: 25, page: 1, limit: 20 });
+  await api.notifications({ before: noteSince });
+  for (const input of [{ ids: ['note-id'], read: false }, { all: true, read: true }]) {
+    expect('POST', '/notifications/read', { count: 1, unreadCount: 3, totalCount: 5 }, body => assert.deepEqual(plain(body), input));
+    assert.deepEqual(plain(await api.updateNotificationRead(input)), { count: 1, unreadCount: 3, totalCount: 5 });
+  }
+  for (const response of [{}, { count: 1, unreadCount: -1, totalCount: 5 }, { count: 1, unreadCount: 6, totalCount: 5 }]) assert.throws(() => adapters.notificationReadFrom(response), /notification status could not be confirmed/);
   const giftId = '0123456789abcdef01234567', packId = '1123456789abcdef01234567';
   expect('GET', '/gifts?limit=100', { items: [{ _id: giftId, name: 'Rose', emoji: 'rose', coins: 25 }] });
   expect('GET', '/coins/packs', { items: [{ _id: packId, name: 'Starter', coins: 100, pricePaise: 9900 }], paymentsAvailable: true });
@@ -415,6 +543,13 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   assert.equal(events[1].data.automated, true, 'Realtime delivery retains the automated label');
+  socket.emitServer('chat:message', { _id: 'incoming-photo-reply', senderId: 'host-id', recipientId: 'member-id', text: '', image: { url: 'https://cdn.example.test/reply.png' }, reply: { id: 'own-question', senderId: 'member-id', text: 'Your question', image: false, deleted: false } });
+  const incomingPhotoReply = events.filter(event => event.type === 'chat.message').at(-1).data;
+  assert.equal(incomingPhotoReply.kind, 'image'); assert.equal(incomingPhotoReply.imageUrl, 'https://cdn.example.test/reply.png');
+  assert.deepEqual(plain(incomingPhotoReply.reply), { id: 'own-question', mine: true, text: 'Your question', image: false, deleted: false }, 'Incoming photo replies use the same quote format as send confirmations');
+  socket.emitServer('chat:message', { ...voiceDto, senderId: 'host-id', recipientId: 'member-id' });
+  const incomingVoice = events.filter(event => event.type === 'chat.message').at(-1).data;
+  assert.equal(incomingVoice.kind, 'voice'); assert.equal(incomingVoice.audioUrl, voiceDto.audio.url); assert.equal(incomingVoice.durationMs, 2300); assert.equal(incomingVoice.reply.voice, true);
   socket.emitServer('chat:message', { _id: 'call-message', senderId: 'host-id', recipientId: 'member-id', text: 'Call message', callId: 'accepted-call', inCall: true });
   const callMessage=events.filter(event=>event.type==='chat.message').at(-1);assert.equal(callMessage.data.callId,'accepted-call');assert.equal(callMessage.data.inCall,true);
   const receivedGift={_id:'gift-delivery',senderId:'host-id',recipientId:'member-id',streamId:'stream-id',giftId:'catalog-gift',giftName:'Diamond Crown',coins:250,senderName:'Asha Live',emoji:'💎',mediaUrl:'https://cdn.example.test/crown.png',senderAvatarUrl:'https://cdn.example.test/asha.png'};
@@ -424,6 +559,11 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   const giftCount=events.filter(event=>event.type==='gift.received').length;
   socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
+  for (const event of ['notification:new', 'notifications:read']) {
+    const beforeNotification = events.length;
+    socket.emitServer(event, { userId: 'member-id', title: 'Socket data does not populate the inbox', unreadCount: 900 });
+    assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, ...(event === 'notification:new' ? [{ type: 'home.updated', data: {} }] : [])], 'Notification socket signals refresh authenticated data without trusting payload counts or text');
+  }
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'accepted', kind: 'video', coinsPerMinute: 60 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.connected', data: { callId: 'paid-call', initiator: true, peerId: 'host-id', voice: false, rate: 60 } }, 'A paid call carries its price');
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged: 150, endReason: 'out_of_coins' });

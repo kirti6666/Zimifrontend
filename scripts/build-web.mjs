@@ -87,6 +87,8 @@ const page = (demo) =>
   read("web/onboarding.css") +
   read("web/home.css") +
   read("web/chats.css") +
+  read("web/chat-voice.css") +
+  read("web/chat-photo.css") +
   read("web/navigation.css") +
   read("web/profile.css") +
   read("web/themes.css") +
@@ -98,6 +100,7 @@ const page = (demo) =>
   read("web/public-profile.css") +
   read("web/home-dashboard.css") +
   read("web/coins.css") +
+  read("web/notifications.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -119,8 +122,11 @@ const page = (demo) =>
   "\n" + read("web/call-setup.js") +
   "\n" + read("web/verification-call.js") +
   "\n" + read("web/chats.js") +
+  "\n" + read("web/chat-voice.js") +
+  "\n" + read("web/chat-photo.js") +
   "\n" + read("web/profile.js") +
   "\n" + read("web/themes.js") +
+  "\n" + read("web/notifications.js") +
   "\n" + read("web/navigation.js") +
   "\n" + read("web/icons.js") +
   "\n" + read("web/offline.js") +

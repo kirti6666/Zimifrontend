@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppNotification, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -104,9 +104,16 @@ export function homeFrom(value: unknown): HomeData {
     categories: stringList(data.categories), broadcasterCount: count(data.broadcasterCount), availableCount: count(data.availableCount),
     speedMatchEnabled: data.speedMatchEnabled === true, bonus: data.bonus ? missionFrom(data.bonus) : null, unreadCount: count(data.unreadNotifications) };
 }
-export function notificationsFrom(value: unknown): { items: AppNotification[]; unreadCount: number } {
-  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt) }));
-  return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length };
+export function notificationsFrom(value: unknown): NotificationsData {
+  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: idOf(note.userId) ? "personal" as const : "announcements" as const }));
+  return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length,
+    total: typeof data.total === "number" ? count(data.total) : list.length, totalCount: typeof data.totalCount === "number" ? count(data.totalCount) : typeof data.total === "number" ? count(data.total) : list.length,
+    page: count(data.page) || 1, limit: count(data.limit) || 100 };
+}
+export function notificationReadFrom(value: unknown): NotificationReadResult {
+  const data = record(value);
+  if ([data.count, data.unreadCount, data.totalCount].some(value => !Number.isSafeInteger(value) || Number(value) < 0) || Number(data.unreadCount) > Number(data.totalCount)) throw new ApiError("Your notification status could not be confirmed. Refresh and try again.", 502);
+  return { count: data.count as number, unreadCount: data.unreadCount as number, totalCount: data.totalCount as number };
 }
 export function privacyFrom(value: unknown): PrivacySettings {
   const data = record(value);
@@ -193,7 +200,7 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
     return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
       ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
       ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
-      lastKind: last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastKind: last.kind === "voice" ? "voice" as const : last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
       lastAutomated: last.automated === true,
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
@@ -206,11 +213,13 @@ export function messageFrom(value: unknown, userId: string): Message {
   const message = record(value);
   const mine = idOf(message.senderId) === userId;
   const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+  const audio = message.audio && typeof message.audio === "object" ? record(message.audio) : undefined;
+  const audioUrl = string(audio?.url), durationMs = finite(audio?.durationMs);
   const reply = message.reply && typeof message.reply === "object" ? record(message.reply) : undefined;
   return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
-    ...(imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
+    ...(audioUrl ? { kind: "voice" as const, audioUrl, ...(durationMs !== undefined ? { durationMs } : {}) } : imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
     ...(message.editedAt ? { edited: true } : {}), ...(message.deletedAt ? { deleted: true } : {}),
-    ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, deleted: reply.deleted === true } } : {}),
+    ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, ...(reply.voice === true ? { voice: true } : {}), deleted: reply.deleted === true } } : {}),
     ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
 }
 export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {

@@ -75,10 +75,11 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const message = record(payload), from = idOf(message.senderId), to = idOf(message.recipientId);
       if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
-      const imageUrl = message.image && typeof message.image === "object" ? string(record(message.image).url) : "";
+      const normalized = messageFrom(message, userId);
       if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt),
-        ...(imageUrl ? { kind: "image", imageUrl } : { kind: "text" }), automated: message.automated === true,
-        ...(message.reply && typeof message.reply === "object" ? { reply: messageFrom(message, userId).reply } : {}),
+        kind: normalized.kind, ...(normalized.imageUrl ? { imageUrl: normalized.imageUrl } : {}),
+        ...(normalized.audioUrl ? { audioUrl: normalized.audioUrl, durationMs: normalized.durationMs } : {}), automated: message.automated === true,
+        ...(normalized.reply ? { reply: normalized.reply } : {}),
         ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
       });
       // Sender echoes also update the list, including messages sent on another device.
@@ -142,6 +143,10 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   }
   socket.on("wallet:updated", refreshWallet);
   socket.on("home:updated", () => emit("home.updated", {}));
+  // The inbox and badge read their authenticated counts; socket content is only an invalidation.
+  socket.on("notification:new", () => { emit("notifications.changed", {}); emit("home.updated", {}); });
+  // Read receipts already have the server's home:updated signal for the badge.
+  socket.on("notifications:read", () => emit("notifications.changed", {}));
   socket.on("account:updated", () => emit("account.updated", {}));
   // Socket payloads only invalidate; entitlement and tokens come from GET /themes.
   for (const event of ["themes:updated", "appearance:updated", "premium:updated"]) socket.on(event, () => emit("themes.updated", {}));

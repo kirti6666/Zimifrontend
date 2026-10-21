@@ -1,5 +1,9 @@
 /* The inbox is a plain list: title, search, filters and conversations, in the theme colours. */
-.zc-app{--zc-u:clamp(1px,.26667vw,1.68px);--canvas:#1d0e1a}
+/* Chat geometry must remain available during navigation and theme refreshes.
+   Scoping it to the transient .zc-app route class collapses padding and avatars
+   whenever chat content is mounted without that class (including in threads). */
+:root{--zc-u:clamp(1px,.26667vw,1.68px)}
+.zc-app{--canvas:#1d0e1a}
 .zc-app .app{background:linear-gradient(160deg,#1e0f1b,#210f1c 65%,#1b0c17)}
 .zc-chats{max-width:760px;margin:auto;padding:calc(6 * var(--zc-u)) calc(16 * var(--zc-u)) calc(15 * var(--zc-u))}
 .zc-heading{display:flex;align-items:center;gap:calc(8 * var(--zc-u));margin-bottom:calc(10 * var(--zc-u));min-height:calc(38 * var(--zc-u))}
@@ -80,7 +84,7 @@
 .zc-contact>.zc-avatar{height:45px;width:45px}.zc-contact>span:nth-child(2){flex:1;min-width:0}
 .zc-contact b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.zc-contact small{display:block;font-size:11px;color:#d1a6bf;margin-top:4px}
 .zc-contact>svg{color:#ff9ccf;flex:none}.zc-empty-contact{font-size:13px;line-height:1.7;text-align:center;padding:20px 5px;color:#d2aac1}
-@media(min-width:900px){.zc-app{--zc-u:1.1px}.zc-chats{padding-top:20px}.zc-heading{margin-bottom:16px}.zc-dialog{align-self:center;border-radius:24px}}
+@media(min-width:900px){:root{--zc-u:1.1px}.zc-chats{padding-top:20px}.zc-heading{margin-bottom:16px}.zc-dialog{align-self:center;border-radius:24px}}
 @media(max-width:350px){.zc-message{font-size:12.5px}.zc-name{font-size:14px}.zc-row.rowlink{gap:10px}}
 @media(prefers-reduced-motion:reduce){.zc-app *{scroll-behavior:auto!important}}
 
@@ -210,16 +214,32 @@
 .zc-photo>span{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:650;text-shadow:0 1px 8px #000a}
 /* Message options, replies, edits and deletes; the "+" menu for photos and emoji. */
 .zc-msg [role=button]{cursor:pointer;-webkit-tap-highlight-color:transparent}.zc-msg [role=button]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
-.zc-quote{display:flex;flex-direction:column;gap:1px;margin:-2px 0 6px;padding:5px 9px;border-left:3px solid var(--accent);border-radius:8px;background:color-mix(in srgb,var(--canvas) 30%,transparent);font-size:12px;line-height:1.35;cursor:pointer;max-width:100%}
-.zc-quote>b{font-weight:700;color:var(--accent-ink)}.mine .zc-quote>b{color:inherit;opacity:.9}.zc-quote>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.85}.zc-quote-above{margin:0 0 4px;background:var(--surface);color:var(--ink)}
+.zc-reply{display:flex;flex-direction:column;gap:5px;min-width:0;max-width:100%;align-items:flex-start}
+.mine .zc-reply{align-items:flex-end}
+.zc-reply-label{display:flex;align-items:center;gap:5px;padding:0 4px;font-size:11px;line-height:1.4;color:var(--muted)}
+.zc-quote{display:flex;flex-direction:column;gap:3px;min-width:0;max-width:100%;padding:9px 12px;border-left:2px solid var(--muted);border-radius:4px 12px 12px 4px;background:color-mix(in srgb,var(--surface) 78%,var(--canvas));color:var(--muted);font-size:12px;line-height:1.4;cursor:pointer;text-align:left}
+.zc-quote>b{font-weight:650;color:var(--ink)}.zc-quote>span{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.zc-quote:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .zc-deleted{font-style:italic;opacity:.65}.zc-edited{font-size:11px;color:var(--muted)}
 .zc-flash .bub,.zc-flash .zc-photo{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent);transition:box-shadow .3s}
 .zc-message-menu{display:flex;flex-direction:column;gap:4px;padding:16px 16px max(16px,env(safe-area-inset-bottom))}
-.zc-message-menu>button{width:100%;padding:14px;border-radius:12px;text-align:left;font-size:15px;font-weight:600;color:var(--ink)}.zc-message-menu>button:hover,.zc-message-menu>button:focus-visible{background:var(--raised);outline:none}
-.zc-message-menu>button.danger{color:var(--danger,#ff6b81)}.zc-message-menu>.zc-menu-cancel{text-align:center;color:var(--muted)}
+.zc-menu-handle{width:36px;height:4px;border-radius:99px;background:var(--muted);opacity:.45;align-self:center;margin:0 0 12px}
+.zc-message-menu>button{display:flex;align-items:center;gap:14px;width:100%;min-height:48px;padding:14px;border-radius:12px;text-align:left;font-size:15px;font-weight:600;color:var(--ink)}.zc-message-menu>button:hover,.zc-message-menu>button:focus-visible{background:var(--raised);outline:none}
+.zc-message-menu>button.danger{color:var(--theme-danger,#ff6b81)}.zc-message-menu>.zc-menu-cancel{justify-content:center;text-align:center;color:var(--muted);border-top:1px solid var(--line);border-radius:0;margin-top:4px}
 .zc-menu-preview{margin:0 0 8px;padding:0 4px 10px;border-bottom:1px solid var(--line);color:var(--muted);font-size:13px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.zc-context{display:flex;align-items:center;gap:10px;margin:6px var(--zc-gutter) 0;padding:8px 10px 8px 12px;border-left:3px solid var(--accent);border-radius:10px;background:var(--surface)}
-.zc-context>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.zc-context b{font-size:12.5px;color:var(--accent-ink)}.zc-context span{font-size:13px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.zc-context>button{flex:none;width:30px;height:30px;border-radius:50%;font-size:20px;line-height:1;color:var(--muted)}.zc-context>button:hover{background:var(--raised)}
+.zc-context{display:flex;align-items:center;gap:10px;margin:6px var(--zc-gutter) 0;padding:5px 4px 5px 12px;border-left:3px solid var(--accent);border-radius:12px;background:var(--surface)}
+.zc-context>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.zc-context b{font-size:12.5px;color:var(--ink)}.zc-context>div>span{font-size:13px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zc-context-icon{display:grid;place-items:center;flex:none;width:26px;color:var(--accent-ink)}
+.zc-context>button{flex:none;width:44px;height:44px;border-radius:50%;font-size:24px;line-height:1;color:var(--muted)}.zc-context>button:hover{background:var(--raised)}.zc-context>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-4px}
+.zc-thread-scroll{overflow-x:hidden}
+.zc-msg-stack{position:relative;transform:translateX(var(--reply-shift,0px));transition:transform 160ms ease-out}
+.zc-msg-stack[data-message-id]{touch-action:pan-y pinch-zoom}
+.zc-msg-stack[data-message-id] :is(.bub,.zc-photo,.zc-reply){-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.zc-msg-stack[data-message-id] img{-webkit-user-drag:none}
+.zc-msg-stack.zc-swiping{transition:none;user-select:none;-webkit-user-select:none}
+.zc-swipe-cue{position:absolute;left:-34px;top:9px;display:none;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--muted);opacity:var(--reply-progress,0);pointer-events:none}
+.zc-swiping>.zc-swipe-cue{display:grid}
+.zc-msg.mine .zc-swipe-cue{left:auto;right:-34px}
+.zc-swipe-ready>.zc-swipe-cue{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 18%,var(--surface))}
+@media(prefers-reduced-motion:reduce){.zc-msg-stack{transition:none}.zc-flash .bub,.zc-flash .zc-photo{transition:none}}
 .zc-attach{display:flex;gap:8px;padding:8px var(--zc-gutter) 0}.zc-attach[hidden]{display:none}
 .zc-attach>button{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:12px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}.zc-attach>button:disabled{opacity:.45}.zc-attach>button svg{color:var(--accent-ink)}

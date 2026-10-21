@@ -76,7 +76,8 @@ for it (login, call failed).
 | Submit verification | `POST /me/verification` | `{status}` |
 | Go online, offline, visible or hidden | `PUT /me/presence` `{online, visible}` | – |
 | Show MVPs switch | `PUT /me/settings` | – |
-| Home | `GET /hosts` | `{hosts: Host[]}` |
+| Home | `GET /home?mode=online&page=1` | Adapter returns `HomeData` with active hosts, live stage and pagination |
+| Explore | `GET /home?mode=popular` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
 | Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
@@ -86,14 +87,25 @@ for it (login, call failed).
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
-| Send a photo | `POST /media/upload-url` `{purpose: "chat"}`, PUT to storage, then `POST /chats/:id` `{imageKey}` | – |
-| Reply to a message | `POST /chats/:id` `{text, replyTo}` | The message, with a `reply` quote |
+| Send a photo | `POST /media/upload-url` `{purpose: "chat"}`, PUT to storage, then `POST /chats/:id` `{imageKey, replyTo?}` | The message, including any reply quote |
+| Download a chat photo | `GET /chats/:id/messages/:messageId/photo` | Current authorized `{url}`; native download validates the image and saves it to the gallery |
+| Send a voice message | `POST /media/upload-url` `{purpose: "chat-audio"}`, PUT to storage, then `POST /chats/:id` `{audioKey, durationMs, clientId, replyTo?}` | A voice message with audio URL, duration and optional reply |
+| Reply to a message | `POST /chats/:id` `{text, replyTo}` (or `{imageKey, replyTo}`) | The message, with a `reply` quote |
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `PUT /follows/:id` `{on}` | – |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
+
+In a conversation, swipe left on your own message or right on the other person's message,
+or hold either message and choose **Reply**.
+The composer shows the selected original; cancelling keeps the typed draft. Text
+and photo replies carry `replyTo`, and the send confirmation supplies the current
+server quote (or explicit `null`). The quote appears above the answer as a keyboard
+accessible button that jumps to the original when it is loaded. Edits update visible
+quotes; deletion for everyone replaces them with “Deleted message”. Deleting only
+your copy preserves existing quotes but prevents starting a new reply to that message.
 
 Chat eligibility uses `user.serverRole` from the authenticated account, separately
 from the `sender`/`host` presentation role. Members message approved hosts; approved
@@ -138,13 +150,48 @@ shows what was delivered, with a short notice.
 Photos members send (`chat.photo {to, photo}`, a resized JPEG from the photo picker) reach creators
 blurred with **Tap to view**.
 
-Tapping a sent message opens its options: **Reply**, **Edit** (your own text), and **Delete for everyone**
-(your own) or **Delete for me** (someone else's). The screens post `chat.send {replyTo}`, `chat.edit {to, id, text}`
+Hold a sent message to open **Reply**, **Edit** (your own text), **Delete for everyone**
+(your own) and **Delete for me** (either person's). A regular tap leaves the message alone;
+keyboard and assistive-technology activation can also open the menu. Swipe left on your own
+message or right on the other person's message to reply, including from its quoted preview.
+The reply indicator appears on the side revealed by the swipe. Touches near an edge need
+less travel so the gesture stays inside the screen. A simple tap on a quote still jumps to its original.
+The screens post `chat.send {replyTo}`, `chat.edit {to, id, text}`
 and `chat.delete {to, id, everyone}`; the app answers with `chat.updated {with, message}` or `chat.removed {id}`,
 and the socket events `chat:message-updated` and `chat:message-hidden` keep both people and other devices in step.
-Every sent message gets its server ID back in `chat.sent` / `chat.photoSent`, so it has options straight away.
+Every sent message gets its server ID back in `chat.sent` / `chat.photoSent` / `chat.voiceSent`, so it has options straight away.
 The **+** button holds **Photo** and **Emoji**. Each photo stays blurred until the creator taps it, and blurs again the
 next time the conversation is opened. Members see photos creators send, and their own, normally.
+
+Tap a revealed photo to open the full-screen viewer. Pinch, double-tap or use the
+zoom buttons to magnify it up to 4×; drag to pan and Reset to fit. Escape, Close
+and Android Back return to the conversation. Hold and swipe still act on the
+message, and the photo's options button offers keyboard access to its reply/delete menu.
+Incoming blurred photos must first be revealed. The viewer closes when the photo
+is deleted/hidden, the conversation changes, or the session ends.
+
+Download sends `chat.photoDownload {to, id, requestId}` without a client-supplied URL.
+The native shell resolves the photo through the server, requests save permission
+on this explicit action where the OS requires it (iOS add-only; Android 11+ saves
+its own MediaStore entries without a permission prompt), validates a bounded JPEG/PNG/WebP download,
+rechecks access and awaits the gallery write. `chat.photoDownloaded` or a correlated
+`operation.error` finishes the UI; temporary files are cleaned up. Pending uploads
+can be viewed, with download enabled once their server ID arrives. The native
+binary must include `expo-file-system` and `expo-media-library`, and the backend
+photo resolver must be released before production downloads are enabled.
+
+The empty composer shows **Record voice message**; typing changes it to **Send message**.
+`web/chat-voice.js` records only after a tap, then offers Stop, Play, Cancel and Send.
+Clips are limited to two minutes and 5 MiB. The screen sends
+`chat.voice {to, audio, durationMs, clientId, replyTo?}` with a recording data URL;
+the native adapter validates and uploads it with canonical `audio/webm`, `audio/mp4`
+or `audio/ogg`. It replies with `chat.voiceSent {to, clientId, message}` or a correlated
+`operation.error`. Failed sends retain the recording, upload key and original reply
+for an idempotent retry. History and acknowledgements merge into one message.
+Voice messages support playback, swipe/hold Reply and Delete; Edit is for text.
+Leaving the thread, signing out, or backgrounding the app stops capture and playback.
+The native `app.background` event also covers app switches before WebView visibility updates.
+Release the backend voice/upload routes before the app that uses them.
 
 ## Private screens
 

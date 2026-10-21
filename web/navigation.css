@@ -1,4 +1,5 @@
-/* Shared chrome has one geometry on every main tab. Screen CSS owns only content. */
+/* Primary tabs share one geometry. Home owns the branded header; other screens
+   provide their own headings and actions. */
 .zh-app .nav.zh-nav{display:grid;grid-template-columns:repeat(var(--nav-count,4),minmax(0,1fr));align-items:end;justify-items:center;gap:0;width:100%;max-width:none;height:74px;min-height:74px;flex-shrink:0;margin:0;padding:8px max(14px,calc((100vw - 640px)/2)) 11px;border:0;border-radius:0;background:#210f1c;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
 .zh-app .zh-nav>button{display:flex;position:relative;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;max-width:120px;height:49px;padding:0;color:#d8b8ca;font-size:10px;line-height:13px;font-weight:600;transition:color 180ms ease,background-color 180ms ease;isolation:isolate}
 .zh-app .zh-nav>button>svg{width:23px;height:23px;flex:none;transition:filter 180ms ease}

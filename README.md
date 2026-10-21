@@ -37,10 +37,33 @@ EXPO_PUBLIC_API_URL=http://192.168.1.6:5000/api/v1
 ```
 
 Use `http://10.0.2.2:5000/api/v1` for the Android emulator or
-`http://localhost:5000/api/v1` when the app and backend share a host. A physical
-phone cannot reach your computer through `localhost` or `0.0.0.0`. The backend
-must listen on the LAN interface, and your firewall must allow port 5000.
-Restart Expo after changing the address:
+`http://localhost:5000/api/v1` when the app and backend share a host. For a LAN
+connection, the backend must listen on the LAN interface, and your firewall
+must allow port 5000. `0.0.0.0` is a server bind address, not a phone destination.
+
+For a physical Android phone connected by USB, use an ADB reverse tunnel to
+reach the backend without relying on Wi-Fi:
+
+```dotenv
+EXPO_PUBLIC_API_URL=http://127.0.0.1:5000/api/v1
+EXPO_PUBLIC_SOCKET_URL=http://127.0.0.1:5000
+```
+
+Start the backend, connect and authorize the phone for USB debugging, then run
+`npm run android`. Its `preandroid` hook connects the configured loopback API
+and Socket.IO ports with `adb reverse`. It leaves LAN and remote URLs alone.
+If several USB phones are connected, set `ANDROID_SERIAL` to the intended
+phone's serial from `adb devices`.
+
+**Unplugging USB clears the tunnels.** After reconnecting, run
+`npm run android:connect` to restore backend access without rebuilding, then
+tap Retry in the app. This command restores API/socket ports; Expo manages the
+Metro development-server tunnel. If the JavaScript development connection was
+also lost, restore its current port (for example, `adb reverse tcp:8081 tcp:8081`)
+and reload the app, or run `npm run android` again. Without a tunnel, `localhost`
+and `127.0.0.1` on a physical phone refer to the phone itself.
+
+Restart Expo and reload the app after changing an address:
 
 ```bash
 npx expo start -c
@@ -104,6 +127,18 @@ Run `npm run test:coins` for browser integration checks with a stubbed native
 bridge, and `npm run test:auth` for native bridge/API checks. These tests do not
 charge real money. Actual provider settlement still requires an authorized
 provider test transaction.
+
+## Android Back navigation
+
+Android's system Back button is routed from `App.tsx` to
+`web/navigation.js`. It dismisses the foreground photo, dialog, or menu first,
+then uses the screen's existing Back action. Main tabs return to Home. Calls
+and live rooms require their existing leave confirmation; unfinished voice
+recordings stay open. Back on Home or Welcome asks before closing the app.
+Run `npm run test:back-navigation` for browser and native bridge regressions.
+
+After changing this behavior, reload an Expo development session. An installed
+release APK needs a rebuilt app containing the updated JavaScript bundle.
 
 ## Architecture
 
@@ -220,18 +255,20 @@ rate limits, session recovery, and creator setup using mocked server responses.
 
 ## Home screen and admin controls
 
-The compact Home layout lives in `web/home-dashboard.js` and
-`web/home-dashboard.css`. It includes search, call/chat shortcuts, live rooms,
-category filters, creator cards and matching. The configured featured creator
-leads the For you cards. Profiles, calls and live rooms have separate actions;
-approved hosts get a Go live shortcut and their eligible reward banner.
-Home discovery shows one creator per row at every screen size, with no pricing
-on cards. Live now uses side-by-side cards in one horizontally scrollable row.
-Video call opens a confirmation screen with the current rate and wallet balance.
+The Home layout lives in `web/home-dashboard.js` and `web/home-dashboard.css`.
+It uses live-host circles, filter chips, a large featured photo card, and a
+two-column grid. Layout follows the supplied reference; colors and typography
+follow the selected app theme. Search stays in the Home header.
+Every host has Chat and Call actions; live photos and circles open the stream.
+The featured host is excluded from the grid, and offline hosts are excluded.
+Popular requests `mode=online`; Instant Call requests `mode=instant`; categories
+request `mode=online` plus the category. Filtering happens before pagination.
+Home and Explore keep independent filter selections.
+Call opens a confirmation screen with the current rate and wallet balance.
 Paid calls require a loaded balance and at least one minute of coins; members
 can retry a failed balance load or buy coins when needed. Confirming a live
 host joins their room and sends one private-call request after membership is
-confirmed. Unavailable calls stay disabled; tapping a creator photo opens their
+confirmed. Unavailable calls stay disabled; tapping a creator's name opens their
 profile. Leaving confirmation starts no call and sends no request.
 Shared discovery, gifts and checkout flows remain in `web/home.js` / `web/home.css`.
 `web/media.js` handles camera/microphone capture and WebRTC media; authenticated
@@ -240,7 +277,8 @@ HTTP and Socket.IO still run through `src/`.
 In the sibling **admin-dashboard**, open **Settings → Home screen** to choose
 the featured creator and reward mission or enable/disable matching. Creator
 approval, account status, gifts, coin packs, announcements, and stream moderation
-use the existing dashboard tools. Changes refresh the connected home feed.
+use the existing dashboard tools. Featured creator, matching and reward controls
+remain supported by the API, but do not add promotional blocks to Home.
 Mission eligibility and wallet credits are checked by the server.
 
 Run `npm run build:web` after changing web sources. Run `npm run test:home`
@@ -301,9 +339,56 @@ cameras. Validate two physical devices against your configured backend and TURN
 service before release; the existing broadcaster sends one peer connection per
 viewer and is intended for small rooms.
 
+## Profile and settings
+
+The account screen in `web/profile.js` and `web/profile.css` includes a profile
+card, wallet shortcuts, theme gallery shortcut, and searchable settings. Use the
+Account, Preferences, and Support filters to narrow the list. Search and filter
+state survive account refreshes, including keyboard focus and selected text.
+The layout supports phones and desktop, uses the selected theme, and respects
+reduced motion. Identity, balances, counts, and permissions still come from the
+authenticated account.
+
+Run `npm run test:profile-settings` to rebuild and check account actions, saves,
+search, filters, keyboard interactions, and responsive layouts. The tests use a
+simulated native bridge and save preview screenshots under `artifacts/`.
+
+## Notification center
+
+The branded header with wallet, search, and notification shortcuts appears only
+on Home. Explore, Chats, Profile, and Settings use their own page titles and
+actions while retaining the main bottom tabs. Notifications opens as a detail
+screen with its own Back button and no bottom tabs; Back restores Home navigation.
+
+`web/notifications.js` and `web/notifications.css` provide a compact notification
+list with All/Today/Yesterday/Earlier tabs. The filter button reveals
+search, All/Unread/Read status, personal/announcement audiences, date ranges,
+newest/oldest sorting, full-message details, selection, read/unread updates, and
+mark all read. Selection controls appear after tapping Select. Filters run on the
+server before pagination. Read changes wait
+for acknowledgment; failures remain retryable. Loading more keeps existing rows
+visible, and realtime updates refresh the inbox or offer a Show updates button
+while someone is searching or selecting. Details support Android Back and Escape.
+Notification preferences open the existing account settings dialog.
+
+The backend `/notifications` endpoint accepts `q`, `status`, `audience`, `since`, `before`,
+`sort`, `page`, and `limit`. `since` is inclusive and `before` is exclusive, so
+the date tabs use the device's local midnight boundaries. Its `total` is filtered;
+`totalCount` and `unreadCount`
+cover the user's entire accessible inbox. `/notifications/read` accepts either
+`{ ids, read }` (up to 100 selected notices) or `{ all: true }` for the entire
+inbox. Notification records are shared; read receipts belong to each user.
+
+Run `npm run test:notifications` for the mocked-native browser suite and responsive
+screenshots in `artifacts/notifications-*.png`. Backend integration coverage is in
+`../backend/tests/notifications.test.ts`. Rebuild the app bundle after UI edits.
+
 ## Themes and premium appearance
 
-Open **Profile & Settings → Appearance & Theme** to browse the theme gallery.
+Open **Profile & Settings → Appearance & Theme** to open the full theme page.
+The page has its own Back header and no bottom tabs. Back returns to the Profile
+or Settings page you opened it from, preserving its search, filters, and scroll.
+Theme catalog refreshes preserve gallery scroll and keyboard focus.
 Zimi Original and Soft Rose are free; premium includes Midnight Ocean and Amber
 Silk. The sibling admin dashboard's **Themes & text styles** section controls
 colors, fonts, text sizing/weight, ordering, availability, premium flags, and

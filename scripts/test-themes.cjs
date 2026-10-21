@@ -1,10 +1,12 @@
 /* Browser contracts for server-owned appearance and verified premium access. */
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
+const artifacts = path.join(root, 'artifacts');
 const user = { user: { id: '507f1f77bcf86cd799439011', name: 'Theme tester', role: 'sender', hostStatus: 'none', isVerifiedHost: false }, verification: 'none', requiresOnboarding: false };
 const receive = (page, type, data) => page.evaluate(message => Native.receive(message), { type, data });
 const sent = (page, type) => page.evaluate(type => __sent.filter(message => message.type === type), type);
@@ -25,36 +27,73 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
   }
   try {
     const preview = await open(true, 'no-preference');
+    fs.mkdirSync(artifacts, { recursive: true });
+    assert.equal(await preview.evaluate(() => S.v), 'themes', 'Appearance opens its own page');
+    assert.equal(await preview.getByRole('dialog').count(), 0, 'Appearance is not a modal');
+    assert.equal(await preview.getByRole('heading', { name: 'Appearance & Theme', exact: true }).count(), 1);
+    assert.equal(await preview.getByRole('button', { name: 'Back to profile', exact: true }).count(), 1);
+    assert.equal(await preview.locator('.zh-header').count(), 0, 'The theme page has no Home header');
+    assert.equal(await preview.locator('.zh-nav button').count(), 0, 'The theme page has no bottom tabs');
     const fixture = await preview.evaluate(() => structuredClone(ZThemes.catalog));
     fixture.premium.paymentsAvailable = true;
     for (const width of [320, 390, 768, 1280]) {
       await preview.setViewportSize({ width, height: 900 });
       assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-      assert.equal(await preview.locator('.zt-dialog').evaluate(el => el.scrollWidth > el.clientWidth + 1), false);
+      assert.equal(await preview.locator('.zt-page').evaluate(el => el.scrollWidth > el.clientWidth + 1), false, `The theme page fits ${width}px`);
+      assert.equal(await preview.locator('#zt-content').evaluate(el => el.scrollWidth > el.clientWidth + 1), false, `Theme controls fit ${width}px`);
     }
     await preview.setViewportSize({ width: 390, height: 844 });
-    await preview.screenshot({ path: path.join(os.tmpdir(), 'zimi-themes-dark.png') });
+    await preview.screenshot({ path: path.join(artifacts, 'theme-page-mobile-dark.png') });
     await preview.evaluate(() => { window.__screenNode = document.getElementById('screen').firstElementChild; window.__navNode = document.getElementById('nav').firstElementChild; });
     await preview.getByRole('button', { name: 'Use Soft Rose', exact: true }).click();
     assert.equal(await preview.evaluate(() => document.documentElement.classList.contains('zt-transition')), true);
     assert.equal(await preview.evaluate(() => __screenNode === document.getElementById('screen').firstElementChild && __navNode === document.getElementById('nav').firstElementChild), true, 'Theme switching never replaces content or shared chrome');
     await preview.waitForFunction(() => !document.documentElement.classList.contains('zt-transition'));
     assert.equal(await preview.locator('.app').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 245, 250)');
-    await preview.screenshot({ path: path.join(os.tmpdir(), 'zimi-themes-light.png') });
+    await preview.screenshot({ path: path.join(artifacts, 'theme-page-mobile-light.png') });
+    await preview.setViewportSize({ width: 1280, height: 1000 });
+    await preview.screenshot({ path: path.join(artifacts, 'theme-page-desktop.png') });
+    await preview.setViewportSize({ width: 390, height: 844 });
     await preview.getByRole('button', { name: 'Unlock Midnight Ocean', exact: true }).click();
     assert.equal(await preview.evaluate(() => document.activeElement.id), 'zt-premium');
     await preview.getByRole('button', { name: 'Try premium in preview', exact: true }).click();
     await preview.getByRole('button', { name: 'Use Midnight Ocean', exact: true }).click();
     await preview.waitForFunction(() => !document.documentElement.classList.contains('zt-transition'));
-    await preview.getByRole('button', { name: 'Close settings', exact: true }).click();
+    await preview.getByRole('button', { name: 'Back to profile', exact: true }).click();
+    assert.equal(await preview.evaluate(() => S.v), 'profile');
     for (const view of ['home', 'explore', 'chats', 'profile']) {
       await preview.evaluate(view => go(view), view);
       assert.equal(await preview.locator('.app').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(16, 27, 45)');
       assert.match(await preview.locator('body').evaluate(el => getComputedStyle(el).fontFamily), /Poppins/);
-      assert.equal(await preview.locator('.zh-header').evaluate(el => getComputedStyle(el).height), '63px');
+      if (view === 'home') assert.equal(await preview.locator('.zh-header').evaluate(el => getComputedStyle(el).height), '63px');
+      else {
+        assert.equal(await preview.locator('.zh-header').count(), 0, `${view} keeps the branded header on Home`);
+        assert.equal(await preview.locator('#top').isVisible(), false, `${view} has no unused header strip`);
+      }
     }
     await preview.screenshot({ path: path.join(os.tmpdir(), 'zimi-themes-ocean-profile.png') });
-    console.log('PASS responsive gallery, shared palettes/fonts, real color transitions and stable content/chrome');
+    console.log('PASS dedicated responsive theme page, no modal or tabs, shared palettes/fonts, real color transitions and stable content/chrome');
+
+    for (const origin of ['profile', 'settings']) {
+      await preview.evaluate(origin => go(origin), origin);
+      await preview.getByRole('button', { name: 'Preferences', exact: true }).click();
+      await preview.getByLabel('Search settings', { exact: true }).fill('appearance');
+      await preview.getByRole('button', { name: /^Appearance & Theme/ }).click();
+      assert.equal(await preview.evaluate(() => S.v), 'themes');
+      await preview.getByRole('button', { name: `Back to ${origin}`, exact: true }).click();
+      assert.equal(await preview.evaluate(() => S.v), origin, 'Header Back returns to the caller');
+      assert.equal(await preview.getByLabel('Search settings', { exact: true }).inputValue(), 'appearance', 'Returning preserves the profile search query');
+      assert.equal(await preview.getByRole('button', { name: 'Preferences', exact: true }).getAttribute('aria-pressed'), 'true', 'Returning preserves the profile category');
+      await preview.getByRole('button', { name: /^Appearance & Theme/ }).click();
+      await receive(preview, 'app.back', {});
+      assert.equal(await preview.evaluate(() => S.v), origin, 'Native Back returns to the same caller');
+      assert.equal(await preview.getByRole('dialog').count(), 0);
+    }
+    await preview.evaluate(() => { go('home'); go('themes'); });
+    await preview.getByRole('button', { name: 'Back to profile', exact: true }).click();
+    assert.equal(await preview.evaluate(() => S.v), 'profile', 'A direct route safely returns to Profile');
+    assert.equal((await sent(preview, 'app.exit.request')).length, 0, 'Leaving the theme page never requests app exit');
+    console.log('PASS profile/settings origins, native Back, preserved search/category and direct-route fallback');
 
     const defaultsPage = await open(false, 'no-preference');
     await receive(defaultsPage, 'data.themes', fixture);
@@ -145,10 +184,11 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     assert.equal(await page.getByRole('button', { name: /Unsafe colors/ }).count(), 0);
     const expanded = { ...fixture, items: [...fixture.items, ...fixture.items.map((theme, i) => ({ ...theme, id: 'extra-' + i, name: 'Additional theme ' + i }))] };
     await receive(page, 'data.themes', expanded);
-    await page.evaluate(() => { document.getElementById('zt-theme-extra-0').focus({ preventScroll: true }); document.getElementById('zp-dialog').scrollTop = 350; });
+    await page.evaluate(() => { window.__themePage = document.querySelector('.zt-page'); document.getElementById('zt-theme-extra-0').focus({ preventScroll: true }); document.getElementById('scroll-root').scrollTop = 350; });
     await receive(page, 'data.loading', { resource: 'themes', loading: true });
     await receive(page, 'data.themes', expanded);
-    assert.equal(await page.locator('.zt-dialog').evaluate(el => el.scrollTop), 350, 'Refresh preserves the gallery scroll position');
+    assert.equal(await page.locator('#scroll-root').evaluate(el => el.scrollTop), 350, 'Refresh preserves the gallery scroll position');
+    assert.equal(await page.evaluate(() => __themePage === document.querySelector('.zt-page')), true, 'Refresh keeps the theme page mounted');
     assert.equal(await page.evaluate(() => document.activeElement.id), 'zt-theme-extra-0', 'Refresh restores keyboard focus');
     await receive(page, 'data.themes', { ...premium, selectedThemeId: premium.items[2].id });
     await page.evaluate(() => logout());
@@ -160,12 +200,12 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     assert.equal(await page.evaluate(() => ZThemes.accountId), '507f1f77bcf86cd799439012');
     assert.equal(await page.evaluate(() => ZThemes.catalog), null, 'Failed loading on another account never restores prior premium access');
     assert.equal(await page.evaluate(() => document.documentElement.dataset.themeId), fixture.items[0].id);
+    await page.evaluate(() => { go('transactions'); S.txf = 'out'; r(); });
     await receive(page, 'data.transactions', { items: [
       { title: 'Lifetime premium themes', time: 'Now', coins: 0, kind: 'topup', displayAmountPaise: -19900 },
       { title: 'Premium themes payment reversed', time: 'Now', coins: 0, kind: 'topup', displayAmountPaise: 19900 },
       { title: 'Coin pack', time: 'Now', coins: 500, kind: 'topup' },
     ] });
-    await page.evaluate(() => { go('transactions'); S.txf = 'out'; r(); });
     assert.match(await page.locator('.acctcard').innerText(), /Lifetime premium themes[\s\S]*−₹199\.00/);
     assert.doesNotMatch(await page.locator('.acctcard').innerText(), /Coin pack|payment reversed/);
     await page.evaluate(() => { S.txf = 'in'; r(); });

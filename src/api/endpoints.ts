@@ -1,12 +1,14 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
-import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
+import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
+import type { Account, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
+let voiceUploadVersion: number | undefined;
+const voiceUploads = new Map<string, { to: string; durationMs: number; replyTo?: string; audioKey: string }>();
 const remember = (account: Account) => { identity = { id: account.user.id, version: getSessionVersion() }; return account; };
 async function selfId(): Promise<string> {
   return identity?.version === getSessionVersion() ? identity.id : (await api.me()).user.id;
@@ -141,8 +143,9 @@ export const api = {
   setBlocked: (id: string, blocked: boolean) => request<void>(blocked ? "POST" : "DELETE", `/users/${encodeURIComponent(id)}/block`, blocked ? {} : undefined),
   async home(query: HomeQuery = {}) { return homeFrom(await request("GET", `/home?${queryString({ ...query, limit: 20 })}`)); },
   async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
-  async notifications() { return notificationsFrom(await request("GET", "/notifications?limit=100")); },
+  async notifications(query?: NotificationsQuery) { return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100")); },
   async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
+  async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
   async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
@@ -216,13 +219,48 @@ export const api = {
     // read loses its connection. The bridge refreshes the balance independently.
     return { id: idOf(receipt), coins: receipt.coins };
   },
+  async chatPhotoUrl(to: string, id: string): Promise<string> {
+    const version = getSessionVersion();
+    const data = record(await request("GET", `/chats/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}/photo`));
+    ensureSession(version);
+    if (typeof data.url !== "string" || data.url.length > 8192 || !/^https:\/\/[^\s"'<>\\]+$/.test(data.url)) throw new ApiError("This photo does not have a secure download address.", 502);
+    try {
+      const url = new URL(data.url);
+      if (url.hostname && !url.username && !url.password && !url.hash) return url.href;
+    } catch {}
+    throw new ApiError("This photo does not have a secure download address.", 502);
+  },
   /** Uploads a chat photo into the sender's own folder, then sends it. */
-  async sendPhotoMessage(to: string, photo: string) {
+  async sendPhotoMessage(to: string, photo: string, replyTo?: string) {
     const version = getSessionVersion();
     decodePhoto(photo);
     const imageKey = await uploadMedia(photo, "chat", version);
     ensureSession(version);
-    return { id: idOf(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey })) };
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey, ...(replyTo ? { replyTo } : {}) }));
+    return { id: idOf(message), reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
+  },
+  async sendVoiceMessage(to: string, audio: string, durationMs: number, clientId: string, replyTo?: string) {
+    const version = getSessionVersion();
+    if (!Number.isInteger(durationMs) || durationMs < 500 || durationMs > 120000) throw new ApiError("Voice messages must be between half a second and two minutes.", 400);
+    if (typeof clientId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(clientId)) throw new ApiError("Record a new voice message and try again.", 400);
+    if (voiceUploadVersion !== version) { voiceUploads.clear(); voiceUploadVersion = version; }
+    const previous = voiceUploads.get(clientId);
+    if (previous && (previous.to !== to || previous.durationMs !== durationMs || previous.replyTo !== replyTo)) throw new ApiError("This voice recording belongs to an earlier send. Record a new message.", 409);
+    const audioKey = previous?.audioKey ?? await uploadAudio(audio, version);
+    ensureSession(version);
+    // Keep only uploaded keys, never recording bytes. A lost send response can
+    // retry the same object and clientId without producing another upload.
+    if (!previous) {
+      if (voiceUploads.size >= 100) voiceUploads.delete(voiceUploads.keys().next().value!);
+      voiceUploads.set(clientId, { to, durationMs, replyTo, audioKey });
+    }
+    const data = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { audioKey, durationMs, clientId, ...(replyTo ? { replyTo } : {}) }));
+    ensureSession(version);
+    const message = messageFrom(data, idOf(data.senderId));
+    // A replay can acknowledge a successfully sent message that another device
+    // has since deleted. Finalize that tombstone instead of retrying forever.
+    if (!message.id || (!message.deleted && (message.kind !== "voice" || !message.audioUrl || !Number.isInteger(message.durationMs) || Number(message.durationMs) < 500 || Number(message.durationMs) > 120000))) throw new ApiError("The voice message confirmation could not be read. Retry this recording to check its delivery.", 502);
+    return message;
   },
   editMessage: async (to: string, id: string, text: string) =>
     record(await request("PATCH", `/chats/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}`, { text })),
@@ -232,7 +270,9 @@ export const api = {
   /** Returns the text as delivered: the server hides phone numbers and abusive words. */
   async sendMessage(to: string, text: string, callId?: string, replyTo?: string) {
     const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}) }));
-    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text };
+    // A quoted message may have changed while this send was in flight. Carry
+    // the server's current quote (or its absence) back to the optimistic UI.
+    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text, reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
   },
   async follow(id: string, on: boolean) {
     const data = record(await request("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }));

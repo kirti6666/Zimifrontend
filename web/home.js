@@ -1,7 +1,7 @@
 /* Home surfaces use the same authenticated bridge as the rest of the app.
    Preview people, activity and balances exist only in the DEMO build. */
 const Home = {
-  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', page: 1,
+  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', page: 1, queryKey:'online|',
   searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
   hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
@@ -12,6 +12,9 @@ const Home = {
   checkout: null, checkoutBusy: false, packId: '', notifyLoading: false
 };
 const homeIcons = {
+  close:'<path d="m6 6 12 12M6 18 18 6"/>',
+  checks:'<path d="m2 12 5 5L18 6M10 15l2 2L23 6"/>',
+  arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
   house:'<path d="M4 10.2a2 2 0 0 1 .72-1.54l6-5.06a2 2 0 0 1 2.56 0l6 5.06a2 2 0 0 1 .72 1.54V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9.5 21v-5.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V21"/>',
   explore:'<circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5z"/>',
@@ -34,25 +37,29 @@ function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl)
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
 function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:'<span class="zh-badge zh-offline">Offline</span>'}
+function homeFeedQuery(){const explore=S.v==='explore',filter=explore?Home.filter:Home.dashboardFilter;const query={mode:filter==='instant'?'instant':explore?'popular':'online'};if(Home.categories.includes(filter))query.category=filter;return query}
+function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')}
 function homeLoad(more=false){
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
   Home.error='';Home.loadingMore=more;Home.loading=!DEMO;
   if(DEMO){Home.loaded=true;Home.loadingMore=false;r();return}
   const page=more?Home.page+1:1;
   contentStart('home',{page});
-  const data={page,mode:Home.filter==='instant'?'instant':'popular'};
-  if(Home.categories.includes(Home.filter))data.category=Home.filter;
+  const data={page,...homeFeedQuery()};Home.queryKey=homeFeedKey(data);
   Native.send('home.reload',data);r();
 }
 function homeContentPending(){return !DEMO&&(Home.loading||contentPending('home'))&&!Home.loadingMore}
 function homeContentError(){return !DEMO&&(Home.error||ContentLoading.home.error)}
 
 function homeFilter(value){Home.filter=value;homeLoad()}
+function homeDashboardFilter(value){if(!['popular','instant',...Home.categories].includes(value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;homeLoad()}
 function homeList(){let list=Home.hosts;if(DEMO){if(Home.filter==='instant')list=list.filter(h=>h.available);else if(Home.categories.includes(Home.filter))list=list.filter(h=>h.cat===Home.filter)}return list}
-function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="Zimi Live home">${hi('sun',27)}<span>Zimi<span>Live</span></span></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button><button class="zh-profile" onclick="go('profile')" aria-label="Your profile">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="" data-face="${faceKind(me)}">`:face(me)}</button></div></header>`}
+function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="Zimi Live home">${hi('sun',27)}<span>Zimi<span>Live</span></span></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
 function homeNav(){
   const el=document.getElementById('nav');
-  if(!['home','explore','chats','profile','settings','notifications'].includes(S.v))return false;
+  // Detail pages have their own Back action instead of the primary tabs.
+  if(['notifications','themes'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
+  if(!['home','explore','chats','profile','settings'].includes(S.v))return false;
   const hostSlot=isApprovedHost()||(window.ZimiHostAccess.checking()&&S.role==='host');
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');el.style.setProperty('--nav-count',hostSlot?5:4);
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${(S.v===v||(v==='profile'&&S.v==='settings'))?'on':''}" ${(S.v===v||(v==='profile'&&S.v==='settings'))?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
@@ -74,10 +81,10 @@ function homeCall(id){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return a
 function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
 function homeClaim(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
-function homeNotifications(){Home.notifyLoading=!DEMO;if(!DEMO)contentStart('notifications');go('notifications');if(DEMO)r();else Native.send('notifications.load')}
+function homeNotifications(){return window.ZimiNotifications.open()}
 
-function homeMarkRead(id){if(DEMO){Home.notifications.forEach(x=>{if(!id||x.id===id)x.read=true});Home.unreadCount=Home.notifications.filter(x=>!x.read).length;r();return}const ids=id?[id]:Home.notifications.filter(x=>!x.read).map(x=>x.id);if(ids.length)Native.send('notifications.read',{ids})}
-function homeNotificationsView(){const surface=DEMO?null:contentSurface('notifications','rows','Loading notifications');return `<section class="zh-notifications"><div class="zh-section-title"><h2>Your updates</h2>${!surface&&Home.unreadCount?'<button onclick="homeMarkRead()">Mark all read</button>':''}</div>${surface??(Home.notifications.length?Home.notifications.map(item=>`<button class="zh-notification ${item.read?'':'unread'}" onclick="homeMarkRead('${domId(item.id)}')"><span>${hi('bell',20)}</span><div><h3>${esc(item.title)}</h3><p>${esc(item.body)}</p><time>${esc(homeTime(item.createdAt))}</time></div>${item.read?'':'<i></i>'}</button>`).join(''):`<div class="zh-empty">${hi('bell',32)}<h3>You're all caught up</h3><p>Your Zimi notifications will appear here.</p></div>`)}</section>`}
+function homeMarkRead(id){znUpdate(true,id?[id]:null,!id)}
+function homeNotificationsView(){return znView()}
 
 function homeTime(value){const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('en-IN',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
 function homeRequestStreamClose(streamId,hosting){if(DEMO)return;Home.pendingClose={streamId,hosting};Home.closeError='';Native.send(hosting?'stream.end':'stream.leave',{streamId})}
@@ -176,9 +183,12 @@ function homeSearchResults(){const pending=!DEMO&&(Home.searchLoading||contentPe
 
 function homePaintSearch(){const el=document.getElementById('home-search-results');if(el)el.innerHTML=homeSearchResults()}
 function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>Find your next connection</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
-function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','explore','chats','profile','settings','notifications'].includes(S.v));window.ZimiProfile?.theme()}
+function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','explore','chats','profile','settings'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{explore:()=>homeScreen(true),search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
-  if(['home','explore','chats','profile','settings'].includes(S.v))return homeHeader();
+  if(S.v==='home')return homeHeader();
+  // Main tabs already provide their title and relevant actions in the page.
+  if(['explore','chats','profile','settings'].includes(S.v))return '';
+  if(S.v==='themes')return window.ZimiThemes.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   const title={notifications:'Notifications',broadcast:'Go Live',coins:'Your coins'}[S.v];
@@ -186,7 +196,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
 },afterRender:()=>{contentImagesReady();homeShowCloseError();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(['home','explore','chats','precall'].includes(S.v))r()});
-Native.on('data.notifications',d=>{Home.notifyLoading=false;Home.notifications=d.items||[];Home.unreadCount=d.unreadCount||0;if(['home','explore','notifications'].includes(S.v))r()});
+Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
 Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
 Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||Home.giftTo)r()});
@@ -222,9 +232,9 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','explore','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',page:1});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',page:1,queryKey:'online|'});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
-document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
+document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','explore'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
 
 if(DEMO){

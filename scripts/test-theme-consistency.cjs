@@ -105,10 +105,11 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     const page = await open(member);
     for (const view of ['home', 'explore', 'chats', 'profile']) {
       await nav(page, view);
-      const rules = view === 'home' ? [bg('.zh-home-match', 'surface'), ...cta('.zh-home-match>.zh-primary'), bg('.zh-person-card', 'surface'), ink('.zh-person-card h3')] : view === 'explore' ? [bg('.zh-tile-caption', 'surface')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : [bg('.zp-identity', 'surface'), ...cta('.zp-topup')];
+      if (view === 'explore') await receive(page, 'data.home', home);
+      const rules = view === 'home' ? [bg('.zh-person-card', 'surface'), ink('.zh-section-title h2'), ...cta('.zh-person-call'), ...cta('.zh-dashboard-filters [aria-pressed="true"]')] : view === 'explore' ? [bg('.zh-tile-caption', 'surface')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : [bg('.zp-identity', 'surface'), ...cta('.zp-topup')];
       await mountedThemes(page, view, rules);
     }
-    for (const view of ['wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {
+    for (const view of ['themes', 'wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {
       await nav(page, view); await mountedThemes(page, view, view === 'wallet' ? [bg('.accthero', 'surface'), ink('.accthero'), ink('.accthero .eyebrow', 'textMuted'), ...cta('.accthero .cta')] : view === 'editprofile' ? cta('.editsave') : []);
     }
     await nav(page, 'search');
@@ -118,6 +119,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await mountedThemes(page, 'coins', [bg('.zw-wallet', 'surface'), ink('.zw-wallet-main>div>span', 'textMuted'), ink('.zw-wallet p', 'textMuted'), ...cta('.zw-coins>.zh-primary')], true);
     await nav(page, 'thread');
     await receive(page, 'data.thread', { with: creator.id, canSend: true, messages: [{ id: 'thread-theme', from: creator.id, text: 'Hello from the server fixture', createdAt: new Date().toISOString() }] });
+    await page.getByRole('textbox', { name: /^Message / }).fill('A themed message draft');
     await mountedThemes(page, 'thread', [bg('.zc-thread', 'background'), ink('.zc-thread'), bg('.zc-composer-field', 'surface'), ...cta('.zc-composer-send')], true);
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
     await mountedThemes(page, 'thread gifts', [bg('.zh-sheet', 'surface'), ink('.zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated'), ink('.zh-sheet-heading p', 'textMuted')]);

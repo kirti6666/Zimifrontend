@@ -31,9 +31,17 @@ keeps it identical to the original Next.js version.
 
 ## Rules that matter
 
-- Keep the shared header and primary tabs the same size across Home, Explore,
-  Chats and Profile. Animate only page content on tab changes and respect
-  reduced-motion preferences.
+- Home uses live-host circles, Popular/Instant Call/category chips, a featured
+  photo card and a two-column host grid, with Chat and Call actions. Use the
+  selected theme's colors. Search belongs in the Home header. Filter active
+  hosts on the server before pagination; feature a host once across hero/grid.
+  Live circles are navigation shortcuts and can repeat a host from the feed.
+- Show the branded Home header only on Home. Explore, Chats, Profile and
+  Settings use their existing page headings and actions. Keep primary tabs
+  the same size across those main screens; Notifications and the Themes page
+  have their own Back headers and no bottom tabs. Themes opens as a page, not
+  a settings modal. Animate only page content on tab changes and
+  respect reduced-motion preferences.
 - Go Live and creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.

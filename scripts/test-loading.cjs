@@ -48,7 +48,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
   try {
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
     assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
-    for (const label of ['Loading live creators', 'Loading video matches', 'Loading creators']) await visible(label);
+    for (const label of ['Loading live creators', 'Loading creators']) await visible(label);
     assert.equal(await page.locator('.zh-tile').count(), 0, 'Initial content has no invented creator cards');
     assert.equal(await page.locator('.zh-empty,.zh-stage-empty').count(), 0, 'Pending is distinct from an empty feed');
     assert.equal(await page.locator('.zh-balance').innerText(), '', 'An unknown balance must not flash a fabricated zero');
@@ -69,11 +69,14 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await receive('data.loaded');
     await visible('Loading creators');
     await result('data.home', feed(), 'home', { page: 1 });
+    await page.getByRole('button', { name: 'Explore', exact: true }).click();
+    await visible('Loading creators');
+    assert.equal((await lastSent('home.reload')).mode, 'popular', 'Explore loads its own discovery query');
+    await result('data.home', feed(), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Music', exact: true }).click();
     await visible('Loading creators');
     assert.equal((await lastSent('home.reload')).category, 'Music');
     await result('data.home', feed([host], { total: 2 }), 'home', { page: 1 });
-    await page.getByRole('button', { name: 'Explore', exact: true }).click();
     await page.getByRole('button', { name: 'Load more creators', exact: true }).click();
     await visible('Loading more creators');
     assert.equal(await page.locator('.zh-tile').count(), 1, 'Pagination retains the current cards');
@@ -92,7 +95,38 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.getByRole('heading', { name: 'A little quiet right now', exact: true }).waitFor();
     await result('data.home', feed(), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Home', exact: true }).click();
+    await visible('Loading creators');
+    assert.equal((await lastSent('home.reload')).mode, 'online', 'Returning Home restores the online-only query');
+    await result('data.home', feed(), 'home', { page: 1 });
     console.log('PASS loading: initial feed, unknown balance, realtime refresh, filters, pagination, failure and retry');
+
+    // Home keeps an active-only filter independently of Explore's broader discovery filter.
+    await page.evaluate(() => homeDashboardFilter('Talk'));
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online', category: 'Talk' });
+    assert.equal(await page.evaluate(() => Home.filter), 'Music', 'Home filters preserve the Explore selection');
+    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
+    await navigate('explore');
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Music' });
+    await result('data.home', feed(), 'home', { page: 1 });
+    await navigate('home');
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online', category: 'Talk' });
+    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
+    await page.evaluate(() => homeDashboardFilter('instant'));
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'instant' }, 'Instant Call clears the category constraint');
+    await result('data.home', feed(), 'home', { page: 1 });
+    const homeRequests = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
+    await page.evaluate(() => { homeDashboardFilter('instant'); homeDashboardFilter('unknown category'); });
+    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeRequests,
+      'Repeated and invalid filters do not trigger requests');
+    await page.evaluate(() => homeDashboardFilter('popular'));
+    await visible('Loading creators');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online' }, 'Popular restores the active-only feed');
+    await result('data.home', feed(), 'home', { page: 1 });
+    console.log('PASS loading: independent Home and Explore filters, active-only queries and filter validation');
 
     // Search starts immediately on input, ignores responses for older queries and supports clearing.
     await page.getByRole('button', { name: 'Search creators', exact: true }).click();
@@ -138,7 +172,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await visible('Loading notifications');
     await result('data.notifications', { items: [], unreadCount: 0 }, 'notifications');
     await page.getByRole('heading', { name: "You're all caught up", exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Home', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to home', exact: true }).click();
     // Even cached catalog content refreshes on opening its sheet or screen.
     await result('data.catalog', catalog, 'catalog');
     await page.getByRole('button', { name: 'View Mira North profile', exact: true }).first().click();
@@ -183,7 +217,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.chats', chats, 'chats');
     await page.locator('.rowlink').click();
     await visible('Loading messages');
-    const draft = page.getByPlaceholder('Type a message to Mira', { exact: true });
+    const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     await draft.fill('Draft while history is loading');
     await receive('data.thread', { with: secondId, messages: [{ text: 'Wrong conversation', mine: false }] });
     await visible('Loading messages');
