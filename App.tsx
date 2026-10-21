@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ScreenCapture from "expo-screen-capture";
 import { StatusBar } from "expo-status-bar";
@@ -123,86 +123,91 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.safe, { backgroundColor: canvas }]}>
-        <StatusBar style={theme === "dark" ? "light" : "dark"} />
-        {failure || !page ? (
-          <View style={styles.center}>
-            <Text style={[styles.failTitle, { color: ink }]}>Zimi Live could not start</Text>
-            <Text style={[styles.failBody, { color: ink }]}>
-              {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
-            </Text>
-            <Pressable onPress={reload} style={[styles.retry, { backgroundColor: primary }]}>
-              <Text style={[styles.retryText, { color: contrast }]}>Retry</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <WebView
-            ref={webRef}
-            style={[styles.web, { backgroundColor: canvas }]}
-            originWhitelist={["https://aurora.localhost", "about:blank"]}
-            source={{ html: page, baseUrl: "https://aurora.localhost/" }}
-            onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
-            setSupportMultipleWindows={false}
-            allowFileAccess={false}
-            allowFileAccessFromFileURLs={false}
-            allowUniversalAccessFromFileURLs={false}
-            mixedContentMode="never"
-            injectedJavaScript={THEME_BRIDGE}
-            onLoadStart={() => bridge.documentLoading()}
-            onMessage={onMessage}
-            onError={onError}
-            onRenderProcessGone={reload}
-            onContentProcessDidTerminate={reload}
-            startInLoadingState
-            renderLoading={() => (
-              <View style={[styles.loading, { backgroundColor: canvas }]} accessible accessibilityRole="progressbar" accessibilityLabel="Loading Zimi Live" accessibilityState={{ busy: true }}>
-                <View style={styles.loadingContent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                  <View style={styles.loadingHeader}>
-                    <Text style={[styles.loadingBrand, { color: ink }]}>Zimi<Text style={{ color: primary }}>Live</Text></Text>
-                    <View style={[styles.loadingPill, { backgroundColor: placeholder }]} />
-                    <View style={[styles.loadingProfile, { backgroundColor: placeholder }]} />
-                  </View>
-                  <View style={[styles.loadingHeading, { backgroundColor: placeholder }]} />
-                  <View style={styles.loadingStories}>
-                    {[0, 1, 2, 3, 4].map(index => (
-                      <View key={index} style={styles.loadingStory}>
-                        <View style={[styles.loadingAvatar, { backgroundColor: placeholder }]} />
-                        <View style={[styles.loadingStoryLabel, { backgroundColor: placeholder }]} />
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.loadingFilters}>
-                    {[0, 1, 2].map(index => <View key={index} style={[styles.loadingFilter, { backgroundColor: placeholder }]} />)}
-                  </View>
-                  <View style={[styles.loadingHero, { backgroundColor: placeholderSurface }]}>
-                    <View style={[styles.loadingHeroTitle, { backgroundColor: placeholder }]} />
-                    <View style={[styles.loadingHeroLine, { backgroundColor: placeholder }]} />
-                    <View style={[styles.loadingHeroAction, { backgroundColor: placeholder }]} />
-                  </View>
-                  <View style={styles.loadingCards}>
-                    {[0, 1].map(index => <View key={index} style={[styles.loadingCard, { backgroundColor: placeholderSurface }]} />)}
+      {/* Edge-to-edge Android (including Expo Go) can overlay the keyboard without
+          resizing the WebView or its visual viewport. Resize its native container
+          by the actual keyboard overlap, so every web composer stays visible. */}
+      <KeyboardAvoidingView behavior="padding" style={[styles.safe, { backgroundColor: canvas }]}>
+        <SafeAreaView style={[styles.safe, { backgroundColor: canvas }]}>
+          <StatusBar style={theme === "dark" ? "light" : "dark"} />
+          {failure || !page ? (
+            <View style={styles.center}>
+              <Text style={[styles.failTitle, { color: ink }]}>Zimi Live could not start</Text>
+              <Text style={[styles.failBody, { color: ink }]}>
+                {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
+              </Text>
+              <Pressable onPress={reload} style={[styles.retry, { backgroundColor: primary }]}>
+                <Text style={[styles.retryText, { color: contrast }]}>Retry</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <WebView
+              ref={webRef}
+              style={[styles.web, { backgroundColor: canvas }]}
+              originWhitelist={["https://aurora.localhost", "about:blank"]}
+              source={{ html: page, baseUrl: "https://aurora.localhost/" }}
+              onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
+              setSupportMultipleWindows={false}
+              allowFileAccess={false}
+              allowFileAccessFromFileURLs={false}
+              allowUniversalAccessFromFileURLs={false}
+              mixedContentMode="never"
+              injectedJavaScript={THEME_BRIDGE}
+              onLoadStart={() => bridge.documentLoading()}
+              onMessage={onMessage}
+              onError={onError}
+              onRenderProcessGone={reload}
+              onContentProcessDidTerminate={reload}
+              startInLoadingState
+              renderLoading={() => (
+                <View style={[styles.loading, { backgroundColor: canvas }]} accessible accessibilityRole="progressbar" accessibilityLabel="Loading Zimi Live" accessibilityState={{ busy: true }}>
+                  <View style={styles.loadingContent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <View style={styles.loadingHeader}>
+                      <Text style={[styles.loadingBrand, { color: ink }]}>Zimi<Text style={{ color: primary }}>Live</Text></Text>
+                      <View style={[styles.loadingPill, { backgroundColor: placeholder }]} />
+                      <View style={[styles.loadingProfile, { backgroundColor: placeholder }]} />
+                    </View>
+                    <View style={[styles.loadingHeading, { backgroundColor: placeholder }]} />
+                    <View style={styles.loadingStories}>
+                      {[0, 1, 2, 3, 4].map(index => (
+                        <View key={index} style={styles.loadingStory}>
+                          <View style={[styles.loadingAvatar, { backgroundColor: placeholder }]} />
+                          <View style={[styles.loadingStoryLabel, { backgroundColor: placeholder }]} />
+                        </View>
+                      ))}
+                    </View>
+                    <View style={styles.loadingFilters}>
+                      {[0, 1, 2].map(index => <View key={index} style={[styles.loadingFilter, { backgroundColor: placeholder }]} />)}
+                    </View>
+                    <View style={[styles.loadingHero, { backgroundColor: placeholderSurface }]}>
+                      <View style={[styles.loadingHeroTitle, { backgroundColor: placeholder }]} />
+                      <View style={[styles.loadingHeroLine, { backgroundColor: placeholder }]} />
+                      <View style={[styles.loadingHeroAction, { backgroundColor: placeholder }]} />
+                    </View>
+                    <View style={styles.loadingCards}>
+                      {[0, 1].map(index => <View key={index} style={[styles.loadingCard, { backgroundColor: placeholderSurface }]} />)}
+                    </View>
                   </View>
                 </View>
-              </View>
-            )}
-            // The page is a single 100dvh screen that scrolls its own inner
-            // containers, so the WebView's outer scroll view is left alone:
-            // disabling it is an iOS-only no-op here that can block inner scroll.
-            javaScriptEnabled
-            webviewDebuggingEnabled={typeof __DEV__ !== "undefined" && __DEV__}
-            domStorageEnabled
-            bounces={false}
-            overScrollMode="never"
-            setBuiltInZoomControls={false}
-            textZoom={100}
-            allowsInlineMediaPlayback
-            mediaPlaybackRequiresUserAction={false}
-            keyboardDisplayRequiresUserAction={false}
-            automaticallyAdjustContentInsets={false}
-            contentInsetAdjustmentBehavior="never"
-          />
-        )}
-      </SafeAreaView>
+              )}
+              // The page is a single 100dvh screen that scrolls its own inner
+              // containers, so the WebView's outer scroll view is left alone:
+              // disabling it is an iOS-only no-op here that can block inner scroll.
+              javaScriptEnabled
+              webviewDebuggingEnabled={typeof __DEV__ !== "undefined" && __DEV__}
+              domStorageEnabled
+              bounces={false}
+              overScrollMode="never"
+              setBuiltInZoomControls={false}
+              textZoom={100}
+              allowsInlineMediaPlayback
+              mediaPlaybackRequiresUserAction={false}
+              keyboardDisplayRequiresUserAction={false}
+              automaticallyAdjustContentInsets={false}
+              contentInsetAdjustmentBehavior="never"
+            />
+          )}
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </SafeAreaProvider>
   );
 }

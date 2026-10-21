@@ -114,6 +114,67 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
       await page.setViewportSize({ width, height: 844 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'The welcome preview label fits narrow screens');
     }
+
+    // Layout must not depend on the transient route class used for the palette.
+    // Losing zc-app used to invalidate every calc(...var(--zc-u)) in the inbox:
+    // avatars collapsed to zero height, tabs compressed, and content lost padding.
+    const assertInboxGeometry = async label => {
+      const metrics = await page.evaluate(() => {
+        const screen = document.querySelector('.zc-chats');
+        const avatar = document.querySelector('.zc-row .zc-avatar');
+        const search = document.querySelector('.zc-search');
+        const tabs = document.querySelector('.zc-tabs');
+        const tabButtons = [...tabs.querySelectorAll('button')];
+        const css = getComputedStyle(screen), tabCss = getComputedStyle(tabs);
+        const boxes = tabButtons.map(button => button.getBoundingClientRect());
+        return {
+          unit: css.getPropertyValue('--zc-u'),
+          searchHeight: search.getBoundingClientRect().height,
+          avatarWidth: avatar.getBoundingClientRect().width,
+          avatarHeight: avatar.getBoundingClientRect().height,
+          paddingLeft: parseFloat(css.paddingLeft), paddingRight: parseFloat(css.paddingRight),
+          tabGap: parseFloat(tabCss.columnGap),
+          tabPadding: tabButtons.map(button => ({ left: parseFloat(getComputedStyle(button).paddingLeft), top: parseFloat(getComputedStyle(button).paddingTop) })),
+          tabSeparation: boxes.slice(1).map((box, index) => box.left - boxes[index].right),
+          overflow: document.documentElement.scrollWidth > innerWidth,
+          headerHeight: document.querySelector('.zh-header').getBoundingClientRect().height,
+          navHeight: document.querySelector('.zh-nav').getBoundingClientRect().height,
+        };
+      });
+      assert.ok(metrics.unit.trim(), `${label}: inbox layout unit stays defined`);
+      assert.ok(metrics.searchHeight >= 39.9, `${label}: search field remains at least 40px high`);
+      assert.ok(metrics.avatarWidth >= 49.9 && metrics.avatarHeight >= 49.9, `${label}: conversation avatars remain at least 50px`);
+      assert.ok(metrics.paddingLeft >= 15.9 && metrics.paddingRight >= 15.9, `${label}: inbox keeps at least 16px side padding`);
+      assert.ok(metrics.tabGap >= 3.9 && metrics.tabSeparation.every(gap => gap >= 3.9), `${label}: filter tabs keep visible spacing`);
+      assert.ok(metrics.tabPadding.every(padding => padding.left >= 11.9 && padding.top >= 5.9), `${label}: filter tabs keep their tap padding`);
+      assert.equal(metrics.overflow, false, `${label}: inbox fits its viewport`);
+      assert.ok(metrics.headerHeight >= 50 && metrics.navHeight >= 50, `${label}: shared header and navigation remain styled`);
+    };
+    const themeFixtures = await page.evaluate(() => [ZThemeOriginal, ZThemeRose]);
+    for (const selected of themeFixtures) {
+      await receive('data.themes', { items: themeFixtures, selectedThemeId: selected.id, premium: { active: false } });
+      for (const view of ['home', 'profile', 'explore']) {
+        await navigate(view);
+        await navigate('chats');
+        await loading('chats', true);
+        await loadChats(chatData());
+        await receive('theme.default', selected);
+        await assertInboxGeometry(`${selected.mode} theme after ${view}/Chats and data refresh`);
+      }
+      for (const width of [320, 390, 630, 1280]) {
+        await page.setViewportSize({ width, height: width === 630 ? 1600 : 900 });
+        await page.evaluate(() => document.documentElement.classList.remove('zc-app'));
+        assert.equal(await page.evaluate(() => document.documentElement.classList.contains('zc-app')), false);
+        await assertInboxGeometry(`${selected.mode} ${width}px without route class`);
+        await page.screenshot({ path: path.join(os.tmpdir(), `zimi-chats-resilient-${selected.mode}-${width}.png`) });
+      }
+    }
+    await receive('data.themes', { items: themeFixtures, selectedThemeId: themeFixtures[0].id, premium: { active: false } });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await navigate('chats');
+    await loadChats(chatData());
+    console.log('PASS chats: layout survives missing route class at 320/390/630/1280px, repeated navigation, refresh and light/dark themes');
+
     await page.getByText('2 new', { exact: true }).waitFor();
     assert.match((await names())[0], /Rohan Patel/);
     assert.deepEqual(await page.getByRole('tab').allInnerTexts(), ['All', 'Unread', 'Calls', 'Missed calls'], 'Four plain filters, without counts');

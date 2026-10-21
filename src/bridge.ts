@@ -68,7 +68,7 @@ export type WebMessage =
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
   | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string } }
-  | { type: "chat.photo"; data: { to: string; photo: string } }
+  | { type: "chat.photo"; data: { to: string; photo: string; replyTo?: string } }
   | { type: "chat.edit"; data: { to: string; id: string; text: string } }
   | { type: "chat.delete"; data: { to: string; id: string; everyone: boolean } }
   | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
@@ -153,8 +153,8 @@ export type AppMessage =
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
-  | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean } }
-  | { type: "chat.photoSent"; data: { to: string; id: string } }
+  | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null } }
+  | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null } }
   | { type: "chat.updated"; data: { with: string; message: Message } }
   | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
@@ -166,7 +166,7 @@ export type AppMessage =
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
   | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string; senderGender?: Gender } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text"; inCall?: boolean; callId?: string; automated?: boolean } };
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text" | "image"; imageUrl?: string; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -987,14 +987,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // The screen learns the message's server ID (for reply, edit and delete) and the text as delivered.
         const delivered = await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo);
         if (current(version) && typeof delivered?.text === "string")
-          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered.text, id: delivered.id, inCall: !!msg.data.inCall } });
+          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered.text, id: delivered.id, inCall: !!msg.data.inCall, reply: delivered.reply ?? null } });
         if (current(version)) quietly(loadChats(), "chats.reload");
         return;
       }
       case "chat.photo": {
         if (!(await requireThreadSend(msg.data.to, version))) return;
-        const sent = await api.sendPhotoMessage(msg.data.to, msg.data.photo);
-        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "" } }); quietly(loadChats(), "chats.reload"); }
+        const sent = await api.sendPhotoMessage(msg.data.to, msg.data.photo, msg.data.replyTo);
+        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "", reply: sent?.reply ?? null } }); quietly(loadChats(), "chats.reload"); }
         return;
       }
       case "chat.edit": {

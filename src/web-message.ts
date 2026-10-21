@@ -104,7 +104,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)) && (d.replyTo === undefined || identifier(d.replyTo)); break;
     case "chat.edit": valid = identifier(d.to) && identifier(d.id) && typeof d.text === "string" && d.text.length <= 4000; break;
     case "chat.delete": valid = identifier(d.to) && identifier(d.id) && boolean(d.everyone); break;
-    case "chat.photo": valid = identifier(d.to) && photoData(d.photo); break;
+    case "chat.photo": valid = identifier(d.to) && photoData(d.photo) && (d.replyTo === undefined || identifier(d.replyTo)); break;
     case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && amount(d.coins) && boolean(d.inCall) && (d.streamId === undefined || identifier(d.streamId)) && (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)); break;
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;
     case "call.accept": case "call.decline": case "verify.accept": case "verify.end": valid = identifier(d.callId); break;

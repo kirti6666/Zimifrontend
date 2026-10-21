@@ -32,18 +32,33 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
       { id: 'm1', mine: false, text: 'Are you live tonight?', createdAt: at(30) },
       { id: 'm2', mine: true, text: 'See you soon', createdAt: at(20), status: 'read' },
       { id: 'm3', mine: false, text: 'Bring your requests', createdAt: at(10) },
+      { id: 'm5', mine: true, text: 'Remove this only from my view', createdAt: at(5), status: 'sent' },
     ] });
 
-    await bubble('m1').getByRole('button').click();
+    // Handlers enforce the same ownership rules as the visible menu.
+    await page.evaluate(() => { zcStartEdit('m1'); zcDeleteMessage('m1', true); });
+    assert.equal(await page.evaluate(() => Chats.editing), null, 'An incoming message cannot be edited directly');
+    assert.equal(await last('chat.delete'), undefined, 'An incoming message cannot be deleted for everyone directly');
+    assert.equal(await bubble('m1').locator('.zc-deleted').count(), 0, 'A forbidden delete does not change the visible message');
+
+    await bubble('m1').locator('[aria-haspopup="dialog"]').press('Enter');
     assert.deepEqual(await options(), ['Reply', 'Delete for me', 'Cancel'], "Someone else's message: reply or remove it from your view");
     await page.keyboard.press('Escape');
     await menu.waitFor({ state: 'detached' });
-    await bubble('m2').getByRole('button').click();
-    assert.deepEqual(await options(), ['Reply', 'Edit', 'Delete for everyone', 'Cancel'], 'Your own message can also be edited or deleted for both');
+    await bubble('m2').locator('[aria-haspopup="dialog"]').press('Enter');
+    assert.deepEqual(await options(), ['Reply', 'Edit', 'Delete for everyone', 'Delete for me', 'Cancel'], 'Your own message can also be edited or deleted for both');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await menu.getByRole('button', { name: 'Cancel', exact: true }).evaluate(button => button === document.activeElement), true, 'Focus stays inside the action menu');
+    await page.keyboard.press('Tab');
+    assert.equal(await menu.getByRole('button', { name: 'Reply', exact: true }).evaluate(button => button === document.activeElement), true);
+    await page.evaluate(() => r());
+    await menu.waitFor({ state: 'detached' });
+    await bubble('m2').locator('[aria-haspopup="dialog"]').press('Enter');
+    await menu.waitFor({ state: 'visible' });
     await menu.getByRole('button', { name: 'Cancel' }).click();
 
     // Reply
-    await bubble('m1').getByRole('button').click();
+    await bubble('m1').locator('[aria-haspopup="dialog"]').press('Enter');
     await menu.getByRole('button', { name: 'Reply' }).click();
     await page.getByText('Replying to Mira').waitFor();
     await page.screenshot({ path: path.join(os.tmpdir(), 'zimi-chat-reply.png') });
@@ -53,12 +68,12 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
     assert.equal(await page.locator('.zc-context').count(), 0, 'The reply bar closes after sending');
     const reply = page.locator('.zc-msg.mine').last();
     assert.match(await reply.locator('.zc-quote').innerText(), /Mira\s*Are you live tonight\?/);
-    assert.equal(await reply.getByRole('button').count(), 0, 'A message waits for its server ID before it has options');
+    assert.equal(await reply.locator('[aria-haspopup="dialog"]').count(), 0, 'A message waits for its server ID before it has options');
     await receive('chat.sent', { to: mira.id, sent: 'Yes, at 9!', text: 'Yes, at 9!', id: 'm4', inCall: false });
-    await bubble('m4').getByRole('button').waitFor();
+    await bubble('m4').locator('[aria-haspopup="dialog"]').waitFor();
 
     // Edit
-    await bubble('m2').getByRole('button').click();
+    await bubble('m2').locator('[aria-haspopup="dialog"]').press('Enter');
     await menu.getByRole('button', { name: 'Edit' }).click();
     await page.getByText('Edit message').waitFor();
     assert.equal(await page.locator('#ti').inputValue(), 'See you soon');
@@ -69,12 +84,16 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
     assert.match(await bubble('m2').innerText(), /See you at 9[\s\S]*Edited/);
 
     // Delete for everyone, delete for me, and a delete by the other person
-    await bubble('m2').getByRole('button').click();
+    await bubble('m2').locator('[aria-haspopup="dialog"]').press('Enter');
     await menu.getByRole('button', { name: 'Delete for everyone' }).click();
     assert.deepEqual(await last('chat.delete'), { to: mira.id, id: 'm2', everyone: true });
     await bubble('m2').getByText('You deleted this message').waitFor();
     assert.equal(await bubble('m2').getByRole('button').count(), 0, 'Deleted messages have no options');
-    await bubble('m1').getByRole('button').click();
+    await bubble('m5').locator('[aria-haspopup="dialog"]').press('Enter');
+    await menu.getByRole('button', { name: 'Delete for me', exact: true }).click();
+    assert.deepEqual(await last('chat.delete'), { to: mira.id, id: 'm5', everyone: false }, 'Your own message can be removed only from your view');
+    await bubble('m5').waitFor({ state: 'detached' });
+    await bubble('m1').locator('[aria-haspopup="dialog"]').press('Enter');
     await menu.getByRole('button', { name: 'Delete for me' }).click();
     assert.deepEqual(await last('chat.delete'), { to: mira.id, id: 'm1', everyone: false });
     await bubble('m1').waitFor({ state: 'detached' });

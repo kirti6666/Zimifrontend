@@ -86,14 +86,22 @@ for it (login, call failed).
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
-| Send a photo | `POST /media/upload-url` `{purpose: "chat"}`, PUT to storage, then `POST /chats/:id` `{imageKey}` | – |
-| Reply to a message | `POST /chats/:id` `{text, replyTo}` | The message, with a `reply` quote |
+| Send a photo | `POST /media/upload-url` `{purpose: "chat"}`, PUT to storage, then `POST /chats/:id` `{imageKey, replyTo?}` | The message, including any reply quote |
+| Reply to a message | `POST /chats/:id` `{text, replyTo}` (or `{imageKey, replyTo}`) | The message, with a `reply` quote |
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `PUT /follows/:id` `{on}` | – |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
+
+In a conversation, swipe right on a sent message or hold it and choose **Reply**.
+The composer shows the selected original; cancelling keeps the typed draft. Text
+and photo replies carry `replyTo`, and the send confirmation supplies the current
+server quote (or explicit `null`). The quote appears above the answer as a keyboard
+accessible button that jumps to the original when it is loaded. Edits update visible
+quotes; deletion for everyone replaces them with “Deleted message”. Deleting only
+your copy preserves existing quotes but prevents starting a new reply to that message.
 
 Chat eligibility uses `user.serverRole` from the authenticated account, separately
 from the `sender`/`host` presentation role. Members message approved hosts; approved
@@ -138,8 +146,12 @@ shows what was delivered, with a short notice.
 Photos members send (`chat.photo {to, photo}`, a resized JPEG from the photo picker) reach creators
 blurred with **Tap to view**.
 
-Tapping a sent message opens its options: **Reply**, **Edit** (your own text), and **Delete for everyone**
-(your own) or **Delete for me** (someone else's). The screens post `chat.send {replyTo}`, `chat.edit {to, id, text}`
+Hold a sent message to open **Reply**, **Edit** (your own text), **Delete for everyone**
+(your own) and **Delete for me** (either person's). A regular tap leaves the message alone;
+keyboard and assistive-technology activation can also open the menu. Swipe right on the body
+or quoted preview to reply to that message; a short bubble near the right edge needs less
+travel so the gesture stays inside the screen. A simple tap on a quote still jumps to its original.
+The screens post `chat.send {replyTo}`, `chat.edit {to, id, text}`
 and `chat.delete {to, id, everyone}`; the app answers with `chat.updated {with, message}` or `chat.removed {id}`,
 and the socket events `chat:message-updated` and `chat:message-hidden` keep both people and other devices in step.
 Every sent message gets its server ID back in `chat.sent` / `chat.photoSent`, so it has options straight away.

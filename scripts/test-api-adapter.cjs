@@ -207,8 +207,18 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   reset();
   expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/chat', key: 'chats/member-id/photo.png' }, body => assert.equal(body.purpose, 'chat'));
   expect('POST', '/chats/host-id', { _id: 'photo-message', text: '', image: { url: 'https://cdn.example.test/chat.png' } }, body => assert.deepEqual(plain(body), { imageKey: 'chats/member-id/photo.png' }));
-  await api.sendPhotoMessage('host-id', png);
+  assert.deepEqual(plain(await api.sendPhotoMessage('host-id', png)), { id: 'photo-message', reply: null });
   assert.equal(uploads.length, 1, 'Chat photos go straight to storage, then only the key is sent'); finished();
+  reset();
+  expect('POST', '/media/upload-url', { uploadUrl: 'https://storage.example.test/chat-reply', key: 'chats/member-id/reply.png' }, body => assert.equal(body.purpose, 'chat'));
+  expect('POST', '/chats/host-id', {
+    _id: 'photo-reply', senderId: 'member-id', text: '', image: { url: 'https://cdn.example.test/chat-reply.png' },
+    reply: { id: 'question-1', senderId: 'host-id', text: '', image: false, deleted: true },
+  }, body => assert.deepEqual(plain(body), { imageKey: 'chats/member-id/reply.png', replyTo: 'question-1' }));
+  assert.deepEqual(plain(await api.sendPhotoMessage('host-id', png, 'question-1')), {
+    id: 'photo-reply', reply: { id: 'question-1', mine: false, text: '', image: false, deleted: true },
+  }, 'A photo keeps its reply target and the authoritative deletion state returned after upload');
+  assert.equal(uploads.length, 1); finished();
   const photoThread = adapters.messagesFrom({ items: [{ _id: 'photo-message', senderId: 'host-id', text: '', image: { url: 'https://cdn.example.test/chat.png' } }] }, 'member-id').messages[0];
   assert.deepEqual([photoThread.kind, photoThread.imageUrl], ['image', 'https://cdn.example.test/chat.png']);
   assert.equal(adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id', name: 'Creator' }], lastMessage: { text: '', kind: 'image' } }] }, 'member-id').chats[0].lastKind, 'image');
@@ -255,8 +265,18 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   expect('POST', '/calls', { _id: 'call-id' }, body => assert.deepEqual(plain(body), { calleeId: 'host-id', kind: 'audio' }));
   assert.equal((await api.startCall('host-id', true)).callId, 'call-id');
   expect('POST', '/calls/call-id/end', {}); await api.declineCall('call-id');
-  expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello' })); await api.sendMessage('host-id', 'Hello');
+  expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello' })); assert.equal((await api.sendMessage('host-id', 'Hello')).reply, null);
   expect('POST', '/chats/host-id', {}, body => assert.deepEqual(plain(body), { text: 'Hello in our call', callId: 'accepted-call' })); await api.sendMessage('host-id', 'Hello in our call', 'accepted-call');
+  expect('POST', '/chats/host-id', { _id: 'text-reply', senderId: 'member-id', text: 'Delivered words', reply: { id: 'question-1', senderId: 'host-id', text: 'Updated question', image: false, deleted: false } },
+    body => assert.deepEqual(plain(body), { text: 'Original words', replyTo: 'question-1' }));
+  assert.deepEqual(plain(await api.sendMessage('host-id', 'Original words', undefined, 'question-1')), {
+    id: 'text-reply', text: 'Delivered words', reply: { id: 'question-1', mine: false, text: 'Updated question', image: false, deleted: false },
+  }, 'Sending returns both moderated message text and the current server quote');
+  expect('POST', '/chats/host-id', { _id: 'own-photo-reply', senderId: 'member-id', text: 'My photo', reply: { id: 'own-photo', senderId: 'member-id', text: '', image: true, deleted: false } },
+    body => assert.deepEqual(plain(body), { text: 'My photo', callId: 'accepted-call', replyTo: 'own-photo' }));
+  assert.deepEqual(plain((await api.sendMessage('host-id', 'My photo', 'accepted-call', 'own-photo')).reply), {
+    id: 'own-photo', mine: true, text: '', image: true, deleted: false,
+  }, 'A reply to the sender\'s own photo keeps its ownership and photo label');
   expect('POST', '/users/host-id/follow', { following: true }, body => assert.deepEqual(plain(body), { following: true })); assert.equal((await api.follow('host-id', true)).following, true);
   expect('POST', '/users/host-id/follow', {}); await assert.rejects(api.follow('host-id', true), /could not be confirmed/, 'Follow needs an explicit acknowledgement');
 
@@ -415,6 +435,10 @@ const png = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10,0])
   assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   assert.equal(events[1].data.automated, true, 'Realtime delivery retains the automated label');
+  socket.emitServer('chat:message', { _id: 'incoming-photo-reply', senderId: 'host-id', recipientId: 'member-id', text: '', image: { url: 'https://cdn.example.test/reply.png' }, reply: { id: 'own-question', senderId: 'member-id', text: 'Your question', image: false, deleted: false } });
+  const incomingPhotoReply = events.filter(event => event.type === 'chat.message').at(-1).data;
+  assert.equal(incomingPhotoReply.kind, 'image'); assert.equal(incomingPhotoReply.imageUrl, 'https://cdn.example.test/reply.png');
+  assert.deepEqual(plain(incomingPhotoReply.reply), { id: 'own-question', mine: true, text: 'Your question', image: false, deleted: false }, 'Incoming photo replies use the same quote format as send confirmations');
   socket.emitServer('chat:message', { _id: 'call-message', senderId: 'host-id', recipientId: 'member-id', text: 'Call message', callId: 'accepted-call', inCall: true });
   const callMessage=events.filter(event=>event.type==='chat.message').at(-1);assert.equal(callMessage.data.callId,'accepted-call');assert.equal(callMessage.data.inCall,true);
   const receivedGift={_id:'gift-delivery',senderId:'host-id',recipientId:'member-id',streamId:'stream-id',giftId:'catalog-gift',giftName:'Diamond Crown',coins:250,senderName:'Asha Live',emoji:'💎',mediaUrl:'https://cdn.example.test/crown.png',senderAvatarUrl:'https://cdn.example.test/asha.png'};

@@ -84,7 +84,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
@@ -405,6 +405,26 @@ test('closing the bridge removes session observers and prevents pending UI deliv
   assert.equal(h.count('sendOtp'), 1);
 });
 
+test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
+  const h = harness();
+  const provider = h.load('App.tsx').default();
+  const keyboard = provider.props.children;
+  const safeArea = keyboard.props.children;
+  const web = [safeArea.props.children].flat().find(node => node?.type === 'WebView');
+  const style = node => Object.assign({}, ...[node.props.style].flat());
+  assert.equal(provider.type, 'SafeAreaProvider');
+  assert.equal(keyboard.type, 'KeyboardAvoidingView', 'Measure keyboard overlap from the full root, outside safe-area padding');
+  assert.equal(keyboard.props.behavior, 'padding', 'Handle overlay keyboards even when Android leaves the WebView viewport unchanged');
+  assert.notEqual(keyboard.props.enabled, false);
+  assert.equal(keyboard.props.keyboardVerticalOffset ?? 0, 0, 'The root starts at the screen origin and needs no invented keyboard offset');
+  assert.equal(safeArea.type, 'SafeAreaView');
+  assert.ok(web, 'The actual WebView must be inside the resized content');
+  for (const node of [keyboard, safeArea, web]) assert.equal(style(node).flex, 1, 'Allow keyboard padding to shrink the WebView');
+  assert.equal(style(keyboard).backgroundColor, style(safeArea).backgroundColor);
+  assert.equal(style(safeArea).backgroundColor, style(web).backgroundColor);
+  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
+});
+
 test('native App refuses external document navigation and messages before privileged dispatch', async () => {
   const h = harness();
   const tree = h.load('App.tsx').default();
@@ -513,19 +533,49 @@ test('chat text the server partly hid is reported back as delivered, and photos 
   h.overrides.sendMessage = () => ({ id: 'message-1', text: 'call ██████████' });
   h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'call 9876543210' } });
   await settle();
-  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent').map(post => post.data))), [{ to: 'host-1', sent: 'call 9876543210', text: 'call ██████████', id: 'message-1', inCall: false }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent').map(post => post.data))), [{ to: 'host-1', sent: 'call 9876543210', text: 'call ██████████', id: 'message-1', inCall: false, reply: null }]);
   h.overrides.sendMessage = () => ({ id: 'message-2', text: 'hello' });
   h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'hello' } });
   await settle();
-  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent')[1].data)), { to: 'host-1', sent: 'hello', text: 'hello', id: 'message-2', inCall: false }, 'Every sent message learns its server ID, for reply, edit and delete');
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.sent')[1].data)), { to: 'host-1', sent: 'hello', text: 'hello', id: 'message-2', inCall: false, reply: null }, 'Every sent message learns its server ID, for reply, edit and delete');
   const photo = 'data:image/png;base64,' + Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]).toString('base64');
   h.overrides.sendPhotoMessage = () => ({ id: 'photo-1' });
   h.bridge.handle({ type: 'chat.photo', data: { to: 'host-1', photo } });
   await settle();
   assert.equal(h.count('sendPhotoMessage'), 1);
-  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.photoSent').map(post => post.data))), [{ to: 'host-1', id: 'photo-1' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('chat.photoSent').map(post => post.data))), [{ to: 'host-1', id: 'photo-1', reply: null }]);
   for (const data of [{ to: 'host-1', photo: 'https://example.test/x.png' }, { to: 'host-1', photo: 'data:image/svg+xml;base64,PHN2Zz4=' }, { to: '', photo }])
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'chat.photo', data })), null, 'Only a JPEG, PNG or WebP photo from the page can be sent');
+  h.bridge.close();
+});
+
+test('text and photo replies return authoritative quotes after the original changes during sending', async () => {
+  const h = harness(), textSend = deferred(), photoSend = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user' }, requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.thread = () => ({ messages: [], canSend: true });
+  h.overrides.sendMessage = () => textSend.promise;
+  h.bridge.handle({ type: 'chat.send', data: { to: 'host-1', text: 'Yes!', replyTo: 'question-1' } }); await settle();
+  assert.deepEqual(h.calls.find(call => call.name === 'sendMessage').args, ['host-1', 'Yes!', undefined, 'question-1']);
+  assert.equal(h.find('chat.sent').length, 0);
+  const revisedQuote = { id: 'question-1', mine: false, text: 'Revised question', image: false, deleted: false };
+  textSend.resolve({ id: 'text-reply', text: 'Yes!', reply: revisedQuote }); await settle();
+  assert.deepEqual(plain(h.find('chat.sent').at(-1).data.reply), revisedQuote, 'The UI receives the current quote, not its earlier draft');
+
+  const photo = 'data:image/png;base64,' + Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]).toString('base64');
+  const photoMessage = { type: 'chat.photo', data: { to: 'host-1', photo, replyTo: 'question-1' } };
+  assert.deepEqual(plain(h.webMessages.parseWebMessage(JSON.stringify(photoMessage))), photoMessage);
+  h.overrides.sendPhotoMessage = () => photoSend.promise;
+  h.bridge.handle(photoMessage); await settle();
+  assert.deepEqual(h.calls.find(call => call.name === 'sendPhotoMessage').args, ['host-1', photo, 'question-1']);
+  assert.equal(h.find('chat.photoSent').length, 0);
+  const deletedQuote = { id: 'question-1', mine: false, text: '', image: false, deleted: true };
+  photoSend.resolve({ id: 'photo-reply', reply: deletedQuote }); await settle();
+  assert.deepEqual(plain(h.find('chat.photoSent').at(-1).data), { to: 'host-1', id: 'photo-reply', reply: deletedQuote });
+  for (const replyTo of [null, 42, '', '../message', 'x'.repeat(129), {}, []]) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ ...photoMessage, data: { ...photoMessage.data, replyTo } })), null, 'Photo replies accept only a valid message identifier');
+  }
   h.bridge.close();
 });
 

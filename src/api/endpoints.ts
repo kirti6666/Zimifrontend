@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, HomeQuery, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -217,12 +217,13 @@ export const api = {
     return { id: idOf(receipt), coins: receipt.coins };
   },
   /** Uploads a chat photo into the sender's own folder, then sends it. */
-  async sendPhotoMessage(to: string, photo: string) {
+  async sendPhotoMessage(to: string, photo: string, replyTo?: string) {
     const version = getSessionVersion();
     decodePhoto(photo);
     const imageKey = await uploadMedia(photo, "chat", version);
     ensureSession(version);
-    return { id: idOf(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey })) };
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey, ...(replyTo ? { replyTo } : {}) }));
+    return { id: idOf(message), reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
   },
   editMessage: async (to: string, id: string, text: string) =>
     record(await request("PATCH", `/chats/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}`, { text })),
@@ -232,7 +233,9 @@ export const api = {
   /** Returns the text as delivered: the server hides phone numbers and abusive words. */
   async sendMessage(to: string, text: string, callId?: string, replyTo?: string) {
     const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}) }));
-    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text };
+    // A quoted message may have changed while this send was in flight. Carry
+    // the server's current quote (or its absence) back to the optimistic UI.
+    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text, reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
   },
   async follow(id: string, on: boolean) {
     const data = record(await request("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }));

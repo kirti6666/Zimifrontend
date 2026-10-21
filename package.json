@@ -23,6 +23,7 @@
     "test:private-screens": "npm run build:web && node scripts/test-private-screens.cjs",
     "test:chat-safety": "npm run build:web && node scripts/test-chat-safety.cjs",
     "test:chat-actions": "npm run build:web && node scripts/test-chat-actions.cjs",
+    "test:chat-replies": "npm run build:web && node scripts/test-chat-replies.cjs",
     "test:verification": "npm run build:web && node scripts/test-verification-call.cjs",
     "test:loading": "npm run build:web && node scripts/test-loading.cjs",
     "test:offline": "npm run build:web && node scripts/test-offline.cjs",
