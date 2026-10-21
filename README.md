@@ -256,13 +256,13 @@ rate limits, session recovery, and creator setup using mocked server responses.
 ## Home screen and admin controls
 
 The compact Home layout lives in `web/home-dashboard.js` and
-`web/home-dashboard.css`. It includes search, call/chat shortcuts, live rooms,
-category filters, creator cards and matching. The configured featured creator
-leads the For you cards. Profiles, calls and live rooms have separate actions;
-approved hosts get a Go live shortcut and their eligible reward banner.
-Home discovery shows one creator per row at every screen size, with no pricing
-on cards. Live now uses side-by-side cards in one horizontally scrollable row.
-Video call opens a confirmation screen with the current rate and wallet balance.
+`web/home-dashboard.css`. Home contains only Live hosts and Online hosts, with
+search available from the Home header. Both sections show one host per row at
+every screen size, with Chat and Call actions; live hosts also have Watch live.
+Live hosts appear only in the live section, and offline hosts are excluded.
+The native Home feed requests `mode=online`, which filters active hosts on the
+server before pagination. Explore keeps its separate discovery filters.
+Call opens a confirmation screen with the current rate and wallet balance.
 Paid calls require a loaded balance and at least one minute of coins; members
 can retry a failed balance load or buy coins when needed. Confirming a live
 host joins their room and sends one private-call request after membership is
@@ -275,7 +275,8 @@ HTTP and Socket.IO still run through `src/`.
 In the sibling **admin-dashboard**, open **Settings → Home screen** to choose
 the featured creator and reward mission or enable/disable matching. Creator
 approval, account status, gifts, coin packs, announcements, and stream moderation
-use the existing dashboard tools. Changes refresh the connected home feed.
+use the existing dashboard tools. Featured creator, matching and reward controls
+remain supported by the API, but do not add promotional blocks to Home.
 Mission eligibility and wallet credits are checked by the server.
 
 Run `npm run build:web` after changing web sources. Run `npm run test:home`
@@ -382,7 +383,10 @@ screenshots in `artifacts/notifications-*.png`. Backend integration coverage is 
 
 ## Themes and premium appearance
 
-Open **Profile & Settings → Appearance & Theme** to browse the theme gallery.
+Open **Profile & Settings → Appearance & Theme** to open the full theme page.
+The page has its own Back header and no bottom tabs. Back returns to the Profile
+or Settings page you opened it from, preserving its search, filters, and scroll.
+Theme catalog refreshes preserve gallery scroll and keyboard focus.
 Zimi Original and Soft Rose are free; premium includes Midnight Ocean and Amber
 Silk. The sibling admin dashboard's **Themes & text styles** section controls
 colors, fonts, text sizing/weight, ordering, availability, premium flags, and

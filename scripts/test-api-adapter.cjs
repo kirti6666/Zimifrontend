@@ -396,6 +396,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(home.hosts[0].ratePerMin, 0, 'Free calls must not invent a per-minute charge');
   assert.equal(home.hosts[0].stream.hostId, creator._id); assert.equal(home.hosts[0].verified, true);
   assert.equal(home.availableCount, 3); assert.equal(home.bonus.progress, 5); assert.equal(home.unreadCount, 4);
+  expect('GET', '/home?mode=online&page=2&limit=20', { items: [{ ...creator, stream: null, availableForCall: false }], stage: [], featured: null, total: 21, page: 2, limit: 20 });
+  const onlineHome = await api.home({ mode: 'online', page: 2 });
+  assert.equal(onlineHome.total, 21); assert.equal(onlineHome.page, 2);
+  assert.equal(onlineHome.hosts[0].online, true); assert.equal(onlineHome.hosts[0].availableForCall, false);
+  assert.equal(onlineHome.hosts[0].live, false, 'Home eligibility is independent from call or streaming availability');
   expect('GET', '/home/match?category=Music', { host: creator });
   assert.equal((await api.matchHost('Music')).host.id, creator._id);
   expect('PATCH', '/safety', { allowRequests: false, showActivity: false, discoverable: true }, body => assert.deepEqual(plain(body), { allowRequests: false, showActivity: false, discoverable: true }));

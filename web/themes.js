@@ -1,5 +1,5 @@
 /* Themes are server-owned. Only acknowledged selections are applied in the app. */
-const ZThemes={catalog:null,loading:false,error:'',saving:'',requestId:0,checkout:null,checkoutBusy:false,attempt:'',accountId:'',signature:'',transitionTimer:null,refreshView:null};
+const ZThemes={catalog:null,loading:false,error:'',saving:'',requestId:0,checkout:null,checkoutBusy:false,attempt:'',accountId:'',signature:'',transitionTimer:null,refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''};
 const ZThemeFonts={system:'Inter, system-ui, sans-serif',rounded:'"Poppins", system-ui, sans-serif',serif:'Georgia, "Times New Roman", serif',mono:'ui-monospace, "SFMono-Regular", Consolas, monospace'};
 const ZThemeOriginal={id:'000000000000000000000001',name:'Zimi Original',description:'Our signature rose, beautifully balanced.',mode:'dark',active:true,isPremium:false,isDefault:true,colors:{background:'#210f1d',surface:'#321e2c',surfaceElevated:'#3c2635',text:'#fce8f2',textMuted:'#c5a9bc',primary:'#c9086a',primaryContrast:'#ffffff',secondary:'#ff9ccc',border:'#654356',success:'#45d5a0',danger:'#ffb2b9'},typography:{fontFamily:'system',fontScale:1,fontWeight:'400',headingWeight:'700'}};
 const ZThemeRose={...ZThemeOriginal,id:'000000000000000000000002',name:'Soft Rose',description:'A fresh, airy take on your everyday.',mode:'light',isDefault:false,colors:{background:'#fff5fa',surface:'#ffffff',surfaceElevated:'#f4dfeb',text:'#321525',textMuted:'#79556a',primary:'#b50a65',primaryContrast:'#ffffff',secondary:'#a63f75',border:'#d6b5c9',success:'#147a53',danger:'#b52b46'}};
@@ -29,9 +29,40 @@ function ztApply(animate=false){
   if(motion)ZThemes.transitionTimer=setTimeout(()=>root.classList.remove('zt-transition'),320);
 }
 function ztLabel(){return ztCurrent().name+' · Active'}
-function ztPaint(){if(ZProfile.dialog==='appearance'){const el=document.getElementById('zp-dialog'),view={top:el?.scrollTop||0,focus:el?.contains(document.activeElement)?document.activeElement.id:''};if(ZThemes.loading&&!ZThemes.refreshView)ZThemes.refreshView=view;const restore=ZThemes.refreshView||view;zpPaintDialog();const target=restore.focus?document.getElementById(restore.focus):null;target?.focus({preventScroll:true});if(el)el.scrollTop=restore.top;if(!ZThemes.loading)ZThemes.refreshView=null}const label=document.querySelector('[data-theme-label]');if(label)label.textContent=ztLabel()}
+function ztScrollPosition(){return window.ZimiOffline?.scrollPosition()??document.getElementById('scroll-root')?.scrollTop??0}
+function ztRestoreScroll(top){if(window.ZimiOffline?.restoreScroll(top))return;if(window.zimiScrollTo)window.zimiScrollTo(top);else document.getElementById('scroll-root').scrollTop=top}
+function ztViewState(){const el=document.getElementById('zt-content');return {top:ztScrollPosition(),focus:el?.contains(document.activeElement)?document.activeElement.id:''}}
+function ztRestoreView(view){if(!view||S.v!=='themes')return;const target=view.focus?document.getElementById(view.focus):null;target?.focus({preventScroll:true});ztRestoreScroll(view.top)}
+function ztPaint(){
+  const el=S.v==='themes'?document.getElementById('zt-content'):null;
+  if(el){
+    const view=ztViewState();
+    if(ZThemes.loading&&!ZThemes.refreshView)ZThemes.refreshView=view;
+    const restore=ZThemes.refreshView||view;
+    el.innerHTML=ztContent();ztRestoreView(restore);
+    if(!ZThemes.loading)ZThemes.refreshView=null;
+  }
+  const label=document.querySelector('[data-theme-label]');if(label)label.textContent=ztLabel();
+}
 function ztLoad(){if(DEMO){ztPaint();return}if(ZThemes.loading)return;ZThemes.loading=true;ZThemes.error='';ztPaint();Native.send('themes.load')}
-function ztOpen(){zpOpen('appearance');if(!DEMO)ztLoad()}
+function ztBeforeNavigate(view){
+  if(view==='themes'&&S.v!=='themes'){
+    const fromAccount=['profile','settings'].includes(S.v);
+    ZThemes.returnTo=S.v==='settings'?'settings':'profile';
+    ZThemes.returnScroll=fromAccount?ztScrollPosition():0;
+    ZThemes.returnFocus=fromAccount?document.activeElement?.getAttribute('aria-label')||'':'';
+    ZThemes.refreshView=null;ZThemes.renderView=null;
+    zpClose();ztLoad();
+  }else if(view!=='themes'){ZThemes.refreshView=null;ZThemes.renderView=null}
+}
+function ztOpen(){go('themes')}
+function ztBack(){
+  const target=ZThemes.returnTo==='settings'?'settings':'profile',top=ZThemes.returnScroll,focus=ZThemes.returnFocus;
+  go(target);ztRestoreScroll(top);
+  if(focus)[...document.querySelectorAll('.zp-page [aria-label]')].find(el=>el.getAttribute('aria-label')===focus)?.focus({preventScroll:true});
+}
+function ztHeader(){return `<header class="zh-subheader zt-header">${backButton('ztBack()',{label:ZThemes.returnTo==='settings'?'Back to settings':'Back to profile'})}<h1>Appearance &amp; Theme</h1></header>`}
+function ztPage(){ZThemes.renderView=document.getElementById('zt-page')?ztViewState():null;return `<section class="zt-page" id="zt-page" aria-label="Theme gallery"><div id="zt-content">${ztContent()}</div></section>`}
 function ztSkeleton(){return `<div class="zt-grid" role="status" aria-label="Loading themes">${Array.from({length:ZThemes.catalog?.items.length||4},()=>`<div class="zt-card zt-placeholder"><span class="zh-skeleton-shape zt-preview"></span>${skeletonLine('65%',14)}${skeletonLine('85%',10)}${skeletonLine('45%',11)}</div>`).join('')}</div>`}
 function ztCard(theme){
   const active=ztCurrent().id===theme.id,locked=theme.isPremium&&!ZThemes.catalog?.premium?.active,busy=ZThemes.saving===theme.id,c=theme.colors,t=theme.typography;
@@ -59,7 +90,7 @@ function ztCheckout(){
 }
 function ztVerify(){if(ZThemes.checkoutBusy||!ZThemes.checkout?.merchantOrderId)return;ZThemes.checkoutBusy=true;ZThemes.error='';ztPaint();Native.send('themes.premium.verify',{merchantOrderId:ZThemes.checkout.merchantOrderId})}
 function ztPayment(data){ZThemes.checkoutBusy=false;ZThemes.checkout=data;if(['SUCCESS','FAILED','REVERTED'].includes(data.status))ZThemes.attempt='';ztPaint()}
-function ztClear(){clearTimeout(ZThemes.transitionTimer);document.documentElement.classList.remove('zt-transition');ZThemes.signature='';ZThemes.requestId++;Object.assign(ZThemes,{catalog:null,loading:false,error:'',saving:'',checkout:null,checkoutBusy:false,attempt:'',accountId:'',refreshView:null})}
+function ztClear(){clearTimeout(ZThemes.transitionTimer);document.documentElement.classList.remove('zt-transition');ZThemes.signature='';ZThemes.requestId++;Object.assign(ZThemes,{catalog:null,loading:false,error:'',saving:'',checkout:null,checkoutBusy:false,attempt:'',accountId:'',refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''})}
 function ztReset(){ZThemes.boot=null;ztClear();ztApply()}
 function ztAccount(id){if(ZThemes.accountId!==(id||'')){ztClear();ZThemes.accountId=id||'';ztApply()}}
 Native.on('data.themes',ztAccept);
@@ -71,5 +102,8 @@ Native.on('themes.premium.checkout',ztPayment);Native.on('themes.premium.purchas
 Native.on('session.none',ztReset);Native.on('session.expired',ztReset);
 Native.on('session',data=>ztAccount(data.user?.id));
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{if(event.matches)document.documentElement.classList.remove('zt-transition')});
-window.ZimiThemes={apply:ztApply,label:ztLabel,open:ztOpen,content:ztContent,reset:ztReset,account:ztAccount};
+window.ZimiThemes={apply:ztApply,label:ztLabel,open:ztOpen,content:ztContent,reset:ztReset,account:ztAccount,beforeNavigate:ztBeforeNavigate,header:ztHeader};
+ZimiHome.views.themes=ztPage;
+const ztPreviousAfterRender=ZimiHome.afterRender;
+ZimiHome.afterRender=()=>{ztPreviousAfterRender();ztRestoreView(ZThemes.renderView);ZThemes.renderView=null};
 if(DEMO){ZThemes.catalog={selectedThemeId:ZThemeOriginal.id,premium:{active:false,pricePaise:19900,currency:'INR',paymentsAvailable:false,purchaseType:'lifetime'},items:[ZThemeOriginal,ZThemeRose,{...ZThemeOriginal,id:'000000000000000000000003',name:'Midnight Ocean',description:'Deep blue calm, a brighter point of view.',isDefault:false,isPremium:true,colors:{background:'#101b2d',surface:'#192a42',surfaceElevated:'#223951',text:'#edf6ff',textMuted:'#b5cada',primary:'#88d9ee',primaryContrast:'#102030',secondary:'#88d9ee',border:'#466078',success:'#69d5aa',danger:'#ffacb8'},typography:{fontFamily:'rounded',fontScale:1,fontWeight:'400',headingWeight:'700'}},{...ZThemeOriginal,id:'000000000000000000000004',name:'Amber Silk',description:'Warm neutrals with an editorial touch.',isDefault:false,isPremium:true,mode:'light',colors:{background:'#fff9ef',surface:'#ffffff',surfaceElevated:'#f3e7d1',text:'#3b2a1e',textMuted:'#79644e',primary:'#815016',primaryContrast:'#ffffff',secondary:'#815016',border:'#ccbba3',success:'#237d51',danger:'#b63146'},typography:{fontFamily:'serif',fontScale:1.05,fontWeight:'400',headingWeight:'700'}}]}}

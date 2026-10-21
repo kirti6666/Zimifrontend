@@ -139,8 +139,10 @@ async function run() {
     console.log('PASS premium profile: search, accessible result count, categories, keyboard dialogs, clear/reset and native refresh');
 
     await exactButton(page, 'Customize your look').click();
-    const appearance = page.getByRole('dialog', { name: 'Appearance & Theme', exact: true });
+    const appearance = page.locator('.zt-page');
     await appearance.waitFor();
+    assert.equal(await page.getByRole('dialog').count(), 0, 'The style shortcut opens a dedicated page');
+    assert.equal(await page.locator('.zh-nav button').count(), 0, 'The theme page has no bottom tabs');
     assert.ok(await page.evaluate(() => __sent.some(message => message.type === 'themes.load')), 'The style shortcut loads the real theme catalog');
     const themes = await page.evaluate(() => ({ items: [ZThemeOriginal, ZThemeRose], selectedThemeId: ZThemeOriginal.id, premium: { active: false, pricePaise: 19900, currency: 'INR', paymentsAvailable: false, purchaseType: 'lifetime' } }));
     await receive(page, 'data.themes', themes);
@@ -149,7 +151,7 @@ async function run() {
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark', 'The shortcut retains acknowledgment-based theme selection');
     await receive(page, 'themes.selected', { catalog: { ...themes, selectedThemeId: request.themeId }, requestId: request.requestId });
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
-    await exactButton(page, 'Close settings').click();
+    await exactButton(page, 'Back to profile').click();
     assert.match(await page.locator('[data-theme-label]').first().textContent(), /Soft Rose/);
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: width === 1280 ? 1000 : 844 });
@@ -168,12 +170,12 @@ async function run() {
     await capture(preview, 'mobile-settings', '.zp-settings-tools');
     await exactButton(preview, 'Customize your look').click();
     await exactButton(preview, 'Use Soft Rose').click();
-    await exactButton(preview, 'Close settings').click();
+    await exactButton(preview, 'Back to profile').click();
     await assertLayout(preview, 'Light demo profile', 5);
     await capture(preview, 'mobile-light');
     await exactButton(preview, 'Customize your look').click();
     await exactButton(preview, 'Use Zimi Original').click();
-    await exactButton(preview, 'Close settings').click();
+    await exactButton(preview, 'Back to profile').click();
     await preview.setViewportSize({ width: 1280, height: 1000 });
     await capture(preview, 'desktop');
     assert.deepEqual(errors, [], 'The redesigned profile has no uncaught browser errors');

@@ -220,7 +220,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let hostChecking = false;
   let activeHostCall = false;
   let publishingAt: number | undefined;
-  let homeQuery: HomeQuery = {};
+  let homeQuery: HomeQuery = { mode: "online" };
   let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
@@ -316,7 +316,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); }
+    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "online" }; }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
@@ -628,7 +628,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; notificationQueryOwner = undefined; pendingPurchases.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -856,7 +856,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = {}; notificationQueryOwner = undefined; pendingPurchases.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; pendingPurchases.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -1188,7 +1188,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; notificationQueryOwner = undefined; },
+    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;

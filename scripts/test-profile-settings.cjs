@@ -170,7 +170,9 @@ async function run() {
     assert.doesNotMatch(await row('Language & Region').innerText(), /Hindi/);
 
     await row('Appearance & Theme').click();
-    const appearance = dialog('Appearance & Theme');
+    const appearance = page.locator('.zt-page');
+    assert.equal(await page.evaluate(() => S.v), 'themes');
+    assert.equal(await page.getByRole('dialog').count(), 0, 'Appearance opens a page, not a settings modal');
     await appearance.getByRole('status', { name: 'Loading themes', exact: true }).waitFor();
     const themes = await page.evaluate(() => ({ items: [ZThemeOriginal, ZThemeRose], selectedThemeId: ZThemeOriginal.id, premium: { active: false, pricePaise: 19900, currency: 'INR', paymentsAvailable: false, purchaseType: 'lifetime' } }));
     await receive(page, 'data.themes', themes);
@@ -179,7 +181,7 @@ async function run() {
     assert.equal(request.themeId, themes.items[1].id);
     await receive(page, 'themes.selected', { catalog: { ...themes, selectedThemeId: request.themeId }, requestId: request.requestId });
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
-    await close();
+    await page.getByRole('button', { name: 'Back to profile', exact: true }).click();
     await page.locator('.zh-nav').getByRole('button', { name: 'Chats', exact: true }).click();
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light', 'Saved appearance applies across tabs');
     await readyProfile();

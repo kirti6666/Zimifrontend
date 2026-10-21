@@ -73,6 +73,11 @@ async function navigationChecks(page) {
     await back(page);
     await page.locator('#zp-dialog').waitFor({ state: 'detached' });
     assert.equal(await current(page), origin, 'Back closes settings before leaving its page');
+    await page.evaluate(() => ztOpen());
+    assert.equal(await current(page), 'themes', 'Appearance is a full page');
+    assert.equal(await page.getByRole('dialog').count(), 0, 'Appearance does not leave a settings modal open');
+    await back(page);
+    assert.equal(await current(page), origin, 'Native Back returns from Appearance to its caller');
     await navigate(page, 'editprofile');
     await back(page);
     assert.equal(await current(page), origin, 'Edit profile returns to the page that opened it');

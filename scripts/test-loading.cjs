@@ -48,7 +48,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
   try {
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
     assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
-    for (const label of ['Loading live creators', 'Loading video matches', 'Loading creators']) await visible(label);
+    for (const label of ['Loading live creators', 'Loading creators']) await visible(label);
     assert.equal(await page.locator('.zh-tile').count(), 0, 'Initial content has no invented creator cards');
     assert.equal(await page.locator('.zh-empty,.zh-stage-empty').count(), 0, 'Pending is distinct from an empty feed');
     assert.equal(await page.locator('.zh-balance').innerText(), '', 'An unknown balance must not flash a fabricated zero');
@@ -69,11 +69,14 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await receive('data.loaded');
     await visible('Loading creators');
     await result('data.home', feed(), 'home', { page: 1 });
+    await page.getByRole('button', { name: 'Explore', exact: true }).click();
+    await visible('Loading creators');
+    assert.equal((await lastSent('home.reload')).mode, 'popular', 'Explore loads its own discovery query');
+    await result('data.home', feed(), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Music', exact: true }).click();
     await visible('Loading creators');
     assert.equal((await lastSent('home.reload')).category, 'Music');
     await result('data.home', feed([host], { total: 2 }), 'home', { page: 1 });
-    await page.getByRole('button', { name: 'Explore', exact: true }).click();
     await page.getByRole('button', { name: 'Load more creators', exact: true }).click();
     await visible('Loading more creators');
     assert.equal(await page.locator('.zh-tile').count(), 1, 'Pagination retains the current cards');
@@ -92,6 +95,9 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.getByRole('heading', { name: 'A little quiet right now', exact: true }).waitFor();
     await result('data.home', feed(), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Home', exact: true }).click();
+    await visible('Loading creators');
+    assert.equal((await lastSent('home.reload')).mode, 'online', 'Returning Home restores the online-only query');
+    await result('data.home', feed(), 'home', { page: 1 });
     console.log('PASS loading: initial feed, unknown balance, realtime refresh, filters, pagination, failure and retry');
 
     // Search starts immediately on input, ignores responses for older queries and supports clearing.

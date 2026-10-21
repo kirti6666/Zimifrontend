@@ -76,7 +76,8 @@ for it (login, call failed).
 | Submit verification | `POST /me/verification` | `{status}` |
 | Go online, offline, visible or hidden | `PUT /me/presence` `{online, visible}` | – |
 | Show MVPs switch | `PUT /me/settings` | – |
-| Home | `GET /hosts` | `{hosts: Host[]}` |
+| Home | `GET /home?mode=online&page=1` | Adapter returns `HomeData` with active hosts, live stage and pagination |
+| Explore | `GET /home?mode=popular` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
 | Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |

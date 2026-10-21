@@ -87,9 +87,11 @@
 /* Animate only colors, and only during a theme change. Media and layout stay put. */
 :root.zt-transition{transition-property:--canvas,--deep,--surface,--raised,--line,--ink,--muted,--faint,--accent,--accent-ink,--accent-wash,--accent-line,--live,--live-wash,--online,--cta,--cta-ink,--btn,--btn-ink,--theme-danger;transition-duration:260ms;transition-timing-function:ease}
 :root.zt-transition:not([data-theme-interpolation]) :is(body,.app,#top,.zh-header,.nav.zh-nav,.zp-dialog,.zp-identity,.zp-wallet,.zp-group-card,.zp-row,.zp-row-icon,.zp-row-text>small,.zp-stats>div,.zp-bio,.zh-match,.zh-bonus,.zh-tile-caption,.zc-row,.zc-tabs>button){transition:background-color 260ms ease,color 260ms ease,border-color 260ms ease}
-.zp-dialog.zt-dialog{max-width:680px}
-.zt-dialog .zp-dialog-heading{padding-bottom:6px}
-.zt-dialog .zp-dialog-body{padding-top:0}
+.zt-page{max-width:960px;margin:0 auto;padding:12px 18px 32px;font-family:var(--theme-font);color:var(--ink)}
+.zt-page .zt-card,.zt-page .zt-premium{background:var(--surface)}
+.zt-page button{font-family:inherit;cursor:pointer}
+.zt-page button:disabled{cursor:default}
+.zt-header h1{min-width:0;line-height:1.3}
 .zt-intro{padding:12px 0 23px}.zt-eyebrow{font-size:9px;letter-spacing:2px;font-weight:700;color:var(--accent-ink)}.zt-intro p{font-size:21px;font-weight:var(--theme-heading-weight,700);letter-spacing:-.5px;margin:7px 0}.zt-intro small{font-size:12px;color:var(--muted);line-height:1.5}
 .zt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .zt-card{display:flex;flex-direction:column;gap:9px;min-width:0;padding:8px;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--canvas);color:var(--ink);transition:border-color 180ms ease,box-shadow 180ms ease}
@@ -103,6 +105,7 @@
 .zt-card-title{display:flex;align-items:center;gap:5px;padding:2px 2px 0;font-size:13px}.zt-card-title>b{flex:1;overflow-wrap:anywhere}.zt-card-title>span{color:var(--accent-ink)}.zt-card-description{font-size:10px;line-height:1.5;color:var(--muted);padding:0 2px;flex:1}.zt-card-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:5px;padding:5px 2px 2px;font-size:9px;line-height:1.5;color:var(--muted);border-top:1px solid var(--line)}.zt-card-foot>b{font-size:10px;color:var(--accent-ink)}
 .zt-premium{display:grid;grid-template-columns:32px minmax(0,1fr);gap:0 10px;margin-top:23px;padding:17px 14px;border:1px solid var(--line);border-radius:15px;background:var(--canvas);scroll-margin-top:16px}.zt-premium:focus{outline:2px solid var(--accent-ink);outline-offset:3px}.zt-premium-icon{font-size:30px;line-height:36px;color:var(--accent-ink)}.zt-premium h3{font-size:14px;margin:0 0 5px}.zt-premium p{font-size:11px;line-height:1.6;color:var(--muted)}.zt-premium small{display:block;font-size:10px;line-height:1.7;margin-top:5px;color:var(--muted)}.zt-premium>.zp-save{grid-column:1/-1;font-size:12px}.zt-premium>.zt-demo-note{grid-column:1/-1;text-align:center}
 .zt-note{font-size:10px!important;line-height:1.7;color:var(--muted);text-align:center;margin:19px 2px 0!important}.zt-error{padding:13px;border:1px solid var(--theme-danger);border-radius:10px;color:var(--theme-danger);font-size:12px;line-height:1.7;margin:15px 0}.zt-refresh{font-size:12px;text-decoration:underline;color:var(--accent-ink);padding:8px}.zt-status,.zt-payment{font-size:12px;line-height:1.7;color:var(--muted);padding-top:14px}.zt-empty{font-size:13px;color:var(--muted);padding:20px 0;text-align:center}.zt-placeholder{pointer-events:none;gap:12px;padding-bottom:15px}
-@media(min-width:600px){.zt-grid{gap:16px}.zt-card{padding:12px}.zt-preview{min-height:185px;padding:16px}.zt-mini-panel{padding:13px}.zt-card-title{font-size:15px}.zt-card-description{font-size:12px}.zt-card-foot{font-size:10px}.zt-intro p{font-size:25px}.zt-dialog .zp-dialog-body{padding:8px 25px 25px}.zt-premium h3{font-size:16px}.zt-premium p{font-size:12px}}
-@media(max-width:350px){.zt-dialog .zp-dialog-body{padding-left:12px;padding-right:12px}.zt-grid{gap:8px}.zt-card{padding:6px}.zt-preview{padding:8px}.zt-card-title{font-size:12px}.zt-card-foot{font-size:8px}}
+@media(min-width:600px){.zt-page{padding:20px 25px 36px}.zt-grid{gap:16px}.zt-card{padding:12px}.zt-preview{min-height:185px;padding:16px}.zt-mini-panel{padding:13px}.zt-card-title{font-size:15px}.zt-card-description{font-size:12px}.zt-card-foot{font-size:10px}.zt-intro p{font-size:25px}.zt-premium h3{font-size:16px}.zt-premium p{font-size:12px}}
+@media(min-width:1000px){.zt-page .zt-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:350px){.zt-page{padding-left:12px;padding-right:12px}.zt-grid{gap:8px}.zt-card{padding:6px}.zt-preview{padding:8px}.zt-card-title{font-size:12px}.zt-card-foot{font-size:8px}.zt-header h1{font-size:18px}}
 @media(prefers-reduced-motion:reduce){:root.zt-transition,:root.zt-transition *,.zt-card{transition:none!important}}
