@@ -324,6 +324,20 @@ cameras. Validate two physical devices against your configured backend and TURN
 service before release; the existing broadcaster sends one peer connection per
 viewer and is intended for small rooms.
 
+## Profile and settings
+
+The account screen in `web/profile.js` and `web/profile.css` includes a profile
+card, wallet shortcuts, theme gallery shortcut, and searchable settings. Use the
+Account, Preferences, and Support filters to narrow the list. Search and filter
+state survive account refreshes, including keyboard focus and selected text.
+The layout supports phones and desktop, uses the selected theme, and respects
+reduced motion. Identity, balances, counts, and permissions still come from the
+authenticated account.
+
+Run `npm run test:profile-settings` to rebuild and check account actions, saves,
+search, filters, keyboard interactions, and responsive layouts. The tests use a
+simulated native bridge and save preview screenshots under `artifacts/`.
+
 ## Themes and premium appearance
 
 Open **Profile & Settings → Appearance & Theme** to browse the theme gallery.

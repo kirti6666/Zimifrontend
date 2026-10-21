@@ -160,12 +160,12 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     assert.equal(await page.evaluate(() => ZThemes.accountId), '507f1f77bcf86cd799439012');
     assert.equal(await page.evaluate(() => ZThemes.catalog), null, 'Failed loading on another account never restores prior premium access');
     assert.equal(await page.evaluate(() => document.documentElement.dataset.themeId), fixture.items[0].id);
+    await page.evaluate(() => { go('transactions'); S.txf = 'out'; r(); });
     await receive(page, 'data.transactions', { items: [
       { title: 'Lifetime premium themes', time: 'Now', coins: 0, kind: 'topup', displayAmountPaise: -19900 },
       { title: 'Premium themes payment reversed', time: 'Now', coins: 0, kind: 'topup', displayAmountPaise: 19900 },
       { title: 'Coin pack', time: 'Now', coins: 500, kind: 'topup' },
     ] });
-    await page.evaluate(() => { go('transactions'); S.txf = 'out'; r(); });
     assert.match(await page.locator('.acctcard').innerText(), /Lifetime premium themes[\s\S]*−₹199\.00/);
     assert.doesNotMatch(await page.locator('.acctcard').innerText(), /Coin pack|payment reversed/);
     await page.evaluate(() => { S.txf = 'in'; r(); });
