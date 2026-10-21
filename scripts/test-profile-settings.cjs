@@ -53,7 +53,8 @@ async function run() {
     await preview.locator('.zp-page').waitFor();
     for (const width of [373, 390, 630, 1280]) {
       await preview.setViewportSize({ width, height: width === 373 || width === 630 ? 1600 : 900 });
-      assert.equal(await preview.locator('.zh-header').count(), 1);
+      assert.equal(await preview.locator('.zh-header').count(), 0, 'Profile uses its own page heading');
+      assert.equal(await preview.locator('#top').isVisible(), false, 'Profile has no unused Home header strip');
       assert.equal(await preview.locator('.zh-nav button').count(), 5);
       assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Profile does not overflow at ${width}px`);
       assert.equal(await preview.locator('.zp-page .zh-skeleton').count(), 0, 'The demo profile is immediately usable');

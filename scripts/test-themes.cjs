@@ -51,7 +51,11 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
       await preview.evaluate(view => go(view), view);
       assert.equal(await preview.locator('.app').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(16, 27, 45)');
       assert.match(await preview.locator('body').evaluate(el => getComputedStyle(el).fontFamily), /Poppins/);
-      assert.equal(await preview.locator('.zh-header').evaluate(el => getComputedStyle(el).height), '63px');
+      if (view === 'home') assert.equal(await preview.locator('.zh-header').evaluate(el => getComputedStyle(el).height), '63px');
+      else {
+        assert.equal(await preview.locator('.zh-header').count(), 0, `${view} keeps the branded header on Home`);
+        assert.equal(await preview.locator('#top').isVisible(), false, `${view} has no unused header strip`);
+      }
     }
     await preview.screenshot({ path: path.join(os.tmpdir(), 'zimi-themes-ocean-profile.png') });
     console.log('PASS responsive gallery, shared palettes/fonts, real color transitions and stable content/chrome');

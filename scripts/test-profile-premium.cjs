@@ -51,7 +51,9 @@ async function assertLayout(page, label, expectedNavCount = 4) {
   assert.equal(actual.pageOverflow, false, `${label}: no profile overflow`);
   assert.deepEqual(actual.clippedControls, [], `${label}: profile controls remain inside the page`);
   assert.equal(actual.runningAnimations, 0, `${label}: reduced motion suppresses decoration and transitions`);
-  assert.equal(await page.locator('.zh-header').count(), 1);
+  assert.equal(await page.locator('.zh-header').count(), 0, `${label}: profile uses its own heading without the Home header`);
+  assert.equal(await page.locator('#top').isVisible(), false, `${label}: no unused header strip`);
+  assert.equal(await page.getByRole('heading', { name: 'Profile & Settings', exact: true }).count(), 1);
   assert.equal(await page.locator('.zh-nav button').count(), expectedNavCount);
 }
 

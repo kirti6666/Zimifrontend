@@ -31,9 +31,11 @@ keeps it identical to the original Next.js version.
 
 ## Rules that matter
 
-- Keep the shared header and primary tabs the same size across Home, Explore,
-  Chats and Profile. Animate only page content on tab changes and respect
-  reduced-motion preferences.
+- Show the branded Home header only on Home. Explore, Chats, Profile and
+  Settings use their existing page headings and actions. Keep primary tabs
+  the same size across those main screens; Notifications has its own Back
+  header and no bottom tabs. Animate only page content on tab changes and
+  respect reduced-motion preferences.
 - Go Live and creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.

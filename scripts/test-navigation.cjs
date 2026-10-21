@@ -52,8 +52,6 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     const rect = element => { const box = element.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height }; };
     const button = element => ({ label: element.getAttribute('aria-label') || element.textContent.trim(), ...rect(element), icon: element.querySelector('svg') ? rect(element.querySelector('svg')) : null, fontSize: getComputedStyle(element).fontSize });
     return {
-      header: rect(document.querySelector('.zh-header')),
-      headerButtons: [...document.querySelectorAll('.zh-header button')].map(button),
       nav: rect(document.querySelector('.zh-nav')),
       navButtons: [...document.querySelectorAll('.zh-nav button')].map(button)
     };
@@ -61,10 +59,9 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
   const sameGeometry = (actual, expected, label) => {
     for (const key of ['x', 'y', 'width', 'height']) assert.ok(Math.abs(actual[key] - expected[key]) <= 0.75, `${label} ${key} changed: ${expected[key]} -> ${actual[key]}`);
   };
-  const sameChrome = (actual, expected, label) => {
-    sameGeometry(actual.header, expected.header, `${label} header`);
+  const sameNavigation = (actual, expected, label) => {
     sameGeometry(actual.nav, expected.nav, `${label} nav`);
-    for (const group of ['headerButtons', 'navButtons']) {
+    for (const group of ['navButtons']) {
       assert.equal(actual[group].length, expected[group].length, `${label} ${group} count`);
       actual[group].forEach((button, index) => {
         assert.equal(button.label, expected[group][index].label);
@@ -90,10 +87,23 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
           await clickTab(layout, name);
           assert.equal(await current(layout), name.toLowerCase());
           assert.equal(await layout.locator('.zh-nav [aria-current="page"]').innerText(), name);
-          sameChrome(await metrics(layout), baseline, `${account.user.role} ${name} at ${width}px`);
+          sameNavigation(await metrics(layout), baseline, `${account.user.role} ${name} at ${width}px`);
+          assert.equal(await layout.locator('.zh-header').count(), name === 'Home' ? 1 : 0, `${name} only shows the branded header on Home`);
+          assert.equal(await layout.locator('#top').isVisible(), name === 'Home', `${name} does not reserve an unused header strip`);
+          if (name !== 'Home') {
+            assert.equal(await layout.locator('#top').innerHTML(), '');
+            const title = { Explore: 'Explore Zimi', Chats: 'Chats', Profile: 'Profile & Settings' }[name];
+            assert.equal(await layout.locator('#screen').getByRole('heading', { name: title, exact: true }).isVisible(), true, `${name} retains its own page heading`);
+          }
           assert.equal(await layout.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${name} does not overflow at ${width}px`);
           assert.equal((await animations(layout)).length, 0, 'Reduced motion skips screen transitions');
         }
+        await navigate(layout, 'settings');
+        sameNavigation(await metrics(layout), baseline, `${account.user.role} Settings at ${width}px`);
+        assert.equal(await layout.locator('.zh-header').count(), 0);
+        assert.equal(await layout.locator('#top').isVisible(), false);
+        assert.equal(await layout.locator('#top').innerHTML(), '');
+        assert.equal(await layout.getByRole('heading', { name: 'Profile & Settings', exact: true }).isVisible(), true);
       }
     }
     await layout.setViewportSize({ width: 390, height: 900 });
@@ -115,8 +125,8 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     sameGeometry(slot, approvedChrome.navButtons.find(button => button.label === 'Go live'), 'The approval skeleton reserves the host action slot');
     await receive(layout, 'host.access', { approved: true, checking: false, role: 'host', hostStatus: 'approved', verified: true });
     assert.equal(await approvalSkeleton.count(), 0);
-    sameChrome(await metrics(layout), approvedChrome, 'Successful revalidation restores the host action without moving tabs');
-    console.log('PASS navigation: identical header/tab bounds for members and approved hosts at 320/390/630/1280px, reduced motion');
+    sameNavigation(await metrics(layout), approvedChrome, 'Successful revalidation restores the host action without moving tabs');
+    console.log('PASS navigation: Home-only branded header, page-specific headings and identical tab bounds for members/hosts at 320/390/630/1280px, reduced motion');
 
     const motion = await open('no-preference');
     await seed(motion, member);

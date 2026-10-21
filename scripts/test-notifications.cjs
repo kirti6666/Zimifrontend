@@ -85,6 +85,11 @@ async function layout(page, label) {
   assert.equal(actual.pageOverflow, false, `${label}: no notification page overflow`);
   assert.deepEqual(actual.clippedControls, [], `${label}: all notification controls fit the page`);
   assert.equal(actual.animations, 0, `${label}: reduced motion disables animation`);
+  assert.equal(await page.locator('.zh-header').count(), 0, `${label}: the Home header stays off the notification page`);
+  assert.equal(await page.locator('#top').getByRole('heading', { name: 'Notifications', exact: true }).isVisible(), true, `${label}: the notification title remains visible`);
+  assert.equal(await button(page.locator('#top'), 'Back to home').isVisible(), true, `${label}: notifications retains its own Back action`);
+  assert.equal(await page.locator('#nav').isVisible(), false, `${label}: notification details do not show primary footer tabs`);
+  assert.equal(await page.locator('#nav').innerHTML(), '', `${label}: hidden footer has no stale tab controls`);
 }
 
 async function filters(page, initial) {
@@ -361,6 +366,15 @@ async function detailAndSafety(page) {
   assert.equal(await page.evaluate(() => window.__notificationXss), undefined, 'Search queries never become executable markup');
   request = await loadAfter(page, () => button(page.locator('#zn-results'), 'Reset filters').click());
   await result(page, request);
+  await receive(page, 'app.back');
+  assert.equal(await page.evaluate(() => S.v), 'home', 'Back from the notification inbox returns Home');
+  assert.equal(await page.locator('.zh-header').isVisible(), true, 'Home restores its branded header');
+  assert.equal(await page.locator('#nav').isVisible(), true, 'Home restores the primary footer');
+  assert.equal(await page.locator('.zh-nav button').count(), 4);
+  assert.equal((await sent(page, 'app.exit.request')).length, 0, 'Back from notifications does not request an app exit');
+  request = await loadAfter(page, () => page.evaluate(() => homeNotifications()));
+  await result(page, request);
+  await showFilters(page);
   console.log('PASS notifications: full details, native Back/Escape, account preferences and notification/search markup escaping');
 }
 

@@ -352,6 +352,11 @@ simulated native bridge and save preview screenshots under `artifacts/`.
 
 ## Notification center
 
+The branded header with wallet, search, and notification shortcuts appears only
+on Home. Explore, Chats, Profile, and Settings use their own page titles and
+actions while retaining the main bottom tabs. Notifications opens as a detail
+screen with its own Back button and no bottom tabs; Back restores Home navigation.
+
 `web/notifications.js` and `web/notifications.css` provide a compact notification
 list with All/Today/Yesterday/Earlier tabs. The filter button reveals
 search, All/Unread/Read status, personal/announcement audiences, date ranges,

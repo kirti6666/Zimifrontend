@@ -39,7 +39,8 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
     await preview.getByRole('button', { name: 'Chats', exact: true }).click();
     await preview.getByRole('heading', { name: 'Chats', exact: true }).waitFor();
-    assert.equal(await preview.locator('.zh-header').count(), 1, 'Chats shares the branded app header');
+    assert.equal(await preview.locator('.zh-header').count(), 0, 'Chats uses its own heading without the Home header');
+    assert.equal(await preview.locator('#top').isVisible(), false, 'Chats does not reserve an unused header strip');
     assert.equal(await preview.evaluate(() => document.documentElement.dataset.theme), 'dark');
     assert.ok(await preview.locator('button.zc-row').count() > 0, 'Demo conversations are immediately usable');
     assert.equal(await preview.locator('.zh-skeleton').count(), 0, 'Demo fixtures do not wait for an absent server');
@@ -52,7 +53,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
       assert.ok(animations.every(name => name === 'none'), 'Reduced motion removes decorative chat entrance animations');
       await preview.screenshot({ path: path.join(os.tmpdir(), `zimi-chats-preview-${width}.png`) });
     }
-    console.log('PASS chats: screenshot layout at 320/373/630/1280px, shared header/navigation, demo, reduced motion');
+    console.log('PASS chats: screenshot layout at 320/373/630/1280px, own heading and primary navigation, demo, reduced motion');
 
     await preview.evaluate(() => go('thread', 'aanya'));
     await preview.locator('.zc-thread').waitFor();
@@ -137,7 +138,8 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
           tabPadding: tabButtons.map(button => ({ left: parseFloat(getComputedStyle(button).paddingLeft), top: parseFloat(getComputedStyle(button).paddingTop) })),
           tabSeparation: boxes.slice(1).map((box, index) => box.left - boxes[index].right),
           overflow: document.documentElement.scrollWidth > innerWidth,
-          headerHeight: document.querySelector('.zh-header').getBoundingClientRect().height,
+          headingHeight: document.querySelector('.zc-heading').getBoundingClientRect().height,
+          brandedHeaders: document.querySelectorAll('.zh-header').length,
           navHeight: document.querySelector('.zh-nav').getBoundingClientRect().height,
         };
       });
@@ -148,7 +150,8 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
       assert.ok(metrics.tabGap >= 3.9 && metrics.tabSeparation.every(gap => gap >= 3.9), `${label}: filter tabs keep visible spacing`);
       assert.ok(metrics.tabPadding.every(padding => padding.left >= 11.9 && padding.top >= 5.9), `${label}: filter tabs keep their tap padding`);
       assert.equal(metrics.overflow, false, `${label}: inbox fits its viewport`);
-      assert.ok(metrics.headerHeight >= 50 && metrics.navHeight >= 50, `${label}: shared header and navigation remain styled`);
+      assert.equal(metrics.brandedHeaders, 0, `${label}: the Home header stays absent`);
+      assert.ok(metrics.headingHeight > 0 && metrics.navHeight >= 50, `${label}: the Chats heading and navigation remain styled`);
     };
     const themeFixtures = await page.evaluate(() => [ZThemeOriginal, ZThemeRose]);
     for (const selected of themeFixtures) {

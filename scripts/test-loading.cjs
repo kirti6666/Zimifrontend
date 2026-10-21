@@ -138,7 +138,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await visible('Loading notifications');
     await result('data.notifications', { items: [], unreadCount: 0 }, 'notifications');
     await page.getByRole('heading', { name: "You're all caught up", exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Home', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to home', exact: true }).click();
     // Even cached catalog content refreshes on opening its sheet or screen.
     await result('data.catalog', catalog, 'catalog');
     await page.getByRole('button', { name: 'View Mira North profile', exact: true }).first().click();
