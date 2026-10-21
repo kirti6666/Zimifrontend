@@ -37,10 +37,33 @@ EXPO_PUBLIC_API_URL=http://192.168.1.6:5000/api/v1
 ```
 
 Use `http://10.0.2.2:5000/api/v1` for the Android emulator or
-`http://localhost:5000/api/v1` when the app and backend share a host. A physical
-phone cannot reach your computer through `localhost` or `0.0.0.0`. The backend
-must listen on the LAN interface, and your firewall must allow port 5000.
-Restart Expo after changing the address:
+`http://localhost:5000/api/v1` when the app and backend share a host. For a LAN
+connection, the backend must listen on the LAN interface, and your firewall
+must allow port 5000. `0.0.0.0` is a server bind address, not a phone destination.
+
+For a physical Android phone connected by USB, use an ADB reverse tunnel to
+reach the backend without relying on Wi-Fi:
+
+```dotenv
+EXPO_PUBLIC_API_URL=http://127.0.0.1:5000/api/v1
+EXPO_PUBLIC_SOCKET_URL=http://127.0.0.1:5000
+```
+
+Start the backend, connect and authorize the phone for USB debugging, then run
+`npm run android`. Its `preandroid` hook connects the configured loopback API
+and Socket.IO ports with `adb reverse`. It leaves LAN and remote URLs alone.
+If several USB phones are connected, set `ANDROID_SERIAL` to the intended
+phone's serial from `adb devices`.
+
+**Unplugging USB clears the tunnels.** After reconnecting, run
+`npm run android:connect` to restore backend access without rebuilding, then
+tap Retry in the app. This command restores API/socket ports; Expo manages the
+Metro development-server tunnel. If the JavaScript development connection was
+also lost, restore its current port (for example, `adb reverse tcp:8081 tcp:8081`)
+and reload the app, or run `npm run android` again. Without a tunnel, `localhost`
+and `127.0.0.1` on a physical phone refer to the phone itself.
+
+Restart Expo and reload the app after changing an address:
 
 ```bash
 npx expo start -c
