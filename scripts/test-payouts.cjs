@@ -128,6 +128,14 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   assert.equal(await button(conflict,'Review withdrawal').isDisabled(),true);await settleHistory(conflict,[],{pending});assert.equal(await conflict.evaluate(()=>PayoutUI.attempt.idempotencyKey),pending.idempotencyKey);
   console.log('PASS payouts: persisted pending recovery, explicit same-key retry and history reconciliation');
 
+  await receive(conflict,'host.access',{approved:false,role:'sender',hostStatus:'suspended',verified:false});await go(conflict,'payout-history');
+  assert.equal(await conflict.locator('.zpay-form').count(),0,'Revoked hosts cannot create withdrawals');assert.equal(await conflict.locator('#nav').isVisible(),false);
+  await button(conflict,'Retry same withdrawal').click();const revokedRetry=await last(conflict,'payout.request');assert.equal(revokedRetry.idempotencyKey,pending.idempotencyKey,'Revoked hosts can reconcile only the original saved request');
+  await receive(conflict,'payout.requested',{requestId:revokedRetry.requestId,payout:{...record,idempotencyKey:pending.idempotencyKey}});
+  assert.equal(await conflict.getByRole('heading',{name:'Withdrawal requested',exact:true}).count(),1);assert.equal(await button(conflict,'Make another request').count(),0);
+  await button(conflict,'Back to profile').click();assert.equal(await conflict.evaluate(()=>S.v),'profile');await button(conflict,'Withdrawal history').click();assert.equal(await conflict.evaluate(()=>S.v),'payout-history');
+  console.log('PASS payouts: revoked-host read-only history and exact persisted request reconciliation');
+
   await receive(page,'session.none');
   await receive(page,'payout.requested',{requestId:changed.requestId,payout:{...record,payoutAddress:'old-account@upi'}});
   assert.equal(await page.evaluate(()=>PayoutUI.address),'');assert.equal(await page.evaluate(()=>PayoutUI.success),null);

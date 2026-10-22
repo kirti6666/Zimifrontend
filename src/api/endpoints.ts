@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -278,12 +278,19 @@ export const api = {
     if (typeof data.following !== "boolean") throw new ApiError("Your follow preference could not be confirmed. Try again.", 502);
     return { following: data.following };
   },
-  async checkout(packId: string, idempotencyKey: string) { return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey })); },
+  async paymentRoutes() { return paymentRoutesFrom(await request("GET", "/payments/routes")); },
+  async checkout(packId: string, idempotencyKey: string, route?: string) {
+    if (route !== undefined && !validPaymentRoute(route)) throw new ApiError("Choose a valid payment method.", 400);
+    return purchaseFrom(await request("POST", "/coins/purchase", { packId, idempotencyKey, ...(route ? { route } : {}) }));
+  },
   async verifyPurchase(merchantOrderId: string) { return purchaseFrom(await request("POST", "/coins/purchase/verify", { merchantOrderId })); },
   async defaultTheme() { return themeFrom(record(await request("GET", "/themes/default", undefined, { auth: false })).theme); },
   async themes() { return themesFrom(await request("GET", "/themes")); },
   async selectTheme(themeId: string) { return themesFrom(await request("PATCH", "/themes/preference", { themeId })); },
-  async checkoutPremium(idempotencyKey: string) { return purchaseFrom(await request("POST", "/themes/premium/purchase", { idempotencyKey })); },
+  async checkoutPremium(idempotencyKey: string, route?: string) {
+    if (route !== undefined && !validPaymentRoute(route)) throw new ApiError("Choose a valid payment method.", 400);
+    return purchaseFrom(await request("POST", "/themes/premium/purchase", { idempotencyKey, ...(route ? { route } : {}) }));
+  },
   async verifyPremium(merchantOrderId: string) { return purchaseFrom(await request("POST", "/themes/premium/verify", { merchantOrderId })); },
   async payouts(page = 1) {
     if (!Number.isInteger(page) || page < 1 || page > 1000) throw new ApiError("Choose a valid withdrawal history page.", 400);

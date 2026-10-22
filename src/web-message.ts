@@ -31,6 +31,7 @@ const rtcSignal = (data: Record<string, unknown>) => {
 const phoneNumber = (d: Record<string, unknown>) => typeof d.phone === "string" && /^\+[1-9]\d{5,14}$/.test(d.phone) &&
   (d.dialCode === undefined || (typeof d.dialCode === "string" && /^\+[1-9]\d{0,2}$/.test(d.dialCode) && d.phone.startsWith(d.dialCode)));
 const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
+const paymentRoute = (value: unknown) => value === undefined || (typeof value === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(value));
 const voiceClientId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 const notificationIds = (value: unknown) => Array.isArray(value) && value.length > 0 && value.length <= 100 && value.every(identifier) && new Set(value).size === value.length;
 const isoTimestamp = (value: unknown) => typeof value === "string" && value.length <= 40 &&
@@ -81,7 +82,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "catalog.load": case "rtc.config": valid = true; break;
     case "themes.load": valid = Object.keys(d).length === 0; break;
     case "themes.select": valid = typeof d.themeId === "string" && /^[a-f\d]{24}$/i.test(d.themeId) && Object.keys(d).every(key => ["themeId", "requestId"].includes(key)); break;
-    case "themes.premium.checkout": valid = idempotency(d.idempotencyKey) && Object.keys(d).every(key => key === "idempotencyKey"); break;
+    case "themes.premium.checkout": valid = idempotency(d.idempotencyKey) && paymentRoute(d.route) && Object.keys(d).every(key => ["idempotencyKey", "route"].includes(key)); break;
+    case "payments.routes.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
     case "profile.settings.load": valid = true; break;
     case "profile.load": valid = identifier(d.id) && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
     case "profile.posts.load": valid = identifier(d.id) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["id", "page", "requestId"].includes(key)); break;
@@ -101,7 +103,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.message": valid = identifier(d.streamId) && text(d.text, 500); break;
     case "stream.requests.load": case "stream.request": case "stream.react": valid = identifier(d.streamId); break;
     case "stream.request.cancel": case "stream.request.decline": case "stream.request.accept": valid = identifier(d.streamId) && identifier(d.id); break;
-    case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey); break;
+    case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey) && paymentRoute(d.route) && Object.keys(d).every(key => ["packId", "idempotencyKey", "route"].includes(key)); break;
     case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === "" || optionalColor(d.canvas)) && ["ink", "primary", "contrast", "surface", "raised"].every(key => optionalColor(d[key])); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;

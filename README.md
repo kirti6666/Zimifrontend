@@ -304,6 +304,13 @@ when the app becomes active again. The backend's signed webhook and payment
 verification remain authoritative. Configure the provider and confirm a real
 device checkout before using payments live.
 
+Coin packs and lifetime premium use PayPlus's live payment-route catalog. Automatic
+checkout supports the merchant's single-route or rotation configuration; manual
+choices appear only when PayPlus enables `routeChoice`. Only available INR routes
+are offered because catalog prices are in paise. The original selection is retained
+with the pending order, including across app restarts. A retry never switches routes.
+API keys and webhook secrets stay on the backend. See [the payment contract](docs/API.md#payment-methods-and-recovery).
+
 ## Live studio and private calls
 
 The call setup screen (`web/call-setup.js` / `web/call-setup.css`) fills the

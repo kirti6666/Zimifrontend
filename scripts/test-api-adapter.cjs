@@ -490,6 +490,32 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'created', paymentUrl: 'https://checkout.example.test/pay', packId, coins: 100, amountPaise: 9900, payableAmountPaise: 10000, expiresAt: '2026-10-20T12:00:00.000Z', idempotencyKey: 'payment-attempt-1' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
   const checkout = await api.checkout(packId, 'payment-attempt-1');
   assert.equal(checkout.status, 'PENDING'); assert.equal(checkout.packId, packId); assert.equal(checkout.coins, 100); assert.equal(checkout.amountPaise, 9900); assert.equal(checkout.payableAmountPaise, 10000); assert.equal(checkout.idempotencyKey, 'payment-attempt-1'); assert.equal(checkout.expiresAt, '2026-10-20T12:00:00.000Z');
+  const route = { route: 'UPI_INTENT', pageStyle: 'INTENT', upiIntent: true, takingPayments: true, currency: 'INR' };
+  const routes = { mode: 'SINGLE', routeChoice: true, routes: [route, { ...route, route: 'DISABLED', takingPayments: false }, { ...route, route: 'USD_METHOD', currency: 'USD' }] };
+  expect('GET', '/payments/routes', routes);
+  assert.deepEqual(plain(await api.paymentRoutes()), { mode: 'SINGLE', routeChoice: true, routes: [route] }, 'Only enabled INR routes reach the selector');
+  assert.equal(adapters.paymentRoutesFrom({ mode: 'ROTATION', routeChoice: false, routes: [route] }).routeChoice, false, 'Rotation can expose route metadata without offering manual selection');
+  for (const invalid of [{ ...routes, mode: 'random' }, { ...routes, routeChoice: 'true' }, { ...routes, routes: [route, route] }, ...[
+    { route: 'https://evil.test' }, { pageStyle: '<script>' }, { upiIntent: 1 }, { takingPayments: 'true' }, { currency: null },
+  ].map(patch => ({ ...routes, routes: [{ ...route, ...patch }] }))]) assert.throws(() => adapters.paymentRoutesFrom(invalid), /Payment methods/);
+  const routedOrder = { _id: 'routed-purchase', merchantOrderId: 'routed_order', status: 'pending', requestedRoute: 'UPI_INTENT', route: 'UPI_INTENT', pageStyle: 'INTENT', currency: 'INR' };
+  expect('POST', '/coins/purchase', routedOrder, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'routed-attempt-1', route: 'UPI_INTENT' }));
+  const routedCheckout = await api.checkout(packId, 'routed-attempt-1', 'UPI_INTENT');
+  assert.equal(routedCheckout.requestedRoute, 'UPI_INTENT'); assert.equal(routedCheckout.pageStyle, 'INTENT'); assert.equal(routedCheckout.currency, 'INR');
+  expect('POST', '/themes/premium/purchase', { ...routedOrder, kind: 'premium' }, body => assert.deepEqual(plain(body), { idempotencyKey: 'premium-route-1', route: 'UPI_INTENT' }));
+  assert.equal((await api.checkoutPremium('premium-route-1', 'UPI_INTENT')).route, 'UPI_INTENT');
+  expect('POST', '/coins/purchase', { ...routedOrder, requestedRoute: undefined }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'automatic-route-1' }));
+  const automaticCheckout = await api.checkout(packId, 'automatic-route-1');
+  assert.equal(automaticCheckout.requestedRoute, undefined, 'A provider-selected route never becomes a manually requested route'); assert.equal(automaticCheckout.route, 'UPI_INTENT');
+  const requestsBeforeInvalidRoutes = requests.length;
+  assert.equal(adapters.validPaymentRoute('upi-intent_2'), true, 'Provider route tokens need not be uppercase');
+  for (const invalid of ['', 'upi route', '../UPI', 'A'.repeat(101)]) {
+    await assert.rejects(api.checkout(packId, 'valid-attempt-1', invalid), /valid payment method/);
+    await assert.rejects(api.checkoutPremium('valid-attempt-1', invalid), /valid payment method/);
+  }
+  assert.equal(requests.length, requestsBeforeInvalidRoutes, 'Malformed methods never reach checkout HTTP calls');
+  for (const paymentUrl of ['https://user:secret@checkout.example.test/pay', 'https://checkout.example.test\n.evil.test/pay', 'http://checkout.example.test/pay', 'javascript:steal()']) assert.throws(() => adapters.purchaseFrom({ paymentUrl }), /secure payment/);
+  for (const patch of [{ requestedRoute: '../UPI' }, { route: 'UPI<>' }, { pageStyle: 'x'.repeat(101) }, { currency: 'USD' }]) assert.throws(() => adapters.purchaseFrom({ ...routedOrder, ...patch }), /payment method|currency/);
   expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'paid' });
   assert.equal((await api.verifyPurchase('zimi_order')).status, 'SUCCESS');
   assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);

@@ -1,4 +1,5 @@
 .zpay-page{width:100%;max-width:640px;margin:auto;padding:18px 18px 40px;color:var(--ink)}
+.zp-wallet-actions>.zp-withdrawal-history{grid-column:1/-1}
 .zpay-page section,.zpay-form{min-width:0;margin-bottom:18px}
 .zpay-wallet,.zpay-form,.zpay-review,.zpay-success{padding:20px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
 .zpay-balance>span,.zpay-balance>small{display:block;color:var(--muted);font-size:12px;line-height:1.6}
