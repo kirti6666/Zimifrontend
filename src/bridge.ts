@@ -6,10 +6,11 @@ import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnect
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
+import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, type PendingPayout } from "./payout-cache";
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
@@ -85,7 +86,8 @@ export type WebMessage =
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
-  | { type: "payout.request"; data: { coins: number; upi: string } }
+  | { type: "payout.load"; data: { page?: number; requestId: number } }
+  | { type: "payout.request"; data: { amountPaise: number; payoutAddress: string; idempotencyKey: string; requestId: number } }
   | { type: "awards.claim"; data: { task: string } };
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
@@ -166,6 +168,9 @@ export type AppMessage =
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
+  | { type: "payout.loaded"; data: Payouts & { requestId: number; pending?: PendingPayout | null; recovered?: Payout | null } }
+  | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
+  | { type: "payout.error"; data: { action: "payout.load" | "payout.request"; requestId: number; idempotencyKey?: string; message: string; code?: string; status?: number } }
   | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null } }
   | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null } }
   | { type: "chat.photoDownloaded"; data: { to: string; id: string; requestId: number } }
@@ -205,6 +210,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let restoring = false;
   let webReady = false, sessionAvailable = false, runtimeLinkReceived = false;
   let documentRevision = 0;
+  let payoutReadRevision = 0;
   const photoDownloads = new Map<string, Promise<void>>();
   let linkRevision = 0;
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
@@ -514,14 +520,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
     if (accountId && getCachedToken() && !hostAccount?.requiresOnboarding) quietly(loadThemes(), "themes.load");
   });
-  const sendWallet = (work: Promise<Wallet>, action: string) => {
-    const version = epoch;
-    return work.then(wallet => { if (current(version)) emit({ type: "wallet.balance", data: wallet }); }).catch(error => {
-      if (!current(version)) return;
-      operationError(error, action);
-      void refreshWallet().catch(() => {});
-    });
-  };
   const loadLists = async () => {
     const version = epoch;
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
@@ -1168,9 +1166,65 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (callId) quietly(api.endCall(callId, msg.data.reason), msg.type);
         return;
       }
+      case "payout.load": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, revision = ++payoutReadRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === payoutReadRevision;
+        try {
+          await requireApprovedHost();
+          if (!applicable()) return;
+          const owner = accountId;
+          if (!owner) return;
+          const pending = await readPendingPayout(owner);
+          if (!applicable()) return;
+          const result = await api.payouts(msg.data.page);
+          if (!applicable()) return;
+          const recovered = pending ? result.items.find(item => item.idempotencyKey === pending.idempotencyKey) : undefined;
+          if (recovered && pending) await forgetPendingPayout(owner, pending.idempotencyKey).catch(() => {});
+          if (applicable()) emit({ type: "payout.loaded", data: { ...result, requestId: msg.data.requestId, pending: recovered ? null : pending, recovered: recovered ?? null } });
+        } catch (error) {
+          if (applicable()) emit({ type: "payout.error", data: { action: msg.type, requestId: msg.data.requestId, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+        }
+        return;
+      }
       case "payout.request": {
-        await requireApprovedHost();
-        return sendWallet(api.requestPayout(msg.data.coins, msg.data.upi), msg.type);
+        const sessionVersion = getSessionVersion(), document = documentRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
+        const owner = accountId;
+        let previous: PendingPayout | null = null, saved = false;
+        try {
+          await requireApprovedHost();
+          if (!applicable() || !owner || owner !== accountId) return;
+          previous = await readPendingPayout(owner);
+          const attempt = { amountPaise: msg.data.amountPaise, payoutAddress: msg.data.payoutAddress.trim(), idempotencyKey: msg.data.idempotencyKey };
+          if (previous && (previous.idempotencyKey !== attempt.idempotencyKey || previous.amountPaise !== attempt.amountPaise || previous.payoutAddress !== attempt.payoutAddress)) {
+            throw new ApiError("An earlier withdrawal still needs confirmation. Refresh withdrawal history to recover it before making another request.", 409, "PAYOUT_PENDING_RECOVERY");
+          }
+          if (!applicable()) return;
+          // Persist the approved intent before any reservation can leave this device.
+          await rememberPendingPayout(owner, attempt);
+          saved = true;
+          if (!applicable()) {
+            if (!previous) await forgetPendingPayout(owner, attempt.idempotencyKey).catch(() => {});
+            return;
+          }
+          const payout = await api.requestPayout(msg.data.amountPaise, msg.data.payoutAddress, msg.data.idempotencyKey);
+          // Cleanup remains scoped to its original account/key even after sign-out.
+          await forgetPendingPayout(owner, attempt.idempotencyKey).catch(() => {});
+          if (!applicable()) return;
+          // Confirmation belongs to the completed reservation. A failed independent
+          // wallet read must not encourage a second withdrawal with a new key.
+          payoutReadRevision++;
+          emit({ type: "payout.requested", data: { payout, requestId: msg.data.requestId } });
+          quietly(refreshWallet(), "wallet.load");
+        } catch (error) {
+          // A preexisting attempt may already have committed on another run.
+          // Only a first, definitively rejected submission can be discarded.
+          if (owner && saved && !previous && error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.status)) {
+            await forgetPendingPayout(owner, msg.data.idempotencyKey).catch(() => {});
+          }
+          if (applicable()) emit({ type: "payout.error", data: { action: msg.type, requestId: msg.data.requestId, idempotencyKey: msg.data.idempotencyKey, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+        }
+        return;
       }
       case "awards.claim": {
         const approval = await requireApprovedHost();
@@ -1193,8 +1247,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : ""}`;
+      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

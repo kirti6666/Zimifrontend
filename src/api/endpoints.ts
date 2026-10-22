@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -27,7 +27,6 @@ function boundedStrings(value: unknown, label: string, min: number, max: number)
   if (!Array.isArray(value) || value.length < min || value.length > max || value.some(item => typeof item !== "string" || !item.trim() || item.length > 80)) throw new ApiError(`Check your ${label} and try again.`, 400);
   return [...new Set(value.map(item => (item as string).trim()))];
 }
-const unavailable = async <T>(message: string): Promise<T> => { throw new ApiError(message, 501); };
 const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
 
 export const api = {
@@ -286,6 +285,16 @@ export const api = {
   async selectTheme(themeId: string) { return themesFrom(await request("PATCH", "/themes/preference", { themeId })); },
   async checkoutPremium(idempotencyKey: string) { return purchaseFrom(await request("POST", "/themes/premium/purchase", { idempotencyKey })); },
   async verifyPremium(merchantOrderId: string) { return purchaseFrom(await request("POST", "/themes/premium/verify", { merchantOrderId })); },
-  requestPayout: (_coins: number, _upi: string) => unavailable<Wallet>("Withdrawals require the earnings balance in your account currency. This withdrawal screen is not available yet."),
+  async payouts(page = 1) {
+    if (!Number.isInteger(page) || page < 1 || page > 1000) throw new ApiError("Choose a valid withdrawal history page.", 400);
+    return payoutsFrom(await request("GET", `/wallet/withdrawals?page=${page}&limit=20`));
+  },
+  async requestPayout(amountPaise: number, payoutAddress: string, idempotencyKey: string) {
+    if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0 || amountPaise > 100000000 || typeof payoutAddress !== "string" ||
+      payoutAddress.trim().length < 3 || payoutAddress.trim().length > 200 || typeof idempotencyKey !== "string" || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) {
+      throw new ApiError("Check your withdrawal amount and payout address.", 400);
+    }
+    return payoutFrom(await request("POST", "/wallet/withdraw", { amountPaise, payoutAddress: payoutAddress.trim(), idempotencyKey }));
+  },
   async claimAward(task: string): Promise<Wallet> { await request("POST", `/missions/${encodeURIComponent(task)}/claim`); return api.wallet(); },
 };

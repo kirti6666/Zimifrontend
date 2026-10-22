@@ -95,8 +95,18 @@ for it (login, call failed).
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `PUT /follows/:id` `{on}` | – |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
-| Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
+| Request a withdrawal | `POST /wallet/withdraw` `{amountPaise, payoutAddress, idempotencyKey}` | A withdrawal record; reserves INR earnings pending admin review |
+| Withdrawal history | `GET /wallet/withdrawals?page=1&limit=20` | `{items,total,page,limit}` with pending, approved, paid, or rejected records |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
+
+Withdrawal availability and the minimum come from `GET /wallet` as
+`withdrawalsEnabled` and `minimumWithdrawalPaise`. Only admin-approved hosts can
+request withdrawals. Spendable coins are not withdrawable earnings. The WebView
+uses `payout.load` / `payout.request` with request IDs; native returns correlated
+`payout.loaded`, `payout.requested`, or `payout.error`. Retrying an uncertain request
+keeps its original idempotency key. A successful reservation remains confirmed
+even if the independent wallet refresh fails. Actual transfers and payment
+references are recorded by the admin after manual processing.
 
 In a conversation, swipe left on your own message or right on the other person's message,
 or hold either message and choose **Reply**.

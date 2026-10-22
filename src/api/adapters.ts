@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -241,7 +241,29 @@ export function missedFrom(value: unknown, userId: string): { calls: MissedCall[
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);
   if (!Number.isSafeInteger(wallet.coins) || !Number.isSafeInteger(wallet.earningsPaise) || (wallet.coins as number) < 0 || (wallet.earningsPaise as number) < 0) throw new ApiError("Your wallet could not be loaded. Try again.", 502);
-  return { coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number, reservedPaise: finite(wallet.reservedPaise) };
+  return {
+    coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
+    reservedPaise: finite(wallet.reservedPaise),
+    minimumWithdrawalPaise: Number.isSafeInteger(wallet.minimumWithdrawalPaise) && Number(wallet.minimumWithdrawalPaise) > 0 ? Number(wallet.minimumWithdrawalPaise) : undefined,
+    withdrawalsEnabled: wallet.withdrawalsEnabled === true,
+  };
+}
+export function payoutFrom(value: unknown): Payout {
+  const payout = record(value), id = idOf(payout);
+  if (!id || !Number.isSafeInteger(payout.amountPaise) || Number(payout.amountPaise) <= 0 || Number(payout.amountPaise) > 100000000 ||
+    typeof payout.payoutAddress !== "string" || payout.payoutAddress.trim().length < 3 || payout.payoutAddress.length > 200 ||
+    !["pending", "approved", "paid", "rejected"].includes(String(payout.status)) || typeof payout.createdAt !== "string" || !Number.isFinite(Date.parse(payout.createdAt))) {
+    throw new ApiError("Your withdrawal could not be confirmed. Check its status and try again.", 502);
+  }
+  return { id, amountPaise: Number(payout.amountPaise), payoutAddress: payout.payoutAddress, status: payout.status as Payout["status"], createdAt: payout.createdAt,
+    ...(typeof payout.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(payout.idempotencyKey) ? { idempotencyKey: payout.idempotencyKey } : {}),
+    ...(typeof payout.reason === "string" ? { reason: payout.reason } : {}), ...(typeof payout.payoutReference === "string" ? { payoutReference: payout.payoutReference } : {}) };
+}
+export function payoutsFrom(value: unknown): Payouts {
+  const data = record(value);
+  if (!Number.isSafeInteger(data.total) || Number(data.total) < 0 || !Number.isSafeInteger(data.page) || Number(data.page) < 1 ||
+    !Number.isSafeInteger(data.limit) || Number(data.limit) < 1 || Number(data.limit) > 100) throw new ApiError("Your withdrawal history could not be loaded. Try again.", 502);
+  return { items: items(value).map(payoutFrom), total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
 }
 export const coinCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
 /** Coins per minute locked onto a paid call; free calls carry none. */

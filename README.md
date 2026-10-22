@@ -295,8 +295,9 @@ Rebuild/install the native app (`npm run android` or `npm run ios`) to include
 the new microphone permissions. Test calls and broadcasts on two physical
 devices with the deployed API and configured TURN service. Broadcasting uses
 one WebRTC connection per viewer and is intended for small rooms; large
-broadcasts need a dedicated media relay/SFU. Calls currently show **Free**,
-matching the backend; paid minute metering is not implemented.
+broadcasts need a dedicated media relay/SFU. Call confirmation shows the
+server-configured rate. Paid calls use the locked server rate and server-side
+metering; zero-rate calls remain free.
 
 PayPlus checkout opens the provider's HTTPS payment page and checks the payment
 when the app becomes active again. The backend's signed webhook and payment
@@ -330,7 +331,8 @@ Only the preview build contains sample people/activity. The native build waits
 for authenticated server responses. Queue acceptance ends the public stream and
 opens a private call for the host and selected viewer; camera permission failures
 end the call and release media. Call-scoped chat verifies the active participants.
-Calls are free; paid-minute metering and PK battles are not implemented.
+Paid calls are metered by the backend and end when the member runs out of coins.
+PK battles are not implemented.
 
 Native invitations use `zimilive://live/<streamId>` and the device share sheet.
 Rebuild the native app to register this scheme. Invitations wait for sign-in and
@@ -427,8 +429,13 @@ appearance on physical Android/iOS devices before release.
 ## Notes
 
 Authentication, onboarding, discovery, chat, follows, gifts, mission claims,
-wallet reads, calls, and live stream rooms use the native API layer. Withdrawals,
-some legacy account settings, and incoming-call push delivery while the app is
-closed still need their respective integrations. The browser preview remains
-a demo. `docs/API.md` describes the older screen-facing contract; the implemented
-native adapters and sibling backend routes are authoritative.
+wallet reads, withdrawal requests, account settings, calls, and live stream rooms
+use the native API layer. Approved hosts can request withdrawals from their INR
+earnings, subject to the server's minimum and enablement settings. Requests reserve
+earnings and enter admin review; transfers remain manual and are not instant.
+The withdrawal history shows the server's pending, approved, paid, or rejected status.
+
+Native push registration and incoming-call delivery while the app is closed still
+need native/provider integration. The browser preview remains a demo.
+`docs/API.md` includes older screen-facing contracts; the implemented native
+adapters and sibling backend routes are authoritative.

@@ -268,5 +268,25 @@ export interface Wallet {
   coins: number;
   earningsPaise: number;
   reservedPaise?: number;
+  minimumWithdrawalPaise?: number;
+  withdrawalsEnabled?: boolean;
   earned?: number;
+}
+
+export interface Payout {
+  id: string;
+  amountPaise: number;
+  payoutAddress: string;
+  status: "pending" | "approved" | "paid" | "rejected";
+  createdAt: string;
+  reason?: string;
+  payoutReference?: string;
+  idempotencyKey?: string;
+}
+
+export interface Payouts {
+  items: Payout[];
+  total: number;
+  page: number;
+  limit: number;
 }

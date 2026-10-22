@@ -16,6 +16,8 @@ const profileSettings = (appearance = 'dark') => ({ profile: { id: 'alice', name
 const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phone: '+919876543210', code: '123456', role: 'sender', signup: true, requestId } });
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
 const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
+const payoutReceipt = (id = 'payout-1') => ({ id, amountPaise: 50000, payoutAddress: 'creator@upi', status: 'pending', createdAt: '2026-10-22T08:00:00.000Z' });
+const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1', requestId } });
 const plain = value => JSON.parse(JSON.stringify(value));
 
 function harness(initialAppState = 'active', initialLink = null) {
@@ -955,6 +957,106 @@ test('a confirmed gift stays successful when its independent wallet refresh fail
   h.bridge.close();
 });
 
+test('withdrawal messages reject legacy amounts, malformed requests and extra authority fields', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  const invalidWrites = [{ coins: 100, upi: 'creator@upi' }, ...[
+    { amountPaise: 0 }, { amountPaise: 1.5 }, { amountPaise: '50000' }, { amountPaise: 100000001 },
+    { payoutAddress: '  ' }, { payoutAddress: 'ab' }, { payoutAddress: 'x'.repeat(201) },
+    { idempotencyKey: 'short' }, { idempotencyKey: 'invalid/key' }, { idempotencyKey: 'x'.repeat(101) },
+    { requestId: undefined }, { requestId: 0 }, { requestId: 1.5 }, { userId: 'someone-else' }, { coins: 100 },
+  ].map(patch => ({ ...payoutMessage().data, ...patch }))];
+  const invalidReads = [{}, { requestId: 0 }, { requestId: 1.5 }, { requestId: 1, page: 0 }, { requestId: 1, page: 1.5 }, { requestId: 1, userId: 'other' }, { requestId: 1, limit: 100 }];
+  for (const [type, rows] of [['payout.request', invalidWrites], ['payout.load', invalidReads]]) for (const data of rows) {
+    const message = { type, data }; assert.equal(parse(message), null, JSON.stringify(message)); h.bridge.handle(message);
+  }
+  assert.ok(parse(payoutMessage())); assert.ok(parse({ type: 'payout.load', data: { requestId: 2, page: 2 } }));
+  await settle(); assert.equal(h.calls.length, 0, 'Malformed messages never reach account checks or payout APIs'); h.bridge.close();
+});
+
+test('withdrawal history and submission revalidate approval after a previously approved session', async () => {
+  const h = harness(); h.overrides.me = () => approvedAccount();
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, hostStatus: 'suspended' } });
+  const checks = h.count('me');
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 5 } }); h.bridge.handle(payoutMessage(6)); await settle();
+  assert.ok(h.count('me') > checks, 'Cached approval cannot authorize a new withdrawal action');
+  assert.equal(h.count('payouts'), 0); assert.equal(h.count('requestPayout'), 0);
+  assert.deepEqual(h.find('payout.error').map(event => event.data.action).sort(), ['payout.load', 'payout.request']);
+  assert.equal(h.find('payout.requested').length, 0); h.bridge.close();
+});
+
+test('withdrawal history keeps only the newest request and correlates failures', async () => {
+  const h = harness(), old = deferred(), latest = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.payouts = page => page === 1 ? old.promise : latest.promise;
+  h.bridge.handle({ type: 'payout.load', data: { page: 1, requestId: 1 } }); await settle();
+  h.bridge.handle({ type: 'payout.load', data: { page: 2, requestId: 2 } }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'payouts').map(call => call.args)), [[1], [2]]);
+  latest.resolve({ items: [payoutReceipt('latest')], total: 21, page: 2, limit: 20 }); await settle();
+  old.reject(new h.ApiError('Stale history failed', 503)); await settle();
+  assert.equal(h.find('payout.loaded').length, 1); assert.equal(h.find('payout.loaded')[0].data.requestId, 2);
+  assert.equal(h.find('payout.loaded')[0].data.items[0].id, 'latest'); assert.equal(h.find('payout.error').length, 0);
+  h.overrides.payouts = () => { throw new h.ApiError('History unavailable', 503, 'TEMPORARY'); };
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 3 } }); await settle();
+  assert.deepEqual(plain(h.find('payout.error')[0].data), { action: 'payout.load', requestId: 3, message: 'History unavailable', code: 'TEMPORARY', status: 503 }); h.bridge.close();
+});
+
+test('withdrawal submission serializes clicks, preserves retry keys and survives wallet refresh failure', async () => {
+  const h = harness(), pending = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.requestPayout = () => { throw new h.ApiError('Connection lost', 503, 'TEMPORARY'); };
+  h.bridge.handle(payoutMessage(7)); await settle();
+  assert.deepEqual(plain(h.find('payout.error')[0].data), { action: 'payout.request', requestId: 7, idempotencyKey: 'withdrawal-attempt-1', message: 'Connection lost', code: 'TEMPORARY', status: 503 });
+  assert.equal(h.count('wallet'), 0); assert.equal(h.find('payout.requested').length, 0);
+  h.overrides.requestPayout = () => pending.promise;
+  h.overrides.wallet = () => { throw new h.ApiError('Balance unavailable', 503); };
+  const retry = payoutMessage(8); retry.data.payoutAddress = '  creator@upi  ';
+  h.bridge.handle(retry); h.bridge.handle(retry);
+  h.bridge.handle({ type: 'payout.request', data: { ...payoutMessage(9).data, idempotencyKey: 'different-attempt-2' } }); await settle();
+  assert.equal(h.count('requestPayout'), 2, 'One failed attempt plus one retry; duplicate or competing clicks cannot submit again');
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'requestPayout').map(call => call.args)), [[50000, 'creator@upi', 'withdrawal-attempt-1'], [50000, '  creator@upi  ', 'withdrawal-attempt-1']], 'Retries preserve the exact idempotency key; the API adapter normalizes the destination');
+  pending.resolve(payoutReceipt()); await settle();
+  assert.deepEqual(plain(h.find('payout.requested')[0].data), { payout: payoutReceipt(), requestId: 8 });
+  assert.equal(h.find('payout.error').length, 1, 'Wallet failure does not turn a committed withdrawal into a failed request');
+  assert.equal(h.find('wallet.balance').length, 0); assert.equal(h.find('operation.error').at(-1).data.action, 'wallet.load'); h.bridge.close();
+});
+
+test('a committed withdrawal retires history fetched before the balance reservation', async () => {
+  const h = harness(), history = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.payouts = () => history.promise; h.overrides.requestPayout = () => payoutReceipt();
+  h.overrides.wallet = () => ({ coins: 5, earningsPaise: 50000, reservedPaise: 50000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 1 } }); await settle();
+  h.bridge.handle(payoutMessage(2)); await settle();
+  history.resolve({ items: [], total: 0, page: 1, limit: 20 }); await settle();
+  assert.equal(h.find('payout.loaded').length, 0, 'A pre-submission empty history cannot erase the confirmed receipt');
+  assert.equal(h.find('payout.requested').length, 1);
+  assert.deepEqual(plain(h.find('wallet.balance').at(-1).data), { coins: 5, earningsPaise: 50000, reservedPaise: 50000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true }); h.bridge.close();
+});
+
+test('retired withdrawal authorization cannot begin a read or a financial mutation', async () => {
+  for (const retirement of ['document', 'account']) for (const action of ['load', 'request']) {
+    const h = harness(), approval = deferred(); await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approval.promise;
+    h.bridge.handle(action === 'request' ? payoutMessage() : { type: 'payout.load', data: { requestId: 1 } }); await settle();
+    if (retirement === 'document') h.bridge.documentLoading(); else { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('new')); }
+    approval.resolve(approvedAccount()); await settle();
+    assert.equal(h.count('payouts') + h.count('requestPayout'), 0, `${retirement} retires pending payout ${action} authorization`);
+    assert.equal(h.find('payout.error').length, 0); h.bridge.close();
+  }
+});
+
+test('late payout receipts, history and errors never reach a replacement document or account', async () => {
+  for (const retirement of ['document', 'account']) for (const action of ['load', 'request']) for (const outcome of ['success', 'failure']) {
+    const h = harness(), pending = deferred(); await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+    h.overrides[action === 'request' ? 'requestPayout' : 'payouts'] = () => pending.promise;
+    h.bridge.handle(action === 'request' ? payoutMessage() : { type: 'payout.load', data: { requestId: 1 } }); await settle();
+    assert.equal(h.count(action === 'request' ? 'requestPayout' : 'payouts'), 1);
+    if (retirement === 'document') h.bridge.documentLoading(); else { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('new')); }
+    if (outcome === 'failure') pending.reject(new h.ApiError('Retired failure', 503));
+    else pending.resolve(action === 'request' ? payoutReceipt() : { items: [payoutReceipt()], total: 1, page: 1, limit: 20 });
+    await settle();
+    assert.equal(h.find('payout.requested').length + h.find('payout.loaded').length + h.find('payout.error').length, 0, `${retirement} hides stale ${action} ${outcome}`);
+    assert.equal(h.count('wallet'), 0, 'An old receipt cannot refresh the next identity wallet'); h.bridge.close();
+  }
+});
+
 test('gift retries share one request while distinct attempts retain their own acknowledgments', async () => {
   const h = harness(), first = deferred(), second = deferred();
   h.overrides.sendGift = to => to === 'first-host' ? first.promise : second.promise;
@@ -1258,9 +1360,10 @@ test('unapproved native host actions cannot reach stream, online presence, call 
     h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming' } });
     h.bridge.handle({ type: 'media.post.create', data: { photo: 'data:image/png;base64,AAAA', caption: 'Blocked post', requestId: 2 } });
     h.bridge.handle({ type: 'awards.claim', data: { task: 'mission-id' } });
-    h.bridge.handle({ type: 'payout.request', data: { coins: 100, upi: 'member@upi' } });
+    h.bridge.handle(payoutMessage());
+    h.bridge.handle({ type: 'payout.load', data: { requestId: 2 } });
     await settle();
-    for (const name of ['startStream', 'setPresence', 'acceptCall', 'createPost', 'claimAward', 'requestPayout']) assert.equal(h.count(name), 0, `${denied.user.hostStatus || 'member'} cannot invoke ${name}`);
+    for (const name of ['startStream', 'setPresence', 'acceptCall', 'createPost', 'claimAward', 'requestPayout', 'payouts']) assert.equal(h.count(name), 0, `${denied.user.hostStatus || 'member'} cannot invoke ${name}`);
     assert.ok(h.find('host.access').every(event => event.data.approved === false));
     assert.equal(h.find('stream.opened').length, 0); assert.equal(h.find('post.saved').length, 0); assert.equal(h.find('call.connected').length, 0);
     h.bridge.handle({ type: 'presence.set', data: { online: false, visible: false } });

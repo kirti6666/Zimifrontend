@@ -347,6 +347,28 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('GET', '/wallet', { coins: 200, earningsPaise: 12345, reservedPaise: 2000 });
   const wallet = await api.wallet(); assert.equal(wallet.earningsPaise, 12345); assert.equal(wallet.earned, undefined);
   assert.throws(() => adapters.walletFrom({ coins: '200', earningsPaise: 0 }), /wallet/);
+  assert.equal(wallet.minimumWithdrawalPaise, undefined, 'An older wallet response does not invent a withdrawal minimum');
+  assert.equal(wallet.withdrawalsEnabled, false, 'Missing payout capability cannot enable withdrawals');
+  expect('GET', '/wallet', { coins: 200, earningsPaise: 123450, reservedPaise: 2000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
+  assert.deepEqual(plain(await api.wallet()), { coins: 200, earningsPaise: 123450, reservedPaise: 2000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
+  const invalidPayoutConfig = adapters.walletFrom({ coins: 0, earningsPaise: 100, minimumWithdrawalPaise: 1.5, withdrawalsEnabled: 'true' });
+  assert.equal(invalidPayoutConfig.minimumWithdrawalPaise, undefined); assert.equal(invalidPayoutConfig.withdrawalsEnabled, false);
+  const payoutDto = { _id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: '2026-10-22T08:00:00.000Z', reason: 'Reviewed', payoutReference: 'bank-reference', userId: 'private-owner' };
+  const payoutReceipt = { id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: payoutDto.createdAt, reason: 'Reviewed', payoutReference: 'bank-reference' };
+  expect('GET', '/wallet/withdrawals?page=2&limit=20', { items: [payoutDto], total: 21, page: 2, limit: 20 });
+  assert.deepEqual(plain(await api.payouts(2)), { items: [payoutReceipt], total: 21, page: 2, limit: 20 }, 'History maps the actual payout receipt without leaking server metadata');
+  expect('GET', '/wallet/withdrawals?page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
+  assert.equal((await api.payouts()).page, 1);
+  const payoutBody = { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1' };
+  expect('POST', '/wallet/withdraw', payoutDto, body => assert.deepEqual(plain(body), payoutBody));
+  assert.deepEqual(plain(await api.requestPayout(50000, '  creator@upi  ', payoutBody.idempotencyKey)), payoutReceipt, 'Submission trims the destination and returns its receipt independently from wallet refresh');
+  for (const patch of [{ amountPaise: '50000' }, { amountPaise: 1.5 }, { amountPaise: -1 }, { amountPaise: 100000001 }, { _id: '' }, { status: 'complete' }, { payoutAddress: '' }, { createdAt: 'not-a-date' }]) {
+    expect('POST', '/wallet/withdraw', { ...payoutDto, ...patch });
+    await assert.rejects(api.requestPayout(50000, 'creator@upi', payoutBody.idempotencyKey), /withdrawal/i, 'Malformed payout confirmation stays unconfirmed');
+  }
+  expect('GET', '/wallet/withdrawals?page=1&limit=20', { items: [{ ...payoutDto, status: 'unknown' }], total: 1, page: 1, limit: 20 });
+  await assert.rejects(api.payouts(), /withdrawal/i, 'History also validates returned payout records');
+  finished();
   expect('POST', '/calls', { _id: 'call-id' }, body => assert.deepEqual(plain(body), { calleeId: 'host-id', kind: 'audio' }));
   assert.equal((await api.startCall('host-id', true)).callId, 'call-id');
   expect('POST', '/calls/call-id/end', {}); await api.declineCall('call-id');
@@ -604,5 +626,5 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.connected = true; socket.emitServer('connect');
   assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: false } }], 'A session opened in background never starts a welcome schedule');
   backgroundStop();
-  console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, streams, and Socket.IO.');
+  console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, withdrawal configuration/history/receipts, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

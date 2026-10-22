@@ -137,7 +137,11 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;
     case "call.accept": case "call.decline": case "verify.accept": case "verify.end": valid = identifier(d.callId); break;
     case "call.end": valid = (d.callId === undefined || identifier(d.callId)) && optionalText(d.reason, 300); break;
-    case "payout.request": valid = amount(d.coins) && text(d.upi, 100); break;
+    case "payout.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
+      (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 1000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
+    case "payout.request": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Number.isSafeInteger(d.amountPaise) && Number(d.amountPaise) > 0 && Number(d.amountPaise) <= 100000000 &&
+      typeof d.payoutAddress === "string" && d.payoutAddress.trim().length >= 3 && d.payoutAddress.length <= 200 && idempotency(d.idempotencyKey) &&
+      Object.keys(d).every(key => ["amountPaise", "payoutAddress", "idempotencyKey", "requestId"].includes(key)); break;
     case "awards.claim": valid = identifier(d.task); break;
   }
   return valid ? message as WebMessage : null;
