@@ -3052,7 +3052,7 @@ button.gpill[onclick]{cursor:pointer}
 .zi-icon:is([data-icon=eye],[data-icon=eyeoff]){--zi-tap:zi-blink;--zi-time:360ms}
 .zi-icon:is([data-icon=home],[data-icon=house],[data-icon=user],[data-icon=people],[data-icon=chat],[data-icon=wal],[data-icon=wallet],[data-icon=cup],[data-icon=robot],[data-icon=crown],[data-icon=doc],[data-icon=mail],[data-icon=help],[data-icon=badge]){--zi-tap:zi-bounce;--zi-origin:50% 100%;--zi-time:560ms}
 .zi-icon:is([data-icon=bolt],[data-icon=sparkle],[data-icon=pulse],[data-icon=verified]){--zi-tap:zi-flash;--zi-time:520ms}
-.zi-icon:is([data-icon=vid],[data-icon=camera],[data-icon=mic],[data-icon=micoff],[data-icon=camoff],[data-icon=broadcast],[data-icon=vol],[data-icon=pow]){--zi-tap:zi-glow;--zi-time:520ms}
+.zi-icon:is([data-icon=vid],[data-icon=camera],[data-icon=mic],[data-icon=micoff],[data-icon=camoff],[data-icon=broadcast],[data-icon=vol],[data-icon=volOff],[data-icon=pow]){--zi-tap:zi-glow;--zi-time:520ms}
 .zi-icon[data-icon=gift]{--zi-tap:zi-wiggle;--zi-origin:50% 90%;--zi-time:620ms}
 .zi-icon[data-icon=location]{--zi-tap:zi-drop;--zi-origin:50% 100%;--zi-time:520ms}
 .zi-icon[data-icon=copy]{--zi-tap:zi-copy;--zi-time:380ms}
@@ -3537,6 +3537,59 @@ button.gpill[onclick]{cursor:pointer}
 .zpay-history{list-style:none;padding:0;margin:0}.zpay-history li{padding:16px;margin-bottom:10px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}.zpay-history-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.zpay-history-heading strong{font-size:17px}.zpay-status{padding:5px 8px;border-radius:8px;background:var(--raised);color:var(--accent-ink);font-size:11px;font-weight:600;line-height:1.4}.zpay-history p{margin:8px 0 3px}.zpay-history time{font-size:11px;color:var(--muted)}.zpay-review-note{border-top:1px solid var(--line);padding-top:8px}
 .zpay-empty{text-align:center;padding:26px 14px;border:1px dashed var(--line);border-radius:16px}.zpay-empty>svg{color:var(--accent-ink);margin-bottom:9px}.zpay-empty h3{font-size:14px;margin:0 0 6px}.zpay-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}.zpay-pagination button{min-height:44px;padding:8px 12px;border-radius:10px;background:var(--raised);color:var(--ink)}
 @media(max-width:359px){.zpay-page{padding:14px 12px 30px}.zpay-wallet,.zpay-form,.zpay-review,.zpay-success{padding:16px}.zpay-balance>strong{font-size:28px}}
+.zpm-choice{display:flex;flex-direction:column;gap:9px;min-width:0;width:100%;padding:15px;margin:14px 0;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);text-align:left}
+.zpm-choice label,.zpm-choice>span{font-size:12px;font-weight:650}.zpm-choice select{width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--raised);color:var(--ink);font:inherit;font-size:13px}.zpm-choice>strong{font-size:13px;overflow-wrap:anywhere}.zpm-choice>small,.zpm-choice p{font-size:11px;line-height:1.6;color:var(--muted);margin:0;overflow-wrap:anywhere}.zpm-choice>button{align-self:flex-start;min-height:44px;padding:7px 0;background:transparent;color:var(--accent-ink);font-size:12px;font-weight:600}.zpm-choice :is(select,button):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}.zpm-loading{display:flex;flex-direction:column;gap:9px;padding:4px 0}.zt-premium>.zpm-choice{grid-column:1/-1;flex-basis:100%;margin:0}.zt-premium .zpm-choice>small{color:var(--muted)}
+/* Sponsored cards follow the selected theme's tokens, like every other surface. */
+.za-card{position:relative;display:flex;flex-direction:column;min-width:0;border-radius:17px;background:var(--surface);color:var(--ink);overflow:hidden;font-size:calc(13px * var(--theme-font-scale,1))}
+.za-head{display:flex;align-items:center;gap:10px;padding:12px 12px 10px}
+.za-logo{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:9px;object-fit:cover;background:var(--raised)}
+.za-initial{background:var(--accent);color:var(--cta-ink);font-size:13px;font-weight:700}
+.za-who{display:flex;flex-direction:column;min-width:0;flex:1}
+.za-who b{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:1em;font-weight:650;line-height:1.35}
+.za-who small{font-size:.8em;color:var(--muted);line-height:1.35}
+/* Compact chips with 44px touch targets. */
+.za-info{position:relative;display:inline-flex;align-items:center;gap:4px;flex:none;padding:4px 9px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:10px;font-weight:650;letter-spacing:.4px;line-height:1.4}
+.za-info::after,.za-control::after{content:"";position:absolute;inset:50% auto auto 50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.za-stage{position:relative}
+.za-media{position:relative;display:block;aspect-ratio:16/9;background:var(--raised);overflow:hidden;cursor:pointer}
+.za-image,.za-video,.za-video-holder{display:block;width:100%;height:100%;object-fit:cover}
+.za-media.za-failed::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,var(--raised),var(--surface))}
+.za-controls{position:absolute;right:10px;bottom:10px;display:flex;gap:8px}
+.za-control{position:relative;display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:rgba(0,0,0,.55);color:#fff}
+.za-copy{display:flex;flex-direction:column;gap:4px;padding:12px 12px 0}
+.za-copy h3{display:-webkit-box;margin:0;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--ink);font-size:calc(15px * var(--theme-font-scale,1));line-height:1.4;font-weight:650;letter-spacing:-.2px;overflow-wrap:anywhere}
+.za-copy p{display:-webkit-box;margin:0;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.55;overflow-wrap:anywhere}
+.za-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px}
+.za-foot>span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--muted);font-size:.85em}
+.za-cta{flex:none;min-height:44px;max-width:60%;padding:10px 16px;border:0;border-radius:11px;background:var(--accent);color:var(--cta-ink);font:inherit;font-size:calc(12.5px * var(--theme-font-scale,1));font-weight:650;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.za-cta:disabled{opacity:.7}
+.za-cta[aria-busy="true"]{opacity:1}
+:is(.za-cta,.za-info,.za-control):focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+
+/* Above conversations, the same ad as one compact row. */
+.za-banner{display:flex;align-items:center;gap:10px;min-width:0;margin:0 0 10px;padding:9px 6px 9px 9px;border-radius:14px;background:var(--surface);color:var(--ink)}
+.za-thumb{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:10px;background:var(--raised);color:var(--ink);overflow:hidden;cursor:pointer}
+.za-thumb img{width:100%;height:100%;object-fit:cover}
+.za-banner-copy{display:flex;flex-direction:column;flex:1;min-width:0;cursor:pointer}
+.za-banner-copy b{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:calc(13px * var(--theme-font-scale,1));font-weight:650;line-height:1.4}
+.za-banner-copy small{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--muted);font-size:calc(11px * var(--theme-font-scale,1));line-height:1.4}
+.za-banner .za-cta{min-height:40px;max-width:38%;padding:8px 12px;border-radius:10px;font-size:calc(11.5px * var(--theme-font-scale,1))}
+.za-info-icon{width:32px;height:32px;padding:0;justify-content:center;border:0}
+
+/* Placements. */
+.zh-home.zh-dashboard>.za-card{margin-top:22px}
+.zh-explore>.za-card{margin:10px 0 4px}
+.zh-summary .za-card{width:100%;margin-top:22px;text-align:left}
+
+/* About this ad. The global reset removes the auto margin that centers a modal dialog. */
+.za-about{margin:auto}
+.za-about-body{display:flex;flex-direction:column;align-items:flex-start;padding:22px 24px 24px}
+.za-about-icon{display:grid;place-items:center;width:46px;height:46px;margin-bottom:16px;border-radius:50%;background:var(--raised);color:var(--accent-ink)}
+.za-about-body h2{margin:0 0 6px;font-size:1.35em;font-weight:650}
+.za-about-body p{margin:6px 0;color:var(--muted);line-height:1.7}
+.za-about-body p b{color:var(--ink);font-weight:600}
+.za-about-premium{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;margin-top:18px;border:0;border-radius:12px;background:var(--accent);color:var(--cta-ink);font:inherit;font-weight:650}
+.za-about-close{width:100%;min-height:44px;margin-top:8px;border:0;border-radius:12px;background:transparent;color:var(--muted);font:inherit}
 </style>
 </head>
 <body>
@@ -6725,6 +6778,7 @@ function go(v,id){
  if(v==='search')S.sq='';
  if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';S.editName=me.n;S.editCity=me.c;S.editAbout=me.about}
  window.ZimiThemes?.beforeNavigate(v);
+ window.ZimiAds?.beforeNavigate(v);
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
@@ -8446,7 +8500,7 @@ function homeTile(h){return `<article class="zh-tile"><div class="zh-tile-media"
 function homeBonus(){if(!isApprovedHost())return '';if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
 function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A little quiet right now</h3><p>${Home.filter==='instant'?'No creators are available for a call right now. Try again shortly.':'Try another category or come back for the next live session.'}</p><button class="zh-soft" onclick="homeLoad()">Refresh ${hi('refresh',14)}</button></div>`}
 
-function homeScreen(explore=false){if(!explore)return homeDashboard();const list=homeList(),pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home')),error=!pending&&!more&&homeContentError();return `<div class="zh-home ${explore?'zh-explore':''}">${explore?'<div class="zh-explore-heading"><span>FIND YOUR PEOPLE</span><h1>Explore Zimi</h1><p>A new voice. A fresh perspective. Your kind of live.</p></div>':homeStage()}${homeFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button onclick="homeLoad()">Retry</button></div>`:''}${!explore?homeFeatured()+homeMatch():''}<section class="zh-trending"><div class="zh-section-title"><h2>${explore?'Live & available creators':'Trending Live & Calls'}</h2>${!explore?'<button onclick="go(\'explore\')">See all <span>&rsaquo;</span></button>':pending?skeletonLine('74px',10):error?'':`<span>${n(Home.total)} creators</span>`}</div>${pending?contentSkeleton('cards','Loading creators',4):error?'':list.length?`<div class="zh-grid">${(explore?list:list.slice(0,4)).map(homeTile).join('')}</div>`:more?'':homeEmpty()}${more?contentSkeleton('cards','Loading more creators',2):''}${explore&&!pending&&!more&&!error&&Home.total>list.length?'<button class="zh-load-more" onclick="homeLoad(true)">Load more creators</button>':''}</section>${!explore?homeBonus():''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample creators and activity</p>':''}</div>${homeGiftSheet()}`}
+function homeScreen(explore=false){if(!explore)return homeDashboard();const list=homeList(),pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home')),error=!pending&&!more&&homeContentError();return `<div class="zh-home ${explore?'zh-explore':''}">${explore?'<div class="zh-explore-heading"><span>FIND YOUR PEOPLE</span><h1>Explore Zimi</h1><p>A new voice. A fresh perspective. Your kind of live.</p></div>':homeStage()}${homeFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button onclick="homeLoad()">Retry</button></div>`:''}${!explore?homeFeatured()+homeMatch():''}${explore&&!pending&&!error?window.ZimiAds?.card('explore')||'':''}<section class="zh-trending"><div class="zh-section-title"><h2>${explore?'Live & available creators':'Trending Live & Calls'}</h2>${!explore?'<button onclick="go(\'explore\')">See all <span>&rsaquo;</span></button>':pending?skeletonLine('74px',10):error?'':`<span>${n(Home.total)} creators</span>`}</div>${pending?contentSkeleton('cards','Loading creators',4):error?'':list.length?`<div class="zh-grid">${(explore?list:list.slice(0,4)).map(homeTile).join('')}</div>`:more?'':homeEmpty()}${more?contentSkeleton('cards','Loading more creators',2):''}${explore&&!pending&&!more&&!error&&Home.total>list.length?'<button class="zh-load-more" onclick="homeLoad(true)">Load more creators</button>':''}</section>${!explore?homeBonus():''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample creators and activity</p>':''}</div>${homeGiftSheet()}`}
 
 function homeOpen(id){if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
 function homeCall(id){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');go('precall',id)}
@@ -8545,7 +8599,7 @@ function homeCallView(host){if(window.zrCall)return zrCall(host);const p=host?S.
 function homeCallSetup(){return `<section class="zh-broadcast"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1><p>Go online so members can call you. Camera and microphone permission is requested when you accept a call.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy?'disabled':''}>${Home.presenceBusy?'Connecting…':'Go online for calls'}</button><button class="zh-soft zh-full" onclick="go('broadcast')">${hi('broadcast',20)} Start a public live instead</button></section>`}
 function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.presenceBusy)return;Home.presenceBusy=true;Native.send('presence.set',{online,visible:true});r()}
 function homeWaiting(){return `<section class="zh-broadcast"><span class="zh-eyebrow">OPEN TO CONNECTIONS</span><h1>You’re online.</h1><p>Members can discover you and start a call while you’re available.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="go('home')">Explore Zimi</button><button class="zh-soft zh-full" onclick="homeSetPresence(false)" ${Home.presenceBusy?'disabled':''}>Go offline</button><p class="zh-coins-note">Keep the app connected to receive incoming calls.</p></section>`}
-function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button></section>`}
+function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
 let homeSearchTimer;
 function homeSearchInput(value){S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
 
@@ -8719,7 +8773,7 @@ function homeDashboard(){
   const featured=all.find(h=>h.id===Home.featured?.id)||hosts.live[0]||all[0],remaining=featured?all.filter(h=>h.id!==featured.id):[];
   const hero=pending?homeDashboardHeroSkeleton():!error&&featured?homeDashboardCard(featured,true):'';
   const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div class="zh-grid">${remaining.map(h=>homeDashboardCard(h)).join('')}</div>`:!featured?homeDashboardEmpty():'';
-  return `<div class="zh-home zh-dashboard"><h1 class="zh-home-title">Live and online hosts</h1>${homeDashboardStories(hosts,pending,error,more)}${homeDashboardFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}<section class="zh-discover" aria-label="Live and online hosts"><div class="zh-section-title"><h2>Trending Live &amp; Calls</h2><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts</p>':''}</div>${homeGiftSheet()}`;
+  return `<div class="zh-home zh-dashboard"><h1 class="zh-home-title">Live and online hosts</h1>${homeDashboardStories(hosts,pending,error,more)}${homeDashboardFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}${!pending&&!error?window.ZimiAds?.card('home')||'':''}<section class="zh-discover" aria-label="Live and online hosts"><div class="zh-section-title"><h2>Trending Live &amp; Calls</h2><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts</p>':''}</div>${homeGiftSheet()}`;
 }
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
@@ -8731,7 +8785,7 @@ function coinPendingPayment(){return !!Home.checkout&&!['SUCCESS','FAILED','REVE
 function coinPrice(paise){return '₹'+(Number(paise||0)/100).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function coinRefresh(){if(DEMO)return;contentStart('wallet');coinPaint();Native.send('wallet.load')}
 function coinSelectPack(id){if(Home.checkoutBusy||coinHasPendingPayment()||Home.checkoutAttempt)return;Home.packId=id;CoinUI.paymentError='';coinPaint()}
-function coinReviewPayment(order){if(Home.checkoutBusy||CoinUI.verifyBusy)return;const payment=CoinUI.orders.get(order);if(!payment||payment.status!=='PENDING')return;Home.checkout=payment;Home.checkoutAttempt=payment.packId&&payment.idempotencyKey?{packId:payment.packId,idempotencyKey:payment.idempotencyKey}:null;CoinUI.packSnapshot=payment.coins!=null?{id:payment.packId,coins:payment.coins,pricePaise:payment.amountPaise??payment.payableAmountPaise??0,name:'Pending coin pack'}:null;CoinUI.paymentError='';coinPaint()}
+function coinReviewPayment(order){if(Home.checkoutBusy||CoinUI.verifyBusy)return;const payment=CoinUI.orders.get(order);if(!payment||payment.status!=='PENDING')return;Home.checkout=payment;Home.checkoutAttempt=payment.packId&&payment.idempotencyKey?{packId:payment.packId,idempotencyKey:payment.idempotencyKey,...paymentRestoredRoute(payment,Home.checkoutAttempt)}:null;CoinUI.packSnapshot=payment.coins!=null?{id:payment.packId,coins:payment.coins,pricePaise:payment.amountPaise??payment.payableAmountPaise??0,name:'Pending coin pack'}:null;CoinUI.paymentError='';coinPaint()}
 function coinOtherPayments(){const other=Array.from(CoinUI.orders.values()).filter(p=>p.status==='PENDING'&&p.merchantOrderId!==Home.checkout?.merchantOrderId);return other.length?`<div class="zw-recovery"><p>${other.length} other payment${other.length===1?' is':'s are'} awaiting confirmation.</p>${other.map(p=>`<button class="zh-soft" onclick="coinReviewPayment('${domId(p.merchantOrderId)}')" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>Review pending payment${p.coins?' &middot; '+n(p.coins)+' coins':''}</button>`).join('')}</div>`:''}
 function coinPaymentView(){
  const p=Home.checkout;if(!p)return '';
@@ -8741,7 +8795,7 @@ function coinPaymentView(){
 }
 function homeCoins(embedded=false){
  const selected=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs'),pending=coinHasPendingPayment();
- return `<section class="zw-coins ${embedded?'zw-embedded':''}" aria-label="Zimi Coins"><div class="zw-wallet"><div class="zw-wallet-top"><span>ZIMI COINS</span><button class="zw-icon-button" aria-label="Refresh balance" onclick="coinRefresh()" ${!DEMO&&contentPending('wallet')?'disabled':''}>${hi('refresh',18)}</button></div><div class="zw-wallet-main"><div><span>Available balance</span><h2>${contentBalance()}</h2><p>For gifts and one-on-one calls</p></div>${coinIcon(76)}</div>${!embedded?`<button class="zw-history" onclick="go('transactions')">${hi('clock',15)} Transaction history ${hi('chev',16)}</button>`:''}</div>${!DEMO&&ContentLoading.wallet.error?`<div class="zw-error" role="alert">Balance unavailable. Refresh to try again.</div>`:''}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>Add coins</h2><p>Choose the amount that feels right.</p></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>`<button class="${selected?.id===x.id?'selected':''}" aria-pressed="${selected?.id===x.id}" onclick="coinSelectPack('${domId(x.id)}')" ${Home.checkoutBusy||pending||Home.checkoutAttempt?'disabled':''}>${coinIcon(34)}<strong>${n(x.coins)} <small>coins</small></strong><span>${esc(x.name||'Coin pack')}</span><b>${coinPrice(x.pricePaise)}</b><i aria-hidden="true">${selected?.id===x.id?'✓':''}</i></button>`).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}${!surface&&selected&&!pending?`<button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${hi('lock',17)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button>`:''}<p class="zw-note">${hi('lock',14)} ${DEMO?'Design preview · sample coins only':'Coins are added only after payment is confirmed.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}</section>`;
+ return `<section class="zw-coins ${embedded?'zw-embedded':''}" aria-label="Zimi Coins"><div class="zw-wallet"><div class="zw-wallet-top"><span>ZIMI COINS</span><button class="zw-icon-button" aria-label="Refresh balance" onclick="coinRefresh()" ${!DEMO&&contentPending('wallet')?'disabled':''}>${hi('refresh',18)}</button></div><div class="zw-wallet-main"><div><span>Available balance</span><h2>${contentBalance()}</h2><p>For gifts and one-on-one calls</p></div>${coinIcon(76)}</div>${!embedded?`<button class="zw-history" onclick="go('transactions')">${hi('clock',15)} Transaction history ${hi('chev',16)}</button>`:''}</div>${!DEMO&&ContentLoading.wallet.error?`<div class="zw-error" role="alert">Balance unavailable. Refresh to try again.</div>`:''}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>Add coins</h2><p>Choose the amount that feels right.</p></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>`<button class="${selected?.id===x.id?'selected':''}" aria-pressed="${selected?.id===x.id}" onclick="coinSelectPack('${domId(x.id)}')" ${Home.checkoutBusy||pending||Home.checkoutAttempt?'disabled':''}>${coinIcon(34)}<strong>${n(x.coins)} <small>coins</small></strong><span>${esc(x.name||'Coin pack')}</span><b>${coinPrice(x.pricePaise)}</b><i aria-hidden="true">${selected?.id===x.id?'✓':''}</i></button>`).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${!surface&&selected?paymentRouteView('coins'):''}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}${!surface&&selected&&!pending?`<button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${hi('lock',17)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button>`:''}<p class="zw-note">${hi('lock',14)} ${DEMO?'Design preview · sample coins only':'Coins are added only after payment is confirmed.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}</section>`;
 }
 function homeCheckout(resume=false){
  if(Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
@@ -8750,7 +8804,7 @@ function homeCheckout(resume=false){
  const pack=Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0];
  if(!Home.checkoutAttempt&&!pack)return;
  if(DEMO){S.bal+=pack.coins;coinPaint();appNotice('Preview coins added');return}
- if(!Home.checkoutAttempt){Home.checkoutAttempt={packId:pack.id,idempotencyKey:crypto.randomUUID()};CoinUI.packSnapshot={...pack};Home.checkout=null}
+ if(!Home.checkoutAttempt){Home.checkoutAttempt={packId:pack.id,idempotencyKey:crypto.randomUUID(),...paymentRoutePayload('coins')};CoinUI.packSnapshot={...pack};Home.checkout=null}
  Home.checkoutBusy=true;CoinUI.paymentError='';Native.send('wallet.checkout',{...Home.checkoutAttempt});coinPaint();
 }
 function homeVerifyPayment(){if(!Home.checkout?.merchantOrderId||CoinUI.verifyBusy||Home.checkoutBusy||window.ZimiOffline?.isOffline())return;CoinUI.verifyBusy=true;CoinUI.paymentError='';Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId});coinPaint()}
@@ -8766,7 +8820,7 @@ function coinAcceptPayment(d,checkout=false){
  if(!checkout&&!Home.checkout&&Home.checkoutAttempt&&d.idempotencyKey!==Home.checkoutAttempt.idempotencyKey)return;
  Home.checkoutBusy=false;CoinUI.verifyBusy=false;CoinUI.paymentError='';Home.checkout={...Home.checkout,...d};
  if(['SUCCESS','FAILED','REVERTED'].includes(d.status))Home.checkoutAttempt=null;
- else if(d.idempotencyKey&&d.packId){Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey};if(d.coins!=null)CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??0,name:'Pending coin pack'}}
+ else if(d.idempotencyKey&&d.packId){Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey,...paymentRestoredRoute(d,Home.checkoutAttempt)};if(d.coins!=null)CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??0,name:'Pending coin pack'}}
  coinPaint();
 }
 function homeGifts(id){
@@ -8818,11 +8872,11 @@ Native.on('wallet.checkout',d=>coinAcceptPayment(d,true));
 Native.on('wallet.purchase',d=>coinAcceptPayment(d));
 Native.on('operation.error',d=>{
  if(d.action==='gift.send'&&coinGiftMatches(d)){Home.giftBusy=false;CoinUI.giftError=d.message||'Delivery could not be confirmed. Retry this gift.';if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){Home.giftAttempt=null;if(d.code==='INSUFFICIENT_COINS')coinRefresh()}coinPaint()}
- if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;if(d.code==='PAYIN_PROVISIONING_FAILED'||([400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint()}
+ if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint();if(routeRejected)paymentRoutesLoad()}
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });
 document.addEventListener('aurora:navigate',()=>{if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
-document.addEventListener('keydown',e=>{if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
+document.addEventListener('keydown',e=>{if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
 window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{Object.assign(CoinUI,{giftId:'',topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{const sheet=document.querySelector('.zw-sheet');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
 
 /* Real media stays in the WebView. The authenticated native bridge carries
@@ -9702,7 +9756,7 @@ function zcPaintContacts(){const list=document.getElementById('zc-contacts');if(
 function zcComposeView(){if(!Chats.composeOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog zc-compose" role="dialog" aria-modal="true" aria-label="New conversation"><div class="zc-dialog-heading"><h2>New conversation</h2><button onclick="zcCloseDialogs()" aria-label="Close new conversation">×</button></div><label class="zc-compose-search">${hi('srch',19)}<input id="zc-contact-query" placeholder="Find a creator or contact" aria-label="Search contacts" value="${esc(Chats.composeQuery)}" oninput="Chats.composeQuery=this.value;zcPaintContacts()"></label><div id="zc-contacts">${zcContactList()}</div><button class="zh-soft zh-full" onclick="zcCloseDialogs();go('search')">Find more creators ${hi('explore',17)}</button></section></div>`}
 function zcCloseDialogs(){Chats.composeOpen=false;Chats.filtersOpen=false;r();document.querySelector('.zc-compose-button')?.focus({preventScroll:true})}
 function zcCloseOverlay(event){if(event.target===event.currentTarget)zcCloseDialogs()}
-function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search chats" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<div class="zc-layout"><div class="zc-discovery">${zcAvailableView()}</div><section class="zc-conversations" aria-label="Conversations">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}<div id="zc-list" class="zc-list">${zcList()}</div></section></div>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations</p>':''}</div>${zcFilters()}${zcComposeView()}`}
+function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search chats" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<div class="zc-layout"><div class="zc-discovery">${zcAvailableView()}</div><section class="zc-conversations" aria-label="Conversations">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}${window.ZimiAds?.banner('chats')||''}<div id="zc-list" class="zc-list">${zcList()}</div></section></div>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations</p>':''}</div>${zcFilters()}${zcComposeView()}`}
 window.ZimiHome.views.chats=zcScreen;
 const chatsAfterRender=window.ZimiHome.afterRender;
 window.ZimiHome.afterRender=()=>{chatsAfterRender();const dialog=document.querySelector('.zc-dialog');if(dialog&&!dialog.contains(document.activeElement))(dialog.querySelector('input[type="text"],input:not([type]),button'))?.focus({preventScroll:true})};
@@ -10520,7 +10574,7 @@ window.addEventListener('zimi:host-access',()=>{if(!isApprovedHost()&&ZProfile.d
 if(DEMO){ZProfile.data={profile:{id:'demo-elena-rostova',name:'Elena Rostova',bio:'Acoustic singer & late night chats 🎸✨ Love connecting with creators worldwide!',city:'Los Angeles, CA',languages:['English','Spanish'],maskedPhone:'+91 •••••• 0010',isPhoneVerified:true},stats:{fans:12400,following:458,giftsSent:24,giftsReceived:149},standing:{level:7,crown:true},preferences:{pushNotifications:true,matchCategory:'Music',appearance:'dark'},privacy:{discoverable:true,showActivity:true,allowRequests:true},categories:['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],capabilities:{pushNotifications:false,nativePushRegistered:false,liveAlerts:false,interfaceLanguages:['en'],currency:'INR'}};ZProfile.wallet={earningsPaise:184250,reservedPaise:0};ZProfile.requested=true;Object.assign(me,{n:'Elena Rostova',c:'Los Angeles, CA',about:ZProfile.data.profile.bio});S.editName=me.n;S.editCity=me.c;S.editAbout=me.about;S.avatarData=OB_MEDIA[0]}
 
 /* Themes are server-owned. Only acknowledged selections are applied in the app. */
-const ZThemes={catalog:null,loading:false,error:'',saving:'',requestId:0,checkout:null,checkoutBusy:false,attempt:'',accountId:'',signature:'',transitionTimer:null,refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''};
+const ZThemes={catalog:null,loading:false,error:'',saving:'',requestId:0,checkout:null,checkoutBusy:false,attempt:'',requestedRoute:undefined,accountId:'',signature:'',transitionTimer:null,refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''};
 const ZThemeFonts={system:'Inter, system-ui, sans-serif',rounded:'"Poppins", system-ui, sans-serif',serif:'Georgia, "Times New Roman", serif',mono:'ui-monospace, "SFMono-Regular", Consolas, monospace'};
 const ZThemeOriginal={id:'000000000000000000000001',name:'Zimi Original',description:'Our signature rose, beautifully balanced.',mode:'dark',active:true,isPremium:false,isDefault:true,colors:{background:'#210f1d',surface:'#321e2c',surfaceElevated:'#3c2635',text:'#fce8f2',textMuted:'#c5a9bc',primary:'#c9086a',primaryContrast:'#ffffff',secondary:'#ff9ccc',border:'#654356',success:'#45d5a0',danger:'#ffb2b9'},typography:{fontFamily:'system',fontScale:1,fontWeight:'400',headingWeight:'700'}};
 const ZThemeRose={...ZThemeOriginal,id:'000000000000000000000002',name:'Soft Rose',description:'A fresh, airy take on your everyday.',mode:'light',isDefault:false,colors:{background:'#fff5fa',surface:'#ffffff',surfaceElevated:'#f4dfeb',text:'#321525',textMuted:'#79556a',primary:'#b50a65',primaryContrast:'#ffffff',secondary:'#a63f75',border:'#d6b5c9',success:'#147a53',danger:'#b52b46'}};
@@ -10594,7 +10648,7 @@ function ztCard(theme){
 function ztContent(){
   const catalog=ZThemes.catalog,p=catalog?.premium,items=(catalog?.items||[]).filter(x=>x.active!==false&&ztSafe(x)),payment=ZThemes.checkout;
   const status=payment?.status==='SUCCESS'?'Payment confirmed. Your premium access is being refreshed.':payment?.status==='FAILED'?'Payment was not completed. You can try again.':payment?.status==='REVERTED'?'This payment was reversed. Choose a free theme or purchase premium again.':'Complete checkout, then check your payment status.';
-  return `<div class="zt-intro"><span class="zt-eyebrow">MAKE IT YOURS</span><p>Find your everyday favorite.</p><small>Curated colors and text styles, across your app.</small></div>${ZThemes.loading?ztSkeleton():ZThemes.error&&!catalog?`<div class="zt-error" role="alert">${esc(ZThemes.error)}<button class="zp-secondary" onclick="ztLoad()">Retry loading themes</button></div>`:items.length?`<div class="zt-grid" aria-label="Available themes">${items.map(ztCard).join('')}</div>`:'<div class="zt-empty">No themes are available right now.<button class="zp-secondary" onclick="ztLoad()">Refresh themes</button></div>'}${ZThemes.error&&catalog?`<p class="zt-error" role="alert">${esc(ZThemes.error)}</p><button class="zt-refresh" onclick="ztLoad()">Refresh themes</button>`:''}${ZThemes.saving?'<p class="zt-status" role="status">Saving your theme…</p>':''}${!ZThemes.loading&&p?`<section class="zt-premium" id="zt-premium" tabindex="-1"><div class="zt-premium-icon" aria-hidden="true">◇</div><div><h3>${p.active?'Your premium collection':'A little extra personality'}</h3><p>${p.active?'All premium themes are yours to use.':'Unlock every premium theme and its text style with one purchase.'}</p><small>${p.active?'Premium active · One-time purchase':`One-time payment · No subscription${Number.isSafeInteger(p.pricePaise)?' · '+esc(zpMoney(p.pricePaise)):''}`}</small></div>${!p.active?`<button type="button" class="zp-save" onclick="ztCheckout()" ${ZThemes.checkoutBusy||ZThemes.loading||(!DEMO&&!p.paymentsAvailable)||payment?.status==='SUCCESS'?'disabled':''}>${ZThemes.checkoutBusy?'Opening secure checkout…':DEMO?'Try premium in preview':payment?.status==='PENDING'?'Continue checkout':p.paymentsAvailable?'Unlock premium · '+esc(zpMoney(p.pricePaise)):'Premium checkout unavailable'}</button>`:''}${DEMO?'<small class="zt-demo-note">Design preview only. No payment is taken.</small>':''}</section>`:''}${payment?`<div class="zt-payment" role="status"><p>${esc(status)}</p>${payment.status==='PENDING'?`<button type="button" class="zp-secondary" onclick="ztVerify()" ${ZThemes.checkoutBusy?'disabled':''}>${ZThemes.checkoutBusy?'Checking payment…':'Check payment status'}</button>`:''}</div>`:''}<p class="zt-note">The original theme is always free. Theme changes keep your place and respect reduced motion.</p>`;
+  return `<div class="zt-intro"><span class="zt-eyebrow">MAKE IT YOURS</span><p>Find your everyday favorite.</p><small>Curated colors and text styles, across your app.</small></div>${ZThemes.loading?ztSkeleton():ZThemes.error&&!catalog?`<div class="zt-error" role="alert">${esc(ZThemes.error)}<button class="zp-secondary" onclick="ztLoad()">Retry loading themes</button></div>`:items.length?`<div class="zt-grid" aria-label="Available themes">${items.map(ztCard).join('')}</div>`:'<div class="zt-empty">No themes are available right now.<button class="zp-secondary" onclick="ztLoad()">Refresh themes</button></div>'}${ZThemes.error&&catalog?`<p class="zt-error" role="alert">${esc(ZThemes.error)}</p><button class="zt-refresh" onclick="ztLoad()">Refresh themes</button>`:''}${ZThemes.saving?'<p class="zt-status" role="status">Saving your theme…</p>':''}${!ZThemes.loading&&p?`<section class="zt-premium" id="zt-premium" tabindex="-1"><div class="zt-premium-icon" aria-hidden="true">◇</div><div><h3>${p.active?'Your premium collection':'A little extra personality'}</h3><p>${p.active?'All premium themes are yours, and Zimi is ad-free.':'Unlock every premium theme and its text style, and go ad-free, with one purchase.'}</p><small>${p.active?'Premium active · One-time purchase':`One-time payment · No subscription${Number.isSafeInteger(p.pricePaise)?' · '+esc(zpMoney(p.pricePaise)):''}`}</small></div>${!p.active?paymentRouteView('premium'):''}${!p.active?`<button type="button" class="zp-save" onclick="ztCheckout()" ${ZThemes.checkoutBusy||ZThemes.loading||(!DEMO&&!p.paymentsAvailable)||payment?.status==='SUCCESS'?'disabled':''}>${ZThemes.checkoutBusy?'Opening secure checkout…':DEMO?'Try premium in preview':payment?.status==='PENDING'?'Continue checkout':p.paymentsAvailable?'Unlock premium · '+esc(zpMoney(p.pricePaise)):'Premium checkout unavailable'}</button>`:''}${DEMO?'<small class="zt-demo-note">Design preview only. No payment is taken.</small>':''}</section>`:''}${payment?`<div class="zt-payment" role="status"><p>${esc(status)}</p>${payment.status==='PENDING'?`<button type="button" class="zp-secondary" onclick="ztVerify()" ${ZThemes.checkoutBusy?'disabled':''}>${ZThemes.checkoutBusy?'Checking payment…':'Check payment status'}</button>`:''}</div>`:''}<p class="zt-note">The original theme is always free. Theme changes keep your place and respect reduced motion.</p>`;
 }
 function ztSelect(id){
   if(ZThemes.saving||ZThemes.loading)return;const theme=ZThemes.catalog?.items.find(x=>x.id===id);if(!ztSafe(theme)||theme.active===false)return;
@@ -10603,21 +10657,21 @@ function ztSelect(id){
   if(DEMO){ztAccept({...ZThemes.catalog,selectedThemeId:id});ZThemes.saving='';ztPaint();document.getElementById('zt-theme-'+id)?.focus({preventScroll:true});return}
   Native.send('themes.select',{themeId:id,requestId});
 }
-function ztAccept(catalog){if(!catalog||!Array.isArray(catalog.items))return;ZThemes.catalog={...catalog,items:catalog.items.filter(ztSafe)};ZThemes.loading=false;ZThemes.error='';if(catalog.premium?.active||ZThemes.checkout?.status==='SUCCESS'){ZThemes.checkout=null;ZThemes.attempt='';ZThemes.checkoutBusy=false}ztApply(true);ztPaint()}
+function ztAccept(catalog){if(!catalog||!Array.isArray(catalog.items))return;ZThemes.catalog={...catalog,items:catalog.items.filter(ztSafe)};ZThemes.loading=false;ZThemes.error='';if(catalog.premium?.active||ZThemes.checkout?.status==='SUCCESS'){ZThemes.checkout=null;ZThemes.attempt='';ZThemes.requestedRoute=undefined;ZThemes.checkoutBusy=false}ztApply(true);ztPaint()}
 function ztCheckout(){
   const p=ZThemes.catalog?.premium;if(!p||p.active||ZThemes.checkoutBusy||ZThemes.loading||ZThemes.checkout?.status==='SUCCESS')return;
   if(DEMO){ZThemes.catalog.premium.active=true;ztPaint();appNotice('Premium preview unlocked. No payment was taken.');return}
-  if(!p.paymentsAvailable)return;ZThemes.checkoutBusy=true;ZThemes.error='';if(!ZThemes.attempt)ZThemes.attempt=crypto.randomUUID();ztPaint();Native.send('themes.premium.checkout',{idempotencyKey:ZThemes.attempt});
+  if(!p.paymentsAvailable)return;ZThemes.checkoutBusy=true;ZThemes.error='';if(!ZThemes.attempt){ZThemes.attempt=crypto.randomUUID();ZThemes.requestedRoute=paymentRoutePayload('premium').route}ztPaint();Native.send('themes.premium.checkout',{idempotencyKey:ZThemes.attempt,...(ZThemes.requestedRoute?{route:ZThemes.requestedRoute}:{})});
 }
 function ztVerify(){if(ZThemes.checkoutBusy||!ZThemes.checkout?.merchantOrderId)return;ZThemes.checkoutBusy=true;ZThemes.error='';ztPaint();Native.send('themes.premium.verify',{merchantOrderId:ZThemes.checkout.merchantOrderId})}
-function ztPayment(data){ZThemes.checkoutBusy=false;ZThemes.checkout=data;if(['SUCCESS','FAILED','REVERTED'].includes(data.status))ZThemes.attempt='';ztPaint()}
-function ztClear(){clearTimeout(ZThemes.transitionTimer);document.documentElement.classList.remove('zt-transition');ZThemes.signature='';ZThemes.requestId++;Object.assign(ZThemes,{catalog:null,loading:false,error:'',saving:'',checkout:null,checkoutBusy:false,attempt:'',accountId:'',refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''})}
+function ztPayment(data){if(ZThemes.attempt&&data.idempotencyKey&&ZThemes.attempt!==data.idempotencyKey&&ZThemes.checkout?.merchantOrderId!==data.merchantOrderId)return;const previous={idempotencyKey:ZThemes.attempt,route:ZThemes.requestedRoute};ZThemes.checkoutBusy=false;ZThemes.checkout=data;if(['SUCCESS','FAILED','REVERTED'].includes(data.status)){ZThemes.attempt='';ZThemes.requestedRoute=undefined}else if(data.idempotencyKey){ZThemes.attempt=data.idempotencyKey;ZThemes.requestedRoute=paymentRestoredRoute(data,previous).route}ztPaint()}
+function ztClear(){clearTimeout(ZThemes.transitionTimer);document.documentElement.classList.remove('zt-transition');ZThemes.signature='';ZThemes.requestId++;Object.assign(ZThemes,{catalog:null,loading:false,error:'',saving:'',checkout:null,checkoutBusy:false,attempt:'',requestedRoute:undefined,accountId:'',refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''})}
 function ztReset(){ZThemes.boot=null;ztClear();ztApply()}
 function ztAccount(id){if(ZThemes.accountId!==(id||'')){ztClear();ZThemes.accountId=id||'';ztApply()}}
 Native.on('data.themes',ztAccept);
 Native.on('theme.default',theme=>{if(!ztSafe(theme))return;ZThemes.default=theme;ztApply(true);ztPaint()});
 Native.on('themes.selected',data=>{if(data.requestId!==ZThemes.requestId)return;const id=ZThemes.saving;ZThemes.saving='';ztAccept(data.catalog);document.getElementById('zt-theme-'+id)?.focus({preventScroll:true});appNotice('Theme applied.')});
-Native.on('themes.error',data=>{if(data.requestId!=null&&data.requestId!==ZThemes.requestId)return;ZThemes.error=data.message||'Your theme could not be updated. Please try again.';if(data.action==='themes.select'){ZThemes.saving='';appNotice(ZThemes.error)}if(data.action==='themes.load')ZThemes.loading=false;if(data.action==='themes.premium.checkout'||data.action==='themes.premium.verify')ZThemes.checkoutBusy=false;if(data.action==='themes.premium.checkout'&&data.code==='PAYIN_PROVISIONING_FAILED'){ZThemes.attempt='';ZThemes.checkout=null;ZThemes.error='Checkout could not start. Please try again.'}ztPaint()});
+Native.on('themes.error',data=>{if(data.requestId!=null&&data.requestId!==ZThemes.requestId)return;ZThemes.error=data.message||'Your theme could not be updated. Please try again.';if(data.action==='themes.select'){ZThemes.saving='';appNotice(ZThemes.error)}if(data.action==='themes.load')ZThemes.loading=false;if(data.action==='themes.premium.checkout'||data.action==='themes.premium.verify')ZThemes.checkoutBusy=false;const routeRejected=data.action==='themes.premium.checkout'&&['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(data.code);if(data.action==='themes.premium.checkout'&&(data.code==='PAYIN_PROVISIONING_FAILED'||routeRejected)){ZThemes.attempt='';ZThemes.requestedRoute=undefined;ZThemes.checkout=null;if(!routeRejected)ZThemes.error='Checkout could not start. Please try again.'}ztPaint();if(routeRejected)paymentRoutesLoad()});
 Native.on('data.loading',data=>{if(data.resource!=='themes')return;ZThemes.loading=!!data.loading;ZThemes.error=data.error||'';ztPaint()});
 Native.on('themes.premium.checkout',ztPayment);Native.on('themes.premium.purchase',ztPayment);
 Native.on('session.none',ztReset);Native.on('session.expired',ztReset);
@@ -11430,6 +11484,222 @@ window.ZimiHome.header=()=>S.v==='payout-history'?`<header class="zh-subheader">
 window.ZimiHome.nav=()=>{if(S.v==='payout-history'){document.getElementById('nav').style.display='none';return true}return payoutPreviousNav()};
 window.ZimiHome.views.payout=payoutScreen;window.ZimiHome.views['payout-history']=payoutScreen;vPayout=payoutScreen;withdraw=payoutReview;
 window.ZimiPayouts={reset:payoutReset};
+
+/* Optional payment choices never block Automatic checkout. Requested routes
+   belong to an attempt; provider-selected routes are only receipt metadata. */
+const PaymentRoutes={accountId:'',sequence:0,requestId:0,requested:false,loading:false,error:'',mode:'ROTATION',routeChoice:false,routes:[],choices:{coins:'',premium:''}};
+function paymentRouteSafe(route){return typeof route==='string'&&/^[A-Za-z0-9_-]{1,100}$/.test(route)}
+function paymentRouteLabel(route){return route?route.replace(/[_-]+/g,' ').split(' ').map(word=>['upi','qr','inr'].includes(word.toLowerCase())?word.toUpperCase():word.charAt(0).toUpperCase()+word.slice(1).toLowerCase()).join(' '):'Automatic (recommended)'}
+function paymentRoutePaint(){if(S.v==='themes')ztPaint();else if(S.v==='coins'||Home.giftTo&&CoinUI.topup)coinPaint()}
+function paymentRouteOwner(){return !!S.loggedIn&&!!PaymentRoutes.accountId&&PaymentRoutes.accountId===S.user?.id}
+function paymentRoutesLoad(){if(DEMO||PaymentRoutes.loading||!paymentRouteOwner())return;const p=PaymentRoutes;p.requested=true;p.loading=true;p.error='';p.routeChoice=false;p.routes=[];p.choices={coins:'',premium:''};p.requestId=++p.sequence;paymentRoutePaint();Native.send('payments.routes.load',{requestId:p.requestId})}
+function paymentRouteEnsure(){if(DEMO||PaymentRoutes.requested||!paymentRouteOwner())return;PaymentRoutes.requested=true;const owner=PaymentRoutes.accountId;queueMicrotask(()=>{if(PaymentRoutes.accountId===owner)paymentRoutesLoad()})}
+function paymentRouteAttempt(kind){return kind==='coins'?Home.checkoutAttempt:ZThemes.attempt?{idempotencyKey:ZThemes.attempt,route:ZThemes.requestedRoute}:null}
+function paymentRouteLocked(kind){return kind==='coins'?!!Home.checkoutAttempt||Home.checkoutBusy||CoinUI.verifyBusy||coinHasPendingPayment():!!ZThemes.attempt||ZThemes.checkoutBusy||ZThemes.checkout?.status==='PENDING'}
+function paymentRouteSelect(kind,route){if(!['coins','premium'].includes(kind)||paymentRouteLocked(kind))return;if(route&&(!PaymentRoutes.routeChoice||!PaymentRoutes.routes.some(item=>item.route===route)))return;PaymentRoutes.choices[kind]=route;paymentRoutePaint()}
+function paymentRoutePayload(kind){const route=PaymentRoutes.choices[kind];return !PaymentRoutes.loading&&!PaymentRoutes.error&&PaymentRoutes.routeChoice&&PaymentRoutes.routes.some(item=>item.route===route)?{route}:{}}
+function paymentRestoredRoute(payment,previous){if(Object.hasOwn(payment,'requestedRoute'))return paymentRouteSafe(payment.requestedRoute)?{route:payment.requestedRoute}:{};return previous?.idempotencyKey===payment.idempotencyKey&&paymentRouteSafe(previous.route)?{route:previous.route}:{}}
+function paymentRouteView(kind){
+ if(DEMO)return '';paymentRouteEnsure();const p=PaymentRoutes,locked=paymentRouteLocked(kind),attempt=paymentRouteAttempt(kind),selected=locked?(attempt?.route||''):(p.choices[kind]||'');
+ if(locked)return `<section class="zpm-choice zpm-locked" aria-label="Payment method"><span>Payment method</span><strong>${esc(paymentRouteLabel(paymentRouteSafe(selected)?selected:''))}</strong><small>Kept for this checkout and any retry.</small></section>`;
+ return `<section class="zpm-choice" aria-label="Payment method"><label for="zpm-${kind}">Payment method</label><select id="zpm-${kind}" onchange="paymentRouteSelect('${kind}',this.value)"><option value="">Automatic (recommended)</option>${p.routeChoice?p.routes.map(item=>`<option value="${esc(item.route)}" ${selected===item.route?'selected':''}>${esc(paymentRouteLabel(item.route))}</option>`).join(''):''}</select>${p.loading?`<div class="zpm-loading" role="status" aria-label="Loading payment options" aria-busy="true">${skeletonLine('82%',12)}${skeletonLine('59%',12)}</div>`:p.error?'<p class="zpm-error" role="alert">Payment options could not be loaded. Automatic is still available.</p><button type="button" onclick="paymentRoutesLoad()">Retry payment options</button>':'<small>Automatic chooses an available payment method for you.</small>'}</section>`;
+}
+function paymentRoutesReset(){const sequence=PaymentRoutes.sequence+1;Object.assign(PaymentRoutes,{accountId:'',sequence,requestId:0,requested:false,loading:false,error:'',mode:'ROTATION',routeChoice:false,routes:[],choices:{coins:'',premium:''}})}
+Native.on('payments.routes',data=>{const p=PaymentRoutes;if(!paymentRouteOwner()||!p.loading||data.requestId!==p.requestId)return;p.loading=false;p.error='';p.mode=data.mode==='SINGLE'?'SINGLE':'ROTATION';p.routeChoice=data.routeChoice===true;const seen=new Set();p.routes=p.routeChoice&&Array.isArray(data.routes)?data.routes.filter(item=>{if(!item||!paymentRouteSafe(item.route)||item.takingPayments!==true||item.currency!=='INR'||seen.has(item.route))return false;seen.add(item.route);return true}):[];for(const kind of ['coins','premium'])if(!p.routes.some(item=>item.route===p.choices[kind]))p.choices[kind]='';paymentRoutePaint()});
+Native.on('operation.error',data=>{if(data.action!=='payments.routes.load'||!paymentRouteOwner()||!PaymentRoutes.loading||data.requestId!==PaymentRoutes.requestId)return;PaymentRoutes.loading=false;PaymentRoutes.error=data.message||'Payment options unavailable';PaymentRoutes.routeChoice=false;PaymentRoutes.routes=[];PaymentRoutes.choices={coins:'',premium:''};paymentRoutePaint()});
+for(const event of ['session.none','session.expired'])Native.on(event,paymentRoutesReset);
+for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(id!==PaymentRoutes.accountId){paymentRoutesReset();PaymentRoutes.accountId=id}});
+
+/* Sponsored cards for members on the free plan; premium members never see them.
+   The server decides which campaigns this member may see (data.ads). Here we
+   rotate them per screen visit, report a view once a card has been at least
+   half on screen for a second (two for video), and send taps through the app,
+   which counts the click before it opens the link. Sample ads exist only in DEMO. */
+const ZAds={items:[],adFree:false,picks:{},turn:{},retired:new Set(),counted:new Set(),visible:new Set(),timers:new Map(),videos:new Map(),paused:new Set(),opening:'',observer:null};
+const zaReduced=matchMedia('(prefers-reduced-motion: reduce)');
+Object.assign(homeIcons,{
+  volOff:'<path d="M5 10h3l4-3.5v11L8 14H5z" stroke-linejoin="round"/><path d="m16 9.5 5 5m0-5-5 5" stroke-linecap="round"/>',
+  pause:'<path d="M8 5v14M16 5v14"/>',
+  playFill:'<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
+  crown:'<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z"/>'
+});
+function zaSafe(ad){return !!ad&&/^[a-f\d]{24}$/i.test(ad.id||'')&&['banner','video'].includes(ad.format)&&/^https:\/\/[^\s"'<>\\]+$/.test(ad.mediaUrl||'')&&Array.isArray(ad.placements)&&[ad.headline,ad.advertiser,ad.ctaLabel].every(value=>typeof value==='string'&&value.trim())}
+/* Premium removes ads the moment it is confirmed, before the next ad list arrives. */
+function zaAdFree(){return ZAds.adFree||ZThemes.catalog?.premium?.active===true}
+function zaPick(placement){
+  if(zaAdFree())return null;
+  const fits=ad=>ad.placements.includes(placement),pinned=ZAds.picks[placement];
+  // Keep the card chosen for this visit through redraws, even if it just reached its cap.
+  const current=pinned&&ZAds.items.find(ad=>ad.id===pinned&&fits(ad));
+  if(current)return current;
+  const pool=ZAds.items.filter(ad=>fits(ad)&&!ZAds.retired.has(ad.id));
+  if(!pool.length)return null;
+  const turn=ZAds.turn[placement]=(ZAds.turn[placement]??-1)+1,ad=pool[turn%pool.length];
+  ZAds.picks[placement]=ad.id;return ad;
+}
+function zaLogo(ad){const src=imageSrc(ad.logoUrl);return src?`<img class="za-logo" src="${src}" alt="" loading="lazy" decoding="async">`:`<span class="za-logo za-initial" aria-hidden="true">${esc((ad.advertiser.trim()[0]||'A').toUpperCase())}</span>`}
+/* Moving video always has a visible pause control; sound starts off. */
+function zaControls(ad){
+  const video=ZAds.videos.get(ad.id),muted=video?video.muted:true,playing=video?!video.paused:false,id=esc(ad.id);
+  return `<div class="za-controls" data-za-controls="${id}"><button type="button" class="za-control" data-za-control="play" onclick="zaPlay('${id}')" aria-label="${playing?'Pause video':'Play video'}">${hi(playing?'pause':'playFill',16)}</button><button type="button" class="za-control" data-za-control="sound" onclick="zaSound('${id}')" aria-label="${muted?'Turn sound on':'Turn sound off'}">${hi(muted?'volOff':'vol',16)}</button></div>`;
+}
+function zaCta(ad,placement){
+  const id=esc(ad.id),busy=ZAds.opening===ad.id;
+  return `<button type="button" class="za-cta" onclick="zaOpen('${id}','${placement}')" aria-label="${esc(`${ad.ctaLabel}: ${ad.advertiser}, sponsored`)}" aria-busy="${busy}" ${ZAds.opening?'disabled':''}>${busy?'Opening…':esc(ad.ctaLabel)}</button>`;
+}
+/* A feed card: Home, Explore and the call summary. */
+function zaCard(placement){
+  const ad=zaPick(placement);if(!ad)return '';
+  const id=esc(ad.id),video=ad.format==='video';
+  const media=video?`<span class="za-video-holder" data-za-video="${id}"></span>`:`<img class="za-image" src="${imageSrc(ad.mediaUrl)}" alt="" loading="lazy" decoding="async">`;
+  return `<aside class="za-card" data-za-slot="${placement}" data-za-id="${id}" aria-label="Sponsored by ${esc(ad.advertiser)}">
+    <div class="za-head">${zaLogo(ad)}<span class="za-who"><b>${esc(ad.advertiser)}</b><small>Sponsored</small></span><button type="button" class="za-info" onclick="zaAbout('${id}')" aria-label="About this ad">Ad ${hi('info',14)}</button></div>
+    <div class="za-stage"><div class="za-media" onclick="zaOpen('${id}','${placement}')" aria-hidden="true">${media}</div>${video?zaControls(ad):''}</div>
+    <div class="za-copy"><h3>${esc(ad.headline)}</h3>${ad.body?`<p>${esc(ad.body)}</p>`:''}</div>
+    <div class="za-foot"><span>${esc(ad.domain)}</span>${zaCta(ad,placement)}</div>
+  </aside>`;
+}
+/* A compact banner above conversations. */
+function zaBanner(placement){
+  const ad=zaPick(placement);if(!ad)return '';
+  const id=esc(ad.id),thumb=imageSrc(ad.logoUrl)||(ad.format==='banner'?imageSrc(ad.mediaUrl):'');
+  return `<aside class="za-banner" data-za-slot="${placement}" data-za-id="${id}" aria-label="Sponsored by ${esc(ad.advertiser)}">
+    <span class="za-thumb" onclick="zaOpen('${id}','${placement}')" aria-hidden="true">${thumb?`<img src="${thumb}" alt="" loading="lazy" decoding="async">`:hi('playFill',18)}</span>
+    <span class="za-banner-copy" onclick="zaOpen('${id}','${placement}')"><b>${esc(ad.headline)}</b><small>${esc(ad.advertiser)} · Sponsored</small></span>
+    ${zaCta(ad,placement)}<button type="button" class="za-info za-info-icon" onclick="zaAbout('${id}')" aria-label="About this ad">${hi('info',16)}</button>
+  </aside>`;
+}
+
+/* Screens are redrawn with innerHTML. Each video element is kept and moved into
+   its new place in the same task, so playback and sound carry on uninterrupted. */
+function zaVideo(ad){
+  let video=ZAds.videos.get(ad.id);
+  if(video&&video.dataset.src===ad.mediaUrl)return video;
+  video?.pause();
+  video=document.createElement('video');
+  video.className='za-video';video.muted=true;video.defaultMuted=true;video.loop=true;video.playsInline=true;video.preload='metadata';video.disablePictureInPicture=true;
+  for(const name of ['muted','playsinline','disableremoteplayback'])video.setAttribute(name,'');
+  video.setAttribute('aria-hidden','true');video.dataset.src=ad.mediaUrl;video.src=ad.mediaUrl+'#t=0.1';
+  video.addEventListener('error',()=>video.closest('.za-media')?.classList.add('za-failed'));
+  for(const type of ['play','pause','volumechange'])video.addEventListener(type,()=>zaPaintControls(ad.id));
+  ZAds.videos.set(ad.id,video);return video;
+}
+function zaAttach(){
+  document.querySelectorAll('[data-za-video]').forEach(holder=>{
+    const ad=ZAds.items.find(item=>item.id===holder.dataset.zaVideo);if(!ad)return;
+    const video=zaVideo(ad);if(holder.firstElementChild!==video)holder.replaceChildren(video);
+  });
+}
+/* Updated in place, so a focused control keeps focus. */
+function zaPaintControls(id){
+  const el=document.querySelector(`[data-za-controls="${CSS.escape(id)}"]`),video=ZAds.videos.get(id);if(!el)return;
+  const playing=video?!video.paused:false,muted=video?video.muted:true,play=el.querySelector('[data-za-control="play"]'),sound=el.querySelector('[data-za-control="sound"]');
+  if(play){play.setAttribute('aria-label',playing?'Pause video':'Play video');play.innerHTML=hi(playing?'pause':'playFill',16)}
+  if(sound){sound.setAttribute('aria-label',muted?'Turn sound on':'Turn sound off');sound.innerHTML=hi(muted?'volOff':'vol',16)}
+}
+function zaPlayback(id,visible){
+  const video=ZAds.videos.get(id);if(!video?.isConnected)return;
+  if(visible&&!zaReduced.matches&&!ZAds.paused.has(id)&&document.visibilityState!=='hidden'){video.preload='auto';video.play().catch(()=>{})}
+  else if(!visible&&!video.paused)video.pause();
+}
+// Media events arrive a task later; the pressed control reflects the change at once.
+function zaPlay(id){const video=ZAds.videos.get(id);if(!video)return;if(video.paused){ZAds.paused.delete(id);video.play().catch(()=>{})}else{ZAds.paused.add(id);video.pause()}zaPaintControls(id)}
+function zaSound(id){const video=ZAds.videos.get(id);if(!video)return;video.muted=!video.muted;if(!video.muted&&video.paused&&!ZAds.paused.has(id))video.play().catch(()=>{});zaPaintControls(id)}
+function zaPauseAll(){for(const video of ZAds.videos.values())if(!video.paused)video.pause()}
+
+/* A view counts after the card has been at least half visible for a moment. */
+function zaStopTimers(){for(const timer of ZAds.timers.values())clearTimeout(timer);ZAds.timers.clear();ZAds.visible.clear()}
+function zaSeen(entries){
+  for(const entry of entries){
+    const slot=entry.target,id=slot.dataset.zaId,placement=slot.dataset.zaSlot,key=id+'|'+placement,visible=entry.isIntersecting&&entry.intersectionRatio>=.5;
+    if(visible)ZAds.visible.add(key);else ZAds.visible.delete(key);
+    if(slot.classList.contains('za-card'))zaPlayback(id,visible);
+    if(!visible){clearTimeout(ZAds.timers.get(key));ZAds.timers.delete(key);continue}
+    if(ZAds.counted.has(key)||ZAds.timers.has(key))continue;
+    const video=slot.classList.contains('za-card')&&ZAds.items.find(ad=>ad.id===id)?.format==='video';
+    ZAds.timers.set(key,setTimeout(()=>{
+      ZAds.timers.delete(key);
+      if(!ZAds.visible.has(key)||ZAds.counted.has(key)||document.visibilityState==='hidden')return;
+      ZAds.counted.add(key);
+      if(!DEMO)Native.send('ads.impression',{id,placement});
+    },video?2000:1000));
+  }
+}
+function zaObserve(){
+  const slots=document.querySelectorAll('[data-za-slot]');
+  if(!('IntersectionObserver' in window))return;
+  ZAds.observer=ZAds.observer||new IntersectionObserver(zaSeen,{threshold:[0,.5,1]});
+  ZAds.observer.disconnect();
+  if(!slots.length){zaStopTimers();zaPauseAll();return}
+  slots.forEach(slot=>ZAds.observer.observe(slot));
+}
+
+function zaOpen(id,placement){
+  const ad=ZAds.items.find(item=>item.id===id);if(!ad||ZAds.opening)return;
+  if(DEMO){appNotice(`Design preview · this would open ${ad.domain||'the advertiser’s page'}.`);return}
+  ZAds.opening=id;zaPauseAll();zaPaintCta();
+  Native.send('ads.click',{id,placement});
+}
+function zaPaintCta(){
+  document.querySelectorAll('[data-za-slot] .za-cta').forEach(button=>{
+    const id=button.closest('[data-za-slot]').dataset.zaId,ad=ZAds.items.find(item=>item.id===id),busy=ZAds.opening===id;if(!ad)return;
+    button.disabled=!!ZAds.opening;button.setAttribute('aria-busy',String(busy));button.textContent=busy?'Opening…':ad.ctaLabel;
+  });
+}
+function zaCloseAbout(){document.getElementById('za-about')?.close()}
+function zaAbout(id){
+  const ad=ZAds.items.find(item=>item.id===id);if(!ad)return;
+  zaCloseAbout();
+  const dialog=document.createElement('dialog');dialog.id='za-about';dialog.className='zn-dialog za-about';dialog.setAttribute('aria-labelledby','za-about-title');
+  dialog.innerHTML=`<div class="zn-dialog-heading"><span>Sponsored</span><button type="button" aria-label="Close" onclick="zaCloseAbout()">${hi('close',21)}</button></div>
+    <div class="za-about-body"><span class="za-about-icon">${hi('info',26)}</span><h2 id="za-about-title">About this ad</h2>
+    <p>This promotion is from <b>${esc(ad.advertiser)}</b>${ad.domain?` and opens <b>${esc(ad.domain)}</b>`:''}.</p>
+    <p>Ads appear for members on the free plan. Zimi counts when an ad is shown and tapped to measure each campaign.</p>
+    <button type="button" class="za-about-premium" onclick="zaGoPremium()">${hi('crown',18)} Go ad-free with Premium</button>
+    <button type="button" class="za-about-close" onclick="zaCloseAbout()">Not now</button></div>`;
+  dialog.addEventListener('close',()=>dialog.remove());
+  dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
+  document.body.append(dialog);dialog.showModal();
+}
+function zaGoPremium(){zaCloseAbout();window.ZimiThemes?.open()}
+
+/* Each screen visit shows the next campaign in rotation and counts its own view. */
+function zaBeforeNavigate(){ZAds.picks={};ZAds.counted.clear();zaStopTimers();zaCloseAbout()}
+function zaReset(){
+  zaStopTimers();zaCloseAbout();ZAds.observer?.disconnect();
+  for(const video of ZAds.videos.values()){video.pause();video.removeAttribute('src');video.load()}
+  Object.assign(ZAds,{items:[],adFree:false,picks:{},turn:{},opening:''});
+  ZAds.videos.clear();ZAds.retired.clear();ZAds.counted.clear();ZAds.paused.clear();
+}
+Native.on('data.ads',data=>{
+  ZAds.adFree=data?.adFree===true;
+  ZAds.items=ZAds.adFree||!Array.isArray(data?.items)?[]:data.items.filter(zaSafe);
+  for(const [id,video] of ZAds.videos)if(!ZAds.items.some(ad=>ad.id===id&&ad.format==='video')){video.pause();ZAds.videos.delete(id)}
+  if(['home','explore','chats','summary'].includes(S.v))r();
+});
+Native.on('ads.retired',data=>ZAds.retired.add(data.id));
+Native.on('ads.opened',data=>{if(ZAds.opening===data.id){ZAds.opening='';zaPaintCta()}});
+// The shared operation.error handler already shows the message.
+Native.on('operation.error',data=>{if(data.action==='ads.click'&&ZAds.opening){ZAds.opening='';zaPaintCta()}});
+Native.on('app.background',()=>{zaPauseAll();zaStopTimers()});
+Native.on('session.none',zaReset);Native.on('session.expired',zaReset);
+zaReduced.addEventListener?.('change',()=>{if(zaReduced.matches)zaPauseAll();document.querySelectorAll('[data-za-controls]').forEach(el=>zaPaintControls(el.dataset.zaControls))});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')zaPauseAll()});
+window.ZimiAds={card:zaCard,banner:zaBanner,beforeNavigate:zaBeforeNavigate,reset:zaReset};
+const zaPreviousAfterRender=ZimiHome.afterRender;
+ZimiHome.afterRender=()=>{zaPreviousAfterRender();zaAttach();zaObserve()};
+
+if(DEMO){
+  /* A drawn sample creative, so the preview needs no network or bundled image. */
+  const art=document.createElement('canvas');art.width=1200;art.height=675;const c=art.getContext('2d');
+  if(c){
+    const fill=c.createLinearGradient(0,0,1200,675);fill.addColorStop(0,'#c9086a');fill.addColorStop(1,'#3b1466');c.fillStyle=fill;c.fillRect(0,0,1200,675);
+    c.fillStyle='rgba(255,255,255,.12)';c.beginPath();c.arc(1040,140,300,0,Math.PI*2);c.fill();
+    c.fillStyle='#160d1f';c.beginPath();c.roundRect?.(840,150,250,420,36);c.fill();c.fillStyle='#ff6fb1';c.beginPath();c.roundRect?.(862,180,206,360,22);c.fill();
+    c.fillStyle='#fff';c.font='700 34px Inter, sans-serif';c.fillText('NEW ON ANDROID',80,230);c.font='800 92px Inter, sans-serif';c.fillText('Zimi Studio',80,340);c.font='500 42px Inter, sans-serif';c.fillText('Edit reels in seconds',80,410);
+    ZAds.items=[{id:'00000000000000000000d001',format:'banner',advertiser:'Zimi Studio',headline:'Edit reels in seconds',body:'Templates, music and auto captions. Free on Android.',ctaLabel:'Install now',domain:'play.google.com',mediaUrl:art.toDataURL('image/png'),mediaType:'image/png',logoUrl:'',placements:['home','explore','chats','call_summary']}];
+  }
+}
 
 r();
 Native.send('ready',{demo:DEMO});

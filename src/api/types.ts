@@ -295,3 +295,25 @@ export interface Payouts {
   page: number;
   limit: number;
 }
+
+export type AdPlacement = "home" | "explore" | "chats" | "call_summary";
+
+/** A sponsored card for a member on the free plan. The destination stays on the server until a counted tap. */
+export interface AdCreative {
+  id: string;
+  format: "banner" | "video";
+  advertiser: string;
+  headline: string;
+  body: string;
+  ctaLabel: string;
+  domain: string;
+  mediaUrl: string;
+  mediaType: string;
+  logoUrl: string;
+  placements: AdPlacement[];
+}
+
+export interface AdFeed {
+  adFree: boolean;
+  items: AdCreative[];
+}

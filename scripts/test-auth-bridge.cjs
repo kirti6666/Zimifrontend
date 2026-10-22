@@ -47,6 +47,7 @@ function harness(initialAppState = 'active', initialLink = null) {
     profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
     payouts: (page = 1) => ({ items: [], total: 0, page, limit: 20 }),
     streamRequests: streamId => ({ streamId, requests: [], count: 0, ownRequestId: null }),
+    ads: () => ({ adFree: false, items: [] }),
   };
   const api = new Proxy({}, { get: (_, name) => async (...args) => {
     calls.push({ name, args });
@@ -2489,6 +2490,30 @@ test('unavailable live links report an error and always settle their loading sta
   h.links.forEach(listener=>listener({url:'zimilive://live/ended-room'}));await settle();
   assert.equal(h.find('stream.link').length,0);assert.equal(h.find('operation.error').at(-1).data.action,'stream.link');assert.equal(h.find('stream.link.loading').at(-1).data.loading,false);
   assert.equal(h.count('joinStream'),0);h.bridge.close();
+});
+
+test('ads load and count quietly, and a tap opens its counted link once', async () => {
+  const h=harness(),id='6a0000000000000000000001',url='https://play.google.com/store/apps/details?id=com.zimi.studio';
+  const feed={adFree:false,items:[{id,format:'banner'}]};h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.ads=()=>feed;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'session.resume',data:{}});await settle();
+  assert.equal(h.count('ads'),1,'Ads load with the account');assert.deepEqual(h.find('data.ads').at(-1).data,feed);
+  const errors=()=>h.find('operation.error').length+h.find('data.error').length,quiet=errors();
+  h.overrides.ads=()=>{throw new h.ApiError('Service unavailable',503)};h.bridge.handle({type:'ads.load',data:{}});await settle();
+  assert.equal(errors(),quiet,'An unavailable ad list never interrupts with an error');
+  h.overrides.adImpression=()=>({counted:false,servable:false});h.bridge.handle({type:'ads.impression',data:{id,placement:'home'}});await settle();
+  assert.equal(h.find('ads.retired').at(-1).data.id,id,'A campaign the server stops serving leaves rotation');
+  h.overrides.adImpression=()=>{throw new h.ApiError('Too many requests',429)};h.bridge.handle({type:'ads.impression',data:{id,placement:'home'}});await settle();
+  assert.equal(errors(),quiet,'A missed view is never an error message');
+  const click={type:'ads.click',data:{id,placement:'chats'}};h.overrides.adClick=()=>url;
+  h.bridge.handle(click);h.bridge.handle(click);await settle();
+  assert.equal(h.count('adClick'),1,'A double tap counts and opens once');assert.deepEqual([...h.calls.find(call=>call.name==='adClick').args],[id,'chats']);
+  assert.deepEqual(h.opened,[url]);assert.deepEqual(h.find('ads.opened').map(post=>post.data.id),[id]);
+  h.overrides.adClick=()=>{throw new h.ApiError('This promotion has ended.',410)};h.bridge.handle(click);await settle();
+  const failure=h.find('operation.error').at(-1).data;assert.deepEqual([failure.action,failure.id,failure.message],['ads.click',id,'This promotion has ended.']);
+  assert.equal(h.find('ads.retired').length,2);assert.equal(h.opened.length,1,'Nothing opens without a counted link');
+  const reads=h.count('ads');h.live[0].onEvent({type:'ads.updated',data:{}});await settle();assert.equal(h.count('ads'),reads+1,'Campaign and premium changes refresh the ad list');
+  for(const data of [{id:'not-an-id',placement:'home'},{id,placement:'feed'},{id,placement:'home',url},{id}])assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'ads.click',data})),null);
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'ads.load',data:{page:2}})),null);h.bridge.close();
 });
 
 test('share live opens one native share sheet with the active room link and returns selectable link text', async () => {

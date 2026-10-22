@@ -208,6 +208,7 @@ function go(v,id){
  if(v==='search')S.sq='';
  if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';S.editName=me.n;S.editCity=me.c;S.editAbout=me.about}
  window.ZimiThemes?.beforeNavigate(v);
+ window.ZimiAds?.beforeNavigate(v);
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);

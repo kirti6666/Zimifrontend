@@ -103,6 +103,7 @@ const page = (demo) =>
   read("web/notifications.css") +
   read("web/payouts.css") +
   read("web/payment-routes.css") +
+  read("web/ads.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -135,6 +136,7 @@ const page = (demo) =>
   "\n" + read("web/public-profile.js") +
   "\n" + read("web/payouts.js") +
   "\n" + read("web/payment-routes.js") +
+  "\n" + read("web/ads.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

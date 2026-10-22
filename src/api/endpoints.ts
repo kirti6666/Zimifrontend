@@ -1,8 +1,8 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
+import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
@@ -303,5 +303,12 @@ export const api = {
     }
     return payoutFrom(await request("POST", "/wallet/withdraw", { amountPaise, payoutAddress: payoutAddress.trim(), idempotencyKey }));
   },
+  async ads() { return adFeedFrom(await request("GET", "/ads")); },
+  async adImpression(id: string, placement: AdPlacement) {
+    const data = record(await request("POST", `/ads/${encodeURIComponent(id)}/impression`, { placement }));
+    return { counted: data.counted === true, servable: data.servable !== false };
+  },
+  /** The server counts the tap and only then reveals where it leads. */
+  async adClick(id: string, placement: AdPlacement) { return adLinkFrom(await request("POST", `/ads/${encodeURIComponent(id)}/click`, { placement })); },
   async claimAward(task: string): Promise<Wallet> { await request("POST", `/missions/${encodeURIComponent(task)}/claim`); return api.wallet(); },
 };

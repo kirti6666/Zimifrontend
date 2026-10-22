@@ -632,6 +632,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
     socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });
   }
+  assert.equal(events.at(-2).type, 'ads.updated', 'Premium also refreshes which ads this member may see');
+  socket.emitServer('ads:updated', { campaign: 'ignored' }); assert.deepEqual(plain(events.at(-1)), { type: 'ads.updated', data: {} }, 'Campaign changes only invalidate');
   token = 'rotated-token'; tokenListeners.forEach(listener => listener()); await Promise.resolve();
   assert.equal(socket.connects, 2);
   socket.connected = true; socket.emitServer('connect');
@@ -652,5 +654,30 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.connected = true; socket.emitServer('connect');
   assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: false } }], 'A session opened in background never starts a welcome schedule');
   backgroundStop();
+  reset();
+  const adId = '6a0000000000000000000001';
+  const creative = { _id: adId, format: 'banner', advertiser: '  Zimi Studio ', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now', domain: 'play.google.com',
+    media: { url: 'https://media.example.test/ads/a.png', contentType: 'image/png' }, logoUrl: 'javascript:alert(1)', placements: ['home', 'feed', 'home'] };
+  expect('GET', '/ads', { adFree: false, items: [creative, 'junk', { ...creative },
+    { ...creative, _id: '6a0000000000000000000002', media: { url: 'http://insecure.example/a.png', contentType: 'image/png' } },
+    { ...creative, _id: '6a0000000000000000000003', format: 'video', media: { url: 'https://media.example.test/a.png', contentType: 'image/png' } },
+    { ...creative, _id: '6a0000000000000000000004', placements: ['feed'] }] });
+  const adFeed = await api.ads();
+  assert.deepEqual(plain(adFeed), { adFree: false, items: [{ id: adId, format: 'banner', advertiser: 'Zimi Studio', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now',
+    domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/a.png', mediaType: 'image/png', logoUrl: '', placements: ['home'] }] },
+    'Unsafe, mismatched, malformed, untargeted and repeated campaigns are dropped');
+  expect('GET', '/ads', { adFree: true, items: [creative] });
+  assert.deepEqual(plain(await api.ads()), { adFree: true, items: [] }, 'An ad-free member gets no ads even if some are sent');
+  expect('GET', '/ads', { items: [] });
+  await assert.rejects(api.ads(), /Sponsored content/);
+  expect('POST', `/ads/${adId}/impression`, { counted: true, servable: false }, body => assert.deepEqual(plain(body), { placement: 'home' }));
+  assert.deepEqual(plain(await api.adImpression(adId, 'home')), { counted: true, servable: false });
+  expect('POST', `/ads/${adId}/click`, { counted: true, url: 'https://play.google.com/store/apps/details?id=com.zimi' }, body => assert.deepEqual(plain(body), { placement: 'chats' }));
+  assert.equal(await api.adClick(adId, 'chats'), 'https://play.google.com/store/apps/details?id=com.zimi');
+  for (const url of ['http://example.com', 'intent://scan/#Intent;end', 'https://user:pw@example.com', 'javascript:alert(1)', 'https://example.com/"quote']) {
+    expect('POST', `/ads/${adId}/click`, { counted: true, url });
+    await assert.rejects(api.adClick(adId, 'home'), /secure link/, url);
+  }
+  finished();
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, withdrawal configuration/history/receipts, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

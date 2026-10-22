@@ -145,6 +145,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
       typeof d.payoutAddress === "string" && d.payoutAddress.trim().length >= 3 && d.payoutAddress.length <= 200 && idempotency(d.idempotencyKey) &&
       Object.keys(d).every(key => ["amountPaise", "payoutAddress", "idempotencyKey", "requestId"].includes(key)); break;
     case "awards.claim": valid = identifier(d.task); break;
+    case "ads.load": valid = Object.keys(d).length === 0; break;
+    case "ads.impression": case "ads.click": valid = typeof d.id === "string" && /^[a-f\d]{24}$/i.test(d.id) &&
+      ["home", "explore", "chats", "call_summary"].includes(String(d.placement)) && Object.keys(d).every(key => ["id", "placement"].includes(key)); break;
   }
   return valid ? message as WebMessage : null;
 }
