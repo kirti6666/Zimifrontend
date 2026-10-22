@@ -259,6 +259,9 @@ The Home layout lives in `web/home-dashboard.js` and `web/home-dashboard.css`.
 It uses live-host circles, filter chips, a large featured photo card, and a
 two-column grid. Layout follows the supplied reference; colors and typography
 follow the selected app theme. Search stays in the Home header.
+When nobody is online, themed icons accompany Explore, refresh, Chats, and
+Search actions. The Go Live shortcut remains available only to approved hosts.
+The Live now section appears only when at least one live host is available.
 Every host has Chat and Call actions; live photos and circles open the stream.
 The featured host is excluded from the grid, and offline hosts are excluded.
 Popular requests `mode=online`; Instant Call requests `mode=instant`; categories

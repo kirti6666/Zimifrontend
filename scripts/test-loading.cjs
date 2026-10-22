@@ -48,7 +48,8 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
   try {
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
     assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
-    for (const label of ['Loading live creators', 'Loading creators']) await visible(label);
+    for (const label of ['Loading featured creator', 'Loading creators']) await visible(label);
+    assert.equal(await page.locator('.zh-live-section').count(), 0, 'Initial loading shows no Live now section before a live host is known');
     assert.equal(await page.locator('.zh-tile').count(), 0, 'Initial content has no invented creator cards');
     assert.equal(await page.locator('.zh-empty,.zh-stage-empty').count(), 0, 'Pending is distinct from an empty feed');
     assert.equal(await page.locator('.zh-balance').innerText(), '', 'An unknown balance must not flash a fabricated zero');
@@ -65,6 +66,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     // A socket refresh hides the cached first page until the new response arrives.
     await loading('home', true, { page: 1 });
     await visible('Loading creators');
+    await visible('Loading live creators');
     assert.equal(await page.locator('.zh-tile,article.zh-featured').count(), 0);
     await receive('data.loaded');
     await visible('Loading creators');
