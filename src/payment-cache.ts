@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 
-export interface PendingPayment { orderId: string; kind: "coins" | "premium"; packId?: string; idempotencyKey?: string }
+export interface PendingPayment { orderId: string; kind: "coins" | "premium"; packId?: string; idempotencyKey?: string; requestedRoute?: string }
 const OPTIONS = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
 const storageKey = (accountId: string) => /^[\w-]{1,100}$/.test(accountId) ? `zimi.payments.v1.${accountId}` : undefined;
 let writing: Promise<void> = Promise.resolve();
@@ -12,7 +12,8 @@ function parse(raw: string | null): PendingPayment[] {
       typeof entry.orderId === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(entry.orderId) && (entry.kind === "coins" || entry.kind === "premium"))
       .map(entry => ({ orderId: entry.orderId, kind: entry.kind,
         ...(typeof entry.packId === "string" && /^[\w-]{1,100}$/.test(entry.packId) ? { packId: entry.packId } : {}),
-        ...(typeof entry.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(entry.idempotencyKey) ? { idempotencyKey: entry.idempotencyKey } : {}) })) : [];
+        ...(typeof entry.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(entry.idempotencyKey) ? { idempotencyKey: entry.idempotencyKey } : {}),
+        ...(typeof entry.requestedRoute === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(entry.requestedRoute) ? { requestedRoute: entry.requestedRoute } : {}) })) : [];
   } catch { return []; }
 }
 

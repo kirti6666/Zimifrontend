@@ -6,10 +6,11 @@ import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnect
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
+import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, type PendingPayout } from "./payout-cache";
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
@@ -42,13 +43,14 @@ export type WebMessage =
   | { type: "stream.message"; data: { streamId: string; text: string } }
   | { type: "stream.requests.load" | "stream.request" | "stream.react"; data: { streamId: string } }
   | { type: "stream.request.cancel" | "stream.request.decline" | "stream.request.accept"; data: { streamId: string; id: string } }
-  | { type: "wallet.checkout"; data: { packId: string; idempotencyKey: string } }
+  | { type: "wallet.checkout"; data: { packId: string; idempotencyKey: string; route?: string } }
+  | { type: "payments.routes.load"; data: { requestId: number } }
   | { type: "wallet.load"; data: Record<string, never> }
   | { type: "transactions.load"; data: Record<string, never> }
   | { type: "wallet.verify"; data: { merchantOrderId: string } }
   | { type: "themes.load"; data: Record<string, never> }
   | { type: "themes.select"; data: { themeId: string; requestId?: number } }
-  | { type: "themes.premium.checkout"; data: { idempotencyKey: string } }
+  | { type: "themes.premium.checkout"; data: { idempotencyKey: string; route?: string } }
   | { type: "themes.premium.verify"; data: { merchantOrderId: string } }
   | { type: "theme"; data: { theme: "light" | "dark"; canvas?: string; ink?: string; primary?: string; contrast?: string; surface?: string; raised?: string } }
   | { type: "ui.haptic"; data: { kind: "selection" | "success" | "error" | "light" } }
@@ -85,7 +87,8 @@ export type WebMessage =
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
-  | { type: "payout.request"; data: { coins: number; upi: string } }
+  | { type: "payout.load"; data: { page?: number; requestId: number } }
+  | { type: "payout.request"; data: { amountPaise: number; payoutAddress: string; idempotencyKey: string; requestId: number } }
   | { type: "awards.claim"; data: { task: string } };
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
@@ -120,6 +123,7 @@ export type AppMessage =
   | { type: "notifications.error"; data: { requestId: number; message: string } }
   | { type: "notifications.changed"; data: Record<string, never> }
   | { type: "data.catalog"; data: Catalog }
+  | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
   | { type: "data.themes"; data: ThemeCatalog }
   | { type: "theme.default"; data: AppTheme }
   | { type: "themes.selected"; data: { catalog: ThemeCatalog; requestId?: number } }
@@ -166,6 +170,9 @@ export type AppMessage =
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
+  | { type: "payout.loaded"; data: Payouts & { requestId: number; pending?: PendingPayout | null; recovered?: Payout | null } }
+  | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
+  | { type: "payout.error"; data: { action: "payout.load" | "payout.request"; requestId: number; idempotencyKey?: string; message: string; code?: string; status?: number } }
   | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null } }
   | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null } }
   | { type: "chat.photoDownloaded"; data: { to: string; id: string; requestId: number } }
@@ -205,6 +212,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let restoring = false;
   let webReady = false, sessionAvailable = false, runtimeLinkReceived = false;
   let documentRevision = 0;
+  let payoutReadRevision = 0;
+  let paymentRoutesRevision = 0;
   const photoDownloads = new Map<string, Promise<void>>();
   let linkRevision = 0;
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
@@ -473,7 +482,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (current(version) && getSessionVersion() === sessionVersion) {
         const resolvedKind = purchase.kind ?? kind;
         const pending = pendingPurchases.get(orderId);
-        emit({ type: resolvedKind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: { ...(pending?.packId ? { packId: pending.packId } : {}), ...(pending?.idempotencyKey ? { idempotencyKey: pending.idempotencyKey } : {}), ...purchase, merchantOrderId: orderId } });
+        emit({ type: resolvedKind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: { ...(pending?.packId ? { packId: pending.packId } : {}), ...(pending?.idempotencyKey ? { idempotencyKey: pending.idempotencyKey } : {}), ...(pending?.requestedRoute ? { requestedRoute: pending.requestedRoute } : {}), ...purchase, merchantOrderId: orderId } });
         if (purchase.status !== "PENDING") {
           pendingPurchases.delete(orderId);
           if (owner) void forgetPendingPayment(owner, orderId);
@@ -498,6 +507,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       emit({ type: payment.kind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: {
         purchaseId: "", merchantOrderId: payment.orderId, kind: payment.kind, status: "PENDING",
         ...(payment.packId ? { packId: payment.packId } : {}), ...(payment.idempotencyKey ? { idempotencyKey: payment.idempotencyKey } : {}),
+        ...(payment.requestedRoute ? { requestedRoute: payment.requestedRoute } : {}),
       } });
       void verifyPurchase(payment.orderId, payment.kind);
     }
@@ -514,14 +524,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
     if (accountId && getCachedToken() && !hostAccount?.requiresOnboarding) quietly(loadThemes(), "themes.load");
   });
-  const sendWallet = (work: Promise<Wallet>, action: string) => {
-    const version = epoch;
-    return work.then(wallet => { if (current(version)) emit({ type: "wallet.balance", data: wallet }); }).catch(error => {
-      if (!current(version)) return;
-      operationError(error, action);
-      void refreshWallet().catch(() => {});
-    });
-  };
   const loadLists = async () => {
     const version = epoch;
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
@@ -791,13 +793,22 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version)) emit({ type: "stream.reaction", data });
         return;
       }
+      case "payments.routes.load": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, revision = ++paymentRoutesRevision, owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === paymentRoutesRevision && owner === accountId;
+        try {
+          const routes = await api.paymentRoutes();
+          if (applicable()) emit({ type: "payments.routes", data: { ...routes, requestId: msg.data.requestId } });
+        } catch (error) { if (applicable()) operationError(error, msg.type, { requestId: msg.data.requestId }); }
+        return;
+      }
       case "wallet.checkout": case "themes.premium.checkout": {
         const kind: PurchaseKind = msg.type === "themes.premium.checkout" ? "premium" : "coins", sessionVersion = getSessionVersion(), owner = accountId;
-        const result = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey) : api.checkoutPremium(msg.data.idempotencyKey));
-        const purchase = { ...result, idempotencyKey: msg.data.idempotencyKey, ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
+        const result = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey, msg.data.route) : api.checkoutPremium(msg.data.idempotencyKey, msg.data.route));
+        const purchase = { ...result, idempotencyKey: msg.data.idempotencyKey, ...(msg.data.route ? { requestedRoute: msg.data.route } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
         if (!current(version) || sessionVersion !== getSessionVersion()) return;
         if (purchase.status === "PENDING" && purchase.merchantOrderId) {
-          const pending = { orderId: purchase.merchantOrderId, kind, idempotencyKey: purchase.idempotencyKey, ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
+          const pending = { orderId: purchase.merchantOrderId, kind, idempotencyKey: purchase.idempotencyKey, ...(purchase.requestedRoute ? { requestedRoute: purchase.requestedRoute } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
           pendingPurchases.set(purchase.merchantOrderId, { ...pending, epoch: version, sessionVersion });
           if (owner) await rememberPendingPayment(owner, pending);
         } else if (purchase.merchantOrderId) {
@@ -1168,9 +1179,73 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (callId) quietly(api.endCall(callId, msg.data.reason), msg.type);
         return;
       }
+      case "payout.load": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, revision = ++payoutReadRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === payoutReadRevision;
+        try {
+          // Historical funds and durable recovery remain owned by the account,
+          // even when it no longer qualifies to create a new withdrawal.
+          const approval = hostRevision, account = await api.me(true);
+          if (!applicable()) return;
+          const owner = account.user.id;
+          if (!owner || (accountId && owner !== accountId)) throw new ApiError("Your sign-in changed. Please try again.", 409);
+          if (approval === hostRevision) applyHostAccount(account);
+          const pending = await readPendingPayout(owner);
+          if (!applicable()) return;
+          const result = await api.payouts(msg.data.page);
+          if (!applicable()) return;
+          const recovered = pending ? result.items.find(item => item.idempotencyKey === pending.idempotencyKey && item.amountPaise === pending.amountPaise && item.payoutAddress.trim() === pending.payoutAddress) : undefined;
+          if (recovered && pending) await forgetPendingPayout(owner, pending.idempotencyKey).catch(() => {});
+          if (applicable()) emit({ type: "payout.loaded", data: { ...result, requestId: msg.data.requestId, pending: recovered ? null : pending, recovered: recovered ?? null } });
+        } catch (error) {
+          if (applicable()) emit({ type: "payout.error", data: { action: msg.type, requestId: msg.data.requestId, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+        }
+        return;
+      }
       case "payout.request": {
-        await requireApprovedHost();
-        return sendWallet(api.requestPayout(msg.data.coins, msg.data.upi), msg.type);
+        const sessionVersion = getSessionVersion(), document = documentRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
+        let owner: string | undefined;
+        let previous: PendingPayout | null = null, saved = false;
+        try {
+          const approval = hostRevision, account = await api.me(true);
+          if (!applicable()) return;
+          owner = account.user.id;
+          if (!owner || (accountId && owner !== accountId)) throw new ApiError("Your sign-in changed. Please try again.", 409);
+          if (approval === hostRevision) applyHostAccount(account);
+          previous = await readPendingPayout(owner);
+          const attempt = { amountPaise: msg.data.amountPaise, payoutAddress: msg.data.payoutAddress.trim(), idempotencyKey: msg.data.idempotencyKey };
+          if (previous && (previous.idempotencyKey !== attempt.idempotencyKey || previous.amountPaise !== attempt.amountPaise || previous.payoutAddress !== attempt.payoutAddress)) {
+            throw new ApiError("An earlier withdrawal still needs confirmation. Refresh withdrawal history to recover it before making another request.", 409, "PAYOUT_PENDING_RECOVERY");
+          }
+          if (!applicable()) return;
+          if (!previous && (approval !== hostRevision || !hasHostAccess())) throw new ApiError("Your creator profile needs admin approval before you can withdraw.", 403);
+          // Persist the approved intent before any reservation can leave this device.
+          await rememberPendingPayout(owner, attempt);
+          saved = true;
+          // Keep the durable intent if this document retires: another document
+          // may already be recovering the same key, and only the server can
+          // establish whether it committed. Replaying it is idempotent.
+          if (!applicable()) return;
+          if (!previous && (approval !== hostRevision || !hasHostAccess())) throw new ApiError("Your creator approval changed. Please try again.", 403);
+          const payout = await api.requestPayout(msg.data.amountPaise, msg.data.payoutAddress, msg.data.idempotencyKey);
+          // Cleanup remains scoped to its original account/key even after sign-out.
+          await forgetPendingPayout(owner, attempt.idempotencyKey).catch(() => {});
+          if (!applicable()) return;
+          // Confirmation belongs to the completed reservation. A failed independent
+          // wallet read must not encourage a second withdrawal with a new key.
+          payoutReadRevision++;
+          emit({ type: "payout.requested", data: { payout, requestId: msg.data.requestId } });
+          quietly(refreshWallet(), "wallet.load");
+        } catch (error) {
+          // A preexisting attempt may already have committed on another run.
+          // Only a first, definitively rejected submission can be discarded.
+          if (owner && saved && !previous && error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.status)) {
+            await forgetPendingPayout(owner, msg.data.idempotencyKey).catch(() => {});
+          }
+          if (applicable()) emit({ type: "payout.error", data: { action: msg.type, requestId: msg.data.requestId, idempotencyKey: msg.data.idempotencyKey, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+        }
+        return;
       }
       case "awards.claim": {
         const approval = await requireApprovedHost();
@@ -1193,8 +1268,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : ""}`;
+      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

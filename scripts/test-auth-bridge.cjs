@@ -16,6 +16,8 @@ const profileSettings = (appearance = 'dark') => ({ profile: { id: 'alice', name
 const verifyMessage = (requestId = 1) => ({ type: 'auth.verifyOtp', data: { phone: '+919876543210', code: '123456', role: 'sender', signup: true, requestId } });
 const sendMessage = (requestId = 1) => ({ type: 'auth.sendOtp', data: { phone: '+919876543210', role: 'sender', requestId } });
 const themeCatalog = (premium = false, selectedThemeId = '000000000000000000000001') => ({ items: [], selectedThemeId, premium: { active: premium, pricePaise: 29900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' } });
+const payoutReceipt = (id = 'payout-1') => ({ id, amountPaise: 50000, payoutAddress: 'creator@upi', status: 'pending', createdAt: '2026-10-22T08:00:00.000Z' });
+const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1', requestId } });
 const plain = value => JSON.parse(JSON.stringify(value));
 
 function harness(initialAppState = 'active', initialLink = null) {
@@ -43,6 +45,7 @@ function harness(initialAppState = 'active', initialLink = null) {
     transactions: () => ({ items: [] }), wallet: () => ({ coins: 100, earningsPaise: 0 }), logout: () => {},
     home: () => ({ hosts: [], stage: [], featured: null, page: 1 }), notifications: () => ({ items: [], unreadCount: 0 }), catalog: () => ({ gifts: [], packs: [], paymentsAvailable: false }), presence: () => ({ online: true, visible: true }),
     profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
+    payouts: (page = 1) => ({ items: [], total: 0, page, limit: 20 }),
     streamRequests: streamId => ({ streamId, requests: [], count: 0, ownRequestId: null }),
   };
   const api = new Proxy({}, { get: (_, name) => async (...args) => {
@@ -52,7 +55,7 @@ function harness(initialAppState = 'active', initialLink = null) {
   const storage = {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 7,
     getItem: key => disk.get(key) ?? null,
-    getItemAsync: async key => disk.get(key) ?? null,
+    getItemAsync: async key => { if (overrides.getStorage) await overrides.getStorage(key); return disk.get(key) ?? null; },
     setItemAsync: async (key, value) => { if (overrides.setStorage) await overrides.setStorage(key, value); disk.set(key, value); },
     deleteItemAsync: async key => { if (overrides.deleteStorage) await overrides.deleteStorage(key); disk.delete(key); },
   };
@@ -896,6 +899,84 @@ test('invalid room, payment and oversized media input never reaches privileged d
   h.bridge.close();
 });
 
+test('payment-route messages accept safe dynamic tokens and reject unknown checkout authority fields', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  for (const type of ['wallet.checkout', 'themes.premium.checkout']) {
+    const base = { idempotencyKey: 'route-attempt-1', ...(type === 'wallet.checkout' ? { packId: 'pack-id' } : {}) };
+    assert.ok(parse({ type, data: base })); assert.ok(parse({ type, data: { ...base, route: 'upi-intent_2' } }));
+    for (const patch of [{ route: '' }, { route: 'https://evil.test' }, { route: 'a'.repeat(101) }, { route: null }, { requestedRoute: 'UPI' }, { paymentUrl: 'https://evil.test' }, { pricePaise: 1 }, { userId: 'other' }]) {
+      const message = { type, data: { ...base, ...patch } }; assert.equal(parse(message), null); h.bridge.handle(message);
+    }
+  }
+  for (const data of [{}, { requestId: 0 }, { requestId: 1.5 }, { requestId: 1, route: 'UPI' }]) {
+    const message = { type: 'payments.routes.load', data }; assert.equal(parse(message), null); h.bridge.handle(message);
+  }
+  assert.ok(parse({ type: 'payments.routes.load', data: { requestId: 1 } }));
+  await settle(); assert.equal(h.calls.length, 0); h.bridge.close();
+});
+
+test('payment-route loads correlate latest results and discard stale errors across documents and accounts', async () => {
+  const h = harness(), old = deferred(), latest = deferred();
+  const catalog = { mode: 'ROTATION', routeChoice: false, routes: [{ route: 'upi-intent_2', pageStyle: 'intent', upiIntent: true, takingPayments: true, currency: 'INR' }] };
+  h.overrides.paymentRoutes = () => old.promise;
+  h.bridge.handle({ type: 'payments.routes.load', data: { requestId: 1 } });
+  h.overrides.paymentRoutes = () => latest.promise;
+  h.bridge.handle({ type: 'payments.routes.load', data: { requestId: 2 } });
+  latest.resolve(catalog); old.reject(new h.ApiError('Stale failure', 503)); await settle();
+  assert.deepEqual(plain(h.find('payments.routes')[0].data), { ...catalog, requestId: 2 }); assert.equal(h.find('operation.error').length, 0);
+  h.overrides.paymentRoutes = () => { throw new h.ApiError('Methods unavailable', 503, 'PAYIN_UNAVAILABLE'); };
+  h.bridge.handle({ type: 'payments.routes.load', data: { requestId: 3 } }); await settle();
+  assert.deepEqual(plain(h.find('operation.error')[0].data), { action: 'payments.routes.load', requestId: 3, message: 'Methods unavailable', status: 503, code: 'PAYIN_UNAVAILABLE' });
+  for (const retirement of ['document', 'account']) for (const outcome of ['success', 'failure']) {
+    const pending = deferred(); h.overrides.paymentRoutes = () => pending.promise;
+    h.bridge.handle({ type: 'payments.routes.load', data: { requestId: 4 } });
+    if (retirement === 'document') h.bridge.documentLoading(); else { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('next')); }
+    if (outcome === 'success') pending.resolve(catalog); else pending.reject(new h.ApiError('Retired error', 503)); await settle();
+    assert.equal(h.find('payments.routes').length, 1); assert.equal(h.find('operation.error').length, 1);
+  }
+  h.bridge.close();
+});
+
+test('coin and premium route selections survive bridge restart and same-key checkout recovery', async () => {
+  for (const kind of ['coins', 'premium']) {
+    const h = harness(), cache = h.load('src/payment-cache.ts');
+    await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+    h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    const apiName = kind === 'coins' ? 'checkout' : 'checkoutPremium', verifyName = kind === 'coins' ? 'verifyPurchase' : 'verifyPremium';
+    const type = kind === 'coins' ? 'wallet.checkout' : 'themes.premium.checkout', event = kind === 'coins' ? 'wallet.purchase' : 'themes.premium.purchase';
+    const message = { type, data: { idempotencyKey: 'route-attempt-1', route: 'upi-intent_2', ...(kind === 'coins' ? { packId: 'pack-id' } : {}) } };
+    h.overrides[apiName] = () => ({ purchaseId: 'route-purchase', merchantOrderId: 'route_order', kind, status: 'PENDING', route: 'provider-route_3', pageStyle: 'intent', currency: 'INR' });
+    h.bridge.handle(message); h.bridge.handle(message); await settle();
+    assert.equal(h.count(apiName), 1);
+    assert.deepEqual(plain(h.calls.find(call => call.name === apiName).args), kind === 'coins' ? ['pack-id', 'route-attempt-1', 'upi-intent_2'] : ['route-attempt-1', 'upi-intent_2']);
+    const stored = (await cache.readPendingPayments('alice'))[0];
+    assert.equal(stored.requestedRoute, 'upi-intent_2'); assert.equal(stored.route, undefined); assert.equal(stored.pageStyle, undefined, 'Provider metadata is never promoted into selection state');
+    h.bridge.close(); h.overrides[verifyName] = () => { throw new h.ApiError('Verification unavailable', 503); };
+    const restarted = h.bridgeModule.createBridge(message => h.posts.push(message));
+    restarted.handle({ type: 'session.resume', data: {} }); await settle();
+    const recovery = h.find(event).at(-1).data;
+    assert.equal(recovery.requestedRoute, 'upi-intent_2'); assert.equal(recovery.idempotencyKey, 'route-attempt-1'); assert.equal(recovery.route, undefined);
+    restarted.handle({ type, data: { ...message.data, route: recovery.requestedRoute, idempotencyKey: recovery.idempotencyKey } }); await settle();
+    assert.equal(h.count(apiName), 2); assert.equal(h.calls.filter(call => call.name === apiName).at(-1).args.at(-1), 'upi-intent_2');
+    assert.equal(h.find(type).at(-1).data.route, 'provider-route_3'); assert.equal(h.find(type).at(-1).data.requestedRoute, 'upi-intent_2'); restarted.close();
+  }
+});
+
+test('automatic rotation never pins the provider-selected route in checkout requests or recovery', async () => {
+  const h = harness(), cache = h.load('src/payment-cache.ts');
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.paymentRoutes = () => ({ mode: 'ROTATION', routeChoice: false, routes: [] });
+  h.bridge.handle({ type: 'payments.routes.load', data: { requestId: 1 } }); await settle();
+  h.overrides.checkout = () => ({ purchaseId: 'auto-purchase', merchantOrderId: 'auto_order', status: 'PENDING', route: 'provider-auto_1', pageStyle: 'intent', currency: 'INR' });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'automatic-attempt-1' } }); await settle();
+  const args = h.calls.find(call => call.name === 'checkout').args;
+  assert.deepEqual(args.slice(0, 2), ['pack-id', 'automatic-attempt-1']); assert.equal(args[2], undefined);
+  assert.equal(h.find('wallet.checkout')[0].data.route, 'provider-auto_1'); assert.equal(h.find('wallet.checkout')[0].data.requestedRoute, undefined);
+  assert.equal((await cache.readPendingPayments('alice'))[0].requestedRoute, undefined);
+  h.bridge.close();
+});
+
 test('checkout opens provider outside WebView once and session changes cancel late launches', async () => {
   const h = harness(), pending = deferred();
   h.overrides.checkout = () => pending.promise;
@@ -953,6 +1034,186 @@ test('a confirmed gift stays successful when its independent wallet refresh fail
   assert.deepEqual(h.find('operation.error').map(item => item.data.action), ['wallet.load']);
   assert.equal(h.find('data.loading').at(-1).data.error, 'Something went wrong. Please try again.');
   h.bridge.close();
+});
+
+test('withdrawal messages reject legacy amounts, malformed requests and extra authority fields', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  const invalidWrites = [{ coins: 100, upi: 'creator@upi' }, ...[
+    { amountPaise: 0 }, { amountPaise: 1.5 }, { amountPaise: '50000' }, { amountPaise: 100000001 },
+    { payoutAddress: '  ' }, { payoutAddress: 'ab' }, { payoutAddress: 'x'.repeat(201) },
+    { idempotencyKey: 'short' }, { idempotencyKey: 'invalid/key' }, { idempotencyKey: 'x'.repeat(101) },
+    { requestId: undefined }, { requestId: 0 }, { requestId: 1.5 }, { userId: 'someone-else' }, { coins: 100 },
+  ].map(patch => ({ ...payoutMessage().data, ...patch }))];
+  const invalidReads = [{}, { requestId: 0 }, { requestId: 1.5 }, { requestId: 1, page: 0 }, { requestId: 1, page: 1.5 }, { requestId: 1, userId: 'other' }, { requestId: 1, limit: 100 }];
+  for (const [type, rows] of [['payout.request', invalidWrites], ['payout.load', invalidReads]]) for (const data of rows) {
+    const message = { type, data }; assert.equal(parse(message), null, JSON.stringify(message)); h.bridge.handle(message);
+  }
+  assert.ok(parse(payoutMessage())); assert.ok(parse({ type: 'payout.load', data: { requestId: 2, page: 2 } }));
+  await settle(); assert.equal(h.calls.length, 0, 'Malformed messages never reach account checks or payout APIs'); h.bridge.close();
+});
+
+test('withdrawal history remains available after revocation while new submissions revalidate approval', async () => {
+  const h = harness(); h.overrides.me = () => approvedAccount();
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, hostStatus: 'suspended' } });
+  const checks = h.count('me');
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 5 } }); h.bridge.handle(payoutMessage(6)); await settle();
+  assert.ok(h.count('me') > checks, 'Cached approval cannot authorize a new withdrawal action');
+  assert.equal(h.count('payouts'), 1); assert.equal(h.count('requestPayout'), 0);
+  assert.equal(h.find('payout.loaded').length, 1);
+  assert.deepEqual(h.find('payout.error').map(event => event.data.action), ['payout.request']);
+  assert.equal(h.find('payout.requested').length, 0); h.bridge.close();
+});
+
+test('a pending withdrawal account check cannot undo a newer host revocation', async () => {
+  for (const action of ['load', 'request']) {
+    const h = harness(), earlier = deferred(), revoked = deferred();
+    await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+    h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.overrides.me = () => earlier.promise;
+    h.bridge.handle(action === 'request' ? payoutMessage() : { type: 'payout.load', data: { requestId: 1 } });
+    h.overrides.me = () => revoked.promise;
+    h.live[0].onEvent({ type: 'verification.status', data: { status: 'rejected', hostStatus: 'suspended' } });
+    earlier.resolve(approvedAccount()); await settle();
+    assert.equal(h.find('host.access').at(-1).data.approved, false, 'Payout authentication cannot restore stale host permission');
+    assert.equal(h.count('requestPayout'), 0);
+    assert.equal(h.count('payouts'), action === 'load' ? 1 : 0, 'Owned history remains readable during revocation');
+    revoked.resolve({ ...account(), user: { ...account().user, hostStatus: 'suspended' } }); await settle(); h.bridge.close();
+  }
+});
+
+test('withdrawal history keeps only the newest request and correlates failures', async () => {
+  const h = harness(), old = deferred(), latest = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.payouts = page => page === 1 ? old.promise : latest.promise;
+  h.bridge.handle({ type: 'payout.load', data: { page: 1, requestId: 1 } }); await settle();
+  h.bridge.handle({ type: 'payout.load', data: { page: 2, requestId: 2 } }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'payouts').map(call => call.args)), [[1], [2]]);
+  latest.resolve({ items: [payoutReceipt('latest')], total: 21, page: 2, limit: 20 }); await settle();
+  old.reject(new h.ApiError('Stale history failed', 503)); await settle();
+  assert.equal(h.find('payout.loaded').length, 1); assert.equal(h.find('payout.loaded')[0].data.requestId, 2);
+  assert.equal(h.find('payout.loaded')[0].data.items[0].id, 'latest'); assert.equal(h.find('payout.error').length, 0);
+  h.overrides.payouts = () => { throw new h.ApiError('History unavailable', 503, 'TEMPORARY'); };
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 3 } }); await settle();
+  assert.deepEqual(plain(h.find('payout.error')[0].data), { action: 'payout.load', requestId: 3, message: 'History unavailable', code: 'TEMPORARY', status: 503 }); h.bridge.close();
+});
+
+test('withdrawal submission serializes clicks, preserves retry keys and survives wallet refresh failure', async () => {
+  const h = harness(), pending = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.requestPayout = () => { throw new h.ApiError('Connection lost', 503, 'TEMPORARY'); };
+  h.bridge.handle(payoutMessage(7)); await settle();
+  assert.deepEqual(plain(h.find('payout.error')[0].data), { action: 'payout.request', requestId: 7, idempotencyKey: 'withdrawal-attempt-1', message: 'Connection lost', code: 'TEMPORARY', status: 503 });
+  assert.equal(h.count('wallet'), 0); assert.equal(h.find('payout.requested').length, 0);
+  h.overrides.requestPayout = () => pending.promise;
+  h.overrides.wallet = () => { throw new h.ApiError('Balance unavailable', 503); };
+  const retry = payoutMessage(8); retry.data.payoutAddress = '  creator@upi  ';
+  h.bridge.handle(retry); h.bridge.handle(retry);
+  h.bridge.handle({ type: 'payout.request', data: { ...payoutMessage(9).data, idempotencyKey: 'different-attempt-2' } }); await settle();
+  assert.equal(h.count('requestPayout'), 2, 'One failed attempt plus one retry; duplicate or competing clicks cannot submit again');
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'requestPayout').map(call => call.args)), [[50000, 'creator@upi', 'withdrawal-attempt-1'], [50000, '  creator@upi  ', 'withdrawal-attempt-1']], 'Retries preserve the exact idempotency key; the API adapter normalizes the destination');
+  pending.resolve(payoutReceipt()); await settle();
+  assert.deepEqual(plain(h.find('payout.requested')[0].data), { payout: payoutReceipt(), requestId: 8 });
+  assert.equal(h.find('payout.error').length, 1, 'Wallet failure does not turn a committed withdrawal into a failed request');
+  assert.equal(h.find('wallet.balance').length, 0); assert.equal(h.find('operation.error').at(-1).data.action, 'wallet.load'); h.bridge.close();
+});
+
+test('a committed withdrawal retires history fetched before the balance reservation', async () => {
+  const h = harness(), history = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.payouts = () => history.promise; h.overrides.requestPayout = () => payoutReceipt();
+  h.overrides.wallet = () => ({ coins: 5, earningsPaise: 50000, reservedPaise: 50000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 1 } }); await settle();
+  h.bridge.handle(payoutMessage(2)); await settle();
+  history.resolve({ items: [], total: 0, page: 1, limit: 20 }); await settle();
+  assert.equal(h.find('payout.loaded').length, 0, 'A pre-submission empty history cannot erase the confirmed receipt');
+  assert.equal(h.find('payout.requested').length, 1);
+  assert.deepEqual(plain(h.find('wallet.balance').at(-1).data), { coins: 5, earningsPaise: 50000, reservedPaise: 50000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true }); h.bridge.close();
+});
+
+test('retired withdrawal authorization cannot begin a read or a financial mutation', async () => {
+  for (const retirement of ['document', 'account']) for (const action of ['load', 'request']) {
+    const h = harness(), approval = deferred(); await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approval.promise;
+    h.bridge.handle(action === 'request' ? payoutMessage() : { type: 'payout.load', data: { requestId: 1 } }); await settle();
+    if (retirement === 'document') h.bridge.documentLoading(); else { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('new')); }
+    approval.resolve(approvedAccount()); await settle();
+    assert.equal(h.count('payouts') + h.count('requestPayout'), 0, `${retirement} retires pending payout ${action} authorization`);
+    assert.equal(h.find('payout.error').length, 0); h.bridge.close();
+  }
+});
+
+test('late payout receipts, history and errors never reach a replacement document or account', async () => {
+  for (const retirement of ['document', 'account']) for (const action of ['load', 'request']) for (const outcome of ['success', 'failure']) {
+    const h = harness(), pending = deferred(); await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+    h.overrides[action === 'request' ? 'requestPayout' : 'payouts'] = () => pending.promise;
+    h.bridge.handle(action === 'request' ? payoutMessage() : { type: 'payout.load', data: { requestId: 1 } }); await settle();
+    assert.equal(h.count(action === 'request' ? 'requestPayout' : 'payouts'), 1);
+    if (retirement === 'document') h.bridge.documentLoading(); else { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('new')); }
+    if (outcome === 'failure') pending.reject(new h.ApiError('Retired failure', 503));
+    else pending.resolve(action === 'request' ? payoutReceipt() : { items: [payoutReceipt()], total: 1, page: 1, limit: 20 });
+    await settle();
+    assert.equal(h.find('payout.requested').length + h.find('payout.loaded').length + h.find('payout.error').length, 0, `${retirement} hides stale ${action} ${outcome}`);
+    assert.equal(h.count('wallet'), 0, 'An old receipt cannot refresh the next identity wallet'); h.bridge.close();
+  }
+});
+
+test('durable withdrawal recovery survives bridge restart and host revocation without authorizing new attempts', async () => {
+  const h = harness(); h.overrides.me = () => approvedAccount();
+  h.overrides.requestPayout = () => {
+    assert.deepEqual(JSON.parse(h.disk.get('zimi.payouts.v1.alice')), { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1' }, 'The attempt is durable before any POST');
+    throw new h.ApiError('Connection interrupted', 503);
+  };
+  h.bridge.handle(payoutMessage()); await settle();
+  assert.equal(h.count('requestPayout'), 1); assert.ok(h.disk.has('zimi.payouts.v1.alice'));
+  h.bridge.close();
+  const revoked = { ...approvedAccount(), user: { ...approvedAccount().user, hostStatus: 'suspended', isVerifiedHost: false }, verification: 'rejected' };
+  h.overrides.me = () => revoked;
+  const restarted = h.bridgeModule.createBridge(message => h.posts.push(message));
+  restarted.handle({ type: 'payout.load', data: { requestId: 2 } }); await settle();
+  assert.equal(h.find('payout.loaded').at(-1).data.pending.idempotencyKey, 'withdrawal-attempt-1');
+  restarted.handle({ type: 'payout.request', data: { ...payoutMessage(3).data, idempotencyKey: 'unrelated-attempt-2' } }); await settle();
+  assert.equal(h.count('requestPayout'), 1, 'An existing pending key cannot authorize another withdrawal');
+  assert.equal(h.find('payout.error').at(-1).data.code, 'PAYOUT_PENDING_RECOVERY');
+  h.overrides.requestPayout = () => ({ ...payoutReceipt(), idempotencyKey: 'withdrawal-attempt-1' });
+  restarted.handle(payoutMessage(4)); await settle();
+  assert.equal(h.count('requestPayout'), 2, 'The owning account may explicitly replay only the durable attempt after revocation');
+  assert.equal(h.find('payout.requested').at(-1).data.requestId, 4); assert.equal(h.disk.has('zimi.payouts.v1.alice'), false);
+  restarted.handle({ type: 'payout.request', data: { ...payoutMessage(5).data, idempotencyKey: 'new-withdrawal-3' } }); await settle();
+  assert.equal(h.count('requestPayout'), 2, 'Reconciliation never restores permission to start a new withdrawal');
+  assert.equal(h.find('payout.error').at(-1).data.status, 403); restarted.close();
+});
+
+test('withdrawal history reconciles only matching durable terms and keeps other accounts isolated', async () => {
+  const h = harness(); h.overrides.me = () => account();
+  const pending = { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1' };
+  h.disk.set('zimi.payouts.v1.alice', JSON.stringify(pending));
+  h.disk.set('zimi.payouts.v1.bob', JSON.stringify({ ...pending, idempotencyKey: 'bob-withdrawal-1' }));
+  h.overrides.payouts = () => ({ items: [{ ...payoutReceipt(), amountPaise: 60000, idempotencyKey: pending.idempotencyKey }], total: 1, page: 1, limit: 20 });
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 1 } }); await settle();
+  assert.equal(h.find('payout.loaded').at(-1).data.recovered, null); assert.ok(h.disk.has('zimi.payouts.v1.alice'));
+  h.overrides.payouts = () => ({ items: [{ ...payoutReceipt(), idempotencyKey: pending.idempotencyKey }], total: 1, page: 1, limit: 20 });
+  h.bridge.handle({ type: 'payout.load', data: { requestId: 2 } }); await settle();
+  const loaded = h.find('payout.loaded').at(-1).data;
+  assert.equal(loaded.pending, null); assert.equal(loaded.recovered.id, 'payout-1');
+  assert.equal(h.disk.has('zimi.payouts.v1.alice'), false); assert.ok(h.disk.has('zimi.payouts.v1.bob'));
+  assert.equal(h.count('requestPayout'), 0, 'History reconciliation never submits a financial mutation'); h.bridge.close();
+});
+
+test('withdrawals cannot submit before durable storage succeeds or after its document retires', async () => {
+  const h = harness(), writing = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.setStorage = key => key === 'zimi.payouts.v1.alice' ? writing.promise : undefined;
+  h.bridge.handle(payoutMessage()); await settle();
+  assert.equal(h.count('requestPayout'), 0, 'The POST waits for the actual secure-storage write');
+  h.bridge.documentLoading(); writing.resolve(); await settle();
+  assert.equal(h.count('requestPayout'), 0);
+  assert.ok(h.disk.has('zimi.payouts.v1.alice'), 'A retired document cannot erase an intent another document may already be recovering');
+  h.bridge.close();
+  for (const failure of ['read', 'write', 'malformed']) {
+    const blocked = harness(); blocked.overrides.me = () => approvedAccount();
+    if (failure === 'read') blocked.overrides.getStorage = key => { if (key.startsWith('zimi.payouts.')) throw new Error('Read unavailable'); };
+    else if (failure === 'write') blocked.overrides.setStorage = key => { if (key.startsWith('zimi.payouts.')) throw new Error('Write unavailable'); };
+    else blocked.disk.set('zimi.payouts.v1.alice', '{corrupt');
+    blocked.bridge.handle(payoutMessage()); await settle();
+    assert.equal(blocked.count('requestPayout'), 0, `${failure} recovery failure must block a fresh mutation`);
+    assert.equal(blocked.find('payout.error').length, 1); blocked.bridge.close();
+  }
 });
 
 test('gift retries share one request while distinct attempts retain their own acknowledgments', async () => {
@@ -1258,9 +1519,11 @@ test('unapproved native host actions cannot reach stream, online presence, call 
     h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming' } });
     h.bridge.handle({ type: 'media.post.create', data: { photo: 'data:image/png;base64,AAAA', caption: 'Blocked post', requestId: 2 } });
     h.bridge.handle({ type: 'awards.claim', data: { task: 'mission-id' } });
-    h.bridge.handle({ type: 'payout.request', data: { coins: 100, upi: 'member@upi' } });
+    h.bridge.handle(payoutMessage());
+    h.bridge.handle({ type: 'payout.load', data: { requestId: 2 } });
     await settle();
     for (const name of ['startStream', 'setPresence', 'acceptCall', 'createPost', 'claimAward', 'requestPayout']) assert.equal(h.count(name), 0, `${denied.user.hostStatus || 'member'} cannot invoke ${name}`);
+    assert.equal(h.count('payouts'), 1, 'Account-owned history remains available when host capabilities are denied');
     assert.ok(h.find('host.access').every(event => event.data.approved === false));
     assert.equal(h.find('stream.opened').length, 0); assert.equal(h.find('post.saved').length, 0); assert.equal(h.find('call.connected').length, 0);
     h.bridge.handle({ type: 'presence.set', data: { online: false, visible: false } });

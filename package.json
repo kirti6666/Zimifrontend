@@ -18,6 +18,8 @@
     "test:auth": "node scripts/test-api-client.cjs && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs",
     "test:render-security": "node scripts/test-render-security.cjs",
     "test:coins": "npm run build:web && node scripts/test-coins.cjs",
+    "test:payouts": "npm run build:web && node scripts/test-payout-cache.cjs && node scripts/test-payouts.cjs",
+    "test:payments": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-payment-routes.cjs && node scripts/test-coins.cjs && node scripts/test-themes.cjs && node scripts/test-profile-premium.cjs",
     "test:home": "npm run build:web && node scripts/test-home.cjs && node scripts/test-home-media.cjs",
     "test:live": "npm run build:web && node scripts/test-live-room.cjs && node scripts/test-home-media.cjs",
     "test:call-setup": "npm run build:web && node scripts/test-call-setup.cjs",

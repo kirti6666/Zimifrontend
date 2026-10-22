@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -151,12 +151,35 @@ export function catalogFrom(giftData: unknown, packData: unknown): Catalog {
   return { gifts: items(giftData).map(record).map(gift => ({ id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: gift.media && typeof gift.media === "object" ? string(record(gift.media).url) : "" })),
     packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise) })), paymentsAvailable: record(packData).paymentsAvailable === true };
 }
+export const validPaymentRoute = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(value);
+export function paymentRoutesFrom(value: unknown): PaymentRoutes {
+  const data = record(value);
+  if (!["SINGLE", "ROTATION"].includes(String(data.mode)) || typeof data.routeChoice !== "boolean" || !Array.isArray(data.routes) || data.routes.length > 100)
+    throw new ApiError("Payment methods could not be loaded. Automatic checkout is still available.", 502);
+  const routes = data.routes.map(value => {
+    const route = record(value);
+    if (!validPaymentRoute(route.route) || !validPaymentRoute(route.pageStyle) || typeof route.upiIntent !== "boolean" || typeof route.takingPayments !== "boolean" || typeof route.currency !== "string" || !/^[A-Z]{3}$/.test(route.currency))
+      throw new ApiError("Payment methods could not be loaded. Automatic checkout is still available.", 502);
+    return { route: route.route, pageStyle: route.pageStyle, upiIntent: route.upiIntent, takingPayments: route.takingPayments, currency: route.currency };
+  });
+  if (new Set(routes.map(route => route.route)).size !== routes.length) throw new ApiError("Payment methods could not be loaded.", 502);
+  return { mode: data.mode as PaymentRoutes["mode"], routeChoice: data.routeChoice, routes: routes.filter(route => route.takingPayments && route.currency === "INR").map(route => ({ ...route, currency: "INR" as const })) };
+}
 export function purchaseFrom(value: unknown): Purchase {
   const data = record(value), paymentUrl = string(data.paymentUrl);
-  if (paymentUrl && !/^https:\/\/[^\s"'<>]+$/.test(paymentUrl)) throw new ApiError("Checkout did not return a secure payment address.", 502);
+  if (paymentUrl) {
+    let safe = false;
+    try { const url = new URL(paymentUrl); safe = url.protocol === "https:" && !url.username && !url.password && /^https:\/\/[^\s"'<>]+$/.test(paymentUrl); } catch { /* reject malformed URLs */ }
+    if (!safe) throw new ApiError("Checkout did not return a secure payment address.", 502);
+  }
+  if (data.currency != null && data.currency !== "INR") throw new ApiError("Checkout returned an unexpected currency.", 502);
+  for (const key of ["requestedRoute", "route", "pageStyle"]) {
+    if (data[key] != null && !validPaymentRoute(data[key])) throw new ApiError("Checkout returned an invalid payment method.", 502);
+  }
   const status = string(data.status);
   return { purchaseId: idOf(data), merchantOrderId: string(data.merchantOrderId), status: status === "paid" ? "SUCCESS" : status === "failed" ? "FAILED" : status === "reverted" ? "REVERTED" : "PENDING", ...(paymentUrl ? { paymentUrl } : {}), ...(data.kind === "premium" || data.kind === "coins" ? { kind: data.kind } : {}),
     ...(idOf(data.packId) ? { packId: idOf(data.packId) } : {}), ...(typeof data.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(data.idempotencyKey) ? { idempotencyKey: data.idempotencyKey } : {}),
+    ...Object.fromEntries(["requestedRoute", "route", "pageStyle"].filter(key => validPaymentRoute(data[key])).map(key => [key, data[key]])), ...(data.currency === "INR" ? { currency: "INR" as const } : {}),
     ...Object.fromEntries(["coins", "amountPaise", "payableAmountPaise"].filter(key => typeof data[key] === "number" && Number.isSafeInteger(data[key]) && Number(data[key]) >= 0).map(key => [key, data[key]])),
     ...(typeof data.expiresAt === "string" && Number.isFinite(Date.parse(data.expiresAt)) ? { expiresAt: data.expiresAt } : {}) };
 }
@@ -241,7 +264,29 @@ export function missedFrom(value: unknown, userId: string): { calls: MissedCall[
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);
   if (!Number.isSafeInteger(wallet.coins) || !Number.isSafeInteger(wallet.earningsPaise) || (wallet.coins as number) < 0 || (wallet.earningsPaise as number) < 0) throw new ApiError("Your wallet could not be loaded. Try again.", 502);
-  return { coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number, reservedPaise: finite(wallet.reservedPaise) };
+  return {
+    coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
+    reservedPaise: finite(wallet.reservedPaise),
+    minimumWithdrawalPaise: Number.isSafeInteger(wallet.minimumWithdrawalPaise) && Number(wallet.minimumWithdrawalPaise) > 0 ? Number(wallet.minimumWithdrawalPaise) : undefined,
+    withdrawalsEnabled: wallet.withdrawalsEnabled === true,
+  };
+}
+export function payoutFrom(value: unknown): Payout {
+  const payout = record(value), id = idOf(payout);
+  if (!id || !Number.isSafeInteger(payout.amountPaise) || Number(payout.amountPaise) <= 0 || Number(payout.amountPaise) > 100000000 ||
+    typeof payout.payoutAddress !== "string" || payout.payoutAddress.trim().length < 3 || payout.payoutAddress.length > 200 ||
+    !["pending", "approved", "paid", "rejected"].includes(String(payout.status)) || typeof payout.createdAt !== "string" || !Number.isFinite(Date.parse(payout.createdAt))) {
+    throw new ApiError("Your withdrawal could not be confirmed. Check its status and try again.", 502);
+  }
+  return { id, amountPaise: Number(payout.amountPaise), payoutAddress: payout.payoutAddress, status: payout.status as Payout["status"], createdAt: payout.createdAt,
+    ...(typeof payout.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(payout.idempotencyKey) ? { idempotencyKey: payout.idempotencyKey } : {}),
+    ...(typeof payout.reason === "string" ? { reason: payout.reason } : {}), ...(typeof payout.payoutReference === "string" ? { payoutReference: payout.payoutReference } : {}) };
+}
+export function payoutsFrom(value: unknown): Payouts {
+  const data = record(value);
+  if (!Number.isSafeInteger(data.total) || Number(data.total) < 0 || !Number.isSafeInteger(data.page) || Number(data.page) < 1 ||
+    !Number.isSafeInteger(data.limit) || Number(data.limit) < 1 || Number(data.limit) > 100) throw new ApiError("Your withdrawal history could not be loaded. Try again.", 502);
+  return { items: items(value).map(payoutFrom), total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
 }
 export const coinCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
 /** Coins per minute locked onto a paid call; free calls carry none. */

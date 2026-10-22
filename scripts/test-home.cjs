@@ -16,6 +16,7 @@ async function assertPhotoCardLayout(page, label) {
   });
   const hero=await page.locator('.zh-featured-host').boundingBox();
   assert.ok(hero&&hero.width>(boxes[0].right-boxes[0].left)*1.5,`${label} gives the featured creator a wide photo`);
+  assert.ok(hero.x>=0&&hero.x+hero.width<=page.viewportSize().width+1,`${label} keeps the entire featured card inside the viewport`);
   const overlaps=await page.locator('.zh-person-footer').evaluateAll(footers=>footers.some(footer=>{const actions=[...footer.querySelectorAll('button')].map(button=>button.getBoundingClientRect());return actions.length===2&&actions[0].right>actions[1].left+1;}));
   assert.equal(overlaps,false,`${label} keeps Chat and Call actions separate`);
 }
@@ -197,13 +198,13 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.ok(await page.locator('.zh-dashboard-filters [data-dashboard-filter]').count()>=2,'Host discovery has selectable category filters');
     assert.equal(await page.locator('.zh-dashboard h2').count(),2);
     assert.equal(await page.getByRole('heading',{name:/^Live now/}).count(),1);
-    assert.equal(await page.getByRole('heading',{name:/^Live & online hosts/}).count(),1);
+    assert.equal(await page.getByRole('heading',{name:'Trending Live & Calls',exact:true}).count(),1);
     assert.equal(await page.locator('.zh-person-footer').getByRole('button',{name:/^Chat with /}).count(),5);
     assert.equal(await page.locator('.zh-person-footer').getByRole('button',{name:/^Video call /}).count(),5);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     for(const theme of ['dark','light']){
       await page.evaluate(mode=>ztSelect(mode==='dark'?ZThemeOriginal.id:ZThemeRose.id),theme);
-      for(const width of [320,390,768,1280]){
+      for(const width of [320,360,390,768,1280]){
         await page.setViewportSize({width,height:900});
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${theme} Home fits ${width}px`);
         assert.equal(await page.locator('.zh-person-card').evaluateAll(nodes=>nodes.some(node=>node.scrollWidth>node.clientWidth+1)),false,`${theme} creator cards do not overflow at ${width}px`);
@@ -311,6 +312,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.getByRole('button',{name:'Back',exact:true}).click();
     const paidHost={...host,stream:null,ratePerMin:25};
     await receive('data.home',{...home,hosts:[paidHost],featured:paidHost,stage:[]});
+    assert.equal(await real.locator('.zh-live-section').count(),0,'Online hosts without active broadcasts do not show Live now');
     assert.equal(await real.locator('.zh-person-cost').count(),0,'Paid creator cards keep the price inside call confirmation');
     await real.getByRole('button',{name:'Video call '+host.name,exact:true}).click();
     assert.equal(await real.evaluate(()=>S.v),'precall','The explicit call action opens confirmation');
@@ -393,11 +395,61 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await receive('stream.closed',{streamId});
     await receive('operation.error',{action:'home.reload',message:'Temporarily offline'});
     assert.equal(await real.locator('.zh-error').innerText(),'Temporarily offlineRetry');
+    assert.equal(await real.locator('.zh-live-section').count(),0,'A failed feed does not show stale Live now content');
     await real.getByRole('button',{name:'Retry',exact:true}).click();
     assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1);
-    await receive('data.home',{...home,hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0});
-    assert.equal(await real.getByText('No live hosts right now',{exact:true}).count(),1,'An empty live feed has a distinct useful state');
+    await receive('session',{user:{id:'507f1f77bcf86cd799439001',name:'Member',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false},verification:'none',requiresOnboarding:false});
+    const emptyHome={...home,hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0};
+    await receive('data.home',emptyHome);
+    assert.equal(await real.locator('.zh-live-section').count(),0,'The entire Live now section is absent when nobody is live');
     assert.equal(await real.getByRole('heading',{name:'No hosts online right now',exact:true}).count(),1,'An empty online feed has a distinct useful state');
+    assert.equal(await real.locator('article.zh-person-card').count(),0,'An empty feed never substitutes sample hosts');
+    assert.equal(await real.locator('.zh-home-empty-scene').getAttribute('aria-hidden'),'true','Empty-state illustration stays decorative');
+    assert.equal(await real.getByRole('button',{name:'Start your live',exact:true}).count(),0,'Members cannot start a broadcast from the empty feed');
+    await real.emulateMedia({reducedMotion:'reduce'});
+    await real.locator('#app-notice').waitFor({state:'hidden'});
+    for(const theme of ['dark','light']){
+      await real.evaluate(mode=>Native.receive({type:'data.themes',data:{selectedThemeId:mode==='dark'?ZThemeOriginal.id:ZThemeRose.id,items:[ZThemeOriginal,ZThemeRose],premium:{active:false}}}),theme);
+      for(const width of [320,390,768]){
+        await real.setViewportSize({width,height:900});
+        assert.equal(await real.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${theme} empty Home fits ${width}px`);
+        const controls=await real.locator('.zh-empty-actions button,.zh-empty-links button').evaluateAll(nodes=>nodes.map(node=>{const b=node.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,height:b.height,overflow:node.scrollWidth>node.clientWidth+1};}));
+        assert.ok(controls.length>=4&&controls.every(b=>b.height>=44&&!b.overflow&&b.left>=0&&b.right<=width+1),`${theme} empty actions fit and remain tappable at ${width}px`);
+        assert.equal(controls.some((a,i)=>controls.slice(i+1).some(b=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)),false,`${theme} empty actions do not overlap at ${width}px`);
+      }
+      await real.setViewportSize({width:390,height:844});
+      await real.screenshot({path:path.join(artifacts,`home-empty-mobile-${theme}.png`)});
+    }
+    await real.locator('.zh-empty-actions').getByRole('button',{name:/^Check again/}).click();
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'online'},'Empty-state refresh requests the real active feed');
+    assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Empty-state refresh waits on the request skeleton');
+    assert.equal(await real.locator('.zh-live-section').count(),0,'Refreshing an empty feed does not invent a Live now section');
+    assert.equal(await real.locator('.zh-home-empty-scene').count(),0,'Loading does not leave a stale empty state visible');
+    await receive('data.home',emptyHome);
+    await real.locator('[data-dashboard-filter="instant"]').click();
+    await receive('data.home',emptyHome);
+    assert.equal(await real.getByRole('heading',{name:'No one available to call',exact:true}).count(),1,'Instant Call explains its filtered empty result');
+    await real.getByRole('button',{name:'Show all hosts',exact:true}).click();
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'online'},'Resetting an empty filter requests all active hosts');
+    assert.equal(await real.locator('[data-dashboard-filter="popular"]').getAttribute('aria-pressed'),'true');
+    await receive('data.home',emptyHome);
+    await real.locator('[data-dashboard-filter="Music"]').click();
+    await receive('data.home',emptyHome);
+    assert.equal(await real.getByRole('heading',{name:'No hosts in this category',exact:true}).count(),1,'A category empty result does not claim everyone is offline');
+    await real.getByRole('button',{name:'Show all hosts',exact:true}).click();
+    await receive('data.home',emptyHome);
+    await real.locator('.zh-empty-actions').getByRole('button',{name:/^Explore creators/}).click();
+    assert.equal(await real.evaluate(()=>S.v),'explore','Empty-state discovery opens Explore');
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Explore requests its real creator feed');
+    await real.getByRole('button',{name:'Home',exact:true}).click();
+    await receive('data.home',emptyHome);
+    await real.locator('.zh-empty-links').getByRole('button',{name:/^Your chats/}).click();
+    assert.equal(await real.evaluate(()=>S.v),'chats','The empty feed links to existing conversations');
+    await real.getByRole('button',{name:'Home',exact:true}).click();
+    await receive('data.home',emptyHome);
+    await real.getByRole('button',{name:'Find a creator',exact:true}).click();
+    assert.equal(await real.evaluate(()=>S.v),'search','The empty feed links to real creator search');
+    await real.getByRole('button',{name:'Back to home',exact:true}).click();
     await receive('data.home',home);
     await receive('session',{user:{id:'507f1f77bcf86cd799439017',name:'Host',role:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified',requiresOnboarding:false});
     await real.evaluate(()=>{window.ZimiMedia.openStream=()=>{};});

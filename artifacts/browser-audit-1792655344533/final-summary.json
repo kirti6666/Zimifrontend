@@ -1,0 +1,250 @@
+{
+  "passed": 30,
+  "failed": 0,
+  "total": 30,
+  "results": [
+    {
+      "name": "profile-media",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 900,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-profile-media.log"
+    },
+    {
+      "name": "render-security",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 523,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-render-security.log"
+    },
+    {
+      "name": "coins",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 10179,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-coins.log"
+    },
+    {
+      "name": "onboarding",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 13127,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-onboarding.log"
+    },
+    {
+      "name": "home-media",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1875,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-home-media.log"
+    },
+    {
+      "name": "live-room",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 6419,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-live-room.log"
+    },
+    {
+      "name": "call-setup",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 2359,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-call-setup.log"
+    },
+    {
+      "name": "call-charges",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1080,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-call-charges.log"
+    },
+    {
+      "name": "private-screens",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 720,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-private-screens.log"
+    },
+    {
+      "name": "home",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 16666,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-home.log"
+    },
+    {
+      "name": "chat-actions",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1047,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-actions.log"
+    },
+    {
+      "name": "chat-safety",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1056,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-safety-rerun.log",
+      "initialExitCode": 1,
+      "initialLogPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-safety.log",
+      "fix": "Fixture now opens Add a photo or emoji > Photo and selects via the filechooser, preserving peer/account chooser intent."
+    },
+    {
+      "name": "chat-voice",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 7870,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-voice.log"
+    },
+    {
+      "name": "chat-photo-picker",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 85,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-photo-picker.log"
+    },
+    {
+      "name": "chat-replies",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 26088,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-replies.log"
+    },
+    {
+      "name": "chat-photos",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 16679,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-photos.log"
+    },
+    {
+      "name": "verification-call",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1241,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-verification-call.log"
+    },
+    {
+      "name": "loading",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 2896,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-loading.log"
+    },
+    {
+      "name": "chat-photos-webkit",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 12301,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chat-photos-webkit.log"
+    },
+    {
+      "name": "notifications",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 7534,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-notifications.log"
+    },
+    {
+      "name": "offline",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 2257,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-offline.log"
+    },
+    {
+      "name": "chats",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 3620,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-chats.log"
+    },
+    {
+      "name": "back-navigation",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1403,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-back-navigation.log"
+    },
+    {
+      "name": "navigation",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 6557,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-navigation.log"
+    },
+    {
+      "name": "themes",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 3563,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-themes.log"
+    },
+    {
+      "name": "theme-consistency",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 2716,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-theme-consistency.log"
+    },
+    {
+      "name": "profile-premium",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1868,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-profile-premium.log"
+    },
+    {
+      "name": "profile-settings",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 3229,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-profile-settings.log"
+    },
+    {
+      "name": "icons",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 2221,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-icons.log"
+    },
+    {
+      "name": "public-profile",
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 3153,
+      "logPath": "C:\\Users\\ADMIN\\Desktop\\ZimiLive\\Zimifrontend\\artifacts\\browser-audit-1792655344533\\test-public-profile.log"
+    }
+  ]
+}

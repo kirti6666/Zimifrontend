@@ -63,7 +63,10 @@ const rohan = { id: id('13'), name: 'Rohan', role: 'sender', online: true, verif
     await receive('data.thread', { with: mira.id, messages: [], canSend: true });
     // A real PNG drawn in the browser, so the picker resizes it like any camera photo.
     const png = Buffer.from(await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 8; const context = canvas.getContext('2d'); context.fillStyle = '#c0f'; context.fillRect(0, 0, 8, 8); return canvas.toDataURL('image/png').split(',')[1]; }), 'base64');
-    await page.locator('#zc-photo-input').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png });
+    await page.getByRole('button', { name: 'Add a photo or emoji', exact: true }).click();
+    const picker = page.waitForEvent('filechooser');
+    await page.getByRole('menuitem', { name: 'Photo', exact: true }).click();
+    await (await picker).setFiles({ name: 'me.png', mimeType: 'image/png', buffer: png });
     await page.waitForFunction(() => __sent.some(message => message.type === 'chat.photo'));
     const photoMessage = await page.evaluate(() => __sent.filter(message => message.type === 'chat.photo').at(-1).data);
     assert.equal(photoMessage.to, mira.id);

@@ -145,6 +145,11 @@ export interface StreamReaction { id: string; streamId: string; userId: string; 
 export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
 export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
+export interface PaymentRoutes {
+  mode: "SINGLE" | "ROTATION";
+  routeChoice: boolean;
+  routes: { route: string; pageStyle: string; upiIntent: boolean; takingPayments: boolean; currency: "INR" }[];
+}
 export interface AppTheme {
   id: string;
   slug: string;
@@ -177,7 +182,7 @@ export interface ProfileSettings {
 }
 export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
-export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
+export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; requestedRoute?: string; route?: string; pageStyle?: string; currency?: "INR"; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
 export interface RtcPayload {
   description?: { type: "offer" | "answer"; sdp: string };
   candidate?: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string };
@@ -268,5 +273,25 @@ export interface Wallet {
   coins: number;
   earningsPaise: number;
   reservedPaise?: number;
+  minimumWithdrawalPaise?: number;
+  withdrawalsEnabled?: boolean;
   earned?: number;
+}
+
+export interface Payout {
+  id: string;
+  amountPaise: number;
+  payoutAddress: string;
+  status: "pending" | "approved" | "paid" | "rejected";
+  createdAt: string;
+  reason?: string;
+  payoutReference?: string;
+  idempotencyKey?: string;
+}
+
+export interface Payouts {
+  items: Payout[];
+  total: number;
+  page: number;
+  limit: number;
 }

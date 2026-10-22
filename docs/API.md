@@ -94,9 +94,21 @@ for it (login, call failed).
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `PUT /follows/:id` `{on}` | – |
-| Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
-| Withdraw | `POST /payouts` `{coins, upi}` | `Wallet` |
+| Payment methods | `GET /payments/routes` | `{mode,routeChoice,routes:[{route,pageStyle,upiIntent,takingPayments,currency}]}`; available INR routes only |
+| Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey, route?}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
+| Unlock lifetime premium | `POST /themes/premium/purchase` `{idempotencyKey, route?}`; `POST /themes/premium/verify` `{merchantOrderId}` | `Purchase` with `kind: "premium"` |
+| Request a withdrawal | `POST /wallet/withdraw` `{amountPaise, payoutAddress, idempotencyKey}` | A withdrawal record; reserves INR earnings pending admin review |
+| Withdrawal history | `GET /wallet/withdrawals?page=1&limit=20` | `{items,total,page,limit}` with pending, approved, paid, or rejected records |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
+
+Withdrawal availability and the minimum come from `GET /wallet` as
+`withdrawalsEnabled` and `minimumWithdrawalPaise`. Only admin-approved hosts can
+request withdrawals. Spendable coins are not withdrawable earnings. The WebView
+uses `payout.load` / `payout.request` with request IDs; native returns correlated
+`payout.loaded`, `payout.requested`, or `payout.error`. Retrying an uncertain request
+keeps its original idempotency key. A successful reservation remains confirmed
+even if the independent wallet refresh fails. Actual transfers and payment
+references are recorded by the admin after manual processing.
 
 In a conversation, swipe left on your own message or right on the other person's message,
 or hold either message and choose **Reply**.
@@ -220,6 +232,41 @@ connected for at least 10 seconds.
 
 These never use the member-call messages (`call.*`), so host-access rules for
 member calls do not apply to an applicant answering staff.
+
+## Payment methods and recovery
+
+The backend discovers methods through [PayPlus's v2 routes API](https://new.payplus.live/docs/api-reference#payment-routes).
+`mode` is `SINGLE` or `ROTATION`; omitting `route` always leaves routing to PayPlus.
+Manual selection is permitted only when `routeChoice` is true, in either mode.
+The backend validates new selections against the current available INR routes.
+Neither clients nor provider callbacks set the catalog price or number of coins.
+
+The WebView requests `payments.routes.load {requestId}` and receives a correlated
+`payments.routes` response or `operation.error`. Request state drives the selector's
+skeleton and retry control. Route discovery failure leaves Automatic checkout
+available; it does not imply payment creation will succeed.
+
+`wallet.checkout` and `themes.premium.checkout` accept the optional `route`.
+The backend snapshots it as `requestedRoute`, separately from the actual provider
+`route` and `pageStyle`. Retries reuse the same idempotency key, price, and original
+selection. Automatic retries continue to omit `route`, even after PayPlus reports
+the actual route used. Pending native storage preserves the selection across restart.
+Changing a pending purchase's route returns `PAYMENT_ROUTE_CONFLICT`; the app never
+silently creates a replacement or falls back to another method.
+
+`PAYMENT_ROUTE_CHOICE_DISABLED` and `PAYMENT_ROUTE_UNAVAILABLE` are pre-creation
+rejections, so the app may refresh methods and start a new attempt. Provider timeouts
+and ambiguous errors retain the existing attempt. Coins or premium are delivered
+only after authenticated server verification or a raw-body HMAC-verified webhook,
+with matching purchase details and atomic, duplicate-safe ledger updates.
+Payment pages open outside the privileged application WebView. Returning to the app
+triggers verification; browser return parameters never grant a balance or entitlement.
+
+Backend configuration requires an approved PayPlus app, server-only API key and
+webhook secret, approved HTTPS return URL, registered webhook, and an allowed server
+outbound IP. `IP_NOT_ALLOWED` requires updating the merchant's permitted IPs before
+real-provider validation can pass. Automated tests use provider fixtures and isolated
+databases; they never create live payments.
 
 ## Not covered yet
 

@@ -4,14 +4,15 @@
 .zh-app button:focus-visible,.zh-app input:focus-visible,.zh-app select:focus-visible{outline:2px solid #ffb2d7;outline-offset:4px}
 .zh-app button:disabled{cursor:default;opacity:.48;box-shadow:none}
 .zh-header{height:63px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:12px;border-bottom:1px solid #4e19372e}
-.zh-brand{display:flex;align-items:center;gap:5px;font-size:18px;font-weight:750;letter-spacing:-.7px;white-space:nowrap}
+.zh-brand{display:flex;flex:none;align-items:center;gap:5px;font-size:18px;font-weight:750;letter-spacing:-.7px;white-space:nowrap}
 .zh-brand>svg{color:#ffbbd9}.zh-brand>span>span{color:#ff168e}
-.zh-header-actions{display:flex;align-items:center;gap:12px}
-.zh-balance{display:flex;align-items:center;gap:3px;border-radius:20px;background:#392232;font-size:10px;font-weight:650;padding:8px 9px;white-space:nowrap}
-.zh-balance svg{color:#ffc5de}
-.zh-icon{display:flex;align-items:center;justify-content:center;width:28px;height:36px}
+.zh-header-actions{display:flex;flex:1;min-width:0;justify-content:flex-end;align-items:center;gap:8px}
+.zh-balance{display:flex;min-width:0;max-width:120px;align-items:center;gap:3px;border-radius:20px;background:#392232;font-size:10px;font-weight:650;padding:8px 9px;white-space:nowrap}
+.zh-balance>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.zh-balance svg{flex:none;color:#ffc5de}
+.zh-icon{display:flex;flex:none;align-items:center;justify-content:center;width:32px;height:40px}
 .zh-bell{position:relative}.zh-bell>i{width:7px;height:7px;position:absolute;right:4px;top:5px;background:#ef0b85;border-radius:50%;outline:1px solid #210e1c}
-.zh-profile{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;color:#301725;background:#ffaccf;overflow:hidden}
+.zh-profile{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;color:var(--cta-ink);background:var(--accent);overflow:hidden}
 .zh-profile img{width:100%;height:100%;object-fit:cover}
 .zh-home{padding:8px 15px 28px;max-width:1040px;margin:0 auto}
 .zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}

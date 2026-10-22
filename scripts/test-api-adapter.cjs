@@ -347,6 +347,28 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('GET', '/wallet', { coins: 200, earningsPaise: 12345, reservedPaise: 2000 });
   const wallet = await api.wallet(); assert.equal(wallet.earningsPaise, 12345); assert.equal(wallet.earned, undefined);
   assert.throws(() => adapters.walletFrom({ coins: '200', earningsPaise: 0 }), /wallet/);
+  assert.equal(wallet.minimumWithdrawalPaise, undefined, 'An older wallet response does not invent a withdrawal minimum');
+  assert.equal(wallet.withdrawalsEnabled, false, 'Missing payout capability cannot enable withdrawals');
+  expect('GET', '/wallet', { coins: 200, earningsPaise: 123450, reservedPaise: 2000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
+  assert.deepEqual(plain(await api.wallet()), { coins: 200, earningsPaise: 123450, reservedPaise: 2000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
+  const invalidPayoutConfig = adapters.walletFrom({ coins: 0, earningsPaise: 100, minimumWithdrawalPaise: 1.5, withdrawalsEnabled: 'true' });
+  assert.equal(invalidPayoutConfig.minimumWithdrawalPaise, undefined); assert.equal(invalidPayoutConfig.withdrawalsEnabled, false);
+  const payoutDto = { _id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: '2026-10-22T08:00:00.000Z', reason: 'Reviewed', payoutReference: 'bank-reference', userId: 'private-owner' };
+  const payoutReceipt = { id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: payoutDto.createdAt, reason: 'Reviewed', payoutReference: 'bank-reference' };
+  expect('GET', '/wallet/withdrawals?page=2&limit=20', { items: [payoutDto], total: 21, page: 2, limit: 20 });
+  assert.deepEqual(plain(await api.payouts(2)), { items: [payoutReceipt], total: 21, page: 2, limit: 20 }, 'History maps the actual payout receipt without leaking server metadata');
+  expect('GET', '/wallet/withdrawals?page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
+  assert.equal((await api.payouts()).page, 1);
+  const payoutBody = { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1' };
+  expect('POST', '/wallet/withdraw', payoutDto, body => assert.deepEqual(plain(body), payoutBody));
+  assert.deepEqual(plain(await api.requestPayout(50000, '  creator@upi  ', payoutBody.idempotencyKey)), payoutReceipt, 'Submission trims the destination and returns its receipt independently from wallet refresh');
+  for (const patch of [{ amountPaise: '50000' }, { amountPaise: 1.5 }, { amountPaise: -1 }, { amountPaise: 100000001 }, { _id: '' }, { status: 'complete' }, { payoutAddress: '' }, { createdAt: 'not-a-date' }]) {
+    expect('POST', '/wallet/withdraw', { ...payoutDto, ...patch });
+    await assert.rejects(api.requestPayout(50000, 'creator@upi', payoutBody.idempotencyKey), /withdrawal/i, 'Malformed payout confirmation stays unconfirmed');
+  }
+  expect('GET', '/wallet/withdrawals?page=1&limit=20', { items: [{ ...payoutDto, status: 'unknown' }], total: 1, page: 1, limit: 20 });
+  await assert.rejects(api.payouts(), /withdrawal/i, 'History also validates returned payout records');
+  finished();
   expect('POST', '/calls', { _id: 'call-id' }, body => assert.deepEqual(plain(body), { calleeId: 'host-id', kind: 'audio' }));
   assert.equal((await api.startCall('host-id', true)).callId, 'call-id');
   expect('POST', '/calls/call-id/end', {}); await api.declineCall('call-id');
@@ -468,6 +490,32 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'created', paymentUrl: 'https://checkout.example.test/pay', packId, coins: 100, amountPaise: 9900, payableAmountPaise: 10000, expiresAt: '2026-10-20T12:00:00.000Z', idempotencyKey: 'payment-attempt-1' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
   const checkout = await api.checkout(packId, 'payment-attempt-1');
   assert.equal(checkout.status, 'PENDING'); assert.equal(checkout.packId, packId); assert.equal(checkout.coins, 100); assert.equal(checkout.amountPaise, 9900); assert.equal(checkout.payableAmountPaise, 10000); assert.equal(checkout.idempotencyKey, 'payment-attempt-1'); assert.equal(checkout.expiresAt, '2026-10-20T12:00:00.000Z');
+  const route = { route: 'UPI_INTENT', pageStyle: 'INTENT', upiIntent: true, takingPayments: true, currency: 'INR' };
+  const routes = { mode: 'SINGLE', routeChoice: true, routes: [route, { ...route, route: 'DISABLED', takingPayments: false }, { ...route, route: 'USD_METHOD', currency: 'USD' }] };
+  expect('GET', '/payments/routes', routes);
+  assert.deepEqual(plain(await api.paymentRoutes()), { mode: 'SINGLE', routeChoice: true, routes: [route] }, 'Only enabled INR routes reach the selector');
+  assert.equal(adapters.paymentRoutesFrom({ mode: 'ROTATION', routeChoice: false, routes: [route] }).routeChoice, false, 'Rotation can expose route metadata without offering manual selection');
+  for (const invalid of [{ ...routes, mode: 'random' }, { ...routes, routeChoice: 'true' }, { ...routes, routes: [route, route] }, ...[
+    { route: 'https://evil.test' }, { pageStyle: '<script>' }, { upiIntent: 1 }, { takingPayments: 'true' }, { currency: null },
+  ].map(patch => ({ ...routes, routes: [{ ...route, ...patch }] }))]) assert.throws(() => adapters.paymentRoutesFrom(invalid), /Payment methods/);
+  const routedOrder = { _id: 'routed-purchase', merchantOrderId: 'routed_order', status: 'pending', requestedRoute: 'UPI_INTENT', route: 'UPI_INTENT', pageStyle: 'INTENT', currency: 'INR' };
+  expect('POST', '/coins/purchase', routedOrder, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'routed-attempt-1', route: 'UPI_INTENT' }));
+  const routedCheckout = await api.checkout(packId, 'routed-attempt-1', 'UPI_INTENT');
+  assert.equal(routedCheckout.requestedRoute, 'UPI_INTENT'); assert.equal(routedCheckout.pageStyle, 'INTENT'); assert.equal(routedCheckout.currency, 'INR');
+  expect('POST', '/themes/premium/purchase', { ...routedOrder, kind: 'premium' }, body => assert.deepEqual(plain(body), { idempotencyKey: 'premium-route-1', route: 'UPI_INTENT' }));
+  assert.equal((await api.checkoutPremium('premium-route-1', 'UPI_INTENT')).route, 'UPI_INTENT');
+  expect('POST', '/coins/purchase', { ...routedOrder, requestedRoute: undefined }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'automatic-route-1' }));
+  const automaticCheckout = await api.checkout(packId, 'automatic-route-1');
+  assert.equal(automaticCheckout.requestedRoute, undefined, 'A provider-selected route never becomes a manually requested route'); assert.equal(automaticCheckout.route, 'UPI_INTENT');
+  const requestsBeforeInvalidRoutes = requests.length;
+  assert.equal(adapters.validPaymentRoute('upi-intent_2'), true, 'Provider route tokens need not be uppercase');
+  for (const invalid of ['', 'upi route', '../UPI', 'A'.repeat(101)]) {
+    await assert.rejects(api.checkout(packId, 'valid-attempt-1', invalid), /valid payment method/);
+    await assert.rejects(api.checkoutPremium('valid-attempt-1', invalid), /valid payment method/);
+  }
+  assert.equal(requests.length, requestsBeforeInvalidRoutes, 'Malformed methods never reach checkout HTTP calls');
+  for (const paymentUrl of ['https://user:secret@checkout.example.test/pay', 'https://checkout.example.test\n.evil.test/pay', 'http://checkout.example.test/pay', 'javascript:steal()']) assert.throws(() => adapters.purchaseFrom({ paymentUrl }), /secure payment/);
+  for (const patch of [{ requestedRoute: '../UPI' }, { route: 'UPI<>' }, { pageStyle: 'x'.repeat(101) }, { currency: 'USD' }]) assert.throws(() => adapters.purchaseFrom({ ...routedOrder, ...patch }), /payment method|currency/);
   expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'paid' });
   assert.equal((await api.verifyPurchase('zimi_order')).status, 'SUCCESS');
   assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);
@@ -604,5 +652,5 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.connected = true; socket.emitServer('connect');
   assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: false } }], 'A session opened in background never starts a welcome schedule');
   backgroundStop();
-  console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, streams, and Socket.IO.');
+  console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, withdrawal configuration/history/receipts, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
