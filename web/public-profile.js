@@ -127,9 +127,9 @@ function zuIdentity(p){
 function zuAbout(p){
   return `<div class="zu-about"><section><h2>A little about ${esc(first(p.name||'this member'))}</h2><p>${esc(p.about||'They haven’t added an introduction yet.')}</p></section>
     ${p.interests?.length?`<section><h3>Into these things</h3><div class="zu-interests">${p.interests.map(value=>`<span>${esc(value)}</span>`).join('')}</div></section>`:''}
-    <div class="zu-details">${p.languages?.length?`<div>${zi('language',18)}<span>Speaks<b>${p.languages.map(esc).join(', ')}</b></span></div>`:''}${p.city?`<div>${zi('location',18)}<span>Based in<b>${esc(p.city)}</b></span></div>`:''}${zuDate(p.joined)?`<div>${hi('clock',18)}<span>Part of Zimi since<b>${esc(zuDate(p.joined))}</b></span></div>`:''}
+    <div class="zu-details">${p.languages?.length?`<div>${zi('language',18)}<span>Speaks<b>${p.languages.map(esc).join(', ')}</b></span></div>`:''}${p.city?`<div>${zi('location',18)}<span>Based in<b>${esc(p.city)}</b></span></div>`:''}${zuDate(p.joined)?`<div>${hi('clock',18)}<span>Part of BinzoLive since<b>${esc(zuDate(p.joined))}</b></span></div>`:''}
     <div>${hi('user',18)}<span>Account ID<b class="zu-account-id">${esc(p.id)}</b></span><button class="zu-icon-button" aria-label="Copy account ID" onclick="zuCopyId()">${hi('copy',17)}</button></div></div>
-    ${zuApproved(p)?`<p class="zu-trust">${zi('shield',16)} Creator verified by Zimi Live</p>`:''}</div>`;
+    ${zuApproved(p)?`<p class="zu-trust">${zi('shield',16)} Creator verified by BinzoLive</p>`:''}</div>`;
 }
 function zuMedia(post,index){
   const src=imageSrc(post.mediaUrl),video=post.kind==='video';
@@ -182,7 +182,7 @@ function zuDialog(title,body,kind){
 }
 function zuOpenOptions(){
   const p=zuPeer();if(!p||Zu.error)return;
-  zuDialog('Profile options',`<p class="zu-dialog-intro">${esc(p.name||'Zimi member')}</p><label class="zu-id-field">Account ID<input id="zu-copy-field" readonly value="${esc(p.id)}" aria-label="Account ID"></label><button class="zu-option" onclick="zuCopyId()">${hi('copy',18)} Copy account ID</button><button class="zu-option zu-danger-text" onclick="zuConfirmBlock()">${zi('shield',18)} Block user</button><p class="zu-dialog-status" role="status"></p>`,'options');
+  zuDialog('Profile options',`<p class="zu-dialog-intro">${esc(p.name||'BinzoLive member')}</p><label class="zu-id-field">Account ID<input id="zu-copy-field" readonly value="${esc(p.id)}" aria-label="Account ID"></label><button class="zu-option" onclick="zuCopyId()">${hi('copy',18)} Copy account ID</button><button class="zu-option zu-danger-text" onclick="zuConfirmBlock()">${zi('shield',18)} Block user</button><p class="zu-dialog-status" role="status"></p>`,'options');
 }
 async function zuCopyId(){
   const id=zuPeer()?.id;if(!id)return;

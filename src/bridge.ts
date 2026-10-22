@@ -757,7 +757,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (!sessionAvailable || !getCachedToken() || activeStream?.id !== msg.data.streamId) throw new ApiError("Open this live room before sharing it.", 409);
         const url = `zimilive://live/${msg.data.streamId}`;
         emit({ type: "stream.shareLink", data: { streamId: msg.data.streamId, url } });
-        await Share.share({ title: "Zimi Live", message: `Join this live on Zimi Live: ${url}` });
+        await Share.share({ title: "BinzoLive", message: `Join this live on BinzoLive: ${url}` });
         return;
       }
       case "stream.leave": case "stream.end": {

@@ -103,11 +103,11 @@ async function run() {
     await settleSettings(page, saved);
     console.log('PASS profile: responsive layout, production identity/stats/wallet, skeletons, reduced motion and load retry');
 
-    await page.getByRole('button', { name: 'Your Zimi QR code', exact: true }).click();
-    await dialog('Your Zimi ID').waitFor();
-    assert.equal(await dialog('Your Zimi ID').locator('.zp-account-id').innerText(), account.user.id);
-    assert.ok(await dialog('Your Zimi ID').locator('.zp-qr svg').count() > 0, 'The account ID has a generated QR image');
-    await dialog('Your Zimi ID').getByRole('button', { name: 'Copy account ID', exact: true }).click();
+    await page.getByRole('button', { name: 'Your BinzoLive QR code', exact: true }).click();
+    await dialog('Your BinzoLive ID').waitFor();
+    assert.equal(await dialog('Your BinzoLive ID').locator('.zp-account-id').innerText(), account.user.id);
+    assert.ok(await dialog('Your BinzoLive ID').locator('.zp-qr svg').count() > 0, 'The account ID has a generated QR image');
+    await dialog('Your BinzoLive ID').getByRole('button', { name: 'Copy account ID', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.__copied), [account.user.id]);
     await close();
     await page.getByRole('button', { name: 'Edit profile', exact: true }).click();

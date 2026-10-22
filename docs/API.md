@@ -1,4 +1,4 @@
-# Zimi Live app ↔ server
+# BinzoLive app ↔ server
 
 How the phone app talks to the server. The code is the source of truth:
 `src/api/endpoints.ts` (requests), `src/api/types.ts` (shapes) and

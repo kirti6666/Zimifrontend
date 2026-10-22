@@ -89,13 +89,14 @@ function harness(initialAppState = 'active', initialLink = null) {
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Image: 'Image', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
       if (id === 'expo-screen-capture') return { preventScreenCaptureAsync: async key => capture.push(['prevent', key]), allowScreenCaptureAsync: async key => capture.push(['allow', key]) };
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
+      if (id === './assets/brand/logo.png') return { __esModule: true, default: 1 };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
       throw new Error(`Unexpected import ${id}`);
     };
@@ -711,7 +712,7 @@ test('app exit requests require valid trusted readiness and one explicit native 
   send('app.exit.request', { confirmed: true }); assert.equal(h.alerts.length, 0);
   send('app.exit.request'); send('app.exit.request');
   assert.equal(h.alerts.length, 1, 'Repeated Back responses do not stack confirmation dialogs');
-  assert.equal(h.alerts[0][0], 'Close Zimi Live?');
+  assert.equal(h.alerts[0][0], 'Close BinzoLive?');
   assert.deepEqual(plain(h.alerts[0][2].map(button => button.text)), ['Cancel', 'Close app']);
   assert.equal(h.exits.length, 0);
   h.alerts[0][2][0].onPress(); assert.equal(h.exits.length, 0, 'Cancel keeps the app open');
@@ -2521,7 +2522,7 @@ test('share live opens one native share sheet with the active room link and retu
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
   h.bridge.handle({type:'stream.join',data:{streamId:'shared-room'}});await settle();
   const message={type:'stream.share',data:{streamId:'shared-room'}};h.bridge.handle(message);h.bridge.handle(message);await settle();
-  assert.equal(h.shares.length,1);assert.equal(h.shares[0].message,'Join this live on Zimi Live: zimilive://live/shared-room');
+  assert.equal(h.shares.length,1);assert.equal(h.shares[0].message,'Join this live on BinzoLive: zimilive://live/shared-room');
   assert.equal(h.find('stream.shareLink')[0].data.url,'zimilive://live/shared-room');share.resolve({action:'dismissedAction'});await settle();
   h.bridge.handle({type:'stream.share',data:{streamId:'another-room'}});await settle();assert.equal(h.shares.length,1);assert.equal(h.find('operation.error').at(-1).data.action,'stream.share');h.bridge.close();
 });

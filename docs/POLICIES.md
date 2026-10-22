@@ -1,4 +1,4 @@
-# Zimi Live misuse policies
+# BinzoLive misuse policies
 
 Rules that stop senders and hosts from misusing the app. Part 1 is what the
 backend already enforces. Part 2 is proposed: each rule has a suggested
@@ -32,7 +32,7 @@ numbers.
 | Multiple accounts | Limit how many accounts one device can create | 2 accounts per device |
 | New-account recharge abuse | Cap daily coin purchases for new accounts | ₹5,000 per day for the first 7 days |
 | Repeat offenders | Escalate after confirmed reports | Warning, then a 7-day suspension, then a permanent block |
-| Host early endings | Count calls a host ends before 1 minute (the app already shows this rule) | Warning after 2 a day; entry fee goes to Zimi Live |
+| Host early endings | Count calls a host ends before 1 minute (the app already shows this rule) | Warning after 2 a day; entry fee goes to BinzoLive |
 | Payout identity | Ask for PAN before large payouts | PAN required once lifetime payouts pass ₹50,000 |
 
 Calls are billed by the second at the price staff set (see `API.md`), so the

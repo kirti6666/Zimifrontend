@@ -183,7 +183,7 @@ async function show(page, view) {
 
     const preview = await open({ demo: true });
     await preview.locator('.za-card').waitFor();
-    await preview.getByRole('button', { name: 'Install now: Zimi Studio, sponsored', exact: true }).click();
+    await preview.getByRole('button', { name: 'Install now: Binzo Studio, sponsored', exact: true }).click();
     assert.match(await preview.locator('#app-notice').innerText(), /Design preview/);
     assert.equal((await sent(preview, 'ads.click')).length, 0, 'The preview never reports taps');
     await preview.screenshot({ path: path.join(artifacts, 'ads-preview-home.png') });

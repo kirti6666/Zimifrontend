@@ -1,4 +1,4 @@
-/* Zimi welcome and sign-up. Every color comes from the active theme, so the
+/* BinzoLive welcome and sign-up. Every color comes from the active theme, so the
    admin's default (or a member's own choice) styles these screens too. */
 .ob-active body, .ob-active .app, .ob-active #scroll-root, .ob-active #screen { background: var(--canvas); }
 .ob-shell, .ob-dialog {
@@ -151,6 +151,8 @@
 .ob-brand > span { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; color: var(--ob-on-pink); background: linear-gradient(140deg, color-mix(in srgb, var(--ob-pink) 78%, var(--ob-soft)), var(--ob-pink)); border-radius: 10px; box-shadow: 0 8px 18px -8px var(--ob-glow), inset 0 1px 0 rgb(255 255 255 / .25); }
 .ob-brand > span svg { width: 19px; height: 19px; }
 .ob-brand > b { font-weight: 800; }
+.ob-logo { display: block; width: auto; height: 38px; }
+.ob-login-logo { display: block; width: auto; height: 26px; margin: 0 auto; }
 .ob-brand small { align-self: center; margin-left: 2px; padding: 4px 6px; border: 1px solid color-mix(in srgb, var(--ob-pink) 35%, transparent); border-radius: 6px; font-size: 8px; line-height: 1; letter-spacing: .12em; font-weight: 800; color: var(--ob-soft); }
 .ob-top-login { min-height: 40px !important; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 13px !important; font-weight: 700 !important; }
 .ob-welcome-grid { display: grid; grid-template-areas: "showcase" "intro" "actions"; grid-template-columns: minmax(0, 1fr); gap: 18px; width: 100%; max-width: 480px; margin: auto; }

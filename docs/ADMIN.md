@@ -1,4 +1,4 @@
-# Zimi Live admin console
+# BinzoLive admin console
 
 ## How it fits with the React Native app
 

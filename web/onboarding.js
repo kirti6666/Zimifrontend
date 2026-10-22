@@ -81,7 +81,7 @@ function obResetSession(message = "") {
 function obRestoreScreen() {
   const busy = S.sessionState === "restoring";
   const skeleton = `<div class="ob-session-skeleton" role="status" aria-label="Restoring session" aria-busy="true"><div aria-hidden="true"><div class="ob-session-stories">${Array.from({ length: 5 }, () => '<span></span>').join('')}</div><div class="ob-session-card"><span class="ob-session-line"></span><span class="ob-session-line short"></span><span class="ob-session-action"></span></div></div></div>`;
-  return `<section class="ob-shell ob-recovery"><div class="ob-main"><span class="ob-eyebrow">ZIMI LIVE</span><h1 class="ob-heading" tabindex="-1">${busy ? "Picking up where you left off." : "Let’s reconnect."}</h1><p class="ob-description">${busy ? "Checking your saved session…" : esc(S.sessionError || "Check your connection and try again.")}</p><div class="ob-actions">${busy ? skeleton : '<button class="ob-primary" onclick="Native.send(\'session.resume\')">Try again</button><button class="ob-secondary" onclick="logout()">Use another account</button>'}</div></div></section>`;
+  return `<section class="ob-shell ob-recovery"><div class="ob-main"><span class="ob-eyebrow">BINZOLIVE</span><h1 class="ob-heading" tabindex="-1">${busy ? "Picking up where you left off." : "Let’s reconnect."}</h1><p class="ob-description">${busy ? "Checking your saved session…" : esc(S.sessionError || "Check your connection and try again.")}</p><div class="ob-actions">${busy ? skeleton : '<button class="ob-primary" onclick="Native.send(\'session.resume\')">Try again</button><button class="ob-secondary" onclick="logout()">Use another account</button>'}</div></div></section>`;
 }
 const obArrow = () => '<svg class="zi-icon" data-icon="arrow" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function obHaptic(kind = "selection") { Native.send("ui.haptic", { kind }); }
@@ -127,7 +127,7 @@ function obDeckMarkup() {
   const [title, copy, tags] = cards[index];
   return `<div class="ob-card ob-card-back ob-card-left"><img src="${OB_MEDIA[(index + 1) % 3]}" alt="" draggable="false"></div>
     <div class="ob-card ob-card-back ob-card-right"><img src="${OB_MEDIA[(index + 2) % 3]}" alt="" draggable="false"></div>
-    <div class="ob-card ob-card-main"><img src="${OB_MEDIA[index]}" alt="Portrait illustrating the Zimi community" draggable="false">
+    <div class="ob-card ob-card-main"><img src="${OB_MEDIA[index]}" alt="Portrait illustrating the BinzoLive community" draggable="false">
       <div class="ob-card-top"><span class="ob-live-tag"><i></i> YOUR NEXT HELLO</span><span class="ob-card-heart" aria-hidden="true">${I("heart", 18)}</span></div>
       <div class="ob-card-bottom"><small>${tags}</small><b>${title}</b><p>${copy}</p></div></div>
     <span class="ob-floating ob-wave" aria-hidden="true">👋</span>
@@ -149,9 +149,9 @@ function obDeck(value, absolute) {
 function obWelcome() {
   if (S.sessionState) return obRestoreScreen();
   const host = S.wsel === "host";
-  return `<section class="ob-shell ob-welcome" aria-label="Welcome to Zimi Live">
+  return `<section class="ob-shell ob-welcome" aria-label="Welcome to BinzoLive">
     ${S.notice ? `<p class="ob-session-notice" role="status">${esc(S.notice)}</p>` : ""}
-    <header class="ob-welcome-top"><div class="ob-brand"><span>${I("vid", 19)}</span><b>zimi</b><small>LIVE</small></div><button class="ob-top-login" onclick="obStart('login')">Log in</button></header>
+    <header class="ob-welcome-top"><div class="ob-brand"><img class="ob-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="96" height="38" decoding="async"></div><button class="ob-top-login" onclick="obStart('login')">Log in</button></header>
     <div class="ob-welcome-grid">
       <div class="ob-intro">
         <h1 class="ob-hero-heading">A little hello.<br><em>A real connection.</em></h1>
@@ -299,7 +299,7 @@ function obNextProfile() {
   if (!a.gender) return obSetError("Choose Woman, Man or Prefer not to say.", "pg");
   if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
   if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
-  if (!a.adult) return obSetError("You need to be 18 or older to join Zimi.", "p18");
+  if (!a.adult) return obSetError("You need to be 18 or older to join BinzoLive.", "p18");
   obStep("photos");
 }
 function obNextPhotos() {
@@ -429,9 +429,9 @@ function obLogin() {
     content = `<div class="ob-interests" aria-label="Your interests">${OB_INTERESTS.map(([emoji, label], i) => `<button class="ob-interest ${a.interests.includes(label) ? "selected" : ""}" aria-pressed="${a.interests.includes(label)}" onclick="obToggleInterest(${i},this)" ${a.busy ? "disabled" : ""}><span aria-hidden="true">${emoji}</span>${label}<span class="ob-chip-check" aria-hidden="true">${I("check", 13)}</span></button>`).join("")}</div>`;
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
-  return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your Zimi account" : "Log in to Zimi"}">
+  return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your BinzoLive account" : "Log in to BinzoLive"}">
     <header class="ob-header">${backButton("obBack()", {attrs: a.busy || a.uploading ? "disabled" : ""})}
-      ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : '<span class="ob-login-label">ZIMI LIVE</span>'}
+      ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : `<span class="ob-login-label"><img class="ob-login-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="66" height="26" decoding="async"></span>`}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">
       <h1 class="ob-heading" tabindex="-1">${title}</h1>${description ? `<p class="ob-description">${description}</p>` : ""}

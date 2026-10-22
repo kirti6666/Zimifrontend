@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, AppState, BackHandler, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, BackHandler, Image, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ScreenCapture from "expo-screen-capture";
 import { StatusBar } from "expo-status-bar";
@@ -7,6 +7,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import html from "./assets/aurora-bundle";
+import brandLogo from "./assets/brand/logo.png";
 import { createBridge, postToWeb } from "./src/bridge";
 import { readThemeCache, type ThemeCache } from "./src/theme-cache";
 import { isTrustedDocument, parseWebMessage } from "./src/web-message";
@@ -101,7 +102,7 @@ export default function App() {
       exitConfirmation.current = null;
       return webReady.current;
     };
-    Alert.alert("Close Zimi Live?", "Are you sure you want to close the app?", [
+    Alert.alert("Close BinzoLive?", "Are you sure you want to close the app?", [
       { text: "Cancel", style: "cancel", onPress: dismiss },
       { text: "Close app", onPress: () => { if (dismiss()) BackHandler.exitApp(); } },
     ], { cancelable: true, onDismiss: dismiss });
@@ -148,7 +149,7 @@ export default function App() {
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {
     documentLoading();
-    setFailure(event.nativeEvent.description || "The Zimi Live bundle failed to load.");
+    setFailure(event.nativeEvent.description || "The BinzoLive bundle failed to load.");
   }, [documentLoading]);
 
   // The WebView's renderer can be killed under memory pressure; reload instead
@@ -177,7 +178,7 @@ export default function App() {
           <StatusBar style={theme === "dark" ? "light" : "dark"} />
           {failure || !page ? (
             <View style={styles.center}>
-              <Text style={[styles.failTitle, { color: ink }]}>Zimi Live could not start</Text>
+              <Text style={[styles.failTitle, { color: ink }]}>BinzoLive could not start</Text>
               <Text style={[styles.failBody, { color: ink }]}>
                 {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
               </Text>
@@ -205,10 +206,10 @@ export default function App() {
               onContentProcessDidTerminate={reload}
               startInLoadingState
               renderLoading={() => (
-                <View style={[styles.loading, { backgroundColor: canvas }]} accessible accessibilityRole="progressbar" accessibilityLabel="Loading Zimi Live" accessibilityState={{ busy: true }}>
+                <View style={[styles.loading, { backgroundColor: canvas }]} accessible accessibilityRole="progressbar" accessibilityLabel="Loading BinzoLive" accessibilityState={{ busy: true }}>
                   <View style={styles.loadingContent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                     <View style={styles.loadingHeader}>
-                      <Text style={[styles.loadingBrand, { color: ink }]}>Zimi<Text style={{ color: primary }}>Live</Text></Text>
+                      <View style={styles.loadingBrand}><Image source={brandLogo} style={styles.loadingLogo} resizeMode="contain" /></View>
                       <View style={[styles.loadingPill, { backgroundColor: placeholder }]} />
                     </View>
                     <View style={[styles.loadingHeading, { backgroundColor: placeholder }]} />
@@ -264,7 +265,9 @@ const styles = StyleSheet.create({
   loading: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, alignItems: "center", overflow: "hidden" },
   loadingContent: { width: "100%", maxWidth: 540 },
   loadingHeader: { flexDirection: "row", alignItems: "center", gap: 12, height: 48, marginBottom: 20 },
-  loadingBrand: { fontSize: 21, fontWeight: "800", flex: 1, letterSpacing: -0.6 },
+  loadingBrand: { flex: 1 },
+  // Matches the Home header wordmark, so nothing jumps when the screens appear.
+  loadingLogo: { width: 76, height: 30 },
   loadingPill: { width: 65, height: 30, borderRadius: 20 },
   loadingHeading: { width: "52%", height: 16, borderRadius: 6, marginBottom: 18 },
   loadingStories: { flexDirection: "row", justifyContent: "space-between", gap: 8, marginBottom: 26 },

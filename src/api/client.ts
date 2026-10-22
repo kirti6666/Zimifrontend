@@ -26,7 +26,7 @@ export interface RequestOptions {
 
 const TIMEOUT_MS = 15000;
 const CONNECTION_TIMEOUT_MS = 8000;
-const NETWORK_MESSAGE = "Can't reach Zimi Live. Check your connection and try again.";
+const NETWORK_MESSAGE = "Can't reach BinzoLive. Check your connection and try again.";
 const SESSION_MESSAGE = "Your session has expired. Please sign in again.";
 const PUBLIC_AUTH_PATHS = new Set(["/auth/otp/request", "/auth/otp/verify", "/auth/refresh"]);
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -114,7 +114,7 @@ function responseError(response: Response, body: unknown): ApiError {
   const mediaMessage = code === "STORAGE_NOT_CONFIGURED" ? "Photo uploads are not available yet. Please try again later." :
     code === "UPLOAD_UNAVAILABLE" ? "Couldn't confirm your upload. Please try again." : undefined;
   const fallback = response.status === 429 ? "Too many attempts. Please wait before trying again." :
-    response.status >= 500 ? "Zimi Live is temporarily unavailable. Please try again shortly." : "Couldn't complete that request. Please try again.";
+    response.status >= 500 ? "BinzoLive is temporarily unavailable. Please try again shortly." : "Couldn't complete that request. Please try again.";
   const raw = object(body) && typeof body.message === "string" ? body.message : "";
   // User-facing failures never contain HTML, stack traces, or oversized server responses.
   const message = response.status >= 500 && mediaMessage ? mediaMessage :

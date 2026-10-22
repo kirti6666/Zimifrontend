@@ -16,6 +16,8 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
+const brandLogo = "data:image/webp;base64," + readFileSync(join(root, "web/binzolive-logo.webp")).toString("base64");
+const brandIcon = "data:image/png;base64," + readFileSync(join(root, "web/binzolive-icon.png")).toString("base64");
 const waterSticker =
   "data:image/webp;base64," + readFileSync(join(root, "web/water-flowing.webp")).toString("base64");
 
@@ -25,7 +27,8 @@ const HEAD = `<!DOCTYPE html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <meta name="description" content="A two-sided live streaming experience for hosts and supporters." />
-<title>Zimi Live</title>
+<title>BinzoLive</title>
+<link rel="icon" type="image/png" href="${brandIcon}" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -114,7 +117,7 @@ const page = (demo) =>
   read("web/phone-countries.js") +
   read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
     "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
-  read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +
+  read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker).replace("__BRAND_LOGO__", brandLogo) +
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/home.js") +

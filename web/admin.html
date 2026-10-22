@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Zimi Live Admin</title>
+<title>BinzoLive Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -280,10 +280,10 @@ textarea.in{font-size:13px;line-height:1.6}
 </style>
 </head>
 <body>
-<div class="mobile-block"><div><span class="mark">ZL</span><h1>Open on a desktop</h1><p>The Zimi Live admin panel is built for screens 1024px and wider. Please sign in from a laptop or desktop computer.</p></div></div>
+<div class="mobile-block"><div><span class="mark">BL</span><h1>Open on a desktop</h1><p>The BinzoLive admin panel is built for screens 1024px and wider. Please sign in from a laptop or desktop computer.</p></div></div>
 <div id="root"></div>
 <script>
-/* Zimi Live admin console. Front-end prototype with demo data; every action here
+/* BinzoLive admin console. Front-end prototype with demo data; every action here
    maps to a backend endpoint that must check the admin's role and write the audit log. */
 const IC={
  dash:'<rect x="3.5" y="3.5" width="7" height="9" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.6"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.6"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.6"/>',
@@ -342,7 +342,7 @@ const D={
   hostShare:{v:60,label:"Host revenue share",help:"Share of call charges and gifts credited to the host",unit:"%"}},
  ruleVers:[{v:"v3",by:"Priya (Super admin)",at:"2 Oct, 6:10 pm",note:"Entry fee hold set to 60 s",live:1},{v:"v2",by:"Priya (Super admin)",at:"21 Sep, 11:02 am",note:"Minimum withdrawal 1,000 coins"},{v:"v1",by:"System",at:"1 Sep, 9:00 am",note:"Launch values"}],
  policies:[
-  {id:"terms",t:"Terms of Service",v:"v4",at:"28 Sep",reaccept:1,text:"1. Zimi Live is for adults 18 and over.\n2. Coins are purchased for calls and gifts and are not legal tender.\n3. Entry fees are charged when a call connects and are non-refundable.\n4. Accounts that break the Community Guidelines may be suspended or banned."},
+  {id:"terms",t:"Terms of Service",v:"v4",at:"28 Sep",reaccept:1,text:"1. BinzoLive is for adults 18 and over.\n2. Coins are purchased for calls and gifts and are not legal tender.\n3. Entry fees are charged when a call connects and are non-refundable.\n4. Accounts that break the Community Guidelines may be suspended or banned."},
   {id:"guide",t:"Community Guidelines",v:"v6",at:"2 Oct",reaccept:0,text:"Be respectful. No nudity or sexual content, no harassment, no hate speech, no sharing of personal contact details during calls, and no attempts to move payments off the platform."},
   {id:"refund",t:"Refund Policy",v:"v2",at:"12 Sep",reaccept:0,text:"Failed recharges are refunded automatically within 5 to 7 working days. Entry fees, per-minute charges and gifts are final once a call connects."},
   {id:"payout",t:"Creator Payout Policy",v:"v3",at:"2 Oct",reaccept:1,text:"Hosts must complete KYC before withdrawing. Entry fees are released after a call passes the hold period. Payouts to UPI are processed within minutes; bank transfers within 2 working days."}],
@@ -377,7 +377,7 @@ function vGate(){
  return `<div class="gate">
   <div class="pane"><form onsubmit="event.preventDefault();signIn()">
    <span class="mark">${I("lock",20)}</span>
-   <h1>Zimi Live Admin</h1>
+   <h1>BinzoLive Admin</h1>
    <p class="sub">Sign in with your work account. Access is limited to approved team members.</p>
    <label class="f">Work email<input class="in" id="ae" type="email" autocomplete="username" value="priya@zimilive.in" required></label>
    <label class="f">Password<input class="in" id="ap" type="password" autocomplete="current-password" value="demo-password" required></label>
@@ -385,7 +385,7 @@ function vGate(){
    <button class="btn pri lg" type="submit">Sign in</button>
    <p class="sub" style="font-size:12px">Preview: any 6-digit code works. Sign-ins are logged with device and IP.</p>
   </form></div>
-  <div class="pane art"><h2>Keep Zimi Live safe, fair and paid on time.</h2>
+  <div class="pane art"><h2>Keep BinzoLive safe, fair and paid on time.</h2>
    <p>Review creator verification, run rewards, set the rules for entry fees and payouts, and handle reports, all with a full audit trail.</p></div></div>`}
 function signIn(){const c=document.getElementById("ac").value.replace(/\D/g,"");if(c.length!==6){toast("Enter the 6-digit code");return}S.auth=1;render()}
 
@@ -398,7 +398,7 @@ const NAV=[["Overview",[["dash","dash","Dashboard"],["live","play","Live calls",
  ["Platform",[["rules","rule","Rules & policies"],["team","team","Team & roles"],["audit","log","Audit log"]]]];
 function shell(inner){
  return `<div class="app"><aside class="side">
-  <div class="brand"><span class="mark">ZL</span><div><b>Zimi Live</b><span>Admin console</span></div></div>
+  <div class="brand"><span class="mark">BL</span><div><b>BinzoLive</b><span>Admin console</span></div></div>
   <nav>${NAV.map(([g,items])=>{items=items.filter(([k])=>can(k));return items.length?`<div class="grp">${g}</div>${items.map(([k,ic,l,c])=>{const cn=c?c():0;
    return `<button class="${S.view===k?"on":""}" onclick="go('${k}')">${I(ic)}<span>${l}</span>${cn?`<span class="cnt">${cn}</span>`:""}</button>`}).join("")}`:""}).join("")}</nav>
   <div class="me"><span class="av">${ME()[0].split(" ").map(w=>w[0]).join("")}</span><div style="min-width:0"><b>${ME()[0]}</b><span>${ME()[1]}</span></div><button onclick="S.auth=0;render()">Sign out</button></div>
@@ -413,7 +413,7 @@ const head=(t,p,acts)=>`<div class="top"><div><h1>${t}</h1>${p?`<p>${p}</p>`:""}
 function vDash(){
  const k=[["Hosts online now","1,284","+8% vs last hour","up"],["Calls today","38,920","+12% vs yesterday","up"],["Coins bought today","₹14.6L","+5% vs yesterday","up"],
   ["Entry fees to company","₹21,340","Calls ended under 60 s","down"],["Pending payouts","₹5.4L",`${D.payouts.filter(p=>p.st==="pending").length} requests`,""],["KYC waiting",String(pend()),"Oldest: 3 hr","down"]];
- return head("Dashboard","Today across Zimi Live. Figures are demo data.")+
+ return head("Dashboard","Today across BinzoLive. Figures are demo data.")+
  `<div class="kpis">${k.map(([l,v,s,c])=>`<div class="card kpi"><span>${l}</span><b>${v}</b><em class="${c}">${s}</em></div>`).join("")}</div>
  <div class="grid2">
   <div class="card sec"><h3>KYC waiting <button onclick="go('kyc')">Open queue</button></h3>${kycTable(D.kyc.filter(x=>x.st==="pending").slice(0,4),1)}</div>
@@ -673,7 +673,7 @@ function vLive(){
  ${D.live.map(c=>`<tr><td class="tab">${c.id}</td><td><b>${esc(c.host)}</b></td><td>${esc(c.sender)}</td><td class="num tab">${c.min} min</td><td class="num tab">${n(c.coins)}</td>
   <td>${c.flag?`<span class="pill p-bad"><i></i>${esc(c.flag)}</span>`:`<span class="pill p-mute">None</span>`}</td>
   <td><div style="display:flex;gap:6px"><button class="btn sm bad" onclick="endLive('${c.id}')">End call</button><button class="btn sm ghost" onclick="openUser('${esc(c.host)}')">Host</button></div></td></tr>`).join("")||`<tr><td colspan="7" class="empty">No live calls.</td></tr>`}</tbody></table></div></div>`}
-function endLive(id){const c=D.live.find(x=>x.id===id);D.live=D.live.filter(x=>x.id!==id);audit("Ended live call",`${c.id} · ${c.host} and ${c.sender}`);toast(`Call ${c.id} ended. Both people see "This call was ended by Zimi Live".`)}
+function endLive(id){const c=D.live.find(x=>x.id===id);D.live=D.live.filter(x=>x.id!==id);audit("Ended live call",`${c.id} · ${c.host} and ${c.sender}`);toast(`Call ${c.id} ended. Both people see "This call was ended by BinzoLive".`)}
 
 /* ---------- refunds ---------- */
 function vRefunds(){
@@ -745,7 +745,7 @@ function vPromos(){
  `<div class="card"><table class="tbl"><thead><tr><th>Code</th><th class="num">Bonus</th><th class="num">Used</th><th>Expires</th><th>Live</th></tr></thead><tbody>
  ${D.promos.map((p,i)=>`<tr><td class="tab"><b>${p.code}</b></td><td class="num tab">${p.bonus}%</td><td class="num tab">${n(p.used)} / ${n(p.max)}</td><td>${p.exp}</td>
   <td><button class="sw ${p.on?"on":""}" role="switch" aria-checked="${!!p.on}" aria-label="Code live" onclick="D.promos[${i}].on=D.promos[${i}].on?0:1;audit('Toggled promo code','${p.code}');render()"></button></td></tr>`).join("")}</tbody></table></div>`}
-function newPromo(){const code="ZIMI"+Math.floor(100+Math.random()*900);D.promos.unshift({code,bonus:25,max:1000,used:0,exp:"30 Nov",on:0});audit("Created promo code",code);toast(`${code} created as paused. Edit it, then switch it on.`)}
+function newPromo(){const code="BINZO"+Math.floor(100+Math.random()*900);D.promos.unshift({code,bonus:25,max:1000,used:0,exp:"30 Nov",on:0});audit("Created promo code",code);toast(`${code} created as paused. Edit it, then switch it on.`)}
 function vLevels(){
  return head("Levels & VIP","Draft settings for the next phase. Nothing here is visible in the app until you launch it.",`<span class="pill p-acc" style="height:30px">Draft</span>`)+
  `<div class="grid2"><div class="card"><div class="sec" style="padding-bottom:4px"><h3>Levels</h3></div><table class="tbl"><thead><tr><th>Level</th><th class="num">Coins spent to reach</th><th>Perk</th></tr></thead><tbody>

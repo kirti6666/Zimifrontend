@@ -79,7 +79,7 @@ window.ZimiOffline = (() => {
         <span class="zo-eyebrow"><i></i>${noInternet ? 'OFFLINE MODE' : 'CONNECTION PAUSED'}</span>
         ${illustration()}
         <h1 id="zo-title" tabindex="-1">${title}</h1>
-        <p class="zo-description">${noInternet ? 'A little pause in the connection.<br>Your people will be here when you’re back.' : 'We can’t reach Zimi Live right now.<br>Let’s get you back to your people.'}</p>
+        <p class="zo-description">${noInternet ? 'A little pause in the connection.<br>Your people will be here when you’re back.' : 'We can’t reach BinzoLive right now.<br>Let’s get you back to your people.'}</p>
         ${retry}
         <p class="zo-status" role="status" aria-live="polite">${checking ? 'Finding our way back to you…' : attempted ? 'Still no connection. Give it another try.' : 'Live moments are one connection away.'}</p>
         <div class="zo-tip">${icon('wifi', 23)}<div><h2>Let’s reconnect</h2><p>Check your Wi-Fi or mobile data.<br>Make sure airplane mode is off.</p></div></div>

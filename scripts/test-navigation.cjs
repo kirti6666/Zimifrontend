@@ -92,7 +92,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
           assert.equal(await layout.locator('#top').isVisible(), name === 'Home', `${name} does not reserve an unused header strip`);
           if (name !== 'Home') {
             assert.equal(await layout.locator('#top').innerHTML(), '');
-            const title = { Explore: 'Explore Zimi', Chats: 'Chats', Profile: 'Profile & Settings' }[name];
+            const title = { Explore: 'Explore BinzoLive', Chats: 'Chats', Profile: 'Profile & Settings' }[name];
             assert.equal(await layout.locator('#screen').getByRole('heading', { name: title, exact: true }).isVisible(), true, `${name} retains its own page heading`);
           }
           assert.equal(await layout.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${name} does not overflow at ${width}px`);

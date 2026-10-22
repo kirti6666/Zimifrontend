@@ -142,7 +142,7 @@ function zaAbout(id){
   dialog.innerHTML=`<div class="zn-dialog-heading"><span>Sponsored</span><button type="button" aria-label="Close" onclick="zaCloseAbout()">${hi('close',21)}</button></div>
     <div class="za-about-body"><span class="za-about-icon">${hi('info',26)}</span><h2 id="za-about-title">About this ad</h2>
     <p>This promotion is from <b>${esc(ad.advertiser)}</b>${ad.domain?` and opens <b>${esc(ad.domain)}</b>`:''}.</p>
-    <p>Ads appear for members on the free plan. Zimi counts when an ad is shown and tapped to measure each campaign.</p>
+    <p>Ads appear for members on the free plan. BinzoLive counts when an ad is shown and tapped to measure each campaign.</p>
     <button type="button" class="za-about-premium" onclick="zaGoPremium()">${hi('crown',18)} Go ad-free with Premium</button>
     <button type="button" class="za-about-close" onclick="zaCloseAbout()">Not now</button></div>`;
   dialog.addEventListener('close',()=>dialog.remove());
@@ -184,7 +184,7 @@ if(DEMO){
     const fill=c.createLinearGradient(0,0,1200,675);fill.addColorStop(0,'#c9086a');fill.addColorStop(1,'#3b1466');c.fillStyle=fill;c.fillRect(0,0,1200,675);
     c.fillStyle='rgba(255,255,255,.12)';c.beginPath();c.arc(1040,140,300,0,Math.PI*2);c.fill();
     c.fillStyle='#160d1f';c.beginPath();c.roundRect?.(840,150,250,420,36);c.fill();c.fillStyle='#ff6fb1';c.beginPath();c.roundRect?.(862,180,206,360,22);c.fill();
-    c.fillStyle='#fff';c.font='700 34px Inter, sans-serif';c.fillText('NEW ON ANDROID',80,230);c.font='800 92px Inter, sans-serif';c.fillText('Zimi Studio',80,340);c.font='500 42px Inter, sans-serif';c.fillText('Edit reels in seconds',80,410);
-    ZAds.items=[{id:'00000000000000000000d001',format:'banner',advertiser:'Zimi Studio',headline:'Edit reels in seconds',body:'Templates, music and auto captions. Free on Android.',ctaLabel:'Install now',domain:'play.google.com',mediaUrl:art.toDataURL('image/png'),mediaType:'image/png',logoUrl:'',placements:['home','explore','chats','call_summary']}];
+    c.fillStyle='#fff';c.font='700 34px Inter, sans-serif';c.fillText('NEW ON ANDROID',80,230);c.font='800 92px Inter, sans-serif';c.fillText('Binzo Studio',80,340);c.font='500 42px Inter, sans-serif';c.fillText('Edit reels in seconds',80,410);
+    ZAds.items=[{id:'00000000000000000000d001',format:'banner',advertiser:'Binzo Studio',headline:'Edit reels in seconds',body:'Templates, music and auto captions. Free on Android.',ctaLabel:'Install now',domain:'play.google.com',mediaUrl:art.toDataURL('image/png'),mediaType:'image/png',logoUrl:'',placements:['home','explore','chats','call_summary']}];
   }
 }

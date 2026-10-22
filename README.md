@@ -76,7 +76,7 @@ for private/loopback addresses. Socket.IO defaults to the API origin, such as
 Set `EXPO_PUBLIC_SOCKET_URL` only when that origin differs. Keep credentials
 out of all `EXPO_PUBLIC_*` variables.
 
-On an iPhone/iPad, allow **Local Network** access for Expo Go or Zimi Live when
+On an iPhone/iPad, allow **Local Network** access for Expo Go or BinzoLive when
 prompted; if previously denied, enable it in Settings. App configuration cannot
 change the installed Expo Go client's own native permissions. Apple requires
 this permission for outgoing connections to a LAN address.
@@ -111,7 +111,7 @@ The phone app is built from the same screens with that turned off.
 
 ## Coins and gifts
 
-`web/coins.js` and `web/coins.css` provide the shared gold Zimi coin, wallet,
+`web/coins.js` and `web/coins.css` provide the shared gold BinzoLive coin, wallet,
 coin packs, payment recovery, and gift selection. Selecting a gift does not
 spend coins; the separate Send action confirms it. Adding coins from a gift
 sheet keeps the current conversation, live stream, or call open.
@@ -401,7 +401,7 @@ Open **Profile & Settings → Appearance & Theme** to open the full theme page.
 The page has its own Back header and no bottom tabs. Back returns to the Profile
 or Settings page you opened it from, preserving its search, filters, and scroll.
 Theme catalog refreshes preserve gallery scroll and keyboard focus.
-Zimi Original and Soft Rose are free; premium includes Midnight Ocean and Amber
+BinzoLive Original and Soft Rose are free; premium includes Midnight Ocean and Amber
 Silk. The sibling admin dashboard's **Themes & text styles** section controls
 colors, fonts, text sizing/weight, ordering, availability, premium flags, and
 the one-time premium price (initially ₹199). Built-in free themes remain available.

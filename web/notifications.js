@@ -173,9 +173,9 @@ document.addEventListener('aurora:navigate',()=>{if(S.v!=='notifications'){clear
 if(DEMO){
   const now=Date.now();ZNotices.demo=[
     {id:'demo-note-1',title:'A space that feels like you',body:'Your notification center brings personal updates and community announcements together. Use filters to find what you need, or catch up at your own pace.',audience:'personal',read:false,createdAt:new Date(now-12*60000).toISOString()},
-    {id:'demo-note-2',title:'Find your next favorite conversation',body:'Discover the people, music and stories that make Zimi Live special. Explore the community and make a new connection.',audience:'announcements',read:false,createdAt:new Date(now-90*60000).toISOString()},
+    {id:'demo-note-2',title:'Find your next favorite conversation',body:'Discover the people, music and stories that make BinzoLive special. Explore the community and make a new connection.',audience:'announcements',read:false,createdAt:new Date(now-90*60000).toISOString()},
     {id:'demo-note-3',title:'Make your profile your own',body:'A great introduction starts with you. Visit your profile to update your photo, bio and the details you want to share.',audience:'personal',read:false,createdAt:new Date(now-26*3600000).toISOString()},
     {id:'demo-note-4',title:'Welcome to the community',body:'Good conversations start with kindness. Take a moment to get familiar with our community guidelines and help everyone feel welcome.',audience:'announcements',read:true,createdAt:new Date(now-50*3600000).toISOString()},
-    {id:'demo-note-5',title:'Your Zimi journey starts here',body:'Welcome to Zimi Live. Your personal updates will always have a home in this inbox.',audience:'personal',read:true,createdAt:new Date(now-9*86400000).toISOString()}
+    {id:'demo-note-5',title:'Your BinzoLive journey starts here',body:'Welcome to BinzoLive. Your personal updates will always have a home in this inbox.',audience:'personal',read:true,createdAt:new Date(now-9*86400000).toISOString()}
   ];Home.notifications=[...ZNotices.demo];Home.unreadCount=3;ZNotices.total=ZNotices.totalCount=5;ZNotices.loaded=true;
 }
