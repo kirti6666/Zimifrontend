@@ -236,7 +236,7 @@
 .ob-phone-field input { font-size: 19px !important; letter-spacing: .04em; font-weight: 650; }
 .ob-field-hint { display: flex; gap: 6px; align-items: flex-start; margin: 0; color: var(--ob-faint); font-size: 11.5px; line-height: 1.5; }
 .ob-field-hint svg { width: 13px; height: 13px; margin-top: 2px; }
-.ob-otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
+.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
 .ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1px solid var(--ob-edge); border-radius: 16px; background: var(--ob-field); color: var(--ob-text); font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s, transform .18s; }
 .ob-otp input:focus { border-color: var(--ob-pink); }
 .ob-otp input.filled { border-color: color-mix(in srgb, var(--ob-pink) 55%, transparent); background-color: color-mix(in srgb, var(--ob-pink) 10%, var(--ob-surface)); }

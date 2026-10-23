@@ -128,6 +128,56 @@ async function enterCode(page) {
   });
 }
 
+async function configuredOtpLengths() {
+  for (const length of [4, 8]) {
+    const page = await openPage(true, { width: 320, height: 740 });
+    await startSignup(page);
+    await enterPhone(page);
+    await receive(page, 'auth.otpSent', { phone: '+919876543210', expiresIn: 60, resendAfter: 60, otpLength: length });
+    await step(page, 'otp');
+    assert.equal(await page.locator('.ob-otp input').count(), length);
+    assert.match(await page.locator('[data-ob-step="otp"]').innerText(), new RegExp(`${length}-digit code`));
+    assert.equal(await page.locator('.ob-otp').evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length), length);
+    await noOverflow(page, `${length}-digit code on a narrow phone`);
+    await page.locator(`#o${length - 1}`).focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.evaluate(() => document.activeElement.id), `o${length - 1}`, 'Arrow navigation must stop at the final configured digit');
+    await page.keyboard.press('Backspace');
+    assert.equal(await page.evaluate(() => document.activeElement.id), `o${length - 2}`);
+    await page.locator('#o0').fill('0');
+    await page.locator('#o1').fill('1');
+    await page.evaluate(() => obVerifyOtp());
+    assert.match((await state(page)).err, new RegExp(`all ${length} digits`));
+    assert.equal(await page.evaluate(() => window.__messages.filter(message => message.type === 'auth.verifyOtp').length), 0, 'Incomplete codes stay on screen');
+    const code = '01234567'.slice(0, length);
+    if (length === 4) {
+      await page.locator('#o0').evaluate((input, value) => {
+        const event = new Event('paste', { bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'clipboardData', { value: { getData: () => value } });
+        input.dispatchEvent(event);
+      }, code);
+    } else {
+      // Mobile autofill may insert the whole code into a field other than the first.
+      await page.locator('#o2').fill(code);
+    }
+    const messages = await page.evaluate(() => window.__messages.filter(message => message.type === 'auth.verifyOtp'));
+    assert.equal(messages.length, 1, 'A complete configured-length code submits once');
+    assert.equal(messages[0].data.code, code, 'Leading zeroes survive paste and autofill');
+    await receive(page, 'auth.error', { message: 'Wrong code', status: 401, code: 'OTP_INVALID', action: 'auth.verifyOtp' });
+    for (let index = 0; index < length; index++) assert.equal(await page.locator(`#o${index}`).inputValue(), '');
+    if (length === 4) {
+      for (let index = 0; index < length; index++) await page.locator(`#o${index}`).fill(code[index]);
+      assert.equal(await page.evaluate(() => window.__messages.filter(message => message.type === 'auth.verifyOtp').length), 2, 'Typing four individual digits also submits');
+      await receive(page, 'auth.error', { message: 'Wrong code', status: 401, code: 'OTP_INVALID', action: 'auth.verifyOtp' });
+      await page.evaluate(() => { S.auth.resendAt = Date.now() - 1; obResend(); });
+      await receive(page, 'auth.otpSent', { phone: '+919876543210', otpLength: 8 });
+      assert.equal(await page.locator('.ob-otp input').count(), 8, 'Resending picks up changed backend OTP settings');
+    }
+    await page.context().close();
+  }
+  console.log('PASS configured OTP lengths: four/eight fields, copy, layout, typing, paste, autofill, validation and resend');
+}
+
 async function fillBasics(page, host = false) {
   await page.locator('#pn').fill(host ? 'Creator Test' : 'Onboarding Test');
   await page.locator('#pe').fill('onboarding@example.test');
@@ -581,6 +631,7 @@ async function enlargedTextChecks(page) {
       await hostFlow();
     }
     await nativeFlow();
+    await configuredOtpLengths();
     await accountRouting();
     await nativeRateLimits();
     await nativeSessionRecovery();

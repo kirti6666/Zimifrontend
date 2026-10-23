@@ -1613,7 +1613,7 @@ function r(){
    if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}}
  if(S.v==="voice"){tick();paintFeed()}
  /* a redraw while the code screen is open must not leave the boxes unfocused */
- if(S.v==="login"&&S.auth&&S.auth.step==="otp"){const e=Array.from({length:6},(_,k)=>document.getElementById("o"+k)).find(x=>x&&!x.value);if(e)e.focus()}
+ if(S.v==="login"&&S.auth&&S.auth.step==="otp"){const e=Array.from({length:obOtpLength()},(_,k)=>document.getElementById("o"+k)).find(x=>x&&!x.value);if(e)e.focus()}
  if(S.v==="call"&&!S.cmp)paintGoal();
  if(S.v==="hcall"){paintHostTick();paintFeed();
   if(S.cmp){const i=document.getElementById("rmsg");if(i)i.focus()}}

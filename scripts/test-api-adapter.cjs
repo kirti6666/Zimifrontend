@@ -82,7 +82,17 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('POST', '/auth/otp/request', { expiresIn: 300, retryAfterSeconds: 75 }, (body, options) => {
     assert.deepEqual(plain(body), { country_code: '+91', phone: '9876543210' }); assert.equal(options.auth, false);
   });
-  assert.equal((await api.sendOtp('+919876543210', 'host')).resendAfter, 75);
+  const legacyOtp = await api.sendOtp('+919876543210', 'host');
+  assert.equal(legacyOtp.resendAfter, 75);
+  assert.equal(legacyOtp.otpLength, 6, 'Older servers retain six-digit input');
+  for (const otpLength of [4, 5, 6, 7, 8]) {
+    expect('POST', '/auth/otp/request', { expiresIn: 60, resendAfter: 60, otpLength });
+    assert.equal((await api.sendOtp('+919876543210')).otpLength, otpLength);
+  }
+  for (const otpLength of [3, 9, 4.5, '4', null]) {
+    expect('POST', '/auth/otp/request', { expiresIn: 60, otpLength });
+    assert.equal((await api.sendOtp('+919876543210')).otpLength, 6, 'Malformed server lengths cannot create arbitrary input counts');
+  }
   expect('POST', '/auth/otp/request', { expiresIn: 300, resendAfter: 30 }, body => {
     assert.deepEqual(plain(body), { country_code: '+44', phone: '7911123456' }, 'Other countries post their own calling code');
   });
@@ -93,13 +103,19 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const signedIn = await api.verifyOtp('+919876543210', '123456', 'host', true);
   assert.equal(signedIn.user.role, 'sender'); assert.equal(signedIn.tokens.refreshToken, 'refresh');
   assert.equal(signedIn.balance, undefined); assert.equal(signedIn.earned, undefined); assert.equal(signedIn.requiresOnboarding, true);
+  for (const code of ['0123', '01234567']) {
+    expect('POST', '/auth/otp/verify', { user, tokens: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 900, refreshExpiresIn: 3600 }, isNewUser: false, requiresOnboarding: false }, body => {
+      assert.equal(body.otp, code, 'Provider OTP length and leading zeroes survive the native API');
+    });
+    await api.verifyOtp('+919876543210', code, 'sender', false);
+  }
   for (const status of ['none', 'pending', 'rejected', 'suspended']) assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: status, isVerifiedHost: true } }).user.role, 'sender');
   for (const status of ['none', 'pending', 'rejected', 'suspended']) assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: status } }).user.serverRole, 'host', 'Presentation role must not grant an unapproved host member chat permissions');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'user', hostStatus: 'pending' } }).user.serverRole, 'user', 'A member applying to host remains a member until approved');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.role, 'host');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.isVerifiedHost, true);
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved' } }).user.isVerifiedHost, false);
-  await assert.rejects(api.verifyOtp('9876543210', '123', 'sender', false), /6-digit/);
+  for (const code of ['123', '123456789', '12a4', '12 4']) await assert.rejects(api.verifyOtp('9876543210', code, 'sender', false), /verification code/);
   finished();
 
   reset();

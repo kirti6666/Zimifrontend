@@ -215,10 +215,12 @@ function obSendOtp() {
   if (DEMO) { Native.send("auth.sendOtp", request); return obOtpSent(); }
   obRequest("auth.sendOtp", request);
 }
+function obValidOtpLength(value) { return Number.isInteger(value) && value >= 4 && value <= 8 ? value : 6; }
+function obOtpLength() { return obValidOtpLength(S.auth.otpLength); }
 function obOtpSent(data = {}) {
   clearTimeout(obRequestTimer); clearInterval(S.otpT);
   const resendAfter = Math.max(1, Math.min(3600, Number(data.resendAfter) || (DEMO ? 30 : 60)));
-  Object.assign(S.auth, { busy: false, step: "otp", code: "", err: "", resendAt: Date.now() + resendAfter * 1000, expiresAt: Date.now() + (Number(data.expiresIn) || 300) * 1000 });
+  Object.assign(S.auth, { busy: false, step: "otp", code: "", err: "", otpLength: obValidOtpLength(data.otpLength), resendAt: Date.now() + resendAfter * 1000, expiresAt: Date.now() + (Number(data.expiresIn) || 300) * 1000 });
   S.otpT = setInterval(() => {
     if (S.v !== "login" || S.auth.step !== "otp") return clearInterval(S.otpT);
     const el = document.getElementById("rs"); if (el) el.innerHTML = obResendText();
@@ -237,26 +239,26 @@ function obResend() {
 }
 function obOtpInput(el, index) {
   if (S.auth.busy) return;
-  const digits = el.value.replace(/\D/g, "");
+  const length = obOtpLength(), digits = el.value.replace(/\D/g, "");
   if (digits.length > 1) {
-    const start = digits.length === 6 ? 0 : index;
-    digits.slice(0, 6 - start).split("").forEach((digit, i) => { document.getElementById("o" + (start + i)).value = digit; });
+    const start = digits.length >= length ? 0 : index;
+    digits.slice(0, length - start).split("").forEach((digit, i) => { document.getElementById("o" + (start + i)).value = digit; });
   } else el.value = digits;
-  const inputs = Array.from({ length: 6 }, (_, i) => document.getElementById("o" + i));
+  const inputs = Array.from({ length }, (_, i) => document.getElementById("o" + i));
   inputs.forEach(input => input.classList.toggle("filled", !!input.value));
   S.auth.code = inputs.map(input => input.value).join("");
   obSetError("");
-  if (S.auth.code.length === 6) return obVerifyOtp();
+  if (S.auth.code.length === length) return obVerifyOtp();
   const next = inputs.find((input, i) => i > index && !input.value);
   if (digits && next) next.focus();
 }
 function obOtpKey(e, index) {
   if (e.key === "Backspace" && !e.target.value && index > 0) document.getElementById("o" + (index - 1)).focus();
   if (e.key === "ArrowLeft" && index > 0) document.getElementById("o" + (index - 1)).focus();
-  if (e.key === "ArrowRight" && index < 5) document.getElementById("o" + (index + 1)).focus();
+  if (e.key === "ArrowRight" && index < obOtpLength() - 1) document.getElementById("o" + (index + 1)).focus();
 }
 function obOtpPaste(e) {
-  const digits = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+  const digits = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, obOtpLength());
   if (!digits) return;
   e.preventDefault();
   const input = document.getElementById("o0"); input.value = digits; obOtpInput(input, 0);
@@ -264,9 +266,9 @@ function obOtpPaste(e) {
 function obVerifyOtp() {
   if (S.auth.busy || obWait("auth.verifyOtp")) return;
   if (S.auth.expiresAt && Date.now() >= S.auth.expiresAt) return obSetError("That code has expired. Request a new code below.");
-  const code = Array.from({ length: 6 }, (_, i) => (document.getElementById("o" + i) || {}).value || "").join("");
+  const length = obOtpLength(), code = Array.from({ length }, (_, i) => (document.getElementById("o" + i) || {}).value || "").join("");
   S.auth.code = code;
-  if (!/^\d{6}$/.test(code)) return obSetError("Enter all six digits from your message.", "o0");
+  if (code.length !== length || !/^\d+$/.test(code)) return obSetError(`Enter all ${length} digits from your message.`, "o0");
   if (DEMO) { Native.send("auth.verifyOtp", { phone: obE164(), dialCode: obCountry().dial, code, role: S.role, signup: S.auth.mode === "signup" }); return signedIn(); }
   obRequest("auth.verifyOtp", { phone: obE164(), dialCode: obCountry().dial, code, role: S.role, signup: S.auth.mode === "signup" });
 }
@@ -409,8 +411,9 @@ function obLogin() {
     content = `<form class="ob-form" onsubmit="event.preventDefault();obSendOtp()"><label class="ob-label" for="ph">Mobile number</label><div class="ob-phone-field">${obCountryButton(!!a.busy)}<input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="${obPhonePlaceholder()}" maxlength="18" value="${esc(a.phone || "")}" aria-describedby="ob-phone-hint ob-error" oninput="obPhoneInput(this)" ${a.busy ? "disabled" : ""}></div><p class="ob-field-hint" id="ob-phone-hint">${I("lock", 13)} Used to verify your account.</p><button type="submit" hidden tabindex="-1">Send code</button></form>`;
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
-    title = "Check your <em>messages</em>."; description = `Enter the six-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
-    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${I("back", 16)} Edit phone number</button><div class="ob-otp" onpaste="obOtpPaste(event)">${Array.from({ length: 6 }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="6" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? '<p class="ob-field-hint ob-demo-note">Preview mode · Enter any six digits to explore.</p>' : ""}`;
+    const length = obOtpLength();
+    title = "Check your <em>messages</em>."; description = `Enter the ${length}-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
+    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${I("back", 16)} Edit phone number</button><div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
     title = "Let’s make it <em>yours</em>.";

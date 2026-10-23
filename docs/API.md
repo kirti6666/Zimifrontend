@@ -28,6 +28,13 @@ Native.on("call.connected")      <--  postToWeb(...)
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
 
+Phone OTP requests return `otpLength` (4–8) with `expiresIn` and `resendAfter`.
+The native bridge forwards this as `auth.otpSent`; onboarding uses it for the
+input count, SMS autofill, paste and validation. Six digits remain the fallback
+for older servers that omit this field. The server enforces the exact configured
+length and verifies the code with its SMS provider; provider credentials stay on
+the backend.
+
 Live-room queue messages are `stream.requests.load {streamId}`, `stream.request {streamId}`,
 and `stream.request.cancel|decline|accept {streamId,id}` (where `id` is the queue entry ID).
 The bridge returns `stream.requests {streamId,requests,ownRequestId,count}` and

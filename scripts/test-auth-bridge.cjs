@@ -40,7 +40,7 @@ function harness(initialAppState = 'active', initialLink = null) {
   };
   const defaults = {
     me: () => account(), verifyOtp: () => ({ ...account(), tokens: tokenPair(), isNew: true }),
-    sendOtp: () => ({ resendAfter: 60, expiresIn: 300 }), saveProfile: () => account(),
+    sendOtp: () => ({ resendAfter: 60, expiresIn: 300, otpLength: 6 }), saveProfile: () => account(),
     hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), thread: () => ({ messages: [], canSend: true }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
     transactions: () => ({ items: [] }), wallet: () => ({ coins: 100, earningsPaise: 0 }), logout: () => {},
     home: () => ({ hosts: [], stage: [], featured: null, page: 1 }), notifications: () => ({ items: [], unreadCount: 0 }), catalog: () => ({ gifts: [], packs: [], paymentsAvailable: false }), presence: () => ({ online: true, visible: true }),
@@ -299,12 +299,29 @@ test('duplicate OTP sends and verifications have at most one request in flight e
   h.bridge.handle(verifyMessage(4)); h.bridge.handle(verifyMessage(5));
   assert.equal(h.count('sendOtp'), 1);
   assert.equal(h.count('verifyOtp'), 1);
-  send.resolve({ resendAfter: 60, expiresIn: 300 });
+  send.resolve({ resendAfter: 60, expiresIn: 300, otpLength: 4 });
   await settle();
   assert.equal(h.find('auth.otpSent')[0].data.requestId, 2);
+  assert.equal(h.find('auth.otpSent')[0].data.otpLength, 4, 'The bridge forwards the configured input length');
   verify.resolve({ ...account(), tokens: tokenPair(), isNew: false });
   await settle();
   assert.equal(h.find('auth.ok')[0].data.requestId, 4);
+  h.bridge.close();
+});
+
+test('OTP messages allow provider lengths four through eight and preserve leading zeroes', async () => {
+  const h = harness();
+  for (const code of ['0123', '01234', '012345', '0123456', '01234567']) {
+    const message = { ...verifyMessage(), data: { ...verifyMessage().data, code } };
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)).data.code, code);
+  }
+  for (const code of ['012', '012345678', '01a3', '01 3']) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ ...verifyMessage(), data: { ...verifyMessage().data, code } })), null);
+  }
+  h.bridge.handle({ ...verifyMessage(), data: { ...verifyMessage().data, code: '0123' } });
+  await settle();
+  assert.equal(h.count('verifyOtp'), 1);
+  assert.equal(h.find('auth.ok').length, 1, 'A four-digit code reaches server verification');
   h.bridge.close();
 });
 

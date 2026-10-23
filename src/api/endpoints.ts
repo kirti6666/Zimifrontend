@@ -30,12 +30,14 @@ function boundedStrings(value: unknown, label: string, min: number, max: number)
 const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
 
 export const api = {
-  async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number }> {
-    const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number }>("POST", "/auth/otp/request", phonePayload(phone, dialCode), { auth: false });
-    return { expiresIn: result.expiresIn, resendAfter: result.resendAfter ?? result.retryAfterSeconds ?? 60 };
+  async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number; otpLength: number }> {
+    const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number; otpLength?: number }>("POST", "/auth/otp/request", phonePayload(phone, dialCode), { auth: false });
+    // Older backend releases use six digits and do not return this field.
+    const otpLength = Number.isInteger(result.otpLength) && result.otpLength! >= 4 && result.otpLength! <= 8 ? result.otpLength! : 6;
+    return { expiresIn: result.expiresIn, resendAfter: result.resendAfter ?? result.retryAfterSeconds ?? 60, otpLength };
   },
   async verifyOtp(phone: string, code: string, _role?: Role, _signup?: boolean, dialCode?: string): Promise<Session> {
-    if (!/^\d{6}$/.test(code)) throw new ApiError("Enter the 6-digit verification code.", 400);
+    if (!/^\d{4,8}$/.test(code)) throw new ApiError("Enter the 4 to 8-digit verification code from your message.", 400);
     const response = await request<{ tokens: SessionTokens; user: unknown; isNewUser: boolean; requiresOnboarding: boolean }>("POST", "/auth/otp/verify", { ...phonePayload(phone, dialCode), otp: code, client: "native" }, { auth: false });
     const data = record(response), tokens = data.tokens;
     if (!isSessionTokens(tokens)) throw new ApiError("Sign-in could not be completed. Request a new code and try again.", 502);

@@ -109,7 +109,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "screen.secure": valid = boolean(d.on); break;
     case "auth.sendOtp": valid = phoneNumber(d) && role(d.role); break;
-    case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{6}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
+    case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{4,8}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
     case "auth.google": valid = role(d.role) && boolean(d.signup); break;
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&

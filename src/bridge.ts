@@ -104,7 +104,7 @@ export type AppMessage =
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
   | { type: "session.error" | "session.expired"; data: { message: string } }
   | { type: "auth.ok"; data: Account & { isNew: boolean; requestId?: number } }
-  | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; requestId?: number } }
+  | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; otpLength: number; requestId?: number } }
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
   | { type: "profile.progress"; data: { done: number; total: number; requestId?: number } }
@@ -846,7 +846,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         authWork.add("send");
         try {
           const result = await api.sendOtp(msg.data.phone, msg.data.role, msg.data.dialCode);
-          if (current(version)) emit({ type: "auth.otpSent", data: { phone: msg.data.phone, resendAfter: result.resendAfter, expiresIn: result.expiresIn, requestId: msg.data.requestId } });
+          if (current(version)) emit({ type: "auth.otpSent", data: { phone: msg.data.phone, resendAfter: result.resendAfter, expiresIn: result.expiresIn, otpLength: result.otpLength, requestId: msg.data.requestId } });
         } catch (error) {
           if (current(version)) emit({ type: "auth.error", data: { ...metadata(error), action: msg.type, requestId: msg.data.requestId } });
         } finally { authWork.delete("send"); }
