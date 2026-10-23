@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>BinzoLive Admin</title>
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="BinzoLive" />
+<link rel="manifest" href="/site.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -35,6 +41,7 @@ h1,h2,h3{font-family:var(--display);letter-spacing:-.02em;line-height:1.2;text-w
 @media (max-width:1023px){.app,.gate{display:none!important}.mobile-block{display:flex;min-height:100%;align-items:center;justify-content:center;padding:32px 16px;text-align:center}
  .mobile-block div{max-width:340px}.mobile-block h1{font-size:22px;margin:14px 0 6px}.mobile-block p{color:var(--muted)}}
 .mark{display:inline-flex;width:36px;height:36px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:var(--brand);font-weight:600;font-size:12px}
+.mark img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
 
 /* sign-in gate */
 .gate{min-height:100vh;display:grid;grid-template-columns:1fr;place-items:center}
@@ -280,7 +287,7 @@ textarea.in{font-size:13px;line-height:1.6}
 </style>
 </head>
 <body>
-<div class="mobile-block"><div><span class="mark">BL</span><h1>Open on a desktop</h1><p>The BinzoLive admin panel is built for screens 1024px and wider. Please sign in from a laptop or desktop computer.</p></div></div>
+<div class="mobile-block"><div><span class="mark"><img src="/app_icon.png" alt="BinzoLive" width="36" height="36"></span><h1>Open on a desktop</h1><p>The BinzoLive admin panel is built for screens 1024px and wider. Please sign in from a laptop or desktop computer.</p></div></div>
 <div id="root"></div>
 <script>
 /* BinzoLive admin console. Front-end prototype with demo data; every action here
@@ -376,7 +383,7 @@ const pend=()=>D.kyc.filter(k=>k.st==="pending").length;
 function vGate(){
  return `<div class="gate">
   <div class="pane"><form onsubmit="event.preventDefault();signIn()">
-   <span class="mark">${I("lock",20)}</span>
+   <span class="mark"><img src="/app_icon.png" alt="BinzoLive" width="36" height="36"></span>
    <h1>BinzoLive Admin</h1>
    <p class="sub">Sign in with your work account. Access is limited to approved team members.</p>
    <label class="f">Work email<input class="in" id="ae" type="email" autocomplete="username" value="priya@zimilive.in" required></label>
@@ -398,7 +405,7 @@ const NAV=[["Overview",[["dash","dash","Dashboard"],["live","play","Live calls",
  ["Platform",[["rules","rule","Rules & policies"],["team","team","Team & roles"],["audit","log","Audit log"]]]];
 function shell(inner){
  return `<div class="app"><aside class="side">
-  <div class="brand"><span class="mark">BL</span><div><b>BinzoLive</b><span>Admin console</span></div></div>
+  <div class="brand"><span class="mark"><img src="/app_icon.png" alt="" width="32" height="32"></span><div><b>BinzoLive</b><span>Admin console</span></div></div>
   <nav>${NAV.map(([g,items])=>{items=items.filter(([k])=>can(k));return items.length?`<div class="grp">${g}</div>${items.map(([k,ic,l,c])=>{const cn=c?c():0;
    return `<button class="${S.view===k?"on":""}" onclick="go('${k}')">${I(ic)}<span>${l}</span>${cn?`<span class="cnt">${cn}</span>`:""}</button>`}).join("")}`:""}).join("")}</nav>
   <div class="me"><span class="av">${ME()[0].split(" ").map(w=>w[0]).join("")}</span><div style="min-width:0"><b>${ME()[0]}</b><span>${ME()[1]}</span></div><button onclick="S.auth=0;render()">Sign out</button></div>

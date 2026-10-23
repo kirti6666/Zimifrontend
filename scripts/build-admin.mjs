@@ -5,9 +5,11 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { copyWebBranding } from "./web-branding.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const out = join(root, "admin-site/dist");
 mkdirSync(out, { recursive: true });
 writeFileSync(join(out, "index.html"), readFileSync(join(root, "web/admin.html"), "utf8"));
-console.log("built admin-site/dist/index.html");
+copyWebBranding(root, out);
+console.log("built admin-site/dist/index.html and public brand assets");

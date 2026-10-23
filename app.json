@@ -7,6 +7,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/brand/icon.png",
+    "web": {
+      "favicon": "./web/favicon/favicon-96x96.png"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,

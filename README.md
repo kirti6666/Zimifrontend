@@ -2,6 +2,17 @@
 
 A React Native (Expo) live-streaming frontend prototype with creator discovery, live calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
 
+## App icon and browser icons
+
+`assets/brand/app_icon.png` is the supplied BinzoLive app icon. Run
+`npm run build:icons` after replacing it to refresh the opaque launcher icon,
+Android adaptive icon layers, and web app icon. Then run `npm run build:web`
+and rebuild the native app to see the updated launcher icon on a device.
+
+Browser favicon files live in `web/favicon/`. Both `npm run build:web` and
+`npm run build:admin` copy them to the deployment root and include the BinzoLive
+favicon, Apple touch icon, and web manifest tags.
+
 ## Run on your phone
 
 ```bash
