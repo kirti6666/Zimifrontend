@@ -38,7 +38,8 @@
       "expo-secure-store",
       ["expo-media-library", { "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.", "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
       "./plugins/with-onboarding-camera",
-      "./plugins/with-development-network"
+      "./plugins/with-development-network",
+      ["expo-splash-screen", { "image": "./assets/brand/logo.png", "imageWidth": 170, "resizeMode": "contain", "backgroundColor": "#210F1D" }]
     ]
   }
 }

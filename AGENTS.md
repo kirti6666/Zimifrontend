@@ -49,6 +49,12 @@ keeps it identical to the original Next.js version.
   initial loads, refreshes and pagination. Tie them to actual request state;
   never use artificial loading timers. Keep empty and error states separate,
   label skeletons for accessibility, and respect reduced-motion settings.
+- At launch, the native animated logo (`src/launch-screen.tsx`) covers the page
+  instead of a skeleton. `web/loading.js` sends `app.launched` once the saved
+  session is settled and no skeleton is visible (`.zh-skeleton`,
+  `.ob-session-skeleton` or `role="status"` with `aria-busy="true"`), or at once
+  when offline. Give any new first-screen loading state that markup, or the
+  logo leaves too early. Run `npm run test:launch`.
 - `web/aurora-runtime.js` must stay a top-level classic script. Its inline
   `onclick` handlers resolve globals (`S`, `r`, ...) through the global scope
   chain, so wrapping it in an IIFE or loading it as a module breaks navigation.

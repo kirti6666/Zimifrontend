@@ -25,6 +25,7 @@ import { approvedHost } from "./host-access";
 export type WebMessage =
   | { type: "ready"; data: { demo: boolean } }
   | { type: "app.exit.request"; data: Record<string, never> }
+  | { type: "app.launched"; data: Record<string, never> }
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
   | { type: "connection.check"; data: Record<string, never> }
@@ -1065,6 +1066,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "app.exit.request": return; // The native shell owns exit confirmation.
+      case "app.launched": return; // The native shell owns the launch screen.
       case "chat.photoViewer": return; // Accepted for compatibility; the page owns Back navigation.
       case "chat.photoDownload": {
         const { to, id, requestId } = msg.data;

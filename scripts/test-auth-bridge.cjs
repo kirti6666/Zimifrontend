@@ -89,14 +89,14 @@ function harness(initialAppState = 'active', initialLink = null) {
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', Image: 'Image', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
       if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
       if (id === 'expo-screen-capture') return { preventScreenCaptureAsync: async key => capture.push(['prevent', key]), allowScreenCaptureAsync: async key => capture.push(['allow', key]) };
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
-      if (id === './assets/brand/logo.png') return { __esModule: true, default: 1 };
+      if (id === './src/launch-screen') return { LaunchScreen: 'LaunchScreen' };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
       throw new Error(`Unexpected import ${id}`);
     };
@@ -414,7 +414,7 @@ test('closing the bridge removes session observers and prevents pending UI deliv
 test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
   const h = harness();
   const provider = h.load('App.tsx').default();
-  const keyboard = provider.props.children;
+  const [keyboard] = [provider.props.children].flat();
   const safeArea = keyboard.props.children;
   const web = [safeArea.props.children].flat().find(node => node?.type === 'WebView');
   const style = node => Object.assign({}, ...[node.props.style].flat());
@@ -428,6 +428,23 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   for (const node of [keyboard, safeArea, web]) assert.equal(style(node).flex, 1, 'Allow keyboard padding to shrink the WebView');
   assert.equal(style(keyboard).backgroundColor, style(safeArea).backgroundColor);
   assert.equal(style(safeArea).backgroundColor, style(web).backgroundColor);
+  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
+});
+
+test('the animated logo covers the app at launch instead of a loading skeleton', () => {
+  const h = harness();
+  const provider = h.load('App.tsx').default();
+  const [keyboard, launch] = [provider.props.children].flat();
+  const web = [keyboard.props.children.props.children].flat().find(node => node?.type === 'WebView');
+  assert.equal(launch.type, 'LaunchScreen', 'The logo is drawn over the whole screen, outside the safe-area padding');
+  assert.equal(launch.props.ready, false, 'The logo stays until the page reports its first screen');
+  assert.equal(typeof launch.props.onHidden, 'function');
+  assert.equal(keyboard.props.importantForAccessibility, 'no-hide-descendants', 'Screen readers do not reach the app under the logo');
+  assert.equal(keyboard.props.accessibilityElementsHidden, true);
+  assert.equal(web.props.renderLoading, undefined, 'The WebView draws no skeleton of its own');
+  assert.equal(web.props.startInLoadingState, undefined);
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: {} })));
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: { at: 1 } })), null);
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
