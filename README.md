@@ -435,9 +435,22 @@ Setup:
    reports push as unavailable.
 3. Regenerate native code and rebuild: `npx expo prebuild --platform android`, then
    `npm run android` or an EAS build.
+
+   Expo reads `android.googleServicesFile` from `app.config.js`, copies the file
+   to `android/app/google-services.json`, and adds the Google Services plugin to
+   `android/build.gradle` and `android/app/build.gradle`. The Firebase console's
+   manual Gradle instructions are handled by this step; `expo-notifications`
+   already supplies the Firebase Messaging SDK. Firebase Analytics is optional
+   and is not required for push notifications.
 4. Configure the backend's Firebase service account and `PUSH_ENABLED=true`; see
    `../backend/README.md`. Then send a test from the admin dashboard's
    announcements with **Also send a push notification** checked.
+
+The service-account JSON is a separate download from Firebase **Project settings
+> Service accounts > Generate new private key**. Use the same Firebase project
+as `google-services.json`. Its private key belongs only in the backend's runtime
+configuration; never add it to the mobile app, website, or Git. For VPS setup,
+use the Firebase fields in `../backend/deploy/vps/production.env.example`.
 
 Test on a physical Android device; Expo Go cannot receive FCM pushes. The tray icon
 is `assets/brand/notification-icon.png` (white on transparent, tinted `#EC0785`);
