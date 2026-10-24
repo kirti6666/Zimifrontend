@@ -10,3 +10,5 @@ dist/
 admin-site/dist/
 /home-preview-*.png
 /home-production-state.png
+google-services.json
+GoogleService-Info.plist

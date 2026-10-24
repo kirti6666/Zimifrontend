@@ -178,7 +178,7 @@ export interface ProfileSettings {
   preferences: { pushNotifications: boolean; matchCategory: string | null; appearance: Appearance };
   privacy: PrivacySettings;
   categories: string[];
-  capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
+  capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; nativePushStatus: "registered" | "denied" | "unavailable"; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
 }
 export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }

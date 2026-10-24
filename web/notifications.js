@@ -166,6 +166,8 @@ ZimiHome.views.notifications=znView;
 const znPreviousAfterRender=ZimiHome.afterRender;
 ZimiHome.afterRender=()=>{znPreviousAfterRender();znAfterRender()};
 Native.on('notifications.saved',znSaved);Native.on('notifications.error',znError);
+// A tapped push opens the inbox, but never pulls someone out of a call or live room.
+Native.on('push.opened',()=>{if(['live','broadcast','setup','precall','call','voice','dial','dialback','waiting','ring','hcall'].includes(S.v)||(typeof ZVerify!=='undefined'&&ZVerify.state)){ZNotices.changed=true;return}znOpen()});
 Native.on('notifications.changed',()=>{ZNotices.changed=true;if(S.v!=='notifications'||ZNotices.pending)return;if(ZNotices.selected.size||ZNotices.detail||document.activeElement?.id==='zn-search'||znBusy()){r();return}znLoad()});
 Native.on('session.none',znReset);Native.on('session.expired',znReset);
 for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(ZNotices.accountId&&ZNotices.accountId!==id)znReset();ZNotices.accountId=id});

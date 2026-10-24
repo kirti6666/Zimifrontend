@@ -39,6 +39,7 @@
     },
     "plugins": [
       "expo-secure-store",
+      ["expo-notifications", { "icon": "./assets/brand/notification-icon.png", "color": "#EC0785", "defaultChannel": "default" }],
       ["expo-media-library", { "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.", "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
       "./plugins/with-onboarding-camera",
       "./plugins/with-development-network",

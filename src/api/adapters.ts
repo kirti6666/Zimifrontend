@@ -132,9 +132,9 @@ export function profileSettingsFrom(value: unknown): ProfileSettings {
     standing: { level: count(record(data.standing ?? {}).level), crown: record(data.standing ?? {}).crown === true },
     preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
     privacy: privacyFrom(data.privacy), categories: stringList(data.categories),
-    // This native build does not register OS push tokens yet. Backend worker
-    // availability alone must not be presented as notifications on this device.
-    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, liveAlerts: capabilities.liveAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
+    // Backend worker availability alone must not be presented as notifications
+    // on this device; the bridge fills in this device's registration.
+    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, nativePushStatus: "unavailable", liveAlerts: capabilities.liveAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
   };
 }
 export function blockedUsersFrom(value: unknown): BlockedUsers {

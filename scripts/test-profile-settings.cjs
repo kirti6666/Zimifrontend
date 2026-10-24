@@ -193,6 +193,18 @@ async function run() {
     await notifications.getByRole('button', { name: 'Open notifications', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'notifications');
     await readyProfile();
+    const pushCapabilities = status => ({ ...saved, capabilities: { ...saved.capabilities, pushNotifications: true, nativePushRegistered: status === 'registered', nativePushStatus: status } });
+    await settleSettings(page, pushCapabilities('denied'));
+    await row('Notifications & Live Alerts').click();
+    assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Blocked by the phone: the toggle cannot claim to work');
+    assert.match(await notifications.innerText(), /turned off for BinzoLive on this phone/);
+    await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).click();
+    assert.deepEqual(await lastSent(page, 'push.enable'), {}, 'The native shell decides whether to ask again or open system settings');
+    await receive(page, 'data.profileSettings', pushCapabilities('registered'));
+    assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), false, 'The open dialog updates once the phone allows notifications');
+    assert.equal(await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).count(), 0);
+    await close();
+    await settleSettings(page, saved);
     await row('Privacy & Blocked Users').click();
     const privacy = dialog('Privacy & Blocked Users');
     await privacy.getByRole('status', { name: 'Loading blocked accounts', exact: true }).waitFor();
@@ -241,6 +253,17 @@ async function run() {
     for (const [button, title] of [['Help Center & Safety Guidelines', 'Help Center'], ['Community Guidelines', 'Community Guidelines']]) {
       await row(button).click(); await dialog(title).waitFor(); assert.ok((await dialog(title).innerText()).length > 100); await close();
     }
+    // A tapped push opens the inbox, but never navigates away from a call or live room.
+    for (const view of ['hcall', 'live']) {
+      await page.evaluate(value => { S.v = value; }, view);
+      await receive(page, 'push.opened');
+      assert.equal(await page.evaluate(() => S.v), view, `A push tap leaves ${view} on screen`);
+    }
+    await navigate(page, 'home');
+    await receive(page, 'push.opened');
+    assert.equal(await page.evaluate(() => S.v), 'notifications');
+    assert.ok(await sentCount(page, 'notifications.load') > 0, 'Opening from a push loads the current inbox');
+    await readyProfile();
     console.log('PASS profile: capability-aware notifications, blocked account loading/unblock recovery, real privacy saves, gift history and support dialogs');
 
     for (const hostStatus of ['none', 'pending', 'rejected', 'suspended']) {

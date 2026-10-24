@@ -14,6 +14,7 @@ import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, type Pen
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
+import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -28,6 +29,7 @@ export type WebMessage =
   | { type: "app.launched"; data: Record<string, never> }
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
+  | { type: "push.enable"; data: Record<string, never> }
   | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
@@ -125,6 +127,7 @@ export type AppMessage =
   | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
   | { type: "notifications.error"; data: { requestId: number; message: string } }
   | { type: "notifications.changed"; data: Record<string, never> }
+  | { type: "push.opened"; data: Record<string, never> }
   | { type: "data.catalog"; data: Catalog }
   | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
   | { type: "data.themes"; data: ThemeCatalog }
@@ -450,7 +453,38 @@ export function createBridge(post: (msg: AppMessage) => void) {
     emit({ type: "theme.default", data: theme });
     void rememberDefaultTheme(theme);
   };
-  const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), data => emit({ type: "data.profileSettings", data }));
+  // This device's FCM registration. The server decides whether push is on;
+  // the device decides whether it can receive it.
+  let pushStatus: PushStatus = "unavailable";
+  let pushSession: number | undefined;
+  let pushPrompted = false;
+  let pushOpenPending = false;
+  const syncPush = async (mode: PushMode) => {
+    const version = epoch, sessionVersion = getSessionVersion();
+    const status = await registerPush(token => api.registerPushDevice(token), mode);
+    if (!current(version) || sessionVersion !== getSessionVersion() || status === pushStatus) return;
+    pushStatus = status;
+    quietly(loadProfileSettings(), "profile.settings.load");
+  };
+  const withPushStatus = (settings: ProfileSettings): ProfileSettings =>
+    ({ ...settings, capabilities: { ...settings.capabilities, nativePushRegistered: pushStatus === "registered", nativePushStatus: pushStatus } });
+  const emitProfileSettings = (settings: ProfileSettings) => {
+    // Register once per signed-in session, and never spend Android's one-time
+    // permission prompt while the server cannot send.
+    if (settings.capabilities.pushNotifications && pushSession !== getSessionVersion() && !liveOnboarding) {
+      pushSession = getSessionVersion();
+      void syncPush(pushPrompted ? "silent" : "prompt");
+      pushPrompted = true;
+    }
+    emit({ type: "data.profileSettings", data: withPushStatus(settings) });
+  };
+  /** Opens the inbox for a tapped notification once a signed-in screen can show it. */
+  const flushPushOpen = () => {
+    if (!pushOpenPending || !webReady || !sessionAvailable || restoring || liveOnboarding || hostAccount?.requiresOnboarding) return;
+    pushOpenPending = false;
+    emit({ type: "push.opened", data: {} });
+  };
+  const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), emitProfileSettings);
   const loadPublicProfile = (id: string, requestId?: number) => {
     const followRevision = publicFollows.get(id)?.revision ?? 0;
     return readResource("publicProfile", () => api.publicProfile(id), profile => {
@@ -469,7 +503,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const deliverProfileSettings = (settings: ProfileSettings) => {
     // A GET started before this committed write cannot restore old preferences.
     readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
-    emit({ type: "data.profileSettings", data: settings });
+    emitProfileSettings(settings);
     emit({ type: "data.loading", data: { resource: "profileSettings", loading: false } });
   };
   const loadChats = (page = 1) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
@@ -530,6 +564,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
     }
     if (accountId && getCachedToken() && !hostAccount?.requiresOnboarding) quietly(loadThemes(), "themes.load");
+    if (pushSession === getSessionVersion() && sessionAvailable && pushStatus !== "registered") void syncPush("silent");
   });
   const loadLists = async () => {
     const version = epoch;
@@ -635,7 +670,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
     if (!onboarding) { void loadLists(); void restorePendingPurchases(); }
-    void flushStreamLink();
+    void flushStreamLink(); flushPushOpen();
   };
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
@@ -667,7 +702,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; void flushStreamLink(); }
+    } finally { restoring = false; void flushStreamLink(); flushPushOpen(); }
   };
 
   async function handle(msg: WebMessage) {
@@ -686,6 +721,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "transactions.load": return readResource("transactions", () => api.transactions(), data => emit({ type: "data.transactions", data }));
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
+      case "push.enable": if (sessionAvailable && pushSession === getSessionVersion()) await syncPush("settings"); return;
       case "home.reload": return loadHome(msg.data);
       case "hosts.search": {
         const q = msg.data.q, page = msg.data.page ?? 1;
@@ -884,6 +920,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         accountId = undefined; hostStatus = undefined;
         hostRevision++; hostChecking = false; hostAccount = undefined; activeHostCall = false;
         void forgetAccountTheme();
+        clearDeliveredPush();
         // Revocation must still run if secure-storage deletion fails. Local
         // invalidation is synchronous; this captured credential cannot revoke
         // a newer login, and network completion never clears its session.
@@ -917,7 +954,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
               liveOnboarding = account.requiresOnboarding === true;
               stopLive.setActive?.(appActive && !liveOnboarding);
               void loadLists();
-              void flushStreamLink();
+              void flushStreamLink(); flushPushOpen();
             }
             else quietly(loadProfileSettings(), "profile.settings.load");
           }
@@ -963,7 +1000,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           const settings = await api.saveProfileSettings(patch);
           if (current(version) && sessionVersion === getSessionVersion()) {
             deliverProfileSettings(settings);
-            emit({ type: "profile.settings.saved", data: { settings, requestId } });
+            emit({ type: "profile.settings.saved", data: { settings: withPushStatus(settings), requestId } });
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "profile.settings.error", data: { message: errorMessage(error), requestId } });
@@ -1296,6 +1333,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (openStreamLink(event.url)) runtimeLinkReceived = true;
   });
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
+  const stopPush = startPush(() => { pushOpenPending = true; flushPushOpen(); });
+  const stopPushToken = onPushTokenChange(token => {
+    if (pushSession === getSessionVersion() && sessionAvailable) void api.registerPushDevice(token).catch(() => {});
+  });
 
   return {
     documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; },
@@ -1320,6 +1361,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopLive(); },
+    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }

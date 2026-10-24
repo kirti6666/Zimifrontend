@@ -23,6 +23,18 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function harness(initialAppState = 'active', initialLink = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
+  // The FCM edge: OS permission, the device token and notification taps.
+  const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
+  const pushModule = {
+    startPush: onOpen => { push.open = onOpen; return () => { push.stopped++; }; },
+    registerPush: async (save, mode) => {
+      push.modes.push(mode);
+      if (push.status !== 'registered') return push.status;
+      try { await save(push.token); return 'registered'; } catch { return 'unavailable'; }
+    },
+    onPushTokenChange: listener => { push.tokenListener = listener; return () => { push.tokenListener = undefined; }; },
+    clearDeliveredPush: () => { push.cleared++; },
+  };
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
   }
@@ -79,6 +91,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       if (id === 'expo-secure-store') return storage;
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
+      if (id === './push') return pushModule;
       if (id === './chat-photo-download') return { downloadChatPhoto: async (to, messageId, current) => { calls.push({ name: 'downloadChatPhoto', args: [to, messageId, current] }); if (overrides.downloadChatPhoto) return overrides.downloadChatPhoto(to, messageId, current); } };
       if (id === './api/realtime') return { VERIFY_PEER: 'zimi-team', connectRealtime: (token, onEvent, userId, initiallyActive) => {
         const connection = { token, onEvent, userId, initiallyActive, activeStates: [], stopped: false }; live.push(connection);
@@ -111,7 +124,7 @@ function harness(initialAppState = 'active', initialLink = null) {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, alerts, exits, connection };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, alerts, exits, connection, push };
 }
 
 test('connection status follows the current WebView and retry never reloads account data', async () => {
@@ -2573,4 +2586,90 @@ test('accepted calls allow the first host message with server-verified call cont
   h.live[0].onEvent({type:'call.ended',data:{callId:'accepted-call'}});
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'After call',inCall:true}});h.bridge.handle({type:'chat.send',data:{to:'member',text:'Ordinary message'}});await settle();
   assert.equal(h.count('sendMessage'),1,'Ending the call does not grant permission to start ordinary text chat');h.bridge.close();
+});
+
+const pushSettings = (serverPush = true) => { const settings = profileSettings(); settings.capabilities.pushNotifications = serverPush; return settings; };
+const signedIn = (id = 'alice') => ({ ...account(id), requiresOnboarding: false, tokens: tokenPair(id), isNew: false });
+const pushCapability = h => h.find('data.profileSettings').at(-1).data.capabilities;
+
+test('push registers each session only when the server can send, and settings report this device', async () => {
+  const h = harness();
+  h.overrides.verifyOtp = () => signedIn();
+  h.overrides.profileSettings = () => pushSettings(false);
+  h.bridge.handle(verifyMessage()); await settle();
+  assert.deepEqual(h.push.modes, [], 'Never spend the permission prompt while the server cannot send');
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [false, 'unavailable']);
+
+  h.overrides.profileSettings = () => pushSettings(true);
+  h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
+  assert.deepEqual(h.push.modes, ['prompt']);
+  assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').map(call => call.args), [['fcm:device-token']]);
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [true, 'registered']);
+  h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
+  assert.equal(h.count('registerPushDevice'), 1, 'Settings reloads do not re-register the same session');
+
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  assert.equal(h.push.cleared, 1, 'The previous account leaves nothing in the tray');
+  h.push.tokenListener('fcm:rotated-after-logout'); await settle();
+  assert.equal(h.count('registerPushDevice'), 1, 'A signed-out device registers nothing');
+
+  h.overrides.verifyOtp = () => signedIn('bob');
+  h.bridge.handle(verifyMessage(2)); await settle();
+  assert.deepEqual(h.push.modes, ['prompt', 'silent'], 'A later account re-registers without prompting again');
+  assert.equal(h.count('registerPushDevice'), 2);
+  h.push.tokenListener('fcm:rotated'); await settle();
+  assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').at(-1).args, ['fcm:rotated']);
+  h.bridge.close();
+  assert.equal(h.push.stopped, 1);
+  assert.equal(h.push.tokenListener, undefined);
+});
+
+test('denied permission is reported, retried silently in the foreground and can be asked again from settings', async () => {
+  const h = harness();
+  h.push.status = 'denied';
+  h.overrides.verifyOtp = () => signedIn();
+  h.overrides.profileSettings = () => pushSettings(true);
+  h.bridge.handle(verifyMessage()); await settle();
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [false, 'denied']);
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.deepEqual(h.push.modes, ['prompt', 'silent']);
+
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: {} })));
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: { token: 'injected' } })), null);
+  h.push.status = 'registered';
+  h.bridge.handle({ type: 'push.enable', data: {} }); await settle();
+  assert.equal(h.push.modes.at(-1), 'settings');
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [true, 'registered']);
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.push.modes.length, 3, 'A registered device is not re-checked on every foreground');
+
+  h.overrides.saveProfileSettings = () => pushSettings(true);
+  h.bridge.handle({ type: 'profile.settings.save', data: { pushNotifications: true, requestId: 4 } }); await settle();
+  const saved = h.find('profile.settings.saved').at(-1);
+  assert.equal(saved?.data.settings.capabilities.nativePushStatus, 'registered', 'Saved settings keep the device status');
+  h.bridge.close();
+});
+
+test('a tapped notification opens the inbox once a signed-in, onboarded screen can show it', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.push.open(); await settle();
+  assert.equal(h.find('push.opened').length, 0, 'The app launched from a notification waits for its document');
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  assert.equal(h.find('push.opened').length, 1);
+  assert.ok(h.posts.findIndex(post => post.type === 'session') < h.posts.findIndex(post => post.type === 'push.opened'));
+  h.push.open(); await settle();
+  assert.equal(h.find('push.opened').length, 2);
+
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  h.push.open(); await settle();
+  assert.equal(h.find('push.opened').length, 2, 'Signed out: nothing opens');
+  h.overrides.verifyOtp = () => ({ ...account(), tokens: tokenPair(), isNew: true });
+  h.bridge.handle(verifyMessage()); await settle();
+  assert.equal(h.find('push.opened').length, 2, 'Onboarding is never interrupted');
+  h.overrides.saveProfile = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
+  assert.equal(h.find('push.opened').length, 3);
+  h.bridge.close();
 });
