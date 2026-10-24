@@ -2,7 +2,7 @@
   "expo": {
     "name": "BinzoLive",
     "slug": "aurora-live-app",
-    "scheme": "zimilive",
+    "scheme": "binzolive",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",

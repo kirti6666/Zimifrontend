@@ -352,7 +352,7 @@ end the call and release media. Call-scoped chat verifies the active participant
 Paid calls are metered by the backend and end when the member runs out of coins.
 PK battles are not implemented.
 
-Native invitations use `zimilive://live/<streamId>` and the device share sheet.
+Native invitations use `binzolive://live/<streamId>` and the device share sheet.
 Rebuild the native app to register this scheme. Invitations wait for sign-in and
 show a join confirmation; they do not interrupt an existing live or private call.
 

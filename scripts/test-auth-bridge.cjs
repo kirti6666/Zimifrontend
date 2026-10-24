@@ -1058,14 +1058,14 @@ test('mission and gift rejection never credit or acknowledge success', async () 
 
 test('returning from provider checkout verifies the owned order and credits only the server wallet', async () => {
   const h = harness();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', paymentUrl: 'https://checkout.example.test/pay', status: 'PENDING' });
-  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', paymentUrl: 'https://checkout.example.test/pay', status: 'PENDING' });
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS' });
   h.overrides.wallet = () => ({ coins: 475, earningsPaise: 0 });
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } });
   await settle();
   h.activities.forEach(listener => listener('background')); await settle(); assert.equal(h.count('verifyPurchase'), 0);
   h.activities.forEach(listener => listener('active')); await settle();
-  assert.equal(h.calls.find(call => call.name === 'verifyPurchase').args[0], 'zimi_order');
+  assert.equal(h.calls.find(call => call.name === 'verifyPurchase').args[0], 'binzolive_order');
   assert.equal(h.find('wallet.purchase')[0].data.status, 'SUCCESS');
   assert.equal(h.find('wallet.balance')[0].data.coins, 475);
   h.activities.forEach(listener => listener('active')); await settle(); assert.equal(h.count('verifyPurchase'), 1);
@@ -1294,7 +1294,7 @@ test('gift failures carry their own attempt and insufficient-coin code without c
 
 test('completed checkout retries update only the server balance and retain attempt correlation', async () => {
   const h = harness();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS', coins: 100 });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS', coins: 100 });
   h.overrides.wallet = () => ({ coins: 575, earningsPaise: 0 });
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
   assert.equal(h.find('wallet.checkout')[0].data.packId, 'pack-id'); assert.equal(h.find('wallet.checkout')[0].data.idempotencyKey, 'payment-attempt-1');
@@ -1307,15 +1307,15 @@ test('completed checkout retries update only the server balance and retain attem
 
 test('failed external payment launch preserves the checkout and supports manual verification', async () => {
   const h = harness();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
   h.overrides.openURL = () => { assert.equal(h.find('wallet.checkout').length, 1, 'Order must reach UI before external launch'); throw new Error('No handler'); };
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
   assert.equal(h.find('operation.error')[0].data.code, 'PAYMENT_OPEN_FAILED');
   assert.equal(h.find('operation.error')[0].data.idempotencyKey, 'payment-attempt-1');
   h.overrides.verifyPurchase = () => { throw new h.ApiError('Check again shortly', 503, 'PAYIN_UNAVAILABLE'); };
-  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'zimi_order' } }); await settle();
-  assert.equal(h.find('operation.error')[1].data.merchantOrderId, 'zimi_order');
-  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'binzolive_order' } }); await settle();
+  assert.equal(h.find('operation.error')[1].data.merchantOrderId, 'binzolive_order');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS' });
   h.activities.forEach(listener => listener('active')); await settle();
   assert.equal(h.find('wallet.purchase')[0].data.status, 'SUCCESS'); assert.equal(h.find('wallet.purchase')[0].data.idempotencyKey, 'payment-attempt-1');
   h.bridge.close();
@@ -1326,12 +1326,12 @@ test('pending payments survive a native restart and are verified only for their 
   await h.session.setSessionTokens(tokenPair());
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
-  assert.deepEqual(plain(await cache.readPendingPayments('alice')), [{ orderId: 'zimi_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' }]);
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), [{ orderId: 'binzolive_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' }]);
   h.bridge.close();
   const restarted = h.bridgeModule.createBridge(message => h.posts.push(message));
-  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS' });
   restarted.handle({ type: 'session.resume', data: {} }); await settle();
   assert.equal(h.count('verifyPurchase'), 1); assert.equal(h.opened.length, 1, 'Recovery never reopens or initiates a charge');
   assert.equal(h.find('wallet.purchase')[0].data.status, 'PENDING', 'Restore the unconfirmed order before waiting for a provider response');
@@ -2491,14 +2491,14 @@ const linkedStream = id => ({ id, hostId: 'linked-host', host: { id: 'linked-hos
 
 test('native live links and share messages reject arbitrary URLs, injected fields and malformed room IDs', () => {
   const h = harness();
-  assert.equal(h.webMessages.parseLiveLink('zimilive://live/room_123-abc'), 'room_123-abc');
-  for (const url of [null, {}, 'https://evil.test/live/room', 'javascript:alert(1)', 'zimilive://live.evil.test/room', 'zimilive://user@live/room', 'zimilive://live:443/room', 'zimilive://live/../room', 'zimilive://live/%2e%2e', 'zimilive://live/room?token=secret', 'zimilive://live/room#host', 'zimilive://live/room/extra', 'zimilive://live/', 'zimilive://live/'+ 'x'.repeat(129), ' zimilive://live/room']) assert.equal(h.webMessages.parseLiveLink(url), null);
+  assert.equal(h.webMessages.parseLiveLink('binzolive://live/room_123-abc'), 'room_123-abc');
+  for (const url of [null, {}, 'https://evil.test/live/room', 'javascript:alert(1)', 'binzolive://live.evil.test/room', 'binzolive://user@live/room', 'binzolive://live:443/room', 'binzolive://live/../room', 'binzolive://live/%2e%2e', 'binzolive://live/room?token=secret', 'binzolive://live/room#host', 'binzolive://live/room/extra', 'binzolive://live/', 'binzolive://live/'+ 'x'.repeat(129), ' binzolive://live/room']) assert.equal(h.webMessages.parseLiveLink(url), null);
   for (const data of [{streamId:'room',url:'https://evil.test'}, {streamId:'../room'}, {streamId:'room',hosting:true}]) assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'stream.share',data})),null);
   h.bridge.close(); assert.equal(h.links.length,0,'Native URL subscriptions stop with the bridge');
 });
 
 test('a cold live link waits for WebView readiness, login and onboarding before selecting the server room', async () => {
-  const h = harness('active','zimilive://live/cold-room'); h.overrides.stream = linkedStream;
+  const h = harness('active','binzolive://live/cold-room'); h.overrides.stream = linkedStream;
   await settle(); assert.equal(h.count('stream'),0);
   h.bridge.handle({type:'ready',data:{demo:false}});await settle();assert.equal(h.find('session.none').length,1);assert.equal(h.count('stream'),0);
   h.bridge.handle(verifyMessage());await settle();assert.equal(h.count('stream'),0,'Onboarding is not interrupted by a live invite');
@@ -2513,21 +2513,21 @@ test('warm live links use the latest selection and discard older responses and d
   const initial=deferred(), first=deferred(),second=deferred(),h=harness('active',()=>initial.promise);
   h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>id==='first'?first.promise:second.promise;
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/first'}));await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/second'}));await settle();
-  initial.resolve('zimilive://live/stale-cold-room');second.resolve(linkedStream('second'));await settle();first.resolve(linkedStream('first'));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/first'}));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/second'}));await settle();
+  initial.resolve('binzolive://live/stale-cold-room');second.resolve(linkedStream('second'));await settle();first.resolve(linkedStream('first'));await settle();
   assert.deepEqual(h.calls.filter(call=>call.name==='stream').map(call=>call.args[0]),['first','second']);
   assert.deepEqual(h.find('stream.link').map(event=>event.data.stream.id),['second']);
-  h.bridge.documentLoading();h.links.forEach(listener=>listener({url:'zimilive://live/reloaded'}));await settle();assert.equal(h.count('stream'),2);
+  h.bridge.documentLoading();h.links.forEach(listener=>listener({url:'binzolive://live/reloaded'}));await settle();assert.equal(h.count('stream'),2);
   h.overrides.stream=linkedStream;h.bridge.handle({type:'ready',data:{demo:false}});await settle();assert.equal(h.find('stream.link').at(-1).data.stream.id,'reloaded');h.bridge.close();
 });
 
 test('logout suppresses pending live-link results and new signed-out links wait for the next login', async () => {
   const h=harness(), pending=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=()=>pending.promise;
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/old-account-room'}));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/old-account-room'}));await settle();
   h.bridge.handle({type:'auth.logout',data:{}});await settle();pending.resolve(linkedStream('old-account-room'));await settle();assert.equal(h.find('stream.link').length,0);
-  h.links.forEach(listener=>listener({url:'zimilive://live/new-room'}));await settle();assert.equal(h.count('stream'),1);
+  h.links.forEach(listener=>listener({url:'binzolive://live/new-room'}));await settle();assert.equal(h.count('stream'),1);
   h.overrides.stream=linkedStream;h.overrides.verifyOtp=()=>({...account('next'),requiresOnboarding:false,tokens:tokenPair('next'),isNew:false});
   h.bridge.handle(verifyMessage(7));await settle();assert.equal(h.find('stream.link')[0].data.stream.id,'new-room');h.bridge.close();
 });
@@ -2535,7 +2535,7 @@ test('logout suppresses pending live-link results and new signed-out links wait 
 test('unavailable live links report an error and always settle their loading state', async () => {
   const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>({...linkedStream(id),status:'ended'});
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/ended-room'}));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/ended-room'}));await settle();
   assert.equal(h.find('stream.link').length,0);assert.equal(h.find('operation.error').at(-1).data.action,'stream.link');assert.equal(h.find('stream.link.loading').at(-1).data.loading,false);
   assert.equal(h.count('joinStream'),0);h.bridge.close();
 });
@@ -2569,8 +2569,8 @@ test('share live opens one native share sheet with the active room link and retu
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
   h.bridge.handle({type:'stream.join',data:{streamId:'shared-room'}});await settle();
   const message={type:'stream.share',data:{streamId:'shared-room'}};h.bridge.handle(message);h.bridge.handle(message);await settle();
-  assert.equal(h.shares.length,1);assert.equal(h.shares[0].message,'Join this live on BinzoLive: zimilive://live/shared-room');
-  assert.equal(h.find('stream.shareLink')[0].data.url,'zimilive://live/shared-room');share.resolve({action:'dismissedAction'});await settle();
+  assert.equal(h.shares.length,1);assert.equal(h.shares[0].message,'Join this live on BinzoLive: binzolive://live/shared-room');
+  assert.equal(h.find('stream.shareLink')[0].data.url,'binzolive://live/shared-room');share.resolve({action:'dismissedAction'});await settle();
   h.bridge.handle({type:'stream.share',data:{streamId:'another-room'}});await settle();assert.equal(h.shares.length,1);assert.equal(h.find('operation.error').at(-1).data.action,'stream.share');h.bridge.close();
 });
 

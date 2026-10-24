@@ -8,10 +8,10 @@ const root = path.resolve(__dirname, '..');
 const artifacts = path.join(root, 'artifacts');
 const user = { user: { id: '507f1f77bcf86cd799439011', name: 'Ad tester', role: 'sender', hostStatus: 'none', isVerifiedHost: false }, verification: 'none', requiresOnboarding: false };
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
-const banner = { id: '6a0000000000000000000001', format: 'banner', advertiser: 'Zimi Studio', headline: 'Edit reels in seconds', body: 'Templates and captions. Free on Android.', ctaLabel: 'Install now', domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/banner.png', mediaType: 'image/png', logoUrl: '', placements: ['home', 'explore', 'chats', 'call_summary'] };
-const video = { ...banner, id: '6a0000000000000000000002', format: 'video', advertiser: 'Zimi Music', headline: 'Your songs. Every mood.', body: '', ctaLabel: 'Listen now', domain: 'music.example', mediaUrl: 'https://media.example.test/ads/promo.mp4', mediaType: 'video/mp4', placements: ['home'] };
+const banner = { id: '6a0000000000000000000001', format: 'banner', advertiser: 'BinzoLive Studio', headline: 'Edit reels in seconds', body: 'Templates and captions. Free on Android.', ctaLabel: 'Install now', domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/banner.png', mediaType: 'image/png', logoUrl: '', placements: ['home', 'explore', 'chats', 'call_summary'] };
+const video = { ...banner, id: '6a0000000000000000000002', format: 'video', advertiser: 'BinzoLive Music', headline: 'Your songs. Every mood.', body: '', ctaLabel: 'Listen now', domain: 'music.example', mediaUrl: 'https://media.example.test/ads/promo.mp4', mediaType: 'video/mp4', placements: ['home'] };
 const catalog = premium => ({ selectedThemeId: '000000000000000000000001', premium: { active: premium, pricePaise: 19900, currency: 'INR', paymentsAvailable: true, purchaseType: 'lifetime' },
-  items: [{ id: '000000000000000000000001', name: 'Zimi Original', description: '', mode: 'dark', active: true, isPremium: false, isDefault: true,
+  items: [{ id: '000000000000000000000001', name: 'BinzoLive Original', description: '', mode: 'dark', active: true, isPremium: false, isDefault: true,
     colors: { background: '#210f1d', surface: '#321e2c', surfaceElevated: '#3c2635', text: '#fce8f2', textMuted: '#c5a9bc', primary: '#c9086a', primaryContrast: '#ffffff', secondary: '#ff9ccc', border: '#654356', success: '#45d5a0', danger: '#ffb2b9' },
     typography: { fontFamily: 'system', fontScale: 1, fontWeight: '400', headingWeight: '700' } }] });
 const receive = (page, type, data) => page.evaluate(message => Native.receive(message), { type, data });
@@ -62,8 +62,8 @@ async function show(page, view) {
     const card = page.locator('.za-card');
     await card.waitFor();
     assert.equal(await card.getAttribute('data-za-id'), banner.id, 'The first visit shows the highest ranked campaign');
-    assert.match(await card.innerText(), /Zimi Studio[\s\S]*Sponsored[\s\S]*Edit reels in seconds[\s\S]*play\.google\.com[\s\S]*Install now/);
-    assert.equal(await page.getByRole('button', { name: 'Install now: Zimi Studio, sponsored', exact: true }).count(), 1);
+    assert.match(await card.innerText(), /BinzoLive Studio[\s\S]*Sponsored[\s\S]*Edit reels in seconds[\s\S]*play\.google\.com[\s\S]*Install now/);
+    assert.equal(await page.getByRole('button', { name: 'Install now: BinzoLive Studio, sponsored', exact: true }).count(), 1);
     assert.equal(await page.locator('.za-media').getAttribute('aria-hidden'), 'true', 'The decorative media leaves the action to the labelled button');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await card.scrollIntoViewIfNeeded();
@@ -93,7 +93,7 @@ async function show(page, view) {
     await page.waitForFunction(id => __sent.some(message => message.type === 'ads.impression' && message.data.id === id), video.id, { timeout: 4000 });
     console.log('PASS rotation per visit, persistent muted video with pause and sound controls');
 
-    await page.getByRole('button', { name: 'Listen now: Zimi Music, sponsored', exact: true }).click();
+    await page.getByRole('button', { name: 'Listen now: BinzoLive Music, sponsored', exact: true }).click();
     assert.deepEqual(await sent(page, 'ads.click'), [{ id: video.id, placement: 'home' }]);
     const cta = page.locator('.za-card .za-cta');
     assert.equal(await cta.isDisabled(), true); assert.equal(await cta.innerText(), 'Opening…');
@@ -113,7 +113,7 @@ async function show(page, view) {
 
     await page.getByRole('button', { name: 'About this ad', exact: true }).click();
     await page.locator('#za-about[open]').waitFor();
-    assert.match(await page.locator('#za-about').innerText(), /Zimi Studio[\s\S]*play\.google\.com[\s\S]*free plan/);
+    assert.match(await page.locator('#za-about').innerText(), /BinzoLive Studio[\s\S]*play\.google\.com[\s\S]*free plan/);
     await receive(page, 'app.back', {});
     await page.locator('#za-about').waitFor({ state: 'detached' });
     assert.equal(await page.evaluate(() => S.v), 'home', 'Back closes the dialog without leaving Home');

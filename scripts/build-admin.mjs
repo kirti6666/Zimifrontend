@@ -1,5 +1,5 @@
 /* Builds the admin console on its own, for a separate deployment such as
-   admin.zimilive.in. Output: admin-site/dist/index.html. The phone app never
+   admin.binzolive.com. Output: admin-site/dist/index.html. The phone app never
    contains this file, and the public site leaves it out when INCLUDE_ADMIN=0.
    Plain Node, no dependencies. See docs/ADMIN.md. */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";

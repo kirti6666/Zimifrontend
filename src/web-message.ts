@@ -163,5 +163,5 @@ export function isTrustedDocument(url: string) {
  * credentials, host authority, arbitrary URLs, or automatic camera consent. */
 export function parseLiveLink(url: unknown): string | null {
   if (typeof url !== "string") return null;
-  return /^zimilive:\/\/live\/([a-zA-Z0-9_-]{1,128})$/.exec(url)?.[1] ?? null;
+  return /^binzolive:\/\/live\/([a-zA-Z0-9_-]{1,128})$/.exec(url)?.[1] ?? null;
 }

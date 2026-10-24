@@ -503,7 +503,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   await assert.rejects(api.sendGift('creator-id', giftId, 1, undefined, undefined, 'gift-attempt-2'), /confirmation could not be read/, 'Malformed confirmation remains retryable with the same key');
   expect('POST', '/missions/mission-id/claim', {}); expect('GET', '/wallet', { coins: 275, earningsPaise: 0 });
   assert.equal((await api.claimAward('mission-id')).coins, 275);
-  expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'created', paymentUrl: 'https://checkout.example.test/pay', packId, coins: 100, amountPaise: 9900, payableAmountPaise: 10000, expiresAt: '2026-10-20T12:00:00.000Z', idempotencyKey: 'payment-attempt-1' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
+  expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'binzolive_order', status: 'created', paymentUrl: 'https://checkout.example.test/pay', packId, coins: 100, amountPaise: 9900, payableAmountPaise: 10000, expiresAt: '2026-10-20T12:00:00.000Z', idempotencyKey: 'payment-attempt-1' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
   const checkout = await api.checkout(packId, 'payment-attempt-1');
   assert.equal(checkout.status, 'PENDING'); assert.equal(checkout.packId, packId); assert.equal(checkout.coins, 100); assert.equal(checkout.amountPaise, 9900); assert.equal(checkout.payableAmountPaise, 10000); assert.equal(checkout.idempotencyKey, 'payment-attempt-1'); assert.equal(checkout.expiresAt, '2026-10-20T12:00:00.000Z');
   const route = { route: 'UPI_INTENT', pageStyle: 'INTENT', upiIntent: true, takingPayments: true, currency: 'INR' };
@@ -532,8 +532,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(requests.length, requestsBeforeInvalidRoutes, 'Malformed methods never reach checkout HTTP calls');
   for (const paymentUrl of ['https://user:secret@checkout.example.test/pay', 'https://checkout.example.test\n.evil.test/pay', 'http://checkout.example.test/pay', 'javascript:steal()']) assert.throws(() => adapters.purchaseFrom({ paymentUrl }), /secure payment/);
   for (const patch of [{ requestedRoute: '../UPI' }, { route: 'UPI<>' }, { pageStyle: 'x'.repeat(101) }, { currency: 'USD' }]) assert.throws(() => adapters.purchaseFrom({ ...routedOrder, ...patch }), /payment method|currency/);
-  expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'paid' });
-  assert.equal((await api.verifyPurchase('zimi_order')).status, 'SUCCESS');
+  expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'binzolive_order', status: 'paid' });
+  assert.equal((await api.verifyPurchase('binzolive_order')).status, 'SUCCESS');
   assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);
   const themeId = '000000000000000000000001';
   const theme = { _id: themeId, slug: 'primary', name: 'Primary', description: 'Free primary theme', active: true, isPremium: false, isDefault: true, sortOrder: 0, mode: 'dark',
@@ -672,14 +672,14 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   backgroundStop();
   reset();
   const adId = '6a0000000000000000000001';
-  const creative = { _id: adId, format: 'banner', advertiser: '  Zimi Studio ', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now', domain: 'play.google.com',
+  const creative = { _id: adId, format: 'banner', advertiser: '  BinzoLive Studio ', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now', domain: 'play.google.com',
     media: { url: 'https://media.example.test/ads/a.png', contentType: 'image/png' }, logoUrl: 'javascript:alert(1)', placements: ['home', 'feed', 'home'] };
   expect('GET', '/ads', { adFree: false, items: [creative, 'junk', { ...creative },
     { ...creative, _id: '6a0000000000000000000002', media: { url: 'http://insecure.example/a.png', contentType: 'image/png' } },
     { ...creative, _id: '6a0000000000000000000003', format: 'video', media: { url: 'https://media.example.test/a.png', contentType: 'image/png' } },
     { ...creative, _id: '6a0000000000000000000004', placements: ['feed'] }] });
   const adFeed = await api.ads();
-  assert.deepEqual(plain(adFeed), { adFree: false, items: [{ id: adId, format: 'banner', advertiser: 'Zimi Studio', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now',
+  assert.deepEqual(plain(adFeed), { adFree: false, items: [{ id: adId, format: 'banner', advertiser: 'BinzoLive Studio', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now',
     domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/a.png', mediaType: 'image/png', logoUrl: '', placements: ['home'] }] },
     'Unsafe, mismatched, malformed, untargeted and repeated campaigns are dropped');
   expect('GET', '/ads', { adFree: true, items: [creative] });

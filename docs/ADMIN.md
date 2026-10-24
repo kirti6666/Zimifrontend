@@ -11,7 +11,7 @@ The phone app and the admin console are two separate products that share one bac
                         │ HTTPS                        │ HTTPS
    Phone app (React Native / Expo)          Admin console (web, desktop only)
    App.tsx shows web/ in a WebView          web/admin.html
-   Ships to the Play Store                  Deployed to admin.zimilive.in
+   Ships to the Play Store                  Deployed to admin.binzolive.com
 ```
 
 - The phone app is built with React Native, but every screen is the web bundle in `web/`, shown inside a WebView. React Native does not limit what the admin console can do.
@@ -30,7 +30,7 @@ The phone app and the admin console are two separate products that share one bac
 
 1. **Public site (existing Vercel project).** Add the environment variable `INCLUDE_ADMIN=0`, so the public site no longer serves `/admin`.
 2. **Admin console (new Vercel project).** Import the same GitHub repository again and set **Root Directory** to `admin-site`. Its `vercel.json` builds the console and adds security headers (no indexing, no framing, HTTPS only).
-3. **Domain.** Point `admin.zimilive.in` at the new project.
+3. **Domain.** Point `admin.binzolive.com` at the new project.
 4. **Lock the door in front of it.** Turn on Vercel Deployment Protection (password or Vercel login), or put the domain behind Cloudflare Zero Trust so only company Google accounts can even load the page. This is in addition to the admin's own sign-in.
 
 ## What the backend must provide before launch

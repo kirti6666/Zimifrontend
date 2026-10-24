@@ -15,7 +15,7 @@ async function configureIosDebugNetwork(projectRoot, apiAddress = process.env.EX
   const project = IOSConfig.XcodeUtils.getPbxproj(projectRoot);
   const debug = IOSConfig.Target.getXCBuildConfigurationFromPbxproj(project, { buildConfiguration: 'Debug' });
   const release = IOSConfig.Target.getXCBuildConfigurationFromPbxproj(project, { buildConfiguration: 'Release' });
-  if (!debug || !release) throw new Error('Zimi local networking requires separate Debug and Release iOS configurations.');
+  if (!debug || !release) throw new Error('BinzoLive local networking requires separate Debug and Release iOS configurations.');
   const iosRoot = path.resolve(projectRoot, 'ios');
   const releaseRelative = String(release.buildSettings.INFOPLIST_FILE || '').replace(/"/g, '').replace(/^\$\(SRCROOT\)\//, '');
   const releasePath = path.resolve(iosRoot, releaseRelative);
@@ -34,7 +34,7 @@ async function configureIosDebugNetwork(projectRoot, apiAddress = process.env.EX
   } catch { /* API configuration errors are explained by the native request layer. */ }
   const debugInfo = {
     ...base,
-    NSLocalNetworkUsageDescription: 'Zimi Live development connects to the backend and development server on your local Wi-Fi network.',
+    NSLocalNetworkUsageDescription: 'BinzoLive development connects to the backend and development server on your local Wi-Fi network.',
     NSAppTransportSecurity: {
       NSAllowsArbitraryLoads: false,
       NSAllowsLocalNetworking: true,

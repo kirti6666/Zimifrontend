@@ -8,8 +8,8 @@ const { configureIosDebugNetwork } = require('../plugins/with-development-networ
 
 (async () => {
   const fixture = await fs.mkdtemp(path.join(os.tmpdir(), 'zimi-native-network-'));
-  const appRoot = path.join(fixture, 'ios', 'Zimi');
-  const projectRoot = path.join(fixture, 'ios', 'Zimi.xcodeproj');
+  const appRoot = path.join(fixture, 'ios', 'BinzoLive');
+  const projectRoot = path.join(fixture, 'ios', 'BinzoLive.xcodeproj');
   await fs.mkdir(appRoot, { recursive: true });
   await fs.mkdir(projectRoot, { recursive: true });
   await fs.writeFile(path.join(appRoot, 'Info.plist'), plist.build({
@@ -22,14 +22,14 @@ const { configureIosDebugNetwork } = require('../plugins/with-development-networ
   PROJECT = { isa = PBXProject; targets = (APP,); };
 /* End PBXProject section */
 /* Begin PBXNativeTarget section */
-  APP = { isa = PBXNativeTarget; name = Zimi; productType = "com.apple.product-type.application"; buildConfigurationList = CONFIGS; };
+  APP = { isa = PBXNativeTarget; name = BinzoLive; productType = "com.apple.product-type.application"; buildConfigurationList = CONFIGS; };
 /* End PBXNativeTarget section */
 /* Begin XCConfigurationList section */
   CONFIGS = { isa = XCConfigurationList; buildConfigurations = (DEBUG /* Debug */, RELEASE /* Release */,); defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 /* Begin XCBuildConfiguration section */
-  DEBUG = { isa = XCBuildConfiguration; name = Debug; buildSettings = { INFOPLIST_FILE = "Zimi/Info.plist"; }; };
-  RELEASE = { isa = XCBuildConfiguration; name = Release; buildSettings = { INFOPLIST_FILE = "Zimi/Info.plist"; }; };
+  DEBUG = { isa = XCBuildConfiguration; name = Debug; buildSettings = { INFOPLIST_FILE = "BinzoLive/Info.plist"; }; };
+  RELEASE = { isa = XCBuildConfiguration; name = Release; buildSettings = { INFOPLIST_FILE = "BinzoLive/Info.plist"; }; };
 /* End XCBuildConfiguration section */
 }; rootObject = PROJECT; }
 `);
@@ -44,8 +44,8 @@ const { configureIosDebugNetwork } = require('../plugins/with-development-networ
   assert.equal(debug.NSCameraUsageDescription, 'Existing camera permission');
   assert.ok(debug.NSLocalNetworkUsageDescription);
   const project = IOSConfig.XcodeUtils.getPbxproj(fixture);
-  assert.equal(IOSConfig.Target.getXCBuildConfigurationFromPbxproj(project, { buildConfiguration: 'Debug' }).buildSettings.INFOPLIST_FILE, '"Zimi/Info-Debug.plist"');
-  assert.equal(IOSConfig.Target.getXCBuildConfigurationFromPbxproj(project, { buildConfiguration: 'Release' }).buildSettings.INFOPLIST_FILE, '"Zimi/Info.plist"');
+  assert.equal(IOSConfig.Target.getXCBuildConfigurationFromPbxproj(project, { buildConfiguration: 'Debug' }).buildSettings.INFOPLIST_FILE, '"BinzoLive/Info-Debug.plist"');
+  assert.equal(IOSConfig.Target.getXCBuildConfigurationFromPbxproj(project, { buildConfiguration: 'Release' }).buildSettings.INFOPLIST_FILE, '"BinzoLive/Info.plist"');
   await configureIosDebugNetwork(fixture, 'http://public.example.com/api/v1');
   const updatedDebug = plist.parse(await fs.readFile(path.join(appRoot, 'Info-Debug.plist'), 'utf8'));
   assert.equal(updatedDebug.NSAppTransportSecurity.NSExceptionDomains['public.example.com'], undefined, 'A public HTTP API never creates an insecure exception');

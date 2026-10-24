@@ -386,7 +386,7 @@ function vGate(){
    <span class="mark"><img src="/app_icon.png" alt="BinzoLive" width="36" height="36"></span>
    <h1>BinzoLive Admin</h1>
    <p class="sub">Sign in with your work account. Access is limited to approved team members.</p>
-   <label class="f">Work email<input class="in" id="ae" type="email" autocomplete="username" value="priya@zimilive.in" required></label>
+   <label class="f">Work email<input class="in" id="ae" type="email" autocomplete="username" value="priya@binzolive.com" required></label>
    <label class="f">Password<input class="in" id="ap" type="password" autocomplete="current-password" value="demo-password" required></label>
    <label class="f">6-digit code from your authenticator app<input class="in tab" id="ac" inputmode="numeric" maxlength="6" placeholder="123 456" required></label>
    <button class="btn pri lg" type="submit">Sign in</button>
@@ -593,7 +593,7 @@ function repAct(id,a){const r=D.reports.find(x=>x.id===id);r.st="resolved";audit
 function vTeam(){
  return head("Team & roles","Each admin gets only the areas their job needs. Money and rule changes above set limits need a second admin's approval.",`<button class="btn pri" onclick="toast('Invites are sent by email and expire in 48 hours')">${I("plus",15)} Invite admin</button>`)+
  `<div class="card"><table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Can access</th><th>Two-factor</th></tr></thead><tbody>
- ${D.team.map(([nm,role,acc],i)=>`<tr><td><div class="who">${avatar(nm,i)}<div><b>${nm}</b><span>${nm.split(" ")[0].toLowerCase()}@zimilive.in</span></div></div></td><td><span class="pill ${role==="Super admin"?"p-acc":"p-mute"}">${role}</span></td><td>${acc}</td><td><span class="pill p-ok"><i></i>On</span></td></tr>`).join("")}</tbody></table></div>`}
+ ${D.team.map(([nm,role,acc],i)=>`<tr><td><div class="who">${avatar(nm,i)}<div><b>${nm}</b><span>${nm.split(" ")[0].toLowerCase()}@binzolive.com</span></div></div></td><td><span class="pill ${role==="Super admin"?"p-acc":"p-mute"}">${role}</span></td><td>${acc}</td><td><span class="pill p-ok"><i></i>On</span></td></tr>`).join("")}</tbody></table></div>`}
 function vAudit(){
  return head("Audit log","Every admin action, newest first. Entries cannot be edited or deleted.")+
  `<div class="card"><table class="tbl"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Details</th></tr></thead><tbody>

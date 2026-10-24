@@ -164,8 +164,8 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.getByRole('button', { name: /^Notifications/ }).click();
     await visible('Loading notifications');
     assert.equal(await page.getByText("You're all caught up", { exact: true }).count(), 0);
-    await result('data.notifications', { items: [{ id: 'notice-id', title: 'Tonight on Zimi', body: 'A real admin update', read: false }], unreadCount: 1 }, 'notifications');
-    assert.equal(await page.locator('.zh-notification h3').innerText(), 'Tonight on Zimi');
+    await result('data.notifications', { items: [{ id: 'notice-id', title: 'Tonight on BinzoLive', body: 'A real admin update', read: false }], unreadCount: 1 }, 'notifications');
+    assert.equal(await page.locator('.zh-notification h3').innerText(), 'Tonight on BinzoLive');
     await loading('notifications', true);
     assert.equal(await page.locator('.zh-notification').count(), 0);
     await loading('notifications', false, { error: 'Updates are unavailable' });
