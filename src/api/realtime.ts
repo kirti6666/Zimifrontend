@@ -149,7 +149,12 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("notifications:read", () => emit("notifications.changed", {}));
   socket.on("account:updated", () => emit("account.updated", {}));
   // Socket payloads only invalidate; entitlement and tokens come from GET /themes.
-  for (const event of ["themes:updated", "appearance:updated", "premium:updated"]) socket.on(event, () => emit("themes.updated", {}));
+  for (const event of ["themes:updated", "appearance:updated", "premium:updated"]) socket.on(event, () => {
+    // Premium also removes ads, so it refreshes which ads this member may see.
+    if (event === "premium:updated") emit("ads.updated", {});
+    emit("themes.updated", {});
+  });
+  socket.on("ads:updated", () => emit("ads.updated", {}));
   const unsubscribe = onTokenChanged(() => {
     if (closed) return;
     socket.disconnect();

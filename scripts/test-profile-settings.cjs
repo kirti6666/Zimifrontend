@@ -103,11 +103,11 @@ async function run() {
     await settleSettings(page, saved);
     console.log('PASS profile: responsive layout, production identity/stats/wallet, skeletons, reduced motion and load retry');
 
-    await page.getByRole('button', { name: 'Your Zimi QR code', exact: true }).click();
-    await dialog('Your Zimi ID').waitFor();
-    assert.equal(await dialog('Your Zimi ID').locator('.zp-account-id').innerText(), account.user.id);
-    assert.ok(await dialog('Your Zimi ID').locator('.zp-qr svg').count() > 0, 'The account ID has a generated QR image');
-    await dialog('Your Zimi ID').getByRole('button', { name: 'Copy account ID', exact: true }).click();
+    await page.getByRole('button', { name: 'Your BinzoLive QR code', exact: true }).click();
+    await dialog('Your BinzoLive ID').waitFor();
+    assert.equal(await dialog('Your BinzoLive ID').locator('.zp-account-id').innerText(), account.user.id);
+    assert.ok(await dialog('Your BinzoLive ID').locator('.zp-qr svg').count() > 0, 'The account ID has a generated QR image');
+    await dialog('Your BinzoLive ID').getByRole('button', { name: 'Copy account ID', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.__copied), [account.user.id]);
     await close();
     await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
@@ -193,6 +193,18 @@ async function run() {
     await notifications.getByRole('button', { name: 'Open notifications', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'notifications');
     await readyProfile();
+    const pushCapabilities = status => ({ ...saved, capabilities: { ...saved.capabilities, pushNotifications: true, nativePushRegistered: status === 'registered', nativePushStatus: status } });
+    await settleSettings(page, pushCapabilities('denied'));
+    await row('Notifications & Live Alerts').click();
+    assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Blocked by the phone: the toggle cannot claim to work');
+    assert.match(await notifications.innerText(), /turned off for BinzoLive on this phone/);
+    await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).click();
+    assert.deepEqual(await lastSent(page, 'push.enable'), {}, 'The native shell decides whether to ask again or open system settings');
+    await receive(page, 'data.profileSettings', pushCapabilities('registered'));
+    assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), false, 'The open dialog updates once the phone allows notifications');
+    assert.equal(await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).count(), 0);
+    await close();
+    await settleSettings(page, saved);
     await row('Privacy & Blocked Users').click();
     const privacy = dialog('Privacy & Blocked Users');
     await privacy.getByRole('status', { name: 'Loading blocked accounts', exact: true }).waitFor();
@@ -241,6 +253,17 @@ async function run() {
     for (const [button, title] of [['Help Center & Safety Guidelines', 'Help Center'], ['Community Guidelines', 'Community Guidelines']]) {
       await row(button).click(); await dialog(title).waitFor(); assert.ok((await dialog(title).innerText()).length > 100); await close();
     }
+    // A tapped push opens the inbox, but never navigates away from a call or live room.
+    for (const view of ['hcall', 'live']) {
+      await page.evaluate(value => { S.v = value; }, view);
+      await receive(page, 'push.opened');
+      assert.equal(await page.evaluate(() => S.v), view, `A push tap leaves ${view} on screen`);
+    }
+    await navigate(page, 'home');
+    await receive(page, 'push.opened');
+    assert.equal(await page.evaluate(() => S.v), 'notifications');
+    assert.ok(await sentCount(page, 'notifications.load') > 0, 'Opening from a push loads the current inbox');
+    await readyProfile();
     console.log('PASS profile: capability-aware notifications, blocked account loading/unblock recovery, real privacy saves, gift history and support dialogs');
 
     for (const hostStatus of ['none', 'pending', 'rejected', 'suspended']) {

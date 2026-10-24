@@ -82,7 +82,17 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('POST', '/auth/otp/request', { expiresIn: 300, retryAfterSeconds: 75 }, (body, options) => {
     assert.deepEqual(plain(body), { country_code: '+91', phone: '9876543210' }); assert.equal(options.auth, false);
   });
-  assert.equal((await api.sendOtp('+919876543210', 'host')).resendAfter, 75);
+  const legacyOtp = await api.sendOtp('+919876543210', 'host');
+  assert.equal(legacyOtp.resendAfter, 75);
+  assert.equal(legacyOtp.otpLength, 6, 'Older servers retain six-digit input');
+  for (const otpLength of [4, 5, 6, 7, 8]) {
+    expect('POST', '/auth/otp/request', { expiresIn: 60, resendAfter: 60, otpLength });
+    assert.equal((await api.sendOtp('+919876543210')).otpLength, otpLength);
+  }
+  for (const otpLength of [3, 9, 4.5, '4', null]) {
+    expect('POST', '/auth/otp/request', { expiresIn: 60, otpLength });
+    assert.equal((await api.sendOtp('+919876543210')).otpLength, 6, 'Malformed server lengths cannot create arbitrary input counts');
+  }
   expect('POST', '/auth/otp/request', { expiresIn: 300, resendAfter: 30 }, body => {
     assert.deepEqual(plain(body), { country_code: '+44', phone: '7911123456' }, 'Other countries post their own calling code');
   });
@@ -93,13 +103,19 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const signedIn = await api.verifyOtp('+919876543210', '123456', 'host', true);
   assert.equal(signedIn.user.role, 'sender'); assert.equal(signedIn.tokens.refreshToken, 'refresh');
   assert.equal(signedIn.balance, undefined); assert.equal(signedIn.earned, undefined); assert.equal(signedIn.requiresOnboarding, true);
+  for (const code of ['0123', '01234567']) {
+    expect('POST', '/auth/otp/verify', { user, tokens: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 900, refreshExpiresIn: 3600 }, isNewUser: false, requiresOnboarding: false }, body => {
+      assert.equal(body.otp, code, 'Provider OTP length and leading zeroes survive the native API');
+    });
+    await api.verifyOtp('+919876543210', code, 'sender', false);
+  }
   for (const status of ['none', 'pending', 'rejected', 'suspended']) assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: status, isVerifiedHost: true } }).user.role, 'sender');
   for (const status of ['none', 'pending', 'rejected', 'suspended']) assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: status } }).user.serverRole, 'host', 'Presentation role must not grant an unapproved host member chat permissions');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'user', hostStatus: 'pending' } }).user.serverRole, 'user', 'A member applying to host remains a member until approved');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.role, 'host');
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved', isVerifiedHost: true } }).user.isVerifiedHost, true);
   assert.equal(adapters.accountFrom({ user: { ...user, role: 'host', hostStatus: 'approved' } }).user.isVerifiedHost, false);
-  await assert.rejects(api.verifyOtp('9876543210', '123', 'sender', false), /6-digit/);
+  for (const code of ['123', '123456789', '12a4', '12 4']) await assert.rejects(api.verifyOtp('9876543210', code, 'sender', false), /verification code/);
   finished();
 
   reset();
@@ -487,7 +503,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   await assert.rejects(api.sendGift('creator-id', giftId, 1, undefined, undefined, 'gift-attempt-2'), /confirmation could not be read/, 'Malformed confirmation remains retryable with the same key');
   expect('POST', '/missions/mission-id/claim', {}); expect('GET', '/wallet', { coins: 275, earningsPaise: 0 });
   assert.equal((await api.claimAward('mission-id')).coins, 275);
-  expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'created', paymentUrl: 'https://checkout.example.test/pay', packId, coins: 100, amountPaise: 9900, payableAmountPaise: 10000, expiresAt: '2026-10-20T12:00:00.000Z', idempotencyKey: 'payment-attempt-1' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
+  expect('POST', '/coins/purchase', { _id: 'purchase-id', merchantOrderId: 'binzolive_order', status: 'created', paymentUrl: 'https://checkout.example.test/pay', packId, coins: 100, amountPaise: 9900, payableAmountPaise: 10000, expiresAt: '2026-10-20T12:00:00.000Z', idempotencyKey: 'payment-attempt-1' }, body => assert.deepEqual(plain(body), { packId, idempotencyKey: 'payment-attempt-1' }));
   const checkout = await api.checkout(packId, 'payment-attempt-1');
   assert.equal(checkout.status, 'PENDING'); assert.equal(checkout.packId, packId); assert.equal(checkout.coins, 100); assert.equal(checkout.amountPaise, 9900); assert.equal(checkout.payableAmountPaise, 10000); assert.equal(checkout.idempotencyKey, 'payment-attempt-1'); assert.equal(checkout.expiresAt, '2026-10-20T12:00:00.000Z');
   const route = { route: 'UPI_INTENT', pageStyle: 'INTENT', upiIntent: true, takingPayments: true, currency: 'INR' };
@@ -516,8 +532,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(requests.length, requestsBeforeInvalidRoutes, 'Malformed methods never reach checkout HTTP calls');
   for (const paymentUrl of ['https://user:secret@checkout.example.test/pay', 'https://checkout.example.test\n.evil.test/pay', 'http://checkout.example.test/pay', 'javascript:steal()']) assert.throws(() => adapters.purchaseFrom({ paymentUrl }), /secure payment/);
   for (const patch of [{ requestedRoute: '../UPI' }, { route: 'UPI<>' }, { pageStyle: 'x'.repeat(101) }, { currency: 'USD' }]) assert.throws(() => adapters.purchaseFrom({ ...routedOrder, ...patch }), /payment method|currency/);
-  expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'zimi_order', status: 'paid' });
-  assert.equal((await api.verifyPurchase('zimi_order')).status, 'SUCCESS');
+  expect('POST', '/coins/purchase/verify', { _id: 'purchase-id', merchantOrderId: 'binzolive_order', status: 'paid' });
+  assert.equal((await api.verifyPurchase('binzolive_order')).status, 'SUCCESS');
   assert.throws(() => adapters.purchaseFrom({ paymentUrl: 'javascript:steal()' }), /secure payment/);
   const themeId = '000000000000000000000001';
   const theme = { _id: themeId, slug: 'primary', name: 'Primary', description: 'Free primary theme', active: true, isPremium: false, isDefault: true, sortOrder: 0, mode: 'dark',
@@ -632,6 +648,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   for (const event of ['themes:updated', 'appearance:updated', 'premium:updated']) {
     socket.emitServer(event, { active: true }); assert.deepEqual(plain(events.at(-1)), { type: 'themes.updated', data: {} });
   }
+  assert.equal(events.at(-2).type, 'ads.updated', 'Premium also refreshes which ads this member may see');
+  socket.emitServer('ads:updated', { campaign: 'ignored' }); assert.deepEqual(plain(events.at(-1)), { type: 'ads.updated', data: {} }, 'Campaign changes only invalidate');
   token = 'rotated-token'; tokenListeners.forEach(listener => listener()); await Promise.resolve();
   assert.equal(socket.connects, 2);
   socket.connected = true; socket.emitServer('connect');
@@ -652,5 +670,30 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.connected = true; socket.emitServer('connect');
   assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: false } }], 'A session opened in background never starts a welcome schedule');
   backgroundStop();
+  reset();
+  const adId = '6a0000000000000000000001';
+  const creative = { _id: adId, format: 'banner', advertiser: '  BinzoLive Studio ', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now', domain: 'play.google.com',
+    media: { url: 'https://media.example.test/ads/a.png', contentType: 'image/png' }, logoUrl: 'javascript:alert(1)', placements: ['home', 'feed', 'home'] };
+  expect('GET', '/ads', { adFree: false, items: [creative, 'junk', { ...creative },
+    { ...creative, _id: '6a0000000000000000000002', media: { url: 'http://insecure.example/a.png', contentType: 'image/png' } },
+    { ...creative, _id: '6a0000000000000000000003', format: 'video', media: { url: 'https://media.example.test/a.png', contentType: 'image/png' } },
+    { ...creative, _id: '6a0000000000000000000004', placements: ['feed'] }] });
+  const adFeed = await api.ads();
+  assert.deepEqual(plain(adFeed), { adFree: false, items: [{ id: adId, format: 'banner', advertiser: 'BinzoLive Studio', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now',
+    domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/a.png', mediaType: 'image/png', logoUrl: '', placements: ['home'] }] },
+    'Unsafe, mismatched, malformed, untargeted and repeated campaigns are dropped');
+  expect('GET', '/ads', { adFree: true, items: [creative] });
+  assert.deepEqual(plain(await api.ads()), { adFree: true, items: [] }, 'An ad-free member gets no ads even if some are sent');
+  expect('GET', '/ads', { items: [] });
+  await assert.rejects(api.ads(), /Sponsored content/);
+  expect('POST', `/ads/${adId}/impression`, { counted: true, servable: false }, body => assert.deepEqual(plain(body), { placement: 'home' }));
+  assert.deepEqual(plain(await api.adImpression(adId, 'home')), { counted: true, servable: false });
+  expect('POST', `/ads/${adId}/click`, { counted: true, url: 'https://play.google.com/store/apps/details?id=com.zimi' }, body => assert.deepEqual(plain(body), { placement: 'chats' }));
+  assert.equal(await api.adClick(adId, 'chats'), 'https://play.google.com/store/apps/details?id=com.zimi');
+  for (const url of ['http://example.com', 'intent://scan/#Intent;end', 'https://user:pw@example.com', 'javascript:alert(1)', 'https://example.com/"quote']) {
+    expect('POST', `/ads/${adId}/click`, { counted: true, url });
+    await assert.rejects(api.adClick(adId, 'home'), /secure link/, url);
+  }
+  finished();
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, withdrawal configuration/history/receipts, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

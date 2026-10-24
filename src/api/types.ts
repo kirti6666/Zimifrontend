@@ -178,7 +178,7 @@ export interface ProfileSettings {
   preferences: { pushNotifications: boolean; matchCategory: string | null; appearance: Appearance };
   privacy: PrivacySettings;
   categories: string[];
-  capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
+  capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; nativePushStatus: "registered" | "denied" | "unavailable"; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
 }
 export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
@@ -294,4 +294,26 @@ export interface Payouts {
   total: number;
   page: number;
   limit: number;
+}
+
+export type AdPlacement = "home" | "explore" | "chats" | "call_summary";
+
+/** A sponsored card for a member on the free plan. The destination stays on the server until a counted tap. */
+export interface AdCreative {
+  id: string;
+  format: "banner" | "video";
+  advertiser: string;
+  headline: string;
+  body: string;
+  ctaLabel: string;
+  domain: string;
+  mediaUrl: string;
+  mediaType: string;
+  logoUrl: string;
+  placements: AdPlacement[];
+}
+
+export interface AdFeed {
+  adFree: boolean;
+  items: AdCreative[];
 }

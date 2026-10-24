@@ -171,7 +171,9 @@ const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>'
  plus:'<path d="M12 5v14M5 12h14" stroke-linecap="round"/>',
  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/>',
  moon:'<path d="M20 14.2A8.2 8.2 0 019.8 4a8.4 8.4 0 102 10.4 8.2 8.2 0 008.2-.2z" stroke-linejoin="round"/>'};
-function coinIcon(size=20){return `<svg class="zi-icon zc-coin" data-icon="coin" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="25" r="22" fill="#A76512"/><circle cx="24" cy="23" r="21.5" fill="#E8AC32" stroke="#FCE29A"/><circle cx="24" cy="23" r="17.5" fill="#F6C653" stroke="#BC7F1B" stroke-width="1.5"/><path d="M10 18a15 15 0 0 1 24-7" stroke="#FFE9A5" stroke-width="2" stroke-linecap="round"/><path d="M15 15h18v5L22 29h11v5H15v-5l11-9H15z" fill="#B27615"/><path d="M15 13h18v5L22 27h11v5H15v-5l11-9H15z" fill="#FFF0B6"/><path d="m35 32 1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="#FFF0B6"/></svg>`}
+function coinIcon(size=20){return `<svg class="zi-icon zc-coin" data-icon="coin" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="25" r="22" fill="#A76512"/><circle cx="24" cy="23" r="21.5" fill="#E8AC32" stroke="#FCE29A"/><circle cx="24" cy="23" r="17.5" fill="#F6C653" stroke="#BC7F1B" stroke-width="1.5"/><path d="M10 18a15 15 0 0 1 24-7" stroke="#FFE9A5" stroke-width="2" stroke-linecap="round"/><path d="M16 15h9.5a4.5 4.5 0 0 1 0 9h1a5 5 0 0 1 0 10H16zm4.5 3.5v3.5h4.25a1.75 1.75 0 0 0 0-3.5zm0 8v4h5.5a2 2 0 0 0 0-4z" fill="#B27615" fill-rule="evenodd"/><path d="M16 13h9.5a4.5 4.5 0 0 1 0 9h1a5 5 0 0 1 0 10H16zm4.5 3.5v3.5h4.25a1.75 1.75 0 0 0 0-3.5zm0 8v4h5.5a2 2 0 0 0 0-4z" fill="#FFF0B6" fill-rule="evenodd"/><path d="m35 32 1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="#FFF0B6"/></svg>`}
+/* The BinzoLive wordmark, embedded by scripts/build-web.mjs. */
+const BRAND_LOGO="__BRAND_LOGO__";
 /* Every icon carries data-icon so icons.css can give it its own press animation. */
 const I=(k,s)=>['coin','rings'].includes(k)?coinIcon(s||20):`<svg class="zi-icon" data-icon="${k}" viewBox="0 0 24 24" width="${s||20}" height="${s||20}" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${P[k]}</svg>`;
 const coin=coinIcon(17);
@@ -208,6 +210,7 @@ function go(v,id){
  if(v==='search')S.sq='';
  if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';S.editName=me.n;S.editCity=me.c;S.editAbout=me.about}
  window.ZimiThemes?.beforeNavigate(v);
+ window.ZimiAds?.beforeNavigate(v);
  const navigationChange=window.ZimiNavigation?.before(v);
  S.v=v;if(id)S.h=id;S.tray=0;
  if(window.contentBeforeNavigate)contentBeforeNavigate(v);
@@ -845,7 +848,7 @@ const TXNS=[
 
 function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct">
  <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div>
-  <div class="sub">Use coins for calls and gifts. Your balance is ready across Zimi Live.</div>
+  <div class="sub">Use coins for calls and gifts. Your balance is ready across BinzoLive.</div>
   <button class="cta" onclick="go('coins')">Add coins</button></div>
  ${earnCard()}
  <div class="acctsec"><div class="accttitle"><span>Quick actions</span></div>
@@ -884,13 +887,13 @@ function vSafety(){const prefs=[['discover','Discoverable profile','Let people f
  <div class="acctsec"><div class="accttitle"><span>Safety center</span></div><div class="acctcard">
   <button class="acctrow" onclick="go('blocked')"><span class="acctico">${I('user',16)}</span><span style="flex:1"><span class="main">Blocked accounts</span><span class="meta">Review people you blocked</span></span><span class="ch">›</span></button>
   <button class="acctrow" onclick="S.faq=3;go('help')"><span class="acctico">${I('shield',16)}</span><span style="flex:1"><span class="main">Child safety</span><span class="meta">Age rules and family resources</span></span><span class="ch">›</span></button>
-  <button class="acctrow" onclick="S.faq=2;go('help')"><span class="acctico">${I('doc',16)}</span><span style="flex:1"><span class="main">Terms & privacy</span><span class="meta">How Zimi Live protects your information</span></span><span class="ch">›</span></button></div></div></div>`}
+  <button class="acctrow" onclick="S.faq=2;go('help')"><span class="acctico">${I('doc',16)}</span><span style="flex:1"><span class="main">Terms & privacy</span><span class="meta">How BinzoLive protects your information</span></span><span class="ch">›</span></button></div></div></div>`}
 
 const FAQ=[
  ['How do refunds work?','If a recharge fails, coins are not deducted. Completed coin purchases are final in this demo.'],
  ['Why was I charged for a call?','A connection fee starts the call, then coins are deducted per minute at the host’s displayed rate.'],
  ['Your account','You can edit your profile from Settings. Logging out removes this device’s saved sign-in session.'],
- ['Child safety','Zimi Live is designed for adults. Report suspected underage use immediately and avoid sharing personal information.']];
+ ['Child safety','BinzoLive is designed for adults. Report suspected underage use immediately and avoid sharing personal information.']];
 function vHelp(){return `<div class="acct">
  <div class="acctsec" style="margin-top:0"><div class="accttitle"><span>Popular questions</span></div><div class="acctcard">${FAQ.map(([q,a],i)=>`<div><button class="acctrow" onclick="S.faq=S.faq===${i}?-1:${i};r()"><span class="acctico">${I(i<2?'wal':'shield',16)}</span><span class="main" style="flex:1">${q}</span><span class="ch">${S.faq===i?'⌃':'›'}</span></button>${S.faq===i?`<div class="faqbody">${a}</div>`:''}</div>`).join('')}</div></div>
  <div class="acctsec"><div class="accttitle"><span>Contact us</span></div><div class="support"><button onclick="S.faq=0;r()"><b>Billing help</b><span>Refunds and recharges</span></button><button onclick="S.faq=1;r()"><b>Call support</b><span>Charges and connections</span></button></div></div>
@@ -1022,7 +1025,7 @@ function vSettings(){
      <span class="ch">&rsaquo;</span></button>`).join("")}</div></div>
 
   <button class="pout" onclick="logout()">Log out</button>
-  <div class="s12 faint" style="text-align:center;padding:16px 0 0">Zimi Live v0.1</div>
+  <div class="s12 faint" style="text-align:center;padding:16px 0 0">BinzoLive v0.1</div>
  </div>`}
 
 
@@ -1035,7 +1038,7 @@ const isHost=()=>S.role==="host"&&(!window.ZimiHostAccess||isApprovedHost());
 const MY_RATE=TIERS[1]/60;              /* host per-minute rate: 3,000/h tier */
 /* Entry fee rules. The sender pays when the host picks up and it is not refundable.
    The host is only paid the fee once the call passes FEE_HOLD seconds; a call that
-   ends sooner sends the fee to Zimi Live. Ending calls early is counted toward a
+   ends sooner sends the fee to BinzoLive. Ending calls early is counted toward a
    penalty whose terms are still to be decided (EARLY_LIMIT is the warning line). */
 const MY_FEE=60, FEE_HOLD=60, EARLY_LIMIT=2;
 const PAYOUT_MIN=10000;                 /* senders unlock payouts past this */
@@ -1225,7 +1228,7 @@ function confirmEnd(){
   <div class="panel cfm">
    <span class="cfmico">${I("clock",22)}</span>
    <b>${k==="switch"?`Switch before 1 minute?`:`End call before 1 minute?`}</b>
-   <p>${esc(first(S.caller.n))}'s ${MY_FEE}-coin entry fee unlocks in <b>${clock(left)}</b>. If you ${k==="switch"?"switch":"end"} now, you won't receive it and it goes to Zimi Live.</p>
+   <p>${esc(first(S.caller.n))}'s ${MY_FEE}-coin entry fee unlocks in <b>${clock(left)}</b>. If you ${k==="switch"?"switch":"end"} now, you won't receive it and it goes to BinzoLive.</p>
    <p class="warn">This would be early ending ${nth} today. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</p>
    <button class="keep" onclick="S.confirm=0;r()">Keep talking</button>
    <button class="anyway" onclick="S.confirm=0;${k==="switch"?"acceptInc()":"endCall()"}">${k==="switch"?"Switch anyway":"End call anyway"}</button></div></div>`}
@@ -1362,7 +1365,7 @@ function feeSummary(F){
  return `<div class="feesum">
   <div class="fshead"><span>Entry fees</span><b>${gem}+${n(F.filter(f=>f.ok).length*MY_FEE)}</b></div>
   ${F.map(f=>`<div class="fsrow ${f.ok?"ok":"no"}">${I(f.ok?"check":"clock",14)}<span>${esc(first(f.n))}</span>
-   <em>${f.ok?`+${MY_FEE} received`:"Ended before 1 min, went to Zimi Live"}</em></div>`).join("")}
+   <em>${f.ok?`+${MY_FEE} received`:"Ended before 1 min, went to BinzoLive"}</em></div>`).join("")}
   ${lost.length?`<div class="fswarn">Early endings today: <b>${S.early}</b>. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</div>`:""}</div>`}
 function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
 
@@ -1498,7 +1501,7 @@ function vKyc(){
   <p>${host?"Your verified badge is now on your profile. You can start going live and withdraw your earnings anytime.":"You can withdraw your earnings anytime."}</p>
   ${host?`<button class="editsave" onclick="go('setup')">Go live now</button>`:""}
   <button class="${host?"kdemo":"editsave"}" onclick="S.pdone=0;go('payout')">Withdraw earnings</button></div></div>`;
- if(host)return `<div class="acct kyc"><div class="kycnote">${I("shield",15)}<span>Introduce yourself to the Zimi team. You can receive calls once your creator application is approved.</span></div>
+ if(host)return `<div class="acct kyc"><div class="kycnote">${I("shield",15)}<span>Introduce yourself to the BinzoLive team. You can receive calls once your creator application is approved.</span></div>
   ${kf("name","Your creator name","Creator name")}
   <div class="editgroup"><label class="editlabel" for="kf_bio">A little about you</label><textarea class="editinput" id="kf_bio" rows="4" minlength="20" maxlength="1000" placeholder="Tell us what you love and the conversations you want to share." oninput="S.kf.bio=this.value" ${S.kycBusy?"disabled":""}>${esc(S.kf.bio||"")}</textarea><div class="khint">At least 20 characters.</div></div>
   <div class="editgroup"><span class="editlabel">Languages you speak</span><div class="ob-options">${LANGS.map((lang,i)=>`<button class="${(S.kf.langs||[]).includes(lang)?"selected":""}" aria-pressed="${(S.kf.langs||[]).includes(lang)}" onclick="toggleKycLang(${i})" ${S.kycBusy?"disabled":""}>${esc(lang)}</button>`).join("")}</div></div>
@@ -1610,14 +1613,14 @@ function r(){
    if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}}
  if(S.v==="voice"){tick();paintFeed()}
  /* a redraw while the code screen is open must not leave the boxes unfocused */
- if(S.v==="login"&&S.auth&&S.auth.step==="otp"){const e=Array.from({length:6},(_,k)=>document.getElementById("o"+k)).find(x=>x&&!x.value);if(e)e.focus()}
+ if(S.v==="login"&&S.auth&&S.auth.step==="otp"){const e=Array.from({length:obOtpLength()},(_,k)=>document.getElementById("o"+k)).find(x=>x&&!x.value);if(e)e.focus()}
  if(S.v==="call"&&!S.cmp)paintGoal();
  if(S.v==="hcall"){paintHostTick();paintFeed();
   if(S.cmp){const i=document.getElementById("rmsg");if(i)i.focus()}}
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1632,7 +1635,7 @@ function hostFrom(p){const id=String(p.id);
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
- return PEOPLE[id]={id,n:p.name||"Zimi user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
+ return PEOPLE[id]={id,n:p.name||"BinzoLive user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */

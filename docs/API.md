@@ -1,4 +1,4 @@
-# Zimi Live app ↔ server
+# BinzoLive app ↔ server
 
 How the phone app talks to the server. The code is the source of truth:
 `src/api/endpoints.ts` (requests), `src/api/types.ts` (shapes) and
@@ -27,6 +27,13 @@ Native.on("call.connected")      <--  postToWeb(...)
 
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
+
+Phone OTP requests return `otpLength` (4–8) with `expiresIn` and `resendAfter`.
+The native bridge forwards this as `auth.otpSent`; onboarding uses it for the
+input count, SMS autofill, paste and validation. Six digits remain the fallback
+for older servers that omit this field. The server enforces the exact configured
+length and verifies the code with its SMS provider; provider credentials stay on
+the backend.
 
 Live-room queue messages are `stream.requests.load {streamId}`, `stream.request {streamId}`,
 and `stream.request.cancel|decline|accept {streamId,id}` (where `id` is the queue entry ID).
@@ -100,6 +107,9 @@ for it (login, call failed).
 | Request a withdrawal | `POST /wallet/withdraw` `{amountPaise, payoutAddress, idempotencyKey}` | A withdrawal record; reserves INR earnings pending admin review |
 | Withdrawal history | `GET /wallet/withdrawals?page=1&limit=20` | `{items,total,page,limit}` with pending, approved, paid, or rejected records |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
+| Sponsored cards (free plan) | `GET /ads` | `{adFree, items: AdCreative[]}`; premium members get `{adFree: true, items: []}` |
+| An ad has been at least half visible for 1 s (2 s for video) | `POST /ads/:id/impression` `{placement}` | `{counted, servable}`; `servable: false` takes it out of rotation |
+| Tap an ad | `POST /ads/:id/click` `{placement}` | `{counted, url}`; native opens the HTTPS `url` outside the app |
 
 Withdrawal availability and the minimum come from `GET /wallet` as
 `withdrawalsEnabled` and `minimumWithdrawalPaise`. Only admin-approved hosts can
@@ -267,6 +277,37 @@ webhook secret, approved HTTPS return URL, registered webhook, and an allowed se
 outbound IP. `IP_NOT_ALLOWED` requires updating the merchant's permitted IPs before
 real-provider validation can pass. Automated tests use provider fixtures and isolated
 databases; they never create live payments.
+
+## Sponsored ads
+
+Staff run campaigns that promote our other apps from the admin dashboard
+(**Engagement → Ad campaigns**): a banner image or MP4 video, copy, a link,
+placements, audience, schedule, rotation weight, a daily cap per member and
+optional impression or click budgets.
+
+- Only members on the free plan see ads. Premium (`Purchase.kind = "premium"`)
+  removes them everywhere: the server returns `adFree: true`, never counts their
+  events, and the screens also hide ads as soon as `data.themes` reports premium.
+- Placements: `home` (between the featured host and trending hosts, once the
+  feed has loaded), `explore` (above the creator grid), `chats` (a compact banner
+  above conversations) and `call_summary` (below the summary actions). Never in a
+  call, live room or conversation.
+- Each screen visit shows the next eligible campaign for that placement; redraws
+  keep the same card, and a video keeps playing because its element is moved
+  rather than recreated. Video is muted, loops, always offers pause and sound
+  controls, plays only while half visible, and never autoplays with reduced motion.
+- The feed never contains destinations. A tap sends `ads.click`; native calls
+  `POST /ads/:id/click`, which counts the click and returns the link, then opens it
+  with `Linking.openURL`. The server counts at most one view per member every
+  30 seconds and treats repeated taps within 2 seconds as one click.
+- Bridge: `ads.load`, `ads.impression {id, placement}` and `ads.click {id, placement}`
+  from the screens; `data.ads`, `ads.opened {id}` and `ads.retired {id}` back. Loading
+  and view failures are silent; a failed tap reports `operation.error` with
+  `action: "ads.click"` and the ad `id`.
+- Socket: `ads:updated` (any campaign change) and `premium:updated` refresh the
+  list; their payloads are ignored.
+- Each card is labelled “Sponsored” and has an **About this ad** dialog that names
+  the advertiser and destination and links to Premium.
 
 ## Not covered yet
 

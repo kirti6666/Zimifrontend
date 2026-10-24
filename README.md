@@ -2,6 +2,17 @@
 
 A React Native (Expo) live-streaming frontend prototype with creator discovery, live calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
 
+## App icon and browser icons
+
+`assets/brand/app_icon.png` is the supplied BinzoLive app icon. Run
+`npm run build:icons` after replacing it to refresh the opaque launcher icon,
+Android adaptive icon layers, and web app icon. Then run `npm run build:web`
+and rebuild the native app to see the updated launcher icon on a device.
+
+Browser favicon files live in `web/favicon/`. Both `npm run build:web` and
+`npm run build:admin` copy them to the deployment root and include the BinzoLive
+favicon, Apple touch icon, and web manifest tags.
+
 ## Run on your phone
 
 ```bash
@@ -76,7 +87,7 @@ for private/loopback addresses. Socket.IO defaults to the API origin, such as
 Set `EXPO_PUBLIC_SOCKET_URL` only when that origin differs. Keep credentials
 out of all `EXPO_PUBLIC_*` variables.
 
-On an iPhone/iPad, allow **Local Network** access for Expo Go or Zimi Live when
+On an iPhone/iPad, allow **Local Network** access for Expo Go or BinzoLive when
 prompted; if previously denied, enable it in Settings. App configuration cannot
 change the installed Expo Go client's own native permissions. Apple requires
 this permission for outgoing connections to a LAN address.
@@ -111,7 +122,7 @@ The phone app is built from the same screens with that turned off.
 
 ## Coins and gifts
 
-`web/coins.js` and `web/coins.css` provide the shared gold Zimi coin, wallet,
+`web/coins.js` and `web/coins.css` provide the shared gold BinzoLive coin, wallet,
 coin packs, payment recovery, and gift selection. Selecting a gift does not
 spend coins; the separate Send action confirms it. Adding coins from a gift
 sheet keeps the current conversation, live stream, or call open.
@@ -341,7 +352,7 @@ end the call and release media. Call-scoped chat verifies the active participant
 Paid calls are metered by the backend and end when the member runs out of coins.
 PK battles are not implemented.
 
-Native invitations use `zimilive://live/<streamId>` and the device share sheet.
+Native invitations use `binzolive://live/<streamId>` and the device share sheet.
 Rebuild the native app to register this scheme. Invitations wait for sign-in and
 show a join confirmation; they do not interrupt an existing live or private call.
 
@@ -395,13 +406,66 @@ Run `npm run test:notifications` for the mocked-native browser suite and respons
 screenshots in `artifacts/notifications-*.png`. Backend integration coverage is in
 `../backend/tests/notifications.test.ts`. Rebuild the app bundle after UI edits.
 
+### Push notifications (Firebase)
+
+Android phones receive push through Firebase Cloud Messaging. `src/push.ts` asks
+for the Android 13+ notification permission, reads the device's FCM token and
+creates the `default` channel. `src/bridge.ts` registers the token with
+`POST /notifications/devices` once per signed-in session, and only when the
+server reports push as enabled, so Android's limited permission prompt is never
+spent while the server cannot send. Rotated tokens are re-registered.
+
+Profile > Notifications shows whether this phone is registered. If the phone
+blocks notifications, it offers **Turn on notifications**, which asks again or
+opens system settings once Android stops asking; returning to the app re-checks.
+Tapping a notification opens the inbox once a signed-in, onboarded screen is
+ready, but never during a call or live room. While the app is open, new pushes go
+to the tray without a banner, since the inbox bell already updates. Logging out
+clears delivered notifications, and the server stops sending to the phone as soon
+as its session ends, even if the phone was offline.
+
+Setup:
+
+1. In the [Firebase console](https://console.firebase.google.com/), add an Android
+   app with package `com.aurora.liveapp` to the project the backend uses, and
+   download `google-services.json`.
+2. Put the file in this folder (it is git-ignored). For EAS builds, upload it as a
+   file environment variable named `GOOGLE_SERVICES_JSON`. `app.config.js` adds it
+   to the native build only when present; without it the app still builds and
+   reports push as unavailable.
+3. Regenerate native code and rebuild: `npx expo prebuild --platform android`, then
+   `npm run android` or an EAS build.
+
+   Expo reads `android.googleServicesFile` from `app.config.js`, copies the file
+   to `android/app/google-services.json`, and adds the Google Services plugin to
+   `android/build.gradle` and `android/app/build.gradle`. The Firebase console's
+   manual Gradle instructions are handled by this step; `expo-notifications`
+   already supplies the Firebase Messaging SDK. Firebase Analytics is optional
+   and is not required for push notifications.
+4. Configure the backend's Firebase service account and `PUSH_ENABLED=true`; see
+   `../backend/README.md`. Then send a test from the admin dashboard's
+   announcements with **Also send a push notification** checked.
+
+The service-account JSON is a separate download from Firebase **Project settings
+> Service accounts > Generate new private key**. Use the same Firebase project
+as `google-services.json`. Its private key belongs only in the backend's runtime
+configuration; never add it to the mobile app, website, or Git. For VPS setup,
+use the Firebase fields in `../backend/deploy/vps/production.env.example`.
+
+Test on a physical Android device; Expo Go cannot receive FCM pushes. The tray icon
+is `assets/brand/notification-icon.png` (white on transparent, tinted `#EC0785`);
+replace it with a designer-made glyph if you have one. iOS push would also need APNs
+credentials and the Firebase iOS SDK, which this build does not include. Bridge
+coverage is in `scripts/test-auth-bridge.cjs`; the settings states and tap guard are
+in `scripts/test-profile-settings.cjs`.
+
 ## Themes and premium appearance
 
 Open **Profile & Settings → Appearance & Theme** to open the full theme page.
 The page has its own Back header and no bottom tabs. Back returns to the Profile
 or Settings page you opened it from, preserving its search, filters, and scroll.
 Theme catalog refreshes preserve gallery scroll and keyboard focus.
-Zimi Original and Soft Rose are free; premium includes Midnight Ocean and Amber
+BinzoLive Original and Soft Rose are free; premium includes Midnight Ocean and Amber
 Silk. The sibling admin dashboard's **Themes & text styles** section controls
 colors, fonts, text sizing/weight, ordering, availability, premium flags, and
 the one-time premium price (initially ₹199). Built-in free themes remain available.
@@ -442,7 +506,8 @@ earnings, subject to the server's minimum and enablement settings. Requests rese
 earnings and enter admin review; transfers remain manual and are not instant.
 The withdrawal history shows the server's pending, approved, paid, or rejected status.
 
-Native push registration and incoming-call delivery while the app is closed still
-need native/provider integration. The browser preview remains a demo.
+Android push registration uses Firebase (see **Push notifications (Firebase)**).
+Incoming-call and chat delivery while the app is closed still need call-style
+notifications. The browser preview remains a demo.
 `docs/API.md` includes older screen-facing contracts; the implemented native
 adapters and sibling backend routes are authoritative.

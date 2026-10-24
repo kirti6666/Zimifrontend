@@ -8,14 +8,16 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import html from "./assets/aurora-bundle";
 import { createBridge, postToWeb } from "./src/bridge";
+import { LaunchScreen } from "./src/launch-screen";
 import { readThemeCache, type ThemeCache } from "./src/theme-cache";
 import { isTrustedDocument, parseWebMessage } from "./src/web-message";
 
 /* Matches --canvas in web/aurora.css for each theme. */
 const CANVAS = { light: "#ffffff", dark: "#000000" } as const;
 const INK = { light: "#101012", dark: "#ffffff" } as const;
-const PLACEHOLDER = { light: "#e9e1e7", dark: "#3a2637" } as const;
-const PLACEHOLDER_SURFACE = { light: "#f7f1f5", dark: "#291a28" } as const;
+/* The page says when its first screen has content (app.launched). This only caps
+   how long a slow network keeps the logo up before the page shows its own loading. */
+const LAUNCH_LIMIT_MS = 8000;
 
 type Theme = keyof typeof CANVAS;
 /* One key for every private screen, so turning protection off undoes exactly this. */
@@ -61,6 +63,8 @@ export default function App() {
   const [canvasOverride, setCanvasOverride] = useState<string | null>(cached?.colors.background ?? "#210f1d");
   const [palette, setPalette] = useState<NativePalette>(cached ? { ink: cached.colors.text, primary: cached.colors.primary, contrast: cached.colors.primaryContrast, surface: cached.colors.surface, raised: cached.colors.surfaceElevated } : {});
   const [failure, setFailure] = useState<string | null>(null);
+  const [launched, setLaunched] = useState(false);
+  const [launchVisible, setLaunchVisible] = useState(true);
   const webRef = useRef<WebView>(null);
   const lastHapticAt = useRef(0);
   const webReady = useRef(false);
@@ -74,6 +78,12 @@ export default function App() {
     bridge.documentLoading();
   }, [bridge]);
   useEffect(() => bridge.close, [bridge]);
+  useEffect(() => {
+    if (launched) return;
+    const timer = setTimeout(() => setLaunched(true), LAUNCH_LIMIT_MS);
+    return () => clearTimeout(timer);
+  }, [launched]);
+  const hideLaunch = useCallback(() => setLaunchVisible(false), []);
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       if (!webReady.current) return false;
@@ -101,7 +111,7 @@ export default function App() {
       exitConfirmation.current = null;
       return webReady.current;
     };
-    Alert.alert("Close Zimi Live?", "Are you sure you want to close the app?", [
+    Alert.alert("Close BinzoLive?", "Are you sure you want to close the app?", [
       { text: "Cancel", style: "cancel", onPress: dismiss },
       { text: "Close app", onPress: () => { if (dismiss()) BackHandler.exitApp(); } },
     ], { cancelable: true, onDismiss: dismiss });
@@ -114,6 +124,8 @@ export default function App() {
     if (msg.type === "ready") {
       webReady.current = true;
       bridge.handle(msg);
+    } else if (msg.type === "app.launched") {
+      setLaunched(true);
     } else if (msg.type === "app.exit.request") {
       requestExit();
     } else if (msg.type === "theme") {
@@ -148,7 +160,7 @@ export default function App() {
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {
     documentLoading();
-    setFailure(event.nativeEvent.description || "The Zimi Live bundle failed to load.");
+    setFailure(event.nativeEvent.description || "The BinzoLive bundle failed to load.");
   }, [documentLoading]);
 
   // The WebView's renderer can be killed under memory pressure; reload instead
@@ -156,6 +168,9 @@ export default function App() {
   const reload = useCallback(() => {
     documentLoading();
     setFailure(null);
+    // The page starts over, so the logo covers it until its first screen is ready again.
+    setLaunched(false);
+    setLaunchVisible(true);
     webRef.current?.reload();
     return true;
   }, [documentLoading]);
@@ -164,20 +179,18 @@ export default function App() {
   const ink = palette.ink ?? INK[theme];
   const primary = palette.primary ?? "#ec0785";
   const contrast = palette.contrast ?? "#ffffff";
-  const placeholder = palette.raised ?? PLACEHOLDER[theme];
-  const placeholderSurface = palette.surface ?? PLACEHOLDER_SURFACE[theme];
 
   return (
     <SafeAreaProvider>
       {/* Edge-to-edge Android (including Expo Go) can overlay the keyboard without
           resizing the WebView or its visual viewport. Resize its native container
           by the actual keyboard overlap, so every web composer stays visible. */}
-      <KeyboardAvoidingView behavior="padding" style={[styles.safe, { backgroundColor: canvas }]}>
+      <KeyboardAvoidingView behavior="padding" style={[styles.safe, { backgroundColor: canvas }]} accessibilityElementsHidden={launchVisible} importantForAccessibility={launchVisible ? "no-hide-descendants" : "auto"}>
         <SafeAreaView style={[styles.safe, { backgroundColor: canvas }]}>
-          <StatusBar style={theme === "dark" ? "light" : "dark"} />
+          <StatusBar style={launchVisible || theme === "dark" ? "light" : "dark"} />
           {failure || !page ? (
             <View style={styles.center}>
-              <Text style={[styles.failTitle, { color: ink }]}>Zimi Live could not start</Text>
+              <Text style={[styles.failTitle, { color: ink }]}>BinzoLive could not start</Text>
               <Text style={[styles.failBody, { color: ink }]}>
                 {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
               </Text>
@@ -203,37 +216,6 @@ export default function App() {
               onError={onError}
               onRenderProcessGone={reload}
               onContentProcessDidTerminate={reload}
-              startInLoadingState
-              renderLoading={() => (
-                <View style={[styles.loading, { backgroundColor: canvas }]} accessible accessibilityRole="progressbar" accessibilityLabel="Loading Zimi Live" accessibilityState={{ busy: true }}>
-                  <View style={styles.loadingContent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                    <View style={styles.loadingHeader}>
-                      <Text style={[styles.loadingBrand, { color: ink }]}>Zimi<Text style={{ color: primary }}>Live</Text></Text>
-                      <View style={[styles.loadingPill, { backgroundColor: placeholder }]} />
-                    </View>
-                    <View style={[styles.loadingHeading, { backgroundColor: placeholder }]} />
-                    <View style={styles.loadingStories}>
-                      {[0, 1, 2, 3, 4].map(index => (
-                        <View key={index} style={styles.loadingStory}>
-                          <View style={[styles.loadingAvatar, { backgroundColor: placeholder }]} />
-                          <View style={[styles.loadingStoryLabel, { backgroundColor: placeholder }]} />
-                        </View>
-                      ))}
-                    </View>
-                    <View style={styles.loadingFilters}>
-                      {[0, 1, 2].map(index => <View key={index} style={[styles.loadingFilter, { backgroundColor: placeholder }]} />)}
-                    </View>
-                    <View style={[styles.loadingHero, { backgroundColor: placeholderSurface }]}>
-                      <View style={[styles.loadingHeroTitle, { backgroundColor: placeholder }]} />
-                      <View style={[styles.loadingHeroLine, { backgroundColor: placeholder }]} />
-                      <View style={[styles.loadingHeroAction, { backgroundColor: placeholder }]} />
-                    </View>
-                    <View style={styles.loadingCards}>
-                      {[0, 1].map(index => <View key={index} style={[styles.loadingCard, { backgroundColor: placeholderSurface }]} />)}
-                    </View>
-                  </View>
-                </View>
-              )}
               // The page is a single 100dvh screen that scrolls its own inner
               // containers, so the WebView's outer scroll view is left alone:
               // disabling it is an iOS-only no-op here that can block inner scroll.
@@ -253,6 +235,7 @@ export default function App() {
           )}
         </SafeAreaView>
       </KeyboardAvoidingView>
+      {launchVisible && <LaunchScreen ready={launched || !!failure || !page} onHidden={hideLaunch} />}
     </SafeAreaProvider>
   );
 }
@@ -261,24 +244,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   web: { flex: 1 },
   center: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", padding: 24 },
-  loading: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, alignItems: "center", overflow: "hidden" },
-  loadingContent: { width: "100%", maxWidth: 540 },
-  loadingHeader: { flexDirection: "row", alignItems: "center", gap: 12, height: 48, marginBottom: 20 },
-  loadingBrand: { fontSize: 21, fontWeight: "800", flex: 1, letterSpacing: -0.6 },
-  loadingPill: { width: 65, height: 30, borderRadius: 20 },
-  loadingHeading: { width: "52%", height: 16, borderRadius: 6, marginBottom: 18 },
-  loadingStories: { flexDirection: "row", justifyContent: "space-between", gap: 8, marginBottom: 26 },
-  loadingStory: { flex: 1, alignItems: "center", gap: 9 },
-  loadingAvatar: { width: "100%", maxWidth: 58, aspectRatio: 1, borderRadius: 32 },
-  loadingStoryLabel: { width: "72%", height: 9, borderRadius: 5 },
-  loadingFilters: { flexDirection: "row", gap: 8, marginBottom: 24 },
-  loadingFilter: { flex: 1, height: 34, borderRadius: 20 },
-  loadingHero: { height: 320, borderRadius: 20, padding: 16, justifyContent: "flex-end", gap: 12 },
-  loadingHeroTitle: { width: "52%", height: 21, borderRadius: 6 },
-  loadingHeroLine: { width: "82%", height: 11, borderRadius: 6 },
-  loadingHeroAction: { height: 46, borderRadius: 14, marginTop: 4 },
-  loadingCards: { flexDirection: "row", gap: 10, marginTop: 24 },
-  loadingCard: { flex: 1, height: 180, borderRadius: 15 },
   failTitle: { fontSize: 17, fontWeight: "700", marginBottom: 8 },
   failBody: { fontSize: 13, opacity: 0.7, textAlign: "center", marginBottom: 20 },
   retry: { borderRadius: 99, paddingHorizontal: 22, paddingVertical: 10 },

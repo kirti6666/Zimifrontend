@@ -1,8 +1,8 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
-import type { Account, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
+import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 
 let identity: { id: string; version: number } | undefined;
@@ -30,12 +30,14 @@ function boundedStrings(value: unknown, label: string, min: number, max: number)
 const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
 
 export const api = {
-  async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number }> {
-    const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number }>("POST", "/auth/otp/request", phonePayload(phone, dialCode), { auth: false });
-    return { expiresIn: result.expiresIn, resendAfter: result.resendAfter ?? result.retryAfterSeconds ?? 60 };
+  async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number; otpLength: number }> {
+    const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number; otpLength?: number }>("POST", "/auth/otp/request", phonePayload(phone, dialCode), { auth: false });
+    // Older backend releases use six digits and do not return this field.
+    const otpLength = Number.isInteger(result.otpLength) && result.otpLength! >= 4 && result.otpLength! <= 8 ? result.otpLength! : 6;
+    return { expiresIn: result.expiresIn, resendAfter: result.resendAfter ?? result.retryAfterSeconds ?? 60, otpLength };
   },
   async verifyOtp(phone: string, code: string, _role?: Role, _signup?: boolean, dialCode?: string): Promise<Session> {
-    if (!/^\d{6}$/.test(code)) throw new ApiError("Enter the 6-digit verification code.", 400);
+    if (!/^\d{4,8}$/.test(code)) throw new ApiError("Enter the 4 to 8-digit verification code from your message.", 400);
     const response = await request<{ tokens: SessionTokens; user: unknown; isNewUser: boolean; requiresOnboarding: boolean }>("POST", "/auth/otp/verify", { ...phonePayload(phone, dialCode), otp: code, client: "native" }, { auth: false });
     const data = record(response), tokens = data.tokens;
     if (!isSessionTokens(tokens)) throw new ApiError("Sign-in could not be completed. Request a new code and try again.", 502);
@@ -145,6 +147,7 @@ export const api = {
   async notifications(query?: NotificationsQuery) { return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100")); },
   async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
+  registerPushDevice: (token: string) => request<void>("POST", "/notifications/devices", { token }),
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
   async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
@@ -303,5 +306,12 @@ export const api = {
     }
     return payoutFrom(await request("POST", "/wallet/withdraw", { amountPaise, payoutAddress: payoutAddress.trim(), idempotencyKey }));
   },
+  async ads() { return adFeedFrom(await request("GET", "/ads")); },
+  async adImpression(id: string, placement: AdPlacement) {
+    const data = record(await request("POST", `/ads/${encodeURIComponent(id)}/impression`, { placement }));
+    return { counted: data.counted === true, servable: data.servable !== false };
+  },
+  /** The server counts the tap and only then reveals where it leads. */
+  async adClick(id: string, placement: AdPlacement) { return adLinkFrom(await request("POST", `/ads/${encodeURIComponent(id)}/click`, { placement })); },
   async claimAward(task: string): Promise<Wallet> { await request("POST", `/missions/${encodeURIComponent(task)}/claim`); return api.wallet(); },
 };

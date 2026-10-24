@@ -100,7 +100,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await navigate('chats');
     await page.getByRole('status', { name: 'Loading conversations', exact: true }).waitFor();
     assert.equal(await rows().count(), 0, 'Production never substitutes sample conversations while loading');
-    assert.equal(await page.getByText('Zimi Rewards & Bot', { exact: true }).count(), 0, 'Production does not invent a rewards bot');
+    assert.equal(await page.getByText('BinzoLive Rewards & Bot', { exact: true }).count(), 0, 'Production does not invent a rewards bot');
     assert.equal(await page.getByText(/No conversations/).count(), 0, 'The empty state waits for the request');
     assert.equal(await page.getByRole('button', { name: 'Mark all as read', exact: true }).isDisabled(), true);
     await settle('data.home', homeData, 'home');
@@ -353,7 +353,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.match(await rows().innerText(), /<svg onload=/);
     assert.equal(await page.locator('.zc-row img[onerror],.zc-row svg[onload],.zc-row script').count(), 0);
     assert.equal(await page.evaluate(() => window.__chatXss), undefined);
-    assert.equal(await page.getByText('Zimi Rewards & Bot', { exact: true }).count(), 0);
+    assert.equal(await page.getByText('BinzoLive Rewards & Bot', { exact: true }).count(), 0);
     console.log('PASS chats: request skeletons, error/retry/empty lifecycle, production isolation and escaped server data');
 
     await loadChats(chatData());

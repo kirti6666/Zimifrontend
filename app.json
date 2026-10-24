@@ -1,11 +1,15 @@
 {
   "expo": {
-    "name": "Zimi Live",
+    "name": "BinzoLive",
     "slug": "aurora-live-app",
-    "scheme": "zimilive",
+    "scheme": "binzolive",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/brand/icon.png",
+    "web": {
+      "favicon": "./web/favicon/favicon-96x96.png"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -15,14 +19,19 @@
           "NSAllowsArbitraryLoads": false,
           "NSAllowsLocalNetworking": false
         },
-        "NSCameraUsageDescription": "Zimi Live uses your camera when you take a chat or profile photo, start a video call, or host a live broadcast.",
-        "NSMicrophoneUsageDescription": "Zimi Live uses your microphone when you record a voice message, start or join an audio or video call, or host a live broadcast.",
-        "NSPhotoLibraryUsageDescription": "Zimi Live lets you choose photos from your library to send in chats or add to your profile.",
-        "NSPhotoLibraryAddUsageDescription": "Zimi Live saves a chat photo to your library when you tap Download."
+        "NSCameraUsageDescription": "BinzoLive uses your camera when you take a chat or profile photo, start a video call, or host a live broadcast.",
+        "NSMicrophoneUsageDescription": "BinzoLive uses your microphone when you record a voice message, start or join an audio or video call, or host a live broadcast.",
+        "NSPhotoLibraryUsageDescription": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.",
+        "NSPhotoLibraryAddUsageDescription": "BinzoLive saves a chat photo to your library when you tap Download."
       }
     },
     "android": {
       "package": "com.aurora.liveapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
+        "backgroundImage": "./assets/brand/adaptive-icon-background.png",
+        "backgroundColor": "#210F1D"
+      },
       "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"],
       "blockedPermissions": ["android.permission.READ_MEDIA_VISUAL_USER_SELECTED"],
       "edgeToEdgeEnabled": true,
@@ -30,9 +39,11 @@
     },
     "plugins": [
       "expo-secure-store",
-      ["expo-media-library", { "savePhotosPermission": "Zimi Live saves a chat photo to your library when you tap Download.", "photosPermission": "Zimi Live lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
+      ["expo-notifications", { "icon": "./assets/brand/notification-icon.png", "color": "#EC0785", "defaultChannel": "default" }],
+      ["expo-media-library", { "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.", "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
       "./plugins/with-onboarding-camera",
-      "./plugins/with-development-network"
+      "./plugins/with-development-network",
+      ["expo-splash-screen", { "image": "./assets/brand/logo.png", "imageWidth": 170, "resizeMode": "contain", "backgroundColor": "#210F1D" }]
     ]
   }
 }

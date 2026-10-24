@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { Account, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -132,9 +132,9 @@ export function profileSettingsFrom(value: unknown): ProfileSettings {
     standing: { level: count(record(data.standing ?? {}).level), crown: record(data.standing ?? {}).crown === true },
     preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
     privacy: privacyFrom(data.privacy), categories: stringList(data.categories),
-    // This native build does not register OS push tokens yet. Backend worker
-    // availability alone must not be presented as notifications on this device.
-    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, liveAlerts: capabilities.liveAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
+    // Backend worker availability alone must not be presented as notifications
+    // on this device; the bridge fills in this device's registration.
+    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, nativePushStatus: "unavailable", liveAlerts: capabilities.liveAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
   };
 }
 export function blockedUsersFrom(value: unknown): BlockedUsers {
@@ -303,4 +303,37 @@ export function transactionsFrom(value: unknown): { items: Transaction[] } {
       kind: type.startsWith("call") ? "call" : type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
     };
   }) };
+}
+
+export const AD_PLACEMENTS: readonly AdPlacement[] = ["home", "explore", "chats", "call_summary"];
+export const isAdPlacement = (value: unknown): value is AdPlacement => AD_PLACEMENTS.includes(value as AdPlacement);
+/** Campaign media is shown in the app and its link opens outside it: plain public HTTPS only. */
+export function safeHttps(value: unknown): string {
+  if (typeof value !== "string" || value.length > 2048 || !/^https:\/\/[^\s"'<>\\]+$/.test(value)) return "";
+  try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password ? value : ""; } catch { return ""; }
+}
+const adText = (value: unknown, max: number) => string(value).trim().slice(0, max);
+function adFrom(value: unknown): AdCreative | null {
+  const ad = record(value), id = idOf(ad), media = ad.media && typeof ad.media === "object" ? record(ad.media) : {};
+  const format = ad.format === "video" || ad.format === "banner" ? ad.format : null;
+  const mediaUrl = safeHttps(media.url), mediaType = string(media.contentType), placements = stringList(ad.placements).filter(isAdPlacement);
+  const headline = adText(ad.headline, 60), advertiser = adText(ad.advertiser, 40), ctaLabel = adText(ad.ctaLabel, 20);
+  if (!/^[a-f\d]{24}$/i.test(id) || !format || !mediaUrl || !headline || !advertiser || !ctaLabel || !placements.length ||
+    (format === "video" ? mediaType !== "video/mp4" : !/^image\/(jpeg|png|webp|gif)$/.test(mediaType))) return null;
+  return { id, format, advertiser, headline, body: adText(ad.body, 140), ctaLabel, domain: adText(ad.domain, 253), mediaUrl, mediaType, logoUrl: safeHttps(ad.logoUrl), placements: [...new Set(placements)] };
+}
+/** A malformed campaign is dropped; the rest of the feed still shows. */
+export function adFeedFrom(value: unknown): AdFeed {
+  const data = record(value);
+  if (typeof data.adFree !== "boolean" || !Array.isArray(data.items)) throw new ApiError("Sponsored content could not be loaded.", 502);
+  if (data.adFree) return { adFree: true, items: [] };
+  const seen = new Set<string>();
+  return { adFree: false, items: data.items.flatMap(item => {
+    try { const ad = adFrom(item); if (!ad || seen.has(ad.id)) return []; seen.add(ad.id); return [ad]; } catch { return []; }
+  }) };
+}
+export function adLinkFrom(value: unknown): string {
+  const url = safeHttps(record(value).url);
+  if (!url) throw new ApiError("This promotion did not return a secure link.", 502);
+  return url;
 }

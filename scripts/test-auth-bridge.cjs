@@ -23,6 +23,18 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function harness(initialAppState = 'active', initialLink = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
+  // The FCM edge: OS permission, the device token and notification taps.
+  const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
+  const pushModule = {
+    startPush: onOpen => { push.open = onOpen; return () => { push.stopped++; }; },
+    registerPush: async (save, mode) => {
+      push.modes.push(mode);
+      if (push.status !== 'registered') return push.status;
+      try { await save(push.token); return 'registered'; } catch { return 'unavailable'; }
+    },
+    onPushTokenChange: listener => { push.tokenListener = listener; return () => { push.tokenListener = undefined; }; },
+    clearDeliveredPush: () => { push.cleared++; },
+  };
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
   }
@@ -40,13 +52,14 @@ function harness(initialAppState = 'active', initialLink = null) {
   };
   const defaults = {
     me: () => account(), verifyOtp: () => ({ ...account(), tokens: tokenPair(), isNew: true }),
-    sendOtp: () => ({ resendAfter: 60, expiresIn: 300 }), saveProfile: () => account(),
+    sendOtp: () => ({ resendAfter: 60, expiresIn: 300, otpLength: 6 }), saveProfile: () => account(),
     hosts: () => ({ hosts: [] }), chats: () => ({ chats: [] }), thread: () => ({ messages: [], canSend: true }), missedCalls: () => ({ calls: [] }), callHistory: () => ({ calls: [] }),
     transactions: () => ({ items: [] }), wallet: () => ({ coins: 100, earningsPaise: 0 }), logout: () => {},
     home: () => ({ hosts: [], stage: [], featured: null, page: 1 }), notifications: () => ({ items: [], unreadCount: 0 }), catalog: () => ({ gifts: [], packs: [], paymentsAvailable: false }), presence: () => ({ online: true, visible: true }),
     profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
     payouts: (page = 1) => ({ items: [], total: 0, page, limit: 20 }),
     streamRequests: streamId => ({ streamId, requests: [], count: 0, ownRequestId: null }),
+    ads: () => ({ adFree: false, items: [] }),
   };
   const api = new Proxy({}, { get: (_, name) => async (...args) => {
     calls.push({ name, args });
@@ -78,6 +91,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       if (id === 'expo-secure-store') return storage;
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
+      if (id === './push') return pushModule;
       if (id === './chat-photo-download') return { downloadChatPhoto: async (to, messageId, current) => { calls.push({ name: 'downloadChatPhoto', args: [to, messageId, current] }); if (overrides.downloadChatPhoto) return overrides.downloadChatPhoto(to, messageId, current); } };
       if (id === './api/realtime') return { VERIFY_PEER: 'zimi-team', connectRealtime: (token, onEvent, userId, initiallyActive) => {
         const connection = { token, onEvent, userId, initiallyActive, activeStates: [], stopped: false }; live.push(connection);
@@ -95,6 +109,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       if (id === 'expo-screen-capture') return { preventScreenCaptureAsync: async key => capture.push(['prevent', key]), allowScreenCaptureAsync: async key => capture.push(['allow', key]) };
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
+      if (id === './src/launch-screen') return { LaunchScreen: 'LaunchScreen' };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
       throw new Error(`Unexpected import ${id}`);
     };
@@ -109,7 +124,7 @@ function harness(initialAppState = 'active', initialLink = null) {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, alerts, exits, connection };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, alerts, exits, connection, push };
 }
 
 test('connection status follows the current WebView and retry never reloads account data', async () => {
@@ -297,12 +312,29 @@ test('duplicate OTP sends and verifications have at most one request in flight e
   h.bridge.handle(verifyMessage(4)); h.bridge.handle(verifyMessage(5));
   assert.equal(h.count('sendOtp'), 1);
   assert.equal(h.count('verifyOtp'), 1);
-  send.resolve({ resendAfter: 60, expiresIn: 300 });
+  send.resolve({ resendAfter: 60, expiresIn: 300, otpLength: 4 });
   await settle();
   assert.equal(h.find('auth.otpSent')[0].data.requestId, 2);
+  assert.equal(h.find('auth.otpSent')[0].data.otpLength, 4, 'The bridge forwards the configured input length');
   verify.resolve({ ...account(), tokens: tokenPair(), isNew: false });
   await settle();
   assert.equal(h.find('auth.ok')[0].data.requestId, 4);
+  h.bridge.close();
+});
+
+test('OTP messages allow provider lengths four through eight and preserve leading zeroes', async () => {
+  const h = harness();
+  for (const code of ['0123', '01234', '012345', '0123456', '01234567']) {
+    const message = { ...verifyMessage(), data: { ...verifyMessage().data, code } };
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)).data.code, code);
+  }
+  for (const code of ['012', '012345678', '01a3', '01 3']) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ ...verifyMessage(), data: { ...verifyMessage().data, code } })), null);
+  }
+  h.bridge.handle({ ...verifyMessage(), data: { ...verifyMessage().data, code: '0123' } });
+  await settle();
+  assert.equal(h.count('verifyOtp'), 1);
+  assert.equal(h.find('auth.ok').length, 1, 'A four-digit code reaches server verification');
   h.bridge.close();
 });
 
@@ -412,7 +444,7 @@ test('closing the bridge removes session observers and prevents pending UI deliv
 test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
   const h = harness();
   const provider = h.load('App.tsx').default();
-  const keyboard = provider.props.children;
+  const [keyboard] = [provider.props.children].flat();
   const safeArea = keyboard.props.children;
   const web = [safeArea.props.children].flat().find(node => node?.type === 'WebView');
   const style = node => Object.assign({}, ...[node.props.style].flat());
@@ -426,6 +458,23 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   for (const node of [keyboard, safeArea, web]) assert.equal(style(node).flex, 1, 'Allow keyboard padding to shrink the WebView');
   assert.equal(style(keyboard).backgroundColor, style(safeArea).backgroundColor);
   assert.equal(style(safeArea).backgroundColor, style(web).backgroundColor);
+  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
+});
+
+test('the animated logo covers the app at launch instead of a loading skeleton', () => {
+  const h = harness();
+  const provider = h.load('App.tsx').default();
+  const [keyboard, launch] = [provider.props.children].flat();
+  const web = [keyboard.props.children.props.children].flat().find(node => node?.type === 'WebView');
+  assert.equal(launch.type, 'LaunchScreen', 'The logo is drawn over the whole screen, outside the safe-area padding');
+  assert.equal(launch.props.ready, false, 'The logo stays until the page reports its first screen');
+  assert.equal(typeof launch.props.onHidden, 'function');
+  assert.equal(keyboard.props.importantForAccessibility, 'no-hide-descendants', 'Screen readers do not reach the app under the logo');
+  assert.equal(keyboard.props.accessibilityElementsHidden, true);
+  assert.equal(web.props.renderLoading, undefined, 'The WebView draws no skeleton of its own');
+  assert.equal(web.props.startInLoadingState, undefined);
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: {} })));
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: { at: 1 } })), null);
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
@@ -710,7 +759,7 @@ test('app exit requests require valid trusted readiness and one explicit native 
   send('app.exit.request', { confirmed: true }); assert.equal(h.alerts.length, 0);
   send('app.exit.request'); send('app.exit.request');
   assert.equal(h.alerts.length, 1, 'Repeated Back responses do not stack confirmation dialogs');
-  assert.equal(h.alerts[0][0], 'Close Zimi Live?');
+  assert.equal(h.alerts[0][0], 'Close BinzoLive?');
   assert.deepEqual(plain(h.alerts[0][2].map(button => button.text)), ['Cancel', 'Close app']);
   assert.equal(h.exits.length, 0);
   h.alerts[0][2][0].onPress(); assert.equal(h.exits.length, 0, 'Cancel keeps the app open');
@@ -1009,14 +1058,14 @@ test('mission and gift rejection never credit or acknowledge success', async () 
 
 test('returning from provider checkout verifies the owned order and credits only the server wallet', async () => {
   const h = harness();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', paymentUrl: 'https://checkout.example.test/pay', status: 'PENDING' });
-  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', paymentUrl: 'https://checkout.example.test/pay', status: 'PENDING' });
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS' });
   h.overrides.wallet = () => ({ coins: 475, earningsPaise: 0 });
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } });
   await settle();
   h.activities.forEach(listener => listener('background')); await settle(); assert.equal(h.count('verifyPurchase'), 0);
   h.activities.forEach(listener => listener('active')); await settle();
-  assert.equal(h.calls.find(call => call.name === 'verifyPurchase').args[0], 'zimi_order');
+  assert.equal(h.calls.find(call => call.name === 'verifyPurchase').args[0], 'binzolive_order');
   assert.equal(h.find('wallet.purchase')[0].data.status, 'SUCCESS');
   assert.equal(h.find('wallet.balance')[0].data.coins, 475);
   h.activities.forEach(listener => listener('active')); await settle(); assert.equal(h.count('verifyPurchase'), 1);
@@ -1245,7 +1294,7 @@ test('gift failures carry their own attempt and insufficient-coin code without c
 
 test('completed checkout retries update only the server balance and retain attempt correlation', async () => {
   const h = harness();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS', coins: 100 });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS', coins: 100 });
   h.overrides.wallet = () => ({ coins: 575, earningsPaise: 0 });
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
   assert.equal(h.find('wallet.checkout')[0].data.packId, 'pack-id'); assert.equal(h.find('wallet.checkout')[0].data.idempotencyKey, 'payment-attempt-1');
@@ -1258,15 +1307,15 @@ test('completed checkout retries update only the server balance and retain attem
 
 test('failed external payment launch preserves the checkout and supports manual verification', async () => {
   const h = harness();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
   h.overrides.openURL = () => { assert.equal(h.find('wallet.checkout').length, 1, 'Order must reach UI before external launch'); throw new Error('No handler'); };
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
   assert.equal(h.find('operation.error')[0].data.code, 'PAYMENT_OPEN_FAILED');
   assert.equal(h.find('operation.error')[0].data.idempotencyKey, 'payment-attempt-1');
   h.overrides.verifyPurchase = () => { throw new h.ApiError('Check again shortly', 503, 'PAYIN_UNAVAILABLE'); };
-  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'zimi_order' } }); await settle();
-  assert.equal(h.find('operation.error')[1].data.merchantOrderId, 'zimi_order');
-  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'binzolive_order' } }); await settle();
+  assert.equal(h.find('operation.error')[1].data.merchantOrderId, 'binzolive_order');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS' });
   h.activities.forEach(listener => listener('active')); await settle();
   assert.equal(h.find('wallet.purchase')[0].data.status, 'SUCCESS'); assert.equal(h.find('wallet.purchase')[0].data.idempotencyKey, 'payment-attempt-1');
   h.bridge.close();
@@ -1277,12 +1326,12 @@ test('pending payments survive a native restart and are verified only for their 
   await h.session.setSessionTokens(tokenPair());
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
-  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
-  assert.deepEqual(plain(await cache.readPendingPayments('alice')), [{ orderId: 'zimi_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' }]);
+  assert.deepEqual(plain(await cache.readPendingPayments('alice')), [{ orderId: 'binzolive_order', kind: 'coins', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' }]);
   h.bridge.close();
   const restarted = h.bridgeModule.createBridge(message => h.posts.push(message));
-  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'zimi_order', status: 'SUCCESS' });
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS' });
   restarted.handle({ type: 'session.resume', data: {} }); await settle();
   assert.equal(h.count('verifyPurchase'), 1); assert.equal(h.opened.length, 1, 'Recovery never reopens or initiates a charge');
   assert.equal(h.find('wallet.purchase')[0].data.status, 'PENDING', 'Restore the unconfirmed order before waiting for a provider response');
@@ -2442,14 +2491,14 @@ const linkedStream = id => ({ id, hostId: 'linked-host', host: { id: 'linked-hos
 
 test('native live links and share messages reject arbitrary URLs, injected fields and malformed room IDs', () => {
   const h = harness();
-  assert.equal(h.webMessages.parseLiveLink('zimilive://live/room_123-abc'), 'room_123-abc');
-  for (const url of [null, {}, 'https://evil.test/live/room', 'javascript:alert(1)', 'zimilive://live.evil.test/room', 'zimilive://user@live/room', 'zimilive://live:443/room', 'zimilive://live/../room', 'zimilive://live/%2e%2e', 'zimilive://live/room?token=secret', 'zimilive://live/room#host', 'zimilive://live/room/extra', 'zimilive://live/', 'zimilive://live/'+ 'x'.repeat(129), ' zimilive://live/room']) assert.equal(h.webMessages.parseLiveLink(url), null);
+  assert.equal(h.webMessages.parseLiveLink('binzolive://live/room_123-abc'), 'room_123-abc');
+  for (const url of [null, {}, 'https://evil.test/live/room', 'javascript:alert(1)', 'binzolive://live.evil.test/room', 'binzolive://user@live/room', 'binzolive://live:443/room', 'binzolive://live/../room', 'binzolive://live/%2e%2e', 'binzolive://live/room?token=secret', 'binzolive://live/room#host', 'binzolive://live/room/extra', 'binzolive://live/', 'binzolive://live/'+ 'x'.repeat(129), ' binzolive://live/room']) assert.equal(h.webMessages.parseLiveLink(url), null);
   for (const data of [{streamId:'room',url:'https://evil.test'}, {streamId:'../room'}, {streamId:'room',hosting:true}]) assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'stream.share',data})),null);
   h.bridge.close(); assert.equal(h.links.length,0,'Native URL subscriptions stop with the bridge');
 });
 
 test('a cold live link waits for WebView readiness, login and onboarding before selecting the server room', async () => {
-  const h = harness('active','zimilive://live/cold-room'); h.overrides.stream = linkedStream;
+  const h = harness('active','binzolive://live/cold-room'); h.overrides.stream = linkedStream;
   await settle(); assert.equal(h.count('stream'),0);
   h.bridge.handle({type:'ready',data:{demo:false}});await settle();assert.equal(h.find('session.none').length,1);assert.equal(h.count('stream'),0);
   h.bridge.handle(verifyMessage());await settle();assert.equal(h.count('stream'),0,'Onboarding is not interrupted by a live invite');
@@ -2464,21 +2513,21 @@ test('warm live links use the latest selection and discard older responses and d
   const initial=deferred(), first=deferred(),second=deferred(),h=harness('active',()=>initial.promise);
   h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>id==='first'?first.promise:second.promise;
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/first'}));await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/second'}));await settle();
-  initial.resolve('zimilive://live/stale-cold-room');second.resolve(linkedStream('second'));await settle();first.resolve(linkedStream('first'));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/first'}));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/second'}));await settle();
+  initial.resolve('binzolive://live/stale-cold-room');second.resolve(linkedStream('second'));await settle();first.resolve(linkedStream('first'));await settle();
   assert.deepEqual(h.calls.filter(call=>call.name==='stream').map(call=>call.args[0]),['first','second']);
   assert.deepEqual(h.find('stream.link').map(event=>event.data.stream.id),['second']);
-  h.bridge.documentLoading();h.links.forEach(listener=>listener({url:'zimilive://live/reloaded'}));await settle();assert.equal(h.count('stream'),2);
+  h.bridge.documentLoading();h.links.forEach(listener=>listener({url:'binzolive://live/reloaded'}));await settle();assert.equal(h.count('stream'),2);
   h.overrides.stream=linkedStream;h.bridge.handle({type:'ready',data:{demo:false}});await settle();assert.equal(h.find('stream.link').at(-1).data.stream.id,'reloaded');h.bridge.close();
 });
 
 test('logout suppresses pending live-link results and new signed-out links wait for the next login', async () => {
   const h=harness(), pending=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=()=>pending.promise;
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/old-account-room'}));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/old-account-room'}));await settle();
   h.bridge.handle({type:'auth.logout',data:{}});await settle();pending.resolve(linkedStream('old-account-room'));await settle();assert.equal(h.find('stream.link').length,0);
-  h.links.forEach(listener=>listener({url:'zimilive://live/new-room'}));await settle();assert.equal(h.count('stream'),1);
+  h.links.forEach(listener=>listener({url:'binzolive://live/new-room'}));await settle();assert.equal(h.count('stream'),1);
   h.overrides.stream=linkedStream;h.overrides.verifyOtp=()=>({...account('next'),requiresOnboarding:false,tokens:tokenPair('next'),isNew:false});
   h.bridge.handle(verifyMessage(7));await settle();assert.equal(h.find('stream.link')[0].data.stream.id,'new-room');h.bridge.close();
 });
@@ -2486,9 +2535,33 @@ test('logout suppresses pending live-link results and new signed-out links wait 
 test('unavailable live links report an error and always settle their loading state', async () => {
   const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>({...linkedStream(id),status:'ended'});
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
-  h.links.forEach(listener=>listener({url:'zimilive://live/ended-room'}));await settle();
+  h.links.forEach(listener=>listener({url:'binzolive://live/ended-room'}));await settle();
   assert.equal(h.find('stream.link').length,0);assert.equal(h.find('operation.error').at(-1).data.action,'stream.link');assert.equal(h.find('stream.link.loading').at(-1).data.loading,false);
   assert.equal(h.count('joinStream'),0);h.bridge.close();
+});
+
+test('ads load and count quietly, and a tap opens its counted link once', async () => {
+  const h=harness(),id='6a0000000000000000000001',url='https://play.google.com/store/apps/details?id=com.zimi.studio';
+  const feed={adFree:false,items:[{id,format:'banner'}]};h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.ads=()=>feed;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'session.resume',data:{}});await settle();
+  assert.equal(h.count('ads'),1,'Ads load with the account');assert.deepEqual(h.find('data.ads').at(-1).data,feed);
+  const errors=()=>h.find('operation.error').length+h.find('data.error').length,quiet=errors();
+  h.overrides.ads=()=>{throw new h.ApiError('Service unavailable',503)};h.bridge.handle({type:'ads.load',data:{}});await settle();
+  assert.equal(errors(),quiet,'An unavailable ad list never interrupts with an error');
+  h.overrides.adImpression=()=>({counted:false,servable:false});h.bridge.handle({type:'ads.impression',data:{id,placement:'home'}});await settle();
+  assert.equal(h.find('ads.retired').at(-1).data.id,id,'A campaign the server stops serving leaves rotation');
+  h.overrides.adImpression=()=>{throw new h.ApiError('Too many requests',429)};h.bridge.handle({type:'ads.impression',data:{id,placement:'home'}});await settle();
+  assert.equal(errors(),quiet,'A missed view is never an error message');
+  const click={type:'ads.click',data:{id,placement:'chats'}};h.overrides.adClick=()=>url;
+  h.bridge.handle(click);h.bridge.handle(click);await settle();
+  assert.equal(h.count('adClick'),1,'A double tap counts and opens once');assert.deepEqual([...h.calls.find(call=>call.name==='adClick').args],[id,'chats']);
+  assert.deepEqual(h.opened,[url]);assert.deepEqual(h.find('ads.opened').map(post=>post.data.id),[id]);
+  h.overrides.adClick=()=>{throw new h.ApiError('This promotion has ended.',410)};h.bridge.handle(click);await settle();
+  const failure=h.find('operation.error').at(-1).data;assert.deepEqual([failure.action,failure.id,failure.message],['ads.click',id,'This promotion has ended.']);
+  assert.equal(h.find('ads.retired').length,2);assert.equal(h.opened.length,1,'Nothing opens without a counted link');
+  const reads=h.count('ads');h.live[0].onEvent({type:'ads.updated',data:{}});await settle();assert.equal(h.count('ads'),reads+1,'Campaign and premium changes refresh the ad list');
+  for(const data of [{id:'not-an-id',placement:'home'},{id,placement:'feed'},{id,placement:'home',url},{id}])assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'ads.click',data})),null);
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'ads.load',data:{page:2}})),null);h.bridge.close();
 });
 
 test('share live opens one native share sheet with the active room link and returns selectable link text', async () => {
@@ -2496,8 +2569,8 @@ test('share live opens one native share sheet with the active room link and retu
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
   h.bridge.handle({type:'stream.join',data:{streamId:'shared-room'}});await settle();
   const message={type:'stream.share',data:{streamId:'shared-room'}};h.bridge.handle(message);h.bridge.handle(message);await settle();
-  assert.equal(h.shares.length,1);assert.equal(h.shares[0].message,'Join this live on Zimi Live: zimilive://live/shared-room');
-  assert.equal(h.find('stream.shareLink')[0].data.url,'zimilive://live/shared-room');share.resolve({action:'dismissedAction'});await settle();
+  assert.equal(h.shares.length,1);assert.equal(h.shares[0].message,'Join this live on BinzoLive: binzolive://live/shared-room');
+  assert.equal(h.find('stream.shareLink')[0].data.url,'binzolive://live/shared-room');share.resolve({action:'dismissedAction'});await settle();
   h.bridge.handle({type:'stream.share',data:{streamId:'another-room'}});await settle();assert.equal(h.shares.length,1);assert.equal(h.find('operation.error').at(-1).data.action,'stream.share');h.bridge.close();
 });
 
@@ -2513,4 +2586,90 @@ test('accepted calls allow the first host message with server-verified call cont
   h.live[0].onEvent({type:'call.ended',data:{callId:'accepted-call'}});
   h.bridge.handle({type:'chat.send',data:{to:'member',text:'After call',inCall:true}});h.bridge.handle({type:'chat.send',data:{to:'member',text:'Ordinary message'}});await settle();
   assert.equal(h.count('sendMessage'),1,'Ending the call does not grant permission to start ordinary text chat');h.bridge.close();
+});
+
+const pushSettings = (serverPush = true) => { const settings = profileSettings(); settings.capabilities.pushNotifications = serverPush; return settings; };
+const signedIn = (id = 'alice') => ({ ...account(id), requiresOnboarding: false, tokens: tokenPair(id), isNew: false });
+const pushCapability = h => h.find('data.profileSettings').at(-1).data.capabilities;
+
+test('push registers each session only when the server can send, and settings report this device', async () => {
+  const h = harness();
+  h.overrides.verifyOtp = () => signedIn();
+  h.overrides.profileSettings = () => pushSettings(false);
+  h.bridge.handle(verifyMessage()); await settle();
+  assert.deepEqual(h.push.modes, [], 'Never spend the permission prompt while the server cannot send');
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [false, 'unavailable']);
+
+  h.overrides.profileSettings = () => pushSettings(true);
+  h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
+  assert.deepEqual(h.push.modes, ['prompt']);
+  assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').map(call => call.args), [['fcm:device-token']]);
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [true, 'registered']);
+  h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
+  assert.equal(h.count('registerPushDevice'), 1, 'Settings reloads do not re-register the same session');
+
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  assert.equal(h.push.cleared, 1, 'The previous account leaves nothing in the tray');
+  h.push.tokenListener('fcm:rotated-after-logout'); await settle();
+  assert.equal(h.count('registerPushDevice'), 1, 'A signed-out device registers nothing');
+
+  h.overrides.verifyOtp = () => signedIn('bob');
+  h.bridge.handle(verifyMessage(2)); await settle();
+  assert.deepEqual(h.push.modes, ['prompt', 'silent'], 'A later account re-registers without prompting again');
+  assert.equal(h.count('registerPushDevice'), 2);
+  h.push.tokenListener('fcm:rotated'); await settle();
+  assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').at(-1).args, ['fcm:rotated']);
+  h.bridge.close();
+  assert.equal(h.push.stopped, 1);
+  assert.equal(h.push.tokenListener, undefined);
+});
+
+test('denied permission is reported, retried silently in the foreground and can be asked again from settings', async () => {
+  const h = harness();
+  h.push.status = 'denied';
+  h.overrides.verifyOtp = () => signedIn();
+  h.overrides.profileSettings = () => pushSettings(true);
+  h.bridge.handle(verifyMessage()); await settle();
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [false, 'denied']);
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.deepEqual(h.push.modes, ['prompt', 'silent']);
+
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: {} })));
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: { token: 'injected' } })), null);
+  h.push.status = 'registered';
+  h.bridge.handle({ type: 'push.enable', data: {} }); await settle();
+  assert.equal(h.push.modes.at(-1), 'settings');
+  assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [true, 'registered']);
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.push.modes.length, 3, 'A registered device is not re-checked on every foreground');
+
+  h.overrides.saveProfileSettings = () => pushSettings(true);
+  h.bridge.handle({ type: 'profile.settings.save', data: { pushNotifications: true, requestId: 4 } }); await settle();
+  const saved = h.find('profile.settings.saved').at(-1);
+  assert.equal(saved?.data.settings.capabilities.nativePushStatus, 'registered', 'Saved settings keep the device status');
+  h.bridge.close();
+});
+
+test('a tapped notification opens the inbox once a signed-in, onboarded screen can show it', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.push.open(); await settle();
+  assert.equal(h.find('push.opened').length, 0, 'The app launched from a notification waits for its document');
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  assert.equal(h.find('push.opened').length, 1);
+  assert.ok(h.posts.findIndex(post => post.type === 'session') < h.posts.findIndex(post => post.type === 'push.opened'));
+  h.push.open(); await settle();
+  assert.equal(h.find('push.opened').length, 2);
+
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  h.push.open(); await settle();
+  assert.equal(h.find('push.opened').length, 2, 'Signed out: nothing opens');
+  h.overrides.verifyOtp = () => ({ ...account(), tokens: tokenPair(), isNew: true });
+  h.bridge.handle(verifyMessage()); await settle();
+  assert.equal(h.find('push.opened').length, 2, 'Onboarding is never interrupted');
+  h.overrides.saveProfile = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
+  assert.equal(h.find('push.opened').length, 3);
+  h.bridge.close();
 });

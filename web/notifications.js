@@ -166,6 +166,8 @@ ZimiHome.views.notifications=znView;
 const znPreviousAfterRender=ZimiHome.afterRender;
 ZimiHome.afterRender=()=>{znPreviousAfterRender();znAfterRender()};
 Native.on('notifications.saved',znSaved);Native.on('notifications.error',znError);
+// A tapped push opens the inbox, but never pulls someone out of a call or live room.
+Native.on('push.opened',()=>{if(['live','broadcast','setup','precall','call','voice','dial','dialback','waiting','ring','hcall'].includes(S.v)||(typeof ZVerify!=='undefined'&&ZVerify.state)){ZNotices.changed=true;return}znOpen()});
 Native.on('notifications.changed',()=>{ZNotices.changed=true;if(S.v!=='notifications'||ZNotices.pending)return;if(ZNotices.selected.size||ZNotices.detail||document.activeElement?.id==='zn-search'||znBusy()){r();return}znLoad()});
 Native.on('session.none',znReset);Native.on('session.expired',znReset);
 for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(ZNotices.accountId&&ZNotices.accountId!==id)znReset();ZNotices.accountId=id});
@@ -173,9 +175,9 @@ document.addEventListener('aurora:navigate',()=>{if(S.v!=='notifications'){clear
 if(DEMO){
   const now=Date.now();ZNotices.demo=[
     {id:'demo-note-1',title:'A space that feels like you',body:'Your notification center brings personal updates and community announcements together. Use filters to find what you need, or catch up at your own pace.',audience:'personal',read:false,createdAt:new Date(now-12*60000).toISOString()},
-    {id:'demo-note-2',title:'Find your next favorite conversation',body:'Discover the people, music and stories that make Zimi Live special. Explore the community and make a new connection.',audience:'announcements',read:false,createdAt:new Date(now-90*60000).toISOString()},
+    {id:'demo-note-2',title:'Find your next favorite conversation',body:'Discover the people, music and stories that make BinzoLive special. Explore the community and make a new connection.',audience:'announcements',read:false,createdAt:new Date(now-90*60000).toISOString()},
     {id:'demo-note-3',title:'Make your profile your own',body:'A great introduction starts with you. Visit your profile to update your photo, bio and the details you want to share.',audience:'personal',read:false,createdAt:new Date(now-26*3600000).toISOString()},
     {id:'demo-note-4',title:'Welcome to the community',body:'Good conversations start with kindness. Take a moment to get familiar with our community guidelines and help everyone feel welcome.',audience:'announcements',read:true,createdAt:new Date(now-50*3600000).toISOString()},
-    {id:'demo-note-5',title:'Your Zimi journey starts here',body:'Welcome to Zimi Live. Your personal updates will always have a home in this inbox.',audience:'personal',read:true,createdAt:new Date(now-9*86400000).toISOString()}
+    {id:'demo-note-5',title:'Your BinzoLive journey starts here',body:'Welcome to BinzoLive. Your personal updates will always have a home in this inbox.',audience:'personal',read:true,createdAt:new Date(now-9*86400000).toISOString()}
   ];Home.notifications=[...ZNotices.demo];Home.unreadCount=3;ZNotices.total=ZNotices.totalCount=5;ZNotices.loaded=true;
 }

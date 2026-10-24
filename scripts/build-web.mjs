@@ -3,7 +3,8 @@
      assets/aurora-bundle.js  the app build as a JS module, handed to the WebView
      assets/aurora.html       the same app build, openable directly in a browser
      dist/index.html          the preview build that Vercel serves
-   Both builds are the same page; they differ in one flag. The preview fakes the
+   Both builds share the UI; the hosted preview uses public favicon assets.
+   The preview fakes the
    other side of every call (pick-ups, incoming callers, gifts, chat replies) so
    the flows can be clicked through. The app build turns that off and waits for
    the server through the React Native shell (see web/bridge.js, src/bridge.ts).
@@ -13,19 +14,23 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { copyWebBranding, WEB_ICON_HEAD } from "./web-branding.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
+const brandLogo = "data:image/webp;base64," + readFileSync(join(root, "web/binzolive-logo.webp")).toString("base64");
+const brandIcon = "data:image/png;base64," + readFileSync(join(root, "web/favicon/favicon-96x96.png")).toString("base64");
 const waterSticker =
   "data:image/webp;base64," + readFileSync(join(root, "web/water-flowing.webp")).toString("base64");
 
-const HEAD = `<!DOCTYPE html>
+const HEAD = (hosted) => `<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <meta name="description" content="A two-sided live streaming experience for hosts and supporters." />
-<title>Zimi Live</title>
+<title>BinzoLive</title>
+${hosted ? WEB_ICON_HEAD : `<link rel="icon" type="image/png" href="${brandIcon}" />`}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -79,8 +84,8 @@ const TAIL = `</script>
 </html>
 `;
 
-const page = (demo) =>
-  HEAD +
+const page = (demo, hosted = false) =>
+  HEAD(hosted) +
   read("web/vendor/lenis.css") +
   read("web/aurora.css") +
   read("web/app.css") +
@@ -103,6 +108,7 @@ const page = (demo) =>
   read("web/notifications.css") +
   read("web/payouts.css") +
   read("web/payment-routes.css") +
+  read("web/ads.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -113,7 +119,7 @@ const page = (demo) =>
   read("web/phone-countries.js") +
   read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
     "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
-  read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker) +
+  read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker).replace("__BRAND_LOGO__", brandLogo) +
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/home.js") +
@@ -135,12 +141,13 @@ const page = (demo) =>
   "\n" + read("web/public-profile.js") +
   "\n" + read("web/payouts.js") +
   "\n" + read("web/payment-routes.js") +
+  "\n" + read("web/ads.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 
 const appDemo = process.env.ZIMI_DEMO === "1";
 const app = page(appDemo);
-const preview = page(true);
+const preview = page(true, true);
 
 mkdirSync(join(root, "assets"), { recursive: true });
 writeFileSync(join(root, "assets/aurora.html"), app);
@@ -153,6 +160,7 @@ writeFileSync(
 /* The deployed site is the preview build, under the name a host serves by default. */
 mkdirSync(join(root, "dist"), { recursive: true });
 writeFileSync(join(root, "dist/index.html"), preview);
+copyWebBranding(root, join(root, "dist"));
 
 /* The admin console is a separate, desktop-only page. It is never part of the
    phone app bundle. For previews it is also served at /admin on this site;

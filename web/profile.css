@@ -106,7 +106,7 @@
 .zp-search-empty button{min-height:44px;padding:10px 17px;margin-top:17px;border-radius:11px;background:var(--raised);color:var(--ink);font-size:12px}
 .zp-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .zp-footer{padding:32px 5px 4px;color:var(--muted);text-align:center;font-size:10px;line-height:1.8}
-.zp-footer>span{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;font-size:12px;font-weight:650}.zp-footer small{font-size:9px}
+.zp-footer>span{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;font-size:12px;font-weight:650}.zp-footer-logo{display:block;width:auto;height:24px;margin-bottom:2px}.zp-footer small{font-size:9px}
 
 /* Dialogs retain native focus trapping and request-bound save states. */
 .zp-dialog{position:fixed;inset:0;width:calc(100% - 28px);max-width:470px;max-height:calc(100dvh - 40px);margin:auto;padding:0;border:1px solid var(--line);border-radius:24px;background:var(--surface);color:var(--ink);box-shadow:0 25px 100px #0006;overflow:auto;overscroll-behavior:contain;color-scheme:dark}

@@ -88,7 +88,7 @@ async function run() {
     assert.equal(await page.locator('#zp-search-status').getAttribute('role'), 'status');
     assert.equal(await page.locator('.zp-search-empty').isVisible(), false);
     assert.equal(await exactButton(page, 'Edit profile').count(), 1);
-    assert.equal(await exactButton(page, 'Your Zimi QR code').count(), 1);
+    assert.equal(await exactButton(page, 'Your BinzoLive QR code').count(), 1);
 
     await search(page).fill('language');
     assert.deepEqual(await visibleTitles(page), ['Language & Region']);
@@ -174,7 +174,7 @@ async function run() {
     await assertLayout(preview, 'Light demo profile', 5);
     await capture(preview, 'mobile-light');
     await exactButton(preview, 'Customize your look').click();
-    await exactButton(preview, 'Use Zimi Original').click();
+    await exactButton(preview, 'Use BinzoLive Original').click();
     await exactButton(preview, 'Back to profile').click();
     await preview.setViewportSize({ width: 1280, height: 1000 });
     await capture(preview, 'desktop');

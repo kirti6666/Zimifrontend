@@ -6,7 +6,7 @@ import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnect
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
@@ -14,6 +14,7 @@ import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, type Pen
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
+import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -25,8 +26,10 @@ import { approvedHost } from "./host-access";
 export type WebMessage =
   | { type: "ready"; data: { demo: boolean } }
   | { type: "app.exit.request"; data: Record<string, never> }
+  | { type: "app.launched"; data: Record<string, never> }
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
+  | { type: "push.enable"; data: Record<string, never> }
   | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
@@ -89,11 +92,13 @@ export type WebMessage =
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
   | { type: "payout.load"; data: { page?: number; requestId: number } }
   | { type: "payout.request"; data: { amountPaise: number; payoutAddress: string; idempotencyKey: string; requestId: number } }
-  | { type: "awards.claim"; data: { task: string } };
+  | { type: "awards.claim"; data: { task: string } }
+  | { type: "ads.load"; data: Record<string, never> }
+  | { type: "ads.impression" | "ads.click"; data: { id: string; placement: AdPlacement } };
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "blocked" | "themes";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "blocked" | "themes" | "ads";
 export type AppMessage =
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.back"; data: Record<string, never> }
@@ -101,7 +106,7 @@ export type AppMessage =
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
   | { type: "session.error" | "session.expired"; data: { message: string } }
   | { type: "auth.ok"; data: Account & { isNew: boolean; requestId?: number } }
-  | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; requestId?: number } }
+  | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; otpLength: number; requestId?: number } }
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
   | { type: "profile.progress"; data: { done: number; total: number; requestId?: number } }
@@ -122,6 +127,7 @@ export type AppMessage =
   | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
   | { type: "notifications.error"; data: { requestId: number; message: string } }
   | { type: "notifications.changed"; data: Record<string, never> }
+  | { type: "push.opened"; data: Record<string, never> }
   | { type: "data.catalog"; data: Catalog }
   | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
   | { type: "data.themes"; data: ThemeCatalog }
@@ -143,6 +149,8 @@ export type AppMessage =
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
   | { type: "host.access"; data: { approved: boolean; role: Role; serverRole?: ServerRole; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
+  | { type: "data.ads"; data: AdFeed }
+  | { type: "ads.opened" | "ads.retired"; data: { id: string } }
   | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number } }
   | { type: "rtc.config"; data: RtcConfig }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string; from: string } }
@@ -437,13 +445,46 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (accountId && theme) void rememberAccountTheme(accountId, theme);
   };
   const loadThemes = () => readResource("themes", () => api.themes(), data => { emit({ type: "data.themes", data }); rememberTheme(data); });
+  // Ads are optional: a failed read leaves the screens as they are, without an error message.
+  const loadAds = () => readResource("ads", () => api.ads(), data => emit({ type: "data.ads", data })).catch(() => {});
   const loadDefaultTheme = async () => {
     const theme = await api.defaultTheme();
     if (closed || !theme) return;
     emit({ type: "theme.default", data: theme });
     void rememberDefaultTheme(theme);
   };
-  const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), data => emit({ type: "data.profileSettings", data }));
+  // This device's FCM registration. The server decides whether push is on;
+  // the device decides whether it can receive it.
+  let pushStatus: PushStatus = "unavailable";
+  let pushSession: number | undefined;
+  let pushPrompted = false;
+  let pushOpenPending = false;
+  const syncPush = async (mode: PushMode) => {
+    const version = epoch, sessionVersion = getSessionVersion();
+    const status = await registerPush(token => api.registerPushDevice(token), mode);
+    if (!current(version) || sessionVersion !== getSessionVersion() || status === pushStatus) return;
+    pushStatus = status;
+    quietly(loadProfileSettings(), "profile.settings.load");
+  };
+  const withPushStatus = (settings: ProfileSettings): ProfileSettings =>
+    ({ ...settings, capabilities: { ...settings.capabilities, nativePushRegistered: pushStatus === "registered", nativePushStatus: pushStatus } });
+  const emitProfileSettings = (settings: ProfileSettings) => {
+    // Register once per signed-in session, and never spend Android's one-time
+    // permission prompt while the server cannot send.
+    if (settings.capabilities.pushNotifications && pushSession !== getSessionVersion() && !liveOnboarding) {
+      pushSession = getSessionVersion();
+      void syncPush(pushPrompted ? "silent" : "prompt");
+      pushPrompted = true;
+    }
+    emit({ type: "data.profileSettings", data: withPushStatus(settings) });
+  };
+  /** Opens the inbox for a tapped notification once a signed-in screen can show it. */
+  const flushPushOpen = () => {
+    if (!pushOpenPending || !webReady || !sessionAvailable || restoring || liveOnboarding || hostAccount?.requiresOnboarding) return;
+    pushOpenPending = false;
+    emit({ type: "push.opened", data: {} });
+  };
+  const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), emitProfileSettings);
   const loadPublicProfile = (id: string, requestId?: number) => {
     const followRevision = publicFollows.get(id)?.revision ?? 0;
     return readResource("publicProfile", () => api.publicProfile(id), profile => {
@@ -462,7 +503,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const deliverProfileSettings = (settings: ProfileSettings) => {
     // A GET started before this committed write cannot restore old preferences.
     readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
-    emit({ type: "data.profileSettings", data: settings });
+    emitProfileSettings(settings);
     emit({ type: "data.loading", data: { resource: "profileSettings", loading: false } });
   };
   const loadChats = (page = 1) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
@@ -488,7 +529,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (owner) void forgetPendingPayment(owner, orderId);
         }
         // Only a fresh authenticated catalog can grant or revoke theme access.
-        if (resolvedKind === "premium") quietly(loadThemes(), "themes.load"); else quietly(refreshWallet(), "wallet.load");
+        if (resolvedKind === "premium") { quietly(loadThemes(), "themes.load"); void loadAds(); } else quietly(refreshWallet(), "wallet.load");
       }
     } catch (error) {
       if (current(version) && getSessionVersion() === sessionVersion) operationError(error, kind === "premium" ? "themes.premium.verify" : "wallet.verify", { merchantOrderId: orderId });
@@ -523,9 +564,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
     }
     if (accountId && getCachedToken() && !hostAccount?.requiresOnboarding) quietly(loadThemes(), "themes.load");
+    if (pushSession === getSessionVersion() && sessionAvailable && pushStatus !== "registered") void syncPush("silent");
   });
   const loadLists = async () => {
     const version = epoch;
+    void loadAds();
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
     const results = await Promise.allSettled([
       loadHome(), loadNotifications(), loadCatalog(), loadProfileSettings(), loadThemes(),
@@ -568,6 +611,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       if (event.type === "themes.updated") { if (!liveOnboarding) quietly(loadThemes(), "themes.load"); return; }
+      if (event.type === "ads.updated") { if (!liveOnboarding) void loadAds(); return; }
       const callId = event.data?.callId;
       if (event.type === "verify.updated" && typeof callId === "string") {
         const status = String(event.data?.status);
@@ -621,11 +665,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
         quietly(loadChats(), "chats.reload");
         quietly(loadProfileSettings(), "profile.settings.load");
         quietly(loadThemes(), "themes.load");
+        void loadAds();
       }
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
     if (!onboarding) { void loadLists(); void restorePendingPurchases(); }
-    void flushStreamLink();
+    void flushStreamLink(); flushPushOpen();
   };
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
@@ -657,7 +702,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; void flushStreamLink(); }
+    } finally { restoring = false; void flushStreamLink(); flushPushOpen(); }
   };
 
   async function handle(msg: WebMessage) {
@@ -676,6 +721,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "transactions.load": return readResource("transactions", () => api.transactions(), data => emit({ type: "data.transactions", data }));
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
+      case "push.enable": if (sessionAvailable && pushSession === getSessionVersion()) await syncPush("settings"); return;
       case "home.reload": return loadHome(msg.data);
       case "hosts.search": {
         const q = msg.data.q, page = msg.data.page ?? 1;
@@ -746,9 +792,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "stream.share": {
         if (!sessionAvailable || !getCachedToken() || activeStream?.id !== msg.data.streamId) throw new ApiError("Open this live room before sharing it.", 409);
-        const url = `zimilive://live/${msg.data.streamId}`;
+        const url = `binzolive://live/${msg.data.streamId}`;
         emit({ type: "stream.shareLink", data: { streamId: msg.data.streamId, url } });
-        await Share.share({ title: "Zimi Live", message: `Join this live on Zimi Live: ${url}` });
+        await Share.share({ title: "BinzoLive", message: `Join this live on BinzoLive: ${url}` });
         return;
       }
       case "stream.leave": case "stream.end": {
@@ -836,7 +882,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         authWork.add("send");
         try {
           const result = await api.sendOtp(msg.data.phone, msg.data.role, msg.data.dialCode);
-          if (current(version)) emit({ type: "auth.otpSent", data: { phone: msg.data.phone, resendAfter: result.resendAfter, expiresIn: result.expiresIn, requestId: msg.data.requestId } });
+          if (current(version)) emit({ type: "auth.otpSent", data: { phone: msg.data.phone, resendAfter: result.resendAfter, expiresIn: result.expiresIn, otpLength: result.otpLength, requestId: msg.data.requestId } });
         } catch (error) {
           if (current(version)) emit({ type: "auth.error", data: { ...metadata(error), action: msg.type, requestId: msg.data.requestId } });
         } finally { authWork.delete("send"); }
@@ -874,6 +920,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         accountId = undefined; hostStatus = undefined;
         hostRevision++; hostChecking = false; hostAccount = undefined; activeHostCall = false;
         void forgetAccountTheme();
+        clearDeliveredPush();
         // Revocation must still run if secure-storage deletion fails. Local
         // invalidation is synchronous; this captured credential cannot revoke
         // a newer login, and network completion never clears its session.
@@ -907,7 +954,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
               liveOnboarding = account.requiresOnboarding === true;
               stopLive.setActive?.(appActive && !liveOnboarding);
               void loadLists();
-              void flushStreamLink();
+              void flushStreamLink(); flushPushOpen();
             }
             else quietly(loadProfileSettings(), "profile.settings.load");
           }
@@ -953,7 +1000,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           const settings = await api.saveProfileSettings(patch);
           if (current(version) && sessionVersion === getSessionVersion()) {
             deliverProfileSettings(settings);
-            emit({ type: "profile.settings.saved", data: { settings, requestId } });
+            emit({ type: "profile.settings.saved", data: { settings: withPushStatus(settings), requestId } });
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "profile.settings.error", data: { message: errorMessage(error), requestId } });
@@ -1056,6 +1103,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "app.exit.request": return; // The native shell owns exit confirmation.
+      case "app.launched": return; // The native shell owns the launch screen.
       case "chat.photoViewer": return; // Accepted for compatibility; the page owns Back navigation.
       case "chat.photoDownload": {
         const { to, id, requestId } = msg.data;
@@ -1253,6 +1301,30 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version) && approval === hostRevision && hasHostAccess()) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome(), "home.reload"); }
         return;
       }
+      case "ads.load": return loadAds();
+      case "ads.impression": {
+        // Measurement never interrupts the person. A view the server declines to
+        // count (premium, a reached cap, an ended campaign) leaves rotation.
+        try {
+          const result = await api.adImpression(msg.data.id, msg.data.placement);
+          if (current(version) && !result.servable) emit({ type: "ads.retired", data: { id: msg.data.id } });
+        } catch { /* A missed view is not worth an error message. */ }
+        return;
+      }
+      case "ads.click": {
+        const { id, placement } = msg.data, sessionVersion = getSessionVersion();
+        let url: string;
+        try {
+          url = await api.adClick(id, placement);
+        } catch (error) {
+          if (current(version) && error instanceof ApiError && error.status === 410) emit({ type: "ads.retired", data: { id } });
+          throw error;
+        }
+        if (!current(version) || sessionVersion !== getSessionVersion()) return;
+        emit({ type: "ads.opened", data: { id } });
+        await Linking.openURL(url);
+        return;
+      }
       case "theme": case "ui.haptic": case "screen.secure": return;
     }
   }
@@ -1261,6 +1333,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (openStreamLink(event.url)) runtimeLinkReceived = true;
   });
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
+  const stopPush = startPush(() => { pushOpenPending = true; flushPushOpen(); });
+  const stopPushToken = onPushTokenChange(token => {
+    if (pushSession === getSessionVersion() && sessionAvailable) void api.registerPushDevice(token).catch(() => {});
+  });
 
   return {
     documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; },
@@ -1268,8 +1344,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
+      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {
@@ -1280,10 +1356,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const context = msg.type === "gift.send" ? { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "chat.voice" ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
-          : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId } : {};
+          : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId }
+          : msg.type === "ads.click" ? { id: msg.data.id } : {};
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopLive(); },
+    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }

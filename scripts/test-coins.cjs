@@ -62,7 +62,7 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     await button(page, 'Retry').click();
     await page.getByRole('status', { name: 'Loading coin packs', exact: true }).waitFor();
     await settleCatalog(page);
-    assert.ok(await page.locator('.zc-coin[data-icon="coin"]').count(), 'The wallet uses the shared Zimi coin mark');
+    assert.ok(await page.locator('.zc-coin[data-icon="coin"]').count(), 'The wallet uses the shared BinzoLive coin mark');
     for (const mode of ['dark', 'light']) {
       await page.evaluate(value => Native.receive({ type: 'data.themes', data: { items: [ZThemeOriginal, ZThemeRose], selectedThemeId: value === 'dark' ? ZThemeOriginal.id : ZThemeRose.id, premium: { active: false } } }), mode);
       assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), mode);

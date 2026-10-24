@@ -73,9 +73,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
   let valid = false;
   switch (message.type) {
     case "ready": valid = boolean(d.demo); break;
-    case "app.exit.request": valid = Object.keys(d).length === 0; break;
+    case "app.exit.request": case "app.launched": valid = Object.keys(d).length === 0; break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
-    case "connection.check": case "wallet.load": case "transactions.load": valid = Object.keys(d).length === 0; break;
+    case "connection.check": case "wallet.load": case "transactions.load": case "push.enable": valid = Object.keys(d).length === 0; break;
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": valid = notificationQuery(d); break;
@@ -109,7 +109,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "screen.secure": valid = boolean(d.on); break;
     case "auth.sendOtp": valid = phoneNumber(d) && role(d.role); break;
-    case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{6}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
+    case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{4,8}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
     case "auth.google": valid = role(d.role) && boolean(d.signup); break;
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&
@@ -145,6 +145,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
       typeof d.payoutAddress === "string" && d.payoutAddress.trim().length >= 3 && d.payoutAddress.length <= 200 && idempotency(d.idempotencyKey) &&
       Object.keys(d).every(key => ["amountPaise", "payoutAddress", "idempotencyKey", "requestId"].includes(key)); break;
     case "awards.claim": valid = identifier(d.task); break;
+    case "ads.load": valid = Object.keys(d).length === 0; break;
+    case "ads.impression": case "ads.click": valid = typeof d.id === "string" && /^[a-f\d]{24}$/i.test(d.id) &&
+      ["home", "explore", "chats", "call_summary"].includes(String(d.placement)) && Object.keys(d).every(key => ["id", "placement"].includes(key)); break;
   }
   return valid ? message as WebMessage : null;
 }
@@ -160,5 +163,5 @@ export function isTrustedDocument(url: string) {
  * credentials, host authority, arbitrary URLs, or automatic camera consent. */
 export function parseLiveLink(url: unknown): string | null {
   if (typeof url !== "string") return null;
-  return /^zimilive:\/\/live\/([a-zA-Z0-9_-]{1,128})$/.exec(url)?.[1] ?? null;
+  return /^binzolive:\/\/live\/([a-zA-Z0-9_-]{1,128})$/.exec(url)?.[1] ?? null;
 }

@@ -44,7 +44,7 @@ export async function downloadChatPhoto(to: string, id: string, isCurrent: () =>
     ensureCurrent();
     if (!permission.granted && permission.canAskAgain) permission = await requestPermissionsAsync(true, []);
     ensureCurrent();
-    if (!permission.granted) throw new ApiError("Allow Zimi Live to add photos in your device settings, then try Download again.", 403, "PHOTO_PERMISSION_DENIED");
+    if (!permission.granted) throw new ApiError("Allow BinzoLive to add photos in your device settings, then try Download again.", 403, "PHOTO_PERMISSION_DENIED");
   }
 
   const controller = new AbortController();

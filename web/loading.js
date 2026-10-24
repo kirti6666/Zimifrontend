@@ -72,3 +72,19 @@ function contentImageReady(img){if(!img?.classList?.contains('zh-photo-pending')
 document.addEventListener('load',event=>contentImageReady(event.target),true);
 document.addEventListener('error',event=>contentImageReady(event.target),true);
 function contentImagesReady(){document.querySelectorAll('img.zh-photo-pending').forEach(img=>{if(img.complete)contentImageReady(img)})}
+/* The app shows its animated logo until the first screen has real content, so a
+   launch never flashes the session or content skeletons. The logo leaves once the
+   saved session is settled and nothing on screen is still loading, or right away
+   when offline, so the offline screen is not hidden behind it. */
+const Launch={session:false,done:false};
+function launchCheck(){
+  if(DEMO||Launch.done)return;
+  const offline=!!window.ZimiOffline?.isOffline();
+  if(!offline&&(!Launch.session||[...document.querySelectorAll('.zh-skeleton,.ob-session-skeleton,[role=status][aria-busy=true]')].some(el=>el.getClientRects().length)))return;
+  Launch.done=true;Native.send('app.launched');
+}
+/* After every handler for the same message, so the check sees the screen it drew. */
+const launchLater=()=>queueMicrotask(launchCheck);
+for(const type of ['session','session.none','session.error','session.expired'])Native.on(type,()=>{Launch.session=true;launchLater()});
+Native.on('connection.status',launchLater);
+window.ZimiLaunch={check:launchCheck};

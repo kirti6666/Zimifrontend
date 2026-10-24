@@ -32,7 +32,7 @@
 .zi-icon:is([data-icon=eye],[data-icon=eyeoff]){--zi-tap:zi-blink;--zi-time:360ms}
 .zi-icon:is([data-icon=home],[data-icon=house],[data-icon=user],[data-icon=people],[data-icon=chat],[data-icon=wal],[data-icon=wallet],[data-icon=cup],[data-icon=robot],[data-icon=crown],[data-icon=doc],[data-icon=mail],[data-icon=help],[data-icon=badge]){--zi-tap:zi-bounce;--zi-origin:50% 100%;--zi-time:560ms}
 .zi-icon:is([data-icon=bolt],[data-icon=sparkle],[data-icon=pulse],[data-icon=verified]){--zi-tap:zi-flash;--zi-time:520ms}
-.zi-icon:is([data-icon=vid],[data-icon=camera],[data-icon=mic],[data-icon=micoff],[data-icon=camoff],[data-icon=broadcast],[data-icon=vol],[data-icon=pow]){--zi-tap:zi-glow;--zi-time:520ms}
+.zi-icon:is([data-icon=vid],[data-icon=camera],[data-icon=mic],[data-icon=micoff],[data-icon=camoff],[data-icon=broadcast],[data-icon=vol],[data-icon=volOff],[data-icon=pow]){--zi-tap:zi-glow;--zi-time:520ms}
 .zi-icon[data-icon=gift]{--zi-tap:zi-wiggle;--zi-origin:50% 90%;--zi-time:620ms}
 .zi-icon[data-icon=location]{--zi-tap:zi-drop;--zi-origin:50% 100%;--zi-time:520ms}
 .zi-icon[data-icon=copy]{--zi-tap:zi-copy;--zi-time:380ms}

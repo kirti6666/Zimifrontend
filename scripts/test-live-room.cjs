@@ -249,9 +249,9 @@ async function productionChecks(browser, errors) {
   const share = page.getByRole('dialog', { name: 'Good moments are shared' });
   await button(share, 'Share this live').click();
   assert.deepEqual(await lastSent(page, 'stream.share'), { streamId: stream.id }, 'Production sharing delegates to the native share action');
-  await receive(page, 'stream.shareLink', { streamId: 'other-stream', url: 'zimilive://live/other-stream' });
+  await receive(page, 'stream.shareLink', { streamId: 'other-stream', url: 'binzolive://live/other-stream' });
   assert.equal(await share.getByRole('textbox', { name: 'Live invite link' }).count(), 0, 'Another room cannot replace the share link');
-  const inviteUrl = `zimilive://live/${stream.id}`;
+  const inviteUrl = `binzolive://live/${stream.id}`;
   await receive(page, 'stream.shareLink', { streamId: stream.id, url: inviteUrl });
   const link = share.getByRole('textbox', { name: 'Live invite link' });
   assert.equal(await link.inputValue(), inviteUrl);

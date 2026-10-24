@@ -13,7 +13,7 @@ const now = Date.now();
 const notices = [
   { id: '507f1f77bcf86cd799439011', title: 'Your profile is looking good', body: 'Your latest profile changes are saved. Keep making connections that feel like you.', read: false, createdAt: new Date(now - 12 * 60000).toISOString(), audience: 'personal' },
   { id: '507f1f77bcf86cd799439012', title: 'A little more to discover', body: 'Explore live conversations, music and new creators in the community.', read: false, createdAt: new Date(now - 2 * 3600000).toISOString(), audience: 'announcements' },
-  { id: '507f1f77bcf86cd799439013', title: 'Welcome to your Zimi community', body: 'Your account is ready. Find your people, follow your favorites and start a conversation.', read: true, createdAt: new Date(now - 26 * 3600000).toISOString(), audience: 'personal' },
+  { id: '507f1f77bcf86cd799439013', title: 'Welcome to your BinzoLive community', body: 'Your account is ready. Find your people, follow your favorites and start a conversation.', read: true, createdAt: new Date(now - 26 * 3600000).toISOString(), audience: 'personal' },
 ];
 const moreNotice = { id: '507f1f77bcf86cd799439014', title: 'Make the most of your next visit', body: 'Your updates stay together here so you can catch up at your own pace.', read: true, createdAt: new Date(now - 3 * 86400000).toISOString(), audience: 'announcements' };
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
