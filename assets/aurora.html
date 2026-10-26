@@ -6474,7 +6474,7 @@ function obNextProfile() {
   const email = obEmailState();
   if (email === "taken") return obSetError(OB_EMAIL_TAKEN, "pe");
   if (email === "invalid") return obSetError(OB_EMAIL_INVALID, "pe");
-  if (!a.gender) return obSetError("Choose Woman, Man or Prefer not to say.", "pg");
+  if (!a.gender) return obSetError("Choose Female, Male or Prefer not to say.", "pg");
   if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
   if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
   if (!a.adult) return obSetError("You need to be 18 or older to join BinzoLive.", "p18");
@@ -6849,7 +6849,7 @@ function artC(sd,r){const[a,b,c]=HUES[sd%HUES.length],x=25+(sd%5)*12,y=20+(sd%4)
 
 /* A missing or broken profile photo becomes an illustration matching the person's
    chosen gender, in the active theme's colors; neutral when they didn't say. */
-const GENDERS=[["female","Woman"],["male","Man"],["undisclosed","Prefer not to say"]];
+const GENDERS=[["female","Female"],["male","Male"],["undisclosed","Prefer not to say"]];
 const FACES={
  female:'<path class="zf-hair" d="M37 54c0-19 10-31 23-31s23 12 23 31c0 10 2 18 6 26-7 5-17 7-26 6l-3-5-3 5c-9 1-19-1-26-6 4-8 6-16 6-26z"/><path class="zf-top" d="M16 120c3-22 20-35 44-35s41 13 44 35z"/><path class="zf-skin" d="M52 72h16v12c0 3.6-3.6 6-8 6s-8-2.4-8-6z"/><ellipse class="zf-skin" cx="60" cy="52" rx="17.5" ry="20.5"/><path class="zf-hair" d="M42.5 51c1-13 8.5-20.5 18-20.5 8.6 0 15.6 6 17.4 15-7.6.4-15-2.6-20-8-3 6.4-8.6 11.4-15.4 13.5z"/>',
  male:'<path class="zf-top" d="M10 120c2-25 22-40 50-40s48 15 50 40z"/><path class="zf-skin" d="M51 70h18v13c0 4-4 6.5-9 6.5s-9-2.5-9-6.5z"/><ellipse class="zf-skin" cx="60" cy="50" rx="19.5" ry="22"/><path class="zf-hair" d="M40.5 47c-1.5-15 7-25 19.5-25 13 0 21 9 19.5 24-2-6-6-9.5-11.5-11-5 3-12.5 4.5-20 3.5-4 1.5-6.5 4.5-7.5 8.5z"/>',

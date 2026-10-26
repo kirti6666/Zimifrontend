@@ -181,7 +181,7 @@ async function configuredOtpLengths() {
 async function fillBasics(page, host = false) {
   await page.locator('#pn').fill(host ? 'Creator Test' : 'Onboarding Test');
   await page.locator('#pe').fill('onboarding@example.test');
-  await page.getByRole('button', { name: host ? 'Man' : 'Woman', exact: true }).click();
+  await page.getByRole('button', { name: host ? 'Male' : 'Female', exact: true }).click();
   await page.locator('#p18').check();
   if (host) {
     // Category/language are required for creators; choose visible controls.
@@ -221,7 +221,7 @@ async function nativeEmailAvailability() {
   assert.equal(await page.locator('#pe').getAttribute('aria-invalid'), 'true');
   assert.equal(await page.evaluate(() => document.activeElement.id), 'pe', 'The flag must not move focus while typing');
   assert.equal((await page.evaluate(() => window.__messages.filter(message => message.type === 'auth.emailCheck').at(-1).data)).email, 'taken@example.test', 'Checks use the normalized address');
-  await page.getByRole('button', { name: 'Woman', exact: true }).click();
+  await page.getByRole('button', { name: 'Female', exact: true }).click();
   await page.locator('#p18').check();
   await action(page, 'obNextProfile').click();
   assert.equal((await state(page)).step, 'profile', 'A taken email cannot continue');
@@ -331,7 +331,7 @@ async function previewFlow() {
   assert.equal(await page.locator('#pn').inputValue(), 'Draft name', 'Validation must preserve the entered name');
   await page.locator('#pe').fill('draft@example.test');
   await action(page, 'obNextProfile').click();
-  assert.match((await state(page)).err, /Woman, Man or Prefer not to say/, 'Sign-up asks how the member identifies');
+  assert.match((await state(page)).err, /Female, Male or Prefer not to say/, 'Sign-up asks how the member identifies');
   assert.equal(await page.evaluate(() => document.activeElement.id), 'pg', 'The missing choice receives focus');
   await fillBasics(page);
   await remember(page, 'photos-empty');
@@ -522,7 +522,7 @@ async function nativeSessionRecovery() {
   });
   await step(page, 'profile');
   assert.equal(await page.locator('#pn').inputValue(), 'Saved Creator', 'An unfinished server profile resumes its saved name');
-  assert.equal(await page.getByRole('button', { name: 'Man', exact: true }).getAttribute('aria-pressed'), 'true', 'A saved gender choice resumes');
+  assert.equal(await page.getByRole('button', { name: 'Male', exact: true }).getAttribute('aria-pressed'), 'true', 'A saved gender choice resumes');
   assert.equal(await page.locator('#pe').inputValue(), 'saved@example.test');
   assert.equal(await page.locator('#p18').isChecked(), true);
   assert.equal((await state(page)).creatorIntent, true, 'Server setup preference resumes creator onboarding');

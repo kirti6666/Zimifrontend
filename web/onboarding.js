@@ -357,7 +357,7 @@ function obNextProfile() {
   const email = obEmailState();
   if (email === "taken") return obSetError(OB_EMAIL_TAKEN, "pe");
   if (email === "invalid") return obSetError(OB_EMAIL_INVALID, "pe");
-  if (!a.gender) return obSetError("Choose Woman, Man or Prefer not to say.", "pg");
+  if (!a.gender) return obSetError("Choose Female, Male or Prefer not to say.", "pg");
   if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
   if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
   if (!a.adult) return obSetError("You need to be 18 or older to join BinzoLive.", "p18");
