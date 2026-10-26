@@ -2,12 +2,12 @@
    the primary action; home.js owns permission requests and their cancellation. */
 const CallSetup = { mode: 'video', peerId: '', wasOpen: false };
 Object.assign(homeIcons,{arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>'});
-function zpcMode(mode){if(Home.preparingCall||Home.dashboardSetup?.streamId||!['video','voice'].includes(mode))return;CallSetup.mode=mode;S.pcerr='';r();document.querySelector(`[data-call-mode="${mode}"]`)?.focus({preventScroll:true})}
+function zpcMode(mode){if(Home.preparingCall||(window.ZIMI_LIVE_STREAMING_ENABLED&&Home.dashboardSetup?.streamId)||!['video','voice'].includes(mode))return;CallSetup.mode=mode;S.pcerr='';r();document.querySelector(`[data-call-mode="${mode}"]`)?.focus({preventScroll:true})}
 function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}">`:face(h)}
 function zpcScreen(){
   const h=g(S.h);if(!h)return `<section class="zpc-setup"><div class="zpc-missing">${hi('user',40)}<h1>Creator unavailable</h1><p>This profile could not be loaded.</p><button class="zpc-primary" onclick="go('home')">Back to Home</button></div></section>`;
   if(CallSetup.peerId!==h.id){CallSetup.peerId=h.id;CallSetup.mode='video'}
-  const live=!!Home.dashboardSetup?.streamId&&Home.dashboardSetup.hostId===h.id;
+  const live=window.ZIMI_LIVE_STREAMING_ENABLED&&!!Home.dashboardSetup?.streamId&&Home.dashboardSetup.hostId===h.id;
   if(live)CallSetup.mode='video';
   const busy=!!Home.preparingCall,voice=!live&&(busy?!!Home.preparingVoice:CallSetup.mode==='voice');
   const available=!!h.available&&(!live||h.stream?.id===Home.dashboardSetup.streamId);

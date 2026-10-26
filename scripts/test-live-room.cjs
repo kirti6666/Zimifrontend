@@ -40,7 +40,7 @@ const closeSheet = async page => {
   assert.equal(await page.getByRole('dialog').count(), 0, 'Escape dismisses the sheet');
 };
 
-async function newPage(browser, errors, production = false, query = '') {
+async function newPage(browser, errors, production = false, query = '', streaming = false) {
   const page = await browser.newPage({ viewport: viewports[0], reducedMotion: 'reduce' });
   page.setDefaultTimeout(7000);
   page.on('pageerror', error => errors.push(error.message));
@@ -48,12 +48,56 @@ async function newPage(browser, errors, production = false, query = '') {
     if (message.type() === 'error' && !/^Failed to load resource: net::ERR_/.test(message.text())) errors.push(message.text());
   });
   await page.route('https://**/*', route => route.abort());
-  await page.addInitScript(() => {
+  await page.addInitScript(enabled => {
+    // Browser-only fixture: preserve coverage of dormant streaming code without
+    // adding any runtime opt-in to the shipped app.
+    if (enabled) Object.defineProperty(window, 'ZIMI_LIVE_STREAMING_ENABLED', { configurable: true, get: () => true, set: () => {} });
     window.__sent = [];
     window.ReactNativeWebView = { postMessage: raw => window.__sent.push(JSON.parse(raw)) };
-  });
+  }, streaming);
   await page.goto(pathToFileURL(path.join(root, production ? 'assets/aurora.html' : 'dist/index.html')).href + query);
   return page;
+}
+
+const newStreamingPage = (browser, errors, production = false, query = '') => newPage(browser, errors, production, query, true);
+
+async function callsOnlyChecks(browser, errors) {
+  for (const query of ['?preview=live', '?preview=host-live&role=host&approvedHost=1']) {
+    const page = await newPage(browser, errors, false, query);
+    assert.equal(await page.evaluate(() => window.ZIMI_LIVE_STREAMING_ENABLED), false);
+    assert.equal(await page.locator('.zr-viewer,.zr-host,.zh-broadcast').count(), 0, 'Old preview URLs cannot open streaming screens');
+    assert.equal(await page.evaluate(() => ['live', 'broadcast'].includes(S.v)), false);
+    assert.equal(await page.locator('.zh-live-shortcut,.zh-person-watch').count(), 0, 'Discovery has no watch-live entry points');
+    await page.close();
+  }
+  for (const hosting of [false, true]) {
+    const page = await newPage(browser, errors, true, hosting ? '?role=host' : '?role=sender');
+    await receive(page, 'session', hosting ? hostAccount : member);
+    await receive(page, 'data.home', homeData);
+    await page.evaluate(() => { window.__openedStreams = 0; ZimiMedia.openStream = async () => { window.__openedStreams++; }; });
+    const view = await page.evaluate(() => S.v);
+    for (const route of ['live', 'broadcast']) {
+      await page.evaluate(route => go(route), route);
+      assert.equal(await page.evaluate(() => S.v), view, `Direct ${route} navigation is blocked`);
+    }
+    await page.evaluate(() => { homeGoLive(); homeStartStream(); });
+    assert.equal(await sentCount(page, 'stream.start'), 0, 'Even approved hosts cannot start a broadcast');
+    await receive(page, 'stream.link.loading', { streamId: stream.id, loading: true });
+    await receive(page, 'stream.link', { stream: { ...stream, status: 'live', host: creator } });
+    assert.equal(await page.getByRole('dialog', { name: 'Live invitation' }).count(), 0, 'Stale deep-link events cannot open an invitation');
+    await page.evaluate(id => homeOpen(id), creator.id);
+    assert.equal(await sentCount(page, 'stream.join'), 0, 'Opening a creator never joins the server stream');
+    assert.equal(await page.evaluate(() => ['live', 'broadcast'].includes(S.v)), false);
+    if (!hosting) assert.equal(await page.evaluate(() => S.v), 'precall', 'Available stream hosts use the ordinary 1:1 setup');
+    const currentView = await page.evaluate(() => S.v);
+    await receive(page, 'stream.opened', { stream, hosting, messages: [] });
+    assert.deepEqual(await lastSent(page, hosting ? 'stream.end' : 'stream.leave'), { streamId: stream.id }, 'Late room acknowledgments are cleaned up');
+    assert.equal(await page.evaluate(() => window.__openedStreams), 0, 'Late acknowledgments cannot open streaming media');
+    assert.equal(await page.evaluate(() => S.v), currentView);
+    assert.equal(await page.locator('.zr-viewer,.zr-host').count(), 0);
+    await page.close();
+  }
+  console.log('PASS calls-only rollout: old previews, direct routes, deep links, discovery, approved host start and late stream acknowledgments');
 }
 
 async function layout(page, room, controls, label) {
@@ -82,7 +126,7 @@ async function openProductionLive(page, hosting = false, messages = []) {
 }
 
 async function previewChecks(browser, errors) {
-  const viewer = await newPage(browser, errors, false, '?preview=live');
+  const viewer = await newStreamingPage(browser, errors, false, '?preview=live');
   await viewer.locator('.zr-viewer').waitFor();
   assert.equal(await viewer.locator('.zr-tag').filter({ hasText: 'HOST' }).count(), 1, 'Only the creator message carries the host label');
   await layout(viewer, viewer.locator('.zr-room'), () => [
@@ -127,7 +171,7 @@ async function previewChecks(browser, errors) {
   }
   await viewer.close();
 
-  const host = await newPage(browser, errors, false, '?preview=host-live&role=host&approvedHost=1');
+  const host = await newStreamingPage(browser, errors, false, '?preview=host-live&role=host&approvedHost=1');
   await host.locator('.zr-host').waitFor();
   assert.equal(await host.locator('.zr-video img.zh-photo').count(), 1, 'The host preview has a portrait backdrop');
   await layout(host, host.locator('.zr-room'), () => [
@@ -168,22 +212,25 @@ async function previewChecks(browser, errors) {
   await host.getByRole('region', { name: 'Private video call' }).waitFor();
   assert.equal(await host.evaluate(() => S.v), 'hcall', 'Accepting a preview request transitions into the private host call');
   assert.equal(await host.evaluate(() => Home.stream), null);
-  assert.match(await host.locator('.zr-person').innerText(), /Marcus/);
+  assert.match(await host.locator('.zr-call-person').innerText(), /Marcus/);
   await host.close();
 
   const call = await newPage(browser, errors, false, '?preview=call');
   await call.locator('.zr-call').waitFor();
   await layout(call, call.locator('.zr-room'), () => [
-    call.getByRole('textbox', { name: 'Call message' }), button(call, 'Mute'), button(call, 'Camera off'),
-    button(call, 'Sound off'), button(call, 'Send a gift'), call.locator('.zr-hangup'),
+    button(call, 'Leave call'), button(call, 'Call options'), button(call, 'Open call chat'),
+    button(call, 'Add coins'), button(call, 'Call controls'), call.locator('.zr-hangup'),
   ], 'Private video call');
   await call.screenshot({ path: path.join(root, 'live-preview-call.png') });
+  await button(call, 'Call controls').click();
   await button(call, 'Mute').click();
   assert.equal(await button(call, 'Unmute').getAttribute('aria-pressed'), 'true');
   await button(call, 'Camera off').click();
   assert.equal(await call.locator('.zr-pip').evaluate(node => node.classList.contains('camera-off')), true);
   await button(call, 'Sound off').click();
   assert.equal(await button(call, 'Sound on').isVisible(), true);
+  await closeSheet(call);
+  await button(call, 'Open call chat').click();
   const callChat = call.getByRole('textbox', { name: 'Call message' });
   await callChat.fill('Hello from a private call');
   await callChat.press('Enter');
@@ -197,7 +244,7 @@ async function previewChecks(browser, errors) {
 }
 
 async function productionChecks(browser, errors) {
-  const page = await newPage(browser, errors, true, '?role=sender');
+  const page = await newStreamingPage(browser, errors, true, '?role=sender');
   await openProductionLive(page);
   await page.locator('.zr-viewer').waitFor();
   assert.equal(await page.locator('.zr-demo-note,.zr-gift-alert,.zr-video img').count(), 0, 'Production has no sample video, activity or gift banner');
@@ -288,7 +335,7 @@ async function productionChecks(browser, errors) {
   assert.doesNotMatch(await page.getByRole('log', { name: 'Live chat' }).innerText(), /Do not show this/);
   await page.close();
 
-  const host = await newPage(browser, errors, true, '?role=host');
+  const host = await newStreamingPage(browser, errors, true, '?role=host');
   await openProductionLive(host, true);
   await host.locator('.zr-host').waitFor();
   assert.equal(await host.locator('.zr-demo-note,.zr-gift-alert,.zr-incoming').count(), 0, 'Production host has no fabricated gift or caller');
@@ -314,7 +361,7 @@ async function productionChecks(browser, errors) {
 }
 
 async function pendingPrivateCall(browser, errors, hosting, suffix) {
-  const page = await newPage(browser, errors, true, hosting ? '?role=host' : '?role=sender');
+  const page = await newStreamingPage(browser, errors, true, hosting ? '?role=host' : '?role=sender');
   await page.evaluate(() => {
     const prepare = ZimiMedia.prepare;
     // The stream transport is covered by the separate two-party media test.
@@ -346,7 +393,7 @@ async function pendingPrivateCall(browser, errors, hosting, suffix) {
   assert.equal(await page.evaluate(() => Home.stream), null, 'The public stream is cleared before its ended event');
   assert.equal(await page.evaluate(() => Home.hosting), false);
   assert.equal(await page.evaluate(() => S.callId), event.callId);
-  assert.match(await page.locator('.zr-person').innerText(), new RegExp(peer.name));
+  assert.match(await page.locator('.zr-call-person').innerText(), new RegExp(peer.name));
   assert.deepEqual(await page.evaluate(() => window.__prepareRequests), [true], 'Private video capture is prepared once');
   assert.equal(await page.evaluate(() => window.__connectedCalls.length), 0, 'Call connection waits for asynchronous media permission');
   await receive(page, 'stream.privateCall', event);
@@ -418,7 +465,7 @@ async function privateCallChecks(browser, errors) {
 }
 
 async function invitationChecks(browser, errors) {
-  const page = await newPage(browser, errors, true, '?role=sender');
+  const page = await newStreamingPage(browser, errors, true, '?role=sender');
   await receive(page, 'session', member);
   await receive(page, 'data.home', homeData);
   const invitation = page.getByRole('dialog', { name: 'Live invitation' });
@@ -465,6 +512,7 @@ async function invitationChecks(browser, errors) {
   });
   const errors = [];
   try {
+    await callsOnlyChecks(browser, errors);
     if (!process.argv.includes('--production')) await previewChecks(browser, errors);
     if (!process.argv.includes('--preview')) {
       await productionChecks(browser, errors);

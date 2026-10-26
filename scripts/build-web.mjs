@@ -28,7 +28,7 @@ const HEAD = (hosted) => `<!DOCTYPE html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-<meta name="description" content="A two-sided live streaming experience for hosts and supporters." />
+<meta name="description" content="Connect with creators through private one-to-one video and voice calls." />
 <title>BinzoLive</title>
 ${hosted ? WEB_ICON_HEAD : `<link rel="icon" type="image/png" href="${brandIcon}" />`}
 <link rel="preconnect" href="https://fonts.googleapis.com" />

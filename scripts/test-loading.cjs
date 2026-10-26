@@ -66,7 +66,8 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     // A socket refresh hides the cached first page until the new response arrives.
     await loading('home', true, { page: 1 });
     await visible('Loading creators');
-    await visible('Loading live creators');
+    await gone('Loading live creators');
+    await visible('Loading featured creator');
     assert.equal(await page.locator('.zh-tile,article.zh-featured').count(), 0);
     await receive('data.loaded');
     await visible('Loading creators');

@@ -1,3 +1,5 @@
+/* Live broadcasting is paused for this release; private calls stay available. */
+window.ZIMI_LIVE_STREAMING_ENABLED = false;
 const H=[
  {id:"aanya",n:"Aanya Kapoor",c:"Mumbai",cat:"Dance",tag:"Dancing",age:26,rate:34,fee:60,on:1,live:1,seed:12,v:"2.4K",pk:1,top:0,fol:1,nw:0},
  {id:"ishaan",n:"Ishaan Verma",c:"Bengaluru",cat:"Gaming",tag:"Esports",age:24,rate:22,fee:40,on:1,live:1,seed:47,v:"1.1K",pk:0,top:1,fol:1,nw:0},
@@ -8,7 +10,7 @@ const H=[
  {id:"noor",n:"Noor Sheikh",c:"Hyderabad",cat:"Comedy",tag:"Make Friends",age:25,rate:26,fee:45,on:1,live:1,seed:55,v:"5.1K",pk:1,top:1,fol:1,nw:0},
  {id:"kabir",n:"Kabir Das",c:"Kolkata",cat:"Music",tag:"Chatting",age:33,rate:38,fee:70,on:0,live:0,seed:79,v:"640",pk:0,top:0,fol:0,nw:1,hideMvp:1}
 ];
-const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","going live in ten","5:54 pm",1],
+const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","free for a call in ten","5:54 pm",1],
  ["tara","send your birth time when you can","5:31 pm",0],["ishaan","you: gg, rough last round","4:12 pm",0],
  ["meher","recording the folk set tonight","2:47 pm",0],["dev","you: form check tomorrow?","Yesterday",0]];
 const WATER_STICKER="__WATER_FLOWING_STICKER__";
@@ -36,7 +38,7 @@ const BEAUTY={
  "Image quality":[["Original","&#9711;",0],["Temperature","&#127777;",1],["Tints","&#127912;",1],["Luminance","&#9728;",1],["Saturation","&#9681;",1],["Contrast","&#9680;",1]]
 };
 const TASKS=[["Stream 60 minutes","0 / 60 min","5,000"],["Receive 20 gifts","0 / 20","2,000"],["Reach 500 viewers","0 / 500","1,500"]];
-const me={n:"Rohit Sharma",seed:5,live:0,on:1,c:"Mumbai",tag:"Creator",about:"Here for good conversations, live sessions and a little everyday chaos."};
+const me={n:"Rohit Sharma",seed:5,live:0,on:1,c:"Mumbai",tag:"Creator",about:"Here for good conversations, private calls and a little everyday chaos."};
 const EXTRA=[
  {id:"osama",n:"OSAMA",c:"Dubai",cat:"Gaming",tag:"Esports",lang:"Arabic, English",age:28,rate:52,fee:95,on:1,live:0,seed:3,v:"9.0K"},
  {id:"evangeline",n:"Evangeline",c:"Manila",cat:"Music",tag:"Singing",lang:"Filipino, English",age:24,rate:41,fee:75,on:1,live:0,seed:17,v:"8.6K"},
@@ -46,7 +48,7 @@ const EXTRA=[
  {id:"mehak",n:"Mehak Dhillon",c:"Ludhiana",cat:"Dance",tag:"Dancing",lang:"Punjabi, Hindi",age:25,rate:29,fee:52,on:1,live:1,seed:64,v:"424"}];
 const SENDERS=["Rohit S.","Arnav M.","Kunal T.","Faisal R.","Devika N.","Yash P.","Imran Q.","Sahil B.",
  "Nikhil A.","Zoya K."];
-const CAPS=["late night set","practice run, be kind","new routine, day one","backstage before going live",
+const CAPS=["late night set","practice run, be kind","new routine, day one","getting ready for my next call",
  "thank you for last night","testing a new sound","rehearsal cut","this one took a while",
  "same song, slower","one take, no edits","sunday morning","from the last stream"];
 const PERIODS=[["daily","Daily",1],["weekly","Weekly",6.4],["all","All time",41]];
@@ -134,8 +136,8 @@ function portrait(h){const src=avatarSource(h);
 function avc(h,s){return `<span class="av" style="width:${s}px;height:${s}px">${portrait(h)}</span>`}
 
 function av(h,s,ring){
- const pres=ring==="none"?"":`<span class="pres ${h.live?"live":h.on?"on":""}"></span>`;
- return `<span class="avw"><span class="av ${h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`}
+ const pres=ring==="none"?"":`<span class="pres ${window.ZIMI_LIVE_STREAMING_ENABLED&&h.live?"live":h.on?"on":""}"></span>`;
+ return `<span class="avw"><span class="av ${window.ZIMI_LIVE_STREAMING_ENABLED&&h.live?"red":"gold"}" style="width:${s}px;height:${s}px">${portrait(h)}</span>${pres}</span>`}
 const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>',
  chat:'<path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v7a2.5 2.5 0 01-2.5 2.5H10l-4.4 3.3A1 1 0 014 18.5z" stroke-linejoin="round"/>',
  user:'<circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 19.5c1.3-3.8 4-5.7 7.5-5.7s6.2 1.9 7.5 5.7" stroke-linecap="round"/>',
@@ -184,6 +186,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
  if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
@@ -448,7 +451,7 @@ function shWrap(title,sub,inner){
 
 function fxSheet(){
  const opts=BEAUTY[S.btab], sel=S.bsel[S.btab], adj=opts[sel]&&opts[sel][2];
- return shWrap("Beauty and effects",S.v==="setup"?"Applies to your camera before you go live":"Changes apply now and stay on for your next calls",
+ return shWrap("Beauty and effects",S.v==="setup"?"Applies to your camera before your next call":"Changes apply now and stay on for your next calls",
  `<div class="dtabs">${Object.keys(BEAUTY).map(k=>`<button class="${S.btab===k?"on":""}" onclick="S.btab='${k}';r()">${k}</button>`).join("")}
    <button class="rst" onclick="resetFx()">Reset</button></div>
   <div class="dopts">${opts.map(([l,e],i)=>`<button class="dopt ${sel===i?"on":""}" onclick="pickFx(${i})">
@@ -784,7 +787,7 @@ function vBoard(){
    ? `<div class="empty">Family boards start once you join or create one.</div>`
    : `<div class="blist">${rows.map((x,i)=>`<button class="brow ${i<3?"top":""}" onclick="go('host','${domId(x.id)}')">
       <span class="brank">${i+1}</span>
-      <span class="bav">${x.live?`<span class="blive">LIVE</span>`:""}${av(x,42,"none")}<span class="flag">&#127470;&#127475;</span></span>
+      <span class="bav">${window.ZIMI_LIVE_STREAMING_ENABLED&&x.live?`<span class="blive">LIVE</span>`:""}${av(x,42,"none")}<span class="flag">&#127470;&#127475;</span></span>
       <span class="bname">${esc(x.n)}</span>
       <span class="bcoin">${gem}${n(x.c)}</span></button>`).join("")}</div>`}
   <div style="height:10px"></div>`}
@@ -803,7 +806,7 @@ function searchRows(){
    <span style="flex:1;min-width:0">
     <span style="display:flex;align-items:center;gap:6px">
      <span class="s15" style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.n)}</span>
-     ${h.live?`<span class="blive" style="position:static;transform:none">LIVE</span>`:""}</span>
+     ${window.ZIMI_LIVE_STREAMING_ENABLED&&h.live?`<span class="blive" style="position:static;transform:none">LIVE</span>`:""}</span>
     <span class="s12 muted" style="display:block;margin-top:1px">${esc(h.tag)} &middot; ${esc(h.c)} &middot; ${esc(h.v)} followers</span></span>
    <span class="s12" style="color:var(--accent-ink);font-weight:700">${n(h.rate)}/min</span></button>`).join("")}
 
@@ -1070,8 +1073,8 @@ function hostStrip(){
   <span class="hstx"><b>You're online</b><span>Receiving calls${S.vis?" &middot; shown on Home":""}. You can leave the app.</span></span>
   <button onclick="goOffline()">Go offline</button></div>`;
  const [t,d,b,go_]=k==="verified"?["You're offline","Go online to start receiving video calls","Go online","setup"]
-  :k==="pending"?["Verification in progress","You can go live as soon as your account is approved","View status","kyc"]
-  :["Verify your account to go live","A quick check gets you the verified badge and payouts","Verify now","kyc"];
+  :k==="pending"?["Verification in progress","You can receive 1:1 calls as soon as your account is approved","View status","kyc"]
+  :["Verify your account to receive calls","A quick check gets you the verified badge and payouts","Verify now","kyc"];
  return `<div class="hoststrip ${k}">
   <span class="hsdot"></span>
   <span class="hstx"><b>${t}</b><span>${d}</span></span>
@@ -1481,7 +1484,7 @@ function toggleKycLang(index){const lang=LANGS[index];if(!lang||S.kycBusy)return
 function approveKyc(){A().kyc="verified";r()}
 function kycStatus(host){
  const step=(done,on,t)=>`<div class="kst ${done?"done":on?"on":""}"><span class="kdot">${done?I("check",12):""}</span><span>${t}</span></div>`;
- return `<div class="ktrack">${step(1,0,"Details submitted")}${step(0,1,"Verification in progress")}${step(0,0,host?"Ready to go live":"Payouts unlocked")}</div>`}
+ return `<div class="ktrack">${step(1,0,"Details submitted")}${step(0,1,"Verification in progress")}${step(0,0,host?"Ready to receive calls":"Payouts unlocked")}</div>`}
 function vKyc(){
  const a=A(),host=isHost()||S.creatorSetup;
  if(!host&&a.earn<PAYOUT_MIN)return `<div class="acct"><div class="acctcard emptycompact"><span class="acctico">${I("wal",22)}</span>
@@ -1498,8 +1501,8 @@ function vKyc(){
  if(a.kyc==="verified"&&isHost())return `<div class="acct"><div class="kpend">
   <span class="kspin ok">${I("check",26)}</span>
   <h2 class="disp">${host?"You're verified":"Payouts verified"}</h2>
-  <p>${host?"Your verified badge is now on your profile. You can start going live and withdraw your earnings anytime.":"You can withdraw your earnings anytime."}</p>
-  ${host?`<button class="editsave" onclick="go('setup')">Go live now</button>`:""}
+  <p>${host?"Your verified badge is now on your profile. You can receive private calls and withdraw your earnings anytime.":"You can withdraw your earnings anytime."}</p>
+  ${host?`<button class="editsave" onclick="go('setup')">Go online for calls</button>`:""}
   <button class="${host?"kdemo":"editsave"}" onclick="S.pdone=0;go('payout')">Withdraw earnings</button></div></div>`;
  if(host)return `<div class="acct kyc"><div class="kycnote">${I("shield",15)}<span>Introduce yourself to the BinzoLive team. You can receive calls once your creator application is approved.</span></div>
   ${kf("name","Your creator name","Creator name")}
@@ -1511,7 +1514,7 @@ function vKyc(){
  return `<div class="acct kyc">
   ${host&&S.fromSignup?`<span class="lgstep">Step 3 of 3 &middot; Verify your identity</span>`:""}
   ${host?`<div class="kycsteps"><span class="on">1 Details</span><span class="${ph.length>=MIN_PHOTOS?"on":""}">2 Photos</span></div>
-   <div class="kycnote">${I("shield",15)}<span>Verify once to go live, get the <b>verified badge</b> and take payouts. No ID documents needed; we'll email you a link to confirm your address.</span></div>
+   <div class="kycnote">${I("shield",15)}<span>Verify once to receive calls, get the <b>verified badge</b> and take payouts. No ID documents needed; we'll email you a link to confirm your address.</span></div>
    ${kf("name","Your full name","Full name")}
    ${kf("dob","DD / MM / YYYY","Date of birth")}
    ${kf("email","name@example.com","Email address","email")}
@@ -1596,6 +1599,7 @@ function appNotice(message){
 let zimiSecured=null;
 function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call");if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
+ if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
  const roomFocus=window.zrCapture?.();
@@ -1632,7 +1636,7 @@ function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
-  age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:p.live?1:0,seed:seedOf(id),
+  age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
  return PEOPLE[id]={id,n:p.name||"BinzoLive user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",

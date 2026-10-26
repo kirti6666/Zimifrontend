@@ -42,139 +42,72 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await run({page,receive,sent,call});
     } finally {await page.close();}
   }
-  const opened={stream:host.stream,hosting:false,messages:[]};
-  await scenario(async({page,sent,call})=>{
-    await call.click();
-    assert.equal(await page.evaluate(()=>S.v),'precall','An available creator opens video-call confirmation');
-    assert.equal((await sent('call.start')).length,0,'The Home action does not bypass call confirmation');
-    assert.equal(await page.evaluate(()=>__prepared),0,'Opening coin confirmation does not activate camera or microphone');
-    await page.getByRole('button',{name:'Start video call',exact:true}).click();
-    assert.deepEqual(await sent('call.start'),[{to:host.id,voice:false}],'Confirmation starts one video call with the selected creator');
-    assert.equal((await sent('stream.join')).length,0,'A creator without a broadcast goes directly through call setup');
-  },member,{...host,stream:null});
+  for (const creator of [{...host,stream:null},host]) {
+    await scenario(async({page,sent,call})=>{
+      await call.click();
+      assert.equal(await page.evaluate(()=>S.v),'precall','Available creators open private-call confirmation');
+      assert.equal((await sent('call.start')).length,0,'Opening confirmation does not place a call');
+      assert.equal(await page.evaluate(()=>__prepared),0,'Opening confirmation does not activate capture');
+      assert.equal(await page.getByRole('button',{name:'Request video call',exact:true}).count(),0,'Private calls never use a live queue');
+      assert.equal(await page.getByRole('button',{name:'Voice call',exact:true}).count(),1,'Voice calling stays available');
+      await page.getByRole('button',{name:'Start video call',exact:true}).click();
+      assert.deepEqual(await sent('call.start'),[{to:host.id,voice:false}]);
+      assert.equal((await sent('stream.join')).length+(await sent('stream.request')).length,0,'Streaming metadata never sends members into a broadcast');
+    },member,creator);
+  }
   await scenario(async({page,receive,sent,call})=>{
     await call.click();
     await receive('data.home',{...home,hosts:[host],stage:[host],featured:host});
-    await page.getByRole('button',{name:'Start video call',exact:true}).click();
-    assert.equal((await sent('call.start')).length,0,'A creator who starts broadcasting during confirmation does not receive an ordinary call');
-    assert.equal((await sent('stream.join')).length,0,'Changing to the live request flow requires a fresh confirmation');
-    assert.equal(await page.evaluate(()=>__prepared),0,'The stale ordinary-call action does not activate capture');
-    assert.equal(await page.evaluate(()=>S.v),'precall','The member stays on confirmation when the host becomes live');
-    await page.getByRole('button',{name:'Request video call',exact:true}).click();
-    assert.deepEqual(await sent('stream.join'),[{streamId:host.stream.id}],'The new explicit confirmation joins the current broadcast');
-    await receive('stream.opened',opened);
-    assert.deepEqual(await sent('stream.request'),[{streamId:host.stream.id}],'Confirmed membership requests the private call from the current live host');
+    await page.getByRole('button',{name:'Voice call',exact:true}).click();
+    await page.getByRole('button',{name:'Start voice call',exact:true}).click();
+    assert.deepEqual(await sent('call.start'),[{to:host.id,voice:true}],'A live feed update does not replace a private voice call with a queue');
+    assert.equal((await sent('stream.join')).length,0);
   },member,{...host,stream:null});
   await scenario(async({page,receive,sent,call})=>{
     await call.click();
-    assert.equal(await page.evaluate(()=>S.v),'precall','A live host first opens private-call coin confirmation');
-    assert.equal((await sent('stream.join')).length,0,'The live card does not join a room before coin confirmation');
-    assert.equal((await sent('stream.request')).length,0,'The live card does not request a call before coin confirmation');
-    assert.equal(await page.evaluate(()=>__prepared),0,'Live coin confirmation does not activate capture');
-    assert.match(await page.locator('.zpc-details').innerText(),/25\s+coins\/min/,'The selected host rate is revealed after tapping Video call');
-    await page.getByRole('button',{name:'Request video call',exact:true}).click();
-    await page.evaluate(()=>homeDashboardConfirmCall());
-    assert.deepEqual(await sent('stream.join'),[{streamId:host.stream.id}],'Explicit confirmation joins the selected broadcast');
-    assert.equal((await sent('stream.request')).length,0,'A call request waits for confirmed stream membership');
-    assert.equal((await sent('call.start')).length,0,'Broadcasting hosts use their request queue instead of an ordinary ringing call');
-    await receive('stream.opened',{...opened,stream:{...host.stream,id:'507f1f77bcf86cd799439099'}});
-    assert.equal((await sent('stream.request')).length,0,'An unrelated stream response cannot send the pending request');
-    await receive('stream.opened',opened);
-    assert.deepEqual(await sent('stream.request'),[{streamId:host.stream.id}],'Confirmed membership submits one request for the selected host');
-    assert.equal(await page.evaluate(()=>Room.sheet),'queue','The member can see the private-call request status');
-    const queue=page.getByRole('dialog',{name:'Your private call',exact:true});
-    assert.match(await queue.innerText(),/25 coins\/min/,'The queue shows the configured price for the requested call');
-    assert.doesNotMatch(await queue.innerText(),/call(?:s)? (?:is|are) free/i,'A paid private call is never described as free');
-    await receive('stream.opened',opened);
-    assert.equal((await sent('stream.request')).length,1,'Duplicate join acknowledgements cannot resubmit the call request');
-    await receive('stream.requests',{streamId:host.stream.id,requests:[],ownRequestId:'507f1f77bcf86cd799439090',count:1});
-    assert.equal(await page.getByRole('button',{name:'Cancel request',exact:true}).count(),1,'The confirmed request remains cancellable');
-    assert.equal(await page.evaluate(()=>Home.dashboardCall),null,'The one-shot Home call intent is consumed');
-  },member,{...host,ratePerMin:25});
-  await scenario(async({page,receive,sent,call})=>{
-    await call.click();
     await page.getByRole('button',{name:'Back',exact:true}).click();
-    assert.equal(await page.evaluate(()=>S.v),'home','Back dismisses the coin confirmation');
     await page.evaluate(()=>homeDashboardConfirmCall());
-    await receive('stream.opened',opened);
-    assert.equal((await sent('stream.join')).length+(await sent('stream.request')).length,0,'Dismissing coin confirmation cannot leave a pending live request');
-    assert.equal(await page.evaluate(()=>S.v),'home','An unsolicited membership response cannot reopen dismissed confirmation');
-    assert.equal(await page.evaluate(()=>__prepared),0,'Cancelling before confirmation never activates capture');
+    await receive('stream.opened',{stream:host.stream,hosting:false,messages:[]});
+    assert.equal(await page.evaluate(()=>S.v),'home','Unsolicited stream responses cannot open a room');
+    assert.equal((await sent('call.start')).length+(await sent('stream.join')).length+(await sent('stream.request')).length,0);
+    assert.equal(await page.evaluate(()=>__prepared),0);
   });
   await scenario(async({page,receive,sent,call})=>{
-    await call.click();
-    await page.getByRole('button',{name:'Request video call',exact:true}).click();
-    await page.evaluate(()=>go('home'));
-    await receive('stream.closed',{streamId:host.stream.id});
-    await receive('stream.opened',opened);
-    assert.equal((await sent('stream.request')).length,0,'Leaving while the join is pending cancels the private-call intent');
-    assert.equal(await page.evaluate(()=>S.v),'home','Late membership cannot reopen the dismissed broadcast');
-    assert.equal(await page.evaluate(()=>Home.dashboardCall),null);
-  });
-  await scenario(async({page,receive,sent,call})=>{
-    await call.click();
-    await page.getByRole('button',{name:'Request video call',exact:true}).click();
-    await receive('operation.error',{action:'stream.join',message:'This broadcast has ended.'});
-    assert.equal(await page.evaluate(()=>Home.dashboardCall),null,'A failed join clears its pending private-call request');
-    await receive('stream.opened',opened);
-    assert.equal((await sent('stream.request')).length,0,'A late success after join failure cannot place a private-call request');
-  });
-  await scenario(async({page,receive,sent,call})=>{
-    await receive('wallet.balance',{coins:24});
-    await call.click();
+    await receive('wallet.balance',{coins:24});await call.click();
     assert.match(await page.locator('.zpc-details').innerText(),/25\s+coins\/min/);
     const buy=page.getByRole('button',{name:'Buy coins to call',exact:true});
-    assert.equal(await buy.count(),1,'A short balance offers the real coin purchase flow after the click');
-    assert.equal(await page.getByRole('button',{name:'Request video call',exact:true}).count(),0);
-    await page.evaluate(()=>homeDashboardConfirmCall());
-    assert.equal((await sent('stream.join')).length+(await sent('stream.request')).length,0,'Insufficient coins cannot be bypassed through the request handler');
-    await buy.click();
-    assert.equal(await page.evaluate(()=>S.v),'coins','Buy coins opens the integrated wallet');
-    assert.equal((await sent('stream.join')).length,0,'Buying coins does not automatically join a live call');
+    assert.equal(await buy.count(),1);
+    await page.evaluate(()=>homeStartCall(false));
+    assert.equal((await sent('call.start')).length,0,'The call handler enforces the current wallet balance');
+    await buy.click();assert.equal(await page.evaluate(()=>S.v),'coins');
   },member,{...host,ratePerMin:25});
   await scenario(async({page,receive,sent,call})=>{
-    await receive('data.loading',{resource:'wallet',loading:true});
-    await call.click();
-    const confirm=page.getByRole('button',{name:'Request video call',exact:true});
-    assert.equal(await confirm.isDisabled(),true,'An unresolved wallet balance blocks live-call confirmation');
-    await page.evaluate(()=>homeDashboardConfirmCall());
-    assert.equal((await sent('stream.join')).length,0,'The request handler also waits for an authoritative balance');
+    await receive('data.loading',{resource:'wallet',loading:true});await call.click();
+    const confirm=page.getByRole('button',{name:'Start video call',exact:true});
+    assert.equal(await confirm.isDisabled(),true);
+    await page.evaluate(()=>homeStartCall(false));
+    assert.equal((await sent('call.start')).length,0,'An unresolved wallet blocks capture and calling');
     await receive('data.loading',{resource:'wallet',loading:false,error:'Balance could not be loaded.'});
-    assert.equal(await confirm.isDisabled(),true,'A failed wallet request cannot use the previous balance');
     await page.getByRole('button',{name:'Retry balance',exact:true}).click();
-    assert.equal((await sent('wallet.load')).length,1,'Retry asks native for the current wallet');
-    assert.equal(await confirm.isDisabled(),true,'Confirmation stays disabled while retrying');
-    await receive('wallet.balance',{coins:25});
-    assert.equal(await confirm.isEnabled(),true,'A refreshed sufficient balance enables confirmation');
-    await confirm.click();
-    assert.equal((await sent('stream.join')).length,1,'The recovered balance allows exactly one confirmed join');
+    assert.equal((await sent('wallet.load')).length,1);
+    await receive('wallet.balance',{coins:25});await confirm.click();
+    assert.equal((await sent('call.start')).length,1,'Recovered wallet allows exactly one confirmed call');
   },member,{...host,ratePerMin:25});
   await scenario(async({page,receive,sent,call})=>{
-    await receive('wallet.balance',{coins:0});
-    await call.click();
-    assert.match(await page.locator('.zpc-details').innerText(),/\bFree\b/,'The confirmation accurately identifies a zero-rate call');
-    assert.equal(await page.getByRole('button',{name:'Buy coins to call',exact:true}).count(),0,'A free host does not require a coin purchase');
-    await page.getByRole('button',{name:'Request video call',exact:true}).click();
-    assert.equal((await sent('stream.join')).length,1,'A free live private call can be confirmed with a zero balance');
+    await receive('wallet.balance',{coins:0});await call.click();
+    assert.match(await page.locator('.zpc-details').innerText(),/\bFree\b/);
+    await page.getByRole('button',{name:'Start video call',exact:true}).click();
+    assert.equal((await sent('call.start')).length,1,'Free private calls work with a zero balance');
   });
   await scenario(async({page,sent,call})=>{
-    assert.equal(await call.isDisabled(),true,'Unavailable creators retain a disabled video-call action');
-    await page.evaluate(id=>homeDashboardCall(id),host.id);
-    assert.equal((await sent('stream.join')).length+(await sent('call.start')).length,0,'The action itself also guards unavailable creators');
+    assert.equal(await call.isDisabled(),true);await page.evaluate(id=>homeDashboardCall(id),host.id);
+    assert.equal((await sent('call.start')).length,0,'Unavailable creators cannot be called directly');
   },member,{...host,availableForCall:false});
   await scenario(async({page,sent,call})=>{
-    assert.equal(await call.isDisabled(),true,'Host accounts cannot initiate unsupported host-to-host calls');
-    await page.evaluate(id=>homeDashboardCall(id),host.id);
-    assert.equal((await sent('stream.join')).length+(await sent('call.start')).length,0,'Calling the handler directly does not bypass role eligibility');
+    assert.equal(await call.isDisabled(),true);await page.evaluate(id=>homeDashboardCall(id),host.id);
+    assert.equal((await sent('call.start')).length,0,'Creator accounts cannot initiate host-to-host calls');
   },{...member,user:{...member.user,id:'507f1f77bcf86cd799439017',role:'host',serverRole:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified'});
-  await scenario(async({page,receive,sent,call})=>{
-    await call.click();
-    await page.getByRole('button',{name:'Request video call',exact:true}).click();
-    await receive('session.none',{});
-    assert.equal(await page.evaluate(()=>Home.dashboardCall),null,'Session reset clears pending call intent');
-    await receive('stream.opened',opened);
-    assert.equal((await sent('stream.request')).length,0,'A prior session cannot send a private-call request after sign-out');
-  });
+
 }
 
 (async () => {
@@ -191,14 +124,14 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await page.locator('.zh-person-card h3').first().innerText(),'Mila Vance','The configured featured creator leads Home discovery');
     assert.equal(await page.locator('.zh-nav button').count(),4);
     assert.equal(await page.locator('.zh-featured-host').count(),1,'Home has one featured photo card');
-    assert.equal(await page.locator('.zh-live-section').getByRole('button',{name:/^Join .* live$/}).count(),3,'The live strip contains active broadcasts');
+    assert.equal(await page.locator('.zh-live-section').getByRole('button',{name:/^Join .* live$/}).count(),0,'The live strip is disabled');
     assert.equal(await page.locator('.zh-discover .zh-person-card').count(),4,'The grid excludes the featured creator');
     assert.equal(await page.getByRole('button',{name:'Search creators',exact:true}).count(),1,'Search appears only in the Home header');
     assert.equal(await page.locator('.zh-dashboard .zh-home-search,.zh-dashboard .zh-welcome,.zh-dashboard .zh-shortcuts,.zh-dashboard .zh-home-match,.zh-dashboard .zh-bonus').count(),0,'Home content focuses on discovering live and online hosts');
     assert.ok(await page.locator('.zh-dashboard-filters [data-dashboard-filter]').count()>=2,'Host discovery has selectable category filters');
-    assert.equal(await page.locator('.zh-dashboard h2').count(),2);
-    assert.equal(await page.getByRole('heading',{name:/^Live now/}).count(),1);
-    assert.equal(await page.getByRole('heading',{name:'Trending Live & Calls',exact:true}).count(),1);
+    assert.equal(await page.locator('.zh-dashboard h2').count(),1);
+    assert.equal(await page.getByRole('heading',{name:/^Live now/}).count(),0);
+    assert.equal(await page.getByRole('heading',{name:'Connect 1:1',exact:true}).count(),1);
     assert.equal(await page.locator('.zh-person-footer').getByRole('button',{name:/^Chat with /}).count(),5);
     assert.equal(await page.locator('.zh-person-footer').getByRole('button',{name:/^Video call /}).count(),5);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
@@ -249,7 +182,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     const offline={...online,id:'507f1f77bcf86cd799439033',name:'Offline host',online:false};
     const ended={...offline,id:'507f1f77bcf86cd799439034',name:'Ended broadcast',stream:{...host.stream,id:'507f1f77bcf86cd799439035',status:'ended'}};
     await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
-    assert.equal(await real.locator('.zh-live-section').getByRole('button',{name:/^Join .* live$/}).count(),1,'Only active broadcasts appear in the live strip');
+    assert.equal(await real.locator('.zh-live-section').getByRole('button',{name:/^Join .* live$/}).count(),0,'Streaming discovery stays disabled even with live server metadata');
     assert.equal(await real.locator('.zh-discover article[data-host-id]').count(),2,'Discovery includes online hosts whose calls are temporarily unavailable');
     assert.deepEqual(await real.locator('article.zh-person-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id],'Offline hosts are hidden and live hosts are not duplicated');
     assert.equal(await real.getByRole('button',{name:'Video call '+busy.name,exact:true}).isDisabled(),true);
@@ -292,7 +225,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).getAttribute('aria-busy'),'true','Refresh feedback follows the active request');
     assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).isDisabled(),true,'A refresh cannot be submitted twice while pending');
     assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Refresh uses real request skeletons');
-    assert.equal(await real.getByRole('status',{name:'Loading live creators',exact:true}).count(),1);
+    assert.equal(await real.getByRole('status',{name:'Loading live creators',exact:true}).count(),0);
     assert.equal(await real.getByRole('status',{name:'Loading featured creator',exact:true}).count(),1);
     for(const width of [320,390,768,1280]){
       await real.setViewportSize({width,height:900});
@@ -381,18 +314,10 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.getByRole('button',{name:'Check payment status',exact:true}).click();
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='wallet.verify').at(-1)?.data.merchantOrderId),'test_order_123');
     await real.getByRole('button',{name:'Back to home',exact:true}).click();
-    await real.getByRole('button',{name:'Join '+host.name+' live',exact:true}).click();
-    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.join').at(-1)?.data.streamId),streamId,'A live story opens its real broadcast');
-    await real.getByRole('button',{name:'Leave live',exact:true}).click();
-    await real.getByRole('dialog',{name:'Leave this live?'}).getByRole('button',{name:'Leave live',exact:true}).click();
-    await receive('stream.closed',{streamId});
+    await real.evaluate(()=>{go('live');go('broadcast');homeGoLive();homeStartStream()});
+    assert.equal(await real.evaluate(()=>S.v),'home','Direct stream entry points stay closed');
+    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>['stream.start','stream.join','stream.request'].includes(m.type)).length),0,'Disabled entry points send no streaming commands');
     await receive('data.home',home);
-    await real.getByRole('button',{name:'Watch '+host.name+' live',exact:true}).click();
-    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.join').at(-1)?.data.streamId),streamId);
-    await real.getByRole('button',{name:'Leave live',exact:true}).click();
-    await real.getByRole('dialog',{name:'Leave this live?'}).getByRole('button',{name:'Leave live',exact:true}).click();
-    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.leave').at(-1)?.data.streamId),streamId);
-    await receive('stream.closed',{streamId});
     await receive('operation.error',{action:'home.reload',message:'Temporarily offline'});
     assert.equal(await real.locator('.zh-error').innerText(),'Temporarily offlineRetry');
     assert.equal(await real.locator('.zh-live-section').count(),0,'A failed feed does not show stale Live now content');
@@ -452,26 +377,16 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.getByRole('button',{name:'Back to home',exact:true}).click();
     await receive('data.home',home);
     await receive('session',{user:{id:'507f1f77bcf86cd799439017',name:'Host',role:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified',requiresOnboarding:false});
-    await real.evaluate(()=>{window.ZimiMedia.openStream=()=>{};});
-    await real.evaluate(()=>homeGoLive());
-    assert.equal(await real.locator('#nav').isVisible(),false,'broadcast setup hides bottom navigation');
-    await real.locator('#live-title').fill('A real broadcast');
-    await real.getByRole('button',{name:'Go Live',exact:true}).click();
-    await real.waitForFunction(()=>window.__sent.some(m=>m.type==='stream.start'));
-    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.start').at(-1).data.title),'A real broadcast');
-    await receive('stream.opened',{stream:{...host.stream,title:'A real broadcast'},hosting:true,messages:[]});
-    assert.equal(await real.locator('#nav').isVisible(),false,'live room hides bottom navigation');
+    await real.getByRole('button',{name:'Go online for calls',exact:true}).click();
+    assert.equal(await real.evaluate(()=>S.v),'setup','Creator navigation opens private call availability');
+    assert.equal(await real.getByRole('button',{name:'Start a public live instead',exact:true}).count(),0);
+    await real.getByRole('button',{name:'Go online for calls',exact:true}).click();
+    assert.equal((await lastSent('presence.set')).online,true,'Creator availability still uses the real bridge');
     await real.evaluate(()=>go('home'));
-    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.end').at(-1)?.data.streamId),streamId,'any navigation away ends host broadcast');
-    await receive('operation.error',{action:'stream.end',message:'Connection interrupted'});
-    await real.getByRole('button',{name:'Retry ending session',exact:true}).click();
-    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.end').length),2,'failed broadcast close can be retried');
-    await receive('stream.closed',{streamId});
-    assert.equal(await real.evaluate(()=>Home.pendingClose),null);
     await testHomeVideoCalls(browser,errors,host,home);
     await real.evaluate(()=>logout());
     assert.equal(await real.evaluate(()=>Home.hosts.length),0,'logout clears home and payment state');
     assert.deepEqual(errors,[]);
-    console.log('PASS: live story strip, featured host and responsive two-column photo grid, header-only search, Chat/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, live-request correlation/cancellation, server-only content, XSS escaping, gifts, rewards, checkout, streams and logout.');
+    console.log('PASS: calls-only discovery, featured host and responsive two-column photo grid, header-only search, Chat/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, disabled stream entry points, server-only content, XSS escaping, gifts, rewards, checkout and logout.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

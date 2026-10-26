@@ -93,13 +93,12 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     return page;
   }
   const nav = (page, view) => page.evaluate(({ view, id }) => { Home.giftTo = null; Room.sheet = ''; go(view, id); }, { view, id: creator.id });
-  async function live(page, hosting) {
-    await receive(page, 'data.home', home);
-    if (hosting) await nav(page, 'broadcast');
-    else await page.evaluate(id => homeOpen(id), creator.id);
-    await receive(page, 'stream.opened', { stream, hosting, messages: [{ id: 'message-theme', name: 'Member', text: 'A themed conversation' }] });
-    await receive(page, 'stream.requests', { streamId: stream.id, requests: [], ownRequestId: null, count: 0 });
-    await page.locator('.zr-room').waitFor();
+  async function disabledStreams(page) {
+    for (const view of ['broadcast', 'live']) {
+      await nav(page, view);
+      check(await page.evaluate(() => ['broadcast', 'live'].includes(S.v)), false, `${view}: paused streaming cannot be opened directly`);
+      check(await page.locator('.zr-viewer,.zr-host,#live-title').count(), 0, `${view}: no streaming controls are rendered`);
+    }
   }
   try {
     const page = await open(member);
@@ -128,31 +127,30 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await page.evaluate(() => homeStartCall(false)); await page.locator('.ringscr').waitFor();
     await mountedThemes(page, 'outgoing dial', [bg('.ringscr', 'background'), ink('.ringscr h2'), ink('.ringscr p', 'textMuted')]);
     await page.evaluate(() => cancelDial());
-    await live(page, false);
-    await mountedThemes(page, 'viewer live', [bg('.zr-room', 'background'), bg('.zr-request-bar', 'surface'), bg('.zr-compose', 'surface'), ink('.zr-compose input'), ...cta('.zr-request-bar>.zr-pink'), ...cta('.zr-follow')], true);
-    await page.evaluate(() => zrOpen('queue')); await receive(page, 'stream.requests', { streamId: stream.id, requests: [], ownRequestId: null, count: 0 });
-    await mountedThemes(page, 'viewer queue', [bg('.zr-sheet', 'surface'), ink('.zr-sheet'), ink('.zr-sheet-note', 'textMuted'), ...cta('.zr-sheet>.zr-pink')]);
-    await page.evaluate(() => zrClose());
-    await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'live gifts', [bg('.zr-room .zh-sheet', 'surface'), ink('.zr-room .zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated')]);
-    await page.evaluate(() => { Home.giftTo = null; Home.stream = null; Home.hosting = false; S.callId = 'theme-private-call'; go('call'); });
+    await disabledStreams(page);
+    await page.evaluate(id => { Home.giftTo = null; Home.stream = null; Home.hosting = false; S.callId = 'theme-private-call'; go('call', id); zrCallChat(); }, creator.id);
     await mountedThemes(page, 'private video', [bg('.zr-room', 'background'), bg('.zr-compose', 'surface'), ink('.zr-compose input'), bg('.zr-pip', 'surface'), ink('.zr-call-feed .lvmsg.sys .txt', 'textMuted')], true);
+    await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
+    await mountedThemes(page, 'call gifts', [bg('.zr-room .zh-sheet', 'surface'), ink('.zr-room .zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated')]);
+    await page.evaluate(() => { homeCloseGifts(); zrOpen('call-controls'); });
+    await mountedThemes(page, 'call controls', [bg('.zr-sheet', 'surface'), ink('.zr-sheet'), bg('.zr-tool>span', 'surfaceElevated')]);
+    await page.evaluate(() => zrClose());
     await page.evaluate(() => { S.callId = 'theme-private-voice'; go('voice'); });
     await mountedThemes(page, 'private voice', [bg('.zr-audio', 'background'), ink('.zr-voice h2'), ink('.zr-voice>span:last-child', 'textMuted')]);
     await page.evaluate(() => { S.sum = { sec: 65 }; go('summary'); });
     await mountedThemes(page, 'call summary', [bg('.zh-precall-details', 'surface'), ink('.zh-precall-details b'), ...cta('.zh-summary>.zh-primary')]);
 
     const hostPage = await open(hostAccount);
-    for (const view of ['setup', 'waiting', 'broadcast']) {
+    for (const view of ['setup', 'waiting']) {
       await nav(hostPage, view);
-      await mountedThemes(hostPage, `host ${view}`, [...cta('.zh-broadcast>.zh-primary'), ink('.zh-broadcast>p', 'textMuted'), ...(view === 'broadcast' ? [bg('#live-title', 'surfaceElevated'), ink('#live-title'), ink('.zh-camera-preview>span', 'textMuted')] : [])]);
+      await mountedThemes(hostPage, `host ${view}`, [...cta('.zh-broadcast>.zh-primary'), ink('.zh-broadcast>p', 'textMuted')]);
     }
-    await live(hostPage, true);
-    await mountedThemes(hostPage, 'host live', [bg('.zr-identity', 'surface'), bg('.zr-manage', 'surface'), ink('.zr-manage'), bg('.zr-tool>span', 'surface')]);
-    for (const panel of ['queue', 'settings', 'appearance', 'goal', 'supporters', 'share', 'exit']) {
+    await disabledStreams(hostPage);
+    await hostPage.evaluate(member => { S.caller = { id: member.id, n: member.name, callId: 'theme-host-call', voice: false }; S.callId = S.caller.callId; go('hcall'); }, member.user);
+    await mountedThemes(hostPage, 'host private call', [bg('.zr-room', 'background'), bg('.zr-pip', 'surface')]);
+    for (const panel of ['call-controls', 'exit']) {
       await hostPage.evaluate(panel => zrOpen(panel), panel);
-      if (panel === 'queue') await receive(hostPage, 'stream.requests', { streamId: stream.id, requests: [], ownRequestId: null, count: 0 });
-      await mountedThemes(hostPage, `host ${panel} dialog`, [bg('.zr-sheet', 'surface'), ink('.zr-sheet'), ...(panel === 'settings' ? [bg('.zr-setting-row>.zr-secondary', 'surfaceElevated'), ink('.zr-setting-row>.zr-secondary')] : [])]);
+      await mountedThemes(hostPage, `host ${panel} dialog`, [bg('.zr-sheet', 'surface'), ink('.zr-sheet')]);
     }
     check(errors.length, 0, `No browser exceptions (${errors.join('; ')})`);
     for (const filename of screenshots) console.log(`Screenshot: ${filename}`);

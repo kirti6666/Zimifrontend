@@ -278,15 +278,19 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     console.log('PASS gifts: spent-balance and retired-catalog recovery uses the original idempotent request');
 
     const stream = { id: id('61'), hostId: creator.id, title: 'Test stream', kind: 'video', viewers: 2, status: 'live' };
-    await page.evaluate(({ person, stream }) => { S.v = 'live'; S.h = person.id; Home.stream = stream; Home.hosting = false; r(); }, { person: creator, stream });
+    await go(page, 'home');
+    await receive(page, 'data.home', {...feed, hosts:[{...creator, stream},other]});
+    await go(page, 'live', creator.id);
+    assert.equal(await page.evaluate(() => S.v), 'home', 'A disabled live room cannot be opened during gifting');
+    assert.equal(await page.evaluate(() => Home.stream), null);
     await showGifts(page);
     await chooseGift(page);
-    const leftBefore = (await sent(page, 'stream.leave')).length;
+    const joinedBefore = (await sent(page, 'stream.join')).length;
     await button(giftDialog(page), 'Add coins').click();
     await settleCatalog(page);
-    assert.equal(await page.evaluate(() => S.v), 'live');
-    assert.equal(await page.evaluate(() => Home.stream?.id), stream.id);
-    assert.equal((await sent(page, 'stream.leave')).length, leftBefore, 'Adding coins does not leave the live room');
+    assert.equal(await page.evaluate(() => S.v), 'home', 'Adding coins keeps the current calls-only Home surface');
+    assert.equal(await page.evaluate(() => Home.stream), null, 'Adding coins cannot restore streaming from discovery metadata');
+    assert.equal((await sent(page, 'stream.join')).length, joinedBefore);
     await button(page, 'Back to gifts').click();
     await button(page, 'Close gifts').click();
     await page.evaluate(person => { Home.stream = null; S.callId = 'test-private-call'; go('call', person.id); }, creator);
@@ -341,6 +345,6 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.equal(await page.evaluate(() => Home.giftTo), null);
     assert.deepEqual(await page.evaluate(() => Object.keys(Chats.gifts)), []);
     assert.deepEqual(errors, [], 'The coin and gift flows produce no browser errors');
-    console.log('PASS coins: live/call continuity and account cleanup');
+    console.log('PASS coins: disabled streaming, private-call continuity and account cleanup');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

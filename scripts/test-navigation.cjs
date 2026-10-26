@@ -122,7 +122,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     const approvalSkeleton = layout.locator('.zh-nav').getByRole('status', { name: 'Checking host approval', exact: true });
     assert.equal(await approvalSkeleton.isVisible(), true);
     const slot = await approvalSkeleton.boundingBox();
-    sameGeometry(slot, approvedChrome.navButtons.find(button => button.label === 'Go live'), 'The approval skeleton reserves the host action slot');
+    sameGeometry(slot, approvedChrome.navButtons.find(button => button.label === 'Go online for calls'), 'The approval skeleton reserves the host action slot');
     await receive(layout, 'host.access', { approved: true, checking: false, role: 'host', hostStatus: 'approved', verified: true });
     assert.equal(await approvalSkeleton.count(), 0);
     sameNavigation(await metrics(layout), approvedChrome, 'Successful revalidation restores the host action without moving tabs');
@@ -211,23 +211,22 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     }
     await seed(access, approved);
     assert.equal(await access.locator('.zh-nav button').count(), 5);
-    assert.equal(await access.locator('.zh-nav').getByRole('button', { name: /^Go live$/i }).count(), 1, 'Approved hosts retain the Go live tab');
+    assert.equal(await access.locator('.zh-nav').getByRole('button', { name: /^Go online for calls$/i }).count(), 1, 'Approved hosts retain private call availability');
     assert.equal(await access.getByRole('button', { name: 'Start a live broadcast', exact: true }).count(), 0, 'Home has no duplicate broadcast shortcut');
     await navigate(access, 'wallet');
     assert.equal(await access.locator('.earnbox').count(), 1, 'Approved hosts retain their earnings card');
     assert.equal(await access.getByRole('button', { name: /Withdraw/i }).count(), 1);
     await navigate(access, 'settings');
     await access.getByRole('button', { name: /^Host approval/ }).click();
-    assert.equal(await access.getByRole('button', { name: 'Go live now', exact: true }).count(), 1, 'Server approval unlocks the verified creator actions');
+    assert.equal(await access.getByRole('button', { name: 'Go online for calls', exact: true }).count(), 1, 'Server approval unlocks the verified creator actions');
     await navigate(access, 'home');
-    await access.locator('.zh-nav').getByRole('button', { name: /^Go live$/i }).click();
-    assert.equal(await current(access), 'broadcast');
-    assert.equal(await access.evaluate(() => window.__mediaPrepared), 0, 'Opening the approved host setup does not activate the camera');
-    await access.locator('#live-title').fill('An approved host broadcast');
-    await access.getByRole('button', { name: 'Go Live', exact: true }).click();
-    assert.equal(await access.evaluate(() => window.__mediaPrepared), 1, 'Explicit approved broadcast start prepares media');
-    assert.equal(await access.evaluate(() => window.__sent.filter(message => message.type === 'stream.start').at(-1)?.data.title), 'An approved host broadcast');
-    await receive(access, 'operation.error', { action: 'stream.start', message: 'Test transport ended' });
+    await access.locator('.zh-nav').getByRole('button', { name: /^Go online for calls$/i }).click();
+    assert.equal(await current(access), 'setup');
+    assert.equal(await access.evaluate(() => window.__mediaPrepared), 0, 'Opening availability does not activate capture');
+    await access.evaluate(async () => { go('broadcast'); go('live'); await homeStartStream(); homeGoLive(); });
+    assert.equal(await current(access), 'setup', 'Even approved hosts cannot open paused streaming routes');
+    assert.equal(await access.evaluate(() => window.__mediaPrepared), 0, 'Blocked streaming does not activate capture');
+    assert.equal(await access.evaluate(() => window.__sent.filter(message => message.type === 'stream.start').length), 0);
     await receive(access, 'host.access', { approved: false, role: 'sender', hostStatus: 'suspended', verified: false });
     assert.ok(!['broadcast', 'setup', 'waiting'].includes(await current(access)), 'Admin revocation exits a host-only setup immediately');
     await navigate(access, 'home');
@@ -240,23 +239,10 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     const checking = () => receive(access, 'host.access', { approved: false, checking: true, role: 'host', hostStatus: 'approved', verified: true });
     const revoke = () => receive(access, 'host.access', { approved: false, checking: false, role: 'sender', hostStatus: 'suspended', verified: false });
     await seed(access, approved);
-    await access.evaluate(() => {
-      Home.stream = { id: 'hosted-stream', title: 'An active host broadcast', kind: 'video', viewers: 1 }; Home.hosting = true; Home.messages = [];
-      S.v = 'live'; r(); window.__sent = []; window.__mediaStopped = 0;
-    });
-    await checking();
-    assert.equal(await current(access), 'live', 'Rechecking approval preserves an existing host broadcast');
-    assert.equal(await access.evaluate(() => Home.hosting && Home.stream?.id), 'hosted-stream');
-    assert.equal(await access.evaluate(() => isApprovedHost()), false, 'A pending approval check cannot authorize new host actions');
-    assert.equal(await access.evaluate(() => window.__mediaStopped), 0);
-    assert.deepEqual(await access.evaluate(() => window.__sent.filter(message => ['stream.end', 'stream.leave', 'call.end'].includes(message.type))), []);
-    await revoke();
-    assert.equal(await current(access), 'home', 'Revocation exits an active host broadcast');
-    assert.ok(await access.evaluate(() => window.__mediaStopped > 0), 'Revocation stops host broadcast media');
-    assert.deepEqual(await access.evaluate(() => window.__sent.filter(message => message.type === 'stream.end').map(message => message.data.streamId)), ['hosted-stream']);
+    await receive(access, 'stream.opened', {stream:{id:'hosted-stream'},hosting:true,messages:[]});
+    assert.equal(await current(access), 'home', 'Late stream acknowledgement cannot restore a disabled room');
     assert.equal(await access.evaluate(() => Home.stream), null);
-    assert.equal(await access.evaluate(() => Home.hosting), false);
-    await receive(access, 'stream.closed', { streamId: 'hosted-stream' });
+    assert.deepEqual(await access.evaluate(() => window.__sent.filter(message => message.type === 'stream.end').map(message => message.data.streamId)), ['hosted-stream']);
 
     await seed(access, approved);
     await access.evaluate(peerId => {
@@ -281,16 +267,10 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     assert.equal(await access.evaluate(() => S.callId), null);
 
     await seed(access, approved);
-    await access.evaluate(peerId => {
-      Home.stream = { id: 'viewer-stream', title: 'Watching another creator', kind: 'video', viewers: 1 }; Home.hosting = false; Home.messages = [];
-      S.h = peerId; S.v = 'live'; r(); window.__sent = []; window.__mediaStopped = 0;
-    }, hosts[0].id);
-    await revoke();
-    assert.equal(await current(access), 'live', 'Removing host access preserves a viewer session');
-    assert.equal(await access.evaluate(() => Home.stream?.id), 'viewer-stream');
-    assert.equal(await access.evaluate(() => window.__mediaStopped), 0, 'A viewer does not lose media when host access is removed');
-    assert.deepEqual(await access.evaluate(() => window.__sent.filter(message => ['stream.end', 'stream.leave', 'call.end'].includes(message.type))), []);
-    await access.evaluate(() => { Home.stream = null; S.v = 'home'; r(); });
+    await receive(access, 'stream.opened', {stream:{id:'viewer-stream'},hosting:false,messages:[]});
+    assert.equal(await current(access), 'home', 'An unsolicited viewer room remains disabled');
+    assert.equal(await access.evaluate(() => Home.stream), null);
+    assert.equal(await access.evaluate(() => window.__sent.filter(message => message.type === 'stream.leave').at(-1)?.data.streamId), 'viewer-stream');
 
     await seed(access, approved);
     await access.evaluate(peerId => {
@@ -304,7 +284,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     assert.deepEqual(await access.evaluate(() => window.__sent.filter(message => ['call.end', 'call.decline'].includes(message.type))), []);
     assert.deepEqual(errors, [], 'Navigation has no browser or bridge handler errors');
     console.log('PASS navigation: server-approved host access only, fail-closed metadata, direct-route guards, no unauthorized camera/actions, admin revocation');
-    console.log('PASS navigation: earnings/application guards, local KYC isolation, approval rechecks preserve sessions until confirmed denial, viewer/member sessions remain intact');
+    console.log('PASS navigation: earnings/application guards, local KYC isolation, approval rechecks preserve sessions until confirmed denial, private calls remain intact and streaming stays disabled');
   } finally {
     await browser.close();
   }

@@ -56,7 +56,7 @@ function zuLoad(){
       category:host?h.cat||'Music':'',languages:['English','Hindi'],interests:host?['Music','Travel','Good conversations']:['Music','Photography'],
       online:!!h.on,availableForCall:host&&!!h.available,ratePerMin:h.rate||0,stream:h.stream||null,
       followers:host?12800:128,followingCount:host?186:42,following:!!S.following[id],joined:'2025-04-12T00:00:00Z',level:host?18:4,crown:false};
-    if(host){Zu.posts=[0,1,2].map((index)=>({id:'preview-post-'+index,kind:'photo',mediaUrl:OB_MEDIA[index],caption:['Good company. Better conversations.','A little glimpse of my everyday.','See you at the next live session.'][index]}));Zu.total=Zu.posts.length;Zu.page=1}
+    if(host){Zu.posts=[0,1,2].map((index)=>({id:'preview-post-'+index,kind:'photo',mediaUrl:OB_MEDIA[index],caption:['Good company. Better conversations.','A little glimpse of my everyday.','Looking forward to our next conversation.'][index]}));Zu.total=Zu.posts.length;Zu.page=1}
     zuRemember(Zu.profile);
   }else Native.send('profile.load',{id,requestId:Zu.requestId});
 }
@@ -94,7 +94,7 @@ function zuFollowSaved(d){
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
 function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&p.availableForCall&&!zuOffline())homeCall(p.id)}
 function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
-function zuWatch(){const p=Zu.profile;if(p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
+function zuWatch(){const p=Zu.profile;if(window.ZIMI_LIVE_STREAMING_ENABLED&&p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
 
 function zuSkeleton(kind='profile'){
   const shape=(width,height)=>skeletonLine(width,height);
@@ -103,7 +103,7 @@ function zuSkeleton(kind='profile'){
 }
 function zuStatus(p){
   if(Zu.loading||Zu.error)return '';
-  if(p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
+  if(window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
   return `<span class="zu-presence ${p.availableForCall?'is-online':''}"><i></i>${p.availableForCall?'Available for a call':p.online?'Online':'Currently offline'}</span>`;
 }
 function zuAvatar(p){
@@ -147,7 +147,7 @@ function zuPosts(p){
 function zuContent(p){
   if(Zu.loading)return `<div class="zu-content">${zuSkeleton('posts')}</div>`;
   if(Zu.error||!p)return '';
-  return `<div class="zu-content">${p.stream?`<section class="zu-live-card"><div class="zu-live-symbol">${hi('broadcast',24)}</div><div><span><i></i> LIVE RIGHT NOW</span><h2>${esc(p.stream.title||'Come join the conversation')}</h2><p>${n(p.stream.viewers||0)} watching · Drop in and say hello</p></div><button onclick="zuWatch()" ${zuOffline()?'disabled':''}>Join live ${hi('arrow',16)}</button></section>`:''}
+  return `<div class="zu-content">${window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream?`<section class="zu-live-card"><div class="zu-live-symbol">${hi('broadcast',24)}</div><div><span><i></i> LIVE RIGHT NOW</span><h2>${esc(p.stream.title||'Come join the conversation')}</h2><p>${n(p.stream.viewers||0)} watching · Drop in and say hello</p></div><button onclick="zuWatch()" ${zuOffline()?'disabled':''}>Join live ${hi('arrow',16)}</button></section>`:''}
     <div class="zu-tabs" role="tablist" aria-label="Profile content" onkeydown="zuTabKeys(event)">${['posts','about'].map(tab=>`<button id="zu-tab-${tab}" role="tab" aria-selected="${Zu.tab===tab}" aria-controls="zu-panel" tabindex="${Zu.tab===tab?0:-1}" onclick="zuTab('${tab}')">${hi(tab==='posts'?'grid':'user',17)}${tab==='posts'?'Posts':'About'}${tab==='posts'&&zuApproved(p)?`<span>${Zu.postsLoading&&!Zu.page?'…':Zu.total}</span>`:''}</button>`).join('')}</div>
     <div id="zu-panel" class="zu-panel" role="tabpanel" aria-labelledby="zu-tab-${Zu.tab}" tabindex="0">${Zu.tab==='about'?zuAbout(p):zuPosts(p)}</div></div>`;
 }

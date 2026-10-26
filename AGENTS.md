@@ -31,18 +31,21 @@ keeps it identical to the original Next.js version.
 
 ## Rules that matter
 
-- Home uses live-host circles, Popular/Instant Call/category chips, a featured
-  photo card and a two-column host grid, with Chat and Call actions. Use the
-  selected theme's colors. Search belongs in the Home header. Filter active
-  hosts on the server before pagination; feature a host once across hero/grid.
-  Live circles are navigation shortcuts and can repeat a host from the feed.
+- Live streaming is temporarily disabled. Keep the web release flag
+  `ZIMI_LIVE_STREAMING_ENABLED` and native `LIVE_STREAMING_ENABLED` off; retain
+  private video/voice calling. Hide stream discovery, broadcasts, links and
+  queues, and route creator availability through the 1:1 call setup.
+- Home uses Popular/Instant Call/category chips, a featured photo card and a
+  two-column host grid, with Chat and Call actions. Use the selected theme's
+  colors. Search belongs in the Home header. Filter active hosts on the server
+  before pagination; feature a host once across hero/grid.
 - Show the branded Home header only on Home. Explore, Chats, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
   the same size across those main screens; Notifications and the Themes page
   have their own Back headers and no bottom tabs. Themes opens as a page, not
   a settings modal. Animate only page content on tab changes and
   respect reduced-motion preferences.
-- Go Live and creator capabilities require current admin-approved host access.
+- Creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.
 - Always use layout-shaped skeletons for asynchronous content loading, including

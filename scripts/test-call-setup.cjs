@@ -165,15 +165,10 @@ async function assertLayout(page, label) {
     await receive(page, 'data.home', homeData());
     await page.setViewportSize({ width: 390, height: 844 });
 
-    await page.evaluate(id => {
-      Home.stream = { id: 'setup-test-stream', hostId: id, title: 'Test live' };
-      Home.hosting = false;
-      go('live', id);
-    }, hostId);
-    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('zr-active')), true);
-    await page.evaluate(id => go('precall', id), hostId);
-    await assertLayout(page, 'returned from live');
-    await receive(page, 'stream.closed', { streamId: 'setup-test-stream' });
+    await page.evaluate(id => go('live', id), hostId);
+    assert.equal(await page.evaluate(() => S.v), 'precall', 'Paused streaming cannot replace call setup');
+    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('zr-active')), false);
+    await assertLayout(page, 'after blocked stream route');
 
     await button(page, 'Voice call').click();
     assert.equal(await button(page, 'Start voice call').isVisible(), true);
@@ -246,7 +241,7 @@ async function assertLayout(page, label) {
     assert.equal(await page.evaluate(() => S.v), 'explore');
     assert.equal(await page.evaluate(() => __media.tracks.every(track => track.readyState === 'ended')), true);
     assert.deepEqual(errors, [], 'All setup states run without uncaught browser errors');
-    console.log('PASS: full-height themed call setup, responsive identity/fallback, live-room return, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, creator changes, unavailable refresh and Explore.');
+    console.log('PASS: full-height themed call setup, responsive identity/fallback, blocked live routing, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, creator changes, unavailable refresh and Explore.');
   } finally {
     await browser.close();
   }

@@ -1,6 +1,13 @@
 # Aurora Live App
 
-A React Native (Expo) live-streaming frontend prototype with creator discovery, live calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
+A React Native (Expo) app with creator discovery, private 1:1 video and voice calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
+
+Live streaming is temporarily paused in this release. Its entry points, public
+rooms and call queues are disabled; approved creators go online for private
+calls instead. The release switches are `window.ZIMI_LIVE_STREAMING_ENABLED`
+in `web/aurora-runtime.js` and `LIVE_STREAMING_ENABLED` in `src/features.ts`.
+Both are off. The existing themes remain unchanged. Rebuild the WebView bundle
+and the installed app after changing release switches.
 
 ## App icon and browser icons
 

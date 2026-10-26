@@ -44,3 +44,78 @@
 
 /* Profile light-mode media text must not override themed room controls. */
 :root[data-theme-id] .zr-room{color:var(--room-ink)}
+
+/* Private calls keep the app palette and give the conversation the full stage. */
+.zi-icon:is([data-icon=callgrid],[data-icon=callmore]){--zi-tap:zi-bounce;--zi-time:400ms}
+.zr-call .zr-top{padding:0 10px}
+.zr-call-heading{min-height:42px;padding:6px 0 5px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);color:var(--room-muted)}
+.zr-call-heading strong{font-size:11px;font-weight:var(--theme-heading-weight,700);color:var(--room-ink)}
+.zr-call-heading strong>span{font-size:10px;font-weight:500;color:var(--room-muted)}
+.zr-call-heading p{font-size:10px;line-height:1.3;margin:2px 0 0}
+.zr-call-toolbar{display:flex;align-items:center;gap:8px;padding:9px 0}
+.zr-call-toolbar .zr-round,.zr-call-toolbar .zr-call-back{width:36px;height:36px;min-height:36px;flex:0 0 36px;border:1px solid var(--line);border-radius:50%;background:var(--room-glass);color:var(--room-ink)}
+.zr-call-toolbar .zr-timer{min-height:30px;padding:6px 10px;font-size:12px;gap:6px}
+.zr-timer>i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 9px color-mix(in srgb,var(--accent) 35%,transparent)}
+.zr-call-private{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:10px;color:var(--room-muted)}
+.zr-call-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.zr-call-stat{display:flex;align-items:center;gap:9px;min-width:0;min-height:57px;padding:9px 10px;border-radius:14px;background:var(--room-glass)}
+.zr-stat-icon{color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.zr-call-stat>div{flex:1;min-width:0}
+.zr-stat-label{display:flex;align-items:center;justify-content:space-between;gap:4px;color:var(--room-muted);font-size:9px;font-weight:var(--theme-heading-weight,700);letter-spacing:.3px;white-space:nowrap}
+.zr-stat-label small{font-size:10px;color:var(--room-ink)}
+.zr-call-stat strong{display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:13px;line-height:1.4;font-weight:var(--theme-heading-weight,700)}
+.zr-call-stat strong>small{font-size:10px;font-weight:500;color:var(--room-muted)}
+.zr-stat-track{display:block;height:3px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:4px}
+.zr-stat-track>i{display:block;height:100%;width:22px;border-radius:inherit;background:var(--accent)}
+.zr-call-stat:nth-child(2) .zr-stat-track>i{width:12px;background:var(--accent-ink)}
+.zr-call .zr-pip{top:169px;right:10px;width:82px;height:116px;border:2px solid var(--line);border-radius:15px;box-shadow:0 5px 18px #0002;color:var(--room-muted)}
+.zr-call .zr-pip>span{bottom:4px;left:4px;padding:2px 3px;font-size:9px}
+.zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--canvas));width:100%}
+.zr-call .zr-status{background:none;padding:0;margin:0 0 3px;font-size:11px;line-height:1.4;border-radius:0;max-width:100%;text-align:left}
+.zr-call-cost{font-size:10px;color:var(--room-muted);margin-bottom:5px;line-height:1.5}
+.zr-call .zr-call-feed{max-height:min(18vh,155px);gap:6px;margin:0 0 10px;padding:3px 0;overscroll-behavior:contain}
+.zr-call .zr-call-feed:empty{display:none}
+.zr-call .zr-call-feed .lvmsg{background:none;padding:0;border-radius:0;gap:6px;font-size:12px;line-height:1.45}
+.zr-call .zr-call-feed .lvmsg .who{max-width:35%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none}
+.zr-call .zr-call-feed .lvmsg .txt{min-width:0}
+.zr-call .zr-call-feed .lvmsg.sys{font-size:10px}
+.zr-call .zr-gift-alert{position:absolute;left:10px;right:105px;top:169px;margin:0;padding:8px;gap:7px;min-height:50px}
+.zr-call .zr-gift-alert .zr-gift-emoji{width:30px;height:30px;font-size:21px}
+.zr-call .zr-gift-alert strong{font-size:10px}
+.zr-call .zr-gift-alert>div>span{font-size:9px}
+.zr-call .zr-gift-alert .zr-combo{display:none}
+.zr-gift-rail{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;padding:8px 1px 10px;margin-bottom:7px;min-height:66px;mask-image:linear-gradient(90deg,#000 96%,transparent)}
+.zr-gift-rail::-webkit-scrollbar{display:none}
+.zr-gift-rail>button{flex:0 0 48px;min-width:48px;min-height:49px;padding:0 2px;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:5px;border-radius:9px}
+.zr-gift-rail>button:focus-visible{outline-offset:-2px}
+.zr-gift-rail>button:hover{background:var(--raised)}
+.zr-rail-art{height:30px;display:grid;place-items:center;font-size:27px;line-height:1}
+.zr-rail-art img{height:30px;width:36px;object-fit:contain}
+.zr-rail-price{display:flex;align-items:center;justify-content:center;gap:3px;font-size:9px;font-weight:var(--theme-heading-weight,700);color:var(--room-ink);white-space:nowrap}
+.zr-gifts-loading{gap:14px}
+.zr-gifts-loading>div{display:flex;align-items:center;flex-direction:column;gap:8px;flex:0 0 45px}
+.zr-gifts-empty{display:flex;gap:7px;align-items:center;padding:12px 0;margin:0 0 7px;background:transparent;color:var(--room-muted)!important;font-size:11px}
+.zr-call-dock{display:flex;align-items:center;gap:9px;min-height:48px}
+.zr-call-dock>.zr-round{width:44px;height:44px;flex-basis:44px;background:var(--raised)}
+.zr-call-dock .zr-call-chat-toggle.is-active{background:var(--accent);color:var(--cta-ink)}
+.zr-call-person{display:flex;align-items:center;gap:7px;min-width:0;flex:1}
+.zr-call-person>.av{flex-shrink:0}
+.zr-call-person>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.zr-call-person strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:var(--theme-heading-weight,700)}
+.zr-call-person>div>span{display:flex;align-items:center;gap:3px;font-size:10px;white-space:nowrap;color:var(--room-muted)}
+.zr-call-person>div>span small{font-size:8px}
+.zr-call-topup{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;padding:0;border-radius:50%;background:transparent;color:var(--cta-ink)!important}
+.zr-call-topup>svg{box-sizing:content-box;padding:5px;border-radius:50%;background:var(--accent)}
+.zr-call-dock .zr-hangup{display:grid;place-items:center;background:var(--theme-danger);width:46px;height:46px;flex:0 0 46px;padding:0;border-radius:50%}
+.zr-call-dock .zr-hangup>svg{padding:0;background:none;border-radius:0;width:22px;height:22px;color:var(--canvas)}
+.zr-call-dock>.zr-dock-controls{background:var(--room-ink);color:var(--canvas)}
+.zr-call-composer{margin:0 0 10px}
+.zr-call-composer .zr-compose{background:var(--surface);border:1px solid var(--line);height:43px}
+.zr-call-composer .zr-compose:focus-within{border-color:var(--accent)}
+.zr-call .zr-sheet .zr-call-controls{margin:18px 0 24px;gap:6px;max-width:none}
+.zr-call .zr-sheet .zr-tool>span{width:46px;height:46px;background:var(--raised)}
+.zr-call .zr-sheet .zr-tool.is-active>span{background:var(--accent)}
+.zr-call .zr-sheet .zr-tool small{font-size:10px;white-space:nowrap}
+.zr-call .zr-demo-note{margin-top:5px;font-size:8px}
+@media(max-width:360px){.zr-call .zr-top,.zr-call .zr-bottom{padding-inline:8px}.zr-call-stats{gap:6px}.zr-call-stat{gap:5px;padding-inline:8px}.zr-stat-label{font-size:8px}.zr-call-dock{gap:6px}.zr-call-dock>.zr-round{width:39px;height:39px;flex-basis:39px}.zr-call-dock .zr-hangup{width:41px;height:41px;flex-basis:41px}.zr-call-person{gap:5px}.zr-call-person>.av{width:30px!important;height:30px!important}.zr-call-person strong{font-size:11px}.zr-call-person>div>span small{display:none}.zr-call-topup{width:32px;height:32px;flex-basis:32px}.zr-call .zr-gift-alert{right:100px}}
+@media(max-height:660px){.zr-call .zr-call-feed{max-height:70px}.zr-call .zr-pip{width:70px;height:96px}.zr-gift-rail{padding-top:4px;padding-bottom:6px;margin-bottom:4px;min-height:58px}.zr-call .zr-bottom{padding-top:5px}.zr-call .zr-video-wait{inset:36% 28% 41% 15%;font-size:10px;gap:5px;padding:8px}.zr-call .zr-video-wait svg{width:22px;height:22px}.zr-call .zr-voice{inset:27% 0 38%;gap:8px}.zr-call .zr-voice>.av{width:66px!important;height:66px!important}.zr-call .zr-voice h2{font-size:18px;margin:4px 0 0}.zr-call .zr-voice>span:last-child{font-size:10px}}

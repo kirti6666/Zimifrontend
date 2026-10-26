@@ -172,7 +172,12 @@ async function run() {
     assert.equal(await sentCount(page, 'profile.load'), readsBeforePresence, 'A live presence update does not restart profile loading');
     await receive(page, 'data.home', feed);
     assert.equal(await button(page, 'Start video call').isEnabled(), true);
-    console.log('PASS public profile: live availability updates preserve profile counts, relationship and gallery');
+    await receive(page, 'data.home', {...feed,hosts:[{...creator,stream:{id:'paused-live',status:'live',title:'Legacy broadcast',viewers:12}}]});
+    assert.equal(await page.locator('.zu-live-card,.zu-presence.is-live').count(),0,'Profile hides stream promotion from legacy discovery metadata');
+    await page.evaluate(()=>zuWatch());
+    assert.equal(await sentCount(page,'stream.join'),0,'Profile watch handler cannot join a disabled stream');
+    assert.equal(await button(page,'Start video call').isEnabled(),true,'Private calling remains available');
+    console.log('PASS public profile: availability updates preserve profile data and paused streams stay hidden');
 
     await button(page, 'Follow').click();
     const follow = await lastSent(page, 'follow.set');

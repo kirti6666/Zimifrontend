@@ -45,7 +45,7 @@ function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
   const views={profileSettings:['profile','settings'],blocked:[],home:['home','explore','chats'],catalog:['coins'],notifications:['notifications','home','explore','chats'],chats:['chats'],missed:['chats'],wallet:['home','explore','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile','editprofile'],thread:['thread']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
-  if(views[key]?.includes(S.v)||(['catalog','wallet'].includes(key)&&Home.giftTo))r();
+  if(views[key]?.includes(S.v)||(['catalog','wallet'].includes(key)&&(Home.giftTo||['call','voice','hcall'].includes(S.v))))r();
 }
 Native.on('data.loading',d=>{
   if(!ContentLoading[d.resource])return;

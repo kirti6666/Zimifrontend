@@ -193,26 +193,12 @@ async function mediaChecks(page) {
     assert.equal(await page.evaluate(() => S.callId), null);
   }
 
-  for (const hosting of [false, true]) {
-    await seed(page, hosting ? host : member);
-    await page.evaluate(({ hosting, peer }) => {
-      Home.stream = { id: 'local-stream', title: 'Local fixture', category: 'Music', kind: 'video', viewers: 1 };
-      Home.hosting = hosting;
-      go('live', peer);
-    }, { hosting, peer: creator.id });
-    const type = hosting ? 'stream.end' : 'stream.leave';
-    const closesBefore = (await sent(page, type)).length;
-    await back(page);
-    assert.equal(await page.evaluate(() => Room.sheet), 'exit');
-    assert.equal((await sent(page, type)).length, closesBefore, 'Back alone does not end or leave the live room');
-    await back(page);
-    assert.equal(await current(page), 'live');
-    assert.equal(await page.evaluate(() => Room.sheet), '');
-    await back(page);
-    await page.locator('.zr-sheet .zr-danger').click();
-    assert.equal(await current(page), 'home');
-    assert.equal((await sent(page, type)).length, closesBefore + 1);
-    await page.evaluate(() => { Home.pendingClose = null; Home.closeError = ''; });
+  for (const account of [member, host]) {
+    await seed(page, account);
+    await page.evaluate(() => { go('live'); go('broadcast'); });
+    assert.equal(await current(page),'home','Paused streaming routes preserve the current Home screen');
+    assert.equal(await page.evaluate(()=>Room.sheet),'','Blocked routes do not leave a room sheet behind');
+    assert.equal((await sent(page,'stream.join')).length+(await sent(page,'stream.start')).length,0);
   }
 
   for (const view of ['dial', 'dialback']) {
@@ -267,6 +253,6 @@ async function onboardingChecks(page) {
     await mediaChecks(page);
     await onboardingChecks(page);
     assert.deepEqual(errors, [], 'Back handling has no browser runtime errors');
-    console.log('PASS back navigation: native bridge routing, settings and chat overlays, photo cleanup, recording protection, call/live confirmation, preparation and dialing cancellation, onboarding, and root-only exit requests.');
+    console.log('PASS back navigation: native bridge routing, settings and chat overlays, photo cleanup, recording protection, call confirmation and disabled streaming, preparation and dialing cancellation, onboarding, and root-only exit requests.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

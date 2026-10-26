@@ -14,6 +14,7 @@ import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, type Pen
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
+import { LIVE_STREAMING_ENABLED } from "./features";
 import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
@@ -268,6 +269,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     void work.catch(error => { if (current(version)) operationError(error, action); });
   };
   const flushStreamLink = async () => {
+    if (!LIVE_STREAMING_ENABLED) return;
     const link = pendingStreamLink;
     if (!link || closed || !webReady || restoring || !sessionAvailable || !getCachedToken() || !hostAccount || hostAccount.requiresOnboarding || liveOnboarding) return;
     const version = epoch, sessionVersion = getSessionVersion();
@@ -293,6 +295,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const openStreamLink = (url: unknown) => {
+    if (!LIVE_STREAMING_ENABLED) return false;
     const streamId = parseLiveLink(url);
     if (!streamId || closed) return false;
     if (pendingStreamLink?.streamId !== streamId) pendingStreamLink = { streamId, revision: ++linkRevision };
@@ -596,6 +599,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
+      if (!LIVE_STREAMING_ENABLED && event.type.startsWith("stream.") && event.type !== "stream.ended") {
+        // A delayed room transition must not open media or leave a billable
+        // private call behind after broadcasting has been switched off.
+        if (event.type === "stream.privateCall" && typeof event.data?.callId === "string") {
+          quietly(endCancelledCall(event.data.callId, getSessionVersion()), "call.end");
+        }
+        return;
+      }
+      if (!LIVE_STREAMING_ENABLED && event.type === "gift.received" && event.data?.streamId) return;
       if (event.type === "verification.status") {
         hostStatus = typeof event.data?.hostStatus === "string" ? event.data.hostStatus : event.data?.status === "verified" ? "approved" : String(event.data?.status || "none");
         invalidateHostAccess(false);
@@ -710,6 +722,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
 
   async function handle(msg: WebMessage) {
     const version = epoch;
+    // Keep end/leave available to clean up a room from an older app session.
+    // All other streaming actions are denied here even if stale web UI sends one.
+    if (!LIVE_STREAMING_ENABLED && ((msg.type.startsWith("stream.") && msg.type !== "stream.end" && msg.type !== "stream.leave") ||
+      (msg.type === "gift.send" && msg.data.streamId))) {
+      throw new ApiError("Live streaming is unavailable for now. You can still connect in a 1:1 call.", 403, "LIVE_STREAMING_DISABLED");
+    }
     switch (msg.type) {
       case "ready":
         webReady = !msg.data.demo;

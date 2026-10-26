@@ -92,7 +92,7 @@ async function run() {
     assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Gifts received' }).locator('b').innerText(), '9');
     assert.match(await page.locator('.zp-balance strong').innerText(), /3,750/);
     assert.doesNotMatch(await profile().innerText(), /Elena Rostova|VIP Tier|Host Score|858350921|12\.4k|\$38\.50/i, 'Production never substitutes screenshot identity, scores, or an invented exchange rate');
-    assert.equal(await row('Creator Studio').count(), 0);
+    assert.equal(await row('1:1 Call Studio').count(), 0);
     await loading(page, 'profileSettings', true);
     assert.equal(await page.locator('.zp-stats .zh-skeleton-shape').count(), 4, 'Reload replaces cached profile statistics with skeletons');
     await loading(page, 'profileSettings', false, { error: 'Account settings are temporarily unavailable' });
@@ -187,7 +187,7 @@ async function run() {
     await readyProfile();
     console.log('PASS profile: real ID/QR and edit/wallet actions, settings saves wait for acknowledgment, error recovery, stale response isolation, draft preservation and shared appearance');
 
-    await row('Notifications & Live Alerts').click();
+    await row('Notifications & Alerts').click();
     const notifications = dialog('Notification preferences');
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Unavailable push registration cannot be presented as functional');
     await notifications.getByRole('button', { name: 'Open notifications', exact: true }).click();
@@ -195,7 +195,7 @@ async function run() {
     await readyProfile();
     const pushCapabilities = status => ({ ...saved, capabilities: { ...saved.capabilities, pushNotifications: true, nativePushRegistered: status === 'registered', nativePushStatus: status } });
     await settleSettings(page, pushCapabilities('denied'));
-    await row('Notifications & Live Alerts').click();
+    await row('Notifications & Alerts').click();
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Blocked by the phone: the toggle cannot claim to work');
     assert.match(await notifications.innerText(), /turned off for BinzoLive on this phone/);
     await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).click();
@@ -270,7 +270,7 @@ async function run() {
       await receive(page, 'session', { ...approved, user: { ...approved.user, hostStatus } });
       await readyProfile();
       assert.equal(await page.getByRole('switch', { name: '1-on-1 Call Availability', exact: true }).count(), 0);
-      assert.equal(await row('Creator Studio').count(), 0);
+      assert.equal(await row('1:1 Call Studio').count(), 0);
       const before = await sentCount(page, 'presence.set');
       await page.evaluate(() => zpAvailabilitySet(true));
       assert.equal(await sentCount(page, 'presence.set'), before);
@@ -293,9 +293,9 @@ async function run() {
     assert.match(await dialog('Your Earnings').innerText(), /50\.00 reserved/);
     assert.doesNotMatch(await dialog('Your Earnings').innerText(), /\$/);
     await close();
-    await row('Creator Studio & Go Live').click();
-    assert.equal(await page.evaluate(() => S.v), 'broadcast');
-    assert.equal(await sentCount(page, 'stream.start'), 0, 'Opening studio never starts a broadcast');
+    await row('1:1 Call Studio').click();
+    assert.equal(await page.evaluate(() => S.v), 'setup');
+    assert.equal(await sentCount(page, 'stream.start'), 0, 'Opening private call studio never starts a broadcast');
     await readyProfile();
     const hostileName = '<img src=x onerror="window.__profileXss=1">';
     const hostileBio = '<svg onload="window.__profileXss=2">About</svg>';
