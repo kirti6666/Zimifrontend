@@ -9,6 +9,9 @@ const OB_INTERESTS = [
   ["👗", "Style"], ["🍳", "Cooking"], ["📚", "Books"], ["🌿", "Wellness"]
 ];
 let obRenderKey = "", obRequestTimer, obDialogTrigger, obSwipe, obSequence = 0, obRateTimer, obCountryList = [], obCountrySearchTimer = 0;
+let obEmailTimer = 0, obEmailSequence = 0, obEmailWaiting = null, obEmailGateTimer = 0;
+const OB_EMAIL_TAKEN = "This email is already used by another account. Try a different one.";
+const OB_EMAIL_INVALID = "Add a valid email address.";
 const obLimits = {};
 const obIsCreator = () => !!S.auth.creatorIntent || isHost();
 const obMatches = data => data.requestId === undefined || data.requestId === S.auth.requestId;
@@ -293,15 +296,72 @@ function obToggleLanguage(value, button) {
   list.includes(value) ? list.splice(list.indexOf(value), 1) : list.push(value);
   button.classList.toggle("selected", list.includes(value)); button.setAttribute("aria-pressed", String(list.includes(value)));
 }
+const obEmailKey = value => String(value || "").trim().toLowerCase();
+/** The server's answer for the address now in the field: checking, available, taken, invalid, unknown or "". */
+function obEmailState() {
+  const status = S.auth.emailStatus;
+  return status && status.email === obEmailKey(S.auth.email) ? status.state : "";
+}
+function obEmailStatusText(state) {
+  return state === "checking" ? "Checking this email…" : state === "taken" ? OB_EMAIL_TAKEN :
+    state === "invalid" ? "Enter a valid email address, like name@example.com." : state === "available" ? `${I("check", 13)} Email available` : "";
+}
+// Painted in place so typing keeps focus and the caret.
+function obPaintEmail() {
+  const state = obEmailState(), status = document.getElementById("ob-email-status"), input = document.getElementById("pe");
+  if (status) { status.className = `ob-email-status ${state}`; status.innerHTML = obEmailStatusText(state); }
+  if (input) state === "taken" || state === "invalid" ? input.setAttribute("aria-invalid", "true") : input.removeAttribute("aria-invalid");
+}
+function obEmailInput(el) {
+  S.auth.email = el.value;
+  clearTimeout(obEmailTimer);
+  // An error about the previous address no longer applies.
+  if (S.auth.err === OB_EMAIL_TAKEN || S.auth.err === OB_EMAIL_INVALID) obSetError("");
+  obPaintEmail();
+  const key = obEmailKey(el.value), state = obEmailState();
+  if (!DEMO && okEmail(key) && (!state || state === "unknown")) obEmailTimer = setTimeout(() => obCheckEmail(key), 500);
+}
+function obCheckEmail(key) {
+  clearTimeout(obEmailTimer);
+  const status = S.auth.emailStatus;
+  if (DEMO || !okEmail(key) || (status && status.email === key && status.state !== "unknown")) return;
+  const requestId = ++obEmailSequence;
+  S.auth.emailStatus = { email: key, state: "checking", requestId };
+  obPaintEmail();
+  Native.send("auth.emailCheck", { email: key, requestId });
+}
+/** Next waits for the check; if it fails or is slow, the save-time check still protects the account. */
+function obAwaitEmail() {
+  const a = S.auth;
+  obCheckEmail(obEmailKey(a.email));
+  a.busy = "auth.emailCheck"; obEmailWaiting = a; r();
+  clearTimeout(obEmailGateTimer);
+  obEmailGateTimer = setTimeout(() => {
+    if (a.emailStatus && a.emailStatus.state === "checking") a.emailStatus.state = "unknown";
+    obEmailSettled(a);
+  }, 10000);
+}
+function obEmailSettled(a) {
+  if (obEmailWaiting !== a) return;
+  obEmailWaiting = null; clearTimeout(obEmailGateTimer);
+  if (S.auth !== a || a.busy !== "auth.emailCheck") return;
+  a.busy = false; r();
+  if (S.v === "login" && a.step === "profile") obNextProfile();
+}
 function obNextProfile() {
   const a = S.auth;
+  if (a.busy) return;
   a.name = document.getElementById("pn").value.trim(); a.email = document.getElementById("pe").value.trim(); a.adult = document.getElementById("p18").checked;
   if (a.name.length < 2) return obSetError("Use at least two characters for your name.", "pn");
-  if (!okEmail(a.email)) return obSetError("Add a valid email address.", "pe");
+  if (!okEmail(a.email)) return obSetError(OB_EMAIL_INVALID, "pe");
+  const email = obEmailState();
+  if (email === "taken") return obSetError(OB_EMAIL_TAKEN, "pe");
+  if (email === "invalid") return obSetError(OB_EMAIL_INVALID, "pe");
   if (!a.gender) return obSetError("Choose Woman, Man or Prefer not to say.", "pg");
   if (obIsCreator() && !a.cat) return obSetError("Pick a category for your creator profile.", "pc");
   if (obIsCreator() && !a.langs.length) return obSetError("Select at least one language for your calls.");
   if (!a.adult) return obSetError("You need to be 18 or older to join BinzoLive.", "p18");
+  if (!DEMO && (!email || email === "checking")) return obAwaitEmail();
   obStep("photos");
 }
 function obNextPhotos() {
@@ -418,12 +478,12 @@ function obLogin() {
   } else if (step === "profile") {
     title = "Let’s make it <em>yours</em>.";
     content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "What should we call you?"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error"></div>
-      <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="S.auth.email=this.value" aria-describedby="ob-error"></div>
+      <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="obEmailInput(this)" onblur="obCheckEmail(obEmailKey(this.value))" aria-describedby="ob-email-status ob-error" ${["taken", "invalid"].includes(obEmailState()) ? 'aria-invalid="true"' : ""}><p class="ob-email-status ${obEmailState()}" id="ob-email-status" aria-live="polite">${obEmailStatusText(obEmailState())}</p></div>
       <div class="ob-field ob-inline"><span class="ob-label" id="pg-label">I am</span><div class="ob-segment" id="pg" role="group" aria-labelledby="pg-label" aria-describedby="ob-error" tabindex="-1">${GENDERS.map(([value, label]) => `<button type="button" class="${a.gender === value ? "selected" : ""}" aria-pressed="${a.gender === value}" onclick="obPickGender('${value}',this)">${label}</button>`).join("")}</div></div>
       ${host ? `<div class="ob-field"><label for="pc">Your thing</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error"><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
       <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obLanguages()}</div>
       <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error"><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
-    actions = obButton("Next, your photos", "obNextProfile()");
+    actions = obButton(a.busy === "auth.emailCheck" ? "Checking your email…" : "Next, your photos", "obNextProfile()", !!a.busy);
   } else if (step === "photos") {
     title = "Put a face to your <em>hello</em>."; description = "Add at least three clear photos of yourself.";
     content = obPhotoContent(); actions = obButton(a.uploading ? "Preparing your photos…" : "Looking good. Continue", "obNextPhotos()", a.uploading || a.photos.length < MIN_PHOTOS);
@@ -540,4 +600,20 @@ Native.on("profile.progress", d => {
   const button = document.querySelector(".ob-actions .ob-primary");
   if (button) button.textContent = d.done < d.total ? `Saving photo ${d.done + 1} of ${d.total}…` : "Saving your profile…";
 });
-Native.on("profile.error", d => { if (!obMatches(d) || !d.onboarding || S.v !== "login") return; clearTimeout(obRequestTimer); S.auth.busy = false; S.auth.err = d.message || "Your profile couldn’t be saved. Please try again."; r(); obHaptic("error"); });
+Native.on("profile.error", d => {
+  if (!obMatches(d) || !d.onboarding || S.v !== "login") return;
+  clearTimeout(obRequestTimer); S.auth.busy = false;
+  // Someone else took the address since it was checked; photos stay in the draft.
+  if (d.code === "EMAIL_IN_USE") {
+    S.auth.emailStatus = { email: obEmailKey(S.auth.email), state: "taken" };
+    obStep("profile", true); return obSetError(OB_EMAIL_TAKEN, "pe");
+  }
+  S.auth.err = d.message || "Your profile couldn’t be saved. Please try again."; r(); obHaptic("error");
+});
+Native.on("auth.emailChecked", d => {
+  const a = S.auth, status = a && a.emailStatus;
+  if (!status || status.requestId !== d.requestId || status.email !== d.email) return;
+  status.state = typeof d.available === "boolean" ? (d.available ? "available" : "taken") : d.status === 400 ? "invalid" : "unknown";
+  obPaintEmail();
+  obEmailSettled(a);
+});

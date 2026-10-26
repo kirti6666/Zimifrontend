@@ -375,6 +375,38 @@ test('profile progress, completion and errors retain request IDs and omit transp
   h.bridge.close();
 });
 
+test('email checks accept only bounded addresses, correlate answers and report failures apart from sign-in errors', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  const parse = data => h.webMessages.parseWebMessage(JSON.stringify({ type: 'auth.emailCheck', data }));
+  assert.ok(parse({ email: 'new@example.test', requestId: 3 }));
+  for (const data of [
+    { email: 'new@example.test' }, { email: 'not-an-email', requestId: 3 }, { email: 'new @example.test', requestId: 3 },
+    { email: `${'a'.repeat(250)}@example.test`, requestId: 3 }, { email: 'new@example.test', requestId: 3, userId: 'someone-else' },
+  ]) assert.equal(parse(data), null, JSON.stringify(data));
+
+  h.overrides.emailAvailable = email => email !== 'taken@example.test';
+  h.bridge.handle({ type: 'auth.emailCheck', data: { email: 'taken@example.test', requestId: 7 } });
+  h.bridge.handle({ type: 'auth.emailCheck', data: { email: 'new@example.test', requestId: 8 } });
+  await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('auth.emailChecked').map(post => post.data))), [
+    { email: 'taken@example.test', requestId: 7, available: false },
+    { email: 'new@example.test', requestId: 8, available: true },
+  ]);
+
+  h.overrides.emailAvailable = () => { throw new h.ApiError('Invalid input', 400, 'VALIDATION_ERROR'); };
+  h.bridge.handle({ type: 'auth.emailCheck', data: { email: 'odd@example.co', requestId: 9 } });
+  await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('auth.emailChecked')[2].data)), { email: 'odd@example.co', requestId: 9, message: 'Invalid input', code: 'VALIDATION_ERROR', status: 400 });
+  assert.equal(h.find('auth.error').length, 0, 'A failed check must not look like a failed sign-in');
+
+  h.overrides.saveProfile = () => { throw new h.ApiError('This email is already used by another account. Try a different one.', 409, 'EMAIL_IN_USE'); };
+  h.bridge.handle({ type: 'profile.save', data: { onboarding: true, requestId: 10, name: 'Alice' } });
+  await settle();
+  assert.equal(h.find('profile.error')[0].data.code, 'EMAIL_IN_USE', 'Onboarding can return to the email field');
+  h.bridge.close();
+});
+
 test('offline restoration is retryable without clearing secure credentials', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());

@@ -61,6 +61,7 @@ export type WebMessage =
   | { type: "auth.sendOtp"; data: { phone: string; dialCode?: string; role: Role; requestId?: number } }
   | { type: "auth.verifyOtp"; data: { phone: string; dialCode?: string; code: string; role: Role; signup: boolean; requestId?: number } }
   | { type: "auth.google"; data: { role: Role; signup: boolean } }
+  | { type: "auth.emailCheck"; data: { email: string; requestId: number } }
   | { type: "auth.logout"; data: Record<string, never> }
   | { type: "profile.save"; data: Record<string, unknown> }
   | { type: "media.post.create"; data: { photo: string; caption: string; requestId?: number } }
@@ -110,7 +111,9 @@ export type AppMessage =
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
   | { type: "profile.progress"; data: { done: number; total: number; requestId?: number } }
-  | { type: "profile.error"; data: { onboarding: boolean; message: string; requestId?: number } }
+  | { type: "profile.error"; data: { onboarding: boolean; message: string; code?: string; requestId?: number } }
+  /* Without `available`, the check failed; `status` 400 means the address itself is invalid. */
+  | { type: "auth.emailChecked"; data: { email: string; requestId: number; available?: boolean; message?: string; code?: string; status?: number } }
   | { type: "post.saved"; data: { post: UserPost; requestId?: number } }
   | { type: "post.error"; data: { message: string; requestId?: number } }
   | { type: "data.posts"; data: { posts: UserPost[] } }
@@ -909,6 +912,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.google": return emit({ type: "auth.error", data: { message: "Use your mobile number to sign in.", code: "UNSUPPORTED_PROVIDER" } });
+      case "auth.emailCheck": {
+        const { email, requestId } = msg.data, sessionVersion = getSessionVersion();
+        try {
+          const available = await api.emailAvailable(email);
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "auth.emailChecked", data: { email, requestId, available } });
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "auth.emailChecked", data: { email, requestId, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+          }
+        }
+        return;
+      }
       case "auth.logout": {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
@@ -960,7 +975,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) {
-            emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id } });
+            emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
             // The retired read cannot settle its skeleton; recover current data.
             quietly(loadProfileSettings(), "profile.settings.load");
           }

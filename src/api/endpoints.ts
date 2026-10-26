@@ -43,6 +43,11 @@ export const api = {
     if (!isSessionTokens(tokens)) throw new ApiError("Sign-in could not be completed. Request a new code and try again.", 502);
     return { ...accountFrom(data), tokens, isNew: response.isNewUser === true };
   },
+  async emailAvailable(email: string): Promise<boolean> {
+    const result = await request<{ available?: unknown }>("POST", "/auth/email/availability", { email });
+    if (typeof result?.available !== "boolean") throw new ApiError("Couldn't check this email. Please try again.", 502);
+    return result.available;
+  },
   logout: (token?: string) => {
     identity = undefined;
     return request<void>("POST", "/auth/logout", undefined, token ? { auth: false, bearerToken: token, refresh: false } : undefined);
