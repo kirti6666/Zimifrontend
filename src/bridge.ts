@@ -68,6 +68,8 @@ export type WebMessage =
   | { type: "media.post.create"; data: { photo: string; caption: string; requestId?: number } }
   | { type: "verification.submit"; data: Record<string, unknown> }
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
+  | { type: "presence.duringCalls"; data: { on: boolean } }
+  | { type: "host.callStatus.load"; data: Record<string, never> }
   | { type: "profile.settings.load"; data: Record<string, never> }
   | { type: "profile.load"; data: { id: string; requestId?: number } }
   | { type: "profile.posts.load"; data: { id: string; page?: number; requestId?: number } }
@@ -151,6 +153,8 @@ export type AppMessage =
   | { type: "follow.saved"; data: { id: string; on: boolean; requestId?: number } }
   | { type: "follow.error"; data: { id: string; on: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
+  | { type: "presence.duringCalls.saved"; data: { on: boolean } }
+  | { type: "host.callStatus"; data: Awaited<ReturnType<typeof api.hostCallStatus>> }
   | { type: "host.access"; data: { approved: boolean; role: Role; serverRole?: ServerRole; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "data.ads"; data: AdFeed }
@@ -192,10 +196,10 @@ export type AppMessage =
   | { type: "chat.updated"; data: { with: string; message: Message } }
   | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
-  | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number } }
+  | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
   | { type: "call.failed"; data: { message: string } }
-  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
-  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" } }
+  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
+  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
@@ -241,7 +245,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let hostChecking = false;
   let activeHostCall = false;
   let publishingAt: number | undefined;
-  let homeQuery: HomeQuery = { mode: "online" };
+  // Home lists every host, online or offline, each with their status.
+  let homeQuery: HomeQuery = { mode: "popular" };
   let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
@@ -339,7 +344,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "online" }; }
+    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
@@ -690,7 +695,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -946,7 +951,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -1024,6 +1029,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const approval = msg.data.online ? await requireApprovedHost() : hostRevision;
         const data = await api.setPresence(msg.data.online, msg.data.visible);
         if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
+        return;
+      }
+      case "presence.duringCalls": {
+        const data = await api.setVisibleDuringCalls(msg.data.on);
+        if (current(version)) emit({ type: "presence.duringCalls.saved", data });
+        return;
+      }
+      case "host.callStatus.load": {
+        const data = await api.hostCallStatus();
+        if (current(version)) emit({ type: "host.callStatus", data });
         return;
       }
       case "profile.settings.save": case "settings.set": {
@@ -1372,7 +1387,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; },
+    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;

@@ -4,7 +4,7 @@
   'use strict';
   let local = null, remote = null, active = null, capture = null, pendingCall = null;
   let generation = 0, configRequest = null, cameraSwitch = null, switchingStream = null;
-  let facingMode = 'user', playbackMuted = false;
+  let facingMode = 'user', playbackMuted = false, handoffCall = null;
   const peers = new Map(), earlySignals = [];
   const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
 
@@ -42,6 +42,7 @@
   function stop() {
     generation++;
     active = null;
+    handoffCall = null;
     pendingCall = null;
     capture = null;
     cameraSwitch = null;
@@ -278,8 +279,12 @@
       ? { streamId: session.id, to, ...signal }
       : { callId: session.id, ...signal });
   }
+  /* Switching calls: the call being left closes its connection, but the camera and microphone stay for the next one. */
+  function handoff(callId) { handoffCall = callId || null; }
+  function releaseCall() { active = null; earlySignals.length = 0; clearPeers(); }
   function fail(session, error) {
     if (active !== session) return;
+    if (session.kind === 'call' && handoffCall === session.id) return releaseCall();
     const message = explain(error);
     Native.send(session.kind === 'call' ? 'call.end' : session.hosting ? 'stream.end' : 'stream.leave', session.kind === 'call' ? { callId: session.id, reason: 'media_failed' } : { streamId: session.id });
     stop();
@@ -432,6 +437,7 @@
   async function connectCall(data) {
     if (typeof DEMO !== 'undefined' && DEMO) return;
     if (active && active.kind === 'call' && active.id === data.callId) return;
+    handoffCall = null;
     clearPeers();
     const session = { kind: 'call', id: data.callId, peerId: data.peerId, initiator: !!data.initiator, voice: !!data.voice, ready: false, signals: [] };
     pendingCall = null;
@@ -452,7 +458,14 @@
   Native.on('verify.connected', connectCall);
   Native.on('verify.incoming', data => { if (!active) pendingCall = data.callId; });
   Native.on('verify.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
-  Native.on('call.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
+  Native.on('call.ended', data => {
+    if (handoffCall && handoffCall === data.callId) {
+      handoffCall = null;
+      if (active && active.kind === 'call' && active.id === data.callId) releaseCall();
+      return;
+    }
+    if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop();
+  });
   Native.on('call.failed', () => { if (!active || active.kind === 'call') stop(); });
   ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));
   ['session.none', 'session.expired'].forEach(type => Native.on(type, stop));
@@ -486,5 +499,5 @@
   window.addEventListener('pagehide', stop);
   const screen = document.getElementById('screen');
   if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
-  window.ZimiMedia = { prepare, attach, openStream, stop, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
+  window.ZimiMedia = { prepare, attach, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
 })();

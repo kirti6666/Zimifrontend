@@ -1,14 +1,17 @@
 /* Photo-led Home discovery; colors follow the selected theme. */
 function homeDashboardIsLive(h){return window.ZIMI_LIVE_STREAMING_ENABLED&&!!h.stream&&(!h.stream.status||h.stream.status==='live')}
+function homeDashboardCanCall(h){return !!h.available&&(h.on||homeDashboardIsLive(h))}
 function homeDashboardHosts(){
   const hosts=new Map(Home.hosts.map(h=>[h.id,h]));
   Home.stage.filter(homeDashboardIsLive).forEach(h=>{if(!hosts.has(h.id))hosts.set(h.id,h)});
   const filter=Home.dashboardFilter;
-  const active=[...hosts.values()].filter(h=>(homeDashboardIsLive(h)||h.on)&&(filter!=='instant'||h.available)&&(!Home.categories.includes(filter)||h.cat===filter));
-  return {all:active,live:active.filter(homeDashboardIsLive),online:active.filter(h=>!homeDashboardIsLive(h))};
+  // Every host is listed, online or offline; the server sorts who can take a call first.
+  const shown=[...hosts.values()].filter(h=>(filter!=='instant'||homeDashboardCanCall(h))&&(!Home.categories.includes(filter)||h.cat===filter));
+  return {all:shown,live:shown.filter(homeDashboardIsLive),online:shown.filter(h=>!homeDashboardIsLive(h))};
 }
 function homeDashboardChat(id){
-  const h=g(id);if(!h||(!h.on&&!homeDashboardIsLive(h)))return;
+  // Messages wait for offline hosts, so chat never depends on being online.
+  if(!g(id))return;
   zcOpen(id);
 }
 function homeDashboardFilters(){
@@ -25,18 +28,19 @@ function homeDashboardStories(hosts,pending,error,more){
   return `<section class="zh-live-section" aria-label="Live hosts"><div class="zh-section-title"><h2><i class="zh-heading-dot"></i>Live now</h2><div class="zh-live-tools">${!pending?`<span>${n(rows.length)} live</span>`:''}<button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button></div></div>${pending?loading:`<div class="zh-live-rail">${create}${rail}</div>`}</section>`;
 }
 function homeDashboardCard(h,featured=false){
-  const id=domId(h.id),live=homeDashboardIsLive(h),available=!!h.available&&!isHost(),chatReason=zcChatBlockReason(h.id);
-  const unavailable=isHost()?'Video calls are available from a member account':!h.available?'This host is not taking calls right now':'';
+  const id=domId(h.id),live=homeDashboardIsLive(h),available=homeDashboardCanCall(h)&&!isHost(),chatReason=zcChatBlockReason(h.id);
+  const status=live?'is-live':h.on?'is-online':'is-offline';
+  const unavailable=isHost()?'Video calls are available from a member account':!h.on&&!live?`${h.n} is offline right now`:!h.available?'This host is not taking calls right now':'';
   const mediaAction=live?`<button type="button" class="zh-person-watch" aria-label="Watch ${esc(h.n)} live" onclick="homeOpen('${id}')"><span class="zh-watch-control">${hi('play',18)}${featured?'<span>Watch live</span>':''}</span></button>`:`<button type="button" class="zh-person-photo-link" aria-label="Open ${esc(h.n)} profile" onclick="go('host','${id}')"></button>`;
-  return `<article class="zh-tile zh-person-card ${featured?'zh-featured-host':'zh-grid-host'} ${live?'is-live':'is-online'}" data-host-id="${esc(h.id)}">
-    <div class="zh-person-media">${homeCover(h,featured)}<div class="zh-photo-shade"></div>${mediaAction}<span class="zh-person-status ${live?'is-live':'is-online'}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)}${featured?' watching':''}`:'Online'}</span></div>
+  return `<article class="zh-tile zh-person-card ${featured?'zh-featured-host':'zh-grid-host'} ${status}" data-host-id="${esc(h.id)}">
+    <div class="zh-person-media">${homeCover(h,featured)}<div class="zh-photo-shade"></div>${mediaAction}<span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)}${featured?' watching':''}`:h.on?'Online':'Offline'}</span></div>
     <div class="zh-person-content"><button type="button" class="zh-person-profile" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Host')}</p></button>
     <footer class="zh-person-footer"><button type="button" class="zh-person-action zh-person-chat" aria-label="Chat with ${esc(h.n)}" title="${esc(chatReason||'Open conversation')}" onclick="homeDashboardChat('${id}')" ${chatReason?'disabled':''}>${hi('chat',16)}<span>Chat</span></button><button type="button" class="zh-person-action zh-person-call" aria-label="Video call ${esc(h.n)}" title="${esc(unavailable||'Review your video call')}" onclick="homeDashboardCall('${id}')" ${available?'':'disabled'}>${hi('vid',16)} ${featured?'Instant call':'Call'}</button></footer></div>
   </article>`;
 }
 function homeDashboardCall(id){
   const h=g(id);
-  if(!h||(!h.on&&!homeDashboardIsLive(h))||!h.available||isHost()||Home.dashboardCall||Home.streamBusy||Home.preparingCall)return;
+  if(!h||!homeDashboardCanCall(h)||isHost()||Home.dashboardCall||Home.streamBusy||Home.preparingCall)return;
   if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');
   // Review cost and balance before joining a room, requesting a call or capture.
   Home.dashboardSetup={hostId:id,streamId:window.ZIMI_LIVE_STREAMING_ENABLED?h.stream?.id||null:null};
@@ -78,7 +82,7 @@ function homeDashboardSkeleton(label='Loading creators',count=4){
 function homeDashboardHeroSkeleton(){return `<div class="zh-skeleton" role="status" aria-label="Loading featured creator" aria-busy="true"><div class="zh-person-card zh-featured-host zh-hero-placeholder zh-skeleton-shape" aria-hidden="true"><div class="zh-person-content">${skeletonLine('55%',25)}${skeletonLine('80%',12)}<div class="zh-person-footer">${skeletonLine('35%',46)}${skeletonLine('60%',46)}</div></div></div></div>`}
 function homeDashboardEmpty(){
   const filtered=Home.dashboardFilter!=='popular';
-  const title=Home.dashboardFilter==='instant'?'No one available to call':filtered?'No hosts in this category':'No hosts online right now';
+  const title=Home.dashboardFilter==='instant'?'No one available to call':filtered?'No hosts in this category':'No hosts to show right now';
   const description=filtered?'Try all hosts, or explore creators to find your kind of conversation.':'Explore creators or catch up in chats while someone becomes available.';
   const primary=filtered?`<button type="button" class="zh-empty-primary" onclick="homeDashboardFilter('popular')">${hi('people',18)} Show all hosts</button>`:`<button type="button" class="zh-empty-primary" onclick="go('explore')">${hi('explore',18)} Explore creators</button>`;
   return `<div class="zh-host-empty">
@@ -92,7 +96,9 @@ function homeDashboard(){
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all;
-  const featured=all.find(h=>h.id===Home.featured?.id)||hosts.live[0]||all[0],remaining=featured?all.filter(h=>h.id!==featured.id):[];
+  // The large card goes to someone reachable now; an offline featured host stays in the grid.
+  const reachable=h=>h.on||homeDashboardIsLive(h);
+  const featured=all.find(h=>h.id===Home.featured?.id&&reachable(h))||hosts.live[0]||all.find(reachable)||all[0],remaining=featured?all.filter(h=>h.id!==featured.id):[];
   const hero=pending?homeDashboardHeroSkeleton():!error&&featured?homeDashboardCard(featured,true):'';
   const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div class="zh-grid">${remaining.map(h=>homeDashboardCard(h)).join('')}</div>`:!featured?homeDashboardEmpty():'';
   return `<div class="zh-home zh-dashboard"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${homeDashboardFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}${!pending&&!error?window.ZimiAds?.card('home')||'':''}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>Connect 1:1</h2><div class="zh-live-tools"><button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts</p>':''}</div>${homeGiftSheet()}`;

@@ -2269,7 +2269,7 @@ button.gpill[onclick]{cursor:pointer}
 .zh-featured-top{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;gap:6px;z-index:2;pointer-events:none}
 .zh-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;line-height:13px;letter-spacing:.1px;font-weight:750;border-radius:20px;padding:3px 9px;color:#fff;white-space:nowrap}
 .zh-live{background:#ed0784;box-shadow:0 2px 12px #e40e7540}.zh-live>i{width:7px;height:7px;border-radius:50%;background:#fff}
-.zh-ready{background:linear-gradient(120deg,#9c55f9,#c14cef)}.zh-offline{background:#3a2636}
+.zh-ready{background:linear-gradient(120deg,#9c55f9,#c14cef)}.zh-offline{background:#3a2636}.zh-online>i{width:6px;height:6px;border-radius:50%;background:var(--online)}
 .zh-viewers{display:inline-flex;align-items:center;gap:3px;background:#210817ba;border-radius:20px;font-size:9px;font-weight:650;white-space:nowrap;padding:3px 7px;color:#ffe7f3}
 .zh-featured-open{margin-left:auto;background:#33232fb3;border-radius:20px;display:flex;gap:4px;align-items:center;font-size:9px;padding:4px 7px;pointer-events:auto}
 .zh-featured-hit{position:absolute;inset:0;width:100%;height:100%}
@@ -3254,6 +3254,81 @@ button.gpill[onclick]{cursor:pointer}
 
 .zpc-modes.zpc-video-only{grid-template-columns:minmax(0,1fr)}
 .zpc-cost-note{margin:10px 0 0;text-align:center;font-size:calc(10px * var(--theme-font-scale,1));color:var(--muted);line-height:1.6}
+/* Creator call flow: setup before going online, a second caller during a call, and the session summary.
+   Colours come from the selected theme, like the call room in live-room.css. */
+.hc-setup .hc-preview{height:260px;margin:22px 0 14px;border:1px solid var(--line)}
+.hc-preview.is-off>video{display:none}
+.hc-preview>span{z-index:0;color:var(--muted)}
+.hc-preview>span>b{color:var(--ink)}
+.hc-check{display:flex;align-items:center;gap:6px;min-height:36px;padding:0 16px;border-radius:999px;background:var(--accent);color:var(--cta-ink);font-size:12px;font-weight:700}
+.hc-guide{position:absolute;z-index:2;left:50%;top:44%;width:44%;aspect-ratio:3/4;transform:translate(-50%,-50%);border:1.5px dashed color-mix(in srgb,var(--ink) 45%,transparent);border-radius:50% 50% 44% 44%;pointer-events:none}
+.hc-preview.is-off .hc-guide{display:none}
+.hc-preview-tools{position:absolute;z-index:3;right:10px;bottom:10px;display:flex;gap:8px}
+.hc-preview-tools>button{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--canvas) 72%,transparent);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(6px)}
+.hc-preview-tools>button[aria-pressed="true"]{background:var(--theme-danger);color:var(--canvas)}
+.hc-card{display:flex;flex-direction:column;gap:9px;padding:14px;margin:0 0 12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.hc-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hc-card-head>span{display:flex;align-items:center;gap:6px;font-size:15px}
+.hc-card-head small,.hc-next{font-size:11px;color:var(--muted)}
+.hc-tiers{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.hc-tiers>span{flex:none;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:650;border:1px solid var(--line);color:var(--muted)}
+.hc-tiers>.is-done{color:var(--ink)}
+.hc-tiers>.is-on{background:var(--accent);border-color:var(--accent);color:var(--cta-ink)}
+.hc-fee-line{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--muted);padding-top:9px;border-top:1px solid var(--line)}
+.hc-fee-line>svg{flex:none;margin-top:2px;color:var(--accent-ink)}
+.hc-fee-line b{color:var(--ink)}
+.hc-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;padding:13px 14px;margin:0 0 16px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.hc-toggle>span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hc-toggle b{font-size:13px}
+.hc-toggle small{font-size:11px;line-height:1.45;color:var(--muted)}
+.hc-switch{flex:none;width:40px;height:24px;border-radius:999px;background:var(--line);position:relative;transition:background .2s}
+.hc-switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--canvas);transition:transform .2s}
+.hc-switch.is-on{background:var(--accent)}
+.hc-switch.is-on::after{transform:translateX(16px)}
+.hc-note{margin-top:14px}
+.zh-broadcast>.hc-note{font-size:11px}
+
+/* In the call */
+.hc-vis{min-height:32px;padding:5px 9px;font-size:10px;border:1px solid var(--line);color:var(--room-muted)}
+.hc-vis.is-on{color:var(--room-ink)}
+.hc-fee{display:flex;align-items:center;gap:6px;width:fit-content;max-width:100%;margin-top:8px;padding:6px 10px;border-radius:999px;background:var(--room-glass);border:1px solid var(--line);font-size:11px;color:var(--room-muted)}
+.hc-fee svg{flex:none}
+.hc-fee b{color:var(--room-ink);font-variant-numeric:tabular-nums}
+.hc-fee.ok{color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.hc-incoming{position:absolute;z-index:80;left:10px;right:10px;top:max(12px,env(safe-area-inset-top));display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:18px;background:var(--surface);border:1px solid var(--line);color:var(--ink);box-shadow:0 12px 34px #0005;animation:hc-drop .35s ease-out}
+.hc-incoming>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hc-incoming strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hc-incoming span{font-size:11px;color:var(--muted)}
+.hc-decline,.hc-accept{flex:none;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:5px}
+.hc-decline{width:40px;background:var(--theme-danger);color:var(--canvas)}
+.hc-accept{padding:0 14px;background:var(--accent);color:var(--cta-ink);font-size:12px;font-weight:750}
+.hc-accept>span{color:inherit;font-size:12px}
+.hc-confirm .zr-sheet-note b{color:var(--room-ink);font-variant-numeric:tabular-nums}
+.hc-warn{margin:0 0 6px;padding:10px 12px;border-radius:12px;font-size:11.5px;line-height:1.55;background:color-mix(in srgb,var(--theme-danger) 12%,transparent);color:var(--ink)}
+.hc-connecting{position:absolute;inset:0;z-index:95;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center;background:color-mix(in srgb,var(--canvas) 92%,transparent);backdrop-filter:blur(10px);color:var(--ink)}
+.hc-orb{position:relative;margin-bottom:10px}
+.hc-orb>i{position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--accent);animation:hc-ring 1.4s ease-out infinite}
+.hc-connecting small{font-size:10px;letter-spacing:1.4px;font-weight:750;color:var(--accent-ink)}
+.hc-connecting h2{font-size:20px;margin:0}
+.hc-connecting p{max-width:300px;font-size:12px;line-height:1.6;color:var(--muted);margin:0}
+.hc-bar{width:140px;height:3px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:10px}
+.hc-bar>i{display:block;width:40%;height:100%;background:var(--accent);animation:hc-slide 1.1s ease-in-out infinite}
+
+/* After the session */
+.hc-fees{margin:16px 0 18px;padding:12px 14px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.hc-fees-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:6px}
+.hc-fees-head b{display:flex;align-items:center;gap:4px}
+.hc-fee-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.hc-fee-row>span{color:var(--ink);font-weight:600}
+.hc-fee-row>em{margin-left:auto;font-style:normal;font-size:11px;text-align:right}
+.hc-fee-row.is-ok>svg,.hc-fee-row.is-ok>em{color:var(--accent-ink)}
+.hc-fees .hc-warn{margin:8px 0 0}
+
+@keyframes hc-drop{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes hc-ring{from{transform:scale(.9);opacity:.9}to{transform:scale(1.25);opacity:0}}
+@keyframes hc-slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@media(prefers-reduced-motion:reduce){.hc-incoming,.hc-orb>i,.hc-bar>i{animation:none}}
+@media(max-width:360px){.hc-setup .hc-preview{height:220px}.hc-incoming{left:6px;right:6px;gap:7px}.hc-accept{padding:0 10px}}
 /* Staff verification call overlay; sits above every screen and follows the active theme. */
 .zv-call{position:fixed;inset:0;z-index:90;display:grid;color:#fff;background:#120910}
 .zv-ring{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px 24px calc(28px + env(safe-area-inset-bottom));text-align:center;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--accent,#c9086a) 45%,#120910),#120910 70%)}
@@ -3405,6 +3480,7 @@ button.gpill[onclick]{cursor:pointer}
 .zh-home.zh-dashboard .zh-person-status{position:absolute;z-index:2;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 20px);padding:5px 8px;border-radius:20px;background:rgba(0,0,0,.56);color:#fff;font-size:9px;line-height:1.4;font-weight:650;letter-spacing:.15px;pointer-events:none}
 .zh-person-status>i{width:6px;height:6px;border-radius:50%;flex:none;background:var(--accent)}
 .zh-person-status.is-online>i{background:var(--online)}
+.zh-person-status.is-offline>i{background:rgba(255,255,255,.5)}
 .zh-person-status>b{font-size:9px;opacity:.7}
 .zh-home.zh-dashboard .zh-person-watch,.zh-home.zh-dashboard .zh-person-photo-link{position:absolute;inset:0;display:block;width:100%;min-height:44px;border:0;padding:0;background:transparent;color:#fff;z-index:1}
 .zh-watch-control{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px;min-width:44px;min-height:44px;padding:11px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(0,0,0,.45);color:#fff}
@@ -6964,7 +7040,9 @@ function go(v,id){
   if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
-  S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
+  S.cstart=0;S.feeOk=0;S.feeHide=0;S.confirm=0;S.feeLog=[];
+  /* The preview has no server: it shows the default terms. */
+  if(DEMO){S.callRate=S.callRate||MY_RATE;S.callFee=MY_FEE;S.feeHold=FEE_HOLD;S.earlyLimit=EARLY_LIMIT;S.penaltyCoins=MY_FEE}
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
  if(v==="thread"){S.msgs=DEMO?zcDemoThread(g(S.h)):[];Native.send("chat.open",{with:S.h})}
@@ -7894,13 +7972,16 @@ function nextCaller(){
  return sender(sid(nm))}
 
 function vRing(){const c=S.caller;
+ /* The preview shows the default terms; the app shows the ones locked onto this call. */
+ const rate=DEMO?MY_RATE:c.rate||0,fee=DEMO?MY_FEE:c.fee||0,hold=DEMO?FEE_HOLD:c.hold||0;
+ const about=[c.lvl?`Lv ${c.lvl}`:'',c.c,DEMO?`${c.v} followers`:''].filter(Boolean).map(esc).join(' &middot; ');
  return `<div class="ringscr host ring">
   <div class="ringbg">${art(c.seed)}</div>
-  <span class="ringeye"><i></i>Incoming video call</span>
+  <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${avc(c,112)}</div>
-  <h2>${esc(c.n)}</h2><p>Lv ${esc(c.lvl)} &middot; ${esc(c.c)} &middot; ${esc(c.v)} followers</p>
-  <span class="ringearn">${gem}You earn ${n(MY_RATE)} coins/min</span>
-  <span class="ringfee">+${MY_FEE} entry fee once the call passes 1 minute</span>
+  <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
+  <span class="ringearn">${rate?`${gem}You earn ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
+  ${fee?`<span class="ringfee">+${n(fee)} entry fee once the call passes ${hcHold(hold)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
    <span class="rbtn"><button class="accept" aria-label="Accept" onclick="acceptRing()">${I("vid",25)}</button><span>Accept</span></span></div>
@@ -7939,7 +8020,7 @@ function incBanner(){const c=S.inc;
   <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
-function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting")}
+function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
 function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
@@ -7953,13 +8034,15 @@ function missInc(){if(S.inc&&S.v==="hcall"){
   S.rmsgs.push(["sys","",`Missed call from ${S.inc.n}`]);addMissed(S.inc);S.inc=null;if(S.confirm==="switch")S.confirm=0;r()}}
 function addMissed(c){S.missed.host=[{id:c.id,when:"Just now",kind:"video"}].concat(S.missed.host.filter(m=>m.id!==c.id))}
 function declineInc(){clearTimeout(S.it);Native.send("call.decline",{callId:S.inc.callId});S.rmsgs.push(["sys","",`Declined ${S.inc.n}`]);addMissed(S.inc);S.inc=null;r()}
-/* Switching keeps one session: earnings and time carry over to the summary. */
-function logFee(){
- const early=!S.feeOk;if(early)S.early++;
- S.feeLog.push({n:S.caller.n,ok:!!S.feeOk,early});return early}
+/* Switching keeps one session: earnings and time carry over to the summary.
+   Only a host who hangs up or switches before the entry fee unlocks makes an early ending. */
+function logFee(byHost){
+ if(!S.callFee)return null;
+ const early=!!byHost&&!S.feeOk;if(early)S.early=(S.early||0)+1;
+ const entry={n:S.caller.n,fee:S.callFee,ok:!!S.feeOk,early};S.feeLog.push(entry);return entry}
 function hostEnd(kind){
- if(!DEMO){if(kind==='switch')return appNotice('Finish this call before accepting another.');return endCall()}
- if(!S.feeOk){S.confirm=kind;S.more=0;S.tray=0;return r()}
+ if(kind==='switch'&&(!S.inc||S.connecting))return;
+ if(hcFeePending()){S.confirm=kind;S.more=0;S.tray=0;if(window.Room)Room.sheet='';return r()}
  kind==="switch"?acceptInc():endCall()}
 function confirmEnd(){
  const k=S.confirm,left=Math.max(0,FEE_HOLD-(S.sec-S.cstart)),nth=S.early+1;
@@ -7971,18 +8054,24 @@ function confirmEnd(){
    <p class="warn">This would be early ending ${nth} today. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</p>
    <button class="keep" onclick="S.confirm=0;r()">Keep talking</button>
    <button class="anyway" onclick="S.confirm=0;${k==="switch"?"acceptInc()":"endCall()"}">${k==="switch"?"Switch anyway":"End call anyway"}</button></div></div>`}
-function acceptInc(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;clearTimeout(S.it);
- if(!S.inc)return r();
- logFee();
+async function acceptInc(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;clearTimeout(S.it);
+ if(!S.inc||S.connecting)return r();
  const from=S.caller,to=S.inc;
- S.inc=null;S.tray=0;S.more=0;S.connecting={from,to};r();
- Native.send("call.end",{callId:from.callId,reason:"switch"});
- Native.send("call.accept",{callId:to.callId});
- /* the app finishes the switch on call.connected */
- if(DEMO)S.ct=setTimeout(finishSwitch,2200)}
-function finishSwitch(){if(S.v!=="hcall"||!S.connecting)return;const {from,to}=S.connecting;
-  S.rmsgs.push(["sys","",`Switched from ${first(from.n)} to ${first(to.n)}${fxOn()?" &middot; your beauty and filter settings are kept":""}`]);
-  S.caller=to;S.connecting=null;S.callersN++;S.swap=0;S.cstart=S.sec;S.feeOk=0;r()}
+ S.inc=null;S.tray=0;S.more=0;S.confirm=0;if(window.Room)Room.sheet='';
+ S.connecting={from,to,log:logFee(true)};r();
+ /* the preview switches by itself; the app finishes on call.connected */
+ if(DEMO){S.ct=setTimeout(finishSwitch,2200);return}
+ /* The server ends the current call as a switch when the new one is accepted. */
+ window.ZimiMedia?.handoff(from.callId);
+ try{await window.ZimiMedia.prepare(!to.voice)}catch(error){hcSwitchFailed(error.message);return}
+ if(S.v!=='hcall'||S.connecting?.to!==to)return;
+ Native.send("call.accept",{callId:to.callId})}
+function finishSwitch(d){if(S.v!=="hcall"||!S.connecting)return;const {from,to}=S.connecting;
+  S.rmsgs.push(["sys","",`Switched from ${first(from.n)} to ${first(to.n)}`]);
+  S.caller=to;S.callId=to.callId||S.callId;S.connecting=null;S.callersN++;S.swap=0;S.cstart=S.sec;S.feeOk=0;S.feeHide=0;
+  if(d)hcCallTerms(d);
+  if(window.Room)Room.chatOpen=false;
+  r()}
 function connectingScreen(){const {from,to}=S.connecting;
  return `<div class="conn" role="status" aria-live="polite">
   <div class="connbg">${art(to.seed)}</div>
@@ -7996,10 +8085,13 @@ function connectingScreen(){const {from,to}=S.connecting;
 
 const IN_GIFTS=[1,2,3,4,5,6,8];
 function hostTick(){
- if(!DEMO||window.ZimiHome){S.sec++;paintHostTick();return}
- S.sec++;S.earned+=MY_RATE/60;
- if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
-  S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
+ S.sec++;
+ /* Estimates of what the session has earned; the wallet shows what the server credited. */
+ if(!S.connecting&&S.callRate)S.earned+=S.callRate/60;
+ if(hcFeePending()&&!S.connecting&&S.sec-S.cstart>=S.feeHold){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=S.callFee;
+  S.rmsgs.push(["sys","",`Entry fee unlocked from ${first(S.caller.n)} · +${n(S.callFee)}`]);paintFeed();
+  if(S.confirm){S.confirm=0;r()}}
+ if(window.ZimiHome){paintHostTick();return}
  if(DEMO&&S.sec%9===0){
   const ask=(S.sec/9)%3===0;
   const [l,e,v]=ask?GIFTS[S.fav]:GIFTS[IN_GIFTS[(S.sec/9+S.ci)%IN_GIFTS.length]];
@@ -8010,14 +8102,15 @@ function hostGotGift(l,e,v){
  S.earned+=v;S.recvN++;S.gifted+=v;if(GIFTS[S.fav]&&GIFTS[S.fav][0]===l)S.favGot++;
  S.rmsgs.push(["gift",first(S.caller.n),`sent ${e} ${l} &middot; ${n(v)}`]);
  paintFeed();playGift(l,e,v,"",`${first(S.caller.n)} sent ${l} &middot; +${n(v)}`)}
-function feeShown(){return !S.feeOk||S.sec<S.feeHide}
+function feeShown(){return !!S.callFee&&(!S.feeOk||S.sec<S.feeHide)}
 function feeChip(){
- const left=Math.max(0,FEE_HOLD-(S.sec-S.cstart));
- return S.feeOk?`${I("check",13)}<span>Entry fee ${gem}${MY_FEE} received</span>`
-  :`${I("clock",13)}<span>Entry fee ${gem}${MY_FEE} unlocks in <b>${clock(left)}</b></span>`}
+ const left=Math.max(0,(S.feeHold||0)-(S.sec-S.cstart));
+ return S.feeOk?`${I("check",13)}<span>Entry fee ${gem}${n(S.callFee)} unlocked</span>`
+  :`${I("clock",13)}<span>Entry fee ${gem}${n(S.callFee)} unlocks in <b>${clock(left)}</b></span>`}
 function paintHostTick(){
  const cost=document.getElementById("zr-call-cost");if(cost&&window.zrCallCost)cost.textContent=zrCallCost(true);
  const c=document.getElementById("ck");if(c)c.textContent=clock(S.sec);
+ const left=document.getElementById("hc-left");if(left)left.textContent=clock(Math.max(0,(S.feeHold||0)-(S.sec-S.cstart)));
  const fc=document.getElementById("fee");if(fc){if(feeShown()){fc.innerHTML=feeChip();fc.classList.toggle("ok",!!S.feeOk)}else fc.remove()}
  const e=document.getElementById("earn");if(e)e.innerHTML=`${gem}+${kfmt(Math.round(S.earned))}`
  paintGoal();}
@@ -8027,25 +8120,30 @@ function paintHostTick(){
 function endCall(remote){
  if(window.ZimiMedia)window.ZimiMedia.stop();
  const callId=S.v==="hcall"?S.caller.callId:S.callId,rate=S.callRate||0,end=S.callEnd?.callId===callId?S.callEnd:null;
+ /* A caller still waiting on the server rings as soon as this call ends. */
+ const waiting=S.v==="hcall"&&!DEMO?S.inc:null;
  /* Until the server reports the charge, estimate it the way it bills: whole seconds at the call's price. */
- const charge={callId,rate,coins:end?.coins??Math.ceil(S.sec*rate/60),outOfCoins:end?.reason==='out_of_coins'};
+ const charge={callId,rate,entryFee:S.callFee||0,coins:end?.coins??Math.ceil(S.sec*rate/60),outOfCoins:end?.reason==='out_of_coins'};
  S.callRate=0;S.callEnd=null;
  if(!remote)Native.send("call.end",{callId});
  if(S.v==="hcall"){
-  logFee();
+  logFee(!remote);
   const mins=Math.max(1,Math.ceil(S.sec/60)),earned=Math.round(S.earned);
   const before=S.tasks.map(t=>t.p>=t.goal);
   const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
   S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
   if(DEMO)A().earn+=earned;
   S.sum={...charge,k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
+   early:S.early||0,earlyLimit:S.earlyLimit,penaltyCoins:S.penaltyCoins,
    done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
  } else {
   const h=g(S.h);
   S.rate=0;
   S.sum={...charge,k:"sender",h:h.id,sec:S.sec,spent:S.spent+(S.gifted||0),giftV:S.gifted||0,gifts:S.giftN||0};
  }
- go("summary")}
+ S.callFee=0;
+ go("summary");
+ if(waiting){S.ringBack="summary";S.caller=waiting;go("ring")}}
 
 /* Where this session's spend sits among the host's recent callers. */
 function supportPct(h,spent){
@@ -8105,7 +8203,7 @@ function feeSummary(F){
   <div class="fshead"><span>Entry fees</span><b>${gem}+${n(F.filter(f=>f.ok).length*MY_FEE)}</b></div>
   ${F.map(f=>`<div class="fsrow ${f.ok?"ok":"no"}">${I(f.ok?"check":"clock",14)}<span>${esc(first(f.n))}</span>
    <em>${f.ok?`+${MY_FEE} received`:"Ended before 1 min, went to BinzoLive"}</em></div>`).join("")}
-  ${lost.length?`<div class="fswarn">Early endings today: <b>${S.early}</b>. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</div>`:""}</div>`}
+  ${lost.length?`<div class="fswarn">Early endings today: <b>${S.early}</b>. Past ${EARLY_LIMIT} a day, each early ending takes ${MY_FEE} coins from your earnings.</div>`:""}</div>`}
 function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
 
 /* ---- Awards (host tasks) ---- */
@@ -8429,29 +8527,45 @@ Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
+ /* A host mid-call only hears about the call they are on or switching to. */
+ if(S.v==="hcall"&&d.callId!==S.callId&&d.callId!==S.connecting?.to.callId)return;
  S.callRate=d.rate||0;
- if(S.v==="dial"){S.callId=d.callId;go(d.voice?'voice':"call",S.h)}
- else if(S.v==="dialback"){S.caller.callId=d.callId;go("hcall")}
- else if(S.v==="ring"&&S.caller.callId===d.callId){S.callId=d.callId;S.acceptingCall=false;go('hcall')}
- else if(S.v==="hcall"&&S.connecting)finishSwitch()});
+ if(S.v==="dial"){S.callId=d.callId;S.callFee=d.entryFee||0;go(d.voice?'voice':"call",S.h)}
+ else if(S.v==="dialback"){S.caller.callId=d.callId;hcCallTerms(d);go("hcall")}
+ else if(S.v==="ring"&&S.caller.callId===d.callId){hcCallTerms(d);S.callId=d.callId;S.acceptingCall=false;go('hcall');ringQueued()}
+ else if(S.v==="hcall"&&S.connecting)finishSwitch(d);
+ /* The answer and the realtime event both report the call; the answer adds today's early endings. */
+ else if(S.v==="hcall")hcCallTerms(d)});
 Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")go("chats")});
 Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
- c.voice=!!d.voice;
+ c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
+ /* Already in a call: the new caller rings as a banner, never a busy signal. */
  if(S.v==="hcall")return ringIncoming(c);
- if(S.v==="ring")return;
+ /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
+ if(S.v==="ring"){if(S.caller?.callId!==c.callId)S.queuedInc=c;return}
+ if(["dial","dialback","call","voice"].includes(S.v))return;
  S.ringBack=S.v;S.caller=c;go("ring")});
+/* The caller who arrived while another call was ringing: a banner on the call, or the next ring. */
+function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
+ if(S.v==="hcall")return ringIncoming(q);
+ S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
  /* The server's charge replaces the summary's estimate once it arrives. */
  if(S.v==='summary'&&S.sum?.callId===id){if(d.coins!=null)S.sum.coins=d.coins;if(d.reason==='out_of_coins')S.sum.outOfCoins=true;return r()}
+ /* Switching: the call being left ends first; the new caller hanging up leaves the host where they were. */
+ if(S.v==="hcall"&&S.connecting){const c=S.connecting;
+  if(c.from.callId===id){c.fromEnded=true;return}
+  if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
- if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
+ if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
+ if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
 Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
@@ -8615,7 +8729,7 @@ window.ZimiLaunch={check:launchCheck};
 /* Home surfaces use the same authenticated bridge as the rest of the app.
    Preview people, activity and balances exist only in the DEMO build. */
 const Home = {
-  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', page: 1, queryKey:'online|',
+  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', page: 1, queryKey:'popular|',
   searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
   hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
@@ -8650,8 +8764,9 @@ function homeRemember(p){const h=homeCreator(p),old=H.find(x=>x.id===h.id);if(ol
 function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl);return src?`<img class="zh-photo zh-photo-pending" src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}" data-face-wrap="zh-fallback" loading="${priority?'eager':'lazy'}" decoding="async">`:`<div class="zh-fallback">${face(h)}</div>`}
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
-function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:'<span class="zh-badge zh-offline">Offline</span>'}
-function homeFeedQuery(){const explore=S.v==='explore',filter=explore?Home.filter:Home.dashboardFilter;const query={mode:filter==='instant'?'instant':explore?'popular':'online'};if(Home.categories.includes(filter))query.category=filter;return query}
+function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:h.on?'<span class="zh-badge zh-offline zh-online"><i></i> Online</span>':'<span class="zh-badge zh-offline">Offline</span>'}
+/* Home and Explore list every host, online or offline; only Instant Call narrows to hosts free to call now. */
+function homeFeedQuery(){const explore=S.v==='explore',filter=explore?Home.filter:Home.dashboardFilter;const query={mode:filter==='instant'?'instant':'popular'};if(Home.categories.includes(filter))query.category=filter;return query}
 function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')}
 function homeLoad(more=false){
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
@@ -8784,10 +8899,10 @@ async function homePrepareCall(view,id){
 }
 async function homeAcceptCall(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(S.acceptingCall)return;const callId=S.caller?.callId;if(!callId)return;S.acceptingCall=true;Home.mediaStatus='Connecting…';r();try{await window.ZimiMedia.prepare(!S.caller.voice);if(S.v!=='ring'||S.caller?.callId!==callId||!isApprovedHost()){S.acceptingCall=false;window.ZimiMedia.stop();return}Native.send('call.accept',{callId})}catch(e){S.acceptingCall=false;appNotice(e.message);r()}}
 function homeCallView(host){if(window.zrCall)return zrCall(host);const p=host?S.caller:g(S.h),voice=host?S.caller?.voice:S.v==='voice';return `<section class="zh-room zh-call-room"><div class="zh-room-video">${voice?`<div class="zh-voice-person">${avc(p,110)}<h2>${esc(p.n)}</h2></div><video data-zimi-remote autoplay playsinline style="display:none"></video>`:`<video data-zimi-remote autoplay playsinline></video>`}<div class="zh-room-shade"></div></div><div class="zh-room-top">${backButton("endCall()",{label:"End call",media:true,slot:"zh-room-icon"})}<span class="zh-viewers"><i class="zh-online-dot"></i><span id="ck">${clock(S.sec)}</span></span><span class="zh-room-top-title">${esc(p.n)} · ${voice?'Voice':'Video'} call</span></div>${!voice?'<div class="zh-call-pip"><video data-zimi-local autoplay muted playsinline></video><span>You</span></div>':''}<p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><div class="zh-call-controls"><button onclick="S.mic=S.mic?0:1;r()" aria-label="${S.mic?'Mute':'Unmute'} microphone" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',22)}<span>${S.mic?'Mute':'Unmute'}</span></button>${!voice?`<button onclick="toggleCam()" aria-label="${camOn()?'Turn camera off':'Turn camera on'}" aria-pressed="${!camOn()}">${hi(camOn()?'vid':'camoff',22)}<span>Camera</span></button>`:''}${!host?`<button onclick="homeGifts('${domId(p.id)}')" aria-label="Send a gift">${hi('gift',22)}<span>Gift</span></button>`:''}<button class="zh-end-call" onclick="endCall()" aria-label="End call">${hi('ph',23)}<span>End</span></button></div><p class="zh-free-call">${DEMO?'Design preview':S.callRate?`${n(S.callRate)} coins a minute · billed by the second`:'Free call · gifts are optional'}</p></div>${homeGiftSheet()}</section>`}
-function homeCallSetup(){return `<section class="zh-broadcast"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1><p>Go online so members can call you. Camera and microphone permission is requested when you accept a call.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy?'disabled':''}>${Home.presenceBusy?'Connecting…':'Go online for calls'}</button></section>`}
+function homeCallSetup(){return hcSetupView()}
 function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.presenceBusy)return;Home.presenceBusy=true;Native.send('presence.set',{online,visible:true});r()}
-function homeWaiting(){return `<section class="zh-broadcast"><span class="zh-eyebrow">OPEN TO CONNECTIONS</span><h1>You’re online.</h1><p>Members can discover you and start a call while you’re available.</p><div class="zh-ready-illustration">${hi('ph',52)}</div><button class="zh-primary zh-full" onclick="go('home')">Explore BinzoLive</button><button class="zh-soft zh-full" onclick="homeSetPresence(false)" ${Home.presenceBusy?'disabled':''}>Go offline</button><p class="zh-coins-note">Keep the app connected to receive incoming calls.</p></section>`}
-function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
+function homeWaiting(){return hcWaitingView()}
+function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;if(host)return hcSummaryView(s);return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${s?.entryFee?`<span>Entry fee <b>${n(s.entryFee)} coins</b></span>`:''}${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
 let homeSearchTimer;
 function homeSearchInput(value){S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
 
@@ -8846,7 +8961,7 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','explore','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',page:1,queryKey:'online|'});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',page:1,queryKey:'popular|'});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','explore'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
@@ -8869,15 +8984,18 @@ if(DEMO){
 
 /* Photo-led Home discovery; colors follow the selected theme. */
 function homeDashboardIsLive(h){return window.ZIMI_LIVE_STREAMING_ENABLED&&!!h.stream&&(!h.stream.status||h.stream.status==='live')}
+function homeDashboardCanCall(h){return !!h.available&&(h.on||homeDashboardIsLive(h))}
 function homeDashboardHosts(){
   const hosts=new Map(Home.hosts.map(h=>[h.id,h]));
   Home.stage.filter(homeDashboardIsLive).forEach(h=>{if(!hosts.has(h.id))hosts.set(h.id,h)});
   const filter=Home.dashboardFilter;
-  const active=[...hosts.values()].filter(h=>(homeDashboardIsLive(h)||h.on)&&(filter!=='instant'||h.available)&&(!Home.categories.includes(filter)||h.cat===filter));
-  return {all:active,live:active.filter(homeDashboardIsLive),online:active.filter(h=>!homeDashboardIsLive(h))};
+  // Every host is listed, online or offline; the server sorts who can take a call first.
+  const shown=[...hosts.values()].filter(h=>(filter!=='instant'||homeDashboardCanCall(h))&&(!Home.categories.includes(filter)||h.cat===filter));
+  return {all:shown,live:shown.filter(homeDashboardIsLive),online:shown.filter(h=>!homeDashboardIsLive(h))};
 }
 function homeDashboardChat(id){
-  const h=g(id);if(!h||(!h.on&&!homeDashboardIsLive(h)))return;
+  // Messages wait for offline hosts, so chat never depends on being online.
+  if(!g(id))return;
   zcOpen(id);
 }
 function homeDashboardFilters(){
@@ -8894,18 +9012,19 @@ function homeDashboardStories(hosts,pending,error,more){
   return `<section class="zh-live-section" aria-label="Live hosts"><div class="zh-section-title"><h2><i class="zh-heading-dot"></i>Live now</h2><div class="zh-live-tools">${!pending?`<span>${n(rows.length)} live</span>`:''}<button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button></div></div>${pending?loading:`<div class="zh-live-rail">${create}${rail}</div>`}</section>`;
 }
 function homeDashboardCard(h,featured=false){
-  const id=domId(h.id),live=homeDashboardIsLive(h),available=!!h.available&&!isHost(),chatReason=zcChatBlockReason(h.id);
-  const unavailable=isHost()?'Video calls are available from a member account':!h.available?'This host is not taking calls right now':'';
+  const id=domId(h.id),live=homeDashboardIsLive(h),available=homeDashboardCanCall(h)&&!isHost(),chatReason=zcChatBlockReason(h.id);
+  const status=live?'is-live':h.on?'is-online':'is-offline';
+  const unavailable=isHost()?'Video calls are available from a member account':!h.on&&!live?`${h.n} is offline right now`:!h.available?'This host is not taking calls right now':'';
   const mediaAction=live?`<button type="button" class="zh-person-watch" aria-label="Watch ${esc(h.n)} live" onclick="homeOpen('${id}')"><span class="zh-watch-control">${hi('play',18)}${featured?'<span>Watch live</span>':''}</span></button>`:`<button type="button" class="zh-person-photo-link" aria-label="Open ${esc(h.n)} profile" onclick="go('host','${id}')"></button>`;
-  return `<article class="zh-tile zh-person-card ${featured?'zh-featured-host':'zh-grid-host'} ${live?'is-live':'is-online'}" data-host-id="${esc(h.id)}">
-    <div class="zh-person-media">${homeCover(h,featured)}<div class="zh-photo-shade"></div>${mediaAction}<span class="zh-person-status ${live?'is-live':'is-online'}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)}${featured?' watching':''}`:'Online'}</span></div>
+  return `<article class="zh-tile zh-person-card ${featured?'zh-featured-host':'zh-grid-host'} ${status}" data-host-id="${esc(h.id)}">
+    <div class="zh-person-media">${homeCover(h,featured)}<div class="zh-photo-shade"></div>${mediaAction}<span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)}${featured?' watching':''}`:h.on?'Online':'Offline'}</span></div>
     <div class="zh-person-content"><button type="button" class="zh-person-profile" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Host')}</p></button>
     <footer class="zh-person-footer"><button type="button" class="zh-person-action zh-person-chat" aria-label="Chat with ${esc(h.n)}" title="${esc(chatReason||'Open conversation')}" onclick="homeDashboardChat('${id}')" ${chatReason?'disabled':''}>${hi('chat',16)}<span>Chat</span></button><button type="button" class="zh-person-action zh-person-call" aria-label="Video call ${esc(h.n)}" title="${esc(unavailable||'Review your video call')}" onclick="homeDashboardCall('${id}')" ${available?'':'disabled'}>${hi('vid',16)} ${featured?'Instant call':'Call'}</button></footer></div>
   </article>`;
 }
 function homeDashboardCall(id){
   const h=g(id);
-  if(!h||(!h.on&&!homeDashboardIsLive(h))||!h.available||isHost()||Home.dashboardCall||Home.streamBusy||Home.preparingCall)return;
+  if(!h||!homeDashboardCanCall(h)||isHost()||Home.dashboardCall||Home.streamBusy||Home.preparingCall)return;
   if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');
   // Review cost and balance before joining a room, requesting a call or capture.
   Home.dashboardSetup={hostId:id,streamId:window.ZIMI_LIVE_STREAMING_ENABLED?h.stream?.id||null:null};
@@ -8947,7 +9066,7 @@ function homeDashboardSkeleton(label='Loading creators',count=4){
 function homeDashboardHeroSkeleton(){return `<div class="zh-skeleton" role="status" aria-label="Loading featured creator" aria-busy="true"><div class="zh-person-card zh-featured-host zh-hero-placeholder zh-skeleton-shape" aria-hidden="true"><div class="zh-person-content">${skeletonLine('55%',25)}${skeletonLine('80%',12)}<div class="zh-person-footer">${skeletonLine('35%',46)}${skeletonLine('60%',46)}</div></div></div></div>`}
 function homeDashboardEmpty(){
   const filtered=Home.dashboardFilter!=='popular';
-  const title=Home.dashboardFilter==='instant'?'No one available to call':filtered?'No hosts in this category':'No hosts online right now';
+  const title=Home.dashboardFilter==='instant'?'No one available to call':filtered?'No hosts in this category':'No hosts to show right now';
   const description=filtered?'Try all hosts, or explore creators to find your kind of conversation.':'Explore creators or catch up in chats while someone becomes available.';
   const primary=filtered?`<button type="button" class="zh-empty-primary" onclick="homeDashboardFilter('popular')">${hi('people',18)} Show all hosts</button>`:`<button type="button" class="zh-empty-primary" onclick="go('explore')">${hi('explore',18)} Explore creators</button>`;
   return `<div class="zh-host-empty">
@@ -8961,7 +9080,9 @@ function homeDashboard(){
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all;
-  const featured=all.find(h=>h.id===Home.featured?.id)||hosts.live[0]||all[0],remaining=featured?all.filter(h=>h.id!==featured.id):[];
+  // The large card goes to someone reachable now; an offline featured host stays in the grid.
+  const reachable=h=>h.on||homeDashboardIsLive(h);
+  const featured=all.find(h=>h.id===Home.featured?.id&&reachable(h))||hosts.live[0]||all.find(reachable)||all[0],remaining=featured?all.filter(h=>h.id!==featured.id):[];
   const hero=pending?homeDashboardHeroSkeleton():!error&&featured?homeDashboardCard(featured,true):'';
   const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div class="zh-grid">${remaining.map(h=>homeDashboardCard(h)).join('')}</div>`:!featured?homeDashboardEmpty():'';
   return `<div class="zh-home zh-dashboard"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${homeDashboardFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}${!pending&&!error?window.ZimiAds?.card('home')||'':''}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>Connect 1:1</h2><div class="zh-live-tools"><button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts</p>':''}</div>${homeGiftSheet()}`;
@@ -9076,7 +9197,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   'use strict';
   let local = null, remote = null, active = null, capture = null, pendingCall = null;
   let generation = 0, configRequest = null, cameraSwitch = null, switchingStream = null;
-  let facingMode = 'user', playbackMuted = false;
+  let facingMode = 'user', playbackMuted = false, handoffCall = null;
   const peers = new Map(), earlySignals = [];
   const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
 
@@ -9114,6 +9235,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   function stop() {
     generation++;
     active = null;
+    handoffCall = null;
     pendingCall = null;
     capture = null;
     cameraSwitch = null;
@@ -9350,8 +9472,12 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
       ? { streamId: session.id, to, ...signal }
       : { callId: session.id, ...signal });
   }
+  /* Switching calls: the call being left closes its connection, but the camera and microphone stay for the next one. */
+  function handoff(callId) { handoffCall = callId || null; }
+  function releaseCall() { active = null; earlySignals.length = 0; clearPeers(); }
   function fail(session, error) {
     if (active !== session) return;
+    if (session.kind === 'call' && handoffCall === session.id) return releaseCall();
     const message = explain(error);
     Native.send(session.kind === 'call' ? 'call.end' : session.hosting ? 'stream.end' : 'stream.leave', session.kind === 'call' ? { callId: session.id, reason: 'media_failed' } : { streamId: session.id });
     stop();
@@ -9504,6 +9630,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   async function connectCall(data) {
     if (typeof DEMO !== 'undefined' && DEMO) return;
     if (active && active.kind === 'call' && active.id === data.callId) return;
+    handoffCall = null;
     clearPeers();
     const session = { kind: 'call', id: data.callId, peerId: data.peerId, initiator: !!data.initiator, voice: !!data.voice, ready: false, signals: [] };
     pendingCall = null;
@@ -9524,7 +9651,14 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   Native.on('verify.connected', connectCall);
   Native.on('verify.incoming', data => { if (!active) pendingCall = data.callId; });
   Native.on('verify.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
-  Native.on('call.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
+  Native.on('call.ended', data => {
+    if (handoffCall && handoffCall === data.callId) {
+      handoffCall = null;
+      if (active && active.kind === 'call' && active.id === data.callId) releaseCall();
+      return;
+    }
+    if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop();
+  });
   Native.on('call.failed', () => { if (!active || active.kind === 'call') stop(); });
   ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));
   ['session.none', 'session.expired'].forEach(type => Native.on(type, stop));
@@ -9558,7 +9692,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   window.addEventListener('pagehide', stop);
   const screen = document.getElementById('screen');
   if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
-  window.ZimiMedia = { prepare, attach, openStream, stop, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
+  window.ZimiMedia = { prepare, attach, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
 })();
 
 /* Live rooms share the authenticated native transport and WebRTC media layer.
@@ -9617,7 +9751,7 @@ function zrLive(){
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
-function zrCallStats(host){return `<div class="zr-call-stats"><div class="zr-call-stat"><span class="zr-stat-icon">${hi('ph',19)}</span><div><span class="zr-stat-label">CALL RATE</span><strong>${S.callRate?`${coinIcon(14)} ${n(S.callRate)} <small>/ min</small>`:'Free call'}</strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div><div class="zr-call-stat"><span class="zr-stat-icon">${hi('gift',20)}</span><div><span class="zr-stat-label">GIFTS ${host?'RECEIVED':'SENT'} <small>${n(host?S.recvN||0:S.giftN||0)}</small></span><strong>${coinIcon(14)} ${n(S.gifted||0)} <small>coins</small></strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div></div>`}
+function zrCallStats(host){return `<div class="zr-call-stats"><div class="zr-call-stat"><span class="zr-stat-icon">${hi('ph',19)}</span><div><span class="zr-stat-label">CALL RATE</span><strong>${S.callRate?`${coinIcon(14)} ${n(S.callRate)} <small>/ min</small>`:'Free call'}</strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div><div class="zr-call-stat"><span class="zr-stat-icon">${hi('gift',20)}</span><div>${host?`<span class="zr-stat-label">THIS SESSION <small>${n(S.recvN||0)} gifts</small></span><strong id="earn">${gem}+${kfmt(Math.round(S.earned||0))}</strong>`:`<span class="zr-stat-label">GIFTS SENT <small>${n(S.giftN||0)}</small></span><strong>${coinIcon(14)} ${n(S.gifted||0)} <small>coins</small></strong>`}<span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div></div>`}
 function zrCallGifts(host){
   if(host)return '';
   const pending=!DEMO&&contentPending('catalog'),error=!DEMO&&ContentLoading.catalog.error;
@@ -9632,10 +9766,10 @@ function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-
 function zrCall(host){
   zrEnsure();const p=zrPerson(),voice=S.v==='voice'||!!p?.voice;
   if(!p)return '<div class="zh-empty">This call has ended.<button onclick="go(\'home\')">Back to Home</button></div>';
-  return `<section class="zh-room zr-room zr-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}<div class="zr-top"><div class="zr-call-heading"><div><strong>BinzoLive <span>· 1:1 ${voice?'voice':'video'} call</span></strong><p>Content is user-generated and unverified.</p></div>${hi('lock',15)}</div><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats(host)}${zrGiftBanner()}</div>${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}<div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(host)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${zrCallGifts(host)}${Room.chatOpen?zrCallComposer():''}<div class="zr-call-dock"><button class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button><div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${host?`${hi('lock',12)} Private conversation`:`${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small>`}</span></div></div>${!host?`<button class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>`:''}<button class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',23)}</button>${zrRound('callgrid','Call controls',"zrOpen('call-controls')",'zr-dock-controls')}</div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}</div>${zrSheet()}${homeGiftSheet()}</section>`;
+  return `<section class="zh-room zr-room zr-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}<div class="zr-top"><div class="zr-call-heading"><div><strong>BinzoLive <span>· 1:1 ${voice?'voice':'video'} call</span></strong><p>Content is user-generated and unverified.</p></div>${hi('lock',15)}</div><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span>${host?hcVisPill():''}<span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats(host)}${host?hcFeeChip():''}${zrGiftBanner()}</div>${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}<div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(host)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${zrCallGifts(host)}${Room.chatOpen?zrCallComposer():''}<div class="zr-call-dock"><button class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button><div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${host?`${hi('lock',12)} Private conversation`:`${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small>`}</span></div></div>${!host?`<button class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>`:''}<button class="zr-hangup" onclick="${host?"hostEnd('end')":"endCall()"}" aria-label="End call">${hi('ph',23)}</button>${zrRound('callgrid','Call controls',"zrOpen('call-controls')",'zr-dock-controls')}</div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}</div>${zrSheet()}${homeGiftSheet()}${host?hcCallExtras():''}</section>`;
 }
 function zrOpen(sheet){Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r()}
-function zrClose(){Room.sheet='';Room.confirm='';r()}
+function zrClose(){Room.sheet='';Room.confirm='';S.confirm=0;r()}
 function zrSheet(){
   const sheet=Room.sheet;if(!sheet)return '';const host=zrIsHost();let title='',content='';
   if(sheet==='call-controls'){
@@ -9668,7 +9802,7 @@ function zrSheet(){
   return `<div class="zr-sheet-backdrop" onclick="if(event.target===this)zrClose()"><section class="zr-sheet" role="dialog" aria-modal="true" aria-label="${title}" data-lenis-prevent><div class="zr-sheet-handle"></div><header><h2>${title}</h2>${zrRound('close','Close panel',"zrClose()")}</header>${content}</section></div>`;
 }
 function zrSaveGoal(){const title=document.getElementById('zr-goal-title').value.trim(),amount=Number(document.getElementById('zr-goal-amount').value);if(!title||!Number.isInteger(amount)||amount<1||amount>100000000)return;Room.goalTitle=title;Room.goal=amount;Room.goalEnabled=true;zrClose()}
-function zrExit(){Room.sheet='exit';r()}
+function zrExit(){if(S.v==='hcall'&&hcFeePending()){Room.sheet='';return hostEnd('end')}Room.sheet='exit';r()}
 function zrExitNow(){Room.sheet='';Room.transition=null;zrIsCall()?endCall():homeLeaveStream()}
 function zrMic(){S.mic=S.mic?0:1;window.ZimiMedia?.attach();r()}
 function zrCamera(){if(S.v==='live')S.cam=S.cam?0:1;else if(isHost())S.cam=S.cam?0:1;else S.scam=S.scam?0:1;window.ZimiMedia?.attach();r()}
@@ -9780,9 +9914,9 @@ function zpcScreen(){
   if(live)CallSetup.mode='video';
   const busy=!!Home.preparingCall,voice=!live&&(busy?!!Home.preparingVoice:CallSetup.mode==='voice');
   const available=!!h.available&&(!live||h.stream?.id===Home.dashboardSetup.streamId);
-  const walletPending=h.rate>0&&!coinWalletReady(),walletError=walletPending&&!!ContentLoading.wallet.error;
-  // A paid call needs one minute of coins to start; the server enforces the same rule.
-  const short=available&&!busy&&!walletPending&&h.rate>0&&S.bal<h.rate;
+  const need=(h.rate||0)+(h.fee||0),walletPending=need>0&&!coinWalletReady(),walletError=walletPending&&!!ContentLoading.wallet.error;
+  // A paid call needs the entry fee and one minute of coins to start; the server enforces the same rule.
+  const short=available&&!busy&&!walletPending&&need>0&&S.bal<need;
   const modes=live?[['video','vid','Video call','Request a private call']]:[['video','vid','Video call','Face to face'],['voice','ph','Voice call','Just your voices']];
   const permission=voice?'microphone':'camera & microphone';
   return `<section class="zpc-setup ${busy?'is-preparing':''} ${!available?'is-unavailable':''}" aria-label="Set up your private call">
@@ -9799,8 +9933,8 @@ function zpcScreen(){
       <div class="zpc-section-title"><h2>${live?'Review your video call':'How would you like to connect?'}</h2><span>JUST THE TWO OF YOU</span></div>
       <div class="zpc-modes ${live?'zpc-video-only':''}" role="group" aria-label="Choose your call type">${modes.map(([mode,icon,title,detail])=>`<button type="button" class="zpc-mode ${CallSetup.mode===mode?'selected':''}" data-call-mode="${mode}" aria-label="${title}" aria-pressed="${CallSetup.mode===mode}" onclick="zpcMode('${mode}')" ${busy?'disabled':''}><span class="zpc-mode-icon">${hi(icon,23)}</span><span class="zpc-mode-copy"><strong>${title}</strong><small>${detail}</small></span><i class="zpc-mode-check" aria-hidden="true">${CallSetup.mode===mode?hi('check',11):''}</i></button>`).join('')}</div>
       <div class="zpc-details" aria-label="Call pricing and wallet"><div><span>${hi('rings',14)} Call rate</span><strong class="${h.rate?'':'zpc-free'}">${h.rate?`${n(h.rate)} <small>coins/min</small>`:'Free'}${h.fee?`<small>+ ${n(h.fee)} coin entry fee</small>`:''}</strong></div><i></i><div><span>Your balance</span><strong>${contentBalance()} <small>coins</small></strong></div></div>
-      ${h.rate>0&&!short?`<p class="zpc-cost-note">At least ${n(h.rate)} coins to start &middot; billed by the second</p>`:''}
-      ${busy?`<div class="zpc-preparing" role="status" aria-live="polite" aria-label="Preparing ${voice?'voice':'video'} call" aria-busy="true"><div class="zpc-preparing-icon" aria-hidden="true">${hi(voice?'mic':'vid',22)}</div><div><strong>Allow ${permission}</strong><p>Check your device's permission prompt to continue.</p><span class="zpc-progress-skeleton" aria-hidden="true"><i class="zh-skeleton-shape"></i></span></div></div>`:S.pcerr?`<div class="zpc-error" role="alert">${hi('info',19)}<div><strong>Let's try that again</strong><p>${esc(S.pcerr)}</p></div></div>`:!available?`<div class="zpc-unavailable-note">${hi('clock',19)}<p>This creator isn't taking calls right now.<br><span>Explore creators who are ready to connect.</span></p></div>`:walletPending?`<div class="zpc-unavailable-note" role="status">${hi(walletError?'info':'coins',19)}<p>${walletError?'Your balance could not be loaded.':'Checking your coin balance...'}<br><span>${walletError?'Retry to confirm you have enough coins.':'Your call will be ready to confirm once it loads.'}</span></p></div>`:short?`<div class="zpc-unavailable-note" role="status">${hi('info',19)}<p>You need at least ${n(h.rate)} coins for a one-minute call.<br><span>Calls are billed by the second while you talk.</span></p></div>`:live?`<div class="zpc-permission-note">${hi('shield',20)}<p>Send a private video call request. <span>Your camera and microphone activate when the host accepts.</span></p></div>`:`<div class="zpc-permission-note">${hi('shield',20)}<p>${voice?'Your microphone activates':'Your camera and microphone activate'} when you start. <span>You can turn ${voice?'it':'them'} off at any time.</span></p></div>`}
+      ${need>0&&!short?`<p class="zpc-cost-note">At least ${n(need)} coins to start${h.rate?' &middot; billed by the second':''}${h.fee?` &middot; the entry fee is charged when ${esc(first(h.n))} picks up and isn’t refunded`:''}</p>`:''}
+      ${busy?`<div class="zpc-preparing" role="status" aria-live="polite" aria-label="Preparing ${voice?'voice':'video'} call" aria-busy="true"><div class="zpc-preparing-icon" aria-hidden="true">${hi(voice?'mic':'vid',22)}</div><div><strong>Allow ${permission}</strong><p>Check your device's permission prompt to continue.</p><span class="zpc-progress-skeleton" aria-hidden="true"><i class="zh-skeleton-shape"></i></span></div></div>`:S.pcerr?`<div class="zpc-error" role="alert">${hi('info',19)}<div><strong>Let's try that again</strong><p>${esc(S.pcerr)}</p></div></div>`:!available?`<div class="zpc-unavailable-note">${hi('clock',19)}<p>This creator isn't taking calls right now.<br><span>Explore creators who are ready to connect.</span></p></div>`:walletPending?`<div class="zpc-unavailable-note" role="status">${hi(walletError?'info':'coins',19)}<p>${walletError?'Your balance could not be loaded.':'Checking your coin balance...'}<br><span>${walletError?'Retry to confirm you have enough coins.':'Your call will be ready to confirm once it loads.'}</span></p></div>`:short?`<div class="zpc-unavailable-note" role="status">${hi('info',19)}<p>You need at least ${n(need)} coins ${h.fee?`for the ${n(h.fee)}-coin entry fee and one minute`:'for a one-minute call'}.<br><span>${h.rate?'Calls are billed by the second while you talk.':'The entry fee is charged when the creator picks up.'}</span></p></div>`:live?`<div class="zpc-permission-note">${hi('shield',20)}<p>Send a private video call request. <span>Your camera and microphone activate when the host accepts.</span></p></div>`:`<div class="zpc-permission-note">${hi('shield',20)}<p>${voice?'Your microphone activates':'Your camera and microphone activate'} when you start. <span>You can turn ${voice?'it':'them'} off at any time.</span></p></div>`}
     </div>
     <footer class="zpc-actions">${short?`<button class="zpc-primary" onclick="go('coins')">${hi('coins',21)} <span>Buy coins to call</span>${hi('arrow',18)}</button>`:`<button class="zpc-primary" onclick="${live?'homeDashboardConfirmCall()':`homeStartCall(${voice})`}" ${busy||!available||walletPending?'disabled':''}>${hi(voice?'ph':'vid',21)} <span>${busy?voice?'Preparing microphone...':'Preparing camera...':!available?'Currently unavailable':live?'Request video call':voice?'Start voice call':'Start video call'}</span>${!busy&&available&&!walletPending?hi('arrow',18):''}</button>`}${walletError&&available?`<button class="zpc-secondary" onclick="contentRetry('wallet')">${hi('refresh',16)} Retry balance</button>`:''}${busy?'<button class="zpc-cancel" onclick="homeCancelPrepare()">Cancel preparation</button>':!available?'<button class="zpc-secondary" onclick="go(\'explore\')">Explore creators '+hi('arrow',16)+'</button>':`<p class="zpc-footer-note">${hi('lock',11)} ${live?'The host accepts before your call starts.':'Your time. Your conversation.'}</p>`}${DEMO?'<span class="zpc-demo">Interactive preview &middot; no real call is placed</span>':''}</footer>
   </section>`;
@@ -9811,6 +9945,181 @@ if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const offline=previewMode==='precall-offline';
   const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Bennett',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':OB_MEDIA[2],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});
   S.v='precall';S.h=h.id;S.loggedIn=1;S.bal=offline?0:1250;
+}
+
+/* The creator side of private calls: getting ready and going online, a second caller ringing
+   while a call is in progress (decline or switch, never a busy signal), and the entry fee
+   that unlocks once a call lasts the hold. The call screen itself is zrCall in live-room.js. */
+/* preview: '' until the host asks to check their camera, then 'starting', 'ready' or 'failed'. */
+const HostCalls = { status: null, loading: false, preview: '', previewError: '', previewRun: 0, visBusy: false };
+
+function hcHold(seconds) {
+  const s = Number(seconds) || 0;
+  return s >= 60 && s % 60 === 0 ? `${s / 60} minute${s === 60 ? '' : 's'}` : `${s} seconds`;
+}
+/* The connected call's price, entry fee and today's early endings, as the server reports them. */
+function hcCallTerms(d) {
+  S.callRate = d.rate || 0; S.callFee = d.entryFee || 0; S.feeHold = d.feeHoldSeconds || 0;
+  if (d.earlyEnds) { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
+}
+function hcFeePending() { return !!S.callFee && !S.feeOk; }
+
+/* ---- Before going online ---- */
+function hcRateCard() {
+  const st = HostCalls.status;
+  if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}</div>`;
+  const tiers = st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
+  return `<div class="hc-card">
+    <div class="hc-card-head"><span>${coinIcon(16)} <b>${st.rate ? `${n(st.rate)} coins / min` : 'Free calls'}</b></span>${tiers.length ? `<small>Tier ${st.tier} of ${tiers.length}</small>` : ''}</div>
+    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate)}/min</span>`).join('')}</div>` : ''}
+    ${next ? `<small class="hc-next">Earn ${n(Math.max(0, next.atCoins - st.earnedCoins))} more coins to unlock ${n(next.rate)}/min</small>` : tiers.length ? '<small class="hc-next">You have reached the top call price</small>' : ''}
+    ${fee ? `<div class="hc-fee-line">${hi('clock', 15)}<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. It is yours once the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span></div>` : ''}
+  </div>`;
+}
+function hcVisibilityRow() {
+  const on = S.callVis !== false;
+  return `<button type="button" class="hc-toggle" role="switch" aria-checked="${on}" onclick="hcToggleVisible()" ${HostCalls.visBusy ? 'disabled' : ''}>
+    <span><b>Available on Home during calls</b><small>${on ? 'Members can still find you and call while you’re talking. New calls ring as a banner on your call.' : 'While you’re on a call, members see you as unavailable.'}</small></span>
+    <i class="hc-switch ${on ? 'is-on' : ''}" aria-hidden="true"></i></button>`;
+}
+function hcSetupView() {
+  const cam = !!S.cam, p = HostCalls.preview;
+  const status = !cam ? 'Camera is off · callers see your profile photo'
+    : p === 'ready' ? 'Camera ready' : p === 'starting' ? 'Starting camera…' : p === 'failed' ? HostCalls.previewError : 'See how you look before callers do';
+  /* The camera only starts when the host asks; opening this screen never captures anything. */
+  const check = cam && (!p || p === 'failed') ? `<button type="button" class="hc-check" onclick="hcStartPreview()">${hi('vid', 15)}${p ? 'Try again' : 'Check camera'}</button>` : '';
+  return `<section class="zh-broadcast hc-setup"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1>
+    <p>Check your camera, then go online. Members call you for private one-to-one video and voice calls.</p>
+    <div class="zh-camera-preview hc-preview ${cam && p === 'ready' ? '' : 'is-off'}"><video data-zimi-local autoplay muted playsinline></video>
+      <span>${hi(cam ? 'vid' : 'camoff', 38)}<b>${esc(status)}</b>${check}</span><i class="hc-guide" aria-hidden="true"></i>
+      <div class="hc-preview-tools">
+        <button type="button" onclick="hcSetupMic()" aria-pressed="${!S.mic}" aria-label="${S.mic ? 'Mute microphone' : 'Unmute microphone'}">${hi(S.mic ? 'mic' : 'micoff', 18)}</button>
+        <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'flip' : 'camoff', 18)}</button>
+      </div></div>
+    ${hcRateCard()}${hcVisibilityRow()}
+    <button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Connecting…' : 'Go online for calls'}</button>
+    <p class="hc-note">A call that comes in while you are talking rings as a banner, and you choose whether to switch. Nobody is told you are busy.</p></section>`;
+}
+function hcWaitingView() {
+  return `<section class="zh-broadcast hc-waiting"><span class="zh-eyebrow">OPEN TO CONNECTIONS</span><h1>You’re online.</h1>
+    <p>Members can discover you and start a call while you’re available. Incoming calls ring wherever you are in the app.</p>
+    <div class="zh-ready-illustration">${hi('ph', 52)}</div>${hcRateCard()}${hcVisibilityRow()}
+    <button class="zh-primary zh-full" onclick="go('home')">Explore BinzoLive</button>
+    <button class="zh-soft zh-full" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>Go offline</button>
+    <p class="zh-coins-note">Keep the app connected to receive incoming calls.</p></section>`;
+}
+function hcStartPreview() {
+  if (!S.cam || S.v !== 'setup' || HostCalls.preview === 'starting') return;
+  const run = ++HostCalls.previewRun, current = () => S.v === 'setup' && run === HostCalls.previewRun;
+  HostCalls.preview = 'starting'; r();
+  Promise.resolve().then(() => window.ZimiMedia.prepare(true)).then(() => {
+    if (!current()) return;
+    HostCalls.preview = 'ready'; r();
+  }).catch(error => {
+    if (!current()) return;
+    HostCalls.preview = 'failed'; HostCalls.previewError = error.message; r();
+  });
+}
+function hcSetupMic() { S.mic = S.mic ? 0 : 1; window.ZimiMedia?.attach(); r(); }
+/* Turning the camera off only pauses the preview's video track, so turning it back on resumes it. */
+function hcSetupCam() { S.cam = S.cam ? 0 : 1; window.ZimiMedia?.attach(); r(); }
+function hcToggleVisible() {
+  if (DEMO) { S.callVis = S.callVis === false; r(); return; }
+  if (HostCalls.visBusy) return;
+  HostCalls.visBusy = true; Native.send('presence.duringCalls', { on: S.callVis === false }); r();
+}
+
+/* ---- During a call ---- */
+function hcVisPill() {
+  const on = S.callVis !== false;
+  return `<button type="button" class="zr-pill hc-vis ${on ? 'is-on' : ''}" onclick="hcToggleVisible()" aria-pressed="${on}" aria-label="${on ? 'Available on Home during calls, tap to hide' : 'Hidden from Home during calls, tap to show'}" ${HostCalls.visBusy ? 'disabled' : ''}>${hi(on ? 'eye' : 'eyeoff', 13)}${on ? 'Visible' : 'Hidden'}</button>`;
+}
+function hcFeeChip() { return S.callFee && feeShown() ? `<div class="hc-fee ${S.feeOk ? 'ok' : ''}" id="fee" role="status">${feeChip()}</div>` : ''; }
+function hcIncoming() {
+  const c = S.inc, name = esc(c.n);
+  return `<aside class="hc-incoming" role="alertdialog" aria-label="Incoming call from ${name}">${zrAvatar(c, 42)}
+    <div><strong>${name}</strong><span>is calling you${c.lvl ? ` · Lv ${esc(c.lvl)}` : ''} · ${c.voice ? 'Voice' : 'Video'}</span></div>
+    <button class="hc-decline" onclick="declineInc()" aria-label="Decline ${name}">${hi('close', 19)}</button>
+    <button class="hc-accept" onclick="hostEnd('switch')" aria-label="Switch to ${name}">${hi(c.voice ? 'ph' : 'vid', 18)}<span>Switch</span></button></aside>`;
+}
+function hcConfirm() {
+  const k = S.confirm, left = Math.max(0, (S.feeHold || 0) - (S.sec - S.cstart)), nth = (S.early || 0) + 1;
+  const limit = S.earlyLimit ?? EARLY_LIMIT, penalty = S.penaltyCoins || 0, verb = k === 'switch' ? 'switch' : 'end';
+  const warn = !penalty ? `This would be early ending ${nth} today.`
+    : nth > limit ? `This would be early ending ${nth} today. Past ${n(limit)} a day, it takes ${n(penalty)} coins from your earnings.`
+    : `This would be early ending ${nth} today. Past ${n(limit)} a day, each one takes ${n(penalty)} coins from your earnings.`;
+  return `<div class="zr-sheet-backdrop" onclick="if(event.target===this){S.confirm=0;r()}"><section class="zr-sheet hc-confirm" role="dialog" aria-modal="true" aria-label="${k === 'switch' ? 'Switch calls early?' : 'End call early?'}" data-lenis-prevent>
+    <div class="zr-sheet-handle"></div><header><h2>${k === 'switch' ? 'Switch before the entry fee unlocks?' : 'End before the entry fee unlocks?'}</h2>${zrRound('close', 'Keep talking', 'S.confirm=0;r()')}</header>
+    <p class="zr-sheet-note">${esc(first(S.caller.n))}’s ${n(S.callFee)}-coin entry fee unlocks in <b id="hc-left">${clock(left)}</b>. If you ${verb} now, you won’t receive it and it stays with BinzoLive.</p>
+    <p class="hc-warn">${warn}</p>
+    <button class="zr-wide zr-secondary" onclick="S.confirm=0;r()">Keep talking</button>
+    <button class="zr-wide zr-danger" onclick="S.confirm=0;${k === 'switch' ? 'acceptInc()' : 'endCall()'}">${k === 'switch' ? 'Switch anyway' : 'End call anyway'}</button></section></div>`;
+}
+function hcConnecting() {
+  const { from, to } = S.connecting;
+  return `<div class="hc-connecting" role="status" aria-live="polite"><div class="hc-orb">${zrAvatar(to, 96)}<i aria-hidden="true"></i></div>
+    <small>CONNECTING</small><h2>Connecting to ${esc(to.n)}</h2>
+    <p>Your call with ${esc(first(from.n))} has ended. Your camera and microphone stay on.</p><span class="hc-bar" aria-hidden="true"><i></i></span></div>`;
+}
+function hcCallExtras() { return `${S.inc ? hcIncoming() : ''}${S.confirm ? hcConfirm() : ''}${S.connecting ? hcConnecting() : ''}`; }
+/* The second caller hung up, or the switch failed: stay with the current call when it is still there. */
+function hcSwitchFailed(message) {
+  const c = S.connecting; if (!c) return;
+  S.connecting = null;
+  if (c.log) { S.feeLog.splice(S.feeLog.indexOf(c.log), 1); if (c.log.early) S.early = Math.max(0, (S.early || 0) - 1); }
+  addMissed(c.to); S.rmsgs.push(['sys', '', message]);
+  if (c.fromEnded) { S.callEnd = null; endCall(true); return; }
+  window.ZimiMedia?.handoff(null); r();
+}
+
+/* ---- After the session ---- */
+function hcSummaryView(s) {
+  const fees = (s.fees || []).filter(f => f.fee), received = fees.filter(f => f.ok).reduce((sum, f) => sum + f.fee, 0);
+  return `<section class="zh-broadcast zh-summary hc-summary"><div class="zh-ready-illustration">${hi('cup', 42)}</div>
+    <h1>${s.earned ? 'Congratulations!' : 'A moment well shared.'}</h1>
+    <p>${s.earned ? `You earned about <b>${n(s.earned)} coins</b> in ${fmtDur(s.sec || 0)} on calls.` : `You spent ${fmtDur(s.sec || 0)} on calls.`}</p>
+    <div class="zh-precall-details"><span>Duration <b>${clock(s.sec || 0)}</b></span><span>${s.callers === 1 ? 'Caller' : 'Callers'} <b>${n(s.callers || 1)}</b></span><span>Gifts <b>${n(s.gifts || 0)}</b></span><span>Coins earned <b>≈ ${n(s.earned || 0)}</b></span></div>
+    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Entry fees</span><b>${coinIcon(14)} +${n(received)}</b></div>
+      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `+${n(f.fee)} received` : 'Ended early · kept by BinzoLive'}</em></div>`).join('')}
+      ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, each one takes ${n(s.penaltyCoins)} coins from your earnings.` : ''}</p>` : ''}</div>` : ''}
+    <button class="zh-primary zh-full" onclick="S.callId=null;go(S.online?'waiting':'setup')">${S.online ? 'Back to taking calls' : 'Go online again'}</button>
+    <button class="zh-soft zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button>
+    <button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary') || ''}</section>`;
+}
+
+document.addEventListener('aurora:navigate', () => {
+  /* media.js releases the camera on every navigation outside a call, so the preview starts over. */
+  if (HostCalls.preview) { HostCalls.previewRun++; HostCalls.preview = ''; if (S.v === 'setup') r(); }
+  if (!['setup', 'waiting'].includes(S.v) || DEMO || !isApprovedHost()) return;
+  if (!HostCalls.loading) { HostCalls.loading = true; Native.send('host.callStatus.load', {}); }
+});
+Native.on('host.callStatus', d => {
+  HostCalls.loading = false; HostCalls.status = d; S.callVis = d.visibleDuringCalls !== false;
+  if (S.v !== 'hcall') { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
+  if (['setup', 'waiting'].includes(S.v)) r();
+});
+Native.on('presence.duringCalls.saved', d => {
+  HostCalls.visBusy = false; S.callVis = !!d.on;
+  if (HostCalls.status) HostCalls.status.visibleDuringCalls = !!d.on;
+  if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
+});
+Native.on('operation.error', d => {
+  if (d.action === 'host.callStatus.load') HostCalls.loading = false;
+  if (d.action === 'presence.duringCalls') {
+    HostCalls.visBusy = false; appNotice(d.message || 'Your call visibility could not be saved. Try again.');
+    if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
+  }
+});
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false })));
+
+/* Preview fixture only (?role=host&approvedHost=1&preview=host-call): a creator mid-call,
+   and a second caller rings a few seconds later. */
+if (DEMO && previewMode === 'host-call' && isApprovedHost()) {
+  S.loggedIn = 1; Home.mediaStatus = 'Design preview';
+  setTimeout(() => {
+    S.caller = { ...nextCaller(), callId: 'preview-host-call' }; S.callId = S.caller.callId; go('hcall');
+    setTimeout(() => { if (S.v === 'hcall' && !S.inc && !S.connecting) ringIncoming({ ...nextCaller(), callId: 'preview-waiting-call' }); }, 6000);
+  });
 }
 
 /* Staff video calls for host applicants. The ZimiLive team calls before deciding an

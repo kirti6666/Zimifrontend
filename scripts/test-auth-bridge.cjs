@@ -1491,12 +1491,12 @@ test('transaction history reloads independently and discards older ledger respon
   h.bridge.close();
 });
 
-test('Home starts with active hosts and keeps that mode through paging, search and realtime refresh', async () => {
+test('Home starts with every host and keeps the requested mode through paging, search and realtime refresh', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
   await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
-  assert.equal(h.calls.filter(call => call.name === 'home').at(-1).args[0].mode, 'online');
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'popular' }, 'Home lists every host, online or offline');
   assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'home.reload', data: { mode: 'online', page: 2 } })));
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'home.reload', data: { mode: 'everyone' } })), null);
   h.bridge.handle({ type: 'home.reload', data: { mode: 'online', page: 2 } }); await settle();
@@ -1505,11 +1505,11 @@ test('Home starts with active hosts and keeps that mode through paging, search a
   assert.equal(h.calls.filter(call => call.name === 'home').at(-1).args[0].mode, 'popular', 'Header search can still discover all hosts');
   h.live[0].onEvent({ type: 'home.updated', data: {} }); await settle();
   assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'online', page: 1 });
-  h.bridge.handle({ type: 'home.reload', data: { mode: 'popular' } }); await settle();
+  h.bridge.handle({ type: 'home.reload', data: { mode: 'instant', category: 'Music' } }); await settle();
   h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
   h.overrides.verifyOtp = () => ({ ...account('bob'), requiresOnboarding: false, tokens: tokenPair('bob'), isNew: false });
   h.bridge.handle(verifyMessage(9)); await settle();
-  assert.equal(h.calls.filter(call => call.name === 'home').at(-1).args[0].mode, 'online', 'A fresh account starts with active Home rather than the previous discovery query');
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'popular' }, 'A fresh account starts with the full Home rather than the previous filtered query');
   h.bridge.close();
 });
 
@@ -1519,7 +1519,7 @@ test('a fresh document or replacement account cannot inherit an Explore page as 
     h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
     await h.session.setSessionTokens(tokenPair());
     h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
-    h.overrides.home = query => query.mode === 'popular' ? older.promise : { hosts: [{ id: 'active-home' }], stage: [], page: 1 };
+    h.overrides.home = query => query.category === 'Music' ? older.promise : { hosts: [{ id: 'active-home' }], stage: [], page: 1 };
     h.bridge.handle({ type: 'home.reload', data: { mode: 'popular', category: 'Music', page: 3 } });
     if (replacement === 'document') {
       h.bridge.documentLoading();
@@ -1530,7 +1530,7 @@ test('a fresh document or replacement account cannot inherit an Explore page as 
       h.bridge.handle({ type: 'session.resume', data: {} });
     }
     await settle();
-    assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'online' }, replacement);
+    assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'popular' }, replacement);
     const delivered = h.find('data.home').length;
     older.resolve({ hosts: [{ id: 'old-explore-page' }], stage: [], page: 3 }); await settle();
     assert.equal(h.find('data.home').length, delivered, 'The retired Explore response never replaces fresh Home');

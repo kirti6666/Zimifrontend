@@ -125,6 +125,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
+    case "presence.duringCalls": valid = boolean(d.on); break;
+    case "host.callStatus.load": valid = true; break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;

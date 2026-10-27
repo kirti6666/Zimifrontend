@@ -51,7 +51,7 @@ export function hostFrom(value: unknown): Host {
   const avatar = host.avatar && typeof host.avatar === "object" ? record(host.avatar) : {};
   return {
     id: idOf(host), name: string(host.name), city: string(host.city), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
-    languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.entryFee), followers: finite(host.followers),
+    languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.callEntryFeeCoins ?? host.entryFee), followers: finite(host.followers),
     about: string(host.bio), verified: host.isVerifiedHost === true, ...genderOf(host.gender),
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
     ...(host.role === "user" || host.role === "host" || host.role === "admin" ? { serverRole: host.role } : {}),
@@ -289,8 +289,33 @@ export function payoutsFrom(value: unknown): Payouts {
   return { items: items(value).map(payoutFrom), total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
 }
 export const coinCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
-/** Coins per minute locked onto a paid call; free calls carry none. */
-export const callPrice = (call: Record<string, unknown>) => coinCount(call.coinsPerMinute) ? { rate: coinCount(call.coinsPerMinute) } : {};
+/** Coins per minute locked onto a paid call, and its entry fee and hold; free calls carry none. */
+export const callPrice = (call: Record<string, unknown>) => ({
+  ...(coinCount(call.coinsPerMinute) ? { rate: coinCount(call.coinsPerMinute) } : {}),
+  ...(coinCount(call.entryFeeCoins) ? { entryFee: coinCount(call.entryFeeCoins), feeHoldSeconds: coinCount(call.entryFeeHoldSeconds) } : {}),
+});
+/** Who is calling, as the server describes the caller on a ringing call. */
+export function callerFrom(call: Record<string, unknown>) {
+  const caller = call.caller && typeof call.caller === "object" ? record(call.caller) : {};
+  const level = finite(caller.level);
+  return {
+    id: idOf(call.callerId), name: string(caller.name), avatarUrl: string(caller.avatarUrl), city: string(caller.city),
+    ...(level && level > 0 ? { level } : {}), ...genderOf(caller.gender),
+  };
+}
+/** A host's price tier, entry fee and early endings, shown before going online. */
+export function hostCallStatusFrom(value: unknown) {
+  const data = record(value), early = record(data.earlyEnds), next = data.next && typeof data.next === "object" ? record(data.next) : null;
+  const count = (v: unknown) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : 0;
+  return {
+    rate: count(data.rate), tier: Math.max(1, count(data.tier)), earnedCoins: count(data.earnedCoins),
+    next: next ? { tier: count(next.tier), rate: count(next.rate), atCoins: count(next.atCoins) } : null,
+    tiers: (Array.isArray(data.tiers) ? data.tiers : []).map(record).map(tier => ({ tier: count(tier.tier), rate: count(tier.rate), minCoins: count(tier.minCoins) })),
+    entryFeeCoins: count(data.entryFeeCoins), entryFeeHoldSeconds: count(data.entryFeeHoldSeconds),
+    earlyEnds: { today: count(early.today), limit: count(early.limit), penaltyCoins: count(early.penaltyCoins) },
+    visibleDuringCalls: data.visibleDuringCalls !== false,
+  };
+}
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
   return { items: items(value).map(record).map(tx => {
     const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);

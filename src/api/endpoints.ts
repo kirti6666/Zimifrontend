@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -211,7 +211,14 @@ export const api = {
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
-  async acceptCall(callId: string) { const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)); return { peerId: idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call) }; },
+  async acceptCall(callId: string) {
+    const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)), early = record(call.earlyEnds);
+    const count = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+    return { peerId: idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call),
+      earlyEnds: { today: count(early.today), limit: count(early.limit), penaltyCoins: count(early.penaltyCoins) } };
+  },
+  async hostCallStatus() { return hostCallStatusFrom(await request("GET", "/calls/host-status")); },
+  async setVisibleDuringCalls(on: boolean) { const data = record(await request("PATCH", "/safety", { visibleDuringCalls: on })); return { on: data.visibleDuringCalls !== false }; },
   declineCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
   endCall: (callId: string, _reason?: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
   // Staff verification calls for host applicants: staff place the call and send the offer.

@@ -49,7 +49,7 @@
 .zh-featured-top{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;gap:6px;z-index:2;pointer-events:none}
 .zh-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;line-height:13px;letter-spacing:.1px;font-weight:750;border-radius:20px;padding:3px 9px;color:#fff;white-space:nowrap}
 .zh-live{background:#ed0784;box-shadow:0 2px 12px #e40e7540}.zh-live>i{width:7px;height:7px;border-radius:50%;background:#fff}
-.zh-ready{background:linear-gradient(120deg,#9c55f9,#c14cef)}.zh-offline{background:#3a2636}
+.zh-ready{background:linear-gradient(120deg,#9c55f9,#c14cef)}.zh-offline{background:#3a2636}.zh-online>i{width:6px;height:6px;border-radius:50%;background:var(--online)}
 .zh-viewers{display:inline-flex;align-items:center;gap:3px;background:#210817ba;border-radius:20px;font-size:9px;font-weight:650;white-space:nowrap;padding:3px 7px;color:#ffe7f3}
 .zh-featured-open{margin-left:auto;background:#33232fb3;border-radius:20px;display:flex;gap:4px;align-items:center;font-size:9px;padding:4px 7px;pointer-events:auto}
 .zh-featured-hit{position:absolute;inset:0;width:100%;height:100%}

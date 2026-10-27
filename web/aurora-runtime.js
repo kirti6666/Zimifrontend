@@ -228,7 +228,9 @@ function go(v,id){
   if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
-  S.cstart=0;S.feeOk=0;S.confirm=0;S.feeLog=[];
+  S.cstart=0;S.feeOk=0;S.feeHide=0;S.confirm=0;S.feeLog=[];
+  /* The preview has no server: it shows the default terms. */
+  if(DEMO){S.callRate=S.callRate||MY_RATE;S.callFee=MY_FEE;S.feeHold=FEE_HOLD;S.earlyLimit=EARLY_LIMIT;S.penaltyCoins=MY_FEE}
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
  if(v==="thread"){S.msgs=DEMO?zcDemoThread(g(S.h)):[];Native.send("chat.open",{with:S.h})}
@@ -1158,13 +1160,16 @@ function nextCaller(){
  return sender(sid(nm))}
 
 function vRing(){const c=S.caller;
+ /* The preview shows the default terms; the app shows the ones locked onto this call. */
+ const rate=DEMO?MY_RATE:c.rate||0,fee=DEMO?MY_FEE:c.fee||0,hold=DEMO?FEE_HOLD:c.hold||0;
+ const about=[c.lvl?`Lv ${c.lvl}`:'',c.c,DEMO?`${c.v} followers`:''].filter(Boolean).map(esc).join(' &middot; ');
  return `<div class="ringscr host ring">
   <div class="ringbg">${art(c.seed)}</div>
-  <span class="ringeye"><i></i>Incoming video call</span>
+  <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${avc(c,112)}</div>
-  <h2>${esc(c.n)}</h2><p>Lv ${esc(c.lvl)} &middot; ${esc(c.c)} &middot; ${esc(c.v)} followers</p>
-  <span class="ringearn">${gem}You earn ${n(MY_RATE)} coins/min</span>
-  <span class="ringfee">+${MY_FEE} entry fee once the call passes 1 minute</span>
+  <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
+  <span class="ringearn">${rate?`${gem}You earn ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
+  ${fee?`<span class="ringfee">+${n(fee)} entry fee once the call passes ${hcHold(hold)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
    <span class="rbtn"><button class="accept" aria-label="Accept" onclick="acceptRing()">${I("vid",25)}</button><span>Accept</span></span></div>
@@ -1203,7 +1208,7 @@ function incBanner(){const c=S.inc;
   <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
-function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting")}
+function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
 function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
@@ -1217,13 +1222,15 @@ function missInc(){if(S.inc&&S.v==="hcall"){
   S.rmsgs.push(["sys","",`Missed call from ${S.inc.n}`]);addMissed(S.inc);S.inc=null;if(S.confirm==="switch")S.confirm=0;r()}}
 function addMissed(c){S.missed.host=[{id:c.id,when:"Just now",kind:"video"}].concat(S.missed.host.filter(m=>m.id!==c.id))}
 function declineInc(){clearTimeout(S.it);Native.send("call.decline",{callId:S.inc.callId});S.rmsgs.push(["sys","",`Declined ${S.inc.n}`]);addMissed(S.inc);S.inc=null;r()}
-/* Switching keeps one session: earnings and time carry over to the summary. */
-function logFee(){
- const early=!S.feeOk;if(early)S.early++;
- S.feeLog.push({n:S.caller.n,ok:!!S.feeOk,early});return early}
+/* Switching keeps one session: earnings and time carry over to the summary.
+   Only a host who hangs up or switches before the entry fee unlocks makes an early ending. */
+function logFee(byHost){
+ if(!S.callFee)return null;
+ const early=!!byHost&&!S.feeOk;if(early)S.early=(S.early||0)+1;
+ const entry={n:S.caller.n,fee:S.callFee,ok:!!S.feeOk,early};S.feeLog.push(entry);return entry}
 function hostEnd(kind){
- if(!DEMO){if(kind==='switch')return appNotice('Finish this call before accepting another.');return endCall()}
- if(!S.feeOk){S.confirm=kind;S.more=0;S.tray=0;return r()}
+ if(kind==='switch'&&(!S.inc||S.connecting))return;
+ if(hcFeePending()){S.confirm=kind;S.more=0;S.tray=0;if(window.Room)Room.sheet='';return r()}
  kind==="switch"?acceptInc():endCall()}
 function confirmEnd(){
  const k=S.confirm,left=Math.max(0,FEE_HOLD-(S.sec-S.cstart)),nth=S.early+1;
@@ -1235,18 +1242,24 @@ function confirmEnd(){
    <p class="warn">This would be early ending ${nth} today. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</p>
    <button class="keep" onclick="S.confirm=0;r()">Keep talking</button>
    <button class="anyway" onclick="S.confirm=0;${k==="switch"?"acceptInc()":"endCall()"}">${k==="switch"?"Switch anyway":"End call anyway"}</button></div></div>`}
-function acceptInc(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;clearTimeout(S.it);
- if(!S.inc)return r();
- logFee();
+async function acceptInc(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;clearTimeout(S.it);
+ if(!S.inc||S.connecting)return r();
  const from=S.caller,to=S.inc;
- S.inc=null;S.tray=0;S.more=0;S.connecting={from,to};r();
- Native.send("call.end",{callId:from.callId,reason:"switch"});
- Native.send("call.accept",{callId:to.callId});
- /* the app finishes the switch on call.connected */
- if(DEMO)S.ct=setTimeout(finishSwitch,2200)}
-function finishSwitch(){if(S.v!=="hcall"||!S.connecting)return;const {from,to}=S.connecting;
-  S.rmsgs.push(["sys","",`Switched from ${first(from.n)} to ${first(to.n)}${fxOn()?" &middot; your beauty and filter settings are kept":""}`]);
-  S.caller=to;S.connecting=null;S.callersN++;S.swap=0;S.cstart=S.sec;S.feeOk=0;r()}
+ S.inc=null;S.tray=0;S.more=0;S.confirm=0;if(window.Room)Room.sheet='';
+ S.connecting={from,to,log:logFee(true)};r();
+ /* the preview switches by itself; the app finishes on call.connected */
+ if(DEMO){S.ct=setTimeout(finishSwitch,2200);return}
+ /* The server ends the current call as a switch when the new one is accepted. */
+ window.ZimiMedia?.handoff(from.callId);
+ try{await window.ZimiMedia.prepare(!to.voice)}catch(error){hcSwitchFailed(error.message);return}
+ if(S.v!=='hcall'||S.connecting?.to!==to)return;
+ Native.send("call.accept",{callId:to.callId})}
+function finishSwitch(d){if(S.v!=="hcall"||!S.connecting)return;const {from,to}=S.connecting;
+  S.rmsgs.push(["sys","",`Switched from ${first(from.n)} to ${first(to.n)}`]);
+  S.caller=to;S.callId=to.callId||S.callId;S.connecting=null;S.callersN++;S.swap=0;S.cstart=S.sec;S.feeOk=0;S.feeHide=0;
+  if(d)hcCallTerms(d);
+  if(window.Room)Room.chatOpen=false;
+  r()}
 function connectingScreen(){const {from,to}=S.connecting;
  return `<div class="conn" role="status" aria-live="polite">
   <div class="connbg">${art(to.seed)}</div>
@@ -1260,10 +1273,13 @@ function connectingScreen(){const {from,to}=S.connecting;
 
 const IN_GIFTS=[1,2,3,4,5,6,8];
 function hostTick(){
- if(!DEMO||window.ZimiHome){S.sec++;paintHostTick();return}
- S.sec++;S.earned+=MY_RATE/60;
- if(!S.feeOk&&S.sec-S.cstart>=FEE_HOLD){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=MY_FEE;
-  S.rmsgs.push(["sys","",`Entry fee received from ${first(S.caller.n)} &middot; +${MY_FEE}`]);paintFeed()}
+ S.sec++;
+ /* Estimates of what the session has earned; the wallet shows what the server credited. */
+ if(!S.connecting&&S.callRate)S.earned+=S.callRate/60;
+ if(hcFeePending()&&!S.connecting&&S.sec-S.cstart>=S.feeHold){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=S.callFee;
+  S.rmsgs.push(["sys","",`Entry fee unlocked from ${first(S.caller.n)} · +${n(S.callFee)}`]);paintFeed();
+  if(S.confirm){S.confirm=0;r()}}
+ if(window.ZimiHome){paintHostTick();return}
  if(DEMO&&S.sec%9===0){
   const ask=(S.sec/9)%3===0;
   const [l,e,v]=ask?GIFTS[S.fav]:GIFTS[IN_GIFTS[(S.sec/9+S.ci)%IN_GIFTS.length]];
@@ -1274,14 +1290,15 @@ function hostGotGift(l,e,v){
  S.earned+=v;S.recvN++;S.gifted+=v;if(GIFTS[S.fav]&&GIFTS[S.fav][0]===l)S.favGot++;
  S.rmsgs.push(["gift",first(S.caller.n),`sent ${e} ${l} &middot; ${n(v)}`]);
  paintFeed();playGift(l,e,v,"",`${first(S.caller.n)} sent ${l} &middot; +${n(v)}`)}
-function feeShown(){return !S.feeOk||S.sec<S.feeHide}
+function feeShown(){return !!S.callFee&&(!S.feeOk||S.sec<S.feeHide)}
 function feeChip(){
- const left=Math.max(0,FEE_HOLD-(S.sec-S.cstart));
- return S.feeOk?`${I("check",13)}<span>Entry fee ${gem}${MY_FEE} received</span>`
-  :`${I("clock",13)}<span>Entry fee ${gem}${MY_FEE} unlocks in <b>${clock(left)}</b></span>`}
+ const left=Math.max(0,(S.feeHold||0)-(S.sec-S.cstart));
+ return S.feeOk?`${I("check",13)}<span>Entry fee ${gem}${n(S.callFee)} unlocked</span>`
+  :`${I("clock",13)}<span>Entry fee ${gem}${n(S.callFee)} unlocks in <b>${clock(left)}</b></span>`}
 function paintHostTick(){
  const cost=document.getElementById("zr-call-cost");if(cost&&window.zrCallCost)cost.textContent=zrCallCost(true);
  const c=document.getElementById("ck");if(c)c.textContent=clock(S.sec);
+ const left=document.getElementById("hc-left");if(left)left.textContent=clock(Math.max(0,(S.feeHold||0)-(S.sec-S.cstart)));
  const fc=document.getElementById("fee");if(fc){if(feeShown()){fc.innerHTML=feeChip();fc.classList.toggle("ok",!!S.feeOk)}else fc.remove()}
  const e=document.getElementById("earn");if(e)e.innerHTML=`${gem}+${kfmt(Math.round(S.earned))}`
  paintGoal();}
@@ -1291,25 +1308,30 @@ function paintHostTick(){
 function endCall(remote){
  if(window.ZimiMedia)window.ZimiMedia.stop();
  const callId=S.v==="hcall"?S.caller.callId:S.callId,rate=S.callRate||0,end=S.callEnd?.callId===callId?S.callEnd:null;
+ /* A caller still waiting on the server rings as soon as this call ends. */
+ const waiting=S.v==="hcall"&&!DEMO?S.inc:null;
  /* Until the server reports the charge, estimate it the way it bills: whole seconds at the call's price. */
- const charge={callId,rate,coins:end?.coins??Math.ceil(S.sec*rate/60),outOfCoins:end?.reason==='out_of_coins'};
+ const charge={callId,rate,entryFee:S.callFee||0,coins:end?.coins??Math.ceil(S.sec*rate/60),outOfCoins:end?.reason==='out_of_coins'};
  S.callRate=0;S.callEnd=null;
  if(!remote)Native.send("call.end",{callId});
  if(S.v==="hcall"){
-  logFee();
+  logFee(!remote);
   const mins=Math.max(1,Math.ceil(S.sec/60)),earned=Math.round(S.earned);
   const before=S.tasks.map(t=>t.p>=t.goal);
   const add={mins,gifts:S.recvN,callers:S.callersN,earn:earned};
   S.tasks.forEach(t=>{if(add[t.k])t.p+=add[t.k]});
   if(DEMO)A().earn+=earned;
   S.sum={...charge,k:"host",sec:S.sec,earned,gifts:S.recvN,callers:S.callersN,fees:S.feeLog.slice(),
+   early:S.early||0,earlyLimit:S.earlyLimit,penaltyCoins:S.penaltyCoins,
    done:S.tasks.filter((t,i)=>!before[i]&&t.p>=t.goal)};
  } else {
   const h=g(S.h);
   S.rate=0;
   S.sum={...charge,k:"sender",h:h.id,sec:S.sec,spent:S.spent+(S.gifted||0),giftV:S.gifted||0,gifts:S.giftN||0};
  }
- go("summary")}
+ S.callFee=0;
+ go("summary");
+ if(waiting){S.ringBack="summary";S.caller=waiting;go("ring")}}
 
 /* Where this session's spend sits among the host's recent callers. */
 function supportPct(h,spent){
@@ -1369,7 +1391,7 @@ function feeSummary(F){
   <div class="fshead"><span>Entry fees</span><b>${gem}+${n(F.filter(f=>f.ok).length*MY_FEE)}</b></div>
   ${F.map(f=>`<div class="fsrow ${f.ok?"ok":"no"}">${I(f.ok?"check":"clock",14)}<span>${esc(first(f.n))}</span>
    <em>${f.ok?`+${MY_FEE} received`:"Ended before 1 min, went to BinzoLive"}</em></div>`).join("")}
-  ${lost.length?`<div class="fswarn">Early endings today: <b>${S.early}</b>. Ending more than ${EARLY_LIMIT} calls before 1 minute can lead to a penalty or a temporary pause on calls.</div>`:""}</div>`}
+  ${lost.length?`<div class="fswarn">Early endings today: <b>${S.early}</b>. Past ${EARLY_LIMIT} a day, each early ending takes ${MY_FEE} coins from your earnings.</div>`:""}</div>`}
 function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
 
 /* ---- Awards (host tasks) ---- */
@@ -1693,29 +1715,45 @@ Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
+ /* A host mid-call only hears about the call they are on or switching to. */
+ if(S.v==="hcall"&&d.callId!==S.callId&&d.callId!==S.connecting?.to.callId)return;
  S.callRate=d.rate||0;
- if(S.v==="dial"){S.callId=d.callId;go(d.voice?'voice':"call",S.h)}
- else if(S.v==="dialback"){S.caller.callId=d.callId;go("hcall")}
- else if(S.v==="ring"&&S.caller.callId===d.callId){S.callId=d.callId;S.acceptingCall=false;go('hcall')}
- else if(S.v==="hcall"&&S.connecting)finishSwitch()});
+ if(S.v==="dial"){S.callId=d.callId;S.callFee=d.entryFee||0;go(d.voice?'voice':"call",S.h)}
+ else if(S.v==="dialback"){S.caller.callId=d.callId;hcCallTerms(d);go("hcall")}
+ else if(S.v==="ring"&&S.caller.callId===d.callId){hcCallTerms(d);S.callId=d.callId;S.acceptingCall=false;go('hcall');ringQueued()}
+ else if(S.v==="hcall"&&S.connecting)finishSwitch(d);
+ /* The answer and the realtime event both report the call; the answer adds today's early endings. */
+ else if(S.v==="hcall")hcCallTerms(d)});
 Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")go("chats")});
 Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
- c.voice=!!d.voice;
+ c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
+ /* Already in a call: the new caller rings as a banner, never a busy signal. */
  if(S.v==="hcall")return ringIncoming(c);
- if(S.v==="ring")return;
+ /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
+ if(S.v==="ring"){if(S.caller?.callId!==c.callId)S.queuedInc=c;return}
+ if(["dial","dialback","call","voice"].includes(S.v))return;
  S.ringBack=S.v;S.caller=c;go("ring")});
+/* The caller who arrived while another call was ringing: a banner on the call, or the next ring. */
+function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
+ if(S.v==="hcall")return ringIncoming(q);
+ S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
  /* The server's charge replaces the summary's estimate once it arrives. */
  if(S.v==='summary'&&S.sum?.callId===id){if(d.coins!=null)S.sum.coins=d.coins;if(d.reason==='out_of_coins')S.sum.outOfCoins=true;return r()}
+ /* Switching: the call being left ends first; the new caller hanging up leaves the host where they were. */
+ if(S.v==="hcall"&&S.connecting){const c=S.connecting;
+  if(c.from.callId===id){c.fromEnded=true;return}
+  if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
- if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);return go(S.ringBack||"waiting")}
+ if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
+ if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
 Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
