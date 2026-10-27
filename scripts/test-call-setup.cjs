@@ -165,15 +165,10 @@ async function assertLayout(page, label) {
     await receive(page, 'data.home', homeData());
     await page.setViewportSize({ width: 390, height: 844 });
 
-    await page.evaluate(id => {
-      Home.stream = { id: 'setup-test-stream', hostId: id, title: 'Test live' };
-      Home.hosting = false;
-      go('live', id);
-    }, hostId);
-    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('zr-active')), true);
-    await page.evaluate(id => go('precall', id), hostId);
-    await assertLayout(page, 'returned from live');
-    await receive(page, 'stream.closed', { streamId: 'setup-test-stream' });
+    await page.evaluate(id => go('live', id), hostId);
+    assert.equal(await page.evaluate(() => S.v), 'precall', 'Paused streaming cannot replace call setup');
+    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('zr-active')), false);
+    await assertLayout(page, 'after blocked stream route');
 
     await button(page, 'Voice call').click();
     assert.equal(await button(page, 'Start voice call').isVisible(), true);
@@ -232,12 +227,16 @@ async function assertLayout(page, label) {
     await page.evaluate(id => go('precall', id), hostId);
 
     const unavailable = await startPending(page);
-    await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: false }));
+    await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: true }));
     await release(page, unavailable);
-    assert.equal((await sent(page, 'call.start')).length, 3, 'A creator becoming unavailable cancels pending preparation');
+    assert.equal((await sent(page, 'call.start')).length, 3, 'A creator turning calls off cancels pending preparation');
     assert.equal(await button(page, 'Currently unavailable').isDisabled(), true);
     await receive(page, 'data.home', homeData());
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'Availability refresh updates the open setup');
+    await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: false }));
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'An offline creator is still shown ready; the server rings until the call is missed');
+    assert.doesNotMatch(await page.locator('.zpc-presence').innerText(), /offline|unavailable/i);
+    await receive(page, 'data.home', homeData());
     await receive(page, 'data.hosts', { hosts: [host, other] });
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A creator list update preserves server availability');
     await receive(page, 'data.hosts', { hosts: [{ ...host, availableForCall: false }, other] });
@@ -246,7 +245,7 @@ async function assertLayout(page, label) {
     assert.equal(await page.evaluate(() => S.v), 'explore');
     assert.equal(await page.evaluate(() => __media.tracks.every(track => track.readyState === 'ended')), true);
     assert.deepEqual(errors, [], 'All setup states run without uncaught browser errors');
-    console.log('PASS: full-height themed call setup, responsive identity/fallback, live-room return, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, creator changes, unavailable refresh and Explore.');
+    console.log('PASS: full-height themed call setup, responsive identity/fallback, blocked live routing, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, creator changes, unavailable refresh and Explore.');
   } finally {
     await browser.close();
   }

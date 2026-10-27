@@ -66,15 +66,16 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     // A socket refresh hides the cached first page until the new response arrives.
     await loading('home', true, { page: 1 });
     await visible('Loading creators');
-    await visible('Loading live creators');
+    await gone('Loading live creators');
+    await visible('Loading featured creator');
     assert.equal(await page.locator('.zh-tile,article.zh-featured').count(), 0);
     await receive('data.loaded');
     await visible('Loading creators');
     await result('data.home', feed(), 'home', { page: 1 });
+    const homeLoads = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
     await page.getByRole('button', { name: 'Explore', exact: true }).click();
-    await visible('Loading creators');
-    assert.equal((await lastSent('home.reload')).mode, 'popular', 'Explore loads its own discovery query');
-    await result('data.home', feed(), 'home', { page: 1 });
+    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeLoads, 'Explore reuses the full feed Home already loaded');
+    assert.equal(await page.locator('.zh-tile').count(), 1);
     await page.getByRole('button', { name: 'Music', exact: true }).click();
     await visible('Loading creators');
     assert.equal((await lastSent('home.reload')).category, 'Music');
@@ -98,14 +99,14 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.home', feed(), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Home', exact: true }).click();
     await visible('Loading creators');
-    assert.equal((await lastSent('home.reload')).mode, 'online', 'Returning Home restores the online-only query');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Returning Home restores its own unfiltered query');
     await result('data.home', feed(), 'home', { page: 1 });
     console.log('PASS loading: initial feed, unknown balance, realtime refresh, filters, pagination, failure and retry');
 
-    // Home keeps an active-only filter independently of Explore's broader discovery filter.
+    // Home keeps its filter independently of Explore's filter.
     await page.evaluate(() => homeDashboardFilter('Talk'));
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online', category: 'Talk' });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Talk' });
     assert.equal(await page.evaluate(() => Home.filter), 'Music', 'Home filters preserve the Explore selection');
     await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
     await navigate('explore');
@@ -114,7 +115,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.home', feed(), 'home', { page: 1 });
     await navigate('home');
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online', category: 'Talk' });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Talk' });
     await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
     await page.evaluate(() => homeDashboardFilter('instant'));
     await visible('Loading creators');
@@ -126,7 +127,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
       'Repeated and invalid filters do not trigger requests');
     await page.evaluate(() => homeDashboardFilter('popular'));
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'online' }, 'Popular restores the active-only feed');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Popular restores the full feed');
     await result('data.home', feed(), 'home', { page: 1 });
     console.log('PASS loading: independent Home and Explore filters, active-only queries and filter validation');
 

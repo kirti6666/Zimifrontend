@@ -125,6 +125,8 @@ async function show(page, view) {
     for (const [view, selector] of [['explore', '.za-card[data-za-slot="explore"]'], ['chats', '.za-banner[data-za-slot="chats"]']]) {
       await page.evaluate(view => go(view), view);
       if (view === 'explore') {
+        assert.equal(await page.locator(selector).count(), 1, 'Explore reuses the full feed Home already loaded, so its ad shows at once');
+        await page.evaluate(() => homeFilter('Music'));
         assert.equal(await page.locator(selector).count(), 0, 'Explore waits for its own results before showing an ad');
         await receive(page, 'data.home', { hosts: [], stage: [], featured: null, total: 0, page: 1 });
       }

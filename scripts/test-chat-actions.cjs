@@ -118,8 +118,23 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
     assert.equal(await composer.getByRole('button', { name: 'Send a gift', exact: true }).count(), 1);
     assert.equal(await composer.getByRole('button', { name: 'Record voice message', exact: true }).count(), 1, 'An empty composer has one recording action');
     assert.equal(await composer.getByRole('button', { name: 'Send message', exact: true }).count(), 0);
+
+    // Gifts sit above the composer; a tap picks the gift in the sheet and never spends coins by itself.
+    const catalog = { gifts: [{ id: id('61'), name: 'Rose', emoji: '🌹', coins: 99 }, { id: id('62'), name: 'Crown', coins: 999, mediaUrl: 'https://media.example.test/crown.png' }], packs: [], paymentsAvailable: false };
+    await receive('data.catalog', catalog);
+    const strip = page.getByRole('group', { name: 'Send a gift' });
+    assert.deepEqual(await strip.getByRole('button').allInnerTexts(), ['🌹\n99', '999'], 'Each gift shows its emoji or artwork and price');
+    assert.equal(await strip.locator('img').getAttribute('src'), 'https://media.example.test/crown.png');
+    await strip.getByRole('button', { name: 'Crown, 999 coins', exact: true }).click();
+    const sheet = page.getByRole('dialog', { name: 'Send a gift', exact: true });
+    await sheet.waitFor();
+    assert.equal((await last('catalog.load')) !== undefined, true, 'Opening the sheet refreshes the catalog');
+    await receive('data.catalog', catalog);
+    assert.equal(await sheet.locator('[aria-pressed="true"]').innerText(), 'Crown\n999', 'The tapped gift is chosen in the sheet');
+    assert.equal(await page.evaluate(() => Home.giftTo), mira.id);
+    assert.equal(await page.evaluate(() => __sent.filter(message => message.type === 'gift.send').length), 0, 'Only the sheet sends gifts');
     assert.deepEqual(errors, []);
-    console.log('PASS chat actions: options per message, reply with quote, edit with Edited label, delete for everyone and for me, live deletes, and Photo/Emoji under +');
+    console.log('PASS chat actions: options per message, reply with quote, edit with Edited label, delete for everyone and for me, live deletes, Photo/Emoji under +, and gifts above the composer');
   } finally {
     await browser.close();
   }

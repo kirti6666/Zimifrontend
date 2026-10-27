@@ -163,7 +163,7 @@ async function run() {
     console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, media viewer and keyboard tabs');
 
     const readsBeforePresence = await sentCount(page, 'profile.load');
-    const unavailable = { ...creator, online: false, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };
+    const unavailable = { ...creator, online: true, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };
     await receive(page, 'data.home', { ...feed, hosts: [unavailable, other], featured: unavailable });
     assert.equal(await button(page, 'Unavailable').isDisabled(), true, 'Live discovery updates the displayed creator availability');
     assert.equal(await page.locator('.zu-stats strong').first().innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
@@ -172,7 +172,12 @@ async function run() {
     assert.equal(await sentCount(page, 'profile.load'), readsBeforePresence, 'A live presence update does not restart profile loading');
     await receive(page, 'data.home', feed);
     assert.equal(await button(page, 'Start video call').isEnabled(), true);
-    console.log('PASS public profile: live availability updates preserve profile counts, relationship and gallery');
+    await receive(page, 'data.home', {...feed,hosts:[{...creator,stream:{id:'paused-live',status:'live',title:'Legacy broadcast',viewers:12}}]});
+    assert.equal(await page.locator('.zu-live-card,.zu-presence.is-live').count(),0,'Profile hides stream promotion from legacy discovery metadata');
+    await page.evaluate(()=>zuWatch());
+    assert.equal(await sentCount(page,'stream.join'),0,'Profile watch handler cannot join a disabled stream');
+    assert.equal(await button(page,'Start video call').isEnabled(),true,'Private calling remains available');
+    console.log('PASS public profile: availability updates preserve profile data and paused streams stay hidden');
 
     await button(page, 'Follow').click();
     const follow = await lastSent(page, 'follow.set');
@@ -260,8 +265,9 @@ async function run() {
     await receive(page, 'data.publicProfile', { id: other.id, requestId: current.requestId, profile: profile(other) });
     await acceptPosts(page, other);
     await page.getByRole('heading', { name: other.name, exact: true }).waitFor();
-    assert.equal(await button(page, 'Unavailable').isDisabled(), true, 'Unavailable hosts do not expose an active call action');
-    console.log('PASS public profile: stale profile data/errors cannot replace the current account; availability is truthful');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'An offline host is still shown available for a call');
+    assert.doesNotMatch(await page.locator('.zu-presence').innerText(), /offline/i, 'A host profile never says offline');
+    console.log('PASS public profile: stale profile data/errors cannot replace the current account; offline hosts are never shown offline');
 
     const blocksBefore = await sentCount(page, 'block.set');
     await button(page, 'More profile options').click();
@@ -329,6 +335,24 @@ async function run() {
     await page.setViewportSize({ width: 320, height: 844 });
     await layout(page, 'Long untrusted names at 320px');
     console.log('PASS public profile: escaped remote text and safe media fallbacks');
+
+    // Your own profile, opened from Profile, shows what others see, with Edit in place of chat, follow or report.
+    await receive(page, 'session', creatorAccount);
+    await receive(page, 'data.home', feed);
+    await page.evaluate(() => go('profile'));
+    await button(page, 'View as others see it').click();
+    const self = { ...creator, id: creatorAccount.user.id, name: 'Approved creator' };
+    assert.deepEqual(await page.evaluate(() => [S.v, zuId()]), ['host', self.id], 'Creators open their public creator profile');
+    await acceptProfile(page, self);
+    await acceptPosts(page, self, [photo]);
+    await page.getByRole('heading', { name: 'Approved creator', exact: true }).waitFor();
+    assert.match(await page.locator('.zu-self-bar').innerText(), /YOUR PUBLIC PROFILE[\s\S]*This is how others see you/);
+    assert.equal(await page.locator('#zu-follow, #zu-message, #zu-call, .zu-gift').count(), 0, 'Nothing to follow, message, call or gift on your own profile');
+    assert.equal(await button(page, 'More profile options').isDisabled(), true, 'You cannot report or block yourself');
+    assert.equal(await page.locator('.zu-gallery .zu-photo').count(), 1, 'Your posts show as they do for others');
+    await page.locator('#zu-edit-self').click();
+    assert.equal(await page.evaluate(() => S.v), 'editprofile');
+    console.log('PASS public profile: your own profile as others see it, with Edit instead of social actions');
 
     assert.deepEqual(errors, [], 'Public profiles handle all native events without browser exceptions');
   } finally { await browser.close(); }

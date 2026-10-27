@@ -4,11 +4,14 @@ const Room = {
   key: '', sheet: '', requests: [], ownRequestId: null, queueCount: 0,
   queueLoading: false, queueError: '', busy: false, transition: null,
   likes: 0, supporters: [], received: 0, gift: null, giftIds: new Set(), reactionIds: new Set(),
+  giftMotion: null, giftTimer: null,
   goal: 17000, goalTitle: 'Studio Mic Upgrade', goalEnabled: false,
-  draft: '', effects: 'original', playbackMuted: false, reactionAt: 0,
+  draft: '', chatOpen: false, effects: 'original', playbackMuted: false, reactionAt: 0,
   startedAt: 0, confirm: '', focus: null, link: null, linkLoading: false, shareLink: ''
 };
 Object.assign(homeIcons, {
+  callgrid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  callmore: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/>',
   smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1 3 4 3 4-3 4-3M8 9h.01M16 9h.01"/>',
@@ -23,8 +26,9 @@ function zrPerson(){const p=zrIsCall()?(S.v==='hcall'?S.caller:g(S.h)):(Home.hos
 function zrEnsure(){
   const key=S.v==='live'?Home.stream?.id:(S.callId||'preview-call');
   if(!key||Room.key===key)return;
+  zrClearGiftMotion();
   Room.shareLink='';
-  Object.assign(Room,{key,sheet:'',requests:[],ownRequestId:null,queueCount:0,queueLoading:false,queueError:'',busy:false,likes:0,supporters:[],received:0,gift:null,giftIds:new Set(),reactionIds:new Set(),draft:'',goalEnabled:false,confirm:'',effects:'original',startedAt:Date.parse(Home.stream?.createdAt)||Date.now()});
+  Object.assign(Room,{key,sheet:'',requests:[],ownRequestId:null,queueCount:0,queueLoading:false,queueError:'',busy:false,likes:0,supporters:[],received:0,gift:null,giftIds:new Set(),reactionIds:new Set(),draft:'',chatOpen:false,playbackMuted:false,goalEnabled:false,confirm:'',effects:'original',startedAt:Date.parse(Home.stream?.createdAt)||Date.now()});
   if(DEMO&&S.v==='live')zrDemoRoom();
 }
 function zrAvatar(p,size=34){return avc(p||{n:'Viewer',seed:12},size)}
@@ -33,8 +37,33 @@ function zrStatus(){return `<p class="zh-media-status zr-status" role="status">$
 function zrIdentity(p,host,call){
   return `<header class="zr-header"><div class="zr-identity">${zrAvatar(p)}<div class="zr-person"><strong>${esc(p?.n||'Live creator')}</strong><span><i></i>${call?'PRIVATE CALL':'LIVE'}${host&&!call?' <b data-room-clock>00:00</b>':''}</span></div>${!host&&!call?`<button class="zr-follow ${S.following[p?.id]?'is-following':''}" onclick="toggleFollow('${domId(p?.id||'')}',event)" aria-label="${S.following[p?.id]?'Unfollow':'Follow'} ${esc(p?.n||'creator')}">${S.following[p?.id]?'Following':'+ Follow'}</button>`:''}</div><div class="zr-header-right">${call?`<span class="zr-pill zr-timer">${hi('lock',12)} <span id="ck">${clock(S.sec)}</span></span>`:host?`<button class="zr-pill zr-earnings" onclick="zrOpen('supporters')" aria-label="Session gifts">${hi('coin',13)} ${homeCompact(Room.received)}</button>`:''}${!call?`<button class="zr-pill zr-viewers" onclick="zrOpen('audience')" aria-label="Live viewers">${hi('eye',14)} <span data-room-viewers>${homeCompact(Home.stream.viewers)}</span></button>`:''}${zrRound('close',call?'End call':host?'End broadcast':'Leave live',"zrExit()",'zr-close')}</div></header>`;
 }
-function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p?homeCover(p,true):''}${voice?`<div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>Just you. Just a conversation.</span></div><audio data-zimi-remote autoplay></audio>`:`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
-function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${gift.mediaUrl?`<img src="${homeGiftUrl(gift.mediaUrl)}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>+${n(gift.coins)} coins received</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p?homeCover(p,true):''}${voice?`<div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>Just you. Just a conversation.</span></div><audio data-zimi-remote autoplay></audio>`:`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO&&!zrIsCall()?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
+function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=homeGiftUrl(gift.mediaUrl);return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${gift.sent?'':'+'}${n(gift.coins)} coins ${gift.sent?'sent':'received'}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+/* Keep the event's original clock across screen redraws. Negative animation delay
+   resumes the celebration instead of replaying it when chat or controls change. */
+function zrGiftCelebration(){
+  const motion=Room.giftMotion,gift=Room.gift;
+  if(!motion||!gift||motion.key!==Room.key)return '';
+  const elapsed=Math.max(0,Date.now()-motion.at);
+  if(elapsed>=motion.life)return '';
+  const media=homeGiftUrl(gift.mediaUrl),large=gift.coins>=19999;
+  return `<div class="zr-gift-celebration ${large?'is-large':''}" aria-hidden="true" style="--gift-age:-${elapsed}ms;--gift-life:${motion.life}ms">
+    <div class="zr-gift-halo"></div><div class="zr-gift-wave"></div>
+    <div class="zr-gift-sparks">${Array.from({length:large?14:8},(_,i)=>`<i style="--spark-angle:${i*(large?360/14:45)}deg;--spark-distance:${large?115:86}px"></i>`).join('')}</div>
+    <div class="zr-gift-stage-art">${media?`<img src="${media}" alt="">`:`<span>${esc(gift.emoji||'🎁')}</span>`}</div>
+    <div class="zr-gift-caption"><strong>${esc(gift.giftName)}</strong><span>${esc(gift.name)} <b>+${n(gift.coins)}</b></span></div>
+  </div>`;
+}
+function zrClearGiftMotion(){
+  clearTimeout(Room.giftTimer);Room.giftTimer=null;Room.giftMotion=null;Room.gift=null;
+  document.querySelectorAll('.zr-gift-celebration,.zr-gift-alert').forEach(el=>el.remove());
+}
+function zrStartGiftMotion(){
+  clearTimeout(Room.giftTimer);
+  const motion={key:Room.key,at:Date.now(),life:Room.gift.coins>=19999?3200:2400};
+  Room.giftMotion=motion;
+  Room.giftTimer=setTimeout(()=>{if(Room.giftMotion===motion)zrClearGiftMotion()},motion.life);
+}
 function zrSupporterStrip(){return `<div class="zr-supporters">${Room.supporters.slice(0,2).map((p,i)=>`<button onclick="zrOpen('supporters')">${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl,gender:p.gender},23)}<b class="zr-rank">${i+1}</b><strong>${esc(p.name)}</strong><span>${homeCompact(p.coins)}</span></button>`).join('')}<button class="zr-explore" onclick="zrOpen('supporters')">${hi('cup',14)} Supporters ${hi('chev',12)}</button></div>`}
 function zrGoal(){if(!Room.goalEnabled)return '';const percent=Math.min(100,Math.round(Room.received/Room.goal*100));return `<button class="zr-goal" onclick="zrOpen('goal')" aria-label="Edit session gift goal"><span>${hi('mic',15)}<strong>Goal: ${esc(Room.goalTitle)}</strong><small>${homeCompact(Room.received)} / ${homeCompact(Room.goal)} coins (${percent}%)</small></span><span class="zr-progress" role="progressbar" aria-label="Session gift goal" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></span></button>`}
 function zrTool(icon,label,action,badge='',active=false){return `<button type="button" class="zr-tool ${active?'is-active':''}" onclick="${action}" aria-label="${esc(label)}" ${['Mute','Unmute','Camera off','Camera on'].includes(label)?`aria-pressed="${active}"`:''}><span>${hi(icon,21)}${badge?`<b>${esc(badge)}</b>`:''}</span><small>${esc(label)}</small></button>`}
@@ -48,20 +77,73 @@ function zrHostQueue(){const request=Room.requests[0];return `${request?`<aside 
 function zrLive(){
   if(!Home.stream)return '<div class="zh-empty"><h3>This live has ended.</h3><button onclick="go(\'home\')">Back to Home</button></div>';
   zrEnsure();const host=Home.hosting,p=zrPerson();
-  return `<section class="zh-room zr-room ${host?'zr-host':'zr-viewer'}" aria-label="${host?'Your live broadcast':'Live broadcast'}">${zrBackdrop(p,host)}<div class="zr-top">${host?'<div class="zr-diagnostics"><span><i></i><i></i><i></i><i></i> LIVE STUDIO</span><b data-room-quality>Camera ready</b></div>':''}${zrIdentity(p,host,false)}${host?zrSupporterStrip()+zrGoal():zrRequestBar()}${zrGiftBanner()}${host?zrStatus():''}</div>${host?zrTools():''}<div class="zr-floating-hearts" aria-hidden="true"></div><div class="zr-bottom">${!host?zrStatus():''}<div class="zr-messages" id="home-room-messages" role="log" aria-label="Live chat" aria-live="polite">${zrMessageHTML()}</div>${host?zrHostQueue():''}${zrChat(false,host)}${DEMO?'<span class="zr-demo-note">Interactive preview · sample activity</span>':''}</div>${zrSheet()}${homeGiftSheet()}</section>`;
+  return `<section class="zh-room zr-room ${host?'zr-host':'zr-viewer'}" aria-label="${host?'Your live broadcast':'Live broadcast'}">${zrBackdrop(p,host)}<div class="zr-top">${host?'<div class="zr-diagnostics"><span><i></i><i></i><i></i><i></i> LIVE STUDIO</span><b data-room-quality>Camera ready</b></div>':''}${zrIdentity(p,host,false)}${host?zrSupporterStrip()+zrGoal():zrRequestBar()}${zrGiftBanner()}${host?zrStatus():''}</div>${host?zrTools():''}<div class="zr-floating-hearts" aria-hidden="true"></div><div class="zr-bottom">${!host?zrStatus():''}<div class="zr-messages" id="home-room-messages" role="log" aria-label="Live chat" aria-live="polite">${zrMessageHTML()}</div>${host?zrHostQueue():''}${zrChat(false,host)}${DEMO?'<span class="zr-demo-note">Interactive preview · sample activity</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
+function zrCallStats(host){return `<div class="zr-call-stats"><div class="zr-call-stat"><span class="zr-stat-icon">${hi('ph',19)}</span><div><span class="zr-stat-label">CALL RATE</span><strong>${S.callRate?`${coinIcon(14)} ${n(S.callRate)} <small>/ min</small>`:'Free call'}</strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div><div class="zr-call-stat"><span class="zr-stat-icon">${hi('gift',20)}</span><div>${host?`<span class="zr-stat-label">THIS SESSION <small>${n(S.recvN||0)} gifts</small></span><strong id="earn">${gem}+${kfmt(Math.round(S.earned||0))}</strong>`:`<span class="zr-stat-label">GIFTS SENT <small>${n(S.giftN||0)}</small></span><strong>${coinIcon(14)} ${n(S.gifted||0)} <small>coins</small></strong>`}<span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div></div>`}
+function zrCallGifts(host){
+  if(host)return '';
+  const pending=!DEMO&&contentPending('catalog'),error=!DEMO&&ContentLoading.catalog.error;
+  if(pending)return `<div class="zr-gift-rail zr-gifts-loading" role="status" aria-label="Loading call gifts" aria-busy="true">${Array.from({length:6},()=>`<div aria-hidden="true">${skeletonLine('32px',32)}${skeletonLine('38px',10)}</div>`).join('')}</div>`;
+  if(error||!Home.gifts.length)return `<button class="zr-gifts-empty" onclick="homeGifts('${domId(zrPerson()?.id||'')}')">${hi('gift',17)} ${error?'Retry loading gifts':'Browse gifts'} ${hi('chev',13)}</button>`;
+  return `<div class="zr-gift-rail" role="group" aria-label="Call gifts" data-lenis-prevent>${Home.gifts.map(gift=>`<button onclick="zrChooseGift('${domId(gift.id)}')" aria-label="Choose ${esc(gift.name)}, ${n(gift.coins)} coins" ${Home.giftBusy?'disabled':''}><span class="zr-rail-art">${homeGiftUrl(gift.mediaUrl)?`<img src="${homeGiftUrl(gift.mediaUrl)}" alt="">`:esc(gift.emoji||'🎁')}</span><span class="zr-rail-price">${coinIcon(13)} ${n(gift.coins)}</span></button>`).join('')}</div>`;
+}
+function zrChooseGift(id){if(!zrIsCall()||zrIsHost()||Home.giftBusy)return;homeGifts(zrPerson()?.id);homeSelectGift(id)}
+function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
+function zrCallChat(){Room.chatOpen=!Room.chatOpen;r();if(Room.chatOpen)document.getElementById('rmsg')?.focus();else document.querySelector('.zr-call-chat-toggle')?.focus({preventScroll:true})}
+function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
+/* A host starts with their own camera on the main stage, as in the setup preview.
+   Swapping changes only the two media elements' placement, never their tracks. */
+function zrHostStage(p,voice){
+  if(voice)return zrBackdrop(p,false,true);
+  const localMain=!S.swap,localPip=!!S.swap;
+  return `<div class="zr-video zr-reference-stage ${localMain?'zr-local':''} ${localMain&&!S.cam?'camera-off':''}">${localMain?hcStageVideo():'<video data-zimi-remote autoplay playsinline></video>'}${localMain&&!S.cam?`<div class="zr-camera-off">${hcIdentityAvatar(me,104)}<span>Camera off</span></div>`:''}<div class="zr-shade"></div></div>
+    <button type="button" class="zr-pip ${localPip&&!S.cam?'camera-off':''}" aria-label="Swap videos" onclick="S.swap=!S.swap;r()"><video ${localPip?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>${localPip&&!S.cam?hi('camoff',21):''}<span>${localPip?'You':esc(first(p.n))}${localPip&&!S.mic?hi('micoff',12):''}</span></button>`;
+}
+function zrHostReferenceCall(p,voice){
+  const publicId=p.publicId||p.uid||p.id;
+  return `<section class="zh-room zr-room zr-call zr-call-reference ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrHostStage(p,voice)}
+    <div class="zr-top"><header class="zr-call-toolbar">
+      ${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}
+      <div class="zr-host-clock"><span class="zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-clock-divider" aria-hidden="true"></span>${hcVisPill()}</div>
+      <span class="zr-session-earned" title="${n(Math.round(S.earned||0))} coins this session"><small>This session</small><b id="earn">${coinIcon(14)}+${kfmt(Math.round(S.earned||0))}</b></span>
+      ${zrRound('callmore','Call options',"zrOpen('host-options')",'zr-host-more')}
+    </header><div class="zr-call-stats">${typeof hsTargets==='function'?hsTargets():''}</div>${hcFeeChip()}${zrGiftBanner()}</div>
+    <div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>
+      ${typeof hsGiftRail==='function'?hsGiftRail():''}${Room.chatOpen?zrCallComposer():''}
+      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button>
+        <div class="zr-call-person">${hcIdentityAvatar(p,38)}<div><strong>${esc(p.n)}</strong><span>${publicId?`ID ${esc(publicId)}`:'Private call'}</span></div></div>
+        <button type="button" class="zr-call-target" onclick="hsOpenSheet('gift-target')" aria-label="Choose gift target">${hi('plus',15)}</button>
+        <button type="button" class="zr-hangup" onclick="hostEnd('end')" aria-label="End call">${hi('ph',23)}</button>
+        ${zrRound('gift','Gift target',"hsOpenSheet('gift-target')",'zr-dock-controls')}
+      </div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
+    </div>${zrGiftCelebration()}${zrSheet()}${typeof hsSheet==='function'?hsSheet():''}${hcCallExtras()}</section>`;
+}
+function zrHostOptions(){
+  const voice=!!zrPerson()?.voice,effect=typeof HostStudio!=='undefined'?HostStudio.previewEffect:'original';
+  return `<div class="zr-options-backdrop" onclick="if(event.target===this)zrClose()"><section class="zr-host-options" role="dialog" aria-modal="true" aria-label="Call options">
+    ${!voice?`<button type="button" onclick="Room.sheet='';hsOpenSheet('appearance')" aria-label="Beauty and filters">${hi('star',17)}<span>Beauty &amp; filters</span><em>${effect==='original'?'Off':effect[0].toUpperCase()+effect.slice(1)}</em></button>`:''}
+    <button type="button" onclick="zrMic()" aria-label="${S.mic?'Mute microphone':'Unmute microphone'}" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',17)}<span>${S.mic?'Mute':'Unmute'}</span><em class="${S.mic?'is-on':'is-off'}">${S.mic?'Mic on':'Muted'}</em></button>
+    ${!voice?`<button type="button" onclick="zrCamera()" aria-label="${S.cam?'Turn camera off':'Turn camera on'}" aria-pressed="${!S.cam}">${hi(S.cam?'vid':'camoff',17)}<span>${S.cam?'Turn camera off':'Turn camera on'}</span><em class="${S.cam?'is-on':'is-off'}">${S.cam?'On':'Off'}</em></button>`:''}
+    ${voice?`<button type="button" onclick="zrSound()" aria-label="${Room.playbackMuted?'Unmute caller':'Mute caller'}">${hi(Room.playbackMuted?'micoff':'mic',17)}<span>${Room.playbackMuted?'Unmute caller':'Mute caller'}</span><em class="${Room.playbackMuted?'is-off':'is-on'}">${Room.playbackMuted?'Muted':'On'}</em></button>`:''}
+  </section></div>`;
+}
 function zrCall(host){
   zrEnsure();const p=zrPerson(),voice=S.v==='voice'||!!p?.voice;
   if(!p)return '<div class="zh-empty">This call has ended.<button onclick="go(\'home\')">Back to Home</button></div>';
-  return `<section class="zh-room zr-room zr-call" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}<div class="zr-top">${zrIdentity(p,host,true)}<div class="zr-private-label">${hi('shield',13)} Just the two of you <span id="zr-call-cost">${zrCallCost(host)}</span></div>${zrGiftBanner()}</div>${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',24):''}<span>You ${!S.mic?hi('micoff',12):''}</span>${zrRound('flip','Flip camera',"zrFlip()")}</div>`:''}<div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${zrChat(true,host)}<div class="zr-call-controls">${zrTool(S.mic?'mic':'micoff',S.mic?'Mute':'Unmute',"zrMic()",'',!S.mic)}${!voice?zrTool(camOn()?'vid':'camoff',camOn()?'Camera off':'Camera on',"zrCamera()",'',!camOn()):''}${zrTool(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Sound on':'Sound off',"zrSound()",'',Room.playbackMuted)}<button class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',25)}<span>End call</span></button></div>${DEMO?'<span class="zr-demo-note">Interactive preview · sample call</span>':''}</div>${zrSheet()}${homeGiftSheet()}</section>`;
+  if(host)return zrHostReferenceCall(p,voice);
+  return `<section class="zh-room zr-room zr-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}<div class="zr-top"><div class="zr-call-heading"><div><strong>BinzoLive <span>· 1:1 ${voice?'voice':'video'} call</span></strong><p>Content is user-generated and unverified.</p></div>${hi('lock',15)}</div><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span>${host?hcVisPill():''}<span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats(host)}${host?hcFeeChip():''}${zrGiftBanner()}</div>${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}<div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(host)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${zrCallGifts(host)}${Room.chatOpen?zrCallComposer():''}<div class="zr-call-dock"><button class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button><div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${host?`${hi('lock',12)} Private conversation`:`${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small>`}</span></div></div>${!host?`<button class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>`:''}<button class="zr-hangup" onclick="${host?"hostEnd('end')":"endCall()"}" aria-label="End call">${hi('ph',23)}</button>${zrRound('callgrid','Call controls',"zrOpen('call-controls')",'zr-dock-controls')}</div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}${host?hcCallExtras():''}</section>`;
 }
 function zrOpen(sheet){Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r()}
-function zrClose(){Room.sheet='';Room.confirm='';r()}
+function zrClose(){Room.sheet='';Room.confirm='';S.confirm=0;r()}
 function zrSheet(){
   const sheet=Room.sheet;if(!sheet)return '';const host=zrIsHost();let title='',content='';
-  if(sheet==='queue'){
+  if(sheet==='host-options')return zrHostOptions();
+  if(sheet==='call-controls'){
+    const voice=S.v==='voice'||!!zrPerson()?.voice;
+    title='Call controls';content=`<p class="zr-sheet-note">Just the two of you. Manage your microphone${voice?'':' and camera'} during this call.</p><div class="zr-call-controls">${zrTool(S.mic?'mic':'micoff',S.mic?'Mute':'Unmute',"zrMic()",'',!S.mic)}${!voice?zrTool(camOn()?'vid':'camoff',camOn()?'Camera off':'Camera on',"zrCamera()",'',!camOn())+zrTool('flip','Flip camera',"zrFlip()"):''}${zrTool(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Sound on':'Sound off',"zrSound()",'',Room.playbackMuted)}</div><button class="zr-wide zr-danger" onclick="zrExit()">End call</button>`;
+  }else if(sheet==='queue'){
     title=host?'1-on-1 call requests':'Your private call';
     content=`<p class="zr-sheet-note">${host?'Accepting a request ends your public live and starts a private video call.':'Your host will accept when they’re ready. The public live ends when the private call starts.'} ${host?'The current coin rate applies.':zrPrivateCallPrice()==='Free'?'This call is free.':zrPrivateCallPrice()+', with a one-minute minimum.'}</p>`;
     if(Room.queueLoading)content+=contentSkeleton('rows','Loading call requests',2);
@@ -88,7 +170,7 @@ function zrSheet(){
   return `<div class="zr-sheet-backdrop" onclick="if(event.target===this)zrClose()"><section class="zr-sheet" role="dialog" aria-modal="true" aria-label="${title}" data-lenis-prevent><div class="zr-sheet-handle"></div><header><h2>${title}</h2>${zrRound('close','Close panel',"zrClose()")}</header>${content}</section></div>`;
 }
 function zrSaveGoal(){const title=document.getElementById('zr-goal-title').value.trim(),amount=Number(document.getElementById('zr-goal-amount').value);if(!title||!Number.isInteger(amount)||amount<1||amount>100000000)return;Room.goalTitle=title;Room.goal=amount;Room.goalEnabled=true;zrClose()}
-function zrExit(){Room.sheet='exit';r()}
+function zrExit(){if(S.v==='hcall'&&hcFeePending()){Room.sheet='';return hostEnd('end')}Room.sheet='exit';r()}
 function zrExitNow(){Room.sheet='';Room.transition=null;zrIsCall()?endCall():homeLeaveStream()}
 function zrMic(){S.mic=S.mic?0:1;window.ZimiMedia?.attach();r()}
 function zrCamera(){if(S.v==='live')S.cam=S.cam?0:1;else if(isHost())S.cam=S.cam?0:1;else S.scam=S.scam?0:1;window.ZimiMedia?.attach();r()}
@@ -114,7 +196,7 @@ function zrAfter(focus){
   zrLinkSheet();
   const room=document.querySelector('.zr-room');document.documentElement.classList.toggle('zr-active',!!room);if(!room)return;
   if(focus&&!Room.sheet&&!Home.giftTo){const input=document.getElementById(focus.id);if(input){input.value=Room.draft;input.focus({preventScroll:true});input.setSelectionRange(focus.start,focus.end)}}
-  const sheet=document.querySelector('.zr-sheet');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button,input')?.focus({preventScroll:true});
+  const sheet=document.querySelector('.zr-sheet,.zr-host-options');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button,input')?.focus({preventScroll:true});
   const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight;
   zrUpdateDiagnostics();
 }
@@ -124,35 +206,42 @@ function zrUpdateDiagnostics(){
   if(quality)quality.textContent=video?.videoHeight?`${video.videoWidth} × ${video.videoHeight}`:DEMO?'PREVIEW':S.cam?'Connecting camera':'Camera off';
   document.querySelector('.zr-video-wait')?.classList.toggle('is-ready',!!video?.srcObject&&video.readyState>=2);
 }
-setInterval(()=>{if(S.v==='live')zrUpdateDiagnostics()},1000);
+setInterval(()=>{if(S.v==='live'||zrIsCall())zrUpdateDiagnostics()},1000);
 Native.on('stream.opened',()=>{zrEnsure();zrLoadQueue()});
 Native.on('stream.requests',d=>{if(Home.stream?.id!==d.streamId)return;Room.requests=d.requests||[];Room.ownRequestId=d.ownRequestId||null;Room.queueCount=d.count||0;Room.queueLoading=false;Room.queueError='';Room.busy=false;if(S.v==='live')r()});
 Native.on('stream.request.updated',d=>{if(Home.stream?.id!==d.streamId)return;Room.busy=false;if(d.request?.status==='declined'&&d.request.id===Room.ownRequestId)appNotice('The host couldn’t take your call this time.');zrLoadQueue()});
 Native.on('stream.reaction',d=>{if(Home.stream?.id!==d.streamId||d.id&&Room.reactionIds.has(d.id))return;if(d.id){Room.reactionIds.add(d.id);if(Room.reactionIds.size>500)Room.reactionIds.delete(Room.reactionIds.values().next().value)}Room.likes++;zrHeart()});
 Native.on('stream.gift',d=>{if(Home.stream?.id!==d.streamId)return;zrReceiveGift(d)});
 function zrReceiveGift(d){
+  if(!zrIsCall()&&S.v!=='live')return;
+  if(zrIsCall()&&d.callId&&d.callId!==S.callId)return;
+  zrEnsure();
   const id=d.id||d._id||d.transactionId;if(id&&Room.giftIds.has(id))return;if(id){Room.giftIds.add(id);if(Room.giftIds.size>500)Room.giftIds.delete(Room.giftIds.values().next().value)}
   const coins=Number(d.totalCoins??d.coins??d.amount)||0,gift=typeof d.gift==='object'?d.gift:null;
   const name=d.senderName||d.from?.name||d.sender?.name||d.name||'A supporter',userId=d.senderId||d.from?.id||d.from||d.sender?.id||name;
-  const previous=Room.gift;Room.gift={name,giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,coins,combo:previous?.name===name?previous.combo+1:1};
+  const previous=Room.gift;Room.gift={name,sent:userId==='you',giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,coins,combo:previous?.name===name?previous.combo+1:1};
   Room.received+=coins;let p=Room.supporters.find(x=>x.id===userId);if(p)p.coins+=coins;else Room.supporters.push({id:userId,name,coins,avatarUrl:d.senderAvatarUrl||d.sender?.avatarUrl,gender:d.senderGender||d.sender?.gender});Room.supporters.sort((a,b)=>b.coins-a.coins);
   if(zrIsCall()){S.rmsgs.push(['gift',name,`sent ${Room.gift.emoji} ${Room.gift.giftName}`]);if(S.v==='hcall'){S.earned=(S.earned||0)+coins;S.recvN=(S.recvN||0)+1;S.gifted=(S.gifted||0)+coins}}
+  if(S.v==='hcall'&&userId!=='you'&&typeof hsReceiveGift==='function')hsReceiveGift(d);
+  zrStartGiftMotion();
   if(S.v==='live'||zrIsCall())r();
 }
 Native.on('gift.received',d=>{if(zrIsCall())zrReceiveGift(d)});
+Native.on('data.catalog',()=>{if(zrIsCall())r()});
 Native.on('stream.shareLink',d=>{if(Home.stream?.id!==d.streamId)return;Room.shareLink=d.url;if(Room.sheet==='share')r()});
 Native.on('stream.link.loading',d=>{Room.linkLoading=!!d.loading;zrLinkSheet()});
 Native.on('stream.link',d=>{Room.linkLoading=false;Room.link=d.stream;zrLinkSheet()});
 Native.on('operation.error',d=>{if(d.action==='stream.link'){Room.linkLoading=false;zrLinkSheet()}if(d.action==='stream.share'){const el=document.getElementById('zr-share-status');if(el)el.textContent=d.message||'Could not share this live.'}});
 function zrLinkDismiss(){Room.link=null;Room.linkLoading=false;document.getElementById('zr-link-overlay')?.remove()}
 function zrLinkSheet(){
-  document.getElementById('zr-link-overlay')?.remove();if(!Room.link&&!Room.linkLoading)return;
+  document.getElementById('zr-link-overlay')?.remove();if(!window.ZIMI_LIVE_STREAMING_ENABLED||!Room.link&&!Room.linkLoading)return;
   const stream=Room.link,busy=zrIsCall()||S.v==='live',ended=stream&&stream.status!=='live';
   const el=document.createElement('div');el.id='zr-link-overlay';el.className='zr-sheet-backdrop zr-link-overlay';el.innerHTML=`<section class="zr-sheet" role="dialog" aria-modal="true" aria-label="Live invitation"><div class="zr-sheet-handle"></div><header><h2>You're invited</h2>${zrRound('close','Dismiss invitation','zrLinkDismiss()')}</header>${Room.linkLoading?contentSkeleton('rows','Loading live invitation',2):`<p class="zr-sheet-note">${esc(stream.host?.name||'A creator')} invited you to a live.</p><h3>${esc(stream.title)}</h3><p class="zr-sheet-note">${ended?'This live session has ended.':busy?'Finish your current session to join this live.':`${n(stream.viewers)} watching · Join the conversation.`}</p><button class="zr-wide zr-pink" onclick="zrJoinLink()" ${ended||busy?'disabled':''}>${hi('play',18)} Join live</button>`}</section>`;document.body.appendChild(el);el.querySelector('button')?.focus({preventScroll:true});
 }
 function zrJoinLink(){const stream=Room.link;if(!stream||stream.status!=='live'||zrIsCall()||S.v==='live')return;const host=homeRemember({...stream.host,id:stream.hostId,name:stream.host?.name||'Live creator',stream});zrLinkDismiss();homeOpen(host.id)}
 Native.on('operation.error',d=>{if(d.action?.startsWith('stream.request')){Room.busy=false;Room.queueLoading=false;Room.queueError=d.message||'Could not update the call queue.';if(S.v==='live')r()}});
 Native.on('stream.privateCall',async d=>{
+  if(!window.ZIMI_LIVE_STREAMING_ENABLED)return;
   if(Room.transition===d.callId||S.callId===d.callId)return;
   if(Home.stream?.id!==d.streamId){Native.send('call.end',{callId:d.callId,reason:'left_room'});return}
   const host=Home.hosting;Room.transition=d.callId;Home.stream=null;Home.hosting=false;Home.pendingClose=null;Home.messages=[];Room.sheet='';Room.busy=false;window.ZimiMedia.stop();S.callId=d.callId;S.mic=1;S.cam=1;S.scam=1;Home.mediaStatus='Preparing your private call…';
@@ -163,22 +252,22 @@ Native.on('stream.privateCall',async d=>{
   try{await window.ZimiMedia.prepare(true);if(Room.transition!==d.callId||!zrIsCall()||S.callId!==d.callId)return;Native.receive({type:'call.connected',data:d});r()}
   catch(error){if(Room.transition===d.callId){Native.send('call.end',{callId:d.callId,reason:'media_failed'});if(zrIsCall())endCall(true);appNotice(error.message)}}
 });
-['session.none','session.expired'].forEach(type=>Native.on(type,()=>{Room.key='';Room.transition=null;Room.sheet='';Room.draft='';Room.shareLink='';zrLinkDismiss()}));
-document.addEventListener('aurora:navigate',()=>{if(S.v==='live'){zrEnsure();if(!DEMO&&!Home.streamBusy)zrLoadQueue()}else if(!zrIsCall()){Room.sheet='';Room.key='';Room.transition=null;Room.draft=''}});
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{zrClearGiftMotion();Room.key='';Room.transition=null;Room.sheet='';Room.draft='';Room.shareLink='';zrLinkDismiss()}));
+document.addEventListener('aurora:navigate',()=>{if(S.v==='live'){zrEnsure();if(!DEMO&&!Home.streamBusy)zrLoadQueue()}else if(!zrIsCall()){zrClearGiftMotion();Room.sheet='';Room.key='';Room.transition=null;Room.draft=''}});
 document.addEventListener('keydown',event=>{
-  const dialog=document.querySelector('.zr-link-overlay .zr-sheet')||document.querySelector('.zr-sheet');if(!dialog)return;
+  const dialog=document.querySelector('.zr-link-overlay .zr-sheet')||document.querySelector('.zr-sheet,.zr-host-options');if(!dialog)return;
   if(event.key==='Escape'){event.preventDefault();dialog.closest('.zr-link-overlay')?zrLinkDismiss():zrClose()}
   if(event.key==='Tab'){const elements=[...dialog.querySelectorAll('button:not(:disabled),input,select,a[href]')];if(!elements.length)return;const first=elements[0],last=elements.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}
 });
 function zrDemoRoom(){
   if(!DEMO)return;
   Room.likes=150;Room.received=14300;Room.goalEnabled=Home.hosting;Room.startedAt=Date.now()-2555000;
-  Room.supporters=[{id:'liam',name:'Liam_VIP',coins:4200,avatarUrl:OB_MEDIA[1]},{id:'aria',name:'Aria77',coins:2800,avatarUrl:OB_MEDIA[2]}];
-  Room.gift={name:Home.hosting?'Liam_VIP':'Jaxson',giftName:Home.hosting?'Galaxy Rocket':'Super Diamond',coins:Home.hosting?1000:500,emoji:Home.hosting?'🚀':'💎',combo:Home.hosting?1:5};
-  Room.queueCount=2;if(Home.hosting)Room.requests=[{id:'preview-marcus',userId:'marcus',name:'Marcus',status:'pending'},{id:'preview-sarah',userId:'sarah',name:'Sarah',status:'pending'}];
-  if(!Home.messages.length)Home.messages=[{id:'d1',name:'Elena',text:'Can you sing the chorus one more time? ✨'},{id:'d2',name:'Kobe_99',text:'Just sent 100 roses!! 🌹🌹',vip:true},{id:'d3',name:Home.hosting?me.n:'Mila',text:'Thank you so much Kobe!! Loving this vibe tonight 💕',host:true},{id:'d4',name:'Sarah',text:'Requesting 1-on-1 video call right now!'}];
+  Room.supporters=[{id:'rohan',name:'Rohan_VIP',coins:4200,avatarUrl:''},{id:'aaru',name:'Aaru77',coins:2800,avatarUrl:OB_MEDIA[3]}];
+  Room.gift={name:Home.hosting?'Rohan_VIP':'Ishaan',giftName:Home.hosting?'Galaxy Rocket':'Super Diamond',coins:Home.hosting?1000:500,emoji:Home.hosting?'🚀':'💎',combo:Home.hosting?1:5};
+  Room.queueCount=2;if(Home.hosting)Room.requests=[{id:'preview-arjun',userId:'arjun',name:'Arjun',status:'pending'},{id:'preview-sana',userId:'sana',name:'Sana',status:'pending'}];
+  if(!Home.messages.length)Home.messages=[{id:'d1',name:'Pooja',text:'Can you sing the chorus one more time?'},{id:'d2',name:'Kabir_99',text:'Just sent 100 roses!',vip:true},{id:'d3',name:Home.hosting?me.n:'Ananya',text:'Thank you so much Kabir! Loving this vibe tonight.',host:true},{id:'d4',name:'Sana',text:'Requesting a 1-on-1 video call!'}];
 }
-if(DEMO&&['live','host-live'].includes(previewMode)){
+if(DEMO&&window.ZIMI_LIVE_STREAMING_ENABLED&&['live','host-live'].includes(previewMode)){
   if(previewMode==='host-live'&&isApprovedHost()){Home.hosting=true;Home.stream={id:'preview-host-live',title:'Acoustic sessions & late night conversations',viewers:4800,createdAt:new Date().toISOString()};S.h='aanya';S.v='live'}
   else{Home.hosting=false;S.h='aanya';Home.stream=g('aanya').stream;S.v='live'}
   Home.mediaStatus='Design preview';S.loggedIn=1;

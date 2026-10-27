@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, AppState, BackHandler, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
+import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, AppState, BackHandler, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ScreenCapture from "expo-screen-capture";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import html from "./assets/aurora-bundle";
@@ -92,6 +92,14 @@ export default function App() {
       return true;
     });
     return () => subscription.remove();
+  }, []);
+  useEffect(() => {
+    // The page can't tell the keyboard from a smaller window, so say when it is up;
+    // the tab bar then steps aside instead of riding on top of the keyboard.
+    const send = (open: boolean) => () => postToWeb(webRef, { type: "keyboard", data: { open } });
+    const shown = Keyboard.addListener("keyboardDidShow", send(true));
+    const hidden = Keyboard.addListener("keyboardDidHide", send(false));
+    return () => { shown.remove(); hidden.remove(); };
   }, []);
   useEffect(() => {
     // Native app switching can precede WebView visibility changes. Give voice
@@ -185,7 +193,7 @@ export default function App() {
       {/* Edge-to-edge Android (including Expo Go) can overlay the keyboard without
           resizing the WebView or its visual viewport. Resize its native container
           by the actual keyboard overlap, so every web composer stays visible. */}
-      <KeyboardAvoidingView behavior="padding" style={[styles.safe, { backgroundColor: canvas }]} accessibilityElementsHidden={launchVisible} importantForAccessibility={launchVisible ? "no-hide-descendants" : "auto"}>
+      <KeyboardShell style={[styles.safe, { backgroundColor: canvas }]} accessibilityElementsHidden={launchVisible} importantForAccessibility={launchVisible ? "no-hide-descendants" : "auto"}>
         <SafeAreaView style={[styles.safe, { backgroundColor: canvas }]}>
           <StatusBar style={launchVisible || theme === "dark" ? "light" : "dark"} />
           {failure || !page ? (
@@ -234,10 +242,19 @@ export default function App() {
             />
           )}
         </SafeAreaView>
-      </KeyboardAvoidingView>
+      </KeyboardShell>
       {launchVisible && <LaunchScreen ready={launched || !!failure || !page} onHidden={hideLaunch} />}
     </SafeAreaProvider>
   );
+}
+
+/* The keyboard's padding is measured from the screen's bottom edge, so it already covers the
+   navigation bar or home indicator; the SafeAreaView inside still pads for that inset too.
+   Taking the inset out of the keyboard padding seats every composer right on the keyboard
+   instead of above an empty strip. */
+function KeyboardShell(props: ComponentProps<typeof KeyboardAvoidingView>) {
+  const { bottom } = useSafeAreaInsets();
+  return <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={-bottom} {...props} />;
 }
 
 const styles = StyleSheet.create({

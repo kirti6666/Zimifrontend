@@ -1,6 +1,6 @@
+import { requireOptionalNativeModule } from "expo";
 import { fetch } from "expo/fetch";
 import { File, Paths } from "expo-file-system";
-import { Asset, getPermissionsAsync, requestPermissionsAsync } from "expo-media-library";
 import { Image, Platform } from "react-native";
 import { api } from "./api/endpoints";
 import { ApiError } from "./api/client";
@@ -26,12 +26,24 @@ function photoExtension(bytes: Uint8Array, contentType: string): string {
   throw new ApiError("This download is not a supported photo. Choose a JPEG, PNG, or WebP photo.", 422);
 }
 
+/**
+ * expo-media-library needs its native module as soon as it loads, and Expo Go or an app built
+ * before the module was added has none. Loading it on the Download tap keeps the rest of the app running.
+ */
+async function mediaLibrary() {
+  if (!requireOptionalNativeModule("ExpoMediaLibraryNext"))
+    throw new ApiError("Saving photos needs the latest version of the BinzoLive app. Update the app and try again.", 501, "PHOTO_SAVE_UNAVAILABLE");
+  return await import("expo-media-library");
+}
+
 /** Only a server-authorized message can reach this native gallery operation. */
 export async function downloadChatPhoto(to: string, id: string, isCurrent: () => boolean): Promise<void> {
   const version = getSessionVersion();
   const ensureCurrent = () => {
     if (!isCurrent() || version !== getSessionVersion()) throw new ApiError("Your sign-in changed. Please try again.", 409);
   };
+  ensureCurrent();
+  const { Asset, getPermissionsAsync, requestPermissionsAsync } = await mediaLibrary();
   ensureCurrent();
   const url = secureUrl(await api.chatPhotoUrl(to, id));
   ensureCurrent();

@@ -181,7 +181,7 @@ async function configuredOtpLengths() {
 async function fillBasics(page, host = false) {
   await page.locator('#pn').fill(host ? 'Creator Test' : 'Onboarding Test');
   await page.locator('#pe').fill('onboarding@example.test');
-  await page.getByRole('button', { name: host ? 'Man' : 'Woman', exact: true }).click();
+  await page.getByRole('button', { name: host ? 'Male' : 'Female', exact: true }).click();
   await page.locator('#p18').check();
   if (host) {
     // Category/language are required for creators; choose visible controls.
@@ -189,7 +189,95 @@ async function fillBasics(page, host = false) {
     await page.getByRole('button', { name: 'English', exact: true }).click();
   }
   await action(page, 'obNextProfile').click();
+  // The connected app confirms the address is free before photos.
+  if (await page.evaluate(() => !DEMO)) await answerEmailCheck(page, { available: true });
   await step(page, 'photos');
+}
+
+async function answerEmailCheck(page, data) {
+  await page.waitForFunction(() => S.auth.emailStatus && S.auth.emailStatus.state === 'checking');
+  const { email, requestId } = await page.evaluate(() => S.auth.emailStatus);
+  const sent = await page.evaluate(() => window.__messages.filter(message => message.type === 'auth.emailCheck').at(-1).data);
+  assert.deepEqual(sent, { email, requestId }, 'The bridge receives exactly the address being checked');
+  await receive(page, 'auth.emailChecked', { email, requestId, ...data });
+}
+
+async function nativeEmailAvailability() {
+  const page = await openPage(true);
+  await startSignup(page);
+  await enterPhone(page);
+  await receive(page, 'auth.otpSent', { phone: '+919876543210', resendAfter: 60 });
+  await enterCode(page);
+  await receive(page, 'auth.ok', { isNew: true, requiresOnboarding: true, user: { id: 'email-member', name: '', role: 'sender' } });
+  await step(page, 'profile');
+  const status = page.locator('#ob-email-status');
+  const checks = () => page.evaluate(() => window.__messages.filter(message => message.type === 'auth.emailCheck').length);
+
+  // Typing alone checks the address once typing pauses, and a taken one is flagged at once.
+  await page.locator('#pn').fill('Email Test');
+  await page.locator('#pe').fill('Taken@Example.test');
+  await answerEmailCheck(page, { available: false });
+  assert.equal(await status.innerText(), 'This email is already used by another account. Try a different one.');
+  assert.equal(await page.locator('#pe').getAttribute('aria-invalid'), 'true');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'pe', 'The flag must not move focus while typing');
+  assert.equal((await page.evaluate(() => window.__messages.filter(message => message.type === 'auth.emailCheck').at(-1).data)).email, 'taken@example.test', 'Checks use the normalized address');
+  await page.getByRole('button', { name: 'Female', exact: true }).click();
+  await page.locator('#p18').check();
+  await action(page, 'obNextProfile').click();
+  assert.equal((await state(page)).step, 'profile', 'A taken email cannot continue');
+  assert.match((await state(page)).err, /already used by another account/);
+  assert.equal(await checks(), 1, 'A known answer is not requested again');
+
+  // Editing clears the flag; an available address is confirmed.
+  await page.locator('#pe').fill('fresh@example.test');
+  assert.equal(await status.innerText(), '', 'The old answer disappears as soon as the address changes');
+  assert.equal(await page.locator('#pe').getAttribute('aria-invalid'), null);
+  assert.equal((await state(page)).err, '', 'The taken-email error clears when the address changes');
+  await answerEmailCheck(page, { available: true });
+  assert.match(await status.innerText(), /Email available/);
+
+  // A stale answer for an earlier address cannot change the current one.
+  await receive(page, 'auth.emailChecked', { email: 'taken@example.test', requestId: 1, available: false });
+  assert.match(await status.innerText(), /Email available/);
+
+  // The server rejects a format the field accepted.
+  await page.locator('#pe').fill('odd@example.co');
+  await answerEmailCheck(page, { status: 400, code: 'VALIDATION_ERROR', message: 'Invalid input' });
+  assert.match(await status.innerText(), /Enter a valid email address/);
+  await action(page, 'obNextProfile').click();
+  assert.equal((await state(page)).step, 'profile');
+
+  // Next right after typing waits for the answer instead of skipping the check.
+  await page.locator('#pe').fill('quick@example.test');
+  await action(page, 'obNextProfile').click();
+  assert.equal((await state(page)).busy, 'auth.emailCheck');
+  assert.match(await action(page, 'obNextProfile').innerText(), /Checking your email/);
+  assert.equal(await action(page, 'obNextProfile').isDisabled(), true);
+  await answerEmailCheck(page, { available: true });
+  await step(page, 'photos');
+  assert.equal((await state(page)).busy, false);
+
+  // A failed check does not trap the person; the save still verifies the address.
+  await action(page, 'obBack').click();
+  await step(page, 'profile');
+  await page.locator('#pe').fill('offline@example.test');
+  await action(page, 'obNextProfile').click();
+  await answerEmailCheck(page, { status: 0, code: 'NETWORK_ERROR', message: 'Check your connection and try again.' });
+  await step(page, 'photos');
+
+  // Someone else saved the address meanwhile: return to the email with photos kept.
+  await uploadPhotos(page);
+  await action(page, 'obNextPhotos').click();
+  await action(page, 'obFinish').click();
+  await receive(page, 'profile.error', { onboarding: true, code: 'EMAIL_IN_USE', message: 'This email is already used by another account. Try a different one.' });
+  await step(page, 'profile');
+  assert.match((await state(page)).err, /already used by another account/);
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'pe', 'The email field is ready to correct');
+  assert.equal(await status.innerText(), 'This email is already used by another account. Try a different one.');
+  assert.equal((await state(page)).photos.length, 3, 'Photos survive the email conflict');
+  assert.equal((await state(page)).busy, false);
+  await page.context().close();
+  console.log('PASS native email availability: live flag, normalization, stale answers, invalid format, waiting Next, failed check, save-time conflict');
 }
 
 async function uploadPhotos(page, count = 3) {
@@ -243,7 +331,7 @@ async function previewFlow() {
   assert.equal(await page.locator('#pn').inputValue(), 'Draft name', 'Validation must preserve the entered name');
   await page.locator('#pe').fill('draft@example.test');
   await action(page, 'obNextProfile').click();
-  assert.match((await state(page)).err, /Woman, Man or Prefer not to say/, 'Sign-up asks how the member identifies');
+  assert.match((await state(page)).err, /Female, Male or Prefer not to say/, 'Sign-up asks how the member identifies');
   assert.equal(await page.evaluate(() => document.activeElement.id), 'pg', 'The missing choice receives focus');
   await fillBasics(page);
   await remember(page, 'photos-empty');
@@ -434,7 +522,7 @@ async function nativeSessionRecovery() {
   });
   await step(page, 'profile');
   assert.equal(await page.locator('#pn').inputValue(), 'Saved Creator', 'An unfinished server profile resumes its saved name');
-  assert.equal(await page.getByRole('button', { name: 'Man', exact: true }).getAttribute('aria-pressed'), 'true', 'A saved gender choice resumes');
+  assert.equal(await page.getByRole('button', { name: 'Male', exact: true }).getAttribute('aria-pressed'), 'true', 'A saved gender choice resumes');
   assert.equal(await page.locator('#pe').inputValue(), 'saved@example.test');
   assert.equal(await page.locator('#p18').isChecked(), true);
   assert.equal((await state(page)).creatorIntent, true, 'Server setup preference resumes creator onboarding');
@@ -631,6 +719,7 @@ async function enlargedTextChecks(page) {
       await hostFlow();
     }
     await nativeFlow();
+    await nativeEmailAvailability();
     await configuredOtpLengths();
     await accountRouting();
     await nativeRateLimits();

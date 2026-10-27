@@ -72,6 +72,8 @@ window.ZimiNavigation=(()=>{
   }
   reduced.addEventListener?.('change',()=>{if(reduced.matches)cancel()});
   Native.on('app.back',back);
+  // The tab bar steps aside while the keyboard is up, so it never rides on top of it.
+  Native.on('keyboard',d=>document.documentElement.classList.toggle('zh-keyboard-open',!!d.open));
   Native.on('session.none',reset);Native.on('session.expired',reset);
   return {before,after,reset,back};
 })();

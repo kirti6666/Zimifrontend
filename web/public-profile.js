@@ -12,6 +12,8 @@ const zuCurrent = () => Zu.id === zuId();
 const zuMatches = (d, posts=false) => d.id === Zu.id && d.requestId === (posts ? Zu.postsRequestId : Zu.requestId);
 const zuApproved = p => p?.verified === true && p?.serverRole === 'host';
 const zuMember = () => DEMO ? !isHost() : zcSelfRole() === 'user';
+// Your own profile, opened from Profile to see it as others do: no follow, gift, chat or report.
+const zuSelf = () => !!S.user?.id && zuId() === S.user.id;
 const zuOffline = () => !!window.ZimiOffline?.isOffline();
 function zuPaint(){
   if(!zuActive())return;
@@ -56,7 +58,7 @@ function zuLoad(){
       category:host?h.cat||'Music':'',languages:['English','Hindi'],interests:host?['Music','Travel','Good conversations']:['Music','Photography'],
       online:!!h.on,availableForCall:host&&!!h.available,ratePerMin:h.rate||0,stream:h.stream||null,
       followers:host?12800:128,followingCount:host?186:42,following:!!S.following[id],joined:'2025-04-12T00:00:00Z',level:host?18:4,crown:false};
-    if(host){Zu.posts=[0,1,2].map((index)=>({id:'preview-post-'+index,kind:'photo',mediaUrl:OB_MEDIA[index],caption:['Good company. Better conversations.','A little glimpse of my everyday.','See you at the next live session.'][index]}));Zu.total=Zu.posts.length;Zu.page=1}
+    if(host){Zu.posts=[0,1,2].map((index)=>({id:'preview-post-'+index,kind:'photo',mediaUrl:OB_MEDIA[index+3],caption:['Good company. Better conversations.','A little glimpse of my everyday.','Looking forward to our next conversation.'][index]}));Zu.total=Zu.posts.length;Zu.page=1}
     zuRemember(Zu.profile);
   }else Native.send('profile.load',{id,requestId:Zu.requestId});
 }
@@ -94,7 +96,7 @@ function zuFollowSaved(d){
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
 function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&p.availableForCall&&!zuOffline())homeCall(p.id)}
 function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
-function zuWatch(){const p=Zu.profile;if(p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
+function zuWatch(){const p=Zu.profile;if(window.ZIMI_LIVE_STREAMING_ENABLED&&p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
 
 function zuSkeleton(kind='profile'){
   const shape=(width,height)=>skeletonLine(width,height);
@@ -103,7 +105,7 @@ function zuSkeleton(kind='profile'){
 }
 function zuStatus(p){
   if(Zu.loading||Zu.error)return '';
-  if(p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
+  if(window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
   return `<span class="zu-presence ${p.availableForCall?'is-online':''}"><i></i>${p.availableForCall?'Available for a call':p.online?'Online':'Currently offline'}</span>`;
 }
 function zuAvatar(p){
@@ -111,7 +113,7 @@ function zuAvatar(p){
   return source?`<img class="zh-photo-pending" src="${source}" alt="${esc(p.name||'Profile photo')}" data-face="${faceKind(p||{})}" decoding="async">`:face(p||{});
 }
 function zuIdentity(p){
-  const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember();
+  const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember()&&!zuSelf();
   return `<aside class="zu-overview"><div class="zu-identity-top"><div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>
     ${canFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${Zu.followBusy?'Updating…':p.following?'Following':'Follow'}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">${hi('refresh',17)} Try again</button></div>`:`
@@ -147,12 +149,14 @@ function zuPosts(p){
 function zuContent(p){
   if(Zu.loading)return `<div class="zu-content">${zuSkeleton('posts')}</div>`;
   if(Zu.error||!p)return '';
-  return `<div class="zu-content">${p.stream?`<section class="zu-live-card"><div class="zu-live-symbol">${hi('broadcast',24)}</div><div><span><i></i> LIVE RIGHT NOW</span><h2>${esc(p.stream.title||'Come join the conversation')}</h2><p>${n(p.stream.viewers||0)} watching · Drop in and say hello</p></div><button onclick="zuWatch()" ${zuOffline()?'disabled':''}>Join live ${hi('arrow',16)}</button></section>`:''}
+  return `<div class="zu-content">${window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream?`<section class="zu-live-card"><div class="zu-live-symbol">${hi('broadcast',24)}</div><div><span><i></i> LIVE RIGHT NOW</span><h2>${esc(p.stream.title||'Come join the conversation')}</h2><p>${n(p.stream.viewers||0)} watching · Drop in and say hello</p></div><button onclick="zuWatch()" ${zuOffline()?'disabled':''}>Join live ${hi('arrow',16)}</button></section>`:''}
     <div class="zu-tabs" role="tablist" aria-label="Profile content" onkeydown="zuTabKeys(event)">${['posts','about'].map(tab=>`<button id="zu-tab-${tab}" role="tab" aria-selected="${Zu.tab===tab}" aria-controls="zu-panel" tabindex="${Zu.tab===tab?0:-1}" onclick="zuTab('${tab}')">${hi(tab==='posts'?'grid':'user',17)}${tab==='posts'?'Posts':'About'}${tab==='posts'&&zuApproved(p)?`<span>${Zu.postsLoading&&!Zu.page?'…':Zu.total}</span>`:''}</button>`).join('')}</div>
     <div id="zu-panel" class="zu-panel" role="tabpanel" aria-labelledby="zu-tab-${Zu.tab}" tabindex="0">${Zu.tab==='about'?zuAbout(p):zuPosts(p)}</div></div>`;
 }
 function zuActions(p){
   if(!p||Zu.error)return '';
+  if(zuSelf())return `<div class="zu-actionbar zu-self-bar"><div class="zu-actionbar-inner"><div class="zu-call-info"><span>YOUR PUBLIC PROFILE</span><strong>${hi('eye',15)} This is how others see you</strong></div>
+    <div class="zu-action-buttons"><button id="zu-edit-self" class="zu-call" onclick="go('editprofile')">${zi('edit',20)}<span>Edit profile</span></button></div></div></div>`;
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id);
   return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
@@ -162,7 +166,7 @@ function zuActions(p){
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl);
   return `<section class="zu-page" aria-label="User profile"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:'<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i></div>'}<div class="zu-cover-shade"></div>
-    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span><button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button></header>${p?zuStatus(p):''}</div>
+    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span><button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error||zuSelf()?'disabled':''}>${ci('more',21)}</button></header>${p?zuStatus(p):''}</div>
     <div class="zu-layout">${zuIdentity(p||{})}${zuContent(p)}</div>${zuActions(p)}${homeGiftSheet()}</section>`;
 }
 
@@ -219,9 +223,11 @@ function zuOpenPhoto(index){
   dialog.addEventListener('keydown',event=>{if(event.target.tagName==='VIDEO')return;const next=event.key==='ArrowRight'?index+1:event.key==='ArrowLeft'?index-1:-1;if(next>=0&&next<Zu.posts.length){event.preventDefault();zuOpenPhoto(next)}});
 }
 
+/* Profiles follow the same rule as cards: a host is never shown offline (see hostFrom). */
+function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostShownOnline(p),availableForCall:hostCallable(p)});return p}
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
-  Zu.profile=d.profile;Zu.loading=false;Zu.error='';zuRemember(d.profile);
+  Zu.profile=zuShownPresence(d.profile);Zu.loading=false;Zu.error='';zuRemember(d.profile);
   if(zuApproved(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
   zuPaint();
 });
@@ -242,7 +248,7 @@ Native.on('data.home',d=>{
   // Live discovery events may update availability without replacing profile
   // counts, a pending relationship write, or the current gallery selection.
   for(const key of ['online','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
-  zuPaint();
+  zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
 Native.on('follow.error',d=>{

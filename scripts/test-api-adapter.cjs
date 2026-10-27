@@ -354,6 +354,10 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(thread.messages[0].automated, true); assert.equal(thread.messages[1].automated, false);
   assert.equal(adapters.messagesFrom({ items: [{ automated: 'true' }] }, 'member-id').messages[0].automated, false, 'Only a boolean server marker identifies an automated welcome');
   assert.equal(adapters.hostFrom({ _id: 'pending', role: 'host', hostStatus: 'pending' }).serverRole, 'host');
+  assert.equal(adapters.hostFrom({ _id: 'h', previewVideoUrl: 'https://media.example.test/v.mp4' }).previewVideoUrl, 'https://media.example.test/v.mp4');
+  assert.equal(adapters.hostFrom({ _id: 'h', previewVideoUrl: 'http://media.example.test/v.mp4' }).previewVideoUrl, null, 'Only secure video addresses reach the cards');
+  assert.equal(adapters.hostFrom({ _id: 'h', previewVideoUrl: null }).previewVideoUrl, null);
+  assert.equal('previewVideoUrl' in adapters.hostFrom({ _id: 'h' }), false, 'Feeds without videos never clear a known one');
   const restricted = adapters.messagesFrom({ items: [], canSend: false, sendDisabledReason: 'Wait for this member to reply.' }, 'host-id');
   assert.equal(restricted.canSend, false); assert.equal(restricted.sendDisabledReason, 'Wait for this member to reply.');
   const restrictedInbox = adapters.chatsFrom({ items: [{ participants: [{ _id: 'host-id' }, { _id: 'member-id', role: 'user' }], automatedOnly: true, canSend: false }] }, 'host-id');

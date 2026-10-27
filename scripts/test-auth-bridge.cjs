@@ -20,8 +20,8 @@ const payoutReceipt = (id = 'payout-1') => ({ id, amountPaise: 50000, payoutAddr
 const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1', requestId } });
 const plain = value => JSON.parse(JSON.stringify(value));
 
-function harness(initialAppState = 'active', initialLink = null) {
-  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [], backs = [], alerts = [], exits = [];
+function harness(initialAppState = 'active', initialLink = null, liveStreaming = false) {
+  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
   // The FCM edge: OS permission, the device token and notification taps.
   const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
@@ -92,6 +92,7 @@ function harness(initialAppState = 'active', initialLink = null) {
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
       if (id === './push') return pushModule;
+      if (id === './features') return { LIVE_STREAMING_ENABLED: liveStreaming };
       if (id === './chat-photo-download') return { downloadChatPhoto: async (to, messageId, current) => { calls.push({ name: 'downloadChatPhoto', args: [to, messageId, current] }); if (overrides.downloadChatPhoto) return overrides.downloadChatPhoto(to, messageId, current); } };
       if (id === './api/realtime') return { VERIFY_PEER: 'zimi-team', connectRealtime: (token, onEvent, userId, initiallyActive) => {
         const connection = { token, onEvent, userId, initiallyActive, activeStates: [], stopped: false }; live.push(connection);
@@ -102,9 +103,9 @@ function harness(initialAppState = 'active', initialLink = null) {
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, Keyboard: { addListener: (name, fn) => { const entry = [name, fn]; keyboards.push(entry); return { remove: () => { keyboards.splice(keyboards.indexOf(entry), 1); } }; } }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
-      if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
+      if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 28, right: 0, bottom: 24, left: 0 }) };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
       if (id === 'expo-screen-capture') return { preventScreenCaptureAsync: async key => capture.push(['prevent', key]), allowScreenCaptureAsync: async key => capture.push(['allow', key]) };
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
@@ -124,8 +125,66 @@ function harness(initialAppState = 'active', initialLink = null) {
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, alerts, exits, connection, push };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push };
 }
+
+// Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
+// at the mocked module boundary. Normal tests run with the production default.
+const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
+
+test('the calls-only rollout blocks streaming commands and links while preserving cleanup, calls and gifts', async () => {
+  const h = harness('active', 'binzolive://live/cold-room');
+  assert.equal(h.load('src/features.ts').LIVE_STREAMING_ENABLED, false, 'The shipped native feature switch stays off');
+  h.overrides.me = () => approvedAccount();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.links.forEach(listener => listener({ url: 'binzolive://live/warm-room' }));
+  const commands = [
+    { type: 'stream.start', data: { title: 'Blocked', category: 'Music' } },
+    ...['join', 'ready', 'share', 'requests.load', 'request', 'react'].map(action => ({ type: 'stream.' + action, data: { streamId: 'room' } })),
+    ...['cancel', 'decline', 'accept'].map(action => ({ type: 'stream.request.' + action, data: { streamId: 'room', id: 'entry' } })),
+    { type: 'stream.message', data: { streamId: 'room', text: 'Hello' } },
+    { type: 'stream.signal', data: { streamId: 'room', to: 'host', description: { type: 'offer', sdp: 'offer' } } },
+    { type: 'gift.send', data: { to: 'host', gift: 'rose', coins: 10, inCall: false, streamId: 'room', idempotencyKey: 'stream-gift' } },
+  ];
+  const before = h.calls.length;
+  for (const command of commands) h.bridge.handle(command);
+  await settle();
+  assert.equal(h.calls.length, before, 'Disabled stream actions never reach the API');
+  assert.equal(h.find('operation.error').filter(event => event.data.code === 'LIVE_STREAMING_DISABLED').length, commands.length);
+  assert.equal(h.count('stream'), 0); assert.equal(h.find('stream.link').length, 0); assert.equal(h.signals.length, 0); assert.equal(h.shares.length, 0);
+  h.bridge.handle({ type: 'stream.end', data: { streamId: 'old-hosted-room' } });
+  h.bridge.handle({ type: 'stream.leave', data: { streamId: 'old-viewed-room' } });
+  h.overrides.startCall = () => ({ callId: 'direct-call' });
+  h.bridge.handle({ type: 'call.start', data: { to: 'host', voice: false } }); await settle();
+  h.overrides.sendGift = () => ({ id: 'call-gift', coins: 10 });
+  h.bridge.handle({ type: 'gift.send', data: { to: 'host', gift: 'rose', coins: 10, inCall: true, idempotencyKey: 'direct-gift' } });
+  h.bridge.handle({ type: 'rtc.signal', data: { callId: 'direct-call', description: { type: 'offer', sdp: 'offer' } } }); await settle();
+  assert.equal(h.count('endStream'), 1); assert.equal(h.count('leaveStream'), 1);
+  assert.equal(h.find('call.created').at(-1).data.callId, 'direct-call');
+  assert.equal(h.calls.find(call => call.name === 'sendGift').args[3], 'direct-call');
+  assert.equal(h.find('gift.sent').at(-1).data.id, 'call-gift'); assert.equal(h.signals[0][0], 'webrtc:signal');
+  h.bridge.close();
+});
+
+test('disabled streaming ignores room events and cleans up delayed queue calls without disrupting direct calls', async () => {
+  const h = harness(); h.overrides.me = () => approvedAccount();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const before = h.posts.length;
+  for (const type of ['stream.signal', 'stream.peer', 'stream.message', 'stream.requests.changed', 'stream.reaction']) {
+    h.live[0].onEvent({ type, data: { streamId: 'old-room' } });
+  }
+  h.live[0].onEvent({ type: 'gift.received', data: { streamId: 'old-room', gift: 'rose' } });
+  h.live[0].onEvent({ type: 'stream.privateCall', data: { streamId: 'old-room', callId: 'late-room-call', initiator: false } }); await settle();
+  assert.equal(h.posts.length, before); assert.equal(h.count('streamRequests'), 0);
+  assert.equal(h.calls.find(call => call.name === 'endCall').args[0], 'late-room-call');
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'direct-call', initiator: true } });
+  assert.equal(h.find('call.connected').at(-1).data.callId, 'direct-call');
+  h.live[0].onEvent({ type: 'gift.received', data: { gift: 'rose', coins: 10, from: 'member' } });
+  assert.equal(h.find('gift.received').length, 1);
+  h.bridge.close();
+});
 
 test('connection status follows the current WebView and retry never reloads account data', async () => {
   const h = harness();
@@ -375,6 +434,38 @@ test('profile progress, completion and errors retain request IDs and omit transp
   h.bridge.close();
 });
 
+test('email checks accept only bounded addresses, correlate answers and report failures apart from sign-in errors', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  const parse = data => h.webMessages.parseWebMessage(JSON.stringify({ type: 'auth.emailCheck', data }));
+  assert.ok(parse({ email: 'new@example.test', requestId: 3 }));
+  for (const data of [
+    { email: 'new@example.test' }, { email: 'not-an-email', requestId: 3 }, { email: 'new @example.test', requestId: 3 },
+    { email: `${'a'.repeat(250)}@example.test`, requestId: 3 }, { email: 'new@example.test', requestId: 3, userId: 'someone-else' },
+  ]) assert.equal(parse(data), null, JSON.stringify(data));
+
+  h.overrides.emailAvailable = email => email !== 'taken@example.test';
+  h.bridge.handle({ type: 'auth.emailCheck', data: { email: 'taken@example.test', requestId: 7 } });
+  h.bridge.handle({ type: 'auth.emailCheck', data: { email: 'new@example.test', requestId: 8 } });
+  await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('auth.emailChecked').map(post => post.data))), [
+    { email: 'taken@example.test', requestId: 7, available: false },
+    { email: 'new@example.test', requestId: 8, available: true },
+  ]);
+
+  h.overrides.emailAvailable = () => { throw new h.ApiError('Invalid input', 400, 'VALIDATION_ERROR'); };
+  h.bridge.handle({ type: 'auth.emailCheck', data: { email: 'odd@example.co', requestId: 9 } });
+  await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.find('auth.emailChecked')[2].data)), { email: 'odd@example.co', requestId: 9, message: 'Invalid input', code: 'VALIDATION_ERROR', status: 400 });
+  assert.equal(h.find('auth.error').length, 0, 'A failed check must not look like a failed sign-in');
+
+  h.overrides.saveProfile = () => { throw new h.ApiError('This email is already used by another account. Try a different one.', 409, 'EMAIL_IN_USE'); };
+  h.bridge.handle({ type: 'profile.save', data: { onboarding: true, requestId: 10, name: 'Alice' } });
+  await settle();
+  assert.equal(h.find('profile.error')[0].data.code, 'EMAIL_IN_USE', 'Onboarding can return to the email field');
+  h.bridge.close();
+});
+
 test('offline restoration is retryable without clearing secure credentials', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());
@@ -444,7 +535,8 @@ test('closing the bridge removes session observers and prevents pending UI deliv
 test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
   const h = harness();
   const provider = h.load('App.tsx').default();
-  const [keyboard] = [provider.props.children].flat();
+  const [shell] = [provider.props.children].flat();
+  const keyboard = shell.type(shell.props);
   const safeArea = keyboard.props.children;
   const web = [safeArea.props.children].flat().find(node => node?.type === 'WebView');
   const style = node => Object.assign({}, ...[node.props.style].flat());
@@ -452,7 +544,8 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   assert.equal(keyboard.type, 'KeyboardAvoidingView', 'Measure keyboard overlap from the full root, outside safe-area padding');
   assert.equal(keyboard.props.behavior, 'padding', 'Handle overlay keyboards even when Android leaves the WebView viewport unchanged');
   assert.notEqual(keyboard.props.enabled, false);
-  assert.equal(keyboard.props.keyboardVerticalOffset ?? 0, 0, 'The root starts at the screen origin and needs no invented keyboard offset');
+  // The keyboard covers the navigation bar, which the SafeAreaView below still pads for.
+  assert.equal(keyboard.props.keyboardVerticalOffset, -24, 'Keyboard padding leaves out the bottom inset, so no gap opens above the keyboard');
   assert.equal(safeArea.type, 'SafeAreaView');
   assert.ok(web, 'The actual WebView must be inside the resized content');
   for (const node of [keyboard, safeArea, web]) assert.equal(style(node).flex, 1, 'Allow keyboard padding to shrink the WebView');
@@ -497,6 +590,19 @@ test('native app inactivity explicitly notifies the WebView and removes its list
   assert.equal(h.count('endCall'), 0, 'The voice cleanup event does not change call lifecycle behavior');
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
   assert.equal(h.activities.length, 0, 'Both the native listener and bridge observers are removed');
+});
+
+test('native App tells the page when the keyboard opens and closes', () => {
+  const h = harness();
+  const tree = h.load('App.tsx').default();
+  const findWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findWeb).find(Boolean) || null;
+  const web = findWeb(tree), received = [];
+  web.props.ref.current = { injectJavaScript: script => vm.runInNewContext(script, { window: { zimiReceive: raw => received.push(JSON.parse(raw)) } }) };
+  assert.deepEqual(h.keyboards.map(([name]) => name).sort(), ['keyboardDidHide', 'keyboardDidShow']);
+  for (const name of ['keyboardDidShow', 'keyboardDidHide']) h.keyboards.find(([event]) => event === name)[1]();
+  assert.deepEqual(received, [{ type: 'keyboard', data: { open: true } }, { type: 'keyboard', data: { open: false } }]);
+  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
+  assert.equal(h.keyboards.length, 0, 'Keyboard listeners are removed with the app');
 });
 
 test('native App refuses external document navigation and messages before privileged dispatch', async () => {
@@ -896,7 +1002,8 @@ test('match previews a real host without creating a call and media signals stay 
   h.bridge.handle({ type: 'rtc.signal', data: { callId: 'call-id', description: { type: 'offer', sdp: 'session-description' } } });
   h.bridge.handle({ type: 'stream.ready', data: { streamId: 'stream-id' } });
   await settle();
-  assert.equal(h.signals[0][0], 'webrtc:signal'); assert.equal(h.signals[1][0], 'stream:ready');
+  assert.equal(h.signals[0][0], 'webrtc:signal'); assert.equal(h.signals.length, 1);
+  assert.equal(h.find('operation.error').at(-1).data.code, 'LIVE_STREAMING_DISABLED');
   assert.equal(JSON.stringify(h.posts).includes(tokenPair().accessToken), false);
   h.bridge.close();
 });
@@ -1399,12 +1506,12 @@ test('transaction history reloads independently and discards older ledger respon
   h.bridge.close();
 });
 
-test('Home starts with active hosts and keeps that mode through paging, search and realtime refresh', async () => {
+test('Home starts with every host and keeps the requested mode through paging, search and realtime refresh', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
   await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
-  assert.equal(h.calls.filter(call => call.name === 'home').at(-1).args[0].mode, 'online');
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'popular' }, 'Home lists every host, online or offline');
   assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'home.reload', data: { mode: 'online', page: 2 } })));
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'home.reload', data: { mode: 'everyone' } })), null);
   h.bridge.handle({ type: 'home.reload', data: { mode: 'online', page: 2 } }); await settle();
@@ -1413,11 +1520,11 @@ test('Home starts with active hosts and keeps that mode through paging, search a
   assert.equal(h.calls.filter(call => call.name === 'home').at(-1).args[0].mode, 'popular', 'Header search can still discover all hosts');
   h.live[0].onEvent({ type: 'home.updated', data: {} }); await settle();
   assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'online', page: 1 });
-  h.bridge.handle({ type: 'home.reload', data: { mode: 'popular' } }); await settle();
+  h.bridge.handle({ type: 'home.reload', data: { mode: 'instant', category: 'Music' } }); await settle();
   h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
   h.overrides.verifyOtp = () => ({ ...account('bob'), requiresOnboarding: false, tokens: tokenPair('bob'), isNew: false });
   h.bridge.handle(verifyMessage(9)); await settle();
-  assert.equal(h.calls.filter(call => call.name === 'home').at(-1).args[0].mode, 'online', 'A fresh account starts with active Home rather than the previous discovery query');
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'popular' }, 'A fresh account starts with the full Home rather than the previous filtered query');
   h.bridge.close();
 });
 
@@ -1427,7 +1534,7 @@ test('a fresh document or replacement account cannot inherit an Explore page as 
     h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
     await h.session.setSessionTokens(tokenPair());
     h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
-    h.overrides.home = query => query.mode === 'popular' ? older.promise : { hosts: [{ id: 'active-home' }], stage: [], page: 1 };
+    h.overrides.home = query => query.category === 'Music' ? older.promise : { hosts: [{ id: 'active-home' }], stage: [], page: 1 };
     h.bridge.handle({ type: 'home.reload', data: { mode: 'popular', category: 'Music', page: 3 } });
     if (replacement === 'document') {
       h.bridge.documentLoading();
@@ -1438,7 +1545,7 @@ test('a fresh document or replacement account cannot inherit an Explore page as 
       h.bridge.handle({ type: 'session.resume', data: {} });
     }
     await settle();
-    assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'online' }, replacement);
+    assert.deepEqual(plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]), { mode: 'popular' }, replacement);
     const delivered = h.find('data.home').length;
     older.resolve({ hosts: [{ id: 'old-explore-page' }], stage: [], page: 3 }); await settle();
     assert.equal(h.find('data.home').length, delivered, 'The retired Explore response never replaces fresh Home');
@@ -1584,7 +1691,7 @@ test('unapproved native host actions cannot reach stream, online presence, call 
 });
 
 test('approved native host actions revalidate server approval before execution', async () => {
-  const h = harness(); h.overrides.me = () => approvedAccount();
+  const h = streamingHarness(); h.overrides.me = () => approvedAccount();
   h.overrides.startStream = () => ({ id: 'stream-id' }); h.overrides.streamMessages = () => [];
   h.overrides.setPresence = (online, visible) => ({ online, visible });
   h.overrides.acceptCall = () => ({ peerId: 'member', voice: false });
@@ -1600,7 +1707,7 @@ test('approved native host actions revalidate server approval before execution',
 });
 
 test('admin revocation retires hosted activity and cannot be undone by a pending approval response', async () => {
-  const h = harness(), permission = deferred(), revoked = deferred();
+  const h = streamingHarness(), permission = deferred(), revoked = deferred();
   await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.startStream = () => ({ id: 'hosted' }); h.overrides.streamMessages = () => [];
@@ -1622,7 +1729,7 @@ test('admin revocation retires hosted activity and cannot be undone by a pending
 });
 
 test('a stream created while approval is revoked is ended without opening the camera room', async () => {
-  const h = harness(), pending = deferred();
+  const h = streamingHarness(), pending = deferred();
   await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.startStream = () => pending.promise;
@@ -1637,7 +1744,7 @@ test('a stream created while approval is revoked is ended without opening the ca
 });
 
 test('a newer denial from the account API invalidates an older positive check even without a socket review', async () => {
-  const h = harness(), older = deferred();
+  const h = streamingHarness(), older = deferred();
   await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.me = () => older.promise;
@@ -1694,7 +1801,7 @@ test('reconnect revalidates approval while preserving an established host call u
 });
 
 test('a failed reconnect approval check stays closed to new hosting without ending the existing broadcast', async () => {
-  const h = harness(), checking = deferred();
+  const h = streamingHarness(), checking = deferred();
   await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.startStream = () => ({ id: 'existing-live' }); h.overrides.streamMessages = () => [];
@@ -2439,7 +2546,7 @@ test('realtime wallet reads use loading events and logout suppresses old complet
 });
 
 test('live queue refreshes from actual requests and ignores completion after leaving the room', async () => {
-  const h = harness(), pending = deferred();
+  const h = streamingHarness(), pending = deferred();
   await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.joinStream = id => ({ id }); h.overrides.streamMessages = () => [];
   h.bridge.handle({ type: 'stream.join', data: { streamId: 'room-one' } }); await settle();
@@ -2459,10 +2566,10 @@ test('live queue refreshes from actual requests and ignores completion after lea
 });
 
 test('queued acceptance checks host access and never emits connected before UI media preparation', async () => {
-  const denied = harness(); denied.overrides.me = () => account();
+  const denied = streamingHarness(); denied.overrides.me = () => account();
   denied.bridge.handle({ type: 'stream.request.accept', data: { streamId: 'room', id: 'entry' } }); await settle();
   assert.equal(denied.count('acceptStreamRequest'), 0); denied.bridge.close();
-  const h = harness(); h.overrides.me = () => approvedAccount();
+  const h = streamingHarness(); h.overrides.me = () => approvedAccount();
   h.overrides.acceptStreamRequest = () => ({ streamId: 'room', requestId: 'entry', callId: 'private-call', peerId: 'member', initiator: false, voice: false, peer: { id: 'member', name: 'Member' } });
   h.bridge.handle({ type: 'stream.request.accept', data: { streamId: 'room', id: 'entry' } }); await settle();
   assert.equal(h.count('acceptStreamRequest'), 1); assert.equal(h.find('stream.privateCall').length, 1);
@@ -2473,7 +2580,7 @@ test('queued acceptance checks host access and never emits connected before UI m
 });
 
 test('leaving during queued acceptance cancels a late call instead of reopening media', async () => {
-  const h = harness(), pending = deferred(); h.overrides.me = () => approvedAccount();
+  const h = streamingHarness(), pending = deferred(); h.overrides.me = () => approvedAccount();
   await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.startStream = () => ({ id: 'room' }); h.overrides.streamMessages = () => [];
   h.bridge.handle({ type: 'stream.start', data: { title: 'Music', category: 'Music' } }); await settle();
@@ -2498,7 +2605,7 @@ test('native live links and share messages reject arbitrary URLs, injected field
 });
 
 test('a cold live link waits for WebView readiness, login and onboarding before selecting the server room', async () => {
-  const h = harness('active','binzolive://live/cold-room'); h.overrides.stream = linkedStream;
+  const h = streamingHarness('active','binzolive://live/cold-room'); h.overrides.stream = linkedStream;
   await settle(); assert.equal(h.count('stream'),0);
   h.bridge.handle({type:'ready',data:{demo:false}});await settle();assert.equal(h.find('session.none').length,1);assert.equal(h.count('stream'),0);
   h.bridge.handle(verifyMessage());await settle();assert.equal(h.count('stream'),0,'Onboarding is not interrupted by a live invite');
@@ -2510,7 +2617,7 @@ test('a cold live link waits for WebView readiness, login and onboarding before 
 });
 
 test('warm live links use the latest selection and discard older responses and delayed cold URLs', async () => {
-  const initial=deferred(), first=deferred(),second=deferred(),h=harness('active',()=>initial.promise);
+  const initial=deferred(), first=deferred(),second=deferred(),h=streamingHarness('active',()=>initial.promise);
   h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>id==='first'?first.promise:second.promise;
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
   h.links.forEach(listener=>listener({url:'binzolive://live/first'}));await settle();
@@ -2523,7 +2630,7 @@ test('warm live links use the latest selection and discard older responses and d
 });
 
 test('logout suppresses pending live-link results and new signed-out links wait for the next login', async () => {
-  const h=harness(), pending=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=()=>pending.promise;
+  const h=streamingHarness(), pending=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=()=>pending.promise;
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
   h.links.forEach(listener=>listener({url:'binzolive://live/old-account-room'}));await settle();
   h.bridge.handle({type:'auth.logout',data:{}});await settle();pending.resolve(linkedStream('old-account-room'));await settle();assert.equal(h.find('stream.link').length,0);
@@ -2533,7 +2640,7 @@ test('logout suppresses pending live-link results and new signed-out links wait 
 });
 
 test('unavailable live links report an error and always settle their loading state', async () => {
-  const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>({...linkedStream(id),status:'ended'});
+  const h=streamingHarness();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.stream=id=>({...linkedStream(id),status:'ended'});
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
   h.links.forEach(listener=>listener({url:'binzolive://live/ended-room'}));await settle();
   assert.equal(h.find('stream.link').length,0);assert.equal(h.find('operation.error').at(-1).data.action,'stream.link');assert.equal(h.find('stream.link.loading').at(-1).data.loading,false);
@@ -2565,7 +2672,7 @@ test('ads load and count quietly, and a tap opens its counted link once', async 
 });
 
 test('share live opens one native share sheet with the active room link and returns selectable link text', async () => {
-  const h=harness(),share=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.joinStream=linkedStream;h.overrides.streamMessages=()=>[];h.overrides.share=()=>share.promise;
+  const h=streamingHarness(),share=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});h.overrides.joinStream=linkedStream;h.overrides.streamMessages=()=>[];h.overrides.share=()=>share.promise;
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
   h.bridge.handle({type:'stream.join',data:{streamId:'shared-room'}});await settle();
   const message={type:'stream.share',data:{streamId:'shared-room'}};h.bridge.handle(message);h.bridge.handle(message);await settle();

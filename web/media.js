@@ -4,9 +4,15 @@
   'use strict';
   let local = null, remote = null, active = null, capture = null, pendingCall = null;
   let generation = 0, configRequest = null, cameraSwitch = null, switchingStream = null;
-  let facingMode = 'user', playbackMuted = false;
+  let facingMode = 'user', playbackMuted = false, handoffCall = null;
   const peers = new Map(), earlySignals = [];
   const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+  /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
+     portrait size made the browser crop a narrow strip out of each frame (the zoomed preview);
+     'none' keeps the camera's own framing so a full-screen video looks like a normal call. */
+  const CAMERA_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' };
+  /* Last known frame shape per stream, so a redrawn video is laid out before its metadata loads. */
+  const shapes = { local: '', remote: '' };
 
   function status(message, error) {
     if (typeof Home !== 'undefined') Home.mediaStatus = message;
@@ -42,6 +48,7 @@
   function stop() {
     generation++;
     active = null;
+    handoffCall = null;
     pendingCall = null;
     capture = null;
     cameraSwitch = null;
@@ -53,6 +60,7 @@
     clearPeers();
     stopTracks(local);
     local = null;
+    shapes.local = shapes.remote = '';
     if (configRequest) {
       const pending = configRequest;
       configRequest = null;
@@ -70,6 +78,21 @@
     const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v);
     return inCall && typeof camOn === 'function' ? !!camOn() : S.cam !== 0;
   }
+  /* data-zimi-shape lets full-screen stages fill the screen with portrait frames and show
+     landscape ones (tablets, desktop webcams) whole instead of zooming into them. */
+  function watchShape(el, kind) {
+    if (shapes[kind]) el.dataset.zimiShape = shapes[kind];
+    if (el.zimiShapeWatched) return;
+    el.zimiShapeWatched = true;
+    const update = () => {
+      if (!el.videoWidth || !el.videoHeight) return;
+      const shape = el.videoWidth > el.videoHeight ? 'landscape' : 'portrait';
+      el.dataset.zimiShape = shape;
+      if (el.srcObject && el.srcObject === (kind === 'local' ? local : remote)) shapes[kind] = shape;
+    };
+    el.addEventListener('loadedmetadata', update);
+    el.addEventListener('resize', update);
+  }
   function attach() {
     if (switchingStream) switchingStream.getVideoTracks().forEach(track => { track.enabled = cameraEnabled(); });
     if (local) {
@@ -82,6 +105,7 @@
       document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
         el.muted = kind === 'local' || playbackMuted;
         if (kind === 'local') el.dataset.zimiFacing = facingMode;
+        if (el.tagName === 'VIDEO') watchShape(el, kind);
         if (el.srcObject === stream) return;
         el.srcObject = stream;
         el.playsInline = true;
@@ -118,7 +142,7 @@
     stopTracks(local);
     local = null;
     const version = generation;
-    const pending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } } : false });
+    const pending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { facingMode: 'user', ...CAMERA_SIZE } : false });
     capture = pending;
     try {
       const stream = await pending;
@@ -176,7 +200,7 @@
         const alternatives = settings.deviceId ? devices.filter(device => device.deviceId && device.deviceId !== settings.deviceId) : [];
         const matching = alternatives.find(device => (nextFacing === 'environment' ? /back|rear|environment/i : /front|user|facetime/i).test(device.label));
         const device = matching || alternatives[0];
-        const video = { width: { ideal: 720 }, height: { ideal: 1280 }, ...(device ? { deviceId: { exact: device.deviceId } } : { facingMode: { exact: nextFacing } }) };
+        const video = { ...CAMERA_SIZE, ...(device ? { deviceId: { exact: device.deviceId } } : { facingMode: { exact: nextFacing } }) };
         try {
           acquired = await navigator.mediaDevices.getUserMedia({ audio: false, video });
         } catch (error) {
@@ -278,8 +302,12 @@
       ? { streamId: session.id, to, ...signal }
       : { callId: session.id, ...signal });
   }
+  /* Switching calls: the call being left closes its connection, but the camera and microphone stay for the next one. */
+  function handoff(callId) { handoffCall = callId || null; }
+  function releaseCall() { active = null; earlySignals.length = 0; clearPeers(); }
   function fail(session, error) {
     if (active !== session) return;
+    if (session.kind === 'call' && handoffCall === session.id) return releaseCall();
     const message = explain(error);
     Native.send(session.kind === 'call' ? 'call.end' : session.hosting ? 'stream.end' : 'stream.leave', session.kind === 'call' ? { callId: session.id, reason: 'media_failed' } : { streamId: session.id });
     stop();
@@ -432,6 +460,7 @@
   async function connectCall(data) {
     if (typeof DEMO !== 'undefined' && DEMO) return;
     if (active && active.kind === 'call' && active.id === data.callId) return;
+    handoffCall = null;
     clearPeers();
     const session = { kind: 'call', id: data.callId, peerId: data.peerId, initiator: !!data.initiator, voice: !!data.voice, ready: false, signals: [] };
     pendingCall = null;
@@ -452,7 +481,14 @@
   Native.on('verify.connected', connectCall);
   Native.on('verify.incoming', data => { if (!active) pendingCall = data.callId; });
   Native.on('verify.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
-  Native.on('call.ended', data => { if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop(); });
+  Native.on('call.ended', data => {
+    if (handoffCall && handoffCall === data.callId) {
+      handoffCall = null;
+      if (active && active.kind === 'call' && active.id === data.callId) releaseCall();
+      return;
+    }
+    if ((active && active.kind === 'call' && active.id === data.callId) || (!active && pendingCall === data.callId)) stop();
+  });
   Native.on('call.failed', () => { if (!active || active.kind === 'call') stop(); });
   ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));
   ['session.none', 'session.expired'].forEach(type => Native.on(type, stop));
@@ -486,5 +522,5 @@
   window.addEventListener('pagehide', stop);
   const screen = document.getElementById('screen');
   if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
-  window.ZimiMedia = { prepare, attach, openStream, stop, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
+  window.ZimiMedia = { prepare, attach, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
 })();

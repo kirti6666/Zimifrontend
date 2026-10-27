@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { callPrice, coinCount, genderOf, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callerFrom, callPrice, coinCount, genderOf, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 
@@ -10,7 +10,7 @@ export interface ServerEvent { type: string; data?: Record<string, unknown> }
 /** What an ended call cost, and whether it ended because the caller's coins ran out. */
 const callCharge = (call: Record<string, unknown>) => ({
   ...(coinCount(call.coinsPerMinute) ? { coins: coinCount(call.coinsCharged) } : {}),
-  ...(call.endReason === "out_of_coins" ? { reason: "out_of_coins" } : {}),
+  ...(call.endReason === "out_of_coins" || call.endReason === "switch" ? { reason: call.endReason } : {}),
 });
 /** The staff side of a verification call, as the call's media peer. */
 export const VERIFY_PEER = "zimi-team";
@@ -66,7 +66,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const call = record(payload), callId = idOf(call);
       if (!callId || !userId) return;
-      if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: { id: idOf(call.callerId), name: "" }, kind: call.kind, voice: call.kind === "audio" });
+      if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: callerFrom(call), kind: call.kind, voice: call.kind === "audio", ...callPrice(call) });
       else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call) });
       else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId, ...callCharge(call) });
     } catch { /* Ignore malformed events instead of corrupting screen state. */ }

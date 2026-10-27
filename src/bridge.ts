@@ -14,6 +14,7 @@ import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, type Pen
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
+import { LIVE_STREAMING_ENABLED } from "./features";
 import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
@@ -61,11 +62,14 @@ export type WebMessage =
   | { type: "auth.sendOtp"; data: { phone: string; dialCode?: string; role: Role; requestId?: number } }
   | { type: "auth.verifyOtp"; data: { phone: string; dialCode?: string; code: string; role: Role; signup: boolean; requestId?: number } }
   | { type: "auth.google"; data: { role: Role; signup: boolean } }
+  | { type: "auth.emailCheck"; data: { email: string; requestId: number } }
   | { type: "auth.logout"; data: Record<string, never> }
   | { type: "profile.save"; data: Record<string, unknown> }
   | { type: "media.post.create"; data: { photo: string; caption: string; requestId?: number } }
   | { type: "verification.submit"; data: Record<string, unknown> }
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
+  | { type: "presence.duringCalls"; data: { on: boolean } }
+  | { type: "host.callStatus.load"; data: Record<string, never> }
   | { type: "profile.settings.load"; data: Record<string, never> }
   | { type: "profile.load"; data: { id: string; requestId?: number } }
   | { type: "profile.posts.load"; data: { id: string; page?: number; requestId?: number } }
@@ -110,7 +114,9 @@ export type AppMessage =
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
   | { type: "profile.progress"; data: { done: number; total: number; requestId?: number } }
-  | { type: "profile.error"; data: { onboarding: boolean; message: string; requestId?: number } }
+  | { type: "profile.error"; data: { onboarding: boolean; message: string; code?: string; requestId?: number } }
+  /* Without `available`, the check failed; `status` 400 means the address itself is invalid. */
+  | { type: "auth.emailChecked"; data: { email: string; requestId: number; available?: boolean; message?: string; code?: string; status?: number } }
   | { type: "post.saved"; data: { post: UserPost; requestId?: number } }
   | { type: "post.error"; data: { message: string; requestId?: number } }
   | { type: "data.posts"; data: { posts: UserPost[] } }
@@ -119,6 +125,7 @@ export type AppMessage =
   | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
+  | { type: "keyboard"; data: { open: boolean } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
   | { type: "data.home"; data: HomeData }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
@@ -147,6 +154,8 @@ export type AppMessage =
   | { type: "follow.saved"; data: { id: string; on: boolean; requestId?: number } }
   | { type: "follow.error"; data: { id: string; on: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
+  | { type: "presence.duringCalls.saved"; data: { on: boolean } }
+  | { type: "host.callStatus"; data: Awaited<ReturnType<typeof api.hostCallStatus>> }
   | { type: "host.access"; data: { approved: boolean; role: Role; serverRole?: ServerRole; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "data.ads"; data: AdFeed }
@@ -188,10 +197,10 @@ export type AppMessage =
   | { type: "chat.updated"; data: { with: string; message: Message } }
   | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
-  | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number } }
+  | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
   | { type: "call.failed"; data: { message: string } }
-  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean } }
-  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" } }
+  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
+  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
@@ -237,7 +246,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let hostChecking = false;
   let activeHostCall = false;
   let publishingAt: number | undefined;
-  let homeQuery: HomeQuery = { mode: "online" };
+  // Home lists every host, online or offline, each with their status.
+  let homeQuery: HomeQuery = { mode: "popular" };
   let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
@@ -265,6 +275,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     void work.catch(error => { if (current(version)) operationError(error, action); });
   };
   const flushStreamLink = async () => {
+    if (!LIVE_STREAMING_ENABLED) return;
     const link = pendingStreamLink;
     if (!link || closed || !webReady || restoring || !sessionAvailable || !getCachedToken() || !hostAccount || hostAccount.requiresOnboarding || liveOnboarding) return;
     const version = epoch, sessionVersion = getSessionVersion();
@@ -290,6 +301,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const openStreamLink = (url: unknown) => {
+    if (!LIVE_STREAMING_ENABLED) return false;
     const streamId = parseLiveLink(url);
     if (!streamId || closed) return false;
     if (pendingStreamLink?.streamId !== streamId) pendingStreamLink = { streamId, revision: ++linkRevision };
@@ -333,7 +345,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "online" }; }
+    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
@@ -593,6 +605,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const version = epoch;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
+      if (!LIVE_STREAMING_ENABLED && event.type.startsWith("stream.") && event.type !== "stream.ended") {
+        // A delayed room transition must not open media or leave a billable
+        // private call behind after broadcasting has been switched off.
+        if (event.type === "stream.privateCall" && typeof event.data?.callId === "string") {
+          quietly(endCancelledCall(event.data.callId, getSessionVersion()), "call.end");
+        }
+        return;
+      }
+      if (!LIVE_STREAMING_ENABLED && event.type === "gift.received" && event.data?.streamId) return;
       if (event.type === "verification.status") {
         hostStatus = typeof event.data?.hostStatus === "string" ? event.data.hostStatus : event.data?.status === "verified" ? "approved" : String(event.data?.status || "none");
         invalidateHostAccess(false);
@@ -675,7 +696,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -707,6 +728,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
 
   async function handle(msg: WebMessage) {
     const version = epoch;
+    // Keep end/leave available to clean up a room from an older app session.
+    // All other streaming actions are denied here even if stale web UI sends one.
+    if (!LIVE_STREAMING_ENABLED && ((msg.type.startsWith("stream.") && msg.type !== "stream.end" && msg.type !== "stream.leave") ||
+      (msg.type === "gift.send" && msg.data.streamId))) {
+      throw new ApiError("Live streaming is unavailable for now. You can still connect in a 1:1 call.", 403, "LIVE_STREAMING_DISABLED");
+    }
     switch (msg.type) {
       case "ready":
         webReady = !msg.data.demo;
@@ -909,11 +936,23 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.google": return emit({ type: "auth.error", data: { message: "Use your mobile number to sign in.", code: "UNSUPPORTED_PROVIDER" } });
+      case "auth.emailCheck": {
+        const { email, requestId } = msg.data, sessionVersion = getSessionVersion();
+        try {
+          const available = await api.emailAvailable(email);
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "auth.emailChecked", data: { email, requestId, available } });
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "auth.emailChecked", data: { email, requestId, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+          }
+        }
+        return;
+      }
       case "auth.logout": {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -960,7 +999,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) {
-            emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id } });
+            emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
             // The retired read cannot settle its skeleton; recover current data.
             quietly(loadProfileSettings(), "profile.settings.load");
           }
@@ -991,6 +1030,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const approval = msg.data.online ? await requireApprovedHost() : hostRevision;
         const data = await api.setPresence(msg.data.online, msg.data.visible);
         if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
+        return;
+      }
+      case "presence.duringCalls": {
+        const data = await api.setVisibleDuringCalls(msg.data.on);
+        if (current(version)) emit({ type: "presence.duringCalls.saved", data });
+        return;
+      }
+      case "host.callStatus.load": {
+        const data = await api.hostCallStatus();
+        if (current(version)) emit({ type: "host.callStatus", data });
         return;
       }
       case "profile.settings.save": case "settings.set": {
@@ -1339,7 +1388,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "online" }; notificationQueryOwner = undefined; },
+    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;

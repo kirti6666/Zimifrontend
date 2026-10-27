@@ -166,6 +166,10 @@
 .ob-card > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 32%; }
 .ob-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(12 4 9 / .2), transparent 34%, rgb(12 4 9 / .3) 60%, rgb(12 4 9 / .88)); }
 .ob-card-main { z-index: 3; width: 64%; height: 88%; left: 18%; top: 0; transform: rotate(-2.5deg); animation: ob-card-float 6s ease-in-out infinite; }
+.ob-card-main.is-dragging, .ob-card-main.is-settling { animation: none; transform: translate3d(calc(var(--ob-drag, 0) * 1px), calc(var(--ob-drag, 0) * var(--ob-drag, 0) * .0006px), 0) rotate(calc(-2.5deg + var(--ob-drag, 0) * .06deg)); cursor: grabbing; }
+.ob-card-main.is-settling { transition: transform .45s cubic-bezier(.2, 1.4, .35, 1); }
+.ob-card-main.ob-enter-next { animation: ob-card-in-next .55s cubic-bezier(.2, .9, .3, 1.12) both, ob-card-float 6s ease-in-out .55s infinite; }
+.ob-card-main.ob-enter-prev { animation: ob-card-in-prev .55s cubic-bezier(.2, .9, .3, 1.12) both, ob-card-float 6s ease-in-out .55s infinite; }
 .ob-card-back { width: 50%; height: 74%; top: 11%; opacity: .85; }
 .ob-card-left { left: 3%; transform: rotate(-12deg) translateY(6px); }
 .ob-card-right { right: 3%; transform: rotate(11deg) translateY(8px); }
@@ -182,12 +186,11 @@
 .ob-card-bottom p { margin: 5px 0 0; font-size: 10.5px; line-height: 1.4; color: rgb(255 255 255 / .82); }
 .ob-floating { position: absolute; z-index: 4; display: inline-flex; align-items: center; justify-content: center; right: 7%; bottom: 22%; width: 50px; height: 50px; border-radius: 18px; border: 1px solid rgb(255 255 255 / .28); background: linear-gradient(140deg, color-mix(in srgb, var(--ob-pink) 76%, #fff), var(--ob-pink)); box-shadow: 0 14px 26px -12px var(--ob-glow); color: var(--ob-on-pink); transform: rotate(10deg); animation: ob-wave-float 4.5s ease-in-out infinite; }
 .ob-floating svg { width: 24px; height: 24px; }
-.ob-wave { display: block; font-size: 25px; transform-origin: 75% 80%; animation: ob-wave 5s ease-in-out infinite; }
-.ob-floating.ob-wave { display: flex; right: 5%; bottom: 23%; }
+.ob-floating.ob-namaste { right: 2%; bottom: 46%; width: auto; height: auto; padding: 9px 14px; border-radius: 999px; font-size: 14px; line-height: 1.2; font-weight: 700; letter-spacing: .01em; }
 .ob-spark { top: 12%; bottom: auto; right: auto; left: 2%; width: 40px; height: 40px; border-radius: 14px; border-color: var(--ob-edge); background: var(--ob-glass); color: var(--ob-soft); box-shadow: 0 12px 24px -14px var(--ob-shadow); transform: rotate(-12deg); animation-delay: -2s; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .ob-spark svg { width: 19px; height: 19px; }
 /* Little hearts drift up from the wave; decoration only, and still with reduced motion. */
-.ob-hearts { position: absolute; z-index: 4; right: 9%; bottom: 36%; width: 44px; height: 96px; pointer-events: none; }
+.ob-hearts { position: absolute; z-index: 4; right: 9%; bottom: 57%; width: 44px; height: 96px; pointer-events: none; }
 .ob-hearts svg { position: absolute; bottom: 0; left: 45%; width: 14px; height: 14px; color: var(--ob-pink); opacity: 0; animation: ob-rise 3.6s ease-in infinite; }
 .ob-hearts svg:nth-child(2) { left: 10%; width: 10px; height: 10px; color: var(--ob-soft); animation-delay: 1.2s; }
 .ob-hearts svg:nth-child(3) { left: 75%; width: 12px; height: 12px; animation-delay: 2.4s; }
@@ -236,6 +239,12 @@
 .ob-phone-field input { font-size: 19px !important; letter-spacing: .04em; font-weight: 650; }
 .ob-field-hint { display: flex; gap: 6px; align-items: flex-start; margin: 0; color: var(--ob-faint); font-size: 11.5px; line-height: 1.5; }
 .ob-field-hint svg { width: 13px; height: 13px; margin-top: 2px; }
+/* Live email availability under the field; empty keeps the live region but no space. */
+.ob-email-status { display: flex; gap: 6px; align-items: flex-start; margin: 0; color: var(--ob-faint); font-size: 11.5px; line-height: 1.5; }
+.ob-email-status:empty { margin-top: -8px; }
+.ob-email-status.taken, .ob-email-status.invalid { color: var(--ob-danger); font-weight: 550; animation: ob-error-in .25s ease-out; }
+.ob-email-status.available { color: var(--ob-soft); font-weight: 650; }
+.ob-email-status svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
 .ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
 .ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1px solid var(--ob-edge); border-radius: 16px; background: var(--ob-field); color: var(--ob-text); font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s, transform .18s; }
 .ob-otp input:focus { border-color: var(--ob-pink); }
@@ -339,9 +348,10 @@
 .ob-back { animation: ob-back .3s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes ob-enter { from { opacity: 0; transform: translate3d(22px, 4px, 0); } to { opacity: 1; transform: none; } }
 @keyframes ob-back { from { opacity: 0; transform: translate3d(-20px, 3px, 0); } to { opacity: 1; transform: none; } }
+@keyframes ob-card-in-next { from { opacity: 0; transform: translate3d(42%, 12px, 0) rotate(9deg) scale(.88); } to { opacity: 1; transform: rotate(-2.5deg); } }
+@keyframes ob-card-in-prev { from { opacity: 0; transform: translate3d(-42%, 12px, 0) rotate(-13deg) scale(.88); } to { opacity: 1; transform: rotate(-2.5deg); } }
 @keyframes ob-card-float { 0%, 100% { transform: translate3d(0, 0, 0) rotate(-2.5deg); } 50% { transform: translate3d(0, -7px, 0) rotate(-1deg); } }
 @keyframes ob-wave-float { 0%, 100% { transform: translateY(0) rotate(10deg); } 50% { transform: translateY(-6px) rotate(5deg); } }
-@keyframes ob-wave { 0%, 55%, 100% { transform: rotate(0); } 62%, 76% { transform: rotate(18deg); } 69%, 83% { transform: rotate(-9deg); } }
 @keyframes ob-pulse { 0% { box-shadow: 0 0 0 0 var(--ob-glow); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
 @keyframes ob-rise { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 18% { opacity: .95; } 100% { opacity: 0; transform: translate(-12px, -84px) scale(1.1); } }
 @keyframes ob-sheen { 0% { transform: translateX(-130%); } 38%, 100% { transform: translateX(130%); } }
@@ -412,7 +422,7 @@
   .ob-floating svg { width: 28px; height: 28px; }
   .ob-spark { width: 48px; height: 48px; left: 0; top: 15%; border-radius: 16px; }
   .ob-spark svg { width: 23px; height: 23px; }
-  .ob-wave { font-size: 33px; }
+  .ob-floating.ob-namaste { font-size: 17px; padding: 11px 17px; }
   .ob-deck-controls { bottom: 0; }
   .ob-welcome-actions { max-width: 380px; align-self: start; }
   .ob-trust { justify-content: flex-start; }

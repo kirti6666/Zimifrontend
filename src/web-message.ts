@@ -111,6 +111,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "auth.sendOtp": valid = phoneNumber(d) && role(d.role); break;
     case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{4,8}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
     case "auth.google": valid = role(d.role) && boolean(d.signup); break;
+    case "auth.emailCheck": valid = text(d.email, 254) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(d.email)) && d.requestId !== undefined && Object.keys(d).every(key => ["email", "requestId"].includes(key)); break;
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&
         (d.avatar === undefined || photoData(d.avatar)) && (d.cover === undefined || d.cover === null || photoData(d.cover)) &&
@@ -124,6 +125,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
+    case "presence.duringCalls": valid = boolean(d.on); break;
+    case "host.callStatus.load": valid = true; break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;

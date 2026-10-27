@@ -4,6 +4,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
+    "postinstall": "patch-package",
     "build": "node scripts/build-web.mjs",
     "build:web": "node scripts/build-web.mjs",
     "build:icons": "node scripts/build-icons.mjs",
@@ -25,6 +26,9 @@
     "test:live": "npm run build:web && node scripts/test-live-room.cjs && node scripts/test-home-media.cjs",
     "test:call-setup": "npm run build:web && node scripts/test-call-setup.cjs",
     "test:call-charges": "npm run build:web && node scripts/test-call-charges.cjs",
+    "test:call-layout": "npm run build:web && node scripts/test-call-layout.cjs",
+    "test:host-calls": "npm run build:web && node scripts/test-host-calls.cjs && node scripts/test-host-reference.cjs && node scripts/test-gift-motion.cjs",
+    "test:card-video": "npm run build:web && node scripts/test-card-video.cjs",
     "test:private-screens": "npm run build:web && node scripts/test-private-screens.cjs",
     "test:chat-safety": "npm run build:web && node scripts/test-chat-safety.cjs",
     "test:chat-actions": "npm run build:web && node scripts/test-chat-actions.cjs",
@@ -67,6 +71,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
+    "patch-package": "^8.0.1",
     "playwright": "1.63.0",
     "qrcode-generator": "^2.0.4",
     "typescript": "^5.9.3"

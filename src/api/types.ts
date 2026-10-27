@@ -64,6 +64,8 @@ export interface Host {
   age?: number;
   avatarUrl?: string;
   coverUrl?: string;
+  /** The host's newest video post, played muted on discovery cards; null when they have none. */
+  previewVideoUrl?: string | null;
   gender?: Gender;
   ratePerMin?: number;
   entryFee?: number;
