@@ -7,6 +7,12 @@
   let facingMode = 'user', playbackMuted = false, handoffCall = null;
   const peers = new Map(), earlySignals = [];
   const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+  /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
+     portrait size made the browser crop a narrow strip out of each frame (the zoomed preview);
+     'none' keeps the camera's own framing so a full-screen video looks like a normal call. */
+  const CAMERA_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' };
+  /* Last known frame shape per stream, so a redrawn video is laid out before its metadata loads. */
+  const shapes = { local: '', remote: '' };
 
   function status(message, error) {
     if (typeof Home !== 'undefined') Home.mediaStatus = message;
@@ -54,6 +60,7 @@
     clearPeers();
     stopTracks(local);
     local = null;
+    shapes.local = shapes.remote = '';
     if (configRequest) {
       const pending = configRequest;
       configRequest = null;
@@ -71,6 +78,21 @@
     const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v);
     return inCall && typeof camOn === 'function' ? !!camOn() : S.cam !== 0;
   }
+  /* data-zimi-shape lets full-screen stages fill the screen with portrait frames and show
+     landscape ones (tablets, desktop webcams) whole instead of zooming into them. */
+  function watchShape(el, kind) {
+    if (shapes[kind]) el.dataset.zimiShape = shapes[kind];
+    if (el.zimiShapeWatched) return;
+    el.zimiShapeWatched = true;
+    const update = () => {
+      if (!el.videoWidth || !el.videoHeight) return;
+      const shape = el.videoWidth > el.videoHeight ? 'landscape' : 'portrait';
+      el.dataset.zimiShape = shape;
+      if (el.srcObject && el.srcObject === (kind === 'local' ? local : remote)) shapes[kind] = shape;
+    };
+    el.addEventListener('loadedmetadata', update);
+    el.addEventListener('resize', update);
+  }
   function attach() {
     if (switchingStream) switchingStream.getVideoTracks().forEach(track => { track.enabled = cameraEnabled(); });
     if (local) {
@@ -83,6 +105,7 @@
       document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
         el.muted = kind === 'local' || playbackMuted;
         if (kind === 'local') el.dataset.zimiFacing = facingMode;
+        if (el.tagName === 'VIDEO') watchShape(el, kind);
         if (el.srcObject === stream) return;
         el.srcObject = stream;
         el.playsInline = true;
@@ -119,7 +142,7 @@
     stopTracks(local);
     local = null;
     const version = generation;
-    const pending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } } : false });
+    const pending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { facingMode: 'user', ...CAMERA_SIZE } : false });
     capture = pending;
     try {
       const stream = await pending;
@@ -177,7 +200,7 @@
         const alternatives = settings.deviceId ? devices.filter(device => device.deviceId && device.deviceId !== settings.deviceId) : [];
         const matching = alternatives.find(device => (nextFacing === 'environment' ? /back|rear|environment/i : /front|user|facetime/i).test(device.label));
         const device = matching || alternatives[0];
-        const video = { width: { ideal: 720 }, height: { ideal: 1280 }, ...(device ? { deviceId: { exact: device.deviceId } } : { facingMode: { exact: nextFacing } }) };
+        const video = { ...CAMERA_SIZE, ...(device ? { deviceId: { exact: device.deviceId } } : { facingMode: { exact: nextFacing } }) };
         try {
           acquired = await navigator.mediaDevices.getUserMedia({ audio: false, video });
         } catch (error) {

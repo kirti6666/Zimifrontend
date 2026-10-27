@@ -8,7 +8,7 @@ const H=[
  {id:"tara",n:"Tara Iyer",c:"Chennai",cat:"Astrology",tag:"Readings",age:38,rate:60,fee:120,on:1,live:1,seed:68,v:"3.2K",pk:0,top:1,fol:1,nw:0},
  {id:"dev",n:"Dev Malhotra",c:"Delhi",cat:"Fitness",tag:"Training",age:27,rate:28,fee:50,on:1,live:0,seed:34,v:"860",pk:0,top:0,fol:0,nw:1},
  {id:"noor",n:"Noor Sheikh",c:"Hyderabad",cat:"Comedy",tag:"Make Friends",age:25,rate:26,fee:45,on:1,live:1,seed:55,v:"5.1K",pk:1,top:1,fol:1,nw:0},
- {id:"kabir",n:"Kabir Das",c:"Kolkata",cat:"Music",tag:"Chatting",age:33,rate:38,fee:70,on:0,live:0,seed:79,v:"640",pk:0,top:0,fol:0,nw:1,hideMvp:1}
+ {id:"kabir",n:"Kabir Das",c:"Kolkata",cat:"Music",tag:"Chatting",age:33,rate:38,fee:70,on:1,live:0,seed:79,v:"640",pk:0,top:0,fol:0,nw:1,hideMvp:1}
 ];
 const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","free for a call in ten","5:54 pm",1],
  ["tara","send your birth time when you can","5:31 pm",0],["ishaan","you: gg, rough last round","4:12 pm",0],
@@ -43,7 +43,7 @@ const EXTRA=[
  {id:"osama",n:"OSAMA",c:"Dubai",cat:"Gaming",tag:"Esports",lang:"Arabic, English",age:28,rate:52,fee:95,on:1,live:0,seed:3,v:"9.0K"},
  {id:"evangeline",n:"Evangeline",c:"Manila",cat:"Music",tag:"Singing",lang:"Filipino, English",age:24,rate:41,fee:75,on:1,live:0,seed:17,v:"8.6K"},
  {id:"jelly",n:"JELLY RTR",c:"Pune",cat:"Comedy",tag:"Make Friends",lang:"Hindi, Marathi",age:26,rate:33,fee:60,on:1,live:1,seed:29,v:"2.7K"},
- {id:"rapidlion",n:"Rapid Lion",c:"Nagpur",cat:"Talk",tag:"Chatting",lang:"Hindi",age:30,rate:24,fee:45,on:0,live:0,seed:41,v:"774"},
+ {id:"rapidlion",n:"Rapid Lion",c:"Nagpur",cat:"Talk",tag:"Chatting",lang:"Hindi",age:30,rate:24,fee:45,on:1,live:0,seed:41,v:"774"},
  {id:"apsara",n:"APSARA",c:"Indore",cat:"Dance",tag:"Dancing",lang:"Hindi",age:23,rate:37,fee:65,on:1,live:0,seed:53,v:"1.1K"},
  {id:"mehak",n:"Mehak Dhillon",c:"Ludhiana",cat:"Dance",tag:"Dancing",lang:"Punjabi, Hindi",age:25,rate:29,fee:52,on:1,live:1,seed:64,v:"424"}];
 const SENDERS=["Rohit S.","Arnav M.","Kunal T.","Faisal R.","Devika N.","Yash P.","Imran Q.","Sahil B.",
@@ -225,7 +225,7 @@ function go(v,id){
  if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
  if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
-  if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
+  if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
   S.cstart=0;S.feeOk=0;S.feeHide=0;S.confirm=0;S.feeLog=[];
@@ -405,7 +405,7 @@ function backedFor(u){
 }
 
 function vSetup(){
- if(window.ZimiHome&&!DEMO)return homeCallSetup();
+ if(window.ZimiHome)return homeCallSetup();
  const h=me, tierIdx=1;
  return `<div class="setup">
  <div class="stage">
@@ -1140,7 +1140,7 @@ function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("c
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
- if(window.ZimiHome&&!DEMO)return homeWaiting();
+ if(window.ZimiHome)return homeWaiting();
  return `<div class="ringscr host">
   <div class="ringorb">${avc(me,104)}</div>
   <h2>You're online</h2>
@@ -1164,16 +1164,17 @@ function vRing(){const c=S.caller;
  /* The preview shows the default terms; the app shows the ones locked onto this call. */
  const rate=DEMO?MY_RATE:c.rate||0,fee=DEMO?MY_FEE:c.fee||0,hold=DEMO?FEE_HOLD:c.hold||0;
  const about=[c.lvl?`Lv ${c.lvl}`:'',c.c,DEMO?`${c.v} followers`:''].filter(Boolean).map(esc).join(' &middot; ');
- return `<div class="ringscr host ring">
-  <div class="ringbg">${art(c.seed)}</div>
+ return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${c.voice?'voice':'video'} call">
+  <div class="ringbg" aria-hidden="true"></div>
   <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
-  <div class="ringorb pulse">${avc(c,112)}</div>
+  <div class="ringorb pulse">${hcIdentityAvatar(c,112)}</div>
   <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
   <span class="ringearn">${rate?`${gem}You earn ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
   ${fee?`<span class="ringfee">+${n(fee)} entry fee once the call passes ${hcHold(hold)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
-   <span class="rbtn"><button class="accept" aria-label="Accept" onclick="acceptRing()">${I("vid",25)}</button><span>Accept</span></span></div>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+  ${S.acceptingCall?'<span class="ring-connecting-note" role="status">Preparing your private call…</span>':''}
  </div>`}
 
 /* ---- Host: in the call ---- */
@@ -1209,7 +1210,7 @@ function incBanner(){const c=S.inc;
   <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
-function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
+function declineRing(){S.acceptingCall=false;Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
 function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
@@ -1280,7 +1281,12 @@ function hostTick(){
  if(hcFeePending()&&!S.connecting&&S.sec-S.cstart>=S.feeHold){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=S.callFee;
   S.rmsgs.push(["sys","",`Entry fee unlocked from ${first(S.caller.n)} · +${n(S.callFee)}`]);paintFeed();
   if(S.confirm){S.confirm=0;r()}}
- if(window.ZimiHome){paintHostTick();return}
+ if(window.ZimiHome){
+  /* The interactive preview feeds sample gifts through the same visual lifecycle. */
+  if(DEMO&&!S.connecting&&S.sec%9===0&&Home.gifts.length&&window.zrReceiveGift){
+   const gift=Home.gifts[(Math.floor(S.sec/9)-1)%Home.gifts.length];
+   zrReceiveGift({id:`preview-gift-${S.callId||'call'}-${S.sec}`,callId:S.callId||undefined,senderId:S.caller.id,senderName:S.caller.n,giftName:gift.name,emoji:gift.emoji,mediaUrl:gift.mediaUrl,coins:gift.coins})}
+  paintHostTick();return}
  if(DEMO&&S.sec%9===0){
   const ask=(S.sec/9)%3===0;
   const [l,e,v]=ask?GIFTS[S.fav]:GIFTS[IN_GIFTS[(S.sec/9+S.ci)%IN_GIFTS.length]];
@@ -1340,7 +1346,7 @@ function supportPct(h,spent){
  return Math.min(99,Math.round(xs.filter(x=>x<spent).length/xs.length*100))}
 
 function vSummary(){const s=S.sum;
- if(window.ZimiHome&&!DEMO)return homeCallSummary();
+ if(window.ZimiHome&&(!DEMO||s?.k==='host'))return homeCallSummary();
  if(!s)return "";
  if(s.k==="sender"){
   const h=g(s.h),f=first(h.n),pct=supportPct(h,s.spent),big=pct>=50;
@@ -1655,11 +1661,17 @@ function r(){
    the short keys the screens use. */
 const PEOPLE={};
 const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997;return x};
+/* Nobody is ever shown a host as offline. The server still rings an offline host until the call
+   is missed, so for members only an online host's own call settings make calls unavailable.
+   `ready` keeps the server's own availability for lists that promise an instant answer. */
+function isHostPayload(p){return p.serverRole==="host"||p.role==="host"||p.verified===true}
+function hostShownOnline(p){return isHostPayload(p)||!!p.online}
+function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&p.online!==true&&!isHost()}
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
-  role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:p.availableForCall===true,
+  role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
-  age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
+  age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:hostShownOnline(p)?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
  return PEOPLE[id]={id,n:p.name||"BinzoLive user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
@@ -1728,7 +1740,8 @@ Native.on("call.connected",d=>{
 Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
- else if(S.v==="dialback")go("chats")});
+ else if(S.v==="dialback")go("chats");
+ else if(S.v==="ring"){appNotice(d.message||"The call didn't connect. Please try again.");r()}});
 Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
@@ -1737,11 +1750,11 @@ Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Nativ
  /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
  if(S.v==="ring"){if(S.caller?.callId!==c.callId)S.queuedInc=c;return}
  if(["dial","dialback","call","voice"].includes(S.v))return;
- S.ringBack=S.v;S.caller=c;go("ring")});
+ S.acceptingCall=false;S.ringBack=S.v;S.caller=c;go("ring")});
 /* The caller who arrived while another call was ringing: a banner on the call, or the next ring. */
 function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
  if(S.v==="hcall")return ringIncoming(q);
- S.caller=q;go("ring")}
+ S.acceptingCall=false;S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
  /* The server's charge replaces the summary's estimate once it arrives. */
@@ -1754,7 +1767,7 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
- if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
+ if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
 Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;

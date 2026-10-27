@@ -49,7 +49,7 @@ function zcPhoto(h,extra=''){return `<span class="zc-avatar ${extra}">${homeCove
 function zcRows(){const q=Chats.query.trim().toLowerCase();let rows=Chats.rows.filter(c=>{
   if(Chats.filter==='calls'&&!zcHasCalls(c))return false;
   if(Chats.filter==='unread'&&!c.unread)return false;
-  if(Chats.onlineOnly&&!c.user.online)return false;
+  if(Chats.onlineOnly&&!hostShownOnline(c.user))return false;
   return !q||[c.user.name,c.user.category,c.user.tag,c.last].some(value=>String(value||'').toLowerCase().includes(q));
 });return rows.sort((a,b)=>Chats.sort==='name'?a.user.name.localeCompare(b.user.name):Chats.sort==='unread'&&(a.unread||b.unread)?b.unread-a.unread:(Date.parse(b.lastAt)||0)-(Date.parse(a.lastAt)||0))}
 function zcTabs(){const tabs=[['all','All'],['unread','Unread'],['calls','Calls'],['missed','Missed calls']];return `<div class="zc-tabs" role="tablist" aria-label="Conversation categories">${tabs.map(([key,label])=>`<button role="tab" aria-selected="${Chats.filter===key}" class="${Chats.filter===key?'selected':''}" onclick="zcSetFilter('${key}')">${label}</button>`).join('')}</div>`}

@@ -223,9 +223,11 @@ function zuOpenPhoto(index){
   dialog.addEventListener('keydown',event=>{if(event.target.tagName==='VIDEO')return;const next=event.key==='ArrowRight'?index+1:event.key==='ArrowLeft'?index-1:-1;if(next>=0&&next<Zu.posts.length){event.preventDefault();zuOpenPhoto(next)}});
 }
 
+/* Profiles follow the same rule as cards: a host is never shown offline (see hostFrom). */
+function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostShownOnline(p),availableForCall:hostCallable(p)});return p}
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
-  Zu.profile=d.profile;Zu.loading=false;Zu.error='';zuRemember(d.profile);
+  Zu.profile=zuShownPresence(d.profile);Zu.loading=false;Zu.error='';zuRemember(d.profile);
   if(zuApproved(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
   zuPaint();
 });
@@ -246,7 +248,7 @@ Native.on('data.home',d=>{
   // Live discovery events may update availability without replacing profile
   // counts, a pending relationship write, or the current gallery selection.
   for(const key of ['online','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
-  zuPaint();
+  zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
 Native.on('follow.error',d=>{

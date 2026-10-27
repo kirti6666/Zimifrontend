@@ -110,6 +110,7 @@ const page = (demo, hosted = false) =>
   read("web/live-room.css") +
   read("web/call-setup.css") +
   read("web/host-calls.css") +
+  read("web/host-studio.css") +
   read("web/verification-call.css") +
   read("web/offline.css") +
   read("web/public-profile.css") +
@@ -143,6 +144,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +
   "\n" + read("web/host-calls.js") +
+  "\n" + read("web/host-studio.js") +
   "\n" + read("web/verification-call.js") +
   "\n" + read("web/chats.js") +
   "\n" + read("web/chat-voice.js") +

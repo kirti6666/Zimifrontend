@@ -2,7 +2,26 @@
    while a call is in progress (decline or switch, never a busy signal), and the entry fee
    that unlocks once a call lasts the hold. The call screen itself is zrCall in live-room.js. */
 /* preview: '' until the host asks to check their camera, then 'starting', 'ready' or 'failed'. */
-const HostCalls = { status: null, loading: false, preview: '', previewError: '', previewRun: 0, visBusy: false };
+const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false };
+
+function hcIdentityAvatar(person, size = 104) {
+  const name = String(person?.n || person?.name || 'Host').trim();
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => Array.from(part)[0]).join('').toUpperCase();
+  const src = person ? avatarSource(person) : '';
+  const hue = person === me ? 19 : (seedOf(person?.id || name) % 220) + 90;
+  return `<span class="hc-identity-avatar" style="width:${size}px;height:${size}px;--hc-avatar-hue:${hue}"><b style="font-size:${Math.max(11, Math.round(size * .34))}px">${esc(initials)}</b>${src ? `<img src="${src}" alt="${esc(name)}" onerror="this.remove()">` : ''}</span>`;
+}
+/* The host's own camera across the whole screen. The second, muted copy is a soft fill shown
+   only behind a landscape camera, which is displayed whole rather than cropped. */
+function hcStageVideo() {
+  return '<video data-zimi-local autoplay muted playsinline></video><video data-zimi-local data-zimi-fill autoplay muted playsinline></video>';
+}
+
+/* The same entrance timeline survives status acknowledgments and other redraws. */
+function hcSceneStyle(scene) {
+  if (HostCalls.scene !== scene) { HostCalls.scene = scene; HostCalls.sceneAt = Date.now(); }
+  return `--hc-enter-age:-${Math.min(500, Math.max(0, Date.now() - HostCalls.sceneAt))}ms`;
+}
 
 function hcHold(seconds) {
   const s = Number(seconds) || 0;
@@ -18,46 +37,58 @@ function hcFeePending() { return !!S.callFee && !S.feeOk; }
 /* ---- Before going online ---- */
 function hcRateCard() {
   const st = HostCalls.status;
-  if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}</div>`;
+  if (HostCalls.error) return `<div class="hc-card hc-status-error" role="alert"><span>${esc(HostCalls.error)}</span><button type="button" onclick="hcLoadStatus()">${hi('refresh', 14)} Retry call details</button></div>`;
+  if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}<div class="hc-tiers" aria-hidden="true">${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}</div></div>`;
   const tiers = st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
   return `<div class="hc-card">
-    <div class="hc-card-head"><span>${coinIcon(16)} <b>${st.rate ? `${n(st.rate)} coins / min` : 'Free calls'}</b></span>${tiers.length ? `<small>Tier ${st.tier} of ${tiers.length}</small>` : ''}</div>
-    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate)}/min</span>`).join('')}</div>` : ''}
-    ${next ? `<small class="hc-next">Earn ${n(Math.max(0, next.atCoins - st.earnedCoins))} more coins to unlock ${n(next.rate)}/min</small>` : tiers.length ? '<small class="hc-next">You have reached the top call price</small>' : ''}
-    ${fee ? `<div class="hc-fee-line">${hi('clock', 15)}<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. It is yours once the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span></div>` : ''}
+    <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)}/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} left to upgrade</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Your call rate</small>'}</button>
+    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)}/h</span>`).join('')}</div>` : ''}
+    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Earn ${n(Math.max(0, next.atCoins - st.earnedCoins))} more coins to unlock ${n(next.rate)}/min</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. It is yours once the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}</div>` : ''}
   </div>`;
 }
 function hcVisibilityRow() {
   const on = S.callVis !== false;
   return `<button type="button" class="hc-toggle" role="switch" aria-checked="${on}" onclick="hcToggleVisible()" ${HostCalls.visBusy ? 'disabled' : ''}>
-    <span><b>Available on Home during calls</b><small>${on ? 'Members can still find you and call while you’re talking. New calls ring as a banner on your call.' : 'While you’re on a call, members see you as unavailable.'}</small></span>
+    <span><b>Online on Home during calls</b><small>${on ? 'Others can still find you and call while you’re on a call.' : 'You’re hidden from Home while you’re on a call.'}</small></span>
     <i class="hc-switch ${on ? 'is-on' : ''}" aria-hidden="true"></i></button>`;
 }
 function hcSetupView() {
   const cam = !!S.cam, p = HostCalls.preview;
-  const status = !cam ? 'Camera is off · callers see your profile photo'
-    : p === 'ready' ? 'Camera ready' : p === 'starting' ? 'Starting camera…' : p === 'failed' ? HostCalls.previewError : 'See how you look before callers do';
+  const status = !cam ? 'Camera is off'
+    : p === 'ready' ? 'Camera ready' : p === 'starting' ? 'Starting camera…' : p === 'failed' ? HostCalls.previewError : '';
   /* The camera only starts when the host asks; opening this screen never captures anything. */
   const check = cam && (!p || p === 'failed') ? `<button type="button" class="hc-check" onclick="hcStartPreview()">${hi('vid', 15)}${p ? 'Try again' : 'Check camera'}</button>` : '';
-  return `<section class="zh-broadcast hc-setup"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1>
-    <p>Check your camera, then go online. Members call you for private one-to-one video and voice calls.</p>
-    <div class="zh-camera-preview hc-preview ${cam && p === 'ready' ? '' : 'is-off'}"><video data-zimi-local autoplay muted playsinline></video>
-      <span>${hi(cam ? 'vid' : 'camoff', 38)}<b>${esc(status)}</b>${check}</span><i class="hc-guide" aria-hidden="true"></i>
-      <div class="hc-preview-tools">
+  return `<section class="hc-setup hc-preview ${cam && p === 'ready' ? '' : 'is-off'}" aria-label="Get ready to go online">
+    <div class="hc-stage" aria-hidden="true">${hcStageVideo()}</div><div class="hc-stage-shade" aria-hidden="true"></div>
+    <header class="hc-setup-header">${backButton("go('home')")}<div class="hc-preview-tools">
         <button type="button" onclick="hcSetupMic()" aria-pressed="${!S.mic}" aria-label="${S.mic ? 'Mute microphone' : 'Unmute microphone'}">${hi(S.mic ? 'mic' : 'micoff', 18)}</button>
-        <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'flip' : 'camoff', 18)}</button>
+        <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'vid' : 'camoff', 18)}</button>
+      </div></header>
+    <div class="hc-setup-panels">${hcRateCard()}${hcVisibilityRow()}</div>
+    <div class="hc-camera-space"><i class="hc-guide" aria-hidden="true"></i>
+      <div class="hc-camera-message" ${p === 'failed' ? 'role="alert"' : p === 'starting' ? 'role="status" aria-busy="true"' : ''}>
+        ${status ? `<b>${esc(status)}</b>` : ''}
+        ${!cam || p === 'starting' || p === 'failed' ? `<p>${!cam ? 'Callers will see your profile photo.' : p === 'starting' ? 'Allow camera and microphone access to see your preview.' : 'Check camera and microphone access, then try again.'}</p>` : ''}${check}
       </div></div>
-    ${hcRateCard()}${hcVisibilityRow()}
-    <button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Connecting…' : 'Go online for calls'}</button>
-    <p class="hc-note">A call that comes in while you are talking rings as a banner, and you choose whether to switch. Nobody is told you are busy.</p></section>`;
+    <p class="hc-camera-hint">Keep centred, head and shoulders in frame</p>
+    <footer class="hc-setup-footer"><button type="button" class="hc-setup-tool" aria-label="Beauty and filters" onclick="hsOpenSheet('appearance')">${hi('star', 19)}</button>
+      <button type="button" class="hc-primary" onclick="homeSetPresence(true)" aria-label="Go online for calls" aria-busy="${!!Home.presenceBusy}" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Connecting…' : 'Go online'}</button>
+      <button type="button" class="hc-setup-tool" aria-label="Mission" onclick="hsOpenSheet('mission')">${hi('cup', 19)}</button>
+      <button type="button" class="hc-setup-tool" aria-label="Gift target" onclick="hsOpenSheet('gift-target')">${hi('gift', 19)}</button></footer>${typeof hsSheet === 'function' ? hsSheet() : ''}</section>`;
 }
 function hcWaitingView() {
-  return `<section class="zh-broadcast hc-waiting"><span class="zh-eyebrow">OPEN TO CONNECTIONS</span><h1>You’re online.</h1>
-    <p>Members can discover you and start a call while you’re available. Incoming calls ring wherever you are in the app.</p>
-    <div class="zh-ready-illustration">${hi('ph', 52)}</div>${hcRateCard()}${hcVisibilityRow()}
-    <button class="zh-primary zh-full" onclick="go('home')">Explore BinzoLive</button>
-    <button class="zh-soft zh-full" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>Go offline</button>
-    <p class="zh-coins-note">Keep the app connected to receive incoming calls.</p></section>`;
+  return `<section class="hc-waiting" style="${hcSceneStyle('waiting')}" aria-label="Online and waiting for calls">
+    <div class="hc-waiting-main"><div class="hc-host-avatar is-waiting">${hcIdentityAvatar(me, 104)}<i aria-hidden="true"></i><i aria-hidden="true"></i></div>
+    <h1>You’re online</h1><p class="hc-waiting-status">Waiting for callers… ${S.vis ? 'you’re visible on Home.' : 'you’re hidden from Home.'}</p>
+    <p class="hc-waiting-note">You stay online when you leave this screen. Incoming calls ring wherever you are in the app. Keep the app connected so you don’t miss a call.</p>
+    <div class="hc-waiting-actions"><button type="button" class="hc-primary" onclick="go('home')">Browse the app</button>
+    <button type="button" class="hc-offline" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Going offline…' : 'Go offline'}</button></div></div>
+    </section>`;
+}
+function hcLoadStatus() {
+  if (HostCalls.loading || !isApprovedHost()) return;
+  HostCalls.loading = true; HostCalls.error = '';
+  Native.send('host.callStatus.load', {}); r();
 }
 function hcStartPreview() {
   if (!S.cam || S.v !== 'setup' || HostCalls.preview === 'starting') return;
@@ -88,10 +119,10 @@ function hcVisPill() {
 function hcFeeChip() { return S.callFee && feeShown() ? `<div class="hc-fee ${S.feeOk ? 'ok' : ''}" id="fee" role="status">${feeChip()}</div>` : ''; }
 function hcIncoming() {
   const c = S.inc, name = esc(c.n);
-  return `<aside class="hc-incoming" role="alertdialog" aria-label="Incoming call from ${name}">${zrAvatar(c, 42)}
+  return `<aside class="hc-incoming" role="alertdialog" aria-label="Incoming call from ${name}">${hcIdentityAvatar(c, 42)}
     <div><strong>${name}</strong><span>is calling you${c.lvl ? ` · Lv ${esc(c.lvl)}` : ''} · ${c.voice ? 'Voice' : 'Video'}</span></div>
-    <button class="hc-decline" onclick="declineInc()" aria-label="Decline ${name}">${hi('close', 19)}</button>
-    <button class="hc-accept" onclick="hostEnd('switch')" aria-label="Switch to ${name}">${hi(c.voice ? 'ph' : 'vid', 18)}<span>Switch</span></button></aside>`;
+    <button class="hc-decline" onclick="declineInc()" aria-label="Decline ${name}">${hi('ph', 19)}</button>
+    <button class="hc-accept" onclick="hostEnd('switch')" aria-label="Switch to ${name}">${hi(c.voice ? 'ph' : 'vid', 19)}</button></aside>`;
 }
 function hcConfirm() {
   const k = S.confirm, left = Math.max(0, (S.feeHold || 0) - (S.sec - S.cstart)), nth = (S.early || 0) + 1;
@@ -99,12 +130,13 @@ function hcConfirm() {
   const warn = !penalty ? `This would be early ending ${nth} today.`
     : nth > limit ? `This would be early ending ${nth} today. Past ${n(limit)} a day, it takes ${n(penalty)} coins from your earnings.`
     : `This would be early ending ${nth} today. Past ${n(limit)} a day, each one takes ${n(penalty)} coins from your earnings.`;
-  return `<div class="zr-sheet-backdrop" onclick="if(event.target===this){S.confirm=0;r()}"><section class="zr-sheet hc-confirm" role="dialog" aria-modal="true" aria-label="${k === 'switch' ? 'Switch calls early?' : 'End call early?'}" data-lenis-prevent>
-    <div class="zr-sheet-handle"></div><header><h2>${k === 'switch' ? 'Switch before the entry fee unlocks?' : 'End before the entry fee unlocks?'}</h2>${zrRound('close', 'Keep talking', 'S.confirm=0;r()')}</header>
+  const title = `${k === 'switch' ? 'Switch calls' : 'End call'} before ${hcHold(S.feeHold)}?`;
+  return `<div class="zr-sheet-backdrop" onclick="if(event.target===this){S.confirm=0;r()}"><section class="zr-sheet hc-confirm" role="dialog" aria-modal="true" aria-label="${title}" data-lenis-prevent>
+    <span class="hc-confirm-icon" aria-hidden="true">${hi('clock', 22)}</span><h2>${title}</h2>
     <p class="zr-sheet-note">${esc(first(S.caller.n))}’s ${n(S.callFee)}-coin entry fee unlocks in <b id="hc-left">${clock(left)}</b>. If you ${verb} now, you won’t receive it and it stays with BinzoLive.</p>
     <p class="hc-warn">${warn}</p>
-    <button class="zr-wide zr-secondary" onclick="S.confirm=0;r()">Keep talking</button>
-    <button class="zr-wide zr-danger" onclick="S.confirm=0;${k === 'switch' ? 'acceptInc()' : 'endCall()'}">${k === 'switch' ? 'Switch anyway' : 'End call anyway'}</button></section></div>`;
+    <button class="zr-wide hc-keep" onclick="S.confirm=0;r()">Keep talking</button>
+    <button class="zr-wide zr-danger hc-anyway" onclick="S.confirm=0;${k === 'switch' ? 'acceptInc()' : 'endCall()'}">${k === 'switch' ? 'Switch anyway' : 'End call anyway'}</button></section></div>`;
 }
 function hcConnecting() {
   const { from, to } = S.connecting;
@@ -126,26 +158,27 @@ function hcSwitchFailed(message) {
 /* ---- After the session ---- */
 function hcSummaryView(s) {
   const fees = (s.fees || []).filter(f => f.fee), received = fees.filter(f => f.ok).reduce((sum, f) => sum + f.fee, 0);
-  return `<section class="zh-broadcast zh-summary hc-summary"><div class="zh-ready-illustration">${hi('cup', 42)}</div>
+  return `<section class="hc-summary" style="${hcSceneStyle('summary')}"><div class="hc-summary-content"><div class="hc-host-avatar">${hcIdentityAvatar(me, 80)}<span class="hc-summary-badge" aria-hidden="true">🏆</span></div>
     <h1>${s.earned ? 'Congratulations!' : 'A moment well shared.'}</h1>
-    <p>${s.earned ? `You earned about <b>${n(s.earned)} coins</b> in ${fmtDur(s.sec || 0)} on calls.` : `You spent ${fmtDur(s.sec || 0)} on calls.`}</p>
-    <div class="zh-precall-details"><span>Duration <b>${clock(s.sec || 0)}</b></span><span>${s.callers === 1 ? 'Caller' : 'Callers'} <b>${n(s.callers || 1)}</b></span><span>Gifts <b>${n(s.gifts || 0)}</b></span><span>Coins earned <b>≈ ${n(s.earned || 0)}</b></span></div>
+    <p>${s.earned ? `You earned about <b>${n(s.earned)} coins</b> in this session and completed <b>${fmtDur(s.sec || 0)}</b> on calls.` : `You spent <b>${fmtDur(s.sec || 0)}</b> on calls.`}</p>
+    <div class="hc-session-stats"><div><span>Earned</span><b>${coinIcon(16)} ≈ ${n(s.earned || 0)}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
     ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Entry fees</span><b>${coinIcon(14)} +${n(received)}</b></div>
       ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `+${n(f.fee)} received` : 'Ended early · kept by BinzoLive'}</em></div>`).join('')}
       ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, each one takes ${n(s.penaltyCoins)} coins from your earnings.` : ''}</p>` : ''}</div>` : ''}
-    <button class="zh-primary zh-full" onclick="S.callId=null;go(S.online?'waiting':'setup')">${S.online ? 'Back to taking calls' : 'Go online again'}</button>
-    <button class="zh-soft zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button>
-    <button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary') || ''}</section>`;
+    <button type="button" class="hc-primary" onclick="S.callId=null;go('setup')">${hi('vid', 18)} Set targets &amp; continue</button>
+    <div class="hc-summary-actions"><button type="button" onclick="S.callId=null;go('wallet')">${hi('wal', 17)} Wallet</button><button type="button" onclick="S.callId=null;go('home');homeLoad()">${hi('house', 17)} Home</button></div>
+    ${window.ZimiAds?.card('call_summary') || ''}</div></section>`;
 }
 
 document.addEventListener('aurora:navigate', () => {
+  if (S.v !== HostCalls.scene) HostCalls.scene = '';
   /* media.js releases the camera on every navigation outside a call, so the preview starts over. */
   if (HostCalls.preview) { HostCalls.previewRun++; HostCalls.preview = ''; if (S.v === 'setup') r(); }
   if (!['setup', 'waiting'].includes(S.v) || DEMO || !isApprovedHost()) return;
-  if (!HostCalls.loading) { HostCalls.loading = true; Native.send('host.callStatus.load', {}); }
+  hcLoadStatus();
 });
 Native.on('host.callStatus', d => {
-  HostCalls.loading = false; HostCalls.status = d; S.callVis = d.visibleDuringCalls !== false;
+  HostCalls.loading = false; HostCalls.error = ''; HostCalls.status = d; S.callVis = d.visibleDuringCalls !== false;
   if (S.v !== 'hcall') { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
   if (['setup', 'waiting'].includes(S.v)) r();
 });
@@ -155,13 +188,18 @@ Native.on('presence.duringCalls.saved', d => {
   if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
 });
 Native.on('operation.error', d => {
-  if (d.action === 'host.callStatus.load') HostCalls.loading = false;
+  if (d.action === 'host.callStatus.load') {
+    HostCalls.loading = false; HostCalls.error = d.message || 'Your call details could not be loaded.';
+    if (['setup', 'waiting'].includes(S.v)) r();
+  }
   if (d.action === 'presence.duringCalls') {
     HostCalls.visBusy = false; appNotice(d.message || 'Your call visibility could not be saved. Try again.');
     if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
   }
 });
-['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false })));
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false })));
+
+if (DEMO) HostCalls.status = { rate: MY_RATE, tier: 1, earnedCoins: 0, next: null, tiers: [], entryFeeCoins: MY_FEE, entryFeeHoldSeconds: FEE_HOLD, earlyEnds: { today: 0, limit: EARLY_LIMIT, penaltyCoins: MY_FEE }, visibleDuringCalls: true };
 
 /* Preview fixture only (?role=host&approvedHost=1&preview=host-call): a creator mid-call,
    and a second caller rings a few seconds later. */

@@ -77,12 +77,11 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     const layout = await open();
     for (const account of [member, approved]) {
       await seed(layout, account);
-      const count = account.user.role === 'host' ? 5 : 4;
       for (const width of [320, 390, 630, 1280]) {
         await layout.setViewportSize({ width, height: 900 });
         await clickTab(layout, 'Home');
         const baseline = await metrics(layout);
-        assert.equal(baseline.navButtons.length, count);
+        assert.equal(baseline.navButtons.length, 4, 'Members and hosts share the same four tabs');
         for (const name of tabs) {
           await clickTab(layout, name);
           assert.equal(await current(layout), name.toLowerCase());
@@ -119,13 +118,9 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     });
     sameGeometry(checkingChrome.nav, approvedChrome.nav, 'Checking approval preserves navigation height');
     assert.equal(await layout.locator('.zh-nav').getByRole('button', { name: /^Go live$/i }).count(), 0, 'Pending revalidation does not expose a Go Live action');
-    const approvalSkeleton = layout.locator('.zh-nav').getByRole('status', { name: 'Checking host approval', exact: true });
-    assert.equal(await approvalSkeleton.isVisible(), true);
-    const slot = await approvalSkeleton.boundingBox();
-    sameGeometry(slot, approvedChrome.navButtons.find(button => button.label === 'Go online for calls'), 'The approval skeleton reserves the host action slot');
+    assert.equal(await layout.locator('.zh-nav > :not(button[data-tab])').count(), 0, 'The tab bar has no call or approval slot');
     await receive(layout, 'host.access', { approved: true, checking: false, role: 'host', hostStatus: 'approved', verified: true });
-    assert.equal(await approvalSkeleton.count(), 0);
-    sameNavigation(await metrics(layout), approvedChrome, 'Successful revalidation restores the host action without moving tabs');
+    sameNavigation(await metrics(layout), approvedChrome, 'Successful revalidation keeps the tabs in place');
     console.log('PASS navigation: Home-only branded header, page-specific headings and identical tab bounds for members/hosts at 320/390/630/1280px, reduced motion');
 
     const motion = await open('no-preference');
@@ -216,8 +211,8 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
       assert.deepEqual(await access.evaluate(() => window.__sent.filter(message => ['stream.start', 'call.accept', 'call.end', 'payout.request', 'awards.claim'].includes(message.type) || (message.type === 'presence.set' && message.data.online))), [], `${label} never sends host actions`);
     }
     await seed(access, approved);
-    assert.equal(await access.locator('.zh-nav button').count(), 5);
-    assert.equal(await access.locator('.zh-nav').getByRole('button', { name: /^Go online for calls$/i }).count(), 1, 'Approved hosts retain private call availability');
+    assert.equal(await access.locator('.zh-nav button').count(), 4, 'Hosts have the same four tabs, without a call button');
+    assert.equal(await access.getByRole('button', { name: 'Get ready to go online', exact: true }).count(), 1, 'Approved hosts go online from the Home availability card');
     assert.equal(await access.getByRole('button', { name: 'Start a live broadcast', exact: true }).count(), 0, 'Home has no duplicate broadcast shortcut');
     await navigate(access, 'wallet');
     assert.equal(await access.locator('.earnbox').count(), 1, 'Approved hosts retain their earnings card');
@@ -226,7 +221,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     await access.getByRole('button', { name: /^Host approval/ }).click();
     assert.equal(await access.getByRole('button', { name: 'Go online for calls', exact: true }).count(), 1, 'Server approval unlocks the verified creator actions');
     await navigate(access, 'home');
-    await access.locator('.zh-nav').getByRole('button', { name: /^Go online for calls$/i }).click();
+    await access.getByRole('button', { name: 'Get ready to go online', exact: true }).click();
     assert.equal(await current(access), 'setup');
     assert.equal(await access.evaluate(() => window.__mediaPrepared), 0, 'Opening availability does not activate capture');
     await access.evaluate(async () => { go('broadcast'); go('live'); await homeStartStream(); homeGoLive(); });

@@ -1609,3 +1609,23 @@ button.gpill[onclick]{cursor:pointer}
 .lgform .lgchips button.on{border-color:var(--ink);background:var(--ink);color:var(--canvas)}
 .lgform .editinput:focus{border-color:var(--ink);box-shadow:none}
 .lgform .lgstep2,.lgform .lgp{margin:0}.lgform .wcopy{gap:6px}
+
+/* Incoming host calls share the quiet stage and expanding avatar rings in setup. */
+.ringscr.host.ring{padding:28px 24px;overflow-y:auto;overscroll-behavior:contain}
+.ringscr.host.ring .ringbg{inset:0;filter:none;transform:none;background:radial-gradient(ellipse at 50% 35%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 62%)}
+.ringscr.host.ring .ringorb{animation:none;isolation:isolate;margin:10px 0}
+.ringscr.host.ring .ringorb::before,.ringscr.host.ring .ringorb::after{content:"";position:absolute;inset:-12px;z-index:-1;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:50%;animation:host-call-ripple 2.4s ease-out infinite}
+.ringscr.host.ring .ringorb::after{animation-delay:1.2s}
+.ringscr.host.ring h2{max-width:100%;overflow-wrap:anywhere;font-size:26px;letter-spacing:-.7px;line-height:1.2;margin-top:28px}
+.ringscr.host.ring .ringeye{font-size:10px;letter-spacing:.09em;margin-bottom:30px;border:1px solid var(--line)}
+.ringscr.host.ring .ringearn{margin-top:18px;border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.ringscr.host.ring .ringfee{max-width:280px;line-height:1.5}
+.ringscr.host.ring .ringact{gap:64px;margin-top:54px}
+.ringscr.host.ring .rbtn{color:var(--muted)}
+.ringscr.host.ring .accept,.ringscr.host.ring .voiceend{width:60px;height:60px;transition:transform .18s,opacity .18s}
+.ringscr.host.ring .accept:active,.ringscr.host.ring .voiceend:active{transform:scale(.94)}
+.ringscr.host.ring .accept:disabled{opacity:.6;animation:none;cursor:wait}
+.ring-connecting-note{font-size:11px;color:var(--muted);margin-top:22px}
+@keyframes host-call-ripple{from{transform:scale(.92);opacity:.7}to{transform:scale(1.4);opacity:0}}
+@media(max-height:600px){.ringscr.host.ring{justify-content:flex-start;padding-top:32px}.ringscr.host.ring .ringeye{margin-bottom:18px}.ringscr.host.ring .ringact{margin-top:28px}.ringscr.host.ring h2{margin-top:16px}}
+@media(prefers-reduced-motion:reduce){.ringscr.host.ring .ringorb::before,.ringscr.host.ring .ringorb::after,.ringscr.host.ring .ringeye i,.ringscr.host.ring .accept{animation:none}.ringscr.host.ring .ringorb::after{display:none}.ringscr.host.ring .accept,.ringscr.host.ring .voiceend{transition:none}}

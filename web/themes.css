@@ -15,7 +15,7 @@
 :root[data-theme-id] .zc-unread .zc-message{color:var(--ink)}
 :root[data-theme-id] :is(.zc-unread .zc-row-heading time,.zc-heading-actions>.zc-compose-button){color:var(--accent-ink)}
 :root[data-theme-id] :is(.zp-badge,.zh-bonus>button,.zh-bonus-icon){background:var(--raised);color:var(--accent-ink)}
-:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected,.zh-nav>.zh-create){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
+:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
 :root[data-theme-id] :is(.zh-bell>i,.zh-nav-dot){background:var(--accent);outline-color:var(--canvas)}
 :root[data-theme-id] .zh-nav>button{color:var(--muted)}
 :root[data-theme-id] .zh-nav>button.on{color:var(--accent-ink)}

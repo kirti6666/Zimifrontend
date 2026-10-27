@@ -143,7 +143,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     const hostPage = await open(hostAccount);
     for (const view of ['setup', 'waiting']) {
       await nav(hostPage, view);
-      await mountedThemes(hostPage, `host ${view}`, [...cta('.zh-broadcast>.zh-primary'), ink('.zh-broadcast>p', 'textMuted')]);
+      await mountedThemes(hostPage, `host ${view}`, [...cta('.hc-primary'), ink(view === 'setup' ? '.hc-camera-hint' : '.hc-waiting-status', 'textMuted')]);
     }
     await disabledStreams(hostPage);
     await hostPage.evaluate(member => { S.caller = { id: member.id, n: member.name, callId: 'theme-host-call', voice: false }; S.callId = S.caller.callId; go('hcall'); }, member.user);

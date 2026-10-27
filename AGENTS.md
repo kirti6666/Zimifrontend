@@ -39,12 +39,23 @@ keeps it identical to the original Next.js version.
   two-column host grid, with Chat and Call actions. Use the selected theme's
   colors. Search belongs in the Home header. Filter active hosts on the server
   before pagination; feature a host once across hero/grid.
+- Never show a host as offline. `hostFrom` in `web/aurora-runtime.js` marks
+  every host online and lets members call an offline host (the server rings
+  until the call is missed); only an online host's own call settings make
+  calls unavailable. New screens must read `h.on`/`h.available`, never the
+  raw `online` field.
 - Show the branded Home header only on Home. Explore, Chats, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
   the same size across those main screens; Notifications and the Themes page
   have their own Back headers and no bottom tabs. Themes opens as a page, not
   a settings modal. Animate only page content on tab changes and
   respect reduced-motion preferences.
+- The host go-live flow (`web/host-calls.js`, `web/host-studio.js`, the host
+  call in `web/live-room.js`) follows the host reference layout but always
+  uses the selected theme's colors, never a fixed palette. The host's camera
+  fills the screen: capture at 1280x720 with `resizeMode: 'none'` (portrait
+  sizes made the browser crop and zoom), and let `data-zimi-shape` show a
+  landscape camera whole instead of cropping it.
 - Creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.

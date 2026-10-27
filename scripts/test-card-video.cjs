@@ -9,7 +9,8 @@ const root = path.resolve(__dirname, '..');
 const account = { user: { id: '507f1f77bcf86cd799439019', name: 'Member', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, balance: 500, verification: 'none', requiresOnboarding: false };
 const id = n => `507f1f77bcf86cd7994390${10 + n}`;
 const host = (n, video = true) => ({ id: id(n), name: `Host ${n}`, role: 'host', serverRole: 'host', category: 'Talk', online: true, verified: true, availableForCall: true, ratePerMin: 10, entryFee: 0, previewVideoUrl: video ? `https://media.example.test/video-${n}.webm` : null });
-const hosts = [host(0), host(1, false), host(2), host(3), host(4)];
+// Enough rows below host 3 that scrolling can bring it to the middle of the screen.
+const hosts = [host(0), host(1, false), host(2), host(3), host(4), host(5), host(6)];
 const feed = { hosts, stage: [], featured: hosts[0], total: hosts.length, page: 1, limit: 20, categories: ['Talk'], broadcasterCount: 0, availableCount: hosts.length, speedMatchEnabled: false, bonus: null, unreadCount: 0 };
 
 // A short real clip, recorded from a canvas so the test needs no media files.

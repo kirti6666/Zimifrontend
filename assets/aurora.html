@@ -1647,6 +1647,26 @@ button.gpill[onclick]{cursor:pointer}
 .lgform .lgchips button.on{border-color:var(--ink);background:var(--ink);color:var(--canvas)}
 .lgform .editinput:focus{border-color:var(--ink);box-shadow:none}
 .lgform .lgstep2,.lgform .lgp{margin:0}.lgform .wcopy{gap:6px}
+
+/* Incoming host calls share the quiet stage and expanding avatar rings in setup. */
+.ringscr.host.ring{padding:28px 24px;overflow-y:auto;overscroll-behavior:contain}
+.ringscr.host.ring .ringbg{inset:0;filter:none;transform:none;background:radial-gradient(ellipse at 50% 35%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 62%)}
+.ringscr.host.ring .ringorb{animation:none;isolation:isolate;margin:10px 0}
+.ringscr.host.ring .ringorb::before,.ringscr.host.ring .ringorb::after{content:"";position:absolute;inset:-12px;z-index:-1;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:50%;animation:host-call-ripple 2.4s ease-out infinite}
+.ringscr.host.ring .ringorb::after{animation-delay:1.2s}
+.ringscr.host.ring h2{max-width:100%;overflow-wrap:anywhere;font-size:26px;letter-spacing:-.7px;line-height:1.2;margin-top:28px}
+.ringscr.host.ring .ringeye{font-size:10px;letter-spacing:.09em;margin-bottom:30px;border:1px solid var(--line)}
+.ringscr.host.ring .ringearn{margin-top:18px;border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+.ringscr.host.ring .ringfee{max-width:280px;line-height:1.5}
+.ringscr.host.ring .ringact{gap:64px;margin-top:54px}
+.ringscr.host.ring .rbtn{color:var(--muted)}
+.ringscr.host.ring .accept,.ringscr.host.ring .voiceend{width:60px;height:60px;transition:transform .18s,opacity .18s}
+.ringscr.host.ring .accept:active,.ringscr.host.ring .voiceend:active{transform:scale(.94)}
+.ringscr.host.ring .accept:disabled{opacity:.6;animation:none;cursor:wait}
+.ring-connecting-note{font-size:11px;color:var(--muted);margin-top:22px}
+@keyframes host-call-ripple{from{transform:scale(.92);opacity:.7}to{transform:scale(1.4);opacity:0}}
+@media(max-height:600px){.ringscr.host.ring{justify-content:flex-start;padding-top:32px}.ringscr.host.ring .ringeye{margin-bottom:18px}.ringscr.host.ring .ringact{margin-top:28px}.ringscr.host.ring h2{margin-top:16px}}
+@media(prefers-reduced-motion:reduce){.ringscr.host.ring .ringorb::before,.ringscr.host.ring .ringorb::after,.ringscr.host.ring .ringeye i,.ringscr.host.ring .accept{animation:none}.ringscr.host.ring .ringorb::after{display:none}.ringscr.host.ring .accept,.ringscr.host.ring .voiceend{transition:none}}
 #scroll-root {
   position: relative;
   flex: 1;
@@ -2729,20 +2749,17 @@ button.gpill[onclick]{cursor:pointer}
 @media(max-height:500px){.zc-photo-viewer>header{padding-block:4px}.zc-photo-media{margin-block:6px}.zc-photo-viewer>footer{padding-bottom:6px}.zc-photo-viewer-status{margin-bottom:4px;font-size:10px}}
 /* Primary tabs share one geometry. Home owns the branded header; other screens
    provide their own headings and actions. */
-.zh-app .nav.zh-nav{display:grid;grid-template-columns:repeat(var(--nav-count,4),minmax(0,1fr));align-items:end;justify-items:center;gap:0;width:100%;max-width:none;height:74px;min-height:74px;flex-shrink:0;margin:0;padding:8px max(14px,calc((100vw - 640px)/2)) 11px;border:0;border-radius:0;background:#210f1c;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
+.zh-app .nav.zh-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;justify-items:center;gap:0;width:100%;max-width:none;height:74px;min-height:74px;flex-shrink:0;margin:0;padding:8px max(14px,calc((100vw - 640px)/2)) 11px;border:0;border-radius:0;background:#210f1c;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
 .zh-app .zh-nav>button{display:flex;position:relative;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;max-width:120px;height:49px;padding:0;color:#d8b8ca;font-size:10px;line-height:13px;font-weight:600;transition:color 180ms ease,background-color 180ms ease;isolation:isolate}
 .zh-app .zh-nav>button>svg{width:23px;height:23px;flex:none;transition:filter 180ms ease}
 .zh-app .zh-nav>button.on{color:#ffb6d5;font-weight:600}
 .zh-app .zh-nav>button.on>svg{filter:drop-shadow(0 1px 5px #ef17883b)}
 .zh-app .zh-nav>button[data-tab]::before{content:"";position:absolute;top:0;width:43px;height:30px;border-radius:17px;background:#fb27851a;opacity:0;transition:opacity 180ms ease;z-index:-1}
 .zh-app .zh-nav>button[data-tab].on::before{opacity:1}
-.zh-app .zh-nav>.zh-create{align-self:center;flex:none;width:55px;height:55px;max-width:none;margin:-12px 0 0;border-radius:50%;background:linear-gradient(145deg,#ff0c8d,#cf086b);border:2px solid #f03292;color:white;box-shadow:0 4px 17px #e4088063}
-.zh-app .zh-nav>.zh-create>svg{width:26px;height:26px}
 .zh-nav-dot{position:absolute;top:2px;right:calc(50% - 17px);width:6px;height:6px;border-radius:50%;background:#ef1187}
 .zh-app #scroll-root{overflow-x:hidden;overscroll-behavior-x:none}
 @media(prefers-reduced-motion:reduce){.zh-app .zh-nav>button,.zh-app .zh-nav>button>svg,.zh-app .zh-nav>button::before{transition:none!important}}
 
-.zh-app .zh-nav>.zh-create-pending{align-self:center;width:55px;height:55px;margin:-12px 0 0;border-radius:50%;pointer-events:none}
 /* The native shell reports the keyboard; the tab bar hides under it instead of floating above it. */
 .zh-keyboard-open #nav{display:none!important}
 /* Profile surfaces inherit the selected palette; shared navigation keeps its geometry. */
@@ -2951,7 +2968,7 @@ button.gpill[onclick]{cursor:pointer}
 :root[data-theme-id] .zc-unread .zc-message{color:var(--ink)}
 :root[data-theme-id] :is(.zc-unread .zc-row-heading time,.zc-heading-actions>.zc-compose-button){color:var(--accent-ink)}
 :root[data-theme-id] :is(.zp-badge,.zh-bonus>button,.zh-bonus-icon){background:var(--raised);color:var(--accent-ink)}
-:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected,.zh-nav>.zh-create){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
+:root[data-theme-id] :is(.zp-topup,.zp-save,.zp-verified,.zp-switch.is-on,.zh-primary,.zh-match>.zh-primary,.zh-filters button.selected,.zc-filters button.selected){background:var(--accent)!important;color:var(--cta-ink)!important;border-color:var(--accent);box-shadow:none}
 :root[data-theme-id] :is(.zh-bell>i,.zh-nav-dot){background:var(--accent);outline-color:var(--canvas)}
 :root[data-theme-id] .zh-nav>button{color:var(--muted)}
 :root[data-theme-id] .zh-nav>button.on{color:var(--accent-ink)}
@@ -3250,6 +3267,96 @@ button.gpill[onclick]{cursor:pointer}
 .zr-call .zr-demo-note{margin-top:5px;font-size:8px}
 @media(max-width:360px){.zr-call .zr-top,.zr-call .zr-bottom{padding-inline:8px}.zr-call-stats{gap:6px}.zr-call-stat{gap:5px;padding-inline:8px}.zr-stat-label{font-size:8px}.zr-call-dock{gap:6px}.zr-call-dock>.zr-round{width:39px;height:39px;flex-basis:39px}.zr-call-dock .zr-hangup{width:41px;height:41px;flex-basis:41px}.zr-call-person{gap:5px}.zr-call-person>.av{width:30px!important;height:30px!important}.zr-call-person strong{font-size:11px}.zr-call-person>div>span small{display:none}.zr-call-topup{width:32px;height:32px;flex-basis:32px}.zr-call .zr-gift-alert{right:100px}}
 @media(max-height:660px){.zr-call .zr-call-feed{max-height:70px}.zr-call .zr-pip{width:70px;height:96px}.zr-gift-rail{padding-top:4px;padding-bottom:6px;margin-bottom:4px;min-height:58px}.zr-call .zr-bottom{padding-top:5px}.zr-call .zr-video-wait{inset:36% 28% 41% 15%;font-size:10px;gap:5px;padding:8px}.zr-call .zr-video-wait svg{width:22px;height:22px}.zr-call .zr-voice{inset:27% 0 38%;gap:8px}.zr-call .zr-voice>.av{width:66px!important;height:66px!important}.zr-call .zr-voice h2{font-size:18px;margin:4px 0 0}.zr-call .zr-voice>span:last-child{font-size:10px}}
+
+/* Event-driven gifts float over the camera without intercepting call controls.
+   Every layer uses the same elapsed event time, including after a redraw. */
+.zr-gift-celebration{position:absolute;inset:0;z-index:5;overflow:hidden;pointer-events:none;animation:zr-gift-presence var(--gift-life) linear both;animation-delay:var(--gift-age)}
+.zr-gift-celebration *{pointer-events:none}
+.zr-gift-stage-art,.zr-gift-halo,.zr-gift-wave,.zr-gift-sparks{position:absolute;left:50%;top:43%}
+.zr-gift-stage-art{width:100px;height:100px;margin:-50px 0 0 -50px;display:grid;place-items:center;animation:zr-gift-pop var(--gift-life) cubic-bezier(.2,.8,.25,1) both;animation-delay:var(--gift-age);filter:drop-shadow(0 12px 20px #0003)}
+.zr-gift-stage-art>span{font-size:76px;line-height:1}
+.zr-gift-stage-art>img{width:100%;height:100%;object-fit:contain}
+.zr-gift-celebration.is-large .zr-gift-stage-art{width:138px;height:138px;margin:-69px 0 0 -69px}
+.zr-gift-celebration.is-large .zr-gift-stage-art>span{font-size:108px}
+.zr-gift-halo{width:230px;height:230px;margin:-115px 0 0 -115px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 32%,transparent),transparent 67%);animation:zr-gift-glow var(--gift-life) ease-out both;animation-delay:var(--gift-age)}
+.zr-gift-wave{width:120px;height:120px;margin:-60px 0 0 -60px;border:1px solid color-mix(in srgb,var(--accent) 60%,transparent);border-radius:50%;animation:zr-gift-wave var(--gift-life) ease-out both;animation-delay:var(--gift-age)}
+.zr-gift-sparks>i{position:absolute;width:4px;height:4px;margin:-2px;border-radius:50%;background:var(--accent-ink);box-shadow:0 0 8px color-mix(in srgb,var(--accent) 55%,transparent);animation:zr-gift-spark var(--gift-life) ease-out both;animation-delay:var(--gift-age)}
+.zr-gift-caption{position:absolute;left:50%;top:calc(43% + 70px);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;max-width:calc(100% - 48px);padding:9px 17px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:16px;background:var(--surface);box-shadow:0 8px 28px #0002;text-align:center;overflow-wrap:anywhere;animation:zr-gift-caption var(--gift-life) ease-out both;animation-delay:var(--gift-age)}
+.zr-gift-caption>strong{font-size:15px;color:var(--ink)}
+.zr-gift-caption>span{font-size:11px;color:var(--muted)}
+.zr-gift-caption b{margin-left:5px;color:var(--accent-ink)}
+@keyframes zr-gift-presence{0%{opacity:0}8%,78%{opacity:1}100%{opacity:0}}
+@keyframes zr-gift-pop{0%{transform:translateY(48px) scale(.45) rotate(-9deg)}18%{transform:translateY(-9px) scale(1.13) rotate(5deg)}32%,72%{transform:translateY(0) scale(1) rotate(0)}100%{transform:translateY(-32px) scale(.82)}}
+@keyframes zr-gift-glow{0%{transform:scale(.45);opacity:0}24%{transform:scale(1.12);opacity:1}74%{transform:scale(1);opacity:.75}100%{transform:scale(1.2);opacity:0}}
+@keyframes zr-gift-wave{0%{transform:scale(.3);opacity:0}15%{opacity:.8}62%,100%{transform:scale(2.2);opacity:0}}
+@keyframes zr-gift-spark{0%,9%{transform:rotate(var(--spark-angle)) translateX(20px);opacity:0}22%{opacity:1}70%,100%{transform:rotate(var(--spark-angle)) translateX(var(--spark-distance));opacity:0}}
+@keyframes zr-gift-caption{0%,12%{opacity:0;translate:0 12px}28%,78%{opacity:1;translate:0 0}100%{opacity:0;translate:0 -7px}}
+@media(prefers-reduced-motion:reduce){.zr-gift-celebration,.zr-gift-celebration *{animation:none!important}.zr-gift-halo,.zr-gift-wave,.zr-gift-sparks{display:none}.zr-gift-stage-art{filter:none}}
+@media(max-height:660px){.zr-gift-stage-art,.zr-gift-halo,.zr-gift-wave,.zr-gift-sparks{top:48%}.zr-gift-caption{top:calc(48% + 58px);padding:7px 12px}.zr-gift-stage-art{width:82px;height:82px;margin:-41px 0 0 -41px}.zr-gift-stage-art>span{font-size:64px}.zr-gift-celebration.is-large .zr-gift-stage-art{width:102px;height:102px;margin:-51px 0 0 -51px}.zr-gift-celebration.is-large .zr-gift-stage-art>span{font-size:88px}}
+
+/* The host's call follows the host studio reference: their own camera on the full stage, the
+   caller in the corner, compact targets and controls. Colours stay with the selected theme. */
+.zr-call-reference .zr-reference-stage>video[data-zimi-shape=landscape]{object-fit:contain}
+.zr-call-reference .zr-reference-stage>video[data-zimi-fill]{z-index:-1;display:none;filter:blur(22px) brightness(.6);transform:scale(1.15)}
+.zr-call-reference .zr-reference-stage>video[data-zimi-fill][data-zimi-facing=user]{transform:scaleX(-1) scale(1.15)}
+.zr-call-reference .zr-reference-stage:has(>video[data-zimi-shape=landscape]:not([data-zimi-fill]))>video[data-zimi-fill]{display:block}
+.zr-call-reference .zr-reference-stage.camera-off>video{visibility:hidden}
+.zr-call-reference .zr-camera-off{position:absolute;inset:26% 0 32%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--room-muted)}
+.zr-call-reference .zr-top{padding:0 14px}
+.zr-call-reference .zr-call-toolbar{gap:8px;padding:11px 0 10px;min-height:57px}
+.zr-call-reference .zr-host-clock{flex:none;display:flex;align-items:center;gap:7px;height:32px;padding:0 9px 0 10px;border-radius:18px;background:var(--room-glass);white-space:nowrap}
+.zr-call-reference .zr-host-clock .zr-timer{display:flex;align-items:center;gap:5px;min-height:0;padding:0;font-size:12px;font-weight:700}
+.zr-call-reference .zr-host-clock .zr-timer>i{width:6px;height:6px;box-shadow:none}
+.zr-call-reference .zr-clock-divider{width:1px;height:13px;background:var(--line)}
+.zr-call-reference .zr-host-clock .hc-vis{min-height:32px;padding:0;gap:4px;background:none;border:0;border-radius:0;font-size:10px;font-weight:650}
+.zr-call-reference .zr-host-clock .hc-vis.is-on{color:var(--online)}
+.zr-call-reference .zr-session-earned{display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:0;margin-left:auto;white-space:nowrap}
+.zr-call-reference .zr-session-earned>small{font-size:8px;font-weight:700;letter-spacing:.6px;line-height:1.5;text-transform:uppercase;color:var(--room-muted)}
+.zr-call-reference .zr-session-earned>b{display:flex;align-items:center;gap:3px;font-size:14px;font-weight:750;line-height:1.25;color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.zr-call-reference .zr-session-earned .zc-coin{width:14px;height:14px}
+.zr-call-reference .zr-call-toolbar .zr-host-more{position:relative;border:0;background:var(--room-ink);color:var(--canvas)}
+.zr-call-reference .zr-host-more:after{content:'';position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1px solid var(--room-ink)}
+.zr-call-reference .zr-call-stats{display:block}
+.zr-call-reference .hc-fee{min-height:25px;margin-top:9px;padding:4px 10px;gap:5px;font-size:10px;line-height:1.5}
+.zr-call-reference .hc-fee b{color:var(--accent-ink)}
+.zr-call-reference .zr-pip{top:126px;right:12px;width:84px;height:116px;padding:0;border:2px solid color-mix(in srgb,var(--room-ink) 40%,transparent);border-radius:14px;background:var(--surface)}
+.zr-call-reference .zr-pip>video{object-fit:cover}
+.zr-call-reference .zr-top>.zr-gift-alert{position:absolute;width:1px;height:1px;min-height:0;overflow:hidden;clip-path:inset(50%);padding:0;margin:0;border:0;white-space:nowrap}
+.zr-call-reference .zr-bottom{padding:12px 14px max(10px,env(safe-area-inset-bottom))}
+.zr-call-reference .zr-status{margin:0 0 7px;max-width:calc(100% - 16px);font-size:10px;line-height:1.4;color:var(--room-muted)}
+.zr-call-reference .zr-call-feed{max-height:min(20vh,150px);gap:7px;margin:0 0 10px;padding:0;mask-image:linear-gradient(transparent,#000 6px)}
+.zr-call-reference .zr-call-feed .lvmsg{gap:7px;font-size:12px;line-height:1.35}
+.zr-call-reference .zr-call-feed .lvmsg .who{color:var(--accent-ink);font-weight:700}
+.zr-call-reference .zr-call-feed .lvmsg.sys{font-size:10px}
+.zr-call-reference .zr-call-dock{gap:9px;min-height:46px}
+.zr-call-reference .zr-call-dock>.zr-round{width:46px;height:46px;flex-basis:46px}
+.zr-call-reference .zr-call-person{gap:8px}
+.zr-call-reference .zr-call-person>.hc-identity-avatar{flex:none}
+.zr-call-reference .zr-call-person strong{font-size:14px;line-height:1.15}
+.zr-call-reference .zr-call-person>div>span{display:block;overflow:hidden;font-size:9.5px;line-height:1.25;white-space:nowrap;text-overflow:ellipsis}
+.zr-call-reference .zr-call-target{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;padding:0;border:0;background:transparent;color:var(--cta-ink)}
+.zr-call-reference .zr-call-target>svg{box-sizing:content-box;width:14px;height:14px;padding:5px;border-radius:50%;background:var(--accent)}
+.zr-call-reference .zr-call-composer{margin-bottom:11px}
+.zr-call-reference .zr-call-composer>.zr-round{width:34px;height:34px;flex-basis:34px}
+.zr-call-reference .zr-compose input{font-size:12px}
+.zr-call-reference .zr-options-backdrop{position:absolute;inset:0;z-index:91;background:transparent}
+.zr-call-reference .zr-host-options{position:absolute;top:54px;right:12px;min-width:230px;max-width:calc(100% - 28px);padding:7px;border-radius:18px;background:var(--surface);border:1px solid var(--line);color:var(--room-ink);box-shadow:0 12px 30px #0004;animation:zr-host-menu-in 130ms ease-out;transform-origin:top right}
+.zr-call-reference .zr-host-options>button{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:8px 9px;border-radius:10px;background:none;font-size:13px;font-weight:650;text-align:left}
+.zr-call-reference .zr-host-options>button:hover{background:var(--raised)}
+.zr-call-reference .zr-host-options>button>svg{color:var(--room-muted)}
+.zr-call-reference .zr-host-options>button>span{flex:1;white-space:nowrap}
+.zr-call-reference .zr-host-options em{padding:3px 7px;border-radius:20px;background:var(--raised);color:var(--room-muted);font-style:normal;font-size:9px;font-weight:700;white-space:nowrap}
+.zr-call-reference .zr-host-options em.is-on{background:color-mix(in srgb,var(--online) 16%,transparent);color:var(--online)}
+.zr-call-reference .zr-host-options em.is-off{background:color-mix(in srgb,var(--theme-danger) 16%,transparent);color:var(--theme-danger)}
+.zr-call-reference .zr-gift-stage-art,.zr-call-reference .zr-gift-halo,.zr-call-reference .zr-gift-wave,.zr-call-reference .zr-gift-sparks{top:48%}
+.zr-call-reference .zr-gift-caption{top:calc(48% + 70px);gap:2px;padding:9px 17px;border-radius:30px}
+.zr-call-reference .zr-gift-caption>strong{font-size:13px}
+.zr-call-reference .zr-gift-celebration.is-large .zr-gift-stage-art{width:176px;height:176px;margin:-88px 0 0 -88px}
+.zr-call-reference .zr-gift-celebration.is-large .zr-gift-stage-art>span{font-size:132px}
+@keyframes zr-host-menu-in{from{opacity:0;transform:translateY(-4px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:360px){.zr-call-reference .zr-top,.zr-call-reference .zr-bottom{padding-inline:10px}.zr-call-reference .zr-call-toolbar{gap:6px}.zr-call-reference .zr-host-clock{padding-inline:7px;gap:5px}.zr-call-reference .zr-session-earned>small{font-size:7px;letter-spacing:.25px}.zr-call-reference .zr-session-earned>b{font-size:12px}.zr-call-reference .zr-call-dock{gap:7px}.zr-call-reference .zr-call-dock>.zr-round,.zr-call-reference .zr-call-dock .zr-hangup{width:42px;height:42px;flex-basis:42px}.zr-call-reference .zr-call-person{gap:6px}.zr-call-reference .zr-call-person>.hc-identity-avatar{width:32px!important;height:32px!important}.zr-call-reference .zr-call-person strong{font-size:12px}}
+@media(max-height:660px){.zr-call-reference .zr-call-feed{max-height:65px}.zr-call-reference .zr-bottom{padding-top:6px}.zr-call-reference .zr-pip{width:73px;height:102px}.zr-call-reference .zr-gift-celebration.is-large .zr-gift-stage-art{width:136px;height:136px;margin:-68px 0 0 -68px}.zr-call-reference .zr-gift-celebration.is-large .zr-gift-stage-art>span{font-size:108px}}
+@media(prefers-reduced-motion:reduce){.zr-call-reference .zr-host-options{animation:none}}
 /* Private-call preparation uses the same semantic palette and typography as every app screen. */
 :root.zpc-active .app{background:var(--canvas);color:var(--ink)}:root.zpc-active #top{display:none}:root.zpc-active #scroll-root{overflow:auto;overscroll-behavior:contain}:root.zpc-active #scroll-root>#screen{height:100%;min-height:100%;padding:0!important;overflow:visible!important}:root.zpc-active #app-notice{pointer-events:none}
 .zi-icon[data-icon=info]{--zi-tap:zi-bounce;--zi-time:560ms}
@@ -3270,38 +3377,82 @@ button.gpill[onclick]{cursor:pointer}
 .zpc-modes.zpc-video-only{grid-template-columns:minmax(0,1fr)}
 .zpc-cost-note{margin:10px 0 0;text-align:center;font-size:calc(10px * var(--theme-font-scale,1));color:var(--muted);line-height:1.6}
 /* Creator call flow: setup before going online, a second caller during a call, and the session summary.
-   Colours come from the selected theme, like the call room in live-room.css. */
-.hc-setup .hc-preview{height:260px;margin:22px 0 14px;border:1px solid var(--line)}
-.hc-preview.is-off>video{display:none}
-.hc-preview>span{z-index:0;color:var(--muted)}
-.hc-preview>span>b{color:var(--ink)}
-.hc-check{display:flex;align-items:center;gap:6px;min-height:36px;padding:0 16px;border-radius:999px;background:var(--accent);color:var(--cta-ink);font-size:12px;font-weight:700}
-.hc-guide{position:absolute;z-index:2;left:50%;top:44%;width:44%;aspect-ratio:3/4;transform:translate(-50%,-50%);border:1.5px dashed color-mix(in srgb,var(--ink) 45%,transparent);border-radius:50% 50% 44% 44%;pointer-events:none}
-.hc-preview.is-off .hc-guide{display:none}
-.hc-preview-tools{position:absolute;z-index:3;right:10px;bottom:10px;display:flex;gap:8px}
-.hc-preview-tools>button{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--canvas) 72%,transparent);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(6px)}
-.hc-preview-tools>button[aria-pressed="true"]{background:var(--theme-danger);color:var(--canvas)}
-.hc-card{display:flex;flex-direction:column;gap:9px;padding:14px;margin:0 0 12px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
-.hc-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.hc-card-head>span{display:flex;align-items:center;gap:6px;font-size:15px}
-.hc-card-head small,.hc-next{font-size:11px;color:var(--muted)}
-.hc-tiers{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
-.hc-tiers>span{flex:none;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:650;border:1px solid var(--line);color:var(--muted)}
+   Colours come from the selected theme, like the call room in live-room.css; the layout follows the host studio reference. */
+:root:has(.hc-setup,.hc-waiting,.hc-summary) .app{background:var(--canvas)}
+:root:has(.hc-setup,.hc-waiting,.hc-summary) #top{display:none}
+:root:has(.hc-setup,.hc-waiting,.hc-summary) #scroll-root>#screen{height:100%;min-height:100%;padding:0!important;overflow:visible!important}
+.hc-setup,.hc-waiting,.hc-summary{width:100%;min-height:100%;max-width:560px;margin:0 auto;color:var(--ink);font-family:inherit;line-height:1.4}
+.hc-setup button,.hc-waiting button,.hc-summary button{font-family:inherit;touch-action:manipulation}
+.hc-setup button:focus-visible,.hc-waiting button:focus-visible,.hc-summary button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.hc-setup{position:relative;isolation:isolate;display:flex;flex-direction:column;height:100%;padding:0 12px;background:linear-gradient(170deg,var(--raised),var(--canvas) 88%);overflow:hidden}
+/* The camera fills the whole screen behind the controls, like a video call. A landscape camera
+   is shown whole over a blurred copy of itself instead of being zoomed to fill a tall screen. */
+.hc-stage{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+.hc-stage>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
+.hc-stage>video[data-zimi-facing=user]{transform:scaleX(-1)}
+.hc-stage>video[data-zimi-shape=landscape]{object-fit:contain}
+.hc-stage>video[data-zimi-fill]{z-index:-1;display:none;object-fit:cover;filter:blur(22px) brightness(.6);transform:scale(1.15)}
+.hc-stage>video[data-zimi-fill][data-zimi-facing=user]{transform:scaleX(-1) scale(1.15)}
+.hc-stage:has(>video[data-zimi-shape=landscape]:not([data-zimi-fill]))>video[data-zimi-fill]{display:block}
+.hc-preview.is-off .hc-stage>video{display:none}
+.hc-stage-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,var(--canvas) 45%,transparent),transparent 28%,transparent 68%,color-mix(in srgb,var(--canvas) 72%,transparent))}
+.hc-setup-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:58px;padding:9px 2px 8px}
+.hc-setup-header .zb-back,.hc-preview-tools>button{width:36px;height:36px;min-height:36px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--surface) 86%,transparent);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(10px)}
+.hc-preview-tools{display:flex;gap:8px}
+.hc-preview-tools>button[aria-pressed="true"]{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
+.hc-setup-panels{position:relative;z-index:1;border-radius:16px;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(14px);border:1px solid var(--line);padding:11px 13px 0}
+.hc-card{display:flex;flex-direction:column;gap:8px;color:var(--ink)}
+.hc-card-head{display:flex;align-items:baseline;gap:7px;width:100%;min-height:18px;padding:0;text-align:left;background:none;border:0;color:inherit}
+.hc-card-head>b{font-size:13px;font-weight:var(--theme-heading-weight,750);color:var(--accent-ink);white-space:nowrap}
+.hc-card-head small{font-size:10.5px;font-weight:500;line-height:1.3;color:var(--muted)}
+.hc-tiers{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-right:-13px;padding:1px 10px 1px 0}
+.hc-tiers::-webkit-scrollbar{display:none}
+.hc-tiers>span{flex:none;padding:6px 13px;border-radius:999px;background:var(--raised);color:var(--muted);font-size:12px;font-weight:700;white-space:nowrap}
 .hc-tiers>.is-done{color:var(--ink)}
-.hc-tiers>.is-on{background:var(--accent);border-color:var(--accent);color:var(--cta-ink)}
-.hc-fee-line{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--muted);padding-top:9px;border-top:1px solid var(--line)}
-.hc-fee-line>svg{flex:none;margin-top:2px;color:var(--accent-ink)}
-.hc-fee-line b{color:var(--ink)}
-.hc-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;padding:13px 14px;margin:0 0 16px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
-.hc-toggle>span{display:flex;flex-direction:column;gap:3px;min-width:0}
-.hc-toggle b{font-size:13px}
-.hc-toggle small{font-size:11px;line-height:1.45;color:var(--muted)}
-.hc-switch{flex:none;width:40px;height:24px;border-radius:999px;background:var(--line);position:relative;transition:background .2s}
-.hc-switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--canvas);transition:transform .2s}
+.hc-tiers>.is-on{background:var(--cta);color:var(--cta-ink);box-shadow:0 4px 14px color-mix(in srgb,var(--cta) 30%,transparent)}
+.hc-rate-details{display:flex;flex-direction:column;gap:5px;padding:8px 0 2px;border-top:1px solid var(--line);font-size:10.5px;line-height:1.5;color:var(--muted)}
+.hc-rate-details b{color:var(--ink)}
+.hc-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;padding:10px 0 12px;text-align:left;background:none;color:var(--ink);border:0;border-top:1px solid var(--line)}
+.hc-toggle>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hc-toggle b{font-size:13px;line-height:1.25;font-weight:var(--theme-heading-weight,700)}
+.hc-toggle small{font-size:10.5px;line-height:1.45;color:var(--muted)}
+.hc-switch{flex:none;width:38px;height:22px;border-radius:999px;background:var(--line);position:relative;transition:background .2s}
+.hc-switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--canvas);transition:transform .2s}
 .hc-switch.is-on{background:var(--accent)}
-.hc-switch.is-on::after{transform:translateX(16px)}
-.hc-note{margin-top:14px}
-.zh-broadcast>.hc-note{font-size:11px}
+.hc-switch.is-on::after{transform:translateX(16px);background:var(--cta-ink)}
+.hc-camera-space{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:220px;margin-top:-14px;padding:34px 20px 20px}
+.hc-guide{position:absolute;inset:0;border:1px dashed color-mix(in srgb,var(--ink) 34%,transparent);border-top:0;border-radius:0 0 14px 14px;pointer-events:none}
+.hc-camera-message{position:relative;display:flex;flex-direction:column;align-items:center;gap:9px;max-width:260px;text-align:center;color:var(--muted)}
+.hc-camera-message>b{color:var(--ink);font-size:13px;line-height:1.5}
+.hc-camera-message p{margin:0;font-size:11px;line-height:1.6;color:var(--muted)}
+.hc-check{display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 16px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-size:12px;font-weight:700}
+.hc-preview:not(.is-off) .hc-camera-message{display:none}
+.hc-camera-hint{align-self:center;margin:7px 0 9px;padding:3px 10px;border-radius:999px;font-size:10.5px;line-height:1.4;color:var(--muted);text-align:center}
+.hc-preview:not(.is-off) .hc-camera-hint{background:color-mix(in srgb,var(--canvas) 62%,transparent);backdrop-filter:blur(6px)}
+.hc-setup-footer{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) 44px 44px;align-items:center;gap:9px;flex:none;margin:0 -12px;padding:12px 15px max(13px,env(safe-area-inset-bottom));background:color-mix(in srgb,var(--canvas) 90%,transparent);border-top:1px solid var(--line);backdrop-filter:blur(12px)}
+.hc-setup-tool{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--raised);color:var(--ink);border:1px solid var(--line)}
+.hc-primary{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:11px 18px;border-radius:999px;background:var(--cta);color:var(--cta-ink);font-size:14px;font-weight:var(--theme-heading-weight,750);box-shadow:0 8px 22px color-mix(in srgb,var(--cta) 26%,transparent)}
+.hc-primary:disabled{opacity:.65;box-shadow:none}
+.hc-status-error{font-size:11px;line-height:1.5;padding-bottom:10px}
+.hc-status-error>button{display:flex;align-items:center;gap:6px;align-self:flex-start;min-height:34px;padding:0;background:none;border:0;color:var(--accent-ink);font-size:11px;font-weight:700}
+
+/* Online and waiting */
+.hc-waiting{display:flex;align-items:center;justify-content:center;padding:32px 24px;min-height:max(100%,540px);background:var(--canvas)}
+.hc-waiting-main{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;width:310px;max-width:100%}
+.hc-identity-avatar{position:relative;isolation:isolate;display:grid;place-items:center;flex:none;border-radius:50%;overflow:hidden;background:radial-gradient(ellipse at 23% 27%,hsl(var(--hc-avatar-hue) 88% 67%),hsl(var(--hc-avatar-hue) 36% 35%) 63%,#414343);color:#fff}
+.hc-identity-avatar:after{content:"";position:absolute;inset:0;border:1px solid #ffffff0d;border-radius:50%;pointer-events:none;background:linear-gradient(75deg,transparent 30%,#ffffff13 45%,transparent 55%)}
+.hc-identity-avatar>b{letter-spacing:-.5px;font-weight:800;text-shadow:0 2px 3px #0002;line-height:1}
+.hc-identity-avatar>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hc-host-avatar{position:relative;isolation:isolate;width:fit-content;margin:0 auto 26px}
+.hc-host-avatar.is-waiting>.hc-identity-avatar{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 14%,transparent),0 0 0 22px color-mix(in srgb,var(--accent) 6%,transparent)}
+.hc-host-avatar>i{position:absolute;z-index:-1;inset:-10px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:50%;animation:hc-waiting-wave 2.8s ease-out infinite}
+.hc-host-avatar>i:nth-of-type(2){animation-delay:1.4s}
+.hc-waiting h1{font-size:23px;line-height:1.2;letter-spacing:-.6px;font-weight:var(--theme-heading-weight,800);margin:0 0 5px;color:var(--ink)}
+.hc-waiting-status{font-size:12.5px;line-height:1.5;color:var(--muted);margin:0}
+.hc-waiting-note{margin:16px 0 0;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:11.5px;line-height:1.5}
+.hc-waiting-actions{display:flex;flex-direction:column;align-items:center;gap:20px;width:230px;max-width:100%;margin-top:40px}
+.hc-waiting-actions .hc-primary{min-height:47px}
+.hc-offline{min-height:34px;padding:7px 15px;border-radius:999px;font-size:12px;font-weight:750;color:var(--accent-ink);background:var(--accent-wash);border:1px solid var(--accent-line)}
 
 /* In the call */
 .hc-vis{min-height:32px;padding:5px 9px;font-size:10px;border:1px solid var(--line);color:var(--room-muted)}
@@ -3314,11 +3465,18 @@ button.gpill[onclick]{cursor:pointer}
 .hc-incoming>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .hc-incoming strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hc-incoming span{font-size:11px;color:var(--muted)}
-.hc-decline,.hc-accept{flex:none;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:5px}
-.hc-decline{width:40px;background:var(--theme-danger);color:var(--canvas)}
-.hc-accept{padding:0 14px;background:var(--accent);color:var(--cta-ink);font-size:12px;font-weight:750}
-.hc-accept>span{color:inherit;font-size:12px}
-.hc-confirm .zr-sheet-note b{color:var(--room-ink);font-variant-numeric:tabular-nums}
+.hc-decline,.hc-accept{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%}
+.hc-decline{background:var(--theme-danger);color:var(--canvas)}
+.hc-decline>.zi-icon{--zi-base:rotate(135deg);transform:rotate(135deg)}
+.hc-accept{background:var(--online);color:var(--canvas)}
+.hc-confirm{padding-top:24px;text-align:center;background:radial-gradient(ellipse 48% 110px at 50% 0,color-mix(in srgb,var(--accent) 30%,transparent),transparent 72%),var(--surface)}
+.hc-confirm-icon{display:grid;place-items:center;width:48px;height:48px;margin:0 auto 14px;border-radius:14px;background:var(--raised);color:var(--accent-ink)}
+.hc-confirm h2{margin:0 0 10px;font-size:19px;line-height:1.3}
+.hc-confirm .zr-sheet-note{margin-inline:auto;max-width:330px}
+.hc-confirm .zr-sheet-note b{color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.hc-confirm .hc-warn{margin:14px 0 18px}
+.hc-confirm .hc-keep{background:var(--room-ink);color:var(--canvas)}
+.hc-confirm .hc-anyway{margin-top:4px;background:none;color:var(--theme-danger)!important}
 .hc-warn{margin:0 0 6px;padding:10px 12px;border-radius:12px;font-size:11.5px;line-height:1.55;background:color-mix(in srgb,var(--theme-danger) 12%,transparent);color:var(--ink)}
 .hc-connecting{position:absolute;inset:0;z-index:95;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;text-align:center;background:color-mix(in srgb,var(--canvas) 92%,transparent);backdrop-filter:blur(10px);color:var(--ink)}
 .hc-orb{position:relative;margin-bottom:10px}
@@ -3330,6 +3488,26 @@ button.gpill[onclick]{cursor:pointer}
 .hc-bar>i{display:block;width:40%;height:100%;background:var(--accent);animation:hc-slide 1.1s ease-in-out infinite}
 
 /* After the session */
+.hc-summary{display:flex;align-items:center;justify-content:center;min-height:max(100%,570px);padding:36px 18px;background:var(--canvas);text-align:center}
+.hc-summary-content{width:100%;max-width:410px}
+.hc-summary .hc-host-avatar{margin-bottom:20px}
+.hc-summary-badge{position:absolute;right:-3px;bottom:-3px;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--surface);color:var(--accent-ink);border:3px solid var(--canvas);font-size:15px}
+.hc-summary h1{font-size:28px;letter-spacing:-1px;line-height:1.2;font-weight:var(--theme-heading-weight,800);margin:0 0 8px}
+.hc-summary-content>p{max-width:330px;margin:0 auto 20px;color:var(--muted);font-size:12px;line-height:1.7}
+.hc-summary-content>p>b{color:var(--accent-ink);font-weight:700}
+.hc-session-stats{display:grid;grid-template-columns:1.4fr 1fr 1fr;border:1px solid var(--line);border-radius:18px;overflow:hidden;text-align:center;background:var(--surface)}
+.hc-session-stats>div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;padding:15px 8px}
+.hc-session-stats>div+div{border-left:1px solid var(--line)}
+.hc-session-stats>div:first-child{background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.hc-session-stats span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.hc-session-stats b{display:flex;align-items:center;gap:4px;justify-content:center;flex-wrap:wrap;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink)}
+.hc-session-stats>div:first-child b{color:var(--accent-ink)}
+.hc-summary .hc-fees{text-align:left;margin:12px 0 18px}
+.hc-summary .hc-fees-head>span{text-transform:uppercase;letter-spacing:.6px;font-size:10px;color:var(--muted)}
+.hc-summary .hc-fees-head>b{color:var(--accent-ink)}
+.hc-summary .hc-primary{margin-top:20px;font-size:13px}
+.hc-summary-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.hc-summary-actions>button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:43px;padding:11px 14px;border-radius:999px;background:var(--raised);color:var(--ink);font-size:12px;font-weight:700}
 .hc-fees{margin:16px 0 18px;padding:12px 14px;border-radius:16px;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
 .hc-fees-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:6px}
 .hc-fees-head b{display:flex;align-items:center;gap:4px}
@@ -3342,8 +3520,90 @@ button.gpill[onclick]{cursor:pointer}
 @keyframes hc-drop{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
 @keyframes hc-ring{from{transform:scale(.9);opacity:.9}to{transform:scale(1.25);opacity:0}}
 @keyframes hc-slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
-@media(prefers-reduced-motion:reduce){.hc-incoming,.hc-orb>i,.hc-bar>i{animation:none}}
-@media(max-width:360px){.hc-setup .hc-preview{height:220px}.hc-incoming{left:6px;right:6px;gap:7px}.hc-accept{padding:0 10px}}
+@keyframes hc-waiting-wave{0%{transform:scale(.94);opacity:.65}85%,100%{transform:scale(1.48);opacity:0}}
+.hc-waiting-main,.hc-summary-content{animation:hc-scene-enter .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--hc-enter-age,0ms)}
+@keyframes hc-scene-enter{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.hc-waiting-main,.hc-summary-content{animation:none}}
+@media(prefers-reduced-motion:reduce){.hc-incoming,.hc-orb>i,.hc-bar>i,.hc-host-avatar>i{animation:none}.hc-switch,.hc-switch::after{transition:none}.hc-host-avatar>i{opacity:0}}
+@media(max-width:360px){.hc-incoming{left:6px;right:6px;gap:7px}.hc-setup{padding-inline:10px}.hc-setup-footer{margin-inline:-10px;padding-inline:12px;gap:7px;grid-template-columns:40px minmax(0,1fr) 40px 40px}.hc-setup-tool{width:40px;height:40px}.hc-tiers>span{padding-inline:11px}.hc-waiting{padding-inline:18px}.hc-summary{padding-inline:15px}.hc-summary h1{font-size:25px}.hc-session-stats b{font-size:15px}}
+@media(max-height:650px){.hc-waiting{padding-top:20px}.hc-waiting-actions{margin-top:25px}.hc-summary{padding-block:25px}.hc-camera-space{min-height:150px}.hc-setup-header{min-height:50px;padding-block:6px}}
+@media(min-width:600px){.hc-setup,.hc-waiting,.hc-summary{border-inline:1px solid var(--line)}.hc-waiting,.hc-summary{max-width:480px}}
+/* Host studio sheets and in-call targets. Colours come from the selected theme. */
+.hs-sheet-backdrop{position:fixed;inset:0;z-index:180;display:flex;align-items:flex-end;justify-content:center;background:#0008;backdrop-filter:blur(5px);color:var(--ink)}
+.hs-sheet{width:100%;max-width:560px;max-height:min(82dvh,650px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:max(18px,env(safe-area-inset-bottom));border:1px solid var(--line);border-bottom:0;border-radius:24px 24px 0 0;background:radial-gradient(ellipse 48% 110px at 50% 0,color-mix(in srgb,var(--accent) 34%,transparent),transparent 72%),var(--surface);color:var(--ink);font-family:inherit;box-shadow:0 -16px 60px #0004;animation:hs-sheet-in .25s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--hs-enter-age,0ms);scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.hs-sheet header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 12px}
+.hs-sheet header h2{margin:0 0 3px;font-size:17px;font-weight:var(--theme-heading-weight,750);line-height:1.3;letter-spacing:-.4px;color:var(--ink)}
+.hs-sheet header p{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
+.hs-sheet button{font-family:inherit;touch-action:manipulation}
+.hs-sheet button:focus-visible,.hs-targets button:focus-visible,.hs-gift-rail button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.hs-sheet-close{flex:none;display:grid;place-items:center;width:32px;height:32px;margin-top:2px;border-radius:50%;background:var(--raised);color:var(--muted)}
+.hs-sheet-body{padding:5px 15px 12px}
+.hs-options{display:flex;gap:6px;overflow-x:auto;padding:1px 0 5px;scrollbar-width:none}
+.hs-options>button{flex:none;min-width:50px;min-height:32px;padding:6px 13px;border-radius:999px;background:var(--raised);color:var(--muted);font-size:12px;font-weight:750;line-height:1.3}
+.hs-options>button.is-on{background:var(--cta);color:var(--cta-ink);box-shadow:0 3px 12px color-mix(in srgb,var(--cta) 30%,transparent)}
+.hs-mission-total{display:flex;align-items:baseline;gap:5px;margin:8px 0 7px}
+.hs-mission-total>strong{color:var(--accent-ink);font-size:28px;font-weight:800;letter-spacing:-.8px;line-height:1.1;font-variant-numeric:tabular-nums}
+.hs-mission-total>span{color:var(--muted);font-size:12px}
+.hs-progress{height:7px;border-radius:999px;background:var(--line);overflow:hidden}
+.hs-progress>i,.hs-target-track>em{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent-ink),var(--accent));transition:width .2s ease}
+.hs-section-label{display:flex;align-items:center;gap:9px;margin:19px 0 8px;font-size:12px}
+.hs-section-label>b{font-size:14px;font-weight:750;color:var(--ink)}
+.hs-section-label>span{color:var(--muted);font-size:11px}
+.hs-task{display:flex;align-items:center;gap:10px;min-height:63px;margin-top:7px;padding:11px;border:1px solid var(--line);border-radius:14px;background:var(--raised);color:var(--ink)}
+.hs-task-icon{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,var(--accent-ink),var(--accent));color:var(--cta-ink)}
+.hs-task-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
+.hs-task-copy>b{font-size:12px;font-weight:650;line-height:1.4}
+.hs-task-copy>small{color:var(--muted);font-size:10px;line-height:1.4}
+.hs-task-copy>i{display:block;max-width:160px;height:3px;margin-top:3px;border-radius:2px;overflow:hidden;background:var(--line)}
+.hs-task-copy>i>em{display:block;height:100%;background:var(--accent)}
+.hs-task>strong{display:flex;align-items:center;gap:3px;color:var(--accent-ink);font-size:12px;white-space:nowrap}
+.hs-tasks-empty,.hs-sheet-note{margin:13px 0 0;font-size:11px;line-height:1.6;color:var(--muted)}
+.hs-claim{width:100%;margin-top:12px;padding:11px;border-radius:99px;background:var(--cta);color:var(--cta-ink);font-size:12px;font-weight:700}
+.hs-gift-options{display:flex;gap:8px;overflow:auto;margin:0 0 15px;padding:4px 2px 10px;scrollbar-width:thin}
+.hs-gift-options>button{display:flex;flex:none;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:62px;min-height:78px;border:1px solid transparent;border-radius:13px;background:var(--raised);color:var(--ink)}
+.hs-gift-options>button.is-on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--surface))}
+.hs-gift-art{display:grid;place-items:center;width:36px;height:36px;font-size:28px;line-height:1}
+.hs-gift-art>img,.hs-target-art>img{width:100%;height:100%;object-fit:contain}
+.hs-gift-options small{display:flex;align-items:center;gap:2px;color:var(--accent-ink);font-size:10px;white-space:nowrap}
+.hs-target-detail{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:13px;color:var(--muted);font-size:11px}
+.hs-target-detail>span:first-child{display:flex;align-items:center;gap:5px;min-width:0;font-size:20px}
+.hs-target-detail>span:first-child>b{overflow:hidden;font-size:12px;white-space:nowrap;text-overflow:ellipsis;color:var(--ink)}
+.hs-target-detail img{width:27px;height:27px;object-fit:contain}
+.hs-target-detail>span:last-child{flex:none;font-size:10px;text-align:right;font-variant-numeric:tabular-nums}
+.hs-effects{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:4px 0 16px}
+.hs-effects>button{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:85px;background:none;color:var(--muted);font-size:11px}
+.hs-effect-swatch{display:grid;place-items:center;width:54px;height:54px;border:2px solid transparent;border-radius:50%;outline:1px solid var(--line);outline-offset:3px;background:linear-gradient(135deg,#ecb990,#775660);color:#fff}
+.hs-effect-warm{background:linear-gradient(135deg,#ffd89e,#ce7254)}
+.hs-effect-soft{background:linear-gradient(135deg,#f6d3e9,#a695bc)}
+.hs-effect-mono{background:linear-gradient(135deg,#ddd,#414141)}
+.hs-effects>button.is-on{color:var(--ink)}.hs-effects>button.is-on .hs-effect-swatch{outline:2px solid var(--accent)}
+.hs-preview-only{display:flex;align-items:center;gap:5px;margin:0;color:var(--accent-ink);font-size:11px;font-weight:650}
+.hs-empty{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:15px 5px;color:var(--muted);font-size:11px;line-height:1.5;text-align:center}
+.hs-empty button{display:flex;align-items:center;gap:5px;min-height:34px;padding:7px 12px;border-radius:99px;background:var(--raised);color:var(--ink);font-size:11px}
+.hs-gift-loading{display:flex;align-items:center;gap:12px;padding:7px 0 15px;overflow:hidden}
+.hs-gift-loading>span{display:flex;flex:0 0 40px;flex-direction:column;align-items:center;gap:7px}
+.hs-targets{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;color:var(--room-ink,var(--ink))}
+.hs-target-card{display:flex;align-items:center;gap:8px;min-width:0;min-height:50px;padding:7px 10px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--room-glass,var(--surface)) 88%,transparent);color:inherit;text-align:left;font-family:inherit}
+.hs-target-art{flex:none;display:grid;place-items:center;width:32px;height:32px;font-size:25px;line-height:1}
+.hs-target-copy{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}
+.hs-target-label{display:flex;align-items:center;justify-content:space-between;gap:6px;color:var(--room-muted,var(--muted));font-size:8.5px;font-weight:750;letter-spacing:.8px;line-height:1.2}
+.hs-target-label>b{color:var(--room-ink,var(--ink));font-size:10.5px;letter-spacing:0;font-variant-numeric:tabular-nums}
+.hs-target-copy>strong{display:flex;align-items:center;gap:3px;color:var(--accent-ink);font-size:13px;font-weight:800;line-height:1.25;font-variant-numeric:tabular-nums}
+.hs-target-copy>strong>small{color:var(--room-muted,var(--muted));font-size:10px;font-weight:600}
+.hs-target-track{display:block;height:3px;margin-top:3px;border-radius:99px;background:var(--line);overflow:hidden}
+.hs-target-card:first-child .hs-target-track>em{background:var(--accent)}
+.hs-gift-rail{display:flex;align-items:center;gap:6px;min-height:60px;padding:4px 0 8px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.hs-gift-rail::-webkit-scrollbar{display:none}
+.hs-gift-rail>button{display:flex;flex:0 0 44px;flex-direction:column;align-items:center;gap:4px;min-height:48px;padding:0;background:transparent;color:var(--room-ink,var(--ink));font-family:inherit}
+.hs-gift-rail .hs-gift-art{width:30px;height:30px;font-size:26px}
+.hs-gift-rail small{display:flex;align-items:center;justify-content:center;gap:2px;font-size:9px;font-weight:750;line-height:1.3;white-space:nowrap}
+.hs-rail-loading{min-height:60px;padding:4px 0 8px;gap:4px}
+:root[data-host-preview-effect=warm] :is(.hc-stage,.zr-reference-stage)>video[data-zimi-local]:not([data-zimi-fill]){filter:sepia(.24) saturate(1.18)}
+:root[data-host-preview-effect=soft] :is(.hc-stage,.zr-reference-stage)>video[data-zimi-local]:not([data-zimi-fill]){filter:brightness(1.07) contrast(.92) saturate(.94)}
+:root[data-host-preview-effect=mono] :is(.hc-stage,.zr-reference-stage)>video[data-zimi-local]:not([data-zimi-fill]){filter:grayscale(1)}
+@keyframes hs-sheet-in{from{transform:translateY(100%);opacity:.6}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.hs-sheet{animation:none}.hs-progress>i,.hs-target-track>em{transition:none}}
+@media(max-width:360px){.hs-sheet header{padding-inline:14px}.hs-sheet-body{padding-inline:13px}.hs-targets{gap:6px}.hs-target-card{gap:6px;padding-inline:8px}.hs-target-art{width:26px;height:26px;font-size:21px}.hs-target-label{font-size:7.5px;letter-spacing:.5px}.hs-target-copy>strong{font-size:11.5px}.hs-task{gap:7px;padding:9px}.hs-task-copy>b{font-size:11px}.hs-effects{gap:8px}.hs-effect-swatch{width:45px;height:45px}}
 /* Staff verification call overlay; sits above every screen and follows the active theme. */
 .zv-call{position:fixed;inset:0;z-index:90;display:grid;color:#fff;background:#120910}
 .zv-ring{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px 24px calc(28px + env(safe-area-inset-bottom));text-align:center;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--accent,#c9086a) 45%,#120910),#120910 70%)}
@@ -3465,6 +3725,16 @@ button.gpill[onclick]{cursor:pointer}
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.zh-host-entry{display:flex;align-items:center;gap:10px;min-height:76px;padding:13px 12px;margin:0 0 4px;border:1px solid var(--line);border-radius:19px;background:linear-gradient(115deg,var(--surface),color-mix(in srgb,var(--accent) 8%,var(--surface)));color:var(--ink)}
+.zh-host-entry-icon{position:relative;display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:50%;background:var(--raised);color:var(--muted)}
+.zh-host-entry.is-online .zh-host-entry-icon{color:var(--online);background:color-mix(in srgb,var(--online) 12%,var(--surface))}
+.zh-host-entry-icon>i{position:absolute;right:0;bottom:0;width:8px;height:8px;border-radius:50%;background:var(--online);outline:2px solid var(--surface)}
+.zh-host-entry-copy{flex:1;min-width:0}
+.zh-host-entry-copy h2{margin:0 0 3px;font-size:calc(14px * var(--theme-font-scale,1));font-weight:750;letter-spacing:-.25px;line-height:1.3}
+.zh-host-entry-copy p{margin:0;color:var(--muted);font-size:calc(10px * var(--theme-font-scale,1));line-height:1.4;text-wrap:pretty}
+.zh-host-entry>button{display:flex;align-items:center;justify-content:center;gap:5px;flex:none;min-height:44px;padding:10px 12px;border:0;border-radius:999px;background:var(--accent);color:var(--cta-ink);font-size:11px;font-weight:700}
+.zh-host-entry.is-online>button{background:var(--raised);color:var(--ink)}
+.zh-host-entry>button:active{transform:scale(.97)}
 .zh-home.zh-dashboard .zh-live-section{margin:0}
 .zh-home.zh-dashboard .zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin:0 0 12px}
 .zh-home.zh-dashboard .zh-section-title h2{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--ink);font-size:calc(19px * var(--theme-font-scale,1));line-height:1.35;letter-spacing:-.4px;font-weight:700}
@@ -3483,20 +3753,23 @@ button.gpill[onclick]{cursor:pointer}
 .zh-live-ring>.zh-fallback>span{font-size:30px}
 .zh-live-create .zh-live-ring{border-color:var(--line);border-style:dashed;background:var(--raised);color:var(--accent-ink)}
 .zh-story-loading .zh-live-ring{border-color:transparent}
-.zh-home.zh-dashboard .zh-dashboard-filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:18px -18px 20px;padding:0 18px 3px}
+.zh-home.zh-dashboard .zh-dashboard-filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:14px -18px 16px;padding:0 18px 3px}
 .zh-dashboard-filters>button{display:flex;align-items:center;justify-content:center;gap:7px;flex:none;min-height:44px;padding:10px 17px;border:1px solid transparent;border-radius:24px;background:var(--raised);color:var(--muted);font-size:13px;font-weight:500;white-space:nowrap}
 .zh-dashboard-filters>button[aria-pressed="true"]{background:var(--accent);color:var(--cta-ink);font-weight:650}
 .zh-dashboard-filters svg{flex:none}
-.zh-home.zh-dashboard .zh-person-card{position:relative;display:flex;flex-direction:column;min-width:0;margin:0;border:0;border-radius:17px;background:var(--surface);color:var(--ink);overflow:hidden}
+.zh-home.zh-dashboard .zh-person-card{position:relative;display:flex;flex-direction:column;min-width:0;margin:0;border:1px solid var(--line);border-radius:19px;background:var(--surface);color:var(--ink);overflow:hidden}
 .zh-home.zh-dashboard .zh-person-media{position:relative;aspect-ratio:4/5;min-width:0;background:var(--raised);isolation:isolate}
 .zh-home.zh-dashboard .zh-person-media>.zh-photo,.zh-home.zh-dashboard .zh-person-media>.zh-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;overflow:hidden}
 .zh-home.zh-dashboard .zh-person-media>.zh-fallback>span{font-size:64px}
-.zh-photo-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.16),transparent 45%,rgba(0,0,0,.28));pointer-events:none}
+.zh-photo-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.22),transparent 34%,rgba(0,0,0,.1) 52%,rgba(0,0,0,.84));pointer-events:none}
 .zh-home.zh-dashboard .zh-person-status{position:absolute;z-index:2;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 20px);padding:5px 8px;border-radius:20px;background:rgba(0,0,0,.56);color:#fff;font-size:9px;line-height:1.4;font-weight:650;letter-spacing:.15px;pointer-events:none}
 .zh-person-status>i{width:6px;height:6px;border-radius:50%;flex:none;background:var(--accent)}
 .zh-person-status.is-online>i{background:var(--online)}
 .zh-person-status.is-offline>i{background:rgba(255,255,255,.5)}
 .zh-person-status>b{font-size:9px;opacity:.7}
+.zh-home.zh-dashboard .zh-grid-host .zh-person-status{left:auto;right:9px;top:9px;max-width:76px;font-size:8px;padding:4px 6px}
+.zh-person-topic{position:absolute;z-index:2;top:11px;left:9px;max-width:calc(100% - 83px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#fff;font-size:9px;font-weight:650;text-shadow:0 1px 5px #0008;pointer-events:none}
+.zh-featured-label{position:absolute;z-index:2;right:14px;top:14px;max-width:52%;padding:6px 10px;border:1px solid #ffffff35;border-radius:999px;background:#0005;color:#fff;font-size:10px;font-weight:600;backdrop-filter:blur(8px);pointer-events:none}
 .zh-home.zh-dashboard .zh-person-watch,.zh-home.zh-dashboard .zh-person-photo-link{position:absolute;inset:0;display:block;width:100%;min-height:44px;border:0;padding:0;background:transparent;color:#fff;z-index:1}
 .zh-watch-control{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px;min-width:44px;min-height:44px;padding:11px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(0,0,0,.45);color:#fff}
 .zh-watch-control>svg{width:17px;height:17px;flex:none}
@@ -3507,6 +3780,12 @@ button.gpill[onclick]{cursor:pointer}
 .zh-home.zh-dashboard .zh-verified{display:inline-flex;flex:none;color:var(--accent-ink)}
 .zh-home.zh-dashboard .zh-person-profile h3 svg{width:13px;height:13px}
 .zh-home.zh-dashboard .zh-person-profile p{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin:4px 0 0;color:var(--muted);font-size:calc(11px * var(--theme-font-scale,1));line-height:1.5}
+.zh-home.zh-dashboard .zh-grid-host .zh-person-profile{position:absolute;z-index:3;bottom:0;left:0;width:100%;padding:12px 11px 10px;min-height:52px;color:#fff}
+.zh-home.zh-dashboard .zh-grid-host .zh-person-profile h3{color:#fff;font-weight:700}
+.zh-home.zh-dashboard .zh-grid-host .zh-person-profile p{color:rgba(255,255,255,.8);font-size:10px;margin-top:2px}
+.zh-home.zh-dashboard .zh-grid-host .zh-verified{color:#fff}
+.zh-home.zh-dashboard .zh-grid-host .zh-person-content{padding:9px}
+.zh-placeholder-name{position:absolute;left:11px;right:11px;bottom:12px;display:flex;flex-direction:column;gap:7px}
 .zh-home.zh-dashboard .zh-person-footer{display:flex;align-items:stretch;gap:7px;margin:0;padding:0}
 .zh-home.zh-dashboard .zh-person-action{display:flex;align-items:center;justify-content:center;gap:5px;flex:1 1 0;min-width:0;min-height:44px;padding:9px 6px;border:1px solid transparent;border-radius:11px;background:var(--accent);color:var(--cta-ink);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600;line-height:1.4}
 .zh-home.zh-dashboard .zh-person-action svg{flex:none;width:14px;height:14px}
@@ -3528,7 +3807,7 @@ button.gpill[onclick]{cursor:pointer}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-action{min-height:46px;font-size:13px;border-radius:13px}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-chat{flex:.7;background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.2);color:#fff}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-action:disabled{background:rgba(255,255,255,.16);color:rgba(255,255,255,.8);opacity:.5}
-.zh-home.zh-dashboard .zh-discover{margin-top:26px}
+.zh-home.zh-dashboard .zh-discover{margin-top:20px}
 .zh-home.zh-dashboard .zh-see-all{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-height:44px;padding:0;border:0;background:transparent;color:var(--accent-ink);font-size:12px;white-space:nowrap}
 .zh-home.zh-dashboard .zh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .zh-home.zh-dashboard .zh-person-placeholder .zh-person-content>.zh-skeleton-shape{margin-top:4px}
@@ -3578,7 +3857,7 @@ button.gpill[onclick]{cursor:pointer}
 @media(hover:hover) and (pointer:fine){.zh-home.zh-dashboard .zh-person-action:hover:not(:disabled){filter:brightness(1.08)}.zh-home.zh-dashboard .zh-dashboard-filters>button:hover{border-color:var(--accent-ink)}.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}.zh-person-watch:hover .zh-watch-control{background:rgba(0,0,0,.65)}}
 @media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-dashboard-filters{margin-inline:-24px;padding-inline:24px}.zh-home.zh-dashboard .zh-featured-host{aspect-ratio:1.7;min-height:380px}.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding:25px;gap:18px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(34px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{width:350px;max-width:100%}.zh-home.zh-dashboard .zh-grid{gap:18px}.zh-home.zh-dashboard .zh-grid-host .zh-person-media{aspect-ratio:1.05}.zh-home.zh-dashboard .zh-person-content{padding:15px}.zh-home.zh-dashboard .zh-grid-host .zh-person-profile h3{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-person-action{font-size:12px}.zh-home.zh-dashboard .zh-person-profile p{font-size:12px}}
 @media(max-width:359px){.zh-home.zh-dashboard{padding-inline:14px}.zh-home.zh-dashboard .zh-dashboard-filters{margin-inline:-14px;padding-inline:14px}.zh-home.zh-dashboard .zh-grid{gap:10px}.zh-home.zh-dashboard .zh-grid-host .zh-person-content{padding:10px}.zh-home.zh-dashboard .zh-person-action{gap:3px;padding-inline:3px;font-size:10px}.zh-home.zh-dashboard .zh-person-profile h3{font-size:13px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:25px}.zh-home.zh-dashboard .zh-featured-host .zh-person-status{font-size:9px;padding-inline:6px}.zh-featured-host .zh-watch-control{font-size:10px;padding:9px;gap:4px}}
-@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-dashboard-filters>button,.zh-home-refresh,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host):active{transform:none}.zh-home.zh-dashboard .zh-home-refresh[aria-busy="true"] svg{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-dashboard-filters>button,.zh-home-refresh,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-home.zh-dashboard .zh-home-refresh[aria-busy="true"] svg{animation:none!important}}
 /* The same gold BinzoLive mark remains recognizable in every app palette. */
 .zc-coin{flex-shrink:0;vertical-align:middle;overflow:visible;filter:drop-shadow(0 1px 1px #71450020)}
 .zw-coins{max-width:620px;margin:0 auto;padding:18px 20px 30px;color:var(--ink)}
@@ -6893,7 +7172,7 @@ const H=[
  {id:"tara",n:"Tara Iyer",c:"Chennai",cat:"Astrology",tag:"Readings",age:38,rate:60,fee:120,on:1,live:1,seed:68,v:"3.2K",pk:0,top:1,fol:1,nw:0},
  {id:"dev",n:"Dev Malhotra",c:"Delhi",cat:"Fitness",tag:"Training",age:27,rate:28,fee:50,on:1,live:0,seed:34,v:"860",pk:0,top:0,fol:0,nw:1},
  {id:"noor",n:"Noor Sheikh",c:"Hyderabad",cat:"Comedy",tag:"Make Friends",age:25,rate:26,fee:45,on:1,live:1,seed:55,v:"5.1K",pk:1,top:1,fol:1,nw:0},
- {id:"kabir",n:"Kabir Das",c:"Kolkata",cat:"Music",tag:"Chatting",age:33,rate:38,fee:70,on:0,live:0,seed:79,v:"640",pk:0,top:0,fol:0,nw:1,hideMvp:1}
+ {id:"kabir",n:"Kabir Das",c:"Kolkata",cat:"Music",tag:"Chatting",age:33,rate:38,fee:70,on:1,live:0,seed:79,v:"640",pk:0,top:0,fol:0,nw:1,hideMvp:1}
 ];
 const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","free for a call in ten","5:54 pm",1],
  ["tara","send your birth time when you can","5:31 pm",0],["ishaan","you: gg, rough last round","4:12 pm",0],
@@ -6928,7 +7207,7 @@ const EXTRA=[
  {id:"osama",n:"OSAMA",c:"Dubai",cat:"Gaming",tag:"Esports",lang:"Arabic, English",age:28,rate:52,fee:95,on:1,live:0,seed:3,v:"9.0K"},
  {id:"evangeline",n:"Evangeline",c:"Manila",cat:"Music",tag:"Singing",lang:"Filipino, English",age:24,rate:41,fee:75,on:1,live:0,seed:17,v:"8.6K"},
  {id:"jelly",n:"JELLY RTR",c:"Pune",cat:"Comedy",tag:"Make Friends",lang:"Hindi, Marathi",age:26,rate:33,fee:60,on:1,live:1,seed:29,v:"2.7K"},
- {id:"rapidlion",n:"Rapid Lion",c:"Nagpur",cat:"Talk",tag:"Chatting",lang:"Hindi",age:30,rate:24,fee:45,on:0,live:0,seed:41,v:"774"},
+ {id:"rapidlion",n:"Rapid Lion",c:"Nagpur",cat:"Talk",tag:"Chatting",lang:"Hindi",age:30,rate:24,fee:45,on:1,live:0,seed:41,v:"774"},
  {id:"apsara",n:"APSARA",c:"Indore",cat:"Dance",tag:"Dancing",lang:"Hindi",age:23,rate:37,fee:65,on:1,live:0,seed:53,v:"1.1K"},
  {id:"mehak",n:"Mehak Dhillon",c:"Ludhiana",cat:"Dance",tag:"Dancing",lang:"Punjabi, Hindi",age:25,rate:29,fee:52,on:1,live:1,seed:64,v:"424"}];
 const SENDERS=["Rohit S.","Arnav M.","Kunal T.","Faisal R.","Devika N.","Yash P.","Imran Q.","Sahil B.",
@@ -7110,7 +7389,7 @@ function go(v,id){
  if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
  if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
-  if(DEMO||!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
+  if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
  if(v==="hcall"){S.sec=0;S.earned=0;S.recvN=0;S.callersN=1;S.tray=0;S.gifted=0;S.favGot=0;S.swap=0;
   S.cstart=0;S.feeOk=0;S.feeHide=0;S.confirm=0;S.feeLog=[];
@@ -7290,7 +7569,7 @@ function backedFor(u){
 }
 
 function vSetup(){
- if(window.ZimiHome&&!DEMO)return homeCallSetup();
+ if(window.ZimiHome)return homeCallSetup();
  const h=me, tierIdx=1;
  return `<div class="setup">
  <div class="stage">
@@ -8025,7 +8304,7 @@ function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("c
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
- if(window.ZimiHome&&!DEMO)return homeWaiting();
+ if(window.ZimiHome)return homeWaiting();
  return `<div class="ringscr host">
   <div class="ringorb">${avc(me,104)}</div>
   <h2>You're online</h2>
@@ -8049,16 +8328,17 @@ function vRing(){const c=S.caller;
  /* The preview shows the default terms; the app shows the ones locked onto this call. */
  const rate=DEMO?MY_RATE:c.rate||0,fee=DEMO?MY_FEE:c.fee||0,hold=DEMO?FEE_HOLD:c.hold||0;
  const about=[c.lvl?`Lv ${c.lvl}`:'',c.c,DEMO?`${c.v} followers`:''].filter(Boolean).map(esc).join(' &middot; ');
- return `<div class="ringscr host ring">
-  <div class="ringbg">${art(c.seed)}</div>
+ return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${c.voice?'voice':'video'} call">
+  <div class="ringbg" aria-hidden="true"></div>
   <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
-  <div class="ringorb pulse">${avc(c,112)}</div>
+  <div class="ringorb pulse">${hcIdentityAvatar(c,112)}</div>
   <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
   <span class="ringearn">${rate?`${gem}You earn ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
   ${fee?`<span class="ringfee">+${n(fee)} entry fee once the call passes ${hcHold(hold)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
-   <span class="rbtn"><button class="accept" aria-label="Accept" onclick="acceptRing()">${I("vid",25)}</button><span>Accept</span></span></div>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+  ${S.acceptingCall?'<span class="ring-connecting-note" role="status">Preparing your private call…</span>':''}
  </div>`}
 
 /* ---- Host: in the call ---- */
@@ -8094,7 +8374,7 @@ function incBanner(){const c=S.inc;
   <button class="no" aria-label="Decline" onclick="declineInc()">${I("ph",17)}</button>
   <button class="yes" aria-label="Switch to this call" onclick="hostEnd('switch')">${I("vid",17)}</button></div>`}
 
-function declineRing(){Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
+function declineRing(){S.acceptingCall=false;Native.send("call.decline",{callId:S.caller.callId});addMissed(S.caller);go(S.ringBack||"waiting");ringQueued()}
 function acceptRing(){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;if(!DEMO&&window.ZimiHome)return homeAcceptCall();Native.send("call.accept",{callId:S.caller.callId});go("hcall")}
 /* A second caller while the host is in a call: a banner, never a busy signal. */
 function ringIncoming(c){
@@ -8165,7 +8445,12 @@ function hostTick(){
  if(hcFeePending()&&!S.connecting&&S.sec-S.cstart>=S.feeHold){S.feeOk=1;S.feeHide=S.sec+3;S.earned+=S.callFee;
   S.rmsgs.push(["sys","",`Entry fee unlocked from ${first(S.caller.n)} · +${n(S.callFee)}`]);paintFeed();
   if(S.confirm){S.confirm=0;r()}}
- if(window.ZimiHome){paintHostTick();return}
+ if(window.ZimiHome){
+  /* The interactive preview feeds sample gifts through the same visual lifecycle. */
+  if(DEMO&&!S.connecting&&S.sec%9===0&&Home.gifts.length&&window.zrReceiveGift){
+   const gift=Home.gifts[(Math.floor(S.sec/9)-1)%Home.gifts.length];
+   zrReceiveGift({id:`preview-gift-${S.callId||'call'}-${S.sec}`,callId:S.callId||undefined,senderId:S.caller.id,senderName:S.caller.n,giftName:gift.name,emoji:gift.emoji,mediaUrl:gift.mediaUrl,coins:gift.coins})}
+  paintHostTick();return}
  if(DEMO&&S.sec%9===0){
   const ask=(S.sec/9)%3===0;
   const [l,e,v]=ask?GIFTS[S.fav]:GIFTS[IN_GIFTS[(S.sec/9+S.ci)%IN_GIFTS.length]];
@@ -8225,7 +8510,7 @@ function supportPct(h,spent){
  return Math.min(99,Math.round(xs.filter(x=>x<spent).length/xs.length*100))}
 
 function vSummary(){const s=S.sum;
- if(window.ZimiHome&&!DEMO)return homeCallSummary();
+ if(window.ZimiHome&&(!DEMO||s?.k==='host'))return homeCallSummary();
  if(!s)return "";
  if(s.k==="sender"){
   const h=g(s.h),f=first(h.n),pct=supportPct(h,s.spent),big=pct>=50;
@@ -8540,11 +8825,17 @@ function r(){
    the short keys the screens use. */
 const PEOPLE={};
 const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997;return x};
+/* Nobody is ever shown a host as offline. The server still rings an offline host until the call
+   is missed, so for members only an online host's own call settings make calls unavailable.
+   `ready` keeps the server's own availability for lists that promise an instant answer. */
+function isHostPayload(p){return p.serverRole==="host"||p.role==="host"||p.verified===true}
+function hostShownOnline(p){return isHostPayload(p)||!!p.online}
+function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&p.online!==true&&!isHost()}
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
-  role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:p.availableForCall===true,
+  role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
-  age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:p.online?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
+  age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:hostShownOnline(p)?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
  return PEOPLE[id]={id,n:p.name||"BinzoLive user",seed:seedOf(id),live:0,on:1,host:0,tag:"Supporter",c:p.city||"",
@@ -8613,7 +8904,8 @@ Native.on("call.connected",d=>{
 Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
- else if(S.v==="dialback")go("chats")});
+ else if(S.v==="dialback")go("chats");
+ else if(S.v==="ring"){appNotice(d.message||"The call didn't connect. Please try again.");r()}});
 Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
@@ -8622,11 +8914,11 @@ Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Nativ
  /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
  if(S.v==="ring"){if(S.caller?.callId!==c.callId)S.queuedInc=c;return}
  if(["dial","dialback","call","voice"].includes(S.v))return;
- S.ringBack=S.v;S.caller=c;go("ring")});
+ S.acceptingCall=false;S.ringBack=S.v;S.caller=c;go("ring")});
 /* The caller who arrived while another call was ringing: a banner on the call, or the next ring. */
 function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
  if(S.v==="hcall")return ringIncoming(q);
- S.caller=q;go("ring")}
+ S.acceptingCall=false;S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
  /* The server's charge replaces the summary's estimate once it arrives. */
@@ -8639,7 +8931,7 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
- if(S.v==="ring"&&S.caller.callId===id){addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
+ if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
 Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
@@ -8833,7 +9125,7 @@ const homeIcons = {
 };
 function hi(name,size=20){if(['coin','rings'].includes(name))return coinIcon(size);return `<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${homeIcons[name]||P[name]||P.star}</svg>`}
 function homeCompact(value){const x=Math.max(0,Number(value)||0);return x>=1000?(x/1000).toFixed(x>=10000?0:1).replace(/\.0$/,'')+'k':n(x)}
-function homeCreator(p){const h=hostFrom(p);return {...h,...('previewVideoUrl' in p?{video:videoSrc(p.previewVideoUrl)}:{}),verified:!!p.verified,available:!!p.availableForCall,about:p.about||'',stream:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream||null:null,viewers:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream?.viewers||0:0}}
+function homeCreator(p){const h=hostFrom(p);return {...h,...('previewVideoUrl' in p?{video:videoSrc(p.previewVideoUrl)}:{}),verified:!!p.verified,about:p.about||'',stream:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream||null:null,viewers:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream?.viewers||0:0}}
 function homeRemember(p){const h=homeCreator(p),old=H.find(x=>x.id===h.id);if(old)Object.assign(old,h);else H.push(h);return h}
 function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl);return src?`<img class="zh-photo zh-photo-pending" src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}" data-face-wrap="zh-fallback" loading="${priority?'eager':'lazy'}" decoding="async">`:`<div class="zh-fallback">${face(h)}</div>`}
 /* A slot over the photo; card-video.js fills it with the host's video once the card is in view. */
@@ -8865,10 +9157,9 @@ function homeNav(){
   // Detail pages have their own Back action instead of the primary tabs.
   if(['notifications','themes'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
   if(!['home','explore','chats','profile','settings'].includes(S.v))return false;
-  const hostSlot=isApprovedHost()||(window.ZimiHostAccess.checking()&&S.role==='host');
-  el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');el.style.setProperty('--nav-count',hostSlot?5:4);
+  el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${(S.v===v||(v==='profile'&&S.v==='settings'))?'on':''}" ${(S.v===v||(v==='profile'&&S.v==='settings'))?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
-  el.innerHTML=item('home','Home','house')+item('explore','Explore','explore')+(isApprovedHost()?`<button type="button" class="zh-create" onclick="go('setup')" aria-label="Go online for calls">${hi('ph',26)}</button>`:hostSlot?'<span class="zh-create-pending zh-skeleton-shape" role="status" aria-label="Checking host approval"></span>':'')+item('chats','Chats','chat')+item('profile','Profile','user');return true;
+  el.innerHTML=item('home','Home','house')+item('explore','Explore','explore')+item('chats','Chats','chat')+item('profile','Profile','user');return true;
 }
 function homeStage(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return '';const rows=Home.stage.slice(0,12),pending=homeContentPending(),error=homeContentError();return `<section class="zh-stage" aria-label="Live creators"><div class="zh-section-title"><h2><i></i>Stage &amp; Live Calls</h2><span>${pending?skeletonLine('94px',10):error?'':homeCompact(Home.broadcasterCount)+' BROADCASTERS'}</span></div><div class="zh-stories">${isApprovedHost()?`<button class="zh-story zh-story-create" onclick="homeGoLive()"><span class="zh-story-ring">${hi('plus',24)}<i>${hi('vid',10)}</i></span><span>Go Live</span></button>`:''}${pending?contentSkeleton('stories','Loading live creators',4):error?'':rows.map(h=>`<button class="zh-story" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}"><span class="zh-story-ring ${h.stream?'':'zh-story-call'}">${homeCover(h)}<b>${h.stream?'LIVE':hi('ph',9)+' 1:1'}</b></span><span>${esc(first(h.n))}</span></button>`).join('')}${!pending&&!error&&!rows.length?'<span class="zh-stage-empty">Your next favourite creator is on the way.</span>':''}</div></section>`}
 
@@ -8976,7 +9267,7 @@ async function homePrepareCall(view,id){
 async function homeAcceptCall(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(S.acceptingCall)return;const callId=S.caller?.callId;if(!callId)return;S.acceptingCall=true;Home.mediaStatus='Connecting…';r();try{await window.ZimiMedia.prepare(!S.caller.voice);if(S.v!=='ring'||S.caller?.callId!==callId||!isApprovedHost()){S.acceptingCall=false;window.ZimiMedia.stop();return}Native.send('call.accept',{callId})}catch(e){S.acceptingCall=false;appNotice(e.message);r()}}
 function homeCallView(host){if(window.zrCall)return zrCall(host);const p=host?S.caller:g(S.h),voice=host?S.caller?.voice:S.v==='voice';return `<section class="zh-room zh-call-room"><div class="zh-room-video">${voice?`<div class="zh-voice-person">${avc(p,110)}<h2>${esc(p.n)}</h2></div><video data-zimi-remote autoplay playsinline style="display:none"></video>`:`<video data-zimi-remote autoplay playsinline></video>`}<div class="zh-room-shade"></div></div><div class="zh-room-top">${backButton("endCall()",{label:"End call",media:true,slot:"zh-room-icon"})}<span class="zh-viewers"><i class="zh-online-dot"></i><span id="ck">${clock(S.sec)}</span></span><span class="zh-room-top-title">${esc(p.n)} · ${voice?'Voice':'Video'} call</span></div>${!voice?'<div class="zh-call-pip"><video data-zimi-local autoplay muted playsinline></video><span>You</span></div>':''}<p class="zh-media-status" role="status">${esc(Home.mediaStatus)}</p><div class="zh-room-bottom"><div class="zh-call-controls"><button onclick="S.mic=S.mic?0:1;r()" aria-label="${S.mic?'Mute':'Unmute'} microphone" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',22)}<span>${S.mic?'Mute':'Unmute'}</span></button>${!voice?`<button onclick="toggleCam()" aria-label="${camOn()?'Turn camera off':'Turn camera on'}" aria-pressed="${!camOn()}">${hi(camOn()?'vid':'camoff',22)}<span>Camera</span></button>`:''}${!host?`<button onclick="homeGifts('${domId(p.id)}')" aria-label="Send a gift">${hi('gift',22)}<span>Gift</span></button>`:''}<button class="zh-end-call" onclick="endCall()" aria-label="End call">${hi('ph',23)}<span>End</span></button></div><p class="zh-free-call">${DEMO?'Design preview':S.callRate?`${n(S.callRate)} coins a minute · billed by the second`:'Free call · gifts are optional'}</p></div>${homeGiftSheet()}</section>`}
 function homeCallSetup(){return hcSetupView()}
-function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.presenceBusy)return;Home.presenceBusy=true;Native.send('presence.set',{online,visible:true});r()}
+function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.presenceBusy)return;Home.presenceBusy=true;Native.send('presence.set',{online,visible:true});if(DEMO){Native.receive({type:'presence.saved',data:{online,visible:true}});return}r()}
 function homeWaiting(){return hcWaitingView()}
 function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;if(host)return hcSummaryView(s);return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${s?.entryFee?`<span>Entry fee <b>${n(s.entryFee)} coins</b></span>`:''}${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
 let homeSearchTimer;
@@ -9007,7 +9298,7 @@ Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;
 Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||S.v==='thread'||Home.giftTo)r()});
 Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
 Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
-Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=isApprovedHost()&&d.online?1:0;S.vis=isApprovedHost()&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}});
+Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=isApprovedHost()&&d.online?1:0;S.vis=isApprovedHost()&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}else if(['home','waiting'].includes(S.v))r()});
 Native.on('call.created',d=>{S.callId=d.callId});
 Native.on('stream.opened',d=>{if(!window.ZIMI_LIVE_STREAMING_ENABLED){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}if(Home.dashboardCall&&d.stream.id!==Home.dashboardCall.streamId){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.streamBusy=false;if(d.hosting&&!isApprovedHost()){Native.send('stream.end',{streamId:d.stream.id});window.ZimiMedia?.stop();return}if(!['live','broadcast'].includes(S.v)){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.stream=d.stream;Home.hosting=d.hosting;Home.messages=d.messages||[];Home.mediaStatus='Connecting video…';go('live');window.ZimiMedia?.openStream(d.stream,d.hosting)});
 Native.on('stream.message',d=>{if(Home.stream?.id!==d.streamId)return;if(!Home.messages.some(x=>x.id===d.id))Home.messages.push(d);if(Home.messages.length>200)Home.messages.splice(0,Home.messages.length-200);if(S.v==='live'&&window.zrPaintMessages){zrPaintMessages();return}if(S.v==='live'){const input=document.getElementById('home-stream-message'),draft=input?.value;r();const next=document.getElementById('home-stream-message');if(next&&draft)next.value=draft}});
@@ -9066,13 +9357,26 @@ function homeDashboardHosts(){
   Home.stage.filter(homeDashboardIsLive).forEach(h=>{if(!hosts.has(h.id))hosts.set(h.id,h)});
   const filter=Home.dashboardFilter;
   // Every host is listed, online or offline; the server sorts who can take a call first.
-  const shown=[...hosts.values()].filter(h=>(filter!=='instant'||homeDashboardCanCall(h))&&(!Home.categories.includes(filter)||h.cat===filter));
+  const shown=[...hosts.values()].filter(h=>(filter!=='instant'||h.ready&&homeDashboardCanCall(h))&&(!Home.categories.includes(filter)||h.cat===filter));
   return {all:shown,live:shown.filter(homeDashboardIsLive),online:shown.filter(h=>!homeDashboardIsLive(h))};
 }
 function homeDashboardChat(id){
   // Messages wait for offline hosts, so chat never depends on being online.
   if(!g(id))return;
   zcOpen(id);
+}
+function homeDashboardHostOpen(){
+  if(!window.ZimiHostAccess.guard())return;
+  go(S.online?'waiting':'setup');
+}
+function homeDashboardHostEntry(){
+  if(!isApprovedHost())return '';
+  const online=!!S.online;
+  return `<section class="zh-host-entry ${online?'is-online':''}" aria-label="Your host availability">
+    <span class="zh-host-entry-icon" aria-hidden="true">${hi(online?'ph':'vid',23)}${online?'<i></i>':''}</span>
+    <div class="zh-host-entry-copy"><h2>${online?'You’re online':'You’re offline'}</h2><p>${online?'Ready to receive 1:1 calls.':'Go online to start receiving calls.'}</p></div>
+    <button type="button" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}">${online?'Manage':'Go online'}${hi('arrow',15)}</button>
+  </section>`;
 }
 function homeDashboardFilters(){
   const filters=[['popular','Popular','star'],['instant','Instant call','bolt'],...Home.categories.map(c=>[c,c,c==='Music'?'music':c==='Talk'?'chat':'star'])];
@@ -9092,9 +9396,10 @@ function homeDashboardCard(h,featured=false){
   const status=live?'is-live':h.on?'is-online':'is-offline';
   const unavailable=isHost()?'Video calls are available from a member account':!h.on&&!live?`${h.n} is offline right now`:!h.available?'This host is not taking calls right now':'';
   const mediaAction=live?`<button type="button" class="zh-person-watch" aria-label="Watch ${esc(h.n)} live" onclick="homeOpen('${id}')"><span class="zh-watch-control">${hi('play',18)}${featured?'<span>Watch live</span>':''}</span></button>`:`<button type="button" class="zh-person-photo-link" aria-label="Open ${esc(h.n)} profile" onclick="go('host','${id}')"></button>`;
+  const profile=`<button type="button" class="zh-person-profile" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Host')}</p></button>`;
   return `<article class="zh-tile zh-person-card ${featured?'zh-featured-host':'zh-grid-host'} ${status}" data-host-id="${esc(h.id)}">
-    <div class="zh-person-media">${homeCover(h,featured)}${homeCardVideo(h)}<div class="zh-photo-shade"></div>${mediaAction}<span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)}${featured?' watching':''}`:h.on?'Online':'Offline'}</span></div>
-    <div class="zh-person-content"><button type="button" class="zh-person-profile" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Host')}</p></button>
+    <div class="zh-person-media">${homeCover(h,featured)}${homeCardVideo(h)}<div class="zh-photo-shade"></div>${mediaAction}<span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)}${featured?' watching':''}`:h.on?'Online':'Offline'}</span>${featured&&!live?'<span class="zh-featured-label">Featured creator</span>':!featured&&h.cat?`<span class="zh-person-topic">${esc(h.cat)}</span>`:''}${featured?'':profile}</div>
+    <div class="zh-person-content">${featured?profile:''}
     <footer class="zh-person-footer"><button type="button" class="zh-person-action zh-person-chat" aria-label="Chat with ${esc(h.n)}" title="${esc(chatReason||'Open conversation')}" onclick="homeDashboardChat('${id}')" ${chatReason?'disabled':''}>${hi('chat',16)}<span>Chat</span></button><button type="button" class="zh-person-action zh-person-call" aria-label="Video call ${esc(h.n)}" title="${esc(unavailable||'Review your video call')}" onclick="homeDashboardCall('${id}')" ${available?'':'disabled'}>${hi('vid',16)} ${featured?'Instant call':'Call'}</button></footer></div>
   </article>`;
 }
@@ -9137,7 +9442,7 @@ document.addEventListener('aurora:navigate',()=>{
   if(pending&&(S.v!=='live'||Home.stream?.id!==pending.streamId||S.h!==pending.hostId))Home.dashboardCall=null;
 });
 function homeDashboardSkeleton(label='Loading creators',count=4){
-  return `<div class="zh-skeleton" role="status" aria-label="${esc(label)}" aria-busy="true"><div class="zh-grid" aria-hidden="true">${Array.from({length:count},()=>`<div class="zh-person-card zh-grid-host zh-person-placeholder"><div class="zh-person-media zh-skeleton-shape"></div><div class="zh-person-content">${skeletonLine('75%',15)}${skeletonLine('90%',10)}<div class="zh-person-footer">${skeletonLine('46%',44)}${skeletonLine('46%',44)}</div></div></div>`).join('')}</div></div>`;
+  return `<div class="zh-skeleton" role="status" aria-label="${esc(label)}" aria-busy="true"><div class="zh-grid" aria-hidden="true">${Array.from({length:count},()=>`<div class="zh-person-card zh-grid-host zh-person-placeholder"><div class="zh-person-media zh-skeleton-shape"><div class="zh-placeholder-name">${skeletonLine('75%',15)}${skeletonLine('90%',10)}</div></div><div class="zh-person-content"><div class="zh-person-footer">${skeletonLine('46%',44)}${skeletonLine('46%',44)}</div></div></div>`).join('')}</div></div>`;
 }
 function homeDashboardHeroSkeleton(){return `<div class="zh-skeleton" role="status" aria-label="Loading featured creator" aria-busy="true"><div class="zh-person-card zh-featured-host zh-hero-placeholder zh-skeleton-shape" aria-hidden="true"><div class="zh-person-content">${skeletonLine('55%',25)}${skeletonLine('80%',12)}<div class="zh-person-footer">${skeletonLine('35%',46)}${skeletonLine('60%',46)}</div></div></div></div>`}
 function homeDashboardEmpty(){
@@ -9149,7 +9454,7 @@ function homeDashboardEmpty(){
     <div class="zh-home-empty-scene" aria-hidden="true"><span class="zh-empty-orbit"></span><span class="zh-empty-stage zh-empty-photo"><img src="${OB_MEDIA[1]}" alt="" decoding="async"></span><span class="zh-empty-satellite zh-empty-chat">${hi('chat',21)}</span><span class="zh-empty-satellite zh-empty-music">${hi('music',20)}</span><span class="zh-empty-satellite zh-empty-spark">${hi('star',15)}</span><i class="zh-empty-dot"></i><i class="zh-empty-dot"></i></div>
     <span class="zh-empty-eyebrow">Good company is worth the wait</span><h3>${title}</h3><p>${description}</p>
     <div class="zh-empty-actions">${primary}<button type="button" class="zh-empty-secondary" onclick="homeLoad()">${hi('refresh',17)} Check again</button></div>
-    ${isApprovedHost()?`<button type="button" class="zh-empty-host" onclick="go('setup')">${hi('ph',16)} Go online for 1:1 calls ${hi('arrow',15)}</button>`:''}
+    ${isApprovedHost()?`<button type="button" class="zh-empty-host" onclick="homeDashboardHostOpen()">${hi('ph',16)} ${S.online?'Manage your call availability':'Go online for 1:1 calls'} ${hi('arrow',15)}</button>`:''}
   </div><div class="zh-empty-links" aria-label="More ways to connect"><button type="button" onclick="go('chats')"><span class="zh-empty-link-icon">${hi('chat',22)}</span><strong>Your chats</strong><span>Keep the conversation going</span>${hi('arrow',16)}</button><button type="button" aria-label="Find a creator" onclick="go('search')"><span class="zh-empty-link-icon">${hi('srch',22)}</span><strong>Find your people</strong><span>Search for a creator you love</span>${hi('arrow',16)}</button></div>`;
 }
 function homeDashboard(){
@@ -9161,7 +9466,7 @@ function homeDashboard(){
   const featured=all.find(h=>h.id===Home.featured?.id&&reachable(h))||hosts.live[0]||all.find(reachable)||all[0],remaining=featured?all.filter(h=>h.id!==featured.id):[];
   const hero=pending?homeDashboardHeroSkeleton():!error&&featured?homeDashboardCard(featured,true):'';
   const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div class="zh-grid">${remaining.map(h=>homeDashboardCard(h)).join('')}</div>`:!featured?homeDashboardEmpty():'';
-  return `<div class="zh-home zh-dashboard"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${homeDashboardFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}${!pending&&!error?window.ZimiAds?.card('home')||'':''}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>Connect 1:1</h2><div class="zh-live-tools"><button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
+  return `<div class="zh-home zh-dashboard"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardHostEntry()}${homeDashboardStories(hosts,pending,error,more)}${homeDashboardFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}${!pending&&!error?window.ZimiAds?.card('home')||'':''}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>Connect 1:1</h2><div class="zh-live-tools"><button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
 }
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
@@ -9276,6 +9581,12 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   let facingMode = 'user', playbackMuted = false, handoffCall = null;
   const peers = new Map(), earlySignals = [];
   const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
+  /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
+     portrait size made the browser crop a narrow strip out of each frame (the zoomed preview);
+     'none' keeps the camera's own framing so a full-screen video looks like a normal call. */
+  const CAMERA_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' };
+  /* Last known frame shape per stream, so a redrawn video is laid out before its metadata loads. */
+  const shapes = { local: '', remote: '' };
 
   function status(message, error) {
     if (typeof Home !== 'undefined') Home.mediaStatus = message;
@@ -9323,6 +9634,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     clearPeers();
     stopTracks(local);
     local = null;
+    shapes.local = shapes.remote = '';
     if (configRequest) {
       const pending = configRequest;
       configRequest = null;
@@ -9340,6 +9652,21 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v);
     return inCall && typeof camOn === 'function' ? !!camOn() : S.cam !== 0;
   }
+  /* data-zimi-shape lets full-screen stages fill the screen with portrait frames and show
+     landscape ones (tablets, desktop webcams) whole instead of zooming into them. */
+  function watchShape(el, kind) {
+    if (shapes[kind]) el.dataset.zimiShape = shapes[kind];
+    if (el.zimiShapeWatched) return;
+    el.zimiShapeWatched = true;
+    const update = () => {
+      if (!el.videoWidth || !el.videoHeight) return;
+      const shape = el.videoWidth > el.videoHeight ? 'landscape' : 'portrait';
+      el.dataset.zimiShape = shape;
+      if (el.srcObject && el.srcObject === (kind === 'local' ? local : remote)) shapes[kind] = shape;
+    };
+    el.addEventListener('loadedmetadata', update);
+    el.addEventListener('resize', update);
+  }
   function attach() {
     if (switchingStream) switchingStream.getVideoTracks().forEach(track => { track.enabled = cameraEnabled(); });
     if (local) {
@@ -9352,6 +9679,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
       document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
         el.muted = kind === 'local' || playbackMuted;
         if (kind === 'local') el.dataset.zimiFacing = facingMode;
+        if (el.tagName === 'VIDEO') watchShape(el, kind);
         if (el.srcObject === stream) return;
         el.srcObject = stream;
         el.playsInline = true;
@@ -9388,7 +9716,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     stopTracks(local);
     local = null;
     const version = generation;
-    const pending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } } : false });
+    const pending = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { facingMode: 'user', ...CAMERA_SIZE } : false });
     capture = pending;
     try {
       const stream = await pending;
@@ -9446,7 +9774,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
         const alternatives = settings.deviceId ? devices.filter(device => device.deviceId && device.deviceId !== settings.deviceId) : [];
         const matching = alternatives.find(device => (nextFacing === 'environment' ? /back|rear|environment/i : /front|user|facetime/i).test(device.label));
         const device = matching || alternatives[0];
-        const video = { width: { ideal: 720 }, height: { ideal: 1280 }, ...(device ? { deviceId: { exact: device.deviceId } } : { facingMode: { exact: nextFacing } }) };
+        const video = { ...CAMERA_SIZE, ...(device ? { deviceId: { exact: device.deviceId } } : { facingMode: { exact: nextFacing } }) };
         try {
           acquired = await navigator.mediaDevices.getUserMedia({ audio: false, video });
         } catch (error) {
@@ -9777,6 +10105,7 @@ const Room = {
   key: '', sheet: '', requests: [], ownRequestId: null, queueCount: 0,
   queueLoading: false, queueError: '', busy: false, transition: null,
   likes: 0, supporters: [], received: 0, gift: null, giftIds: new Set(), reactionIds: new Set(),
+  giftMotion: null, giftTimer: null,
   goal: 17000, goalTitle: 'Studio Mic Upgrade', goalEnabled: false,
   draft: '', chatOpen: false, effects: 'original', playbackMuted: false, reactionAt: 0,
   startedAt: 0, confirm: '', focus: null, link: null, linkLoading: false, shareLink: ''
@@ -9798,6 +10127,7 @@ function zrPerson(){const p=zrIsCall()?(S.v==='hcall'?S.caller:g(S.h)):(Home.hos
 function zrEnsure(){
   const key=S.v==='live'?Home.stream?.id:(S.callId||'preview-call');
   if(!key||Room.key===key)return;
+  zrClearGiftMotion();
   Room.shareLink='';
   Object.assign(Room,{key,sheet:'',requests:[],ownRequestId:null,queueCount:0,queueLoading:false,queueError:'',busy:false,likes:0,supporters:[],received:0,gift:null,giftIds:new Set(),reactionIds:new Set(),draft:'',chatOpen:false,playbackMuted:false,goalEnabled:false,confirm:'',effects:'original',startedAt:Date.parse(Home.stream?.createdAt)||Date.now()});
   if(DEMO&&S.v==='live')zrDemoRoom();
@@ -9809,7 +10139,32 @@ function zrIdentity(p,host,call){
   return `<header class="zr-header"><div class="zr-identity">${zrAvatar(p)}<div class="zr-person"><strong>${esc(p?.n||'Live creator')}</strong><span><i></i>${call?'PRIVATE CALL':'LIVE'}${host&&!call?' <b data-room-clock>00:00</b>':''}</span></div>${!host&&!call?`<button class="zr-follow ${S.following[p?.id]?'is-following':''}" onclick="toggleFollow('${domId(p?.id||'')}',event)" aria-label="${S.following[p?.id]?'Unfollow':'Follow'} ${esc(p?.n||'creator')}">${S.following[p?.id]?'Following':'+ Follow'}</button>`:''}</div><div class="zr-header-right">${call?`<span class="zr-pill zr-timer">${hi('lock',12)} <span id="ck">${clock(S.sec)}</span></span>`:host?`<button class="zr-pill zr-earnings" onclick="zrOpen('supporters')" aria-label="Session gifts">${hi('coin',13)} ${homeCompact(Room.received)}</button>`:''}${!call?`<button class="zr-pill zr-viewers" onclick="zrOpen('audience')" aria-label="Live viewers">${hi('eye',14)} <span data-room-viewers>${homeCompact(Home.stream.viewers)}</span></button>`:''}${zrRound('close',call?'End call':host?'End broadcast':'Leave live',"zrExit()",'zr-close')}</div></header>`;
 }
 function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p?homeCover(p,true):''}${voice?`<div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>Just you. Just a conversation.</span></div><audio data-zimi-remote autoplay></audio>`:`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO&&!zrIsCall()?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
-function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${gift.mediaUrl?`<img src="${homeGiftUrl(gift.mediaUrl)}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${gift.sent?'':'+'}${n(gift.coins)} coins ${gift.sent?'sent':'received'}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=homeGiftUrl(gift.mediaUrl);return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${gift.sent?'':'+'}${n(gift.coins)} coins ${gift.sent?'sent':'received'}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+/* Keep the event's original clock across screen redraws. Negative animation delay
+   resumes the celebration instead of replaying it when chat or controls change. */
+function zrGiftCelebration(){
+  const motion=Room.giftMotion,gift=Room.gift;
+  if(!motion||!gift||motion.key!==Room.key)return '';
+  const elapsed=Math.max(0,Date.now()-motion.at);
+  if(elapsed>=motion.life)return '';
+  const media=homeGiftUrl(gift.mediaUrl),large=gift.coins>=19999;
+  return `<div class="zr-gift-celebration ${large?'is-large':''}" aria-hidden="true" style="--gift-age:-${elapsed}ms;--gift-life:${motion.life}ms">
+    <div class="zr-gift-halo"></div><div class="zr-gift-wave"></div>
+    <div class="zr-gift-sparks">${Array.from({length:large?14:8},(_,i)=>`<i style="--spark-angle:${i*(large?360/14:45)}deg;--spark-distance:${large?115:86}px"></i>`).join('')}</div>
+    <div class="zr-gift-stage-art">${media?`<img src="${media}" alt="">`:`<span>${esc(gift.emoji||'🎁')}</span>`}</div>
+    <div class="zr-gift-caption"><strong>${esc(gift.giftName)}</strong><span>${esc(gift.name)} <b>+${n(gift.coins)}</b></span></div>
+  </div>`;
+}
+function zrClearGiftMotion(){
+  clearTimeout(Room.giftTimer);Room.giftTimer=null;Room.giftMotion=null;Room.gift=null;
+  document.querySelectorAll('.zr-gift-celebration,.zr-gift-alert').forEach(el=>el.remove());
+}
+function zrStartGiftMotion(){
+  clearTimeout(Room.giftTimer);
+  const motion={key:Room.key,at:Date.now(),life:Room.gift.coins>=19999?3200:2400};
+  Room.giftMotion=motion;
+  Room.giftTimer=setTimeout(()=>{if(Room.giftMotion===motion)zrClearGiftMotion()},motion.life);
+}
 function zrSupporterStrip(){return `<div class="zr-supporters">${Room.supporters.slice(0,2).map((p,i)=>`<button onclick="zrOpen('supporters')">${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl,gender:p.gender},23)}<b class="zr-rank">${i+1}</b><strong>${esc(p.name)}</strong><span>${homeCompact(p.coins)}</span></button>`).join('')}<button class="zr-explore" onclick="zrOpen('supporters')">${hi('cup',14)} Supporters ${hi('chev',12)}</button></div>`}
 function zrGoal(){if(!Room.goalEnabled)return '';const percent=Math.min(100,Math.round(Room.received/Room.goal*100));return `<button class="zr-goal" onclick="zrOpen('goal')" aria-label="Edit session gift goal"><span>${hi('mic',15)}<strong>Goal: ${esc(Room.goalTitle)}</strong><small>${homeCompact(Room.received)} / ${homeCompact(Room.goal)} coins (${percent}%)</small></span><span class="zr-progress" role="progressbar" aria-label="Session gift goal" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></span></button>`}
 function zrTool(icon,label,action,badge='',active=false){return `<button type="button" class="zr-tool ${active?'is-active':''}" onclick="${action}" aria-label="${esc(label)}" ${['Mute','Unmute','Camera off','Camera on'].includes(label)?`aria-pressed="${active}"`:''}><span>${hi(icon,21)}${badge?`<b>${esc(badge)}</b>`:''}</span><small>${esc(label)}</small></button>`}
@@ -9823,7 +10178,7 @@ function zrHostQueue(){const request=Room.requests[0];return `${request?`<aside 
 function zrLive(){
   if(!Home.stream)return '<div class="zh-empty"><h3>This live has ended.</h3><button onclick="go(\'home\')">Back to Home</button></div>';
   zrEnsure();const host=Home.hosting,p=zrPerson();
-  return `<section class="zh-room zr-room ${host?'zr-host':'zr-viewer'}" aria-label="${host?'Your live broadcast':'Live broadcast'}">${zrBackdrop(p,host)}<div class="zr-top">${host?'<div class="zr-diagnostics"><span><i></i><i></i><i></i><i></i> LIVE STUDIO</span><b data-room-quality>Camera ready</b></div>':''}${zrIdentity(p,host,false)}${host?zrSupporterStrip()+zrGoal():zrRequestBar()}${zrGiftBanner()}${host?zrStatus():''}</div>${host?zrTools():''}<div class="zr-floating-hearts" aria-hidden="true"></div><div class="zr-bottom">${!host?zrStatus():''}<div class="zr-messages" id="home-room-messages" role="log" aria-label="Live chat" aria-live="polite">${zrMessageHTML()}</div>${host?zrHostQueue():''}${zrChat(false,host)}${DEMO?'<span class="zr-demo-note">Interactive preview · sample activity</span>':''}</div>${zrSheet()}${homeGiftSheet()}</section>`;
+  return `<section class="zh-room zr-room ${host?'zr-host':'zr-viewer'}" aria-label="${host?'Your live broadcast':'Live broadcast'}">${zrBackdrop(p,host)}<div class="zr-top">${host?'<div class="zr-diagnostics"><span><i></i><i></i><i></i><i></i> LIVE STUDIO</span><b data-room-quality>Camera ready</b></div>':''}${zrIdentity(p,host,false)}${host?zrSupporterStrip()+zrGoal():zrRequestBar()}${zrGiftBanner()}${host?zrStatus():''}</div>${host?zrTools():''}<div class="zr-floating-hearts" aria-hidden="true"></div><div class="zr-bottom">${!host?zrStatus():''}<div class="zr-messages" id="home-room-messages" role="log" aria-label="Live chat" aria-live="polite">${zrMessageHTML()}</div>${host?zrHostQueue():''}${zrChat(false,host)}${DEMO?'<span class="zr-demo-note">Interactive preview · sample activity</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
@@ -9839,15 +10194,53 @@ function zrChooseGift(id){if(!zrIsCall()||zrIsHost()||Home.giftBusy)return;homeG
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
 function zrCallChat(){Room.chatOpen=!Room.chatOpen;r();if(Room.chatOpen)document.getElementById('rmsg')?.focus();else document.querySelector('.zr-call-chat-toggle')?.focus({preventScroll:true})}
 function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
+/* A host starts with their own camera on the main stage, as in the setup preview.
+   Swapping changes only the two media elements' placement, never their tracks. */
+function zrHostStage(p,voice){
+  if(voice)return zrBackdrop(p,false,true);
+  const localMain=!S.swap,localPip=!!S.swap;
+  return `<div class="zr-video zr-reference-stage ${localMain?'zr-local':''} ${localMain&&!S.cam?'camera-off':''}">${localMain?hcStageVideo():'<video data-zimi-remote autoplay playsinline></video>'}${localMain&&!S.cam?`<div class="zr-camera-off">${hcIdentityAvatar(me,104)}<span>Camera off</span></div>`:''}<div class="zr-shade"></div></div>
+    <button type="button" class="zr-pip ${localPip&&!S.cam?'camera-off':''}" aria-label="Swap videos" onclick="S.swap=!S.swap;r()"><video ${localPip?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>${localPip&&!S.cam?hi('camoff',21):''}<span>${localPip?'You':esc(first(p.n))}${localPip&&!S.mic?hi('micoff',12):''}</span></button>`;
+}
+function zrHostReferenceCall(p,voice){
+  const publicId=p.publicId||p.uid||p.id;
+  return `<section class="zh-room zr-room zr-call zr-call-reference ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrHostStage(p,voice)}
+    <div class="zr-top"><header class="zr-call-toolbar">
+      ${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}
+      <div class="zr-host-clock"><span class="zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-clock-divider" aria-hidden="true"></span>${hcVisPill()}</div>
+      <span class="zr-session-earned" title="${n(Math.round(S.earned||0))} coins this session"><small>This session</small><b id="earn">${coinIcon(14)}+${kfmt(Math.round(S.earned||0))}</b></span>
+      ${zrRound('callmore','Call options',"zrOpen('host-options')",'zr-host-more')}
+    </header><div class="zr-call-stats">${typeof hsTargets==='function'?hsTargets():''}</div>${hcFeeChip()}${zrGiftBanner()}</div>
+    <div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>
+      ${typeof hsGiftRail==='function'?hsGiftRail():''}${Room.chatOpen?zrCallComposer():''}
+      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button>
+        <div class="zr-call-person">${hcIdentityAvatar(p,38)}<div><strong>${esc(p.n)}</strong><span>${publicId?`ID ${esc(publicId)}`:'Private call'}</span></div></div>
+        <button type="button" class="zr-call-target" onclick="hsOpenSheet('gift-target')" aria-label="Choose gift target">${hi('plus',15)}</button>
+        <button type="button" class="zr-hangup" onclick="hostEnd('end')" aria-label="End call">${hi('ph',23)}</button>
+        ${zrRound('gift','Gift target',"hsOpenSheet('gift-target')",'zr-dock-controls')}
+      </div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
+    </div>${zrGiftCelebration()}${zrSheet()}${typeof hsSheet==='function'?hsSheet():''}${hcCallExtras()}</section>`;
+}
+function zrHostOptions(){
+  const voice=!!zrPerson()?.voice,effect=typeof HostStudio!=='undefined'?HostStudio.previewEffect:'original';
+  return `<div class="zr-options-backdrop" onclick="if(event.target===this)zrClose()"><section class="zr-host-options" role="dialog" aria-modal="true" aria-label="Call options">
+    ${!voice?`<button type="button" onclick="Room.sheet='';hsOpenSheet('appearance')" aria-label="Beauty and filters">${hi('star',17)}<span>Beauty &amp; filters</span><em>${effect==='original'?'Off':effect[0].toUpperCase()+effect.slice(1)}</em></button>`:''}
+    <button type="button" onclick="zrMic()" aria-label="${S.mic?'Mute microphone':'Unmute microphone'}" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',17)}<span>${S.mic?'Mute':'Unmute'}</span><em class="${S.mic?'is-on':'is-off'}">${S.mic?'Mic on':'Muted'}</em></button>
+    ${!voice?`<button type="button" onclick="zrCamera()" aria-label="${S.cam?'Turn camera off':'Turn camera on'}" aria-pressed="${!S.cam}">${hi(S.cam?'vid':'camoff',17)}<span>${S.cam?'Turn camera off':'Turn camera on'}</span><em class="${S.cam?'is-on':'is-off'}">${S.cam?'On':'Off'}</em></button>`:''}
+    ${voice?`<button type="button" onclick="zrSound()" aria-label="${Room.playbackMuted?'Unmute caller':'Mute caller'}">${hi(Room.playbackMuted?'micoff':'mic',17)}<span>${Room.playbackMuted?'Unmute caller':'Mute caller'}</span><em class="${Room.playbackMuted?'is-off':'is-on'}">${Room.playbackMuted?'Muted':'On'}</em></button>`:''}
+  </section></div>`;
+}
 function zrCall(host){
   zrEnsure();const p=zrPerson(),voice=S.v==='voice'||!!p?.voice;
   if(!p)return '<div class="zh-empty">This call has ended.<button onclick="go(\'home\')">Back to Home</button></div>';
-  return `<section class="zh-room zr-room zr-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}<div class="zr-top"><div class="zr-call-heading"><div><strong>BinzoLive <span>· 1:1 ${voice?'voice':'video'} call</span></strong><p>Content is user-generated and unverified.</p></div>${hi('lock',15)}</div><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span>${host?hcVisPill():''}<span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats(host)}${host?hcFeeChip():''}${zrGiftBanner()}</div>${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}<div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(host)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${zrCallGifts(host)}${Room.chatOpen?zrCallComposer():''}<div class="zr-call-dock"><button class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button><div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${host?`${hi('lock',12)} Private conversation`:`${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small>`}</span></div></div>${!host?`<button class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>`:''}<button class="zr-hangup" onclick="${host?"hostEnd('end')":"endCall()"}" aria-label="End call">${hi('ph',23)}</button>${zrRound('callgrid','Call controls',"zrOpen('call-controls')",'zr-dock-controls')}</div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}</div>${zrSheet()}${homeGiftSheet()}${host?hcCallExtras():''}</section>`;
+  if(host)return zrHostReferenceCall(p,voice);
+  return `<section class="zh-room zr-room zr-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}<div class="zr-top"><div class="zr-call-heading"><div><strong>BinzoLive <span>· 1:1 ${voice?'voice':'video'} call</span></strong><p>Content is user-generated and unverified.</p></div>${hi('lock',15)}</div><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span>${host?hcVisPill():''}<span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats(host)}${host?hcFeeChip():''}${zrGiftBanner()}</div>${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}<div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(host)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${zrCallGifts(host)}${Room.chatOpen?zrCallComposer():''}<div class="zr-call-dock"><button class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button><div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${host?`${hi('lock',12)} Private conversation`:`${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small>`}</span></div></div>${!host?`<button class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>`:''}<button class="zr-hangup" onclick="${host?"hostEnd('end')":"endCall()"}" aria-label="End call">${hi('ph',23)}</button>${zrRound('callgrid','Call controls',"zrOpen('call-controls')",'zr-dock-controls')}</div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}${host?hcCallExtras():''}</section>`;
 }
 function zrOpen(sheet){Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r()}
 function zrClose(){Room.sheet='';Room.confirm='';S.confirm=0;r()}
 function zrSheet(){
   const sheet=Room.sheet;if(!sheet)return '';const host=zrIsHost();let title='',content='';
+  if(sheet==='host-options')return zrHostOptions();
   if(sheet==='call-controls'){
     const voice=S.v==='voice'||!!zrPerson()?.voice;
     title='Call controls';content=`<p class="zr-sheet-note">Just the two of you. Manage your microphone${voice?'':' and camera'} during this call.</p><div class="zr-call-controls">${zrTool(S.mic?'mic':'micoff',S.mic?'Mute':'Unmute',"zrMic()",'',!S.mic)}${!voice?zrTool(camOn()?'vid':'camoff',camOn()?'Camera off':'Camera on',"zrCamera()",'',!camOn())+zrTool('flip','Flip camera',"zrFlip()"):''}${zrTool(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Sound on':'Sound off',"zrSound()",'',Room.playbackMuted)}</div><button class="zr-wide zr-danger" onclick="zrExit()">End call</button>`;
@@ -9904,7 +10297,7 @@ function zrAfter(focus){
   zrLinkSheet();
   const room=document.querySelector('.zr-room');document.documentElement.classList.toggle('zr-active',!!room);if(!room)return;
   if(focus&&!Room.sheet&&!Home.giftTo){const input=document.getElementById(focus.id);if(input){input.value=Room.draft;input.focus({preventScroll:true});input.setSelectionRange(focus.start,focus.end)}}
-  const sheet=document.querySelector('.zr-sheet');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button,input')?.focus({preventScroll:true});
+  const sheet=document.querySelector('.zr-sheet,.zr-host-options');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button,input')?.focus({preventScroll:true});
   const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight;
   zrUpdateDiagnostics();
 }
@@ -9921,12 +10314,17 @@ Native.on('stream.request.updated',d=>{if(Home.stream?.id!==d.streamId)return;Ro
 Native.on('stream.reaction',d=>{if(Home.stream?.id!==d.streamId||d.id&&Room.reactionIds.has(d.id))return;if(d.id){Room.reactionIds.add(d.id);if(Room.reactionIds.size>500)Room.reactionIds.delete(Room.reactionIds.values().next().value)}Room.likes++;zrHeart()});
 Native.on('stream.gift',d=>{if(Home.stream?.id!==d.streamId)return;zrReceiveGift(d)});
 function zrReceiveGift(d){
+  if(!zrIsCall()&&S.v!=='live')return;
+  if(zrIsCall()&&d.callId&&d.callId!==S.callId)return;
+  zrEnsure();
   const id=d.id||d._id||d.transactionId;if(id&&Room.giftIds.has(id))return;if(id){Room.giftIds.add(id);if(Room.giftIds.size>500)Room.giftIds.delete(Room.giftIds.values().next().value)}
   const coins=Number(d.totalCoins??d.coins??d.amount)||0,gift=typeof d.gift==='object'?d.gift:null;
   const name=d.senderName||d.from?.name||d.sender?.name||d.name||'A supporter',userId=d.senderId||d.from?.id||d.from||d.sender?.id||name;
   const previous=Room.gift;Room.gift={name,sent:userId==='you',giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,coins,combo:previous?.name===name?previous.combo+1:1};
   Room.received+=coins;let p=Room.supporters.find(x=>x.id===userId);if(p)p.coins+=coins;else Room.supporters.push({id:userId,name,coins,avatarUrl:d.senderAvatarUrl||d.sender?.avatarUrl,gender:d.senderGender||d.sender?.gender});Room.supporters.sort((a,b)=>b.coins-a.coins);
   if(zrIsCall()){S.rmsgs.push(['gift',name,`sent ${Room.gift.emoji} ${Room.gift.giftName}`]);if(S.v==='hcall'){S.earned=(S.earned||0)+coins;S.recvN=(S.recvN||0)+1;S.gifted=(S.gifted||0)+coins}}
+  if(S.v==='hcall'&&userId!=='you'&&typeof hsReceiveGift==='function')hsReceiveGift(d);
+  zrStartGiftMotion();
   if(S.v==='live'||zrIsCall())r();
 }
 Native.on('gift.received',d=>{if(zrIsCall())zrReceiveGift(d)});
@@ -9955,10 +10353,10 @@ Native.on('stream.privateCall',async d=>{
   try{await window.ZimiMedia.prepare(true);if(Room.transition!==d.callId||!zrIsCall()||S.callId!==d.callId)return;Native.receive({type:'call.connected',data:d});r()}
   catch(error){if(Room.transition===d.callId){Native.send('call.end',{callId:d.callId,reason:'media_failed'});if(zrIsCall())endCall(true);appNotice(error.message)}}
 });
-['session.none','session.expired'].forEach(type=>Native.on(type,()=>{Room.key='';Room.transition=null;Room.sheet='';Room.draft='';Room.shareLink='';zrLinkDismiss()}));
-document.addEventListener('aurora:navigate',()=>{if(S.v==='live'){zrEnsure();if(!DEMO&&!Home.streamBusy)zrLoadQueue()}else if(!zrIsCall()){Room.sheet='';Room.key='';Room.transition=null;Room.draft=''}});
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{zrClearGiftMotion();Room.key='';Room.transition=null;Room.sheet='';Room.draft='';Room.shareLink='';zrLinkDismiss()}));
+document.addEventListener('aurora:navigate',()=>{if(S.v==='live'){zrEnsure();if(!DEMO&&!Home.streamBusy)zrLoadQueue()}else if(!zrIsCall()){zrClearGiftMotion();Room.sheet='';Room.key='';Room.transition=null;Room.draft=''}});
 document.addEventListener('keydown',event=>{
-  const dialog=document.querySelector('.zr-link-overlay .zr-sheet')||document.querySelector('.zr-sheet');if(!dialog)return;
+  const dialog=document.querySelector('.zr-link-overlay .zr-sheet')||document.querySelector('.zr-sheet,.zr-host-options');if(!dialog)return;
   if(event.key==='Escape'){event.preventDefault();dialog.closest('.zr-link-overlay')?zrLinkDismiss():zrClose()}
   if(event.key==='Tab'){const elements=[...dialog.querySelectorAll('button:not(:disabled),input,select,a[href]')];if(!elements.length)return;const first=elements[0],last=elements.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}
 });
@@ -10027,7 +10425,26 @@ if(DEMO&&['precall','precall-offline'].includes(previewMode)){
    while a call is in progress (decline or switch, never a busy signal), and the entry fee
    that unlocks once a call lasts the hold. The call screen itself is zrCall in live-room.js. */
 /* preview: '' until the host asks to check their camera, then 'starting', 'ready' or 'failed'. */
-const HostCalls = { status: null, loading: false, preview: '', previewError: '', previewRun: 0, visBusy: false };
+const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false };
+
+function hcIdentityAvatar(person, size = 104) {
+  const name = String(person?.n || person?.name || 'Host').trim();
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => Array.from(part)[0]).join('').toUpperCase();
+  const src = person ? avatarSource(person) : '';
+  const hue = person === me ? 19 : (seedOf(person?.id || name) % 220) + 90;
+  return `<span class="hc-identity-avatar" style="width:${size}px;height:${size}px;--hc-avatar-hue:${hue}"><b style="font-size:${Math.max(11, Math.round(size * .34))}px">${esc(initials)}</b>${src ? `<img src="${src}" alt="${esc(name)}" onerror="this.remove()">` : ''}</span>`;
+}
+/* The host's own camera across the whole screen. The second, muted copy is a soft fill shown
+   only behind a landscape camera, which is displayed whole rather than cropped. */
+function hcStageVideo() {
+  return '<video data-zimi-local autoplay muted playsinline></video><video data-zimi-local data-zimi-fill autoplay muted playsinline></video>';
+}
+
+/* The same entrance timeline survives status acknowledgments and other redraws. */
+function hcSceneStyle(scene) {
+  if (HostCalls.scene !== scene) { HostCalls.scene = scene; HostCalls.sceneAt = Date.now(); }
+  return `--hc-enter-age:-${Math.min(500, Math.max(0, Date.now() - HostCalls.sceneAt))}ms`;
+}
 
 function hcHold(seconds) {
   const s = Number(seconds) || 0;
@@ -10043,46 +10460,58 @@ function hcFeePending() { return !!S.callFee && !S.feeOk; }
 /* ---- Before going online ---- */
 function hcRateCard() {
   const st = HostCalls.status;
-  if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}</div>`;
+  if (HostCalls.error) return `<div class="hc-card hc-status-error" role="alert"><span>${esc(HostCalls.error)}</span><button type="button" onclick="hcLoadStatus()">${hi('refresh', 14)} Retry call details</button></div>`;
+  if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}<div class="hc-tiers" aria-hidden="true">${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}</div></div>`;
   const tiers = st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
   return `<div class="hc-card">
-    <div class="hc-card-head"><span>${coinIcon(16)} <b>${st.rate ? `${n(st.rate)} coins / min` : 'Free calls'}</b></span>${tiers.length ? `<small>Tier ${st.tier} of ${tiers.length}</small>` : ''}</div>
-    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate)}/min</span>`).join('')}</div>` : ''}
-    ${next ? `<small class="hc-next">Earn ${n(Math.max(0, next.atCoins - st.earnedCoins))} more coins to unlock ${n(next.rate)}/min</small>` : tiers.length ? '<small class="hc-next">You have reached the top call price</small>' : ''}
-    ${fee ? `<div class="hc-fee-line">${hi('clock', 15)}<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. It is yours once the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span></div>` : ''}
+    <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)}/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} left to upgrade</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Your call rate</small>'}</button>
+    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)}/h</span>`).join('')}</div>` : ''}
+    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Earn ${n(Math.max(0, next.atCoins - st.earnedCoins))} more coins to unlock ${n(next.rate)}/min</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. It is yours once the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}</div>` : ''}
   </div>`;
 }
 function hcVisibilityRow() {
   const on = S.callVis !== false;
   return `<button type="button" class="hc-toggle" role="switch" aria-checked="${on}" onclick="hcToggleVisible()" ${HostCalls.visBusy ? 'disabled' : ''}>
-    <span><b>Available on Home during calls</b><small>${on ? 'Members can still find you and call while you’re talking. New calls ring as a banner on your call.' : 'While you’re on a call, members see you as unavailable.'}</small></span>
+    <span><b>Online on Home during calls</b><small>${on ? 'Others can still find you and call while you’re on a call.' : 'You’re hidden from Home while you’re on a call.'}</small></span>
     <i class="hc-switch ${on ? 'is-on' : ''}" aria-hidden="true"></i></button>`;
 }
 function hcSetupView() {
   const cam = !!S.cam, p = HostCalls.preview;
-  const status = !cam ? 'Camera is off · callers see your profile photo'
-    : p === 'ready' ? 'Camera ready' : p === 'starting' ? 'Starting camera…' : p === 'failed' ? HostCalls.previewError : 'See how you look before callers do';
+  const status = !cam ? 'Camera is off'
+    : p === 'ready' ? 'Camera ready' : p === 'starting' ? 'Starting camera…' : p === 'failed' ? HostCalls.previewError : '';
   /* The camera only starts when the host asks; opening this screen never captures anything. */
   const check = cam && (!p || p === 'failed') ? `<button type="button" class="hc-check" onclick="hcStartPreview()">${hi('vid', 15)}${p ? 'Try again' : 'Check camera'}</button>` : '';
-  return `<section class="zh-broadcast hc-setup"><span class="zh-eyebrow">LET’S TALK</span><h1>Be someone’s favourite conversation.</h1>
-    <p>Check your camera, then go online. Members call you for private one-to-one video and voice calls.</p>
-    <div class="zh-camera-preview hc-preview ${cam && p === 'ready' ? '' : 'is-off'}"><video data-zimi-local autoplay muted playsinline></video>
-      <span>${hi(cam ? 'vid' : 'camoff', 38)}<b>${esc(status)}</b>${check}</span><i class="hc-guide" aria-hidden="true"></i>
-      <div class="hc-preview-tools">
+  return `<section class="hc-setup hc-preview ${cam && p === 'ready' ? '' : 'is-off'}" aria-label="Get ready to go online">
+    <div class="hc-stage" aria-hidden="true">${hcStageVideo()}</div><div class="hc-stage-shade" aria-hidden="true"></div>
+    <header class="hc-setup-header">${backButton("go('home')")}<div class="hc-preview-tools">
         <button type="button" onclick="hcSetupMic()" aria-pressed="${!S.mic}" aria-label="${S.mic ? 'Mute microphone' : 'Unmute microphone'}">${hi(S.mic ? 'mic' : 'micoff', 18)}</button>
-        <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'flip' : 'camoff', 18)}</button>
+        <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'vid' : 'camoff', 18)}</button>
+      </div></header>
+    <div class="hc-setup-panels">${hcRateCard()}${hcVisibilityRow()}</div>
+    <div class="hc-camera-space"><i class="hc-guide" aria-hidden="true"></i>
+      <div class="hc-camera-message" ${p === 'failed' ? 'role="alert"' : p === 'starting' ? 'role="status" aria-busy="true"' : ''}>
+        ${status ? `<b>${esc(status)}</b>` : ''}
+        ${!cam || p === 'starting' || p === 'failed' ? `<p>${!cam ? 'Callers will see your profile photo.' : p === 'starting' ? 'Allow camera and microphone access to see your preview.' : 'Check camera and microphone access, then try again.'}</p>` : ''}${check}
       </div></div>
-    ${hcRateCard()}${hcVisibilityRow()}
-    <button class="zh-primary zh-full" onclick="homeSetPresence(true)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Connecting…' : 'Go online for calls'}</button>
-    <p class="hc-note">A call that comes in while you are talking rings as a banner, and you choose whether to switch. Nobody is told you are busy.</p></section>`;
+    <p class="hc-camera-hint">Keep centred, head and shoulders in frame</p>
+    <footer class="hc-setup-footer"><button type="button" class="hc-setup-tool" aria-label="Beauty and filters" onclick="hsOpenSheet('appearance')">${hi('star', 19)}</button>
+      <button type="button" class="hc-primary" onclick="homeSetPresence(true)" aria-label="Go online for calls" aria-busy="${!!Home.presenceBusy}" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Connecting…' : 'Go online'}</button>
+      <button type="button" class="hc-setup-tool" aria-label="Mission" onclick="hsOpenSheet('mission')">${hi('cup', 19)}</button>
+      <button type="button" class="hc-setup-tool" aria-label="Gift target" onclick="hsOpenSheet('gift-target')">${hi('gift', 19)}</button></footer>${typeof hsSheet === 'function' ? hsSheet() : ''}</section>`;
 }
 function hcWaitingView() {
-  return `<section class="zh-broadcast hc-waiting"><span class="zh-eyebrow">OPEN TO CONNECTIONS</span><h1>You’re online.</h1>
-    <p>Members can discover you and start a call while you’re available. Incoming calls ring wherever you are in the app.</p>
-    <div class="zh-ready-illustration">${hi('ph', 52)}</div>${hcRateCard()}${hcVisibilityRow()}
-    <button class="zh-primary zh-full" onclick="go('home')">Explore BinzoLive</button>
-    <button class="zh-soft zh-full" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>Go offline</button>
-    <p class="zh-coins-note">Keep the app connected to receive incoming calls.</p></section>`;
+  return `<section class="hc-waiting" style="${hcSceneStyle('waiting')}" aria-label="Online and waiting for calls">
+    <div class="hc-waiting-main"><div class="hc-host-avatar is-waiting">${hcIdentityAvatar(me, 104)}<i aria-hidden="true"></i><i aria-hidden="true"></i></div>
+    <h1>You’re online</h1><p class="hc-waiting-status">Waiting for callers… ${S.vis ? 'you’re visible on Home.' : 'you’re hidden from Home.'}</p>
+    <p class="hc-waiting-note">You stay online when you leave this screen. Incoming calls ring wherever you are in the app. Keep the app connected so you don’t miss a call.</p>
+    <div class="hc-waiting-actions"><button type="button" class="hc-primary" onclick="go('home')">Browse the app</button>
+    <button type="button" class="hc-offline" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Going offline…' : 'Go offline'}</button></div></div>
+    </section>`;
+}
+function hcLoadStatus() {
+  if (HostCalls.loading || !isApprovedHost()) return;
+  HostCalls.loading = true; HostCalls.error = '';
+  Native.send('host.callStatus.load', {}); r();
 }
 function hcStartPreview() {
   if (!S.cam || S.v !== 'setup' || HostCalls.preview === 'starting') return;
@@ -10113,10 +10542,10 @@ function hcVisPill() {
 function hcFeeChip() { return S.callFee && feeShown() ? `<div class="hc-fee ${S.feeOk ? 'ok' : ''}" id="fee" role="status">${feeChip()}</div>` : ''; }
 function hcIncoming() {
   const c = S.inc, name = esc(c.n);
-  return `<aside class="hc-incoming" role="alertdialog" aria-label="Incoming call from ${name}">${zrAvatar(c, 42)}
+  return `<aside class="hc-incoming" role="alertdialog" aria-label="Incoming call from ${name}">${hcIdentityAvatar(c, 42)}
     <div><strong>${name}</strong><span>is calling you${c.lvl ? ` · Lv ${esc(c.lvl)}` : ''} · ${c.voice ? 'Voice' : 'Video'}</span></div>
-    <button class="hc-decline" onclick="declineInc()" aria-label="Decline ${name}">${hi('close', 19)}</button>
-    <button class="hc-accept" onclick="hostEnd('switch')" aria-label="Switch to ${name}">${hi(c.voice ? 'ph' : 'vid', 18)}<span>Switch</span></button></aside>`;
+    <button class="hc-decline" onclick="declineInc()" aria-label="Decline ${name}">${hi('ph', 19)}</button>
+    <button class="hc-accept" onclick="hostEnd('switch')" aria-label="Switch to ${name}">${hi(c.voice ? 'ph' : 'vid', 19)}</button></aside>`;
 }
 function hcConfirm() {
   const k = S.confirm, left = Math.max(0, (S.feeHold || 0) - (S.sec - S.cstart)), nth = (S.early || 0) + 1;
@@ -10124,12 +10553,13 @@ function hcConfirm() {
   const warn = !penalty ? `This would be early ending ${nth} today.`
     : nth > limit ? `This would be early ending ${nth} today. Past ${n(limit)} a day, it takes ${n(penalty)} coins from your earnings.`
     : `This would be early ending ${nth} today. Past ${n(limit)} a day, each one takes ${n(penalty)} coins from your earnings.`;
-  return `<div class="zr-sheet-backdrop" onclick="if(event.target===this){S.confirm=0;r()}"><section class="zr-sheet hc-confirm" role="dialog" aria-modal="true" aria-label="${k === 'switch' ? 'Switch calls early?' : 'End call early?'}" data-lenis-prevent>
-    <div class="zr-sheet-handle"></div><header><h2>${k === 'switch' ? 'Switch before the entry fee unlocks?' : 'End before the entry fee unlocks?'}</h2>${zrRound('close', 'Keep talking', 'S.confirm=0;r()')}</header>
+  const title = `${k === 'switch' ? 'Switch calls' : 'End call'} before ${hcHold(S.feeHold)}?`;
+  return `<div class="zr-sheet-backdrop" onclick="if(event.target===this){S.confirm=0;r()}"><section class="zr-sheet hc-confirm" role="dialog" aria-modal="true" aria-label="${title}" data-lenis-prevent>
+    <span class="hc-confirm-icon" aria-hidden="true">${hi('clock', 22)}</span><h2>${title}</h2>
     <p class="zr-sheet-note">${esc(first(S.caller.n))}’s ${n(S.callFee)}-coin entry fee unlocks in <b id="hc-left">${clock(left)}</b>. If you ${verb} now, you won’t receive it and it stays with BinzoLive.</p>
     <p class="hc-warn">${warn}</p>
-    <button class="zr-wide zr-secondary" onclick="S.confirm=0;r()">Keep talking</button>
-    <button class="zr-wide zr-danger" onclick="S.confirm=0;${k === 'switch' ? 'acceptInc()' : 'endCall()'}">${k === 'switch' ? 'Switch anyway' : 'End call anyway'}</button></section></div>`;
+    <button class="zr-wide hc-keep" onclick="S.confirm=0;r()">Keep talking</button>
+    <button class="zr-wide zr-danger hc-anyway" onclick="S.confirm=0;${k === 'switch' ? 'acceptInc()' : 'endCall()'}">${k === 'switch' ? 'Switch anyway' : 'End call anyway'}</button></section></div>`;
 }
 function hcConnecting() {
   const { from, to } = S.connecting;
@@ -10151,26 +10581,27 @@ function hcSwitchFailed(message) {
 /* ---- After the session ---- */
 function hcSummaryView(s) {
   const fees = (s.fees || []).filter(f => f.fee), received = fees.filter(f => f.ok).reduce((sum, f) => sum + f.fee, 0);
-  return `<section class="zh-broadcast zh-summary hc-summary"><div class="zh-ready-illustration">${hi('cup', 42)}</div>
+  return `<section class="hc-summary" style="${hcSceneStyle('summary')}"><div class="hc-summary-content"><div class="hc-host-avatar">${hcIdentityAvatar(me, 80)}<span class="hc-summary-badge" aria-hidden="true">🏆</span></div>
     <h1>${s.earned ? 'Congratulations!' : 'A moment well shared.'}</h1>
-    <p>${s.earned ? `You earned about <b>${n(s.earned)} coins</b> in ${fmtDur(s.sec || 0)} on calls.` : `You spent ${fmtDur(s.sec || 0)} on calls.`}</p>
-    <div class="zh-precall-details"><span>Duration <b>${clock(s.sec || 0)}</b></span><span>${s.callers === 1 ? 'Caller' : 'Callers'} <b>${n(s.callers || 1)}</b></span><span>Gifts <b>${n(s.gifts || 0)}</b></span><span>Coins earned <b>≈ ${n(s.earned || 0)}</b></span></div>
+    <p>${s.earned ? `You earned about <b>${n(s.earned)} coins</b> in this session and completed <b>${fmtDur(s.sec || 0)}</b> on calls.` : `You spent <b>${fmtDur(s.sec || 0)}</b> on calls.`}</p>
+    <div class="hc-session-stats"><div><span>Earned</span><b>${coinIcon(16)} ≈ ${n(s.earned || 0)}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
     ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Entry fees</span><b>${coinIcon(14)} +${n(received)}</b></div>
       ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `+${n(f.fee)} received` : 'Ended early · kept by BinzoLive'}</em></div>`).join('')}
       ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, each one takes ${n(s.penaltyCoins)} coins from your earnings.` : ''}</p>` : ''}</div>` : ''}
-    <button class="zh-primary zh-full" onclick="S.callId=null;go(S.online?'waiting':'setup')">${S.online ? 'Back to taking calls' : 'Go online again'}</button>
-    <button class="zh-soft zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button>
-    <button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary') || ''}</section>`;
+    <button type="button" class="hc-primary" onclick="S.callId=null;go('setup')">${hi('vid', 18)} Set targets &amp; continue</button>
+    <div class="hc-summary-actions"><button type="button" onclick="S.callId=null;go('wallet')">${hi('wal', 17)} Wallet</button><button type="button" onclick="S.callId=null;go('home');homeLoad()">${hi('house', 17)} Home</button></div>
+    ${window.ZimiAds?.card('call_summary') || ''}</div></section>`;
 }
 
 document.addEventListener('aurora:navigate', () => {
+  if (S.v !== HostCalls.scene) HostCalls.scene = '';
   /* media.js releases the camera on every navigation outside a call, so the preview starts over. */
   if (HostCalls.preview) { HostCalls.previewRun++; HostCalls.preview = ''; if (S.v === 'setup') r(); }
   if (!['setup', 'waiting'].includes(S.v) || DEMO || !isApprovedHost()) return;
-  if (!HostCalls.loading) { HostCalls.loading = true; Native.send('host.callStatus.load', {}); }
+  hcLoadStatus();
 });
 Native.on('host.callStatus', d => {
-  HostCalls.loading = false; HostCalls.status = d; S.callVis = d.visibleDuringCalls !== false;
+  HostCalls.loading = false; HostCalls.error = ''; HostCalls.status = d; S.callVis = d.visibleDuringCalls !== false;
   if (S.v !== 'hcall') { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
   if (['setup', 'waiting'].includes(S.v)) r();
 });
@@ -10180,13 +10611,18 @@ Native.on('presence.duringCalls.saved', d => {
   if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
 });
 Native.on('operation.error', d => {
-  if (d.action === 'host.callStatus.load') HostCalls.loading = false;
+  if (d.action === 'host.callStatus.load') {
+    HostCalls.loading = false; HostCalls.error = d.message || 'Your call details could not be loaded.';
+    if (['setup', 'waiting'].includes(S.v)) r();
+  }
   if (d.action === 'presence.duringCalls') {
     HostCalls.visBusy = false; appNotice(d.message || 'Your call visibility could not be saved. Try again.');
     if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
   }
 });
-['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false })));
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false })));
+
+if (DEMO) HostCalls.status = { rate: MY_RATE, tier: 1, earnedCoins: 0, next: null, tiers: [], entryFeeCoins: MY_FEE, entryFeeHoldSeconds: FEE_HOLD, earlyEnds: { today: 0, limit: EARLY_LIMIT, penaltyCoins: MY_FEE }, visibleDuringCalls: true };
 
 /* Preview fixture only (?role=host&approvedHost=1&preview=host-call): a creator mid-call,
    and a second caller rings a few seconds later. */
@@ -10197,6 +10633,184 @@ if (DEMO && previewMode === 'host-call' && isApprovedHost()) {
     setTimeout(() => { if (S.v === 'hcall' && !S.inc && !S.connecting) ringIncoming({ ...nextCaller(), callId: 'preview-waiting-call' }); }, 6000);
   });
 }
+
+/* Host targets are personal session preferences. Progress comes only from accepted
+   gift receipts; reward amounts and eligibility come from the authenticated Home feed. */
+const HostStudio = {
+  sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original',
+  receivedCoins: 0, received: Object.create(null), giftNames: Object.create(null),
+  receipts: new Set(), lastView: '', accountId: '', focus: '', opener: null, mounted: null, openedAt: 0
+};
+const HS_GOALS = [[100000, '100K'], [500000, '500K'], [1000000, '1M'], [5000000, '5M'], [10000000, '10M']];
+const HS_COUNTS = [5, 10, 20, 50];
+const HS_EFFECTS = [['original', 'Original'], ['warm', 'Warm'], ['soft', 'Soft'], ['mono', 'Mono']];
+
+function hsAllowed() { return ['setup', 'hcall'].includes(S.v) && isApprovedHost(); }
+function hsCatalog() { return Array.isArray(Home.gifts) ? Home.gifts : []; }
+function hsTargetGift() {
+  const gifts = hsCatalog();
+  return gifts.find(gift => gift.id === HostStudio.giftId) || gifts[0] || null;
+}
+function hsGiftArt(gift) {
+  const src = gift && homeGiftUrl(gift.mediaUrl);
+  return src ? `<img src="${src}" alt="">` : esc(gift?.emoji || '🎁');
+}
+function hsGiftProgress(gift = hsTargetGift()) {
+  if (!gift) return 0;
+  return (HostStudio.received[gift.id] || 0) + (HostStudio.giftNames[gift.name] || 0);
+}
+function hsGoalLabel() { return HS_GOALS.find(([coins]) => coins === HostStudio.goal)?.[1] || n(HostStudio.goal); }
+function hsPercent(value, total) { return Math.min(100, Math.max(0, total ? value / total * 100 : 0)); }
+function hsReloadCatalog() {
+  if (!hsAllowed() || DEMO || contentPending('catalog')) return;
+  contentStart('catalog'); Native.send('catalog.load'); r();
+}
+function hsOpenSheet(kind) {
+  if (!['mission', 'gift-target', 'appearance'].includes(kind) || !hsAllowed()) return;
+  const active = document.activeElement;
+  HostStudio.opener = active?.getAttribute('aria-label') || active?.getAttribute('data-hs-focus') || null;
+  HostStudio.focus = 'close'; HostStudio.sheet = kind; HostStudio.openedAt = Date.now();
+  if (typeof Room !== 'undefined') Room.sheet = '';
+  if (kind === 'gift-target' && !DEMO && !hsCatalog().length && !contentPending('catalog') && !ContentLoading.catalog.error) {
+    contentStart('catalog'); Native.send('catalog.load');
+  }
+  r(); hsAfter();
+}
+function hsCloseSheet() {
+  const opener = HostStudio.opener;
+  HostStudio.sheet = ''; HostStudio.focus = ''; HostStudio.mounted = null; r();
+  if (opener) [...document.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === opener || button.dataset.hsFocus === opener)?.focus({ preventScroll: true });
+}
+/* A choice inside an open sheet repaints only the sheet's body and the target cards, so the sheet
+   does not slide in again and the camera or call behind it is left untouched. */
+function hsPaintSheet() {
+  const body = document.querySelector('.hs-sheet-body'), next = document.createElement('div');
+  next.innerHTML = hsSheet();
+  const fresh = next.querySelector('.hs-sheet-body');
+  if (body && fresh) { body.replaceChildren(...fresh.childNodes); hsPaintTargets(); }
+  else r();
+  hsAfter();
+}
+function hsSetGoal(value) {
+  value = Number(value);
+  if (!hsAllowed() || !HS_GOALS.some(([coins]) => coins === value)) return;
+  HostStudio.goal = value; HostStudio.focus = `goal-${value}`; hsPaintSheet();
+}
+function hsChooseGift(id, open = false) {
+  if (!hsAllowed() || !hsCatalog().some(gift => gift.id === id)) return;
+  HostStudio.giftId = id;
+  if (open) { hsOpenSheet('gift-target'); HostStudio.focus = `gift-${id}`; hsAfter(); }
+  else { HostStudio.focus = `gift-${id}`; hsPaintSheet(); }
+}
+function hsSetGiftCount(value) {
+  value = Number(value);
+  if (!hsAllowed() || !HS_COUNTS.includes(value)) return;
+  HostStudio.giftCount = value; HostStudio.focus = `count-${value}`; hsPaintSheet();
+}
+function hsSetEffect(value) {
+  if (!hsAllowed() || !HS_EFFECTS.some(([key]) => key === value)) return;
+  HostStudio.previewEffect = value; HostStudio.focus = `effect-${value}`;
+  document.documentElement.dataset.hostPreviewEffect = value; hsPaintSheet();
+}
+function hsCatalogPlaceholder(rail = false) {
+  if (!DEMO && contentPending('catalog')) return `<div class="hs-gift-loading ${rail ? 'hs-rail-loading' : ''}" role="status" aria-label="Loading gift targets" aria-busy="true">${Array.from({ length: rail ? 7 : 6 }, () => `<span aria-hidden="true">${skeletonLine('30px', 30)}${skeletonLine('36px', 8)}</span>`).join('')}</div>`;
+  const error = !DEMO && ContentLoading.catalog.error;
+  return `<div class="hs-empty" ${error ? 'role="alert"' : ''}><span>${esc(error || 'Gift targets will appear when gifts are available.')}</span>${!DEMO ? `<button type="button" onclick="hsReloadCatalog()" data-hs-focus="retry-catalog">${hi('refresh', 14)} ${error ? 'Retry gift targets' : 'Load gift targets'}</button>` : ''}</div>`;
+}
+function hsTaskRows() {
+  if (DEMO) return S.tasks.slice(0, 3).map(task => `<div class="hs-task"><span class="hs-task-icon">${hi(task.ico || 'cup', 18)}</span><span class="hs-task-copy"><b>${esc(task.d || task.t)}</b><small>${n(Math.min(task.p, task.goal))} / ${n(task.goal)} ${esc(task.u || '')}</small><i><em style="width:${hsPercent(task.p, task.goal)}%"></em></i></span><strong>${coinIcon(14)} ${n(task.rw)}</strong></div>`).join('');
+  const bonus = Home.bonus;
+  if (!bonus) return '<p class="hs-tasks-empty">No active rewards right now. Your gift targets still track this session.</p>';
+  const progress = Math.max(0, Number(bonus.progress) || 0), target = Math.max(1, Number(bonus.target) || 1);
+  return `<div class="hs-task"><span class="hs-task-icon">${hi('cup', 18)}</span><span class="hs-task-copy"><b>${esc(bonus.title)}</b><small>${esc(bonus.description || '')}</small><small>${n(Math.min(progress, target))} / ${n(target)} completed</small><i><em style="width:${hsPercent(progress, target)}%"></em></i></span><strong>${coinIcon(14)} ${n(bonus.rewardCoins || 0)}</strong></div>${bonus.claimed ? '<p class="hs-tasks-empty">Reward claimed</p>' : progress >= target ? `<button class="hs-claim" type="button" onclick="homeClaim()" ${Home.claiming ? 'disabled' : ''}>${Home.claiming ? 'Claiming…' : 'Claim reward'}</button>` : ''}`;
+}
+function hsSheet() {
+  const kind = HostStudio.sheet;
+  if (!kind || !hsAllowed()) return '';
+  let title = '', subtitle = '', body = '';
+  if (kind === 'mission') {
+    title = 'Mission'; subtitle = 'Your target rises as coins come in';
+    const progress = HostStudio.receivedCoins, percent = hsPercent(progress, HostStudio.goal);
+    body = `<div class="hs-options" role="group" aria-label="Mission target">${HS_GOALS.map(([value, label]) => `<button type="button" class="${HostStudio.goal === value ? 'is-on' : ''}" aria-pressed="${HostStudio.goal === value}" data-hs-focus="goal-${value}" onclick="hsSetGoal(${value})">${label}</button>`).join('')}</div><div class="hs-mission-total"><strong>${n(progress)}</strong><span>of ${hsGoalLabel()} · ${percent.toFixed(1)}%</span></div><div class="hs-progress" role="progressbar" aria-label="Mission progress" aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></div><div class="hs-section-label"><b>Tasks</b><span>${DEMO ? 'Design preview' : 'Your available rewards'}</span></div>${hsTaskRows()}`;
+  } else if (kind === 'gift-target') {
+    title = 'Gift target'; subtitle = 'Pick the gift you’d love to receive';
+    const gift = hsTargetGift();
+    body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${coinIcon(10)} ${n(item.coins)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${n((gift?.coins || 0) * HostStudio.giftCount)} coins</span></div><p class="hs-sheet-note">A personal target for gifts you receive during this session.</p>`;
+  } else {
+    title = 'Beauty & filters'; subtitle = 'Choose the look of your camera preview';
+    body = `<div class="hs-effects" role="group" aria-label="Camera preview filter">${HS_EFFECTS.map(([key, label]) => `<button type="button" class="${HostStudio.previewEffect === key ? 'is-on' : ''}" aria-pressed="${HostStudio.previewEffect === key}" data-hs-focus="effect-${key}" onclick="hsSetEffect('${key}')"><span class="hs-effect-swatch hs-effect-${key}">${hi('star', 22)}</span><span>${label}</span></button>`).join('')}</div><p class="hs-preview-only">${hi('eye', 14)} Preview only</p><p class="hs-sheet-note">These filters change your own preview. Your caller sees the original camera video.</p>`;
+  }
+  /* Redraws while the sheet is open resume its entrance instead of replaying it. */
+  const age = Math.min(250, Math.max(0, Date.now() - HostStudio.openedAt));
+  return `<div class="hs-sheet-backdrop" onclick="if(event.target===this)hsCloseSheet()"><section class="hs-sheet hs-sheet-${kind}" style="--hs-enter-age:-${age}ms" role="dialog" aria-modal="true" aria-labelledby="hs-title" data-lenis-prevent><header><div><h2 id="hs-title">${title}</h2><p>${subtitle}</p></div><button type="button" class="hs-sheet-close" aria-label="Close ${title}" data-hs-focus="close" onclick="hsCloseSheet()">${hi('close', 18)}</button></header><div class="hs-sheet-body">${body}</div></section></div>`;
+}
+function hsTargets() {
+  const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
+  return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${coinIcon(10)} ${n(gift.coins)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
+}
+function hsGiftRail() {
+  if (!hsCatalog().length || !DEMO && contentPending('catalog')) return hsCatalogPlaceholder(true);
+  return `<div class="hs-gift-rail" role="group" aria-label="Gift targets" data-lenis-prevent>${hsCatalog().map(gift => `<button type="button" aria-label="Choose ${esc(gift.name)} as gift target" onclick="hsChooseGift('${domId(gift.id)}',true)"><span class="hs-gift-art">${hsGiftArt(gift)}</span><small>${coinIcon(9)} ${n(gift.coins)}</small></button>`).join('')}</div>`;
+}
+function hsPaintTargets() {
+  document.querySelectorAll('.hs-targets').forEach(node => { node.outerHTML = hsTargets(); });
+}
+/* Called only after the room has accepted and deduplicated the receipt. The small
+   second guard keeps session progress stable if a caller switches and room state resets. */
+function hsReceiveGift(data) {
+  if (S.v !== 'hcall' || !isApprovedHost()) return;
+  const receipt = data.id || data._id || data.transactionId;
+  if (receipt && HostStudio.receipts.has(receipt)) return;
+  if (receipt) HostStudio.receipts.add(receipt);
+  const coins = Number(data.totalCoins ?? data.coins ?? data.amount);
+  if (Number.isFinite(coins) && coins > 0) HostStudio.receivedCoins += coins;
+  const gift = typeof data.gift === 'object' && data.gift ? data.gift : null;
+  const id = data.giftId || gift?.id || gift?._id;
+  const name = data.giftName || gift?.name || (typeof data.gift === 'string' ? data.gift : '');
+  const quantity = Math.max(1, Math.min(100, Math.floor(Number(data.quantity) || 1)));
+  if (id) HostStudio.received[id] = (HostStudio.received[id] || 0) + quantity;
+  else if (name) HostStudio.giftNames[name] = (HostStudio.giftNames[name] || 0) + quantity;
+  hsPaintTargets();
+}
+function hsResetProgress() {
+  HostStudio.receivedCoins = 0; HostStudio.received = Object.create(null); HostStudio.giftNames = Object.create(null); HostStudio.receipts = new Set();
+}
+function hsReset() {
+  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '' });
+  delete document.documentElement.dataset.hostPreviewEffect;
+}
+function hsAfter() {
+  const sheet = document.querySelector('.hs-sheet');
+  if (!sheet) { HostStudio.mounted = null; return; }
+  if (sheet === HostStudio.mounted && sheet.contains(document.activeElement)) return;
+  HostStudio.mounted = sheet;
+  const focus = [...sheet.querySelectorAll('[data-hs-focus]')].find(node => node.dataset.hsFocus === HostStudio.focus);
+  (focus || sheet.querySelector('button'))?.focus({ preventScroll: true });
+}
+document.addEventListener('focusin', event => {
+  if (event.target.closest?.('.hs-sheet') && event.target.dataset.hsFocus) HostStudio.focus = event.target.dataset.hsFocus;
+});
+document.addEventListener('keydown', event => {
+  const sheet = document.querySelector('.hs-sheet'); if (!sheet) return;
+  if (event.key === 'Escape') { event.preventDefault(); hsCloseSheet(); }
+  else if (event.key === 'Tab') {
+    const buttons = [...sheet.querySelectorAll('button:not(:disabled),input,select,a[href]')];
+    const first = buttons[0], last = buttons.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
+});
+document.addEventListener('aurora:navigate', () => {
+  if (S.v === 'hcall' && HostStudio.lastView !== 'hcall') { hsResetProgress(); hsPaintTargets(); }
+  HostStudio.lastView = S.v; HostStudio.sheet = ''; HostStudio.focus = ''; HostStudio.mounted = null;
+  if (S.v === 'hcall' && !DEMO && !hsCatalog().length && !contentPending('catalog')) { contentStart('catalog'); Native.send('catalog.load'); }
+});
+Native.on('data.catalog', () => { if (HostStudio.sheet === 'gift-target' && S.v === 'setup') r(); });
+Native.on('operation.error', data => { if (data.action === 'catalog.load' && HostStudio.sheet === 'gift-target' && S.v === 'setup') r(); });
+Native.on('session', data => { if (HostStudio.accountId !== data.user?.id) { hsReset(); HostStudio.accountId = data.user?.id || ''; } });
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => { hsReset(); HostStudio.accountId = ''; }));
+const hsScreen = document.getElementById('screen');
+if (hsScreen) new MutationObserver(hsAfter).observe(hsScreen, { childList: true });
 
 /* Staff video calls for host applicants. The ZimiLive team calls before deciding an
    application; the applicant answers here. Media runs through ZimiMedia's call session
@@ -10320,7 +10934,7 @@ function zcPhoto(h,extra=''){return `<span class="zc-avatar ${extra}">${homeCove
 function zcRows(){const q=Chats.query.trim().toLowerCase();let rows=Chats.rows.filter(c=>{
   if(Chats.filter==='calls'&&!zcHasCalls(c))return false;
   if(Chats.filter==='unread'&&!c.unread)return false;
-  if(Chats.onlineOnly&&!c.user.online)return false;
+  if(Chats.onlineOnly&&!hostShownOnline(c.user))return false;
   return !q||[c.user.name,c.user.category,c.user.tag,c.last].some(value=>String(value||'').toLowerCase().includes(q));
 });return rows.sort((a,b)=>Chats.sort==='name'?a.user.name.localeCompare(b.user.name):Chats.sort==='unread'&&(a.unread||b.unread)?b.unread-a.unread:(Date.parse(b.lastAt)||0)-(Date.parse(a.lastAt)||0))}
 function zcTabs(){const tabs=[['all','All'],['unread','Unread'],['calls','Calls'],['missed','Missed calls']];return `<div class="zc-tabs" role="tablist" aria-label="Conversation categories">${tabs.map(([key,label])=>`<button role="tab" aria-selected="${Chats.filter===key}" class="${Chats.filter===key?'selected':''}" onclick="zcSetFilter('${key}')">${label}</button>`).join('')}</div>`}
@@ -12001,9 +12615,11 @@ function zuOpenPhoto(index){
   dialog.addEventListener('keydown',event=>{if(event.target.tagName==='VIDEO')return;const next=event.key==='ArrowRight'?index+1:event.key==='ArrowLeft'?index-1:-1;if(next>=0&&next<Zu.posts.length){event.preventDefault();zuOpenPhoto(next)}});
 }
 
+/* Profiles follow the same rule as cards: a host is never shown offline (see hostFrom). */
+function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostShownOnline(p),availableForCall:hostCallable(p)});return p}
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
-  Zu.profile=d.profile;Zu.loading=false;Zu.error='';zuRemember(d.profile);
+  Zu.profile=zuShownPresence(d.profile);Zu.loading=false;Zu.error='';zuRemember(d.profile);
   if(zuApproved(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
   zuPaint();
 });
@@ -12024,7 +12640,7 @@ Native.on('data.home',d=>{
   // Live discovery events may update availability without replacing profile
   // counts, a pending relationship write, or the current gallery selection.
   for(const key of ['online','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
-  zuPaint();
+  zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
 Native.on('follow.error',d=>{

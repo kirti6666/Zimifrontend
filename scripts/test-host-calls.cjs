@@ -36,9 +36,15 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await page.evaluate(() => go('setup'));
     assert.equal((await sent('host.callStatus.load')).length, 1, 'Setup asks for the host call terms');
     await receive('host.callStatus', status);
+    assert.match(await page.locator('.hc-setup').innerText(), /3,000\/h\s*3,20,000 left to upgrade/, 'The rate leads the setup card');
+    await button('Call price details').click();
     const setup = await page.locator('.hc-setup').innerText();
     assert.match(setup, /50 coins \/ min[\s\S]*Tier 2 of 3[\s\S]*Earn 3,20,000 more coins to unlock 85\/min/);
     assert.match(setup, /60-coin entry fee[\s\S]*passes 1 minute/);
+    await page.getByRole('switch').click();
+    assert.deepEqual((await sent('presence.duringCalls')).at(-1), { on: false });
+    await receive('presence.duringCalls.saved', { on: false });
+    assert.equal(await page.getByRole('switch').getAttribute('aria-checked'), 'false', 'The host can hide from Home during calls');
     assert.equal(await page.evaluate(() => __captures), 0, 'Opening setup does not capture the camera');
     await button('Check camera').click();
     await page.waitForFunction(() => HostCalls.preview === 'ready' && document.querySelector('video[data-zimi-local]')?.srcObject?.active);
@@ -57,11 +63,8 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await receive('presence.saved', { online: true, visible: true });
     await page.waitForFunction(() => S.v === 'waiting');
     assert.equal(await page.evaluate(() => HostCalls.preview), '', 'Leaving setup releases the preview');
-    await receive('host.callStatus', status);
-    await page.getByRole('switch').click();
-    assert.deepEqual((await sent('presence.duringCalls')).at(-1), { on: false });
-    await receive('presence.duringCalls.saved', { on: false });
-    assert.equal(await page.getByRole('switch').getAttribute('aria-checked'), 'false', 'The host can hide from Home during calls');
+    await receive('host.callStatus', { ...status, visibleDuringCalls: false });
+    assert.match(await page.locator('.hc-waiting').innerText(), /You’re online[\s\S]*Waiting for callers/);
 
     // A caller who arrives while another is ringing waits, then rings as a banner on the answered call.
     await receive('call.incoming', { callId: 'c1', from: { id: 'm1', name: 'Riya Sharma', level: 5, city: 'Pune' }, voice: false, ...terms });
@@ -108,7 +111,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await button('Decline').click();
     await page.waitForFunction(() => S.v === 'summary');
     const summary = await page.locator('.hc-summary').innerText();
-    assert.match(summary, /Callers\s*2/);
+    assert.match(summary, /Callers\s*2/i);
     assert.match(summary, /Riya[\s\S]*Ended early[\s\S]*Kabir[\s\S]*\+60 received/);
     assert.match(summary, /Early endings today: 3\. Past 2 a day, each one takes 60 coins/);
     await shot(page, 'summary');

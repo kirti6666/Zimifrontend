@@ -163,7 +163,7 @@ async function run() {
     console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, media viewer and keyboard tabs');
 
     const readsBeforePresence = await sentCount(page, 'profile.load');
-    const unavailable = { ...creator, online: false, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };
+    const unavailable = { ...creator, online: true, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };
     await receive(page, 'data.home', { ...feed, hosts: [unavailable, other], featured: unavailable });
     assert.equal(await button(page, 'Unavailable').isDisabled(), true, 'Live discovery updates the displayed creator availability');
     assert.equal(await page.locator('.zu-stats strong').first().innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
@@ -265,8 +265,9 @@ async function run() {
     await receive(page, 'data.publicProfile', { id: other.id, requestId: current.requestId, profile: profile(other) });
     await acceptPosts(page, other);
     await page.getByRole('heading', { name: other.name, exact: true }).waitFor();
-    assert.equal(await button(page, 'Unavailable').isDisabled(), true, 'Unavailable hosts do not expose an active call action');
-    console.log('PASS public profile: stale profile data/errors cannot replace the current account; availability is truthful');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'An offline host is still shown available for a call');
+    assert.doesNotMatch(await page.locator('.zu-presence').innerText(), /offline/i, 'A host profile never says offline');
+    console.log('PASS public profile: stale profile data/errors cannot replace the current account; offline hosts are never shown offline');
 
     const blocksBefore = await sentCount(page, 'block.set');
     await button(page, 'More profile options').click();

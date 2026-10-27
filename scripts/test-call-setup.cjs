@@ -227,12 +227,16 @@ async function assertLayout(page, label) {
     await page.evaluate(id => go('precall', id), hostId);
 
     const unavailable = await startPending(page);
-    await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: false }));
+    await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: true }));
     await release(page, unavailable);
-    assert.equal((await sent(page, 'call.start')).length, 3, 'A creator becoming unavailable cancels pending preparation');
+    assert.equal((await sent(page, 'call.start')).length, 3, 'A creator turning calls off cancels pending preparation');
     assert.equal(await button(page, 'Currently unavailable').isDisabled(), true);
     await receive(page, 'data.home', homeData());
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'Availability refresh updates the open setup');
+    await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: false }));
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'An offline creator is still shown ready; the server rings until the call is missed');
+    assert.doesNotMatch(await page.locator('.zpc-presence').innerText(), /offline|unavailable/i);
+    await receive(page, 'data.home', homeData());
     await receive(page, 'data.hosts', { hosts: [host, other] });
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A creator list update preserves server availability');
     await receive(page, 'data.hosts', { hosts: [{ ...host, availableForCall: false }, other] });

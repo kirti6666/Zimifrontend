@@ -166,9 +166,11 @@ async function checkLayout(page, label, voice = false) {
     await hostPage.screenshot({ path: path.join(artifacts, 'call-reference-host.png') });
     await hostPage.evaluate(() => { S.caller.voice = true; r(); });
     await checkLayout(hostPage, 'host voice', true);
-    await button(hostPage, 'Call controls').click();
-    assert.equal(await button(hostPage, 'Camera off').count(), 0, 'Voice calls hide video controls');
-    await button(hostPage, 'Close panel').click();
+    await button(hostPage, 'Call options').click();
+    await hostPage.locator('.zr-host-options').waitFor();
+    assert.equal(await button(hostPage, 'Turn camera off').count(), 0, 'Voice calls hide video controls');
+    await hostPage.keyboard.press('Escape');
+    assert.equal(await hostPage.locator('.zr-host-options').count(), 0, 'Escape closes the call options');
     await hostPage.screenshot({ path: path.join(artifacts, 'call-reference-voice.png') });
     await hostPage.locator('.zr-hangup').click();
     assert.equal((await sent(hostPage, 'call.end')).at(-1).data.callId, 'layout-host-call');
