@@ -56,7 +56,7 @@ function zuLoad(){
       category:host?h.cat||'Music':'',languages:['English','Hindi'],interests:host?['Music','Travel','Good conversations']:['Music','Photography'],
       online:!!h.on,availableForCall:host&&!!h.available,ratePerMin:h.rate||0,stream:h.stream||null,
       followers:host?12800:128,followingCount:host?186:42,following:!!S.following[id],joined:'2025-04-12T00:00:00Z',level:host?18:4,crown:false};
-    if(host){Zu.posts=[0,1,2].map((index)=>({id:'preview-post-'+index,kind:'photo',mediaUrl:OB_MEDIA[index],caption:['Good company. Better conversations.','A little glimpse of my everyday.','Looking forward to our next conversation.'][index]}));Zu.total=Zu.posts.length;Zu.page=1}
+    if(host){Zu.posts=[0,1,2].map((index)=>({id:'preview-post-'+index,kind:'photo',mediaUrl:OB_MEDIA[index+3],caption:['Good company. Better conversations.','A little glimpse of my everyday.','Looking forward to our next conversation.'][index]}));Zu.total=Zu.posts.length;Zu.page=1}
     zuRemember(Zu.profile);
   }else Native.send('profile.load',{id,requestId:Zu.requestId});
 }

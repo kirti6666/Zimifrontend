@@ -1,0 +1,7 @@
+/* A host's video fades in over their photo on discovery cards once it is actually playing. */
+.zh-card-video{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .45s ease}
+.zh-card-video.is-playing{opacity:1}
+.zh-card-video>video{display:block;width:100%;height:100%;object-fit:cover}
+@media(prefers-reduced-motion:reduce){.zh-card-video{transition:none}}
+/* The featured card stacks its photo at -2 under the shade at -1; the video joins the photo. */
+.zh-home.zh-dashboard .zh-featured-host .zh-person-media>.zh-card-video{z-index:-2}

@@ -121,7 +121,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await page.waitForSelector('.zh-dashboard');
     await page.evaluate(()=>document.fonts.ready);
     assert.equal(await page.locator('article.zh-person-card').count(),5);
-    assert.equal(await page.locator('.zh-person-card h3').first().innerText(),'Mila Vance','The configured featured creator leads Home discovery');
+    assert.equal(await page.locator('.zh-person-card h3').first().innerText(),'Ananya Iyer','The configured featured creator leads Home discovery');
     assert.equal(await page.locator('.zh-nav button').count(),4);
     assert.equal(await page.locator('.zh-featured-host').count(),1,'Home has one featured photo card');
     assert.equal(await page.locator('.zh-live-section').getByRole('button',{name:/^Join .* live$/}).count(),0,'The live strip is disabled');

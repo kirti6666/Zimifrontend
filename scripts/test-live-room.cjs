@@ -201,18 +201,18 @@ async function previewChecks(browser, errors) {
   assert.equal(await host.locator('.zr-video').getAttribute('data-effect'), 'warm');
   await closeSheet(host);
   await button(host, 'Session gifts').click();
-  assert.match(await host.getByRole('dialog', { name: 'Session supporters' }).innerText(), /Liam_VIP/);
+  assert.match(await host.getByRole('dialog', { name: 'Session supporters' }).innerText(), /Rohan_VIP/);
   await closeSheet(host);
   await button(host, 'Queue').click();
   const queue = host.getByRole('dialog', { name: '1-on-1 call requests' });
   assert.equal(await queue.locator('.zr-queue-row').count(), 2);
-  await button(queue, 'Decline Sarah').click();
+  await button(queue, 'Decline Sana').click();
   assert.equal(await queue.locator('.zr-queue-row').count(), 1);
   await button(queue, 'Accept').click();
   await host.getByRole('region', { name: 'Private video call' }).waitFor();
   assert.equal(await host.evaluate(() => S.v), 'hcall', 'Accepting a preview request transitions into the private host call');
   assert.equal(await host.evaluate(() => Home.stream), null);
-  assert.match(await host.locator('.zr-call-person').innerText(), /Marcus/);
+  assert.match(await host.locator('.zr-call-person').innerText(), /Arjun/);
   await host.close();
 
   const call = await newPage(browser, errors, false, '?preview=call');
@@ -249,7 +249,7 @@ async function productionChecks(browser, errors) {
   await page.locator('.zr-viewer').waitFor();
   assert.equal(await page.locator('.zr-demo-note,.zr-gift-alert,.zr-video img').count(), 0, 'Production has no sample video, activity or gift banner');
   assert.equal(await page.getByRole('log', { name: 'Live chat' }).innerText(), '');
-  assert.doesNotMatch(await page.locator('.zr-room').innerText(), /Mila|Kobe_99|Liam_VIP|Jaxson|Sarah|Marcus/);
+  assert.doesNotMatch(await page.locator('.zr-room').innerText(), /Ananya|Kabir_99|Rohan_VIP|Ishaan|Sana|Arjun/);
   assert.equal((await lastSent(page, 'stream.join')).streamId, stream.id);
   assert.equal((await lastSent(page, 'stream.requests.load')).streamId, stream.id);
 

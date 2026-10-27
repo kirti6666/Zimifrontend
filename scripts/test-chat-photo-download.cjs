@@ -30,6 +30,7 @@ function harness(platform = { OS: 'ios', Version: '18.0' }) {
     delete() { events.push(['delete', this.uri]); this.exists = false; }
   }
   const modules = {
+    expo: { requireOptionalNativeModule: name => { events.push(['native', name]); return overrides.noMediaLibrary ? null : {}; } },
     'expo/fetch': { fetch: async (address, options) => { events.push(['fetch', address, options]); return overrides.fetch ? overrides.fetch(address, options) : response; } },
     'expo-file-system': { File, Paths: { cache: 'file:///cache/' } },
     'expo-media-library': {
@@ -77,12 +78,20 @@ for (const [mime, bytes, extension] of [['image/jpeg', jpeg, 'jpg'], ['image/web
   await h.run(); assert.match(h.files[0].uri, new RegExp(`\\.${extension}$`)); assert.equal(count(h, 'save'), 1); clean(h);
 });
 
+test('an app without the gallery module explains the update instead of failing to start', async () => {
+  const h = harness();
+  h.overrides.noMediaLibrary = true;
+  await assert.rejects(h.run(), error => error.status === 501 && error.code === 'PHOTO_SAVE_UNAVAILABLE' && /latest version of the BinzoLive app/.test(error.message));
+  assert.deepEqual(h.events, [['native', 'ExpoMediaLibraryNext']], 'Nothing is resolved, fetched or saved');
+  clean(h);
+});
+
 test('asks only for add permission on an explicit authorized download and handles permanent denial', async () => {
   const h = harness();
   assert.equal(h.events.length, 0, 'Importing the module does not prompt or save');
   h.overrides.getPermission = () => ({ granted: false, canAskAgain: true });
   await h.run();
-  assert.deepEqual(h.events.map(event => event[0]).slice(0, 3), ['resolve', 'permission.get', 'permission.request']);
+  assert.deepEqual(h.events.map(event => event[0]).slice(0, 4), ['native', 'resolve', 'permission.get', 'permission.request']);
   const permission = h.events.find(event => event[0] === 'permission.request');
   assert.equal(permission[1], true); assert.equal(permission[2].length, 0);
   const denied = harness();

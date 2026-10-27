@@ -192,10 +192,10 @@ document.addEventListener('keydown',event=>{
 function zrDemoRoom(){
   if(!DEMO)return;
   Room.likes=150;Room.received=14300;Room.goalEnabled=Home.hosting;Room.startedAt=Date.now()-2555000;
-  Room.supporters=[{id:'liam',name:'Liam_VIP',coins:4200,avatarUrl:OB_MEDIA[1]},{id:'aria',name:'Aria77',coins:2800,avatarUrl:OB_MEDIA[2]}];
-  Room.gift={name:Home.hosting?'Liam_VIP':'Jaxson',giftName:Home.hosting?'Galaxy Rocket':'Super Diamond',coins:Home.hosting?1000:500,emoji:Home.hosting?'🚀':'💎',combo:Home.hosting?1:5};
-  Room.queueCount=2;if(Home.hosting)Room.requests=[{id:'preview-marcus',userId:'marcus',name:'Marcus',status:'pending'},{id:'preview-sarah',userId:'sarah',name:'Sarah',status:'pending'}];
-  if(!Home.messages.length)Home.messages=[{id:'d1',name:'Elena',text:'Can you sing the chorus one more time? ✨'},{id:'d2',name:'Kobe_99',text:'Just sent 100 roses!! 🌹🌹',vip:true},{id:'d3',name:Home.hosting?me.n:'Mila',text:'Thank you so much Kobe!! Loving this vibe tonight 💕',host:true},{id:'d4',name:'Sarah',text:'Requesting 1-on-1 video call right now!'}];
+  Room.supporters=[{id:'rohan',name:'Rohan_VIP',coins:4200,avatarUrl:''},{id:'aaru',name:'Aaru77',coins:2800,avatarUrl:OB_MEDIA[3]}];
+  Room.gift={name:Home.hosting?'Rohan_VIP':'Ishaan',giftName:Home.hosting?'Galaxy Rocket':'Super Diamond',coins:Home.hosting?1000:500,emoji:Home.hosting?'🚀':'💎',combo:Home.hosting?1:5};
+  Room.queueCount=2;if(Home.hosting)Room.requests=[{id:'preview-arjun',userId:'arjun',name:'Arjun',status:'pending'},{id:'preview-sana',userId:'sana',name:'Sana',status:'pending'}];
+  if(!Home.messages.length)Home.messages=[{id:'d1',name:'Pooja',text:'Can you sing the chorus one more time?'},{id:'d2',name:'Kabir_99',text:'Just sent 100 roses!',vip:true},{id:'d3',name:Home.hosting?me.n:'Ananya',text:'Thank you so much Kabir! Loving this vibe tonight.',host:true},{id:'d4',name:'Sana',text:'Requesting a 1-on-1 video call!'}];
 }
 if(DEMO&&window.ZIMI_LIVE_STREAMING_ENABLED&&['live','host-live'].includes(previewMode)){
   if(previewMode==='host-live'&&isApprovedHost()){Home.hosting=true;Home.stream={id:'preview-host-live',title:'Acoustic sessions & late night conversations',viewers:4800,createdAt:new Date().toISOString()};S.h='aanya';S.v='live'}

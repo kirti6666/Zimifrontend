@@ -1,6 +1,16 @@
 /* Onboarding stays a classic script: the rendered controls call these globals.
    Only the preview accepts a simulated OTP; native actions wait for the bridge. */
-const OB_MEDIA = ["__OB_PORTRAIT_1__", "__OB_PORTRAIT_2__", "__OB_PORTRAIT_3__"];
+/* Indian women photographed from behind or in silhouette, for the welcome screen and the design
+   preview; onboarding-media/SOURCES.txt lists each photo. None of them is a real user. */
+const OB_MEDIA = ["__OB_MEDIA_1__", "__OB_MEDIA_2__", "__OB_MEDIA_3__", "__OB_MEDIA_4__", "__OB_MEDIA_5__", "__OB_MEDIA_6__"];
+/* Licensed stock photos of models from web/model-photos/ (its README covers the licence). The first
+   three lead the welcome screen; all six stand in for the design preview's sample hosts. Until
+   they are added, both use the photography above. */
+const MODEL_PHOTOS = ["__MODEL_PHOTO_1__", "__MODEL_PHOTO_2__", "__MODEL_PHOTO_3__", "__MODEL_PHOTO_4__", "__MODEL_PHOTO_5__", "__MODEL_PHOTO_6__"];
+const OB_MODELS = MODEL_PHOTOS.slice(0, 3).every(Boolean);
+const PREVIEW_HOSTS = MODEL_PHOTOS.map((src, i) => src || OB_MEDIA[i]);
+// Stock licences ask for this line wherever model photos stand in for real people.
+const MODEL_NOTE = MODEL_PHOTOS.some(Boolean) ? " &middot; photos posed by models" : "";
 const OB_HEART = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 20.6s-7.4-4.4-9.3-8.9C1.3 8.5 3.3 5 6.8 5c2.1 0 3.6 1.1 4.5 2.5C12.2 6.1 13.7 5 15.8 5c3.5 0 5.5 3.5 4.1 6.7-1.9 4.5-7.9 8.9-7.9 8.9z"/></svg>';
 const OB_INTERESTS = [
   ["🎵", "Music"], ["💃", "Dance"], ["💬", "Conversations"], ["🎬", "Movies"],
@@ -125,15 +135,20 @@ function obSelectRole(role, button) {
   if (cta) cta.innerHTML = (role === "host" ? "Start creating" : "Find your people") + obArrow();
 }
 function obDeckMarkup() {
-  const index = S.obDeck || 0;
-  const cards = [["A shared interest.", "A conversation waiting to happen", "MUSIC · CONVERSATION"], ["Good energy, on call.", "Meet someone on your wavelength", "GAMING · GOOD COMPANY"], ["Your kind of people.", "Make a little room for connection", "STYLE · EVERYDAY STORIES"]];
-  const [title, copy, tags] = cards[index];
-  return `<div class="ob-card ob-card-back ob-card-left"><img src="${OB_MEDIA[(index + 1) % 3]}" alt="" draggable="false"></div>
-    <div class="ob-card ob-card-back ob-card-right"><img src="${OB_MEDIA[(index + 2) % 3]}" alt="" draggable="false"></div>
-    <div class="ob-card ob-card-main"><img src="${OB_MEDIA[index]}" alt="Portrait illustrating the BinzoLive community" draggable="false">
+  const index = S.obDeck || 0, enter = S.obDeckEnter ? ` ob-enter-${S.obDeckEnter}` : "";
+  const media = OB_MODELS ? MODEL_PHOTOS : OB_MEDIA;
+  const cards = [
+    ["A shared interest.", "A conversation waiting to happen", "MUSIC · CONVERSATION", "A bride in a red lehenga, seen from behind"],
+    ["Good energy, on call.", "Meet someone on your wavelength", "CHAI · GOOD COMPANY", "A woman in a sari by a lake, seen from behind"],
+    ["Your kind of people.", "Make a little room for connection", "STYLE · EVERYDAY STORIES", "A woman in a bright sari on a tree-lined road"],
+  ];
+  const [title, copy, tags, photo] = cards[index], alt = OB_MODELS ? "Portrait of a model" : photo;
+  return `<div class="ob-card ob-card-back ob-card-left"><img src="${media[(index + 1) % 3]}" alt="" draggable="false"></div>
+    <div class="ob-card ob-card-back ob-card-right"><img src="${media[(index + 2) % 3]}" alt="" draggable="false"></div>
+    <div class="ob-card ob-card-main${enter}"><img src="${media[index]}" alt="${alt}" draggable="false">
       <div class="ob-card-top"><span class="ob-live-tag"><i></i> YOUR NEXT HELLO</span><span class="ob-card-heart" aria-hidden="true">${I("heart", 18)}</span></div>
       <div class="ob-card-bottom"><small>${tags}</small><b>${title}</b><p>${copy}</p></div></div>
-    <span class="ob-floating ob-wave" aria-hidden="true">👋</span>
+    <span class="ob-floating ob-namaste" aria-hidden="true" lang="hi">नमस्ते</span>
     <span class="ob-hearts" aria-hidden="true">${OB_HEART.repeat(3)}</span>
     <span class="ob-floating ob-spark" aria-hidden="true">${I("vid", 22)}</span>
     <div class="ob-deck-controls"><button class="ob-icon" aria-label="Previous community preview" onclick="obDeck(-1)">${I("back", 17)}</button>
@@ -142,12 +157,16 @@ function obDeckMarkup() {
 }
 function obDeck(value, absolute) {
   const focused = document.activeElement && document.activeElement.getAttribute("aria-label");
-  S.obDeck = absolute ? value : ((S.obDeck || 0) + value + 3) % 3;
+  const from = S.obDeck || 0;
+  S.obDeck = absolute ? value : (from + value + 3) % 3;
+  // The new card slides in from the side it was swiped or stepped towards.
+  S.obDeckEnter = S.obDeck === from ? "" : (absolute ? value > from : value > 0) ? "next" : "prev";
   const deck = document.querySelector(".ob-showcase");
   if (deck) {
     deck.innerHTML = obDeckMarkup();
     if (focused) { const next = Array.from(deck.querySelectorAll("button")).find(b => b.getAttribute("aria-label") === focused); if (next) next.focus({ preventScroll: true }); }
   }
+  S.obDeckEnter = "";
 }
 function obWelcome() {
   if (S.sessionState) return obRestoreScreen();
@@ -164,7 +183,7 @@ function obWelcome() {
         <button class="${host ? "" : "selected"}" aria-pressed="${!host}" onclick="obSelectRole('sender',this)">${I("heart", 17)} I'm here to connect</button>
         <button class="${host ? "selected" : ""}" aria-pressed="${host}" onclick="obSelectRole('host',this)">${I("vid", 17)} I'm a creator</button></div>
         <button id="ob-start" class="ob-primary" onclick="obStart('signup')">${host ? "Start creating" : "Find your people"}${obArrow()}</button>
-        <div class="ob-trust"><span>${I("lock", 13)} 18+ community</span></div></div>
+        <div class="ob-trust"><span>${I("lock", 13)} 18+ community</span>${OB_MODELS ? "<span>&middot; Photos posed by models</span>" : ""}</div></div>
     </div><p class="ob-desktop-note">A small hello. A world of possibilities.</p>
   </section>`;
 }
@@ -580,19 +599,37 @@ document.addEventListener("click", event => {
   if (target && !target.disabled) obHaptic("selection");
 }, true);
 document.addEventListener("pointerdown", event => {
-  if (event.target.closest(".ob-showcase") && !event.target.closest("button")) obSwipe = { x: event.clientX, y: event.clientY, id: event.pointerId };
+  if (event.target.closest(".ob-showcase") && !event.target.closest("button")) obSwipe = { x: event.clientX, y: event.clientY, id: event.pointerId, card: document.querySelector(".ob-card-main") };
   const target = event.target.closest(".ob-primary,.ob-secondary,.ob-interest,.ob-options button");
   if (!target || target.disabled || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const rect = target.getBoundingClientRect(), ripple = document.createElement("span"); ripple.className = "ob-ripple";
   ripple.style.left = `${event.clientX - rect.left}px`; ripple.style.top = `${event.clientY - rect.top}px`;
   target.appendChild(ripple); setTimeout(() => ripple.remove(), 600);
 }, { passive: true });
+/* The top card follows a sideways drag like a real card, then springs back unless it was swiped away. */
+document.addEventListener("pointermove", event => {
+  const swipe = obSwipe;
+  if (!swipe || swipe.id !== event.pointerId || !swipe.card?.isConnected || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const dx = event.clientX - swipe.x, dy = event.clientY - swipe.y;
+  if (!swipe.dragging && (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(dy))) return;
+  swipe.dragging = true;
+  swipe.card.classList.remove("is-settling");
+  swipe.card.classList.add("is-dragging");
+  swipe.card.style.setProperty("--ob-drag", String(Math.max(-160, Math.min(160, dx))));
+}, { passive: true });
+function obSettle(card) {
+  if (!card?.classList.contains("is-dragging")) return;
+  card.classList.replace("is-dragging", "is-settling");
+  card.style.removeProperty("--ob-drag");
+  setTimeout(() => card.classList.remove("is-settling"), 450);
+}
 document.addEventListener("pointerup", event => {
   if (!obSwipe || obSwipe.id !== event.pointerId) return;
-  const dx = event.clientX - obSwipe.x, dy = event.clientY - obSwipe.y; obSwipe = null;
+  const dx = event.clientX - obSwipe.x, dy = event.clientY - obSwipe.y, card = obSwipe.card; obSwipe = null;
   if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5 && S.v === "welcome") { obDeck(dx < 0 ? 1 : -1); obHaptic(); }
+  else obSettle(card);
 }, { passive: true });
-document.addEventListener("pointercancel", () => { obSwipe = null; }, { passive: true });
+document.addEventListener("pointercancel", () => { obSettle(obSwipe?.card); obSwipe = null; }, { passive: true });
 Native.on("auth.otpSent", d => { if (obMatches(d) && S.v === "login" && S.auth.busy === "auth.sendOtp" && d.phone === obE164()) obOtpSent(d); });
 Native.on("profile.saved", d => { if (obMatches(d) && d.onboarding && S.v === "login" && S.auth.busy === "profile.save") obComplete(d.account); });
 Native.on("profile.progress", d => {

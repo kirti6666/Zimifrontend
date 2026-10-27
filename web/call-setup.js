@@ -40,6 +40,6 @@ function zpcAfter(){const open=S.v==='precall';document.documentElement.classLis
 document.addEventListener('aurora:navigate',()=>{if(S.v==='precall'&&!Home.preparingCall){CallSetup.mode='video';CallSetup.peerId=S.h;r()}});
 if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const offline=previewMode==='precall-offline';
-  const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Bennett',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':OB_MEDIA[2],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});
+  const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Khan',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':PREVIEW_HOSTS[5],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});
   S.v='precall';S.h=h.id;S.loggedIn=1;S.bal=offline?0:1250;
 }

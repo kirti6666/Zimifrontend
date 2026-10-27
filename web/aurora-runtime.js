@@ -911,6 +911,7 @@ const escChat=v=>esc(v).replace(/█+/g,m=>`<span class="chat-hidden" role="img"
 // relying on HTML escaping (which is decoded before JavaScript runs).
 const domId=v=>/^[a-zA-Z0-9_-]{1,128}$/.test(String(v??""))?String(v):"";
 const imageSrc=v=>typeof v==="string"&&(/^https:\/\/[^\s"'<>]+$/.test(v)||/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(v))?esc(v):"";
+const videoSrc=v=>typeof v==="string"&&/^https:\/\/[^\s"'<>]+$/.test(v)?esc(v):"";
 const giftGlyph=v=>GIFTS.some(g=>g[1]===v)?v:esc(v);
 let mediaSequence=0;
 async function pickMedia(e,k){
@@ -1646,7 +1647,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in

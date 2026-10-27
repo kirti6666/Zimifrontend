@@ -1,0 +1,14 @@
+/* Touch feedback drawn by tactile.js, and small signs of life: an online dot that breathes. */
+.zt-ripple{position:absolute;inset:0;z-index:0;border-radius:inherit;overflow:hidden;pointer-events:none}
+.zt-ripple>i{position:absolute;border-radius:50%;background:currentColor;opacity:0}
+.zt-burst{position:fixed;z-index:9999;width:0;height:0;pointer-events:none}
+.zt-burst>i{position:absolute;left:0;top:0;width:7px;height:10px;border-radius:60% 60% 50% 50%/70% 70% 40% 40%;opacity:0}
+.zh-person-status.is-online>i,.zh-online>i{animation:zt-breathe 2.6s ease-out infinite}
+@keyframes zt-breathe{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--online,#1bc5a4) 70%,transparent)}70%,100%{box-shadow:0 0 0 6px transparent}}
+@media(prefers-reduced-motion:reduce){.zh-person-status.is-online>i,.zh-online>i{animation:none}}
+/* Empty states show a photograph instead of an icon, warmer than a blank screen. */
+.zh-empty-photo{overflow:hidden;padding:0}
+.zh-empty-photo>img{width:100%;height:100%;object-fit:cover;display:block}
+.zc-empty-photo{display:block;width:112px;height:140px;margin:0 auto 18px;object-fit:cover;border-radius:22px;rotate:-4deg;box-shadow:0 18px 34px -16px rgb(0 0 0 / .55);border:1px solid rgb(255 255 255 / .12)}
+/* A faint jaali lattice behind the illustrated stand-in for a missing photo. */
+.zf-face{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='white' stroke-opacity='.08'%3E%3Ccircle r='14'/%3E%3Ccircle cx='28' r='14'/%3E%3Ccircle cy='28' r='14'/%3E%3Ccircle cx='28' cy='28' r='14'/%3E%3Ccircle cx='14' cy='14' r='14'/%3E%3C/g%3E%3C/svg%3E"),radial-gradient(circle at 30% 18%,color-mix(in srgb,var(--accent) 30%,var(--raised)),var(--raised) 72%)}

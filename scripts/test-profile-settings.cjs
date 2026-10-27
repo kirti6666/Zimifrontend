@@ -91,7 +91,7 @@ async function run() {
     assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Gifts sent' }).locator('b').innerText(), '4');
     assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Gifts received' }).locator('b').innerText(), '9');
     assert.match(await page.locator('.zp-balance strong').innerText(), /3,750/);
-    assert.doesNotMatch(await profile().innerText(), /Elena Rostova|VIP Tier|Host Score|858350921|12\.4k|\$38\.50/i, 'Production never substitutes screenshot identity, scores, or an invented exchange rate');
+    assert.doesNotMatch(await profile().innerText(), /Aditi Rao|VIP Tier|Host Score|858350921|12\.4k|\$38\.50/i, 'Production never substitutes screenshot identity, scores, or an invented exchange rate');
     assert.equal(await row('1:1 Call Studio').count(), 0);
     await loading(page, 'profileSettings', true);
     assert.equal(await page.locator('.zp-stats .zh-skeleton-shape').count(), 4, 'Reload replaces cached profile statistics with skeletons');

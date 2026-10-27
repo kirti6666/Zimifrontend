@@ -11,7 +11,7 @@
    ZIMI_DEMO=1 keeps the demo in the app build too, for testing on a phone
    before the server exists. Run after editing anything in web/.
    Plain Node so it runs on Windows as well as macOS/Linux. */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyWebBranding, WEB_ICON_HEAD } from "./web-branding.mjs";
@@ -22,6 +22,15 @@ const brandLogo = "data:image/webp;base64," + readFileSync(join(root, "web/binzo
 const brandIcon = "data:image/png;base64," + readFileSync(join(root, "web/favicon/favicon-96x96.png")).toString("base64");
 const waterSticker =
   "data:image/webp;base64," + readFileSync(join(root, "web/water-flowing.webp")).toString("base64");
+// web/model-photos/model-N.(webp|jpg|png): licensed stock photos of models. A missing file leaves
+// its slot empty, and the welcome screen and preview fall back to web/onboarding-media/.
+const modelPhoto = (i) => {
+  for (const [ext, type] of [["webp", "webp"], ["jpg", "jpeg"], ["jpeg", "jpeg"], ["png", "png"]]) {
+    const file = join(root, `web/model-photos/model-${i}.${ext}`);
+    if (existsSync(file)) return `data:image/${type};base64,` + readFileSync(file).toString("base64");
+  }
+  return "";
+};
 
 const HEAD = (hosted) => `<!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -110,6 +119,8 @@ const page = (demo, hosted = false) =>
   read("web/payouts.css") +
   read("web/payment-routes.css") +
   read("web/ads.css") +
+  read("web/tactile.css") +
+  read("web/card-video.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -118,8 +129,10 @@ const page = (demo, hosted = false) =>
   read("node_modules/qrcode-generator/dist/qrcode.js") +
   read("web/bridge.js") +
   read("web/phone-countries.js") +
-  read("web/onboarding.js").replace(/__OB_PORTRAIT_([123])__/g, (_, i) =>
-    "data:image/jpeg;base64," + readFileSync(join(root, `web/onboarding-media/portrait-${i}.jpg`)).toString("base64")) +
+  read("web/onboarding.js").replace(/__OB_MEDIA_([1-6])__/g, (_, i) =>
+    "data:image/webp;base64," + readFileSync(join(root, `web/onboarding-media/india-${i}.webp`)).toString("base64"))
+    // The app shows only the three welcome photos; the preview also needs the sample hosts'.
+    .replace(/__MODEL_PHOTO_([1-6])__/g, (_, i) => (demo || Number(i) <= 3 ? modelPhoto(i) : "")) +
   read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker).replace("__BRAND_LOGO__", brandLogo) +
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
@@ -144,6 +157,8 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/payouts.js") +
   "\n" + read("web/payment-routes.js") +
   "\n" + read("web/ads.js") +
+  "\n" + read("web/tactile.js") +
+  "\n" + read("web/card-video.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

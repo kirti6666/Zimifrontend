@@ -59,6 +59,8 @@ export function hostFrom(value: unknown): Host {
     ...(typeof host.availableForCall === "boolean" ? { availableForCall: host.availableForCall } : {}),
     ...(host.stream && typeof host.stream === "object" ? { stream: streamFrom(host.stream, idOf(host)), live: true } : host.stream === null ? { stream: null, live: false } : {}),
     ...(typeof host.isFollowing === "boolean" ? { following: host.isFollowing } : {}),
+    // Only feeds that know about videos send the field, so its absence never clears a known one.
+    ...("previewVideoUrl" in host ? { previewVideoUrl: typeof host.previewVideoUrl === "string" && host.previewVideoUrl.startsWith("https://") ? host.previewVideoUrl : null } : {}),
   };
 }
 

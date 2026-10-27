@@ -1,13 +1,23 @@
-Onboarding promotional portrait assets, downloaded 2026-10-13.
+Welcome and preview photography, downloaded 2026-10-27 from Unsplash.
+All six are free under the Unsplash License (not Unsplash+ or iStock): https://unsplash.com/license
+Each shows a woman from behind or in silhouette, so no one can be recognised. They set the mood of
+the welcome screen and stand in for the design preview's sample hosts. None of them is a
+BinzoLive user or host. Licensed model photos in web/model-photos/ take their place when added.
 
-portrait-1.jpg
-https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=720&h=980&q=85
+india-1.webp  A bride in a red lehenga with flowers in her hair, from behind
+https://images.unsplash.com/photo-1609351231656-9285d74d363d?auto=format&fit=crop&w=600&h=800&q=55&fm=webp
 
-portrait-2.jpg
-https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=640&h=880&q=82
+india-2.webp  A woman in a sari by the lake at Victoria Memorial, Kolkata, from behind
+https://images.unsplash.com/photo-1739540126423-19a7ba3bba76?auto=format&fit=crop&w=600&h=800&q=50&fm=webp
 
-portrait-3.jpg
-https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&h=880&q=82
+india-3.webp  A woman in a bright sari on a tree-lined road, from behind
+https://images.unsplash.com/photo-1602223188244-7692bd3cb0d7?auto=format&fit=crop&w=600&h=800&q=50&fm=webp
 
-Unsplash license: https://unsplash.com/license
-These images illustrate the welcome screen; they do not represent live users.
+india-4.webp  A woman in a red and green sari tying her hair, from behind
+https://images.unsplash.com/photo-1771654104630-e3aeb6c15793?auto=format&fit=crop&w=600&h=800&q=50&fm=webp
+
+india-5.webp  A woman in a yellow and purple sari walking along a path, from behind
+https://images.unsplash.com/photo-1612273882937-44c5313400e5?auto=format&fit=crop&w=600&h=800&q=50&fm=webp
+
+india-6.webp  A woman dancing by the water at sunset, in silhouette
+https://images.unsplash.com/photo-1772822477435-9c7c1a4ffe08?auto=format&fit=crop&w=600&h=800&q=60&fm=webp
