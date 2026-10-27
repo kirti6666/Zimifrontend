@@ -202,7 +202,7 @@ Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
 Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
-Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||Home.giftTo)r()});
+Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||S.v==='thread'||Home.giftTo)r()});
 Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
 Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
 Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=isApprovedHost()&&d.online?1:0;S.vis=isApprovedHost()&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}});

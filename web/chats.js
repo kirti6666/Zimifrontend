@@ -119,6 +119,14 @@ function zcBubble(m,h){
 }
 function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;if(!S.msgs.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return S.msgs.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+zcBubble(m,h)}).join('')}
 function zcThreadChips(){const chips=[['🔥','Love it',"zcThreadSend('Love it 🔥')"],['💖','Thank you',"zcThreadSend('Thank you! 💖')"]];return `<div class="zc-chips" role="group" aria-label="Quick replies">${chips.map(([emoji,label,action])=>`<button ${action.startsWith("zcThreadSend")?"data-chat-send":""} ${action.startsWith("zcThreadSend")&&zcThreadBlocked()?"disabled":""} onclick="${action}"><span aria-hidden="true">${emoji}</span>${label}</button>`).join('')}</div>`}
+/* The gift catalog, one tap from the composer. A tap opens the gift sheet with that gift chosen,
+   so coins are only spent from its Send button. Members only, as with the composer's gift button. */
+function zcThreadGifts(h){
+ if(isHost()||!Home.gifts.length||Chats.rows.find(c=>c.user.id===h.id)?.bot)return '';
+ const blocked=!!zcThreadBlocked();
+ return `<div class="zc-gift-strip" role="group" aria-label="Send a gift">${Home.gifts.map(x=>`<button type="button" onclick="zcQuickGift('${domId(x.id)}')" aria-label="${esc(x.name)}, ${n(x.coins)} coins" ${blocked?'disabled':''}>${homeGiftUrl(x.mediaUrl)?`<img src="${homeGiftUrl(x.mediaUrl)}" alt="" loading="lazy" decoding="async">`:`<span aria-hidden="true">${esc(x.emoji||'🎁')}</span>`}<b>${n(x.coins)}</b></button>`).join('')}</div>`;
+}
+function zcQuickGift(id){if(isHost()||!S.h||zcThreadBlocked())return;homeGifts(S.h);homeSelectGift(id)}
 const zcEmoji=['😊','😂','😍','🥰','🔥','💖','👏','🙌','🎶','🎧','✨','🙏'];
 function zcThreadComposer(h){
  const text=Chats.drafts[S.h]||'',send=!!text.trim()||!!Chats.editing,recording=window.ZimiChatVoice?.active();
@@ -127,7 +135,7 @@ function zcThreadComposer(h){
 function zcComposerInput(){const input=document.getElementById('ti');if(input)Chats.drafts[S.h]=input.value;zcUpdateComposer()}
 function zcUpdateComposer(){const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
 function zcComposerAction(){if(document.getElementById('ti')?.value.trim()||Chats.editing)zcThreadSend();else window.ZimiChatVoice?.start()}
-function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips()}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
+function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips()}${zcThreadGifts(h)}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
 function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send]").forEach(button=>{button.disabled=!!reason;button.title=reason});zcUpdateComposer();const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
 function zcPaintThread(scrollToEnd=false){zcUpdateSendControls();const f=document.getElementById('tf');if(!f)return;const nearBottom=f.scrollHeight-f.scrollTop-f.clientHeight<80,scroll=f.scrollTop;f.innerHTML=zcThreadList(zcThreadPerson());f.scrollTop=scrollToEnd||nearBottom?f.scrollHeight:scroll;contentImagesReady();window.ZimiChatVoice?.paintPlayback();window.ZimiChatPhoto?.sync()}
 /* Quick replies pass their text; the composer sends and clears its draft. */

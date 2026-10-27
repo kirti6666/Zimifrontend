@@ -2631,6 +2631,14 @@ button.gpill[onclick]{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.zc-msg-stack{transition:none}.zc-flash .bub,.zc-flash .zc-photo{transition:none}}
 .zc-attach{display:flex;gap:8px;padding:8px var(--zc-gutter) 0}.zc-attach[hidden]{display:none}
 .zc-attach>button{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:12px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}.zc-attach>button:disabled{opacity:.45}.zc-attach>button svg{color:var(--accent-ink)}
+/* Gifts above the composer: emoji (or artwork) and coin price, one tap from the gift sheet. */
+.zc-gift-strip{flex:none;display:flex;gap:8px;padding:8px var(--zc-gutter) 2px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}
+.zc-gift-strip::-webkit-scrollbar{display:none}
+.zc-gift-strip>button{flex:none;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:58px;height:62px;padding:0;border-radius:14px;background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
+.zc-gift-strip>button:disabled{opacity:.45}
+.zc-gift-strip span{font-size:24px;line-height:1}
+.zc-gift-strip img{width:28px;height:28px;object-fit:contain}
+.zc-gift-strip b{font-size:10.5px;line-height:1;font-weight:750;color:var(--accent-ink);font-variant-numeric:tabular-nums}
 /* A compact composer keeps text and controls together above the keyboard. */
 .zc-composer{padding:10px max(12px,calc(50% - 384px)) 12px}
 .zc-composer[hidden]{display:none}
@@ -2735,6 +2743,8 @@ button.gpill[onclick]{cursor:pointer}
 @media(prefers-reduced-motion:reduce){.zh-app .zh-nav>button,.zh-app .zh-nav>button>svg,.zh-app .zh-nav>button::before{transition:none!important}}
 
 .zh-app .zh-nav>.zh-create-pending{align-self:center;width:55px;height:55px;margin:-12px 0 0;border-radius:50%;pointer-events:none}
+/* The native shell reports the keyboard; the tab bar hides under it instead of floating above it. */
+.zh-keyboard-open #nav{display:none!important}
 /* Profile surfaces inherit the selected palette; shared navigation keeps its geometry. */
 .zp-page{--zp-border:color-mix(in srgb,var(--line) 62%,transparent);max-width:660px;margin:auto;padding:22px 18px 30px;color:var(--ink)}
 .zp-page [hidden]{display:none!important}
@@ -2923,6 +2933,7 @@ button.gpill[onclick]{cursor:pointer}
 @media(prefers-reduced-motion:reduce){
   .zp-page *,.zp-dialog *,.zp-dialog[open]{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+.zp-public-view{margin-top:10px}
 /* Shared semantic tokens keep new palettes consistent across the existing screens. */
 :root[data-theme-id] body{font-family:var(--theme-font);font-weight:var(--theme-font-weight)}
 :root[data-theme-id] :is(.disp,.title,.zh-brand,h1,h2,h3,h4,.zp-dialog-title){font-family:var(--theme-font);font-weight:var(--theme-heading-weight)}
@@ -8993,7 +9004,7 @@ Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
 Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
-Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||Home.giftTo)r()});
+Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||S.v==='thread'||Home.giftTo)r()});
 Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
 Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
 Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=isApprovedHost()&&d.online?1:0;S.vis=isApprovedHost()&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}});
@@ -10379,6 +10390,14 @@ function zcBubble(m,h){
 }
 function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;if(!S.msgs.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return S.msgs.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+zcBubble(m,h)}).join('')}
 function zcThreadChips(){const chips=[['🔥','Love it',"zcThreadSend('Love it 🔥')"],['💖','Thank you',"zcThreadSend('Thank you! 💖')"]];return `<div class="zc-chips" role="group" aria-label="Quick replies">${chips.map(([emoji,label,action])=>`<button ${action.startsWith("zcThreadSend")?"data-chat-send":""} ${action.startsWith("zcThreadSend")&&zcThreadBlocked()?"disabled":""} onclick="${action}"><span aria-hidden="true">${emoji}</span>${label}</button>`).join('')}</div>`}
+/* The gift catalog, one tap from the composer. A tap opens the gift sheet with that gift chosen,
+   so coins are only spent from its Send button. Members only, as with the composer's gift button. */
+function zcThreadGifts(h){
+ if(isHost()||!Home.gifts.length||Chats.rows.find(c=>c.user.id===h.id)?.bot)return '';
+ const blocked=!!zcThreadBlocked();
+ return `<div class="zc-gift-strip" role="group" aria-label="Send a gift">${Home.gifts.map(x=>`<button type="button" onclick="zcQuickGift('${domId(x.id)}')" aria-label="${esc(x.name)}, ${n(x.coins)} coins" ${blocked?'disabled':''}>${homeGiftUrl(x.mediaUrl)?`<img src="${homeGiftUrl(x.mediaUrl)}" alt="" loading="lazy" decoding="async">`:`<span aria-hidden="true">${esc(x.emoji||'🎁')}</span>`}<b>${n(x.coins)}</b></button>`).join('')}</div>`;
+}
+function zcQuickGift(id){if(isHost()||!S.h||zcThreadBlocked())return;homeGifts(S.h);homeSelectGift(id)}
 const zcEmoji=['😊','😂','😍','🥰','🔥','💖','👏','🙌','🎶','🎧','✨','🙏'];
 function zcThreadComposer(h){
  const text=Chats.drafts[S.h]||'',send=!!text.trim()||!!Chats.editing,recording=window.ZimiChatVoice?.active();
@@ -10387,7 +10406,7 @@ function zcThreadComposer(h){
 function zcComposerInput(){const input=document.getElementById('ti');if(input)Chats.drafts[S.h]=input.value;zcUpdateComposer()}
 function zcUpdateComposer(){const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
 function zcComposerAction(){if(document.getElementById('ti')?.value.trim()||Chats.editing)zcThreadSend();else window.ZimiChatVoice?.start()}
-function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips()}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
+function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips()}${zcThreadGifts(h)}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
 function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send]").forEach(button=>{button.disabled=!!reason;button.title=reason});zcUpdateComposer();const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
 function zcPaintThread(scrollToEnd=false){zcUpdateSendControls();const f=document.getElementById('tf');if(!f)return;const nearBottom=f.scrollHeight-f.scrollTop-f.clientHeight<80,scroll=f.scrollTop;f.innerHTML=zcThreadList(zcThreadPerson());f.scrollTop=scrollToEnd||nearBottom?f.scrollHeight:scroll;contentImagesReady();window.ZimiChatVoice?.paintPlayback();window.ZimiChatPhoto?.sync()}
 /* Quick replies pass their text; the composer sends and clears its draft. */
@@ -11044,7 +11063,8 @@ function zpIdentity(){
     <div class="zp-identity-body"><div class="zp-person"><button class="zp-avatar" onclick="zpGo('editprofile')" aria-label="Change profile photo">${imageSrc(avatar)?`<img class="zh-photo-pending" src="${imageSrc(avatar)}" alt="${esc(name)}" data-face="${faceKind(me)}">`:face(me)}${approved?`<span class="zp-verified" aria-label="Admin approved host">${hi('verified',15)}</span>`:''}<span class="zp-camera">${zi('camera',14)}</span></button><div class="zp-person-text"><h2>${esc(name)}</h2><p class="zp-id">${id?'ID · '+esc(id.slice(-8)):'Your BinzoLive account'}${standing.level?` · Level ${zpNumber(standing.level)}`:''}${standing.crown?` · <span class="zp-crown">${ci('crown',12)}Crown</span>`:''}</p><p>${zi('location',12)} ${esc(city||'Add your location')}</p></div></div>
     <div class="zp-bio">${esc(bio||'A little about you goes a long way. Add your introduction in Edit profile.')}</div>
     <div class="zp-stats">${[['people','Fans',stats.fans],['follow','Following',stats.following],['gift','Gifts sent',stats.giftsSent],['gift','Gifts received',stats.giftsReceived]].map(([icon,label,value])=>`<div>${zi(icon,14)}<b>${zpPending()?skeletonLine('34px',18):ZProfile.error?'—':zpNumber(value)}</b><span>${label}</span></div>`).join('')}</div>
-    <button type="button" class="zp-edit-profile" onclick="zpGo('editprofile')">${zi('edit',16)} Edit profile ${hi('arrow',16)}</button></div></section>`;
+    <button type="button" class="zp-edit-profile" onclick="zpGo('editprofile')">${zi('edit',16)} Edit profile ${hi('arrow',16)}</button>
+    <button type="button" class="zp-edit-profile zp-public-view" onclick="zpViewPublic()">${hi('eye',16)} View as others see it ${hi('arrow',16)}</button></div></section>`;
 }
 function zpWallet(){return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>${zi('wallet',14)} YOUR WALLET</h2><div class="zp-balance">${coinIcon(26)}<strong>${contentBalance()}</strong><span>Coins</span></div></div><button class="zp-topup" onclick="zpGo('coins')">${hi('plus',17)} Top Up</button></div><p class="zp-wallet-note">A little love for your favorite creators.</p><div class="zp-wallet-actions"><button onclick="${isApprovedHost()?"zpOpen('earnings')":"zpGo('wallet')"}">${zi('cash',18)}<span>${isApprovedHost()?'Earnings & Wallet':'Wallet & Activity'}</span>${hi('arrow',14)}</button><button onclick="zpOpen('gifts')">${hi('gift',18)}<span>Gift History</span>${hi('arrow',14)}</button><button class="zp-withdrawal-history" onclick="zpGo('payout-history')">${zi('cash',18)}<span>Withdrawal history</span>${hi('arrow',14)}</button></div></section>`}
 function zpAvailability(){const on=!!ZProfile.data?.privacy?.allowRequests&&!!ZProfile.data?.privacy?.showActivity;return `<div class="zp-row"><span class="zp-row-icon">${hi('ph',18)}</span><span class="zp-row-text"><b>1-on-1 Call Availability</b><small>${ZProfile.presenceBusy?'Updating availability':on?'Online · Members can call you':'Offline'}</small></span><button type="button" class="zp-switch ${on?'is-on':''}" role="switch" aria-label="1-on-1 Call Availability" aria-checked="${on}" onclick="zpAvailabilitySet(${!on})" ${ZProfile.presenceBusy||zpPending()?'disabled':''}>${ZProfile.presenceBusy?'<span class="zh-skeleton-shape"></span>':'<i></i>'}</button></div>`}
@@ -11087,6 +11107,8 @@ function zpCategory(category){ZProfile.category=category;zpFilter()}
 function zpClearSearch(){const input=document.getElementById('zp-search');if(input){input.value='';input.focus({preventScroll:true})}zpFilter('')}
 function zpResetFilters(){ZProfile.category='all';zpClearSearch()}
 function zpGo(view){zpClose();go(view)}
+/* Opens your public profile, the same page other people see. */
+function zpViewPublic(){const id=S.user?.id||ZProfile.data?.profile?.id;if(!id)return;zpClose();go(isApprovedHost()?'host':'user',id)}
 // Asks Android again, or opens system settings once it stops asking.
 function zpEnablePush(){if(!DEMO)Native.send('push.enable',{})}
 function zpOpen(kind){
@@ -11527,6 +11549,8 @@ window.ZimiNavigation=(()=>{
   }
   reduced.addEventListener?.('change',()=>{if(reduced.matches)cancel()});
   Native.on('app.back',back);
+  // The tab bar steps aside while the keyboard is up, so it never rides on top of it.
+  Native.on('keyboard',d=>document.documentElement.classList.toggle('zh-keyboard-open',!!d.open));
   Native.on('session.none',reset);Native.on('session.expired',reset);
   return {before,after,reset,back};
 })();
@@ -11766,6 +11790,8 @@ const zuCurrent = () => Zu.id === zuId();
 const zuMatches = (d, posts=false) => d.id === Zu.id && d.requestId === (posts ? Zu.postsRequestId : Zu.requestId);
 const zuApproved = p => p?.verified === true && p?.serverRole === 'host';
 const zuMember = () => DEMO ? !isHost() : zcSelfRole() === 'user';
+// Your own profile, opened from Profile to see it as others do: no follow, gift, chat or report.
+const zuSelf = () => !!S.user?.id && zuId() === S.user.id;
 const zuOffline = () => !!window.ZimiOffline?.isOffline();
 function zuPaint(){
   if(!zuActive())return;
@@ -11865,7 +11891,7 @@ function zuAvatar(p){
   return source?`<img class="zh-photo-pending" src="${source}" alt="${esc(p.name||'Profile photo')}" data-face="${faceKind(p||{})}" decoding="async">`:face(p||{});
 }
 function zuIdentity(p){
-  const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember();
+  const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember()&&!zuSelf();
   return `<aside class="zu-overview"><div class="zu-identity-top"><div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>
     ${canFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${Zu.followBusy?'Updating…':p.following?'Following':'Follow'}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">${hi('refresh',17)} Try again</button></div>`:`
@@ -11907,6 +11933,8 @@ function zuContent(p){
 }
 function zuActions(p){
   if(!p||Zu.error)return '';
+  if(zuSelf())return `<div class="zu-actionbar zu-self-bar"><div class="zu-actionbar-inner"><div class="zu-call-info"><span>YOUR PUBLIC PROFILE</span><strong>${hi('eye',15)} This is how others see you</strong></div>
+    <div class="zu-action-buttons"><button id="zu-edit-self" class="zu-call" onclick="go('editprofile')">${zi('edit',20)}<span>Edit profile</span></button></div></div></div>`;
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id);
   return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
@@ -11916,7 +11944,7 @@ function zuActions(p){
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl);
   return `<section class="zu-page" aria-label="User profile"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:'<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i></div>'}<div class="zu-cover-shade"></div>
-    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span><button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button></header>${p?zuStatus(p):''}</div>
+    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span><button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error||zuSelf()?'disabled':''}>${ci('more',21)}</button></header>${p?zuStatus(p):''}</div>
     <div class="zu-layout">${zuIdentity(p||{})}${zuContent(p)}</div>${zuActions(p)}${homeGiftSheet()}</section>`;
 }
 

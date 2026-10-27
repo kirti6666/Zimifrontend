@@ -21,7 +21,7 @@ const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amou
 const plain = value => JSON.parse(JSON.stringify(value));
 
 function harness(initialAppState = 'active', initialLink = null, liveStreaming = false) {
-  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], links = [], shares = [], backs = [], alerts = [], exits = [];
+  const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
   // The FCM edge: OS permission, the device token and notification taps.
   const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
@@ -103,9 +103,9 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       } };
       if (id === 'react') return react;
       if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
+      if (id === 'react-native') return { Alert: { alert: (...args) => alerts.push(args) }, Keyboard: { addListener: (name, fn) => { const entry = [name, fn]; keyboards.push(entry); return { remove: () => { keyboards.splice(keyboards.indexOf(entry), 1); } }; } }, BackHandler: { exitApp: () => exits.push(true), addEventListener: (_name, fn) => { backs.push(fn); return { remove: () => { backs.splice(backs.indexOf(fn), 1); } }; } }, AppState: { currentState: initialAppState, addEventListener: (_name, fn) => { activities.push(fn); return { remove: () => { activities.splice(activities.indexOf(fn), 1); } }; } }, Linking: { openURL: async url => { if (overrides.openURL) await overrides.openURL(url); opened.push(url); }, getInitialURL: async () => typeof initialLink === 'function' ? initialLink() : initialLink, addEventListener: (_name, fn) => { links.push(fn); return { remove: () => { links.splice(links.indexOf(fn), 1); } }; } }, Share: { share: async content => { shares.push(content); return overrides.share ? overrides.share(content) : { action: 'sharedAction' }; } }, ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', Text: 'Text', View: 'View', StyleSheet: { create: styles => styles } };
       if (id === 'react-native-webview') return { WebView: 'WebView' };
-      if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
+      if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 28, right: 0, bottom: 24, left: 0 }) };
       if (id === 'expo-status-bar') return { StatusBar: 'StatusBar' };
       if (id === 'expo-screen-capture') return { preventScreenCaptureAsync: async key => capture.push(['prevent', key]), allowScreenCaptureAsync: async key => capture.push(['allow', key]) };
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
@@ -125,7 +125,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, links, shares, backs, alerts, exits, connection, push };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push };
 }
 
 // Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
@@ -535,7 +535,8 @@ test('closing the bridge removes session observers and prevents pending UI deliv
 test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
   const h = harness();
   const provider = h.load('App.tsx').default();
-  const [keyboard] = [provider.props.children].flat();
+  const [shell] = [provider.props.children].flat();
+  const keyboard = shell.type(shell.props);
   const safeArea = keyboard.props.children;
   const web = [safeArea.props.children].flat().find(node => node?.type === 'WebView');
   const style = node => Object.assign({}, ...[node.props.style].flat());
@@ -543,7 +544,8 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   assert.equal(keyboard.type, 'KeyboardAvoidingView', 'Measure keyboard overlap from the full root, outside safe-area padding');
   assert.equal(keyboard.props.behavior, 'padding', 'Handle overlay keyboards even when Android leaves the WebView viewport unchanged');
   assert.notEqual(keyboard.props.enabled, false);
-  assert.equal(keyboard.props.keyboardVerticalOffset ?? 0, 0, 'The root starts at the screen origin and needs no invented keyboard offset');
+  // The keyboard covers the navigation bar, which the SafeAreaView below still pads for.
+  assert.equal(keyboard.props.keyboardVerticalOffset, -24, 'Keyboard padding leaves out the bottom inset, so no gap opens above the keyboard');
   assert.equal(safeArea.type, 'SafeAreaView');
   assert.ok(web, 'The actual WebView must be inside the resized content');
   for (const node of [keyboard, safeArea, web]) assert.equal(style(node).flex, 1, 'Allow keyboard padding to shrink the WebView');
@@ -588,6 +590,19 @@ test('native app inactivity explicitly notifies the WebView and removes its list
   assert.equal(h.count('endCall'), 0, 'The voice cleanup event does not change call lifecycle behavior');
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
   assert.equal(h.activities.length, 0, 'Both the native listener and bridge observers are removed');
+});
+
+test('native App tells the page when the keyboard opens and closes', () => {
+  const h = harness();
+  const tree = h.load('App.tsx').default();
+  const findWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findWeb).find(Boolean) || null;
+  const web = findWeb(tree), received = [];
+  web.props.ref.current = { injectJavaScript: script => vm.runInNewContext(script, { window: { zimiReceive: raw => received.push(JSON.parse(raw)) } }) };
+  assert.deepEqual(h.keyboards.map(([name]) => name).sort(), ['keyboardDidHide', 'keyboardDidShow']);
+  for (const name of ['keyboardDidShow', 'keyboardDidHide']) h.keyboards.find(([event]) => event === name)[1]();
+  assert.deepEqual(received, [{ type: 'keyboard', data: { open: true } }, { type: 'keyboard', data: { open: false } }]);
+  h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
+  assert.equal(h.keyboards.length, 0, 'Keyboard listeners are removed with the app');
 });
 
 test('native App refuses external document navigation and messages before privileged dispatch', async () => {

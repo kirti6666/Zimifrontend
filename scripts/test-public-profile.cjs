@@ -335,6 +335,24 @@ async function run() {
     await layout(page, 'Long untrusted names at 320px');
     console.log('PASS public profile: escaped remote text and safe media fallbacks');
 
+    // Your own profile, opened from Profile, shows what others see, with Edit in place of chat, follow or report.
+    await receive(page, 'session', creatorAccount);
+    await receive(page, 'data.home', feed);
+    await page.evaluate(() => go('profile'));
+    await button(page, 'View as others see it').click();
+    const self = { ...creator, id: creatorAccount.user.id, name: 'Approved creator' };
+    assert.deepEqual(await page.evaluate(() => [S.v, zuId()]), ['host', self.id], 'Creators open their public creator profile');
+    await acceptProfile(page, self);
+    await acceptPosts(page, self, [photo]);
+    await page.getByRole('heading', { name: 'Approved creator', exact: true }).waitFor();
+    assert.match(await page.locator('.zu-self-bar').innerText(), /YOUR PUBLIC PROFILE[\s\S]*This is how others see you/);
+    assert.equal(await page.locator('#zu-follow, #zu-message, #zu-call, .zu-gift').count(), 0, 'Nothing to follow, message, call or gift on your own profile');
+    assert.equal(await button(page, 'More profile options').isDisabled(), true, 'You cannot report or block yourself');
+    assert.equal(await page.locator('.zu-gallery .zu-photo').count(), 1, 'Your posts show as they do for others');
+    await page.locator('#zu-edit-self').click();
+    assert.equal(await page.evaluate(() => S.v), 'editprofile');
+    console.log('PASS public profile: your own profile as others see it, with Edit instead of social actions');
+
     assert.deepEqual(errors, [], 'Public profiles handle all native events without browser exceptions');
   } finally { await browser.close(); }
 }

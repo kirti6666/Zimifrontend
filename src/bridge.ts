@@ -125,6 +125,7 @@ export type AppMessage =
   | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
+  | { type: "keyboard"; data: { open: boolean } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
   | { type: "data.home"; data: HomeData }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }

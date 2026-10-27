@@ -161,7 +161,13 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     await clickTab(motion, 'Home');
     await settled(motion);
     assert.ok(Math.abs(await motion.locator('#scroll-root').evaluate(element => element.scrollTop) - scrollBefore) < 2, 'Returning to a tab restores its scroll position');
-    console.log('PASS navigation: brief tab motion, rapid-tap cancellation, background stability and per-tab scroll restoration');
+    await clickTab(motion, 'Chats');
+    await settled(motion);
+    await receive(motion, 'keyboard', { open: true });
+    assert.equal(await motion.locator('#nav').isVisible(), false, 'The tab bar hides while the keyboard is up');
+    await receive(motion, 'keyboard', { open: false });
+    assert.equal(await motion.locator('#nav').isVisible(), true, 'The tab bar returns when the keyboard closes');
+    console.log('PASS navigation: brief tab motion, rapid-tap cancellation, background stability, per-tab scroll restoration and a tab bar that steps aside for the keyboard');
 
     const access = await open();
     const denied = [

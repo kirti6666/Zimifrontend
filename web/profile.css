@@ -186,3 +186,4 @@
 @media(prefers-reduced-motion:reduce){
   .zp-page *,.zp-dialog *,.zp-dialog[open]{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+.zp-public-view{margin-top:10px}
