@@ -68,17 +68,16 @@ EXPO_PUBLIC_SOCKET_URL=http://127.0.0.1:5000
 ```
 
 Start the backend, connect and authorize the phone for USB debugging, then run
-`npm run android`. Its `preandroid` hook connects the configured loopback API
-and Socket.IO ports with `adb reverse`. It leaves LAN and remote URLs alone.
+`npm run android`, or `npm start` for an installed development client. Their
+startup hooks connect the configured loopback API, Socket.IO and Metro ports
+with `adb reverse`. LAN and remote API URLs are left alone.
 If several USB phones are connected, set `ANDROID_SERIAL` to the intended
 phone's serial from `adb devices`.
 
 **Unplugging USB clears the tunnels.** After reconnecting, run
-`npm run android:connect` to restore backend access without rebuilding, then
-tap Retry in the app. This command restores API/socket ports; Expo manages the
-Metro development-server tunnel. If the JavaScript development connection was
-also lost, restore its current port (for example, `adb reverse tcp:8081 tcp:8081`)
-and reload the app, or run `npm run android` again. Without a tunnel, `localhost`
+`npm run android:connect` to restore backend and Metro access without rebuilding,
+then reload or tap Retry in the app. Metro defaults to port 8081; set
+`RCT_METRO_PORT` if your development server uses a different port. Without a tunnel, `localhost`
 and `127.0.0.1` on a physical phone refer to the phone itself.
 
 Restart Expo and reload the app after changing an address:

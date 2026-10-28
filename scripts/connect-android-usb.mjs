@@ -31,6 +31,10 @@ function connect() {
     localPort(process.env.EXPO_PUBLIC_SOCKET_URL),
   ].filter(Boolean))];
   if (!ports.length) return; // LAN, remote servers and emulator addresses need no USB tunnel.
+  // Restore Metro too: USB reconnects drop every reverse mapping, even when
+  // the development server and the installed app are still running.
+  const metroPort = Number(process.env.RCT_METRO_PORT || 8081);
+  if (Number.isInteger(metroPort) && metroPort > 0 && metroPort <= 65535 && !ports.includes(String(metroPort))) ports.push(String(metroPort));
 
   const defaultSdk = process.platform === 'win32'
     ? path.join(toolingEnv.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local'), 'Android', 'Sdk')
