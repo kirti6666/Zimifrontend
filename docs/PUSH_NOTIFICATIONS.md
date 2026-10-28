@@ -129,6 +129,29 @@ notification.
 - Xiaomi / Oppo / Vivo: enable autostart and unrestricted battery for the app;
   swiping it away can force-stop it, which blocks FCM until it is reopened.
 
+## Against the original brief
+
+| Brief | Result |
+| --- | --- |
+| Ring when killed/locked, Answer opens the existing call screen | Done in code (full-screen notification, Answer → existing ring screen → `call.accept`). Not yet tried on a device |
+| `call_cancelled` + Missed call after hang-up / 30s | Done; server ring shortened from 60s to 30s to match |
+| Gift, coins, follower pushes | Done. No separate "earnings" push: a host's earnings come from gifts (pushed) and calls (shown in the call summary) |
+| RNFB app + messaging with their Expo plugins; `googleServicesFile` in app.json | RNFB installed, **without** its config plugins: Expo's built-in `googleServicesFile` handling covers Android and the RNFB app plugin breaks iOS prebuild. The file path is set in `app.config.js` (only when the file exists) |
+| notify-kit vs expo-callkit-telecom | notify-kit chosen. expo-callkit-telecom needs `@livekit/react-native-webrtc`, but calls run as WebRTC inside the WebView (there is no react-native-webrtc). notify-kit has no true CallStyle: category CALL + full-screen intent + Answer/Decline + looping ringtone |
+| Data-only messages in `setBackgroundMessageHandler` in index.js | Done |
+| Channels `incoming_calls`, `general` | Done, plus a silent `ongoing_call` channel for the during-call foreground service |
+| POST_NOTIFICATIONS, USE_FULL_SCREEN_INTENT + `canUseFullScreenIntent`, FGS phoneCall/camera/microphone | Done (local module `modules/call-screen` for the Android 14 check) |
+| Upload token after login and on refresh; remove on logout | Upload and refresh done. Logout deletes the token on the phone (`deleteToken`), so FCM reports it unregistered and the backend deletes it on the next send; the app does not call `DELETE /notifications/devices` |
+| Skip call pushes with `sentAt` older than 30s | Done |
+| firebase-admin from `GOOGLE_APPLICATION_CREDENTIALS` | Done. Same variable; on the VPS compose sets it to the mounted path `/run/secrets/firebase-service-account.json` |
+| Key mounted read-only into the container; never committed | Done. The key comes from a GitHub secret at deploy instead of a hand-placed file |
+| `.env.example` has the variable; `.env` ignored | Done (`.env` and `.env.*` are in `.gitignore`) |
+| Multiple tokens per user; register/remove endpoints | Already existed (`PushToken`, `POST/DELETE /notifications/devices`); now accept FCM tokens |
+| Delete tokens on `registration-token-not-registered` | Done (also `invalid-registration-token`) |
+| Billing untouched | Yes. Pushes are fire-and-forget; only the ring timeout changed |
+| Firebase project `binzolive-f5d0a` | Replaced by `binzolive-e48d2`, the project on the BinzoLive account |
+| Twilio | Used only for SMS login codes (`SMS_PROVIDER=twilio`). Calls use your own TURN server (`WEBRTC_TURN_URLS`, `WEBRTC_TURN_SECRET`) |
+
 ## Known limits
 
 - Not yet run end to end on a device or against real FCM.
