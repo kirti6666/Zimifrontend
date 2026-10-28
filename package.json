@@ -8,6 +8,7 @@
     "build": "node scripts/build-web.mjs",
     "build:web": "node scripts/build-web.mjs",
     "build:icons": "node scripts/build-icons.mjs",
+    "prestart": "node scripts/connect-android-usb.mjs",
     "start": "expo start",
     "preandroid": "node scripts/connect-android-usb.mjs",
     "android": "expo run:android",

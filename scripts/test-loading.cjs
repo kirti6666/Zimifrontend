@@ -50,7 +50,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
     for (const label of ['Loading featured creator', 'Loading creators']) await visible(label);
     assert.equal(await page.locator('.zh-live-section').count(), 0, 'Initial loading shows no Live now section before a live host is known');
-    assert.equal(await page.locator('.zh-tile').count(), 0, 'Initial content has no invented creator cards');
+    assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 0, 'Initial content has no invented creator cards');
     assert.equal(await page.locator('.zh-empty,.zh-stage-empty').count(), 0, 'Pending is distinct from an empty feed');
     assert.equal(await page.locator('.zh-balance').innerText(), '', 'An unknown balance must not flash a fabricated zero');
     assert.equal(await page.getByText('0 Available', { exact: true }).count(), 0);
@@ -60,7 +60,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.home', feed(), 'home', { page: 1 });
     await result('wallet.balance', { coins: 1234, earningsPaise: 0 }, 'wallet');
     await gone('Loading creators');
-    assert.equal(await page.locator('.zh-tile').count(), 1);
+    assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 1);
     assert.match(await page.locator('.zh-balance').innerText(), /1,234/);
 
     // A socket refresh hides the cached first page until the new response arrives.
@@ -68,25 +68,23 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await visible('Loading creators');
     await gone('Loading live creators');
     await visible('Loading featured creator');
-    assert.equal(await page.locator('.zh-tile,article.zh-featured').count(), 0);
+    assert.equal(await page.locator('.zh-tile,article.zh-creator-card,article.zh-featured').count(), 0);
     await receive('data.loaded');
     await visible('Loading creators');
     await result('data.home', feed(), 'home', { page: 1 });
     const homeLoads = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
     await page.getByRole('button', { name: 'Explore', exact: true }).click();
     assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeLoads, 'Explore reuses the full feed Home already loaded');
-    assert.equal(await page.locator('.zh-tile').count(), 1);
-    await page.getByRole('button', { name: 'Music', exact: true }).click();
-    await visible('Loading creators');
-    assert.equal((await lastSent('home.reload')).category, 'Music');
+    assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 1);
+    assert.equal(await page.locator('[data-home-filter],[data-dashboard-filter]').count(), 0, 'Explore has no category filters for now');
     await result('data.home', feed([host], { total: 2 }), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Load more creators', exact: true }).click();
     await visible('Loading more creators');
-    assert.equal(await page.locator('.zh-tile').count(), 1, 'Pagination retains the current cards');
-    assert.ok(await page.locator('.zh-skeleton-tile').count() > 0, 'Pagination appends placeholders');
+    assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 1, 'Pagination retains the current cards');
+    assert.ok(await page.locator('.zh-creator-placeholder').count() > 0, 'Pagination appends placeholders');
     assert.equal((await lastSent('home.reload')).page, 2);
     await result('data.home', feed([second], { page: 2, total: 2 }), 'home', { page: 2 });
-    assert.equal(await page.locator('.zh-tile').count(), 2);
+    assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 2);
     await gone('Loading more creators');
     await loading('home', true, { page: 1 });
     await loading('home', false, { page: 1, error: 'Creators could not be loaded' });
@@ -97,39 +95,34 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.home', feed([]), 'home', { page: 1 });
     await page.getByRole('heading', { name: 'A little quiet right now', exact: true }).waitFor();
     await result('data.home', feed(), 'home', { page: 1 });
+    const exploreLoads = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
     await page.getByRole('button', { name: 'Home', exact: true }).click();
-    await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Returning Home restores its own unfiltered query');
-    await result('data.home', feed(), 'home', { page: 1 });
-    console.log('PASS loading: initial feed, unknown balance, realtime refresh, filters, pagination, failure and retry');
+    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), exploreLoads, 'Home Explore reuses the unfiltered feed the Explore page loaded');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' });
+    console.log('PASS loading: initial feed, unknown balance, realtime refresh, shared Explore feed, pagination, failure and retry');
 
-    // Home keeps its filter independently of Explore's filter.
-    await page.evaluate(() => homeDashboardFilter('Talk'));
+    // Home keeps its Following tab independently of the Explore page.
+    await page.getByRole('tab', { name: 'Following', exact: true }).click();
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Talk' });
-    assert.equal(await page.evaluate(() => Home.filter), 'Music', 'Home filters preserve the Explore selection');
-    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' });
+    await result('data.home', feed([second]), 'home', { page: 1 });
     await navigate('explore');
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Music' });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Explore always lists every creator');
     await result('data.home', feed(), 'home', { page: 1 });
     await navigate('home');
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Talk' });
-    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
-    await page.evaluate(() => homeDashboardFilter('instant'));
-    await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'instant' }, 'Instant Call clears the category constraint');
-    await result('data.home', feed(), 'home', { page: 1 });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' }, 'Home restores its Following tab');
+    await result('data.home', feed([second]), 'home', { page: 1 });
     const homeRequests = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
-    await page.evaluate(() => { homeDashboardFilter('instant'); homeDashboardFilter('unknown category'); });
+    await page.evaluate(() => { homeDashboardFilter('following'); homeDashboardFilter('instant'); homeDashboardFilter('Music'); });
     assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeRequests,
-      'Repeated and invalid filters do not trigger requests');
-    await page.evaluate(() => homeDashboardFilter('popular'));
+      'Repeated and retired filters do not trigger requests');
+    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Popular restores the full feed');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Explore restores the full feed');
     await result('data.home', feed(), 'home', { page: 1 });
-    console.log('PASS loading: independent Home and Explore filters, active-only queries and filter validation');
+    console.log('PASS loading: Home keeps Following across Explore, Explore stays unfiltered and retired filters send nothing');
 
     // Search starts immediately on input, ignores responses for older queries and supports clearing.
     await page.getByRole('button', { name: 'Search creators', exact: true }).click();
@@ -138,20 +131,20 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await search.fill('Mira');
     await page.waitForFunction(() => window.__sent.some(message => message.type === 'hosts.search' && message.data.q === 'Mira'));
     await result('data.search', { q: 'Mira', hosts: [host], total: 1, page: 1 }, 'search', { q: 'Mira', page: 1 });
-    assert.match(await page.locator('#home-search-results .zh-tile').innerText(), /Mira North/);
+    assert.match(await page.locator('#home-search-results article.zh-creator-card').innerText(), /Mira North/);
     await search.fill('Asha');
     await visible('Finding creators');
-    assert.equal(await page.locator('#home-search-results .zh-tile').count(), 0, 'A changed query hides cached results');
+    assert.equal(await page.locator('#home-search-results article.zh-creator-card').count(), 0, 'A changed query hides cached results');
     await result('data.search', { q: 'Mira', hosts: [host], total: 1, page: 1 }, 'search', { q: 'Mira', page: 1 });
     await visible('Finding creators');
     await page.waitForFunction(() => window.__sent.some(message => message.type === 'hosts.search' && message.data.q === 'Asha'));
     await result('data.search', { q: 'Asha', hosts: [second], total: 1, page: 1 }, 'search', { q: 'Asha', page: 1 });
-    assert.match(await page.locator('#home-search-results .zh-tile').innerText(), /Asha Sen/);
+    assert.match(await page.locator('#home-search-results article.zh-creator-card').innerText(), /Asha Sen/);
     await search.fill('');
     await visible('Finding creators');
     await page.waitForFunction(() => window.__sent.filter(message => message.type === 'hosts.search').at(-1)?.data.q === '');
     await result('data.search', { q: '', hosts: [host, second], total: 2, page: 1 }, 'search', { q: '', page: 1 });
-    assert.equal(await page.locator('#home-search-results .zh-tile').count(), 2);
+    assert.equal(await page.locator('#home-search-results article.zh-creator-card').count(), 2);
     await loading('search', true, { q: '', page: 1 });
     await loading('search', false, { q: '', error: 'Search is unavailable' });
     await gone('Finding creators');

@@ -1636,9 +1636,10 @@ function r(){
  if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
- el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+ const html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
- if(S.loggedIn&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
+ if(window.ZimiMedia)window.ZimiMedia.render(el,html);else el.innerHTML=html;
+ if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
  nav();
  if(S.v==="call"){tick();paintFeed();
@@ -1709,7 +1710,7 @@ Native.on("auth.error",obAuthError);
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
-Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set"){S.online=0;refresh()}});
+Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set")refresh()});
 Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);go(S.editBack||"profile");appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});

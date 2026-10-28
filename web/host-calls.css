@@ -7,17 +7,13 @@
 .hc-setup button,.hc-waiting button,.hc-summary button{font-family:inherit;touch-action:manipulation}
 .hc-setup button:focus-visible,.hc-waiting button:focus-visible,.hc-summary button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .hc-setup{position:relative;isolation:isolate;display:flex;flex-direction:column;height:100%;padding:0 12px;background:linear-gradient(170deg,var(--raised),var(--canvas) 88%);overflow:hidden}
-/* The camera fills the whole screen behind the controls, like a video call. A landscape camera
-   is shown whole over a blurred copy of itself instead of being zoomed to fill a tall screen. */
-.hc-stage{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+/* Keep landscape framing whole on one solid media surface, with no blurred duplicate. */
+.hc-stage{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background:var(--media-canvas)}
 .hc-stage>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
 .hc-stage>video[data-zimi-facing=user]{transform:scaleX(-1)}
 .hc-stage>video[data-zimi-shape=landscape]{object-fit:contain}
-.hc-stage>video[data-zimi-fill]{z-index:-1;display:none;object-fit:cover;filter:blur(22px) brightness(.6);transform:scale(1.15)}
-.hc-stage>video[data-zimi-fill][data-zimi-facing=user]{transform:scaleX(-1) scale(1.15)}
-.hc-stage:has(>video[data-zimi-shape=landscape]:not([data-zimi-fill]))>video[data-zimi-fill]{display:block}
 .hc-preview.is-off .hc-stage>video{display:none}
-.hc-stage-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,var(--canvas) 45%,transparent),transparent 28%,transparent 68%,color-mix(in srgb,var(--canvas) 72%,transparent))}
+.hc-stage-shade{display:none}
 .hc-setup-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:58px;padding:9px 2px 8px}
 .hc-setup-header .zb-back,.hc-preview-tools>button{width:36px;height:36px;min-height:36px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--surface) 86%,transparent);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(10px)}
 .hc-preview-tools{display:flex;gap:8px}

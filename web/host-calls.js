@@ -11,10 +11,9 @@ function hcIdentityAvatar(person, size = 104) {
   const hue = person === me ? 19 : (seedOf(person?.id || name) % 220) + 90;
   return `<span class="hc-identity-avatar" style="width:${size}px;height:${size}px;--hc-avatar-hue:${hue}"><b style="font-size:${Math.max(11, Math.round(size * .34))}px">${esc(initials)}</b>${src ? `<img src="${src}" alt="${esc(name)}" onerror="this.remove()">` : ''}</span>`;
 }
-/* The host's own camera across the whole screen. The second, muted copy is a soft fill shown
-   only behind a landscape camera, which is displayed whole rather than cropped. */
+/* One decoder per camera; landscape frames sit whole on a consistent solid stage. */
 function hcStageVideo() {
-  return '<video data-zimi-local autoplay muted playsinline></video><video data-zimi-local data-zimi-fill autoplay muted playsinline></video>';
+  return '<video data-zimi-local autoplay muted playsinline></video>';
 }
 
 /* The same entrance timeline survives status acknowledgments and other redraws. */
@@ -80,7 +79,7 @@ function hcWaitingView() {
   return `<section class="hc-waiting" style="${hcSceneStyle('waiting')}" aria-label="Online and waiting for calls">
     <div class="hc-waiting-main"><div class="hc-host-avatar is-waiting">${hcIdentityAvatar(me, 104)}<i aria-hidden="true"></i><i aria-hidden="true"></i></div>
     <h1>You’re online</h1><p class="hc-waiting-status">Waiting for callers… ${S.vis ? 'you’re visible on Home.' : 'you’re hidden from Home.'}</p>
-    <p class="hc-waiting-note">You stay online when you leave this screen. Incoming calls ring wherever you are in the app. Keep the app connected so you don’t miss a call.</p>
+    <p class="hc-waiting-note">You stay online when you switch apps or come back later. Tap Go offline when you want to stop receiving calls.</p>
     <div class="hc-waiting-actions"><button type="button" class="hc-primary" onclick="go('home')">Browse the app</button>
     <button type="button" class="hc-offline" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Going offline…' : 'Go offline'}</button></div></div>
     </section>`;

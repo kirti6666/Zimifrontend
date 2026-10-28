@@ -106,6 +106,7 @@ export default function App() {
     // capture/playback an explicit cleanup signal when the app loses focus.
     const subscription = AppState.addEventListener("change", state => {
       if (state !== "active") postToWeb(webRef, { type: "app.background", data: {} });
+      else postToWeb(webRef, { type: "app.foreground", data: {} });
     });
     return () => subscription.remove();
   }, []);

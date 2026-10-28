@@ -105,6 +105,7 @@ export type WebMessage =
 export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "blocked" | "themes" | "ads";
 export type AppMessage =
   | { type: "app.background"; data: Record<string, never> }
+  | { type: "app.foreground"; data: Record<string, never> }
   | { type: "app.back"; data: Record<string, never> }
   | { type: "session"; data: Account }
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
@@ -584,7 +585,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
     const deliver = (message: AppMessage) => { if (current(version)) emit(message); };
     const results = await Promise.allSettled([
       loadHome(), loadNotifications(), loadCatalog(), loadProfileSettings(), loadThemes(),
-      api.presence().then(data => deliver({ type: "presence.saved", data: { ...data, online: hasHostAccess() && data.online } })),
+      // This is saved status for display, not permission to perform a host action.
+      api.presence().then(data => deliver({ type: "presence.saved", data: { ...data, online: approvedHost(hostAccount) && data.online } })),
       loadChats(),
       readResource("missed", () => api.missedCalls(), data => deliver({ type: "data.missed", data })),
       readResource("calls", () => api.callHistory(), data => deliver({ type: "data.calls", data })),
@@ -659,6 +661,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (event.data?.streamId === activeStream?.id) activeStream = undefined;
       }
       if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
+        if (hostChecking && approvedHost(hostAccount)) {
+          // A replayed ring can beat the reconnect approval read. Revalidate it
+          // before showing it, without treating temporary uncertainty as a decline.
+          const version = epoch;
+          void requireApprovedHost().then(() => {
+            if (current(version) && hasHostAccess() && !cancelledCalls.has(callId)) emit(event as AppMessage);
+          }).catch(() => {
+            if (current(version) && !hostChecking && !approvedHost(hostAccount)) void api.declineCall(callId).catch(() => {});
+          });
+          return;
+        }
         void api.declineCall(callId).catch(() => {}); return;
       }
       if (event.type === "call.ended" && typeof callId === "string") {

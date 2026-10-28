@@ -10,9 +10,42 @@
   /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
      portrait size made the browser crop a narrow strip out of each frame (the zoomed preview);
      'none' keeps the camera's own framing so a full-screen video looks like a normal call. */
-  const CAMERA_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' };
+  const CAMERA_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 }, resizeMode: 'none' };
   /* Last known frame shape per stream, so a redrawn video is laid out before its metadata loads. */
   const shapes = { local: '', remote: '' };
+  let quality = 'good';
+  const MEDIA_SELECTOR = 'video[data-zimi-local], video[data-zimi-remote], audio[data-zimi-remote]';
+
+  // Connect the new layout before moving videos, so moveBefore can preserve their
+  // decoder and playback state. Older WebViews resume from their pause event.
+  function render(container, html) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const available = [...container.querySelectorAll(MEDIA_SELECTOR)];
+    if (!available.length) { container.replaceChildren(template.content); return; }
+    const previous = [...container.childNodes], slots = [...template.content.querySelectorAll(MEDIA_SELECTOR)], preserved = new Set();
+    container.append(template.content);
+    slots.forEach(slot => {
+      const index = available.findIndex(el => el.tagName === slot.tagName && el.hasAttribute('data-zimi-local') === slot.hasAttribute('data-zimi-local'));
+      if (index < 0) return;
+      const video = available.splice(index, 1)[0];
+      preserved.add(video);
+      if (typeof slot.parentElement?.moveBefore === 'function') {
+        slot.parentElement.moveBefore(video, slot); slot.remove();
+      } else slot.replaceWith(video);
+    });
+    previous.forEach(node => { if (!preserved.has(node)) node.remove(); });
+  }
+  function paintQuality() {
+    document.querySelectorAll('[data-zimi-network]').forEach(el => {
+      el.hidden = quality === 'good';
+      el.dataset.quality = quality;
+      const label = quality === 'reconnecting' ? 'Reconnecting' : 'Poor connection';
+      const text = el.querySelector('span');
+      if (text && text.textContent !== label) text.textContent = label;
+    });
+  }
+  function setQuality(value) { quality = value; paintQuality(); }
 
   function status(message, error) {
     if (typeof Home !== 'undefined') Home.mediaStatus = message;
@@ -38,12 +71,16 @@
     peer.pc.onicecandidate = null;
     peer.pc.ontrack = null;
     peer.pc.onconnectionstatechange = null;
+    peer.pc.oniceconnectionstatechange = null;
+    clearInterval(peer.monitor);
+    clearTimeout(peer.recoveryTimer);
     peer.pc.close();
   }
   function clearPeers() {
     [...peers.keys()].forEach(closePeer);
     stopTracks(remote);
     remote = null;
+    setQuality('good');
   }
   function stop() {
     generation++;
@@ -61,6 +98,7 @@
     stopTracks(local);
     local = null;
     shapes.local = shapes.remote = '';
+    setQuality('good');
     if (configRequest) {
       const pending = configRequest;
       configRequest = null;
@@ -94,6 +132,7 @@
     el.addEventListener('resize', update);
   }
   function attach() {
+    paintQuality();
     if (switchingStream) switchingStream.getVideoTracks().forEach(track => { track.enabled = cameraEnabled(); });
     if (local) {
       const muted = typeof S !== 'undefined' && S.mic === 0;
@@ -103,14 +142,22 @@
     }
     [['local', local], ['remote', remote]].forEach(([kind, stream]) => {
       document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
+        if (!el.zimiPlaybackWatched) {
+          el.zimiPlaybackWatched = true;
+          el.addEventListener('pause', () => {
+            // A fallback DOM move can pause media after attach() has already run.
+            if (!el.isConnected || document.hidden || !el.srcObject || ![local, remote].includes(el.srcObject)) return;
+            el.play()?.catch(() => {});
+          });
+        }
         el.muted = kind === 'local' || playbackMuted;
         if (kind === 'local') el.dataset.zimiFacing = facingMode;
         if (el.tagName === 'VIDEO') watchShape(el, kind);
-        if (el.srcObject === stream) return;
-        el.srcObject = stream;
+        const unchanged = el.srcObject === stream;
+        if (!unchanged) el.srcObject = stream;
         el.playsInline = true;
         el.autoplay = true;
-        if (!stream) return;
+        if (!stream || unchanged && !el.paused) return;
         const playing = el.play();
         if (playing && playing.catch) playing.catch(() => {
           if (el.srcObject !== stream || kind === 'local') return;
@@ -170,7 +217,7 @@
   }
   function getState() {
     return {
-      facingMode, playbackMuted, switchingCamera: !!cameraSwitch,
+      facingMode, playbackMuted, switchingCamera: !!cameraSwitch, connectionQuality: quality,
       microphoneEnabled: typeof S === 'undefined' || S.mic !== 0,
       cameraEnabled: cameraEnabled()
     };
@@ -313,10 +360,88 @@
     stop();
     status(message, true);
   }
+  async function tuneVideo(peer, poor) {
+    if (peer.tuning || peer.tuned === poor) return;
+    peer.tuning = true;
+    try {
+      for (const sender of peer.pc.getSenders()) {
+        if (sender.track?.kind !== 'video' || !sender.getParameters || !sender.setParameters) continue;
+        const params = sender.getParameters();
+        if (!params.encodings?.length) continue;
+        params.encodings.forEach(encoding => {
+          encoding.maxBitrate = poor ? 350000 : 1200000;
+          encoding.maxFramerate = poor ? 15 : 24;
+          encoding.scaleResolutionDownBy = poor ? 2 : 1;
+        });
+        await sender.setParameters(params);
+      }
+      peer.tuned = poor;
+    } catch (_) { /* Older WebViews still use WebRTC's built-in congestion control. */ }
+    finally { peer.tuning = false; }
+  }
+  async function sampleQuality(session, id, peer) {
+    if (active !== session || peers.get(id) !== peer || peer.sampling || !peer.pc.getStats) return;
+    peer.sampling = true;
+    try {
+      const report = await peer.pc.getStats();
+      if (active !== session || peers.get(id) !== peer) return;
+      let poor = navigator.onLine === false, cpuLimited = false;
+      report.forEach(stat => {
+        if (stat.type === 'candidate-pair' && stat.state === 'succeeded' && stat.nominated && stat.currentRoundTripTime > .6) poor = true;
+        if (['inbound-rtp', 'remote-inbound-rtp'].includes(stat.type)) {
+          const before = peer.stats.get(stat.id);
+          if (stat.jitter > .08 || stat.roundTripTime > .6) poor = true;
+          if (before) {
+            const received = Math.max(0, (stat.packetsReceived || 0) - before.received);
+            const lost = Math.max(0, (stat.packetsLost || 0) - before.lost);
+            if (received + lost >= 20 && lost / (received + lost) > .08) poor = true;
+            if (stat.freezeCount > before.freezes) poor = true;
+          }
+          peer.stats.set(stat.id, { received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0 });
+        }
+        if (stat.type === 'outbound-rtp' && stat.qualityLimitationReason === 'bandwidth') poor = true;
+        if (stat.type === 'outbound-rtp' && stat.qualityLimitationReason === 'cpu') cpuLimited = true;
+      });
+      if (peer.pc.connectionState !== 'connected') return;
+      peer.goodSamples = poor ? 0 : peer.goodSamples + 1;
+      if (poor || peer.goodSamples >= 3) {
+        setQuality(poor ? 'poor' : 'good');
+        void tuneVideo(peer, poor || cpuLimited);
+      }
+    } catch (_) { /* A stats read may race call cleanup or be unsupported. */ }
+    finally { peer.sampling = false; }
+  }
+  function recoverPeer(session, id, peer) {
+    if (active !== session || peers.get(id) !== peer || peer.recoveryTimer) return;
+    if (!peer.recoveryStarted) peer.recoveryStarted = Date.now();
+    setQuality('reconnecting');
+    status('Connection interrupted. Reconnecting…');
+    peer.recoveryTimer = setTimeout(() => {
+      peer.recoveryTimer = null;
+      if (active !== session || peers.get(id) !== peer) return;
+      if (peer.pc.connectionState === 'connected' && peer.pc.iceConnectionState !== 'failed') return;
+      if (Date.now() - peer.recoveryStarted >= 30000) return fail(session, new Error('The media connection could not recover. Please reconnect.'));
+      // Only the original offerer restarts ICE, avoiding competing offers.
+      if (peer.offerer) enqueue(session, id, async current => {
+        if (current.pc.signalingState === 'stable') {
+          current.candidates.length = 0;
+          const description = await current.pc.createOffer({ iceRestart: true });
+          if (active !== session || peers.get(id) !== current) return;
+          await current.pc.setLocalDescription(description);
+        }
+        const description = current.pc.localDescription;
+        if (description?.type === 'offer') {
+          sendSignal(session, id, { description: { type: description.type, sdp: description.sdp } });
+          current.candidates.forEach(candidate => sendSignal(session, id, { candidate }));
+        }
+      });
+      recoverPeer(session, id, peer);
+    }, 3000);
+  }
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
     const pc = new RTCPeerConnection(session.config);
-    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer };
+    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0 };
     peers.set(id, peer);
     if ((session.kind === 'call' || session.hosting) && local) local.getTracks().forEach(track => pc.addTrack(track, local));
     pc.onicecandidate = event => {
@@ -337,13 +462,28 @@
     };
     pc.onconnectionstatechange = () => {
       if (active !== session) return;
-      if (pc.connectionState === 'connected') status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
-      if (pc.connectionState === 'disconnected') status('Connection interrupted. Reconnecting…');
+      if (pc.connectionState === 'connected') {
+        clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
+        setQuality('good');
+        status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
+        if (session.kind === 'call') void tuneVideo(peer, false);
+      }
+      if (pc.connectionState === 'disconnected') {
+        if (session.kind === 'call') recoverPeer(session, id, peer);
+        else status('Connection interrupted. Reconnecting…');
+      }
       if (pc.connectionState === 'failed') {
         if (session.kind === 'stream' && session.hosting) { closePeer(id); status('One viewer disconnected. Your broadcast is still live.'); }
+        else if (session.kind === 'call') recoverPeer(session, id, peer);
         else fail(session, new Error('The media connection failed. Please reconnect.'));
       }
     };
+    if (session.kind === 'call') {
+      pc.oniceconnectionstatechange = () => {
+        if (['failed', 'disconnected'].includes(pc.iceConnectionState)) recoverPeer(session, id, peer);
+      };
+      peer.monitor = setInterval(() => void sampleQuality(session, id, peer), 2000);
+    }
     return peer;
   }
   function enqueue(session, id, work) {
@@ -493,6 +633,12 @@
   ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));
   ['session.none', 'session.expired'].forEach(type => Native.on(type, stop));
   Native.on('realtime.status', data => {
+    if (active?.kind === 'call') {
+      if (data.connected) peers.forEach((peer, id) => {
+        if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer);
+      });
+      return;
+    }
     if (!active || active.kind !== 'stream') return;
     if (!data.connected) active.reconnecting = true;
     else if (active.reconnecting && active.ready) {
@@ -510,7 +656,8 @@
       pending.reject(new Error(data.message || 'Could not load video connection settings.'));
     } else if (data.action === 'stream.start') { stop(); status(data.message || 'The broadcast could not be started.', true); }
     else if (active && ['rtc.signal', 'stream.signal', 'stream.ready'].includes(data.action)) {
-      if (active.kind === 'call' || data.action === 'stream.ready') fail(active, new Error(data.message || 'The media connection was interrupted.'));
+      if (active.kind === 'call') peers.forEach((peer, id) => { if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer); });
+      else if (data.action === 'stream.ready') fail(active, new Error(data.message || 'The media connection was interrupted.'));
       else status(data.message || 'The media connection was interrupted.', true);
     }
   });
@@ -522,5 +669,17 @@
   window.addEventListener('pagehide', stop);
   const screen = document.getElementById('screen');
   if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
-  window.ZimiMedia = { prepare, attach, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
+  function resume() {
+    if (document.hidden) return;
+    attach();
+    if (active?.kind === 'call') peers.forEach((peer, id) => {
+      if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer);
+      else void sampleQuality(active, id, peer);
+    });
+  }
+  document.addEventListener('visibilitychange', resume);
+  window.addEventListener('online', resume);
+  window.addEventListener('offline', () => { if (active?.kind === 'call') setQuality('reconnecting'); });
+  Native.on('app.foreground', resume);
+  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
 })();

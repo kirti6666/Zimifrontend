@@ -132,10 +132,11 @@ export const api = {
     return { status: verificationOf(application.status) };
   },
   async setPresence(online: boolean, visible: boolean) {
-    const data = privacyFrom(await request("PATCH", "/safety", { allowRequests: online, showActivity: online, discoverable: visible }));
-    return { online: data.allowRequests && data.showActivity, visible: data.discoverable };
+    const raw = record(await request("PATCH", "/safety", { onlineForCalls: online, allowRequests: online, showActivity: online, discoverable: visible }));
+    const data = privacyFrom(raw);
+    return { online: raw.onlineForCalls === false ? false : data.allowRequests && data.showActivity, visible: data.discoverable };
   },
-  async presence() { const data = privacyFrom(await request("GET", "/safety")); return { online: data.allowRequests && data.showActivity, visible: data.discoverable }; },
+  async presence() { const raw = record(await request("GET", "/safety")); const data = privacyFrom(raw); return { online: raw.onlineForCalls === false ? false : data.allowRequests && data.showActivity, visible: data.discoverable }; },
   async profileSettings() { return profileSettingsFrom(await request("GET", "/account/settings")); },
   async publicProfile(id: string) {
     const profile = publicProfileFrom(await request("GET", `/users/${encodeURIComponent(id)}`));

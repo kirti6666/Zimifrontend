@@ -4,7 +4,7 @@
  --accent:#e8117a;--accent-ink:#c40e68;--accent-wash:#ffeaf4;--accent-line:#ffd0e6;
  --live:#e8117a;--live-wash:#ffeaf4;--online:#1bc5a4;
  --cta:#e8117a;--cta-ink:#ffffff;--btn:#e8117a;--btn-ink:#ffffff;
- --gold:#e0a200;
+ --gold:#e0a200;--media-canvas:#0b0c0f;
  --shadow:0 1px 2px rgb(16 16 18/.06),0 12px 28px -16px rgb(16 16 18/.22);
 }
 [data-theme="dark"]{

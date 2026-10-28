@@ -44,10 +44,14 @@ window.ZimiCardVideo = (() => {
     }
   }
   function choose() {
-    let best = null, bestRatio = 0;
+    // Several compact cards can be fully in view at once; the one nearest the middle of the screen wins.
+    let best = null, bestRatio = 0, bestOffset = Infinity;
+    const middle = innerHeight / 2;
     for (const [slot, ratio] of ratios) {
-      if (!slot.isConnected || ratio < MIN_VISIBLE || ratio <= bestRatio || slot.firstElementChild?.dataset.failed) continue;
-      best = slot; bestRatio = ratio;
+      if (!slot.isConnected || ratio < MIN_VISIBLE || ratio < bestRatio - .01 || slot.firstElementChild?.dataset.failed) continue;
+      const box = slot.getBoundingClientRect(), offset = Math.abs(box.top + box.height / 2 - middle);
+      if (ratio <= bestRatio + .01 && offset >= bestOffset) continue;
+      best = slot; bestRatio = ratio; bestOffset = offset;
     }
     const video = best && allowed() ? best.firstElementChild : null;
     if (current && current !== video) current.pause();
