@@ -73,10 +73,10 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await visible('Loading creators');
     await result('data.home', feed(), 'home', { page: 1 });
     const homeLoads = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
-    await page.getByRole('button', { name: 'Explore', exact: true }).click();
-    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeLoads, 'Explore reuses the full feed Home already loaded');
+    await page.getByRole('button', { name: 'See all', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeLoads, 'All Creators reuses the full feed Home already loaded');
     assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 1);
-    assert.equal(await page.locator('[data-home-filter],[data-dashboard-filter]').count(), 0, 'Explore has no category filters for now');
+    assert.equal(await page.locator('[data-home-filter],[data-dashboard-filter]').count(), 0, 'All Creators has no category filters for now');
     await result('data.home', feed([host], { total: 2 }), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Load more creators', exact: true }).click();
     await visible('Loading more creators');
@@ -93,22 +93,22 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
     await visible('Loading creators');
     await result('data.home', feed([]), 'home', { page: 1 });
-    await page.getByRole('heading', { name: 'A little quiet right now', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'No creators available', exact: true }).waitFor();
     await result('data.home', feed(), 'home', { page: 1 });
     const exploreLoads = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
-    await page.getByRole('button', { name: 'Home', exact: true }).click();
-    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), exploreLoads, 'Home Explore reuses the unfiltered feed the Explore page loaded');
+    await page.getByRole('button', { name: 'Back to home', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), exploreLoads, 'Home All reuses the unfiltered feed the All Creators page loaded');
     assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' });
-    console.log('PASS loading: initial feed, unknown balance, realtime refresh, shared Explore feed, pagination, failure and retry');
+    console.log('PASS loading: initial feed, unknown balance, realtime refresh, shared creator directory feed, pagination, failure and retry');
 
-    // Home keeps its Following tab independently of the Explore page.
+    // Home keeps its Following tab independently of the All Creators page.
     await page.getByRole('tab', { name: 'Following', exact: true }).click();
     await visible('Loading creators');
     assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' });
     await result('data.home', feed([second]), 'home', { page: 1 });
-    await navigate('explore');
+    await navigate('all-creators');
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Explore always lists every creator');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'All Creators always lists every creator');
     await result('data.home', feed(), 'home', { page: 1 });
     await navigate('home');
     await visible('Loading creators');
@@ -118,11 +118,11 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.evaluate(() => { homeDashboardFilter('following'); homeDashboardFilter('instant'); homeDashboardFilter('Music'); });
     assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeRequests,
       'Repeated and retired filters do not trigger requests');
-    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
+    await page.getByRole('tab', { name: 'All', exact: true }).click();
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Explore restores the full feed');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'All restores the full feed');
     await result('data.home', feed(), 'home', { page: 1 });
-    console.log('PASS loading: Home keeps Following across Explore, Explore stays unfiltered and retired filters send nothing');
+    console.log('PASS loading: Home keeps Following across All Creators, the directory stays unfiltered and retired filters send nothing');
 
     // Search starts immediately on input, ignores responses for older queries and supports clearing.
     await page.getByRole('button', { name: 'Search creators', exact: true }).click();

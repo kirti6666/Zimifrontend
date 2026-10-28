@@ -1,7 +1,7 @@
 /* Themes are server-owned. Only acknowledged selections are applied in the app. */
 const ZThemes={catalog:null,loading:false,error:'',saving:'',requestId:0,checkout:null,checkoutBusy:false,attempt:'',requestedRoute:undefined,accountId:'',signature:'',transitionTimer:null,refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''};
 const ZThemeFonts={system:'Inter, system-ui, sans-serif',rounded:'"Poppins", system-ui, sans-serif',serif:'Georgia, "Times New Roman", serif',mono:'ui-monospace, "SFMono-Regular", Consolas, monospace'};
-const ZThemeOriginal={id:'000000000000000000000001',name:'BinzoLive Original',description:'Our signature rose, beautifully balanced.',mode:'dark',active:true,isPremium:false,isDefault:true,colors:{background:'#210f1d',surface:'#321e2c',surfaceElevated:'#3c2635',text:'#fce8f2',textMuted:'#c5a9bc',primary:'#c9086a',primaryContrast:'#ffffff',secondary:'#ff9ccc',border:'#654356',success:'#45d5a0',danger:'#ffb2b9'},typography:{fontFamily:'system',fontScale:1,fontWeight:'400',headingWeight:'700'}};
+const ZThemeOriginal={id:'000000000000000000000001',name:'BinzoLive Original',description:'Signature pink on a fresh white canvas.',mode:'light',active:true,isPremium:false,isDefault:true,colors:{background:'#ffffff',surface:'#ffffff',surfaceElevated:'#f8f8fa',text:'#18181b',textMuted:'#71717a',primary:'#c71862',primaryContrast:'#ffffff',secondary:'#ae1454',border:'#e9e9ef',success:'#168358',danger:'#c52f4b'},typography:{fontFamily:'system',fontScale:1,fontWeight:'400',headingWeight:'600'}};
 const ZThemeRose={...ZThemeOriginal,id:'000000000000000000000002',name:'Soft Rose',description:'A fresh, airy take on your everyday.',mode:'light',isDefault:false,colors:{background:'#fff5fa',surface:'#ffffff',surfaceElevated:'#f4dfeb',text:'#321525',textMuted:'#79556a',primary:'#b50a65',primaryContrast:'#ffffff',secondary:'#a63f75',border:'#d6b5c9',success:'#147a53',danger:'#b52b46'}};
 const ZThemeColorKeys=Object.keys(ZThemeOriginal.colors);
 const ZThemeVars=['--canvas','--deep','--surface','--raised','--line','--ink','--muted','--faint','--accent','--accent-ink','--accent-wash','--accent-line','--live','--live-wash','--online','--cta','--cta-ink','--btn','--btn-ink','--theme-danger'];
@@ -15,10 +15,19 @@ ZThemes.default=ztSafe(window.__zimiThemeCache?.default)?window.__zimiThemeCache
 ZThemes.boot=ztSafe(window.__zimiThemeCache?.account?.theme)?window.__zimiThemeCache.account:null;
 /* Until the server catalog answers: the account's last theme, then the admin default. */
 function ztCurrent(){const catalog=ZThemes.catalog,theme=catalog?.items.find(x=>x.id===catalog.selectedThemeId&&x.active!==false&&(!x.isPremium||catalog.premium?.active));if(theme&&ztSafe(theme))return theme;const boot=ZThemes.boot;if(boot&&(!ZThemes.accountId||ZThemes.accountId===boot.id))return boot.theme;return ZThemes.default||ZThemeOriginal}
+/* Account themes still choose accents and type. The app canvas stays white,
+   including when a saved or server-supplied theme was designed for dark mode. */
+function ztLuminance(hex){const channels=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return channels[0]*.2126+channels[1]*.7152+channels[2]*.0722}
+function ztDisplayColors(theme){
+  const primary=theme.colors.primary;
+  let ink=primary;
+  while(ztLuminance(ink)>.183)ink='#'+ink.slice(1).match(/../g).map(x=>Math.floor(parseInt(x,16)*.85).toString(16).padStart(2,'0')).join('');
+  return {...ZThemeOriginal.colors,primary,secondary:ink,primaryContrast:1.05/(ztLuminance(primary)+.05)>=4.5?'#ffffff':'#000000'};
+}
 function ztApply(animate=false){
   const root=document.documentElement;
-  const theme=ztCurrent(),c=theme.colors,t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
-  root.classList.toggle('zp-light',theme.mode==='light');if(root.dataset.theme!==theme.mode)root.dataset.theme=theme.mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
+  const theme=ztCurrent(),c=ztDisplayColors(theme),t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
+  root.classList.add('zp-light');if(root.dataset.theme!=='light')root.dataset.theme='light';if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
   for(const [key,value] of Object.entries({themeInk:c.text,themePrimary:c.primary,themeContrast:c.primaryContrast,themeSurface:c.surface,themeRaised:c.surfaceElevated}))if(root.dataset[key]!==value)root.dataset[key]=value;
   if(signature===ZThemes.signature)return;
   const motion=animate&&ZThemes.signature&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -65,7 +74,7 @@ function ztHeader(){return `<header class="zh-subheader zt-header">${backButton(
 function ztPage(){ZThemes.renderView=document.getElementById('zt-page')?ztViewState():null;return `<section class="zt-page" id="zt-page" aria-label="Theme gallery"><div id="zt-content">${ztContent()}</div></section>`}
 function ztSkeleton(){return `<div class="zt-grid" role="status" aria-label="Loading themes">${Array.from({length:ZThemes.catalog?.items.length||4},()=>`<div class="zt-card zt-placeholder"><span class="zh-skeleton-shape zt-preview"></span>${skeletonLine('65%',14)}${skeletonLine('85%',10)}${skeletonLine('45%',11)}</div>`).join('')}</div>`}
 function ztCard(theme){
-  const active=ztCurrent().id===theme.id,locked=theme.isPremium&&!ZThemes.catalog?.premium?.active,busy=ZThemes.saving===theme.id,c=theme.colors,t=theme.typography;
+  const active=ztCurrent().id===theme.id,locked=theme.isPremium&&!ZThemes.catalog?.premium?.active,busy=ZThemes.saving===theme.id,c=ztDisplayColors(theme),t=theme.typography;
   // All style values are validated; no administrator-supplied CSS is executed.
   const style=`--preview-bg:${c.background};--preview-surface:${c.surface};--preview-text:${c.text};--preview-muted:${c.textMuted};--preview-primary:${c.primary};--preview-contrast:${c.primaryContrast};font-family:${ZThemeFonts[t.fontFamily]}`;
   return `<button type="button" id="zt-theme-${theme.id}" class="zt-card ${active?'is-active':''}" aria-pressed="${active}" aria-label="${esc((locked?'Unlock ':active?'Current theme: ':'Use ')+theme.name)}" onclick="ztSelect('${theme.id}')" ${ZThemes.saving?'disabled':''}><span class="zt-preview" style="${esc(style)}" aria-hidden="true"><span class="zt-mini-top"><b>BinzoLive</b><i></i></span><span class="zt-mini-avatars"><i></i><i></i><i></i></span><span class="zt-mini-panel"><b style="font-weight:${t.headingWeight}">Hello, you.</b><small>A little more your style.</small><span>Connect</span></span><span class="zt-mini-nav"><i></i><i></i><i></i></span></span><span class="zt-card-title"><b>${esc(theme.name)}</b><span>${active?'✓':locked?'◇':''}</span></span>${theme.isDefault?'<span class="zt-default">App default</span>':''}<span class="zt-card-description">${esc(theme.description||'A new look for your BinzoLive.')}</span><span class="zt-card-foot"><span>${theme.isPremium?'Premium':'Free'} · ${esc({system:'Classic',rounded:'Rounded',serif:'Editorial',mono:'Mono'}[t.fontFamily])}</span><b>${busy?'Applying…':active?'Active':locked?'Unlock':'Apply'}</b></span></button>`;

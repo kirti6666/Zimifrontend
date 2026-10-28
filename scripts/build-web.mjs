@@ -122,6 +122,9 @@ const page = (demo, hosted = false) =>
   read("web/ads.css") +
   read("web/tactile.css") +
   read("web/card-video.css") +
+  read("web/flat.css") +
+  read("web/all-creators.css") +
+  read("web/wallet.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -139,6 +142,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/loading.js") +
   "\n" + read("web/home.js") +
   "\n" + read("web/home-dashboard.js") +
+  "\n" + read("web/all-creators.js") +
   "\n" + read("web/coins.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +

@@ -79,6 +79,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online", "following"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": valid = notificationQuery(d); break;
+    case "official.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
+    case "official.read": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && ((notificationIds(d.ids) && d.all === undefined) || (d.all === true && d.ids === undefined)) && Object.keys(d).every(key => ["ids", "all", "requestId"].includes(key)); break;
     case "catalog.load": case "rtc.config": valid = true; break;
     case "themes.load": valid = Object.keys(d).length === 0; break;
     case "themes.select": valid = typeof d.themeId === "string" && /^[a-f\d]{24}$/i.test(d.themeId) && Object.keys(d).every(key => ["themeId", "requestId"].includes(key)); break;

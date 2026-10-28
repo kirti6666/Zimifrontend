@@ -10,7 +10,7 @@ const approved = { ...member, user: { ...member.user, name: 'Mira Creator', role
 const hosts = Array.from({ length: 16 }, (_, index) => ({ id: '507f1f77bcf86cd799439' + String(index + 100).padStart(3, '0'), name: `Creator ${index + 1}`, role: 'host', category: 'Music', online: true, verified: true, availableForCall: true, ratePerMin: 0 }));
 const home = { hosts, stage: hosts.slice(0, 6), featured: hosts[0], total: hosts.length, page: 1, limit: 20, categories: ['Music', 'Talk'], broadcasterCount: 0, availableCount: hosts.length, speedMatchEnabled: true, bonus: null, unreadCount: 0 };
 const chats = { chats: hosts.map((user, index) => ({ id: `conversation-${index}`, user, last: 'A real conversation supplied by the native bridge', time: 'Today', unread: index === 0 ? 1 : 0, lastAt: new Date(Date.now() - index * 60000).toISOString() })), page: 1, total: hosts.length, unreadCount: 1, unreadConversations: 1 };
-const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
+const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
 
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
@@ -84,13 +84,13 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
         assert.equal(baseline.navButtons.length, 4, 'Members and hosts share the same four tabs');
         for (const name of tabs) {
           await clickTab(layout, name);
-          assert.equal(await current(layout), name.toLowerCase());
+          assert.equal(await current(layout), name==='Chat'?'chats':name.toLowerCase());
           assert.equal(await layout.locator('.zh-nav [aria-current="page"]').innerText(), name);
           sameNavigation(await metrics(layout), baseline, `${account.user.role} ${name} at ${width}px`);
           assert.equal(await layout.locator('.zh-header').count(), name === 'Home' ? 1 : 0, `${name} only shows the discovery-tab header on Home`);
           assert.equal(await layout.locator('.zh-brand,.zh-logo').count(), 0, `${name} has no app-name header`);
           if (name === 'Home') {
-            assert.deepEqual(await layout.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['Explore', 'Following']);
+            assert.deepEqual(await layout.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['All', 'Following']);
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Search creators', exact: true }).count(), 1);
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 1);
             assert.equal(await layout.locator('.zh-host-status').count(), account === approved ? 1 : 0, 'Only a host account sees its availability control');
@@ -99,8 +99,12 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
           assert.equal(await layout.locator('#top').isVisible(), name === 'Home', `${name} does not reserve an unused header strip`);
           if (name !== 'Home') {
             assert.equal(await layout.locator('#top').innerHTML(), '');
-            const title = { Explore: 'Explore BinzoLive', Chats: 'Chats', Profile: 'Profile & Settings' }[name];
-            assert.equal(await layout.locator('#screen').getByRole('heading', { name: title, exact: true }).isVisible(), true, `${name} retains its own page heading`);
+            if (name === 'Profile') {
+              assert.equal(await layout.locator('.zu-page[aria-label="Your profile"]').isVisible(), true, 'Profile keeps the shared public layout while its details load');
+            } else {
+              const title = { Chat: 'Chats', Settings: 'Settings' }[name];
+              assert.equal(await layout.locator('#screen').getByRole('heading', { name: title, exact: true }).isVisible(), true, `${name} retains its own page heading`);
+            }
           }
           assert.equal(await layout.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${name} does not overflow at ${width}px`);
           assert.equal((await animations(layout)).length, 0, 'Reduced motion skips screen transitions');
@@ -110,7 +114,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
         assert.equal(await layout.locator('.zh-header').count(), 0);
         assert.equal(await layout.locator('#top').isVisible(), false);
         assert.equal(await layout.locator('#top').innerHTML(), '');
-        assert.equal(await layout.getByRole('heading', { name: 'Profile & Settings', exact: true }).isVisible(), true);
+        assert.equal(await layout.getByRole('heading', { name: 'Settings', exact: true }).isVisible(), true);
       }
     }
     await layout.setViewportSize({ width: 390, height: 900 });
@@ -129,13 +133,13 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     assert.equal(await layout.locator('.zh-nav > :not(button[data-tab])').count(), 0, 'The tab bar has no call or approval slot');
     await receive(layout, 'host.access', { approved: true, checking: false, role: 'host', hostStatus: 'approved', verified: true });
     sameNavigation(await metrics(layout), approvedChrome, 'Successful revalidation keeps the tabs in place');
-    console.log('PASS navigation: Home-only Explore/Following header, host-only availability, no category filters, page-specific headings and identical tab bounds at 320/390/630/1280px');
+    console.log('PASS navigation: Home-only All/Following header, host-only availability, no category filters, page-specific headings and identical tab bounds at 320/390/630/1280px');
 
     const motion = await open('no-preference');
     await seed(motion, member);
     // Dispatch and observe in one task, before even a short transition can end.
     const firstTransition = await motion.evaluate(() => {
-      [...document.querySelectorAll('.zh-nav button')].find(button => button.textContent.trim() === 'Chats').click();
+      [...document.querySelectorAll('.zh-nav button')].find(button => button.textContent.trim() === 'Chat').click();
       return document.getElementById('screen').getAnimations().map(animation => ({ duration: animation.effect.getTiming().duration, frames: animation.effect.getKeyframes() }));
     });
     assert.ok(firstTransition.some(animation => animation.duration > 0 && animation.duration <= 500), 'A tab press starts a brief screen transition');
@@ -147,7 +151,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     await receive(motion, 'data.chats', chats);
     assert.equal((await animations(motion)).length, 0, 'Realtime content does not replay tab motion');
     await motion.evaluate(() => {
-      for (const name of ['Home', 'Explore', 'Chats', 'Profile']) [...document.querySelectorAll('.zh-nav button')].find(button => button.textContent.trim() === name).click();
+      for (const name of ['Home', 'Settings', 'Chat', 'Profile']) [...document.querySelectorAll('.zh-nav button')].find(button => button.textContent.trim() === name).click();
     });
     await settled(motion);
     assert.equal(await current(motion), 'profile', 'Rapid taps resolve to the last selected tab');
@@ -158,13 +162,13 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     await settled(motion);
     const scrollBefore = await motion.locator('#scroll-root').evaluate(element => { element.scrollTop = 220; return element.scrollTop; });
     assert.ok(scrollBefore > 100, 'The home fixture has scrollable content');
-    await clickTab(motion, 'Chats');
+    await clickTab(motion, 'Chat');
     await settled(motion);
     await motion.locator('#scroll-root').evaluate(element => { element.scrollTop = 410; });
     await clickTab(motion, 'Home');
     await settled(motion);
     assert.ok(Math.abs(await motion.locator('#scroll-root').evaluate(element => element.scrollTop) - scrollBefore) < 2, 'Returning to a tab restores its scroll position');
-    await clickTab(motion, 'Chats');
+    await clickTab(motion, 'Chat');
     await settled(motion);
     await receive(motion, 'keyboard', { open: true });
     assert.equal(await motion.locator('#nav').isVisible(), false, 'The tab bar hides while the keyboard is up');
@@ -226,7 +230,8 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     assert.equal(await access.locator('.earnbox').count(), 1, 'Approved hosts retain their earnings card');
     assert.equal(await access.getByRole('button', { name: /Withdraw/i }).count(), 1);
     await navigate(access, 'settings');
-    await access.getByRole('button', { name: /^Host approval/ }).click();
+    await access.getByRole('button', { name: 'Creator tools', exact: true }).click();
+    await access.getByRole('dialog', { name: 'Creator tools', exact: true }).getByRole('button', { name: /^Creator Verification/ }).click();
     assert.equal(await access.getByRole('button', { name: 'Go online for calls', exact: true }).count(), 1, 'Server approval unlocks the verified creator actions');
     await navigate(access, 'home');
     await access.getByRole('button', { name: 'Get ready to go online', exact: true }).click();

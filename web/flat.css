@@ -1,0 +1,349 @@
+/* App-wide design contract. Keep last in build-web.mjs so older screens,
+   inline styles, hover states and animation keyframes share the same geometry. */
+:root {
+  color-scheme:light;
+  --radius:10px;
+  --shadow:none;
+}
+:root,:root *,:root *::before,:root *::after {
+  border-radius:10px!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+/* Preserve the original 10px button shape across component/theme overrides. */
+:root :is(button,[role=button],[role=tab],[role=switch],input[type=button],input[type=submit],input[type=reset]) {
+  border-radius:10px!important;
+}
+html,body,.app,#top,#scroll-root,#screen {
+  background-color:#fff!important;
+  background-image:none!important;
+}
+/* Keep the existing focus outlines: removing shadows must not hide keyboard focus. */
+:root[data-theme-id] .nav.zh-nav {
+  background:#fff;
+  border-top:1px solid var(--line);
+}
+.zh-app .zh-nav>button {color:var(--muted)}
+.zh-app .zh-nav>button.on {color:var(--accent-ink)}
+.zh-app .zh-nav>button.on>svg {filter:none}
+.zh-app .zh-nav>button[data-tab]::before {width:46px;height:31px}
+.zh-app .zh-header {border-bottom:1px solid var(--line)}
+
+/* Profile and Settings are separate destinations with a shared account identity. */
+.zp-page {max-width:620px;padding:24px 20px 28px;--zp-border:var(--line)}
+.zp-heading {margin-bottom:24px;gap:12px}
+:root[data-theme-id] .zp-heading h1 {margin:0;font-size:27px;letter-spacing:-.8px}
+.zp-heading p {margin-top:6px}
+:root[data-theme-id] .zp-heading-actions>button {background:#fff;width:42px;height:42px}
+:root[data-theme-id] .zp-page .zp-identity {background:#fff;background-image:none;border:1px solid var(--line)}
+.zp-cover {min-height:85px;padding:17px 16px;background:#fff;border-bottom:1px solid var(--line)}
+.zp-card-label {font-size:8px;letter-spacing:.8px}
+.zp-account-type {font-size:8px;background:#fff;border-color:var(--line)}
+.zp-person {padding-top:19px;align-items:center}
+:root[data-theme-id] .zp-avatar {background:#fff;border-color:#fff;outline-color:var(--line)}
+.zp-person h2 {font-size:22px}
+.zp-identity-body {padding:0 16px 18px}
+:root[data-theme-id] .zp-page .zp-stats>div {background:#fff;border:0;min-height:74px;padding:10px 0;gap:5px}
+.zp-stats {gap:0;padding:7px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.zp-stats>div+div {border-left:1px solid var(--line)!important}
+.zp-stats b {font-size:20px}
+:root[data-theme-id] .zp-page .zp-bio {font-size:12px;margin:17px 0}
+.zp-edit-profile {background:#fff;border-color:var(--line);margin-top:14px;min-height:45px}
+.zp-public-view {margin-top:9px}
+.zp-profile-links {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.zp-profile-links>.zp-row {border:1px solid var(--line);padding:14px 12px;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.zp-profile-links .zp-row-icon {width:28px;height:28px}
+.zp-profile-links .zp-chevron {display:none}
+.zp-profile-links .zp-row-text {min-width:85px}
+.zp-settings-link {display:flex;align-items:center;gap:10px;width:100%;margin-top:16px;padding:16px;border:1px solid var(--line);font-size:13px;font-weight:600}
+.zp-settings-link>svg:last-child {margin-left:auto;color:var(--muted)}
+
+.zp-account-summary {display:flex;align-items:center;gap:13px;width:100%;padding:0 0 24px;text-align:left}
+.zp-summary-avatar {position:relative;display:block;width:58px;height:58px;flex:none;overflow:hidden;background:var(--raised);border:1px solid var(--line)}
+.zp-summary-avatar>img,.zp-summary-avatar>.zf-face {display:block;width:100%;height:100%;object-fit:cover}
+.zp-summary-copy {display:flex;flex:1;min-width:0;flex-direction:column;gap:8px}
+.zp-summary-copy>b {font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+.zp-summary-copy>span {display:flex;align-items:center;flex-wrap:wrap;gap:5px;font-size:11px;color:var(--muted)}
+.zp-summary-copy i {font-style:normal;padding:0 3px}
+.zp-account-summary>svg {flex:none;--zi-base:rotate(-90deg);transform:var(--zi-base);color:var(--muted)}
+:root[data-theme-id] .zp-wallet {margin:0;padding:20px 16px;background:#fff;background-image:none;border:1px solid var(--line)}
+.zp-wallet h2 {font-size:12px;line-height:1.5;letter-spacing:0;font-weight:500;color:var(--muted)}
+.zp-balance {margin-top:7px;gap:7px;flex-wrap:nowrap}
+.zp-balance strong {font-size:32px;letter-spacing:-1px;color:var(--accent-ink)}
+.zp-topup {padding:12px 14px;min-height:44px;font-size:12px;gap:5px}
+.zp-settings-page .zp-settings-tools {margin-top:24px}
+.zp-settings-title {display:none}
+.zp-search {background:#fff;min-height:44px}
+.zp-search>input {height:44px;font-size:12px}
+.zp-filters {padding:0;border:0;background:#fff;gap:6px;margin-top:12px;flex-wrap:wrap}
+.zp-filters>button {min-height:34px;border:1px solid var(--line);font-size:10px;flex:1 0 auto;padding:7px 10px}
+.zp-filters>button[aria-pressed=true] {background:var(--accent-wash);border-color:var(--accent-ink);color:var(--accent-ink)}
+.zp-group {margin-top:26px}
+:root[data-theme-id] .zp-group>h2 {font-size:11px;text-transform:none;letter-spacing:.3px;font-weight:500;margin:0 0 8px;color:var(--muted)}
+:root[data-theme-id] .zp-group-card {padding:0;background:#fff;border:0}
+.zp-row {padding:14px 0;gap:14px;min-height:67px}
+.zp-row+.zp-row {border-top:1px solid var(--line)}
+:root[data-theme-id] .zp-page .zp-row-icon {background:#fff;border:0;color:var(--ink);width:28px;height:30px}
+.zp-row-icon>svg {width:23px;height:23px}
+:root[data-theme-id] .zp-row-text>b {font-size:14px;font-weight:500;line-height:1.5}
+:root[data-theme-id] .zp-row-text>small {font-size:11px;line-height:1.6}
+.zp-chevron {color:#b4b4bc}
+.zp-badge {border-color:var(--line)}
+.zp-footer {padding-top:32px}
+
+/* Settings follows the simple reference: one identity, one balance card and
+   spacious unboxed rows. Detailed preferences live inside each main row. */
+.zp-simple-settings {padding:16px 20px 30px;max-width:620px}
+.zp-simple-header {display:flex;align-items:center;gap:13px;margin:0 0 22px -8px;min-height:44px}
+.zp-simple-header .zb-back {background:transparent;border:0;width:44px;height:44px;flex:none;color:#18181b}
+.zp-simple-header .zb-back>svg {width:25px;height:25px}
+:root[data-theme-id] .zp-simple-header h1 {font-size:18px;font-weight:500;line-height:1.4;letter-spacing:0;margin:0}
+.zp-simple-settings .zp-account-summary {padding:0 0 26px;gap:14px}
+.zp-simple-settings .zp-summary-avatar {width:56px;height:56px;border:0}
+.zp-simple-settings .zp-summary-copy {gap:8px}
+.zp-simple-settings .zp-summary-copy>b {font-size:21px;font-weight:600;letter-spacing:-.5px}
+.zp-simple-settings .zp-summary-stats {gap:14px;font-size:12px;color:#85858b}
+.zp-summary-stats>span {display:inline-flex;align-items:center;gap:5px}
+.zp-summary-stats svg {color:#b0b0b5;flex:none}
+.zp-simple-settings .zp-account-summary>svg {width:22px;height:22px;color:#b5b5ba}
+:root[data-theme-id] .zp-simple-settings .zp-wallet {padding:17px 18px;min-height:98px;background:#171717;background-image:none;border:0}
+.zp-simple-settings .zp-wallet-top {gap:12px;min-height:64px}
+.zp-simple-settings .zp-wallet h2 {font-size:12px;font-weight:400;letter-spacing:0;color:#a6a6ac}
+.zp-simple-settings .zp-balance {margin-top:5px;gap:7px}
+.zp-simple-settings .zp-balance strong {font-size:29px;line-height:1.15;letter-spacing:-.7px;font-weight:650;color:var(--accent)}
+.zp-simple-settings .zp-topup {min-height:42px;padding:11px 15px;font-size:12px;font-weight:600}
+.zp-simple-section {margin-top:28px}
+:root[data-theme-id] .zp-simple-section :is(h1,h2) {font-size:13px;font-weight:400;line-height:1.5;color:#929296;margin:0 0 7px;letter-spacing:0}
+.zp-simple-row {display:flex;align-items:center;width:100%;min-height:66px;gap:20px;padding:12px 5px;background:transparent;border:0;color:#18181b;text-align:left;font-size:18px;font-weight:400;line-height:1.4}
+.zp-simple-icon {display:grid;place-items:center;width:28px;height:30px;flex:none;color:#18181b}
+.zp-simple-icon svg {width:25px;height:25px;stroke-width:1.7}
+.zp-service-info .zp-simple-row {padding-left:5px;min-height:59px}
+.zp-simple-logout {display:block;min-height:44px;padding:10px 5px;margin-top:22px;color:#77777e;font-size:15px;font-weight:400;text-align:left}
+.zp-settings-detail .zp-row {padding:16px 0;gap:13px;min-height:70px}
+.zp-settings-detail .zp-row+.zp-row {border-top:1px solid var(--line)}
+.zp-settings-detail .zp-row-icon {background:#fff!important;color:#18181b!important;border:0;width:28px;height:30px}
+.zp-settings-detail .zp-row-text>b {font-size:15px;font-weight:500}
+.zp-settings-detail .zp-row-text>small {font-size:12px}
+.zp-about {text-align:center;padding:25px 0 17px}
+.zp-about img {display:block;margin:0 auto 18px;width:110px;height:auto}
+.zp-about h3 {font-size:23px;margin:0 0 12px}
+.zp-about p {font-size:13px;color:var(--muted);margin-bottom:18px}
+.zp-about>span {font-size:12px;color:var(--muted)}
+.zh-app .zh-nav>button[data-tab=settings]::before {display:none}
+@media(max-width:350px) {
+  .zp-simple-settings {padding-left:18px;padding-right:18px}
+  .zp-simple-settings .zp-summary-copy>b {font-size:19px}
+  .zp-simple-settings .zp-wallet {padding:16px 14px}
+  .zp-simple-settings .zp-balance strong {font-size:26px}
+  .zp-simple-row {gap:17px;font-size:17px}
+}
+
+/* Coin packs borrow the reference's clear amount / artwork / price hierarchy. */
+.zw-coins {padding:20px 20px 28px}
+.zw-wallet {background:#fff;padding:18px;border-color:var(--line)}
+.zw-wallet-main {margin:14px 0 18px}
+.zw-wallet-main h2 {font-size:35px;color:var(--accent-ink)}
+.zw-wallet-main>svg {width:61px;height:61px}
+.zw-coins .zw-packs {grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+:root[data-theme-id] .zw-coins .zw-packs>button {align-items:center;text-align:center;justify-content:space-between;min-height:161px;padding:17px 7px 8px;gap:9px;background:#fff;border:1px solid var(--line)}
+:root[data-theme-id] .zw-coins .zw-packs>button.selected {border:2px solid var(--accent-ink);padding:16px 6px 7px;background:#fff}
+.zw-packs strong {order:-2;font-size:20px;margin:0;letter-spacing:-.6px;white-space:nowrap}
+.zw-packs strong small {display:none}
+.zw-packs>button>span {order:-1;font-size:10px;min-height:14px}
+.zw-packs>button>.zc-coin {width:40px;height:40px}
+.zw-packs b {display:block;width:100%;margin:3px 0 0;padding:9px 2px;background:var(--raised);font-size:12px;font-weight:700}
+.zw-packs .selected b {background:var(--accent-wash);color:var(--accent-ink)}
+.zw-packs i {width:14px;height:14px;top:6px;right:6px;font-size:9px}
+.zw-section-heading h2 {font-size:21px}
+.zw-buy {min-height:52px;font-size:14px;gap:7px;background:var(--accent);border:1px solid var(--accent)}
+.zw-buy>span {margin-left:0;font-size:14px;border-left:0;padding-left:0}
+.zw-buy>span::before {content:'·';margin-right:7px}
+.zw-buy>svg {width:20px;height:20px}
+.zw-embedded {padding:18px 0 0}
+.zu-cover-art {background:var(--accent-wash)}
+.zu-cover-art>i {display:none}
+.zu-page,.zu-content,.zu-panel {background:#fff}
+.zr-call .zr-video.zr-audio {background:#fff}
+
+/* The Profile tab shares the public profile layout. Owner actions stay in the
+   page so the primary bottom tabs never overlap an extra fixed action bar. */
+.zu-own-page {padding-bottom:28px}
+.zu-owner-avatar {display:block;padding:0;cursor:pointer;text-align:initial}
+.zu-owner-camera {position:absolute;right:-5px;bottom:-4px;display:grid;place-items:center;width:28px;height:28px;border:3px solid #fff;background:var(--raised);color:var(--ink)}
+.zu-cover-upload {position:absolute;left:20px;top:74px;z-index:2;display:flex;align-items:center;gap:7px;min-height:36px;padding:9px 11px;border:1px solid #ffffff70;background:#ffffffed;color:#18181b;font-size:11px;font-weight:500}
+.zu-owner-actions {display:flex;gap:9px;margin-top:22px}
+.zu-owner-actions>button {display:flex;align-items:center;justify-content:center;gap:7px;flex:1;min-height:44px;padding:11px 9px;font-size:12px;font-weight:600}
+.zu-owner-edit {border:1px solid var(--line);background:#fff;color:var(--ink)}
+.zu-owner-upload {border:1px solid var(--accent);background:var(--accent);color:var(--cta-ink)}
+.zu-own-page .zu-content {padding-bottom:10px}
+@media(min-width:760px) {
+  .zu-own-page {padding:24px 28px 32px}
+  .zu-cover-upload {left:24px;top:78px}
+}
+
+@media(min-width:900px) {
+  .zp-page {max-width:620px;padding-top:32px}
+  .zp-settings-tools {margin-top:24px}
+}
+@media(max-width:350px) {
+  .zp-page,.zw-coins {padding-left:14px;padding-right:14px}
+  .zp-balance strong {font-size:26px}
+  .zp-topup {padding:11px 10px;font-size:11px}
+  .zp-wallet-top {gap:8px}
+  .zp-card-label {max-width:120px;line-height:1.4}
+  .zw-packs strong {font-size:18px}
+  .zw-packs b {font-size:11px}
+  .zp-profile-links {grid-template-columns:1fr}
+  .zw-embedded {padding-left:0;padding-right:0}
+}
+
+/* Shared product typography and hierarchy. Accent color is reserved for actions,
+   unread indicators and selection; regular navigation and metadata stay neutral. */
+:root {--zc-u:1px}
+:root[data-theme-id] body {line-height:1.5}
+:root[data-theme-id] :is(.zc-heading h1,.zu-identity h1,.zh-subheader h1,.zp-dialog-heading h2,.zu-dialog h2) {font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;line-height:1.25;letter-spacing:-.5px}
+:root[data-theme-id] :is(.zp-dialog-heading h2,.zu-dialog h2) {font-size:calc(20px * var(--theme-font-scale,1));letter-spacing:-.3px}
+:root[data-theme-id] :is(.zh-feed-tabs>[role=tab],.zh-section-title h2) {font-weight:600}
+:root[data-theme-id].zh-app .zh-nav>button {font-size:calc(11px * var(--theme-font-scale,1));font-weight:400;color:var(--muted)}
+:root[data-theme-id].zh-app .zh-nav>button.on {color:var(--ink);font-weight:600}
+:root[data-theme-id].zh-app .zh-nav>button[data-tab]::before {display:none!important}
+.zh-nav>button[data-tab].on::after {content:'';position:absolute;top:0;left:calc(50% - 6px);width:12px;height:2px;background:var(--accent)}
+.zh-nav>button>svg {stroke-width:1.7}
+.zf-face {filter:grayscale(1)}
+
+/* Photo-led discovery keeps names and actions easy to read. */
+.zh-home.zh-dashboard {padding:16px 20px 28px}
+:root[data-theme-id] .zh-home.zh-dashboard .zh-section-title h2 {font-size:calc(18px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.25px}
+.zh-heading-dot {display:none}
+.zh-home.zh-dashboard .zh-section-title {margin-bottom:12px}
+.zh-home.zh-dashboard .zh-featured-host {aspect-ratio:1.22;min-height:288px}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.45px}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-profile p {font-size:calc(12px * var(--theme-font-scale,1));font-weight:400;line-height:1.5}
+.zh-featured-label {font-size:calc(10px * var(--theme-font-scale,1));font-weight:500;border-color:#ffffff40;backdrop-filter:none}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-status {font-weight:500;letter-spacing:0}
+.zh-featured-controls {gap:8px;margin-top:8px}
+.zh-featured-controls>button {width:44px;height:44px;border:0;background:transparent}
+.zh-featured-position {font-size:calc(11px * var(--theme-font-scale,1));font-weight:400;color:var(--muted)}
+.zh-featured-progress {height:2px}
+.zh-home.zh-dashboard .zh-person-action {min-height:44px;font-weight:600}
+.zh-home.zh-dashboard .zh-grid {gap:12px}
+.zh-creator-text h3 {font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;line-height:1.35;letter-spacing:-.15px}
+.zh-creator-text p {font-size:calc(11px * var(--theme-font-scale,1));line-height:1.45}
+.zh-creator-status,.zh-creator-price {font-weight:500;letter-spacing:0}
+:root[data-theme-id] .zh-creator-call:not(:disabled) {background:var(--surface);color:var(--ink)}
+.zh-home.zh-dashboard .zh-host-empty {padding:28px 20px;background:#fff;background-image:none}
+.zh-home-empty-scene {width:56px;height:56px;margin:0 auto 20px;color:var(--ink)}
+.zh-empty-stage {position:static;width:56px;height:56px;transform:none!important;animation:none!important;border:1px solid var(--line);background:var(--raised)}
+.zh-empty-stage>.zi-icon {rotate:0deg}
+.zh-empty-orbit,.zh-empty-satellite,.zh-empty-dot,.zh-empty-eyebrow {display:none}
+.zh-home.zh-dashboard .zh-host-empty h3 {font-size:calc(20px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.25px}
+.zh-home.zh-dashboard .zh-host-empty p {font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6}
+
+/* Chats use a normal list rhythm instead of oversized type and accent metadata. */
+.zc-chats {padding:20px 20px 28px}
+.zc-heading {min-height:40px;margin-bottom:16px}
+.zc-heading h1 {margin:0}
+.zc-new {font-size:calc(12px * var(--theme-font-scale,1));font-weight:400;color:var(--muted)}
+.zc-search {height:44px;margin-bottom:12px;padding:0 12px}
+.zc-search input {font-size:calc(14px * var(--theme-font-scale,1));font-weight:400}
+.zc-tabs {margin-bottom:16px}
+.zc-tabs>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:400;min-height:38px}
+.zc-tabs>button.selected {font-weight:600}
+.zc-section-heading {margin-bottom:12px}
+:root[data-theme-id] .zc-section-heading h2 {font-size:calc(12px * var(--theme-font-scale,1));font-weight:500;color:var(--muted)}
+.zc-section-heading>button {font-size:calc(12px * var(--theme-font-scale,1));font-weight:500}
+.zc-available {margin-bottom:12px}
+.zc-row {position:relative;min-height:76px;padding:14px 0;gap:12px}
+.zc-row::after {content:'';position:absolute;left:64px;right:0;bottom:0;height:1px;background:var(--line)}
+:root[data-theme-id] .zc-name {font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.15px;line-height:1.4}
+:root[data-theme-id] .zc-message {font-size:calc(14px * var(--theme-font-scale,1));font-weight:400;line-height:1.5}
+:root[data-theme-id] .zc-unread .zc-message {font-weight:500}
+:root[data-theme-id] .zc-row-heading time {color:var(--muted)!important;font-size:calc(11px * var(--theme-font-scale,1));font-weight:400}
+:root[data-theme-id] .zc-gift-message,:root[data-theme-id] .zc-unread .zc-gift-message {color:var(--ink)!important}
+:root[data-theme-id] .zc-bot {background:var(--raised)!important;color:var(--ink)!important}
+:root[data-theme-id] .zc-bot-label {background:var(--ink)!important;color:#fff!important}
+.zc-unread-count {font-weight:600;min-width:18px;height:18px;font-size:calc(10px * var(--theme-font-scale,1))}
+
+/* Profiles retain one layout for owners and visitors, without decorative panels. */
+.zu-cover {height:192px}
+.zu-cover:not(.has-photo) {background:var(--raised)}
+.zu-cover:not(.has-photo) .zu-cover-art {background:var(--raised)}
+.zu-cover:not(.has-photo) .zu-cover-shade {display:none}
+.zu-cover:not(.has-photo) .zu-toolbar {color:var(--ink)}
+.zu-cover:not(.has-photo) .zu-toolbar :is(.zb-back,.zu-toolbar-more) {background:#fff;border:1px solid var(--line);color:var(--ink);backdrop-filter:none}
+.zu-cover:not(.has-photo) .zu-presence {background:#fff;border:1px solid var(--line);color:var(--muted);backdrop-filter:none;font-size:calc(11px * var(--theme-font-scale,1));font-weight:400}
+.zu-toolbar>span {font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;letter-spacing:0}
+.zu-avatar {width:88px;height:88px;border-width:4px}
+.zu-identity-top {margin-top:-36px}
+.zu-identity {padding-top:16px}
+.zu-meta {font-size:calc(12px * var(--theme-font-scale,1));margin-top:8px}
+.zu-stats {border:0;padding:0;margin:24px 0;gap:16px}
+.zu-stats>div {align-items:flex-start;gap:4px}
+.zu-stats>div+div {border-left:0}
+.zu-stats strong {font-size:calc(22px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.3px}
+.zu-stats span {font-size:calc(12px * var(--theme-font-scale,1));font-weight:400}
+:root[data-theme-id] .zu-bio {font-size:calc(14px * var(--theme-font-scale,1));line-height:1.65;color:var(--ink)}
+.zu-languages {font-size:calc(12px * var(--theme-font-scale,1));margin-top:12px}
+.zu-languages>svg {color:var(--muted)}
+.zu-owner-actions {gap:12px;margin-top:20px}
+.zu-owner-actions>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:500;min-height:44px}
+.zu-cover-upload {top:70px;min-height:36px;font-size:calc(11px * var(--theme-font-scale,1));border:1px solid var(--line);background:#fff}
+.zu-tabs {gap:24px;margin-bottom:16px}
+.zu-tabs>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:500;min-height:44px}
+.zu-tabs>button[aria-selected=true]::after {height:2px}
+.zu-empty {padding:28px 12px}
+.zu-empty>svg {color:var(--muted);width:28px;height:28px;margin-bottom:14px}
+.zu-empty h2 {font-size:calc(18px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.2px}
+.zu-empty p {font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6}
+.zu-text-button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:500}
+.zu-gift {background:#fff;gap:12px}
+.zu-gift-icon {background:var(--raised);color:var(--muted)}
+.zu-about section>p {font-size:calc(14px * var(--theme-font-scale,1));line-height:1.65}
+.zu-about h2 {font-size:calc(18px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.2px}
+
+/* The simple Settings hierarchy stays intact, with the same spacing and type. */
+.zp-simple-settings .zp-summary-copy>b {font-size:calc(20px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.3px}
+.zp-simple-settings .zp-summary-copy {gap:7px}
+.zp-simple-settings .zp-wallet {padding:18px 20px}
+.zp-simple-settings .zp-balance strong {font-size:calc(28px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.5px}
+.zp-simple-settings .zp-topup {font-size:calc(13px * var(--theme-font-scale,1));min-height:44px;font-weight:500}
+.zp-simple-section {margin-top:24px}
+:root[data-theme-id] .zp-simple-section :is(h1,h2) {font-size:calc(12px * var(--theme-font-scale,1));font-weight:500;letter-spacing:.1px;color:var(--muted);margin-bottom:8px}
+.zp-simple-row {min-height:60px;font-size:calc(16px * var(--theme-font-scale,1));line-height:1.5;gap:18px;padding:12px 4px}
+.zp-simple-icon {width:26px}
+.zp-simple-icon svg {width:24px;height:24px;stroke-width:1.7}
+.zp-service-info .zp-simple-row {min-height:56px}
+.zp-simple-logout {font-size:calc(14px * var(--theme-font-scale,1));margin-top:16px}
+.zw-section-heading p {font-size:calc(14px * var(--theme-font-scale,1))}
+.zw-packs strong {font-weight:600}
+.zw-packs b {font-size:calc(13px * var(--theme-font-scale,1));font-weight:600}
+.zw-buy {font-weight:600}
+
+/* Existing legacy selectors must not add a second press scale or photo zoom. */
+:root[data-theme-id] :is(button,[role=button]):active {transform:none!important}
+.zu-photo:hover>img,.zh-creator-card:hover>.zh-photo {transform:none!important}
+:is(.zp-dialog,.zc-dialog,.zu-dialog)::backdrop {background:#18181b66;backdrop-filter:none}
+@media(prefers-reduced-motion:no-preference) {
+  :is(.zp-dialog,.zc-dialog,.zu-dialog)[open] {animation:binzo-dialog-in 180ms cubic-bezier(.2,.7,.2,1)}
+  .zh-featured-enter .zh-person-media>:is(.zh-photo:not(.zh-photo-pending),.zh-fallback),.zh-featured-enter .zh-person-content {animation:binzo-photo-in 180ms ease-out both}
+  @keyframes binzo-dialog-in {from{opacity:0;translate:0 4px}to{opacity:1;translate:0 0}}
+  @keyframes binzo-photo-in {from{opacity:0}to{opacity:1}}
+}
+@media(min-width:760px) {
+  .zu-cover {height:220px}
+  .zu-avatar {width:96px;height:96px}
+  .zh-home.zh-dashboard {padding:20px 24px 32px}
+}
+@media(max-width:359px) {
+  .zh-home.zh-dashboard,.zc-chats {padding-left:20px;padding-right:20px}
+  .zh-home.zh-dashboard .zh-featured-host {min-height:270px}
+  .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(21px * var(--theme-font-scale,1))}
+}
+
+/* Back is a circular navigation control; other controls keep their 10px corners. */
+:root button.zb-back,:root[data-theme-id] .zb-back {border-radius:50%!important}
+:root[data-theme-id] .zb-back {
+  width:44px;height:44px;min-width:44px;min-height:44px;
+  padding:0;border:1px solid var(--line);flex:none;
+}
+:root[data-theme-id] .zb-back.on-media {border-color:rgb(255 255 255 / .55)}

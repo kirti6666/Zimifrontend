@@ -547,6 +547,7 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   // The keyboard covers the navigation bar, which the SafeAreaView below still pads for.
   assert.equal(keyboard.props.keyboardVerticalOffset, -24, 'Keyboard padding leaves out the bottom inset, so no gap opens above the keyboard');
   assert.equal(safeArea.type, 'SafeAreaView');
+  assert.deepEqual(Array.from(safeArea.props.edges || []), ['top', 'right', 'bottom', 'left'], 'Native safe-area padding owns every edge, so the web tab bar must not reserve the bottom inset again');
   assert.ok(web, 'The actual WebView must be inside the resized content');
   for (const node of [keyboard, safeArea, web]) assert.equal(style(node).flex, 1, 'Allow keyboard padding to shrink the WebView');
   assert.equal(style(keyboard).backgroundColor, style(safeArea).backgroundColor);

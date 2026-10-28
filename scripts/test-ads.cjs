@@ -21,7 +21,7 @@ const settled = { hosts: [], stage: [], featured: null, total: 0, page: 1 };
 // Open a view with its own content loaded, so a missing ad is never just a loading screen.
 async function show(page, view) {
   await page.evaluate(view => go(view), view);
-  if (['home', 'explore'].includes(view)) await receive(page, 'data.home', settled);
+  if (['home', 'all-creators'].includes(view)) await receive(page, 'data.home', settled);
   await page.locator(view === 'chats' ? '.zc-conversations' : '.zh-home').waitFor();
   // The chats banner does not depend on the conversation list, which may still be loading.
   if (view !== 'chats') assert.equal(await page.locator('.zh-skeleton').count(), 0, `${view} content has settled`);
@@ -122,13 +122,15 @@ async function show(page, view) {
     assert.equal(await page.evaluate(() => S.v), 'themes');
     console.log('PASS about dialog explains the ad, closes with back and leads to premium');
 
-    for (const [view, selector] of [['explore', '.za-card[data-za-slot="explore"]'], ['chats', '.za-banner[data-za-slot="chats"]']]) {
+    for (const [view, selector] of [['all-creators', '.za-card[data-za-slot="explore"]'], ['chats', '.za-banner[data-za-slot="chats"]']]) {
+      const creator = { id: '507f1f77bcf86cd799439012', name: 'Directory creator', role: 'host', serverRole: 'host', verified: true, online: true, availableForCall: true, ratePerMin: 0 };
+      if (view === 'all-creators') await receive(page, 'data.home', { hosts: [creator], stage: [], featured: creator, total: 1, page: 1 });
       await page.evaluate(view => go(view), view);
-      if (view === 'explore') {
-        assert.equal(await page.locator(selector).count(), 1, 'Explore reuses the full feed Home already loaded, so its ad shows at once');
-        await page.evaluate(() => homeFilter('Music'));
-        assert.equal(await page.locator(selector).count(), 0, 'Explore waits for its own results before showing an ad');
-        await receive(page, 'data.home', { hosts: [], stage: [], featured: null, total: 0, page: 1 });
+      if (view === 'all-creators') {
+        assert.equal(await page.locator(selector).count(), 1, 'All Creators reuses the full feed Home already loaded, so its ad shows at once');
+        await page.evaluate(() => homeLoad());
+        assert.equal(await page.locator(selector).count(), 0, 'All Creators waits for its own results before showing an ad');
+        await receive(page, 'data.home', { hosts: [creator], stage: [], featured: creator, total: 1, page: 1 });
       }
       await page.locator(selector).waitFor();
       for (const width of [320, 360, 390]) {
@@ -143,7 +145,7 @@ async function show(page, view) {
     await page.evaluate(() => { S.sum = { sec: 95, rate: 0, coins: 0, k: 'member' }; go('summary'); });
     await page.locator('.zh-summary .za-card[data-za-slot="call_summary"]').waitFor();
     assert.ok(await page.evaluate(() => document.querySelector('.zh-summary .za-card').compareDocumentPosition(document.querySelector('.zh-summary .zh-primary')) & Node.DOCUMENT_POSITION_PRECEDING), 'The call summary keeps its actions above the ad');
-    console.log('PASS explore card, chats banner and call summary card fit 320-390px');
+    console.log('PASS All Creators card, chats banner and call summary card fit 320-390px');
 
     await show(page, 'home');
     assert.equal(await page.locator('[data-za-slot]').count(), 1, 'A free member sees the Home ad');
@@ -152,7 +154,7 @@ async function show(page, view) {
     assert.equal(await page.locator('[data-za-slot]').count(), 0, 'Premium hides ads as soon as it is confirmed');
     await receive(page, 'data.themes', catalog(false));
     await receive(page, 'data.ads', { adFree: true, items: [] });
-    for (const view of ['home', 'explore', 'chats']) {
+    for (const view of ['home', 'all-creators', 'chats']) {
       await show(page, view);
       assert.equal(await page.locator('[data-za-slot]').count(), 0, `An ad-free member sees no ads on ${view}`);
     }

@@ -24,6 +24,17 @@ const last = async (page, type) => (await sent(page, type)).at(-1);
 const go = (page, view, target) => page.evaluate(({ view, target }) => go(view, target), { view, target });
 const balance = (page, coins) => receive(page, 'wallet.balance', { coins, earningsPaise: 0 });
 const settleCatalog = page => receive(page, 'data.catalog', catalog);
+const purchase = async (page, name) => {
+  await button(page, name).click();
+  const prompt = page.getByRole('dialog', { name: 'Select payment method', exact: true });
+  if (!await prompt.count()) return;
+  if (await page.evaluate(() => PaymentRoutes.loading)) {
+    const request = await last(page, 'payments.routes.load');
+    await receive(page, 'payments.routes', { ...request, mode: 'ROTATION', routeChoice: false, routes: [] });
+  }
+  await prompt.getByRole('radio', { name: /^Secure checkout/ }).check();
+  await prompt.getByRole('button', { name: 'Continue to payment', exact: true }).click();
+};
 const giftDialog = page => page.getByRole('dialog', { name: 'Send a gift', exact: true });
 const chooseGift = (page, gift = rose) => giftDialog(page).locator('.zh-gifts button').filter({ hasText: gift.name }).click();
 const ackGift = (request, extra = {}) => ({ to: request.to, gift: request.gift, idempotencyKey: request.idempotencyKey, ...extra });
@@ -65,7 +76,7 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.ok(await page.locator('.zc-coin[data-icon="coin"]').count(), 'The wallet uses the shared BinzoLive coin mark');
     for (const mode of ['dark', 'light']) {
       await page.evaluate(value => Native.receive({ type: 'data.themes', data: { items: [ZThemeOriginal, ZThemeRose], selectedThemeId: value === 'dark' ? ZThemeOriginal.id : ZThemeRose.id, premium: { active: false } } }), mode);
-      assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), mode);
+      assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light', 'Themes preserve the white app canvas');
       for (const width of [320, 390, 768, 1280]) {
         await page.setViewportSize({ width, height: 844 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `${mode} wallet fits ${width}px`);
@@ -78,7 +89,7 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     }
     console.log('PASS coins: real catalog loading/error/retry, shared currency mark and responsive themes');
 
-    await button(page, 'Get 200 coins').click();
+    await purchase(page, 'Get 200 coins');
     const firstCheckout = await last(page, 'wallet.checkout');
     assert.equal(firstCheckout.packId, small.id);
     assert.ok(firstCheckout.idempotencyKey);
@@ -86,7 +97,7 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.equal((await sent(page, 'wallet.checkout')).length, 1, 'Repeated taps submit one checkout');
     assert.equal(await page.evaluate(() => S.bal), 1000, 'Starting a payment never credits the wallet');
     await receive(page, 'operation.error', { action: 'wallet.checkout', message: 'Connection interrupted. Try again.', idempotencyKey: firstCheckout.idempotencyKey });
-    await button(page, 'Get 200 coins').click();
+    await purchase(page, 'Get 200 coins');
     assert.equal((await last(page, 'wallet.checkout')).idempotencyKey, firstCheckout.idempotencyKey, 'An uncertain checkout retry keeps its payment identity');
     await receive(page, 'wallet.checkout', { ...payment('order-one'), idempotencyKey: firstCheckout.idempotencyKey });
     assert.equal(await page.locator('.zh-packs button').filter({ hasText: large.name }).isEnabled(), false, 'An unfinished payment cannot be replaced by another pack');
@@ -107,11 +118,11 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.equal(await page.evaluate(() => Home.checkout.status), 'SUCCESS', 'A delayed pending response cannot reopen a completed payment');
     await balance(page, 1200);
     assert.equal(await page.evaluate(() => S.bal), 1200, 'The authoritative wallet update credits coins');
-    await button(page, 'Get 200 coins').click();
+    await purchase(page, 'Get 200 coins');
     const secondCheckout = await last(page, 'wallet.checkout');
     assert.notEqual(secondCheckout.idempotencyKey, firstCheckout.idempotencyKey, 'A completed payment allows a fresh order');
     await receive(page, 'operation.error', { action: 'wallet.checkout', idempotencyKey: secondCheckout.idempotencyKey, code: 'PAYIN_PROVISIONING_FAILED', message: 'Payment setup failed. Start a new checkout.' });
-    await button(page, 'Get 200 coins').click();
+    await purchase(page, 'Get 200 coins');
     const thirdCheckout = await last(page, 'wallet.checkout');
     assert.notEqual(thirdCheckout.idempotencyKey, secondCheckout.idempotencyKey, 'Explicit provisioning failure allows a new payment identity');
     await receive(page, 'wallet.checkout', { ...payment('order-three'), idempotencyKey: thirdCheckout.idempotencyKey });
@@ -150,18 +161,18 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     const snapshot = await open();
     await go(snapshot, 'coins');
     await settleCatalog(snapshot);
-    await button(snapshot, 'Get 200 coins').click();
+    await purchase(snapshot, 'Get 200 coins');
     const snapshotAttempt = await last(snapshot, 'wallet.checkout');
     await receive(snapshot, 'operation.error', { action: 'wallet.checkout', idempotencyKey: snapshotAttempt.idempotencyKey, status: 502, message: 'The payment response was interrupted.' });
     await receive(snapshot, 'data.catalog', { ...catalog, packs: [{ ...small, coins: 300, pricePaise: 14900 }, large] });
     assert.match(await button(snapshot, 'Get 200 coins').innerText(), /₹99/, 'Uncertain checkout keeps its original coin quantity and price when the pack changes');
     assert.equal(await button(snapshot, 'Get 300 coins').count(), 0, 'A changed catalog cannot relabel an uncertain order');
-    await button(snapshot, 'Get 200 coins').click();
+    await purchase(snapshot, 'Get 200 coins');
     assert.deepEqual(await last(snapshot, 'wallet.checkout'), snapshotAttempt, 'Retry still sends the original checkout identity');
     await receive(snapshot, 'operation.error', { action: 'wallet.checkout', idempotencyKey: snapshotAttempt.idempotencyKey, status: 404, message: 'That coin pack is no longer available.' });
     assert.equal(await snapshot.evaluate(() => Home.checkoutAttempt), null, 'A definitive missing-pack response before an order clears the attempt');
     await snapshot.locator('.zh-packs button').filter({ hasText: large.name }).click();
-    await button(snapshot, 'Get 1,250 coins').click();
+    await purchase(snapshot, 'Get 1,250 coins');
     assert.equal((await last(snapshot, 'wallet.checkout')).packId, large.id);
     assert.notEqual((await last(snapshot, 'wallet.checkout')).idempotencyKey, snapshotAttempt.idempotencyKey, 'Selecting an available pack after a definitive failure creates a fresh attempt');
     console.log('PASS coins: uncertain checkout keeps its price snapshot and definitive missing-pack failures allow another pack');

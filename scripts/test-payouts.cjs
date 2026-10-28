@@ -133,7 +133,7 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   await button(conflict,'Retry same withdrawal').click();const revokedRetry=await last(conflict,'payout.request');assert.equal(revokedRetry.idempotencyKey,pending.idempotencyKey,'Revoked hosts can reconcile only the original saved request');
   await receive(conflict,'payout.requested',{requestId:revokedRetry.requestId,payout:{...record,idempotencyKey:pending.idempotencyKey}});
   assert.equal(await conflict.getByRole('heading',{name:'Withdrawal requested',exact:true}).count(),1);assert.equal(await button(conflict,'Make another request').count(),0);
-  await button(conflict,'Back to profile').click();assert.equal(await conflict.evaluate(()=>S.v),'profile');await button(conflict,'Withdrawal history').click();assert.equal(await conflict.evaluate(()=>S.v),'payout-history');
+  await button(conflict,'Back to profile').click();assert.equal(await conflict.evaluate(()=>S.v),'profile');await button(conflict,'Open settings').click();await button(conflict,'Payments').click();await conflict.getByRole('dialog',{name:'Payments',exact:true}).getByRole('button',{name:/^Withdrawal history/}).click();assert.equal(await conflict.evaluate(()=>S.v),'payout-history');
   console.log('PASS payouts: revoked-host read-only history and exact persisted request reconciliation');
 
   await receive(page,'session.none');

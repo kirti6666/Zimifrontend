@@ -15,6 +15,7 @@ import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
 import { LIVE_STREAMING_ENABLED } from "./features";
+import type { OfficialChatData, OfficialReadPatch } from "./api/types";
 import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
@@ -39,6 +40,8 @@ export type WebMessage =
   | { type: "notifications.read"; data: { ids: string[]; requestId?: number } }
   | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
   | { type: "notifications.readAll"; data: { requestId: number } }
+  | { type: "official.load"; data: { page?: number; requestId: number } }
+  | { type: "official.read"; data: OfficialReadPatch & { requestId: number } }
   | { type: "call.match"; data: { category?: string } }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string } }
@@ -135,6 +138,10 @@ export type AppMessage =
   | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
   | { type: "notifications.error"; data: { requestId: number; message: string } }
   | { type: "notifications.changed"; data: Record<string, never> }
+  | { type: "data.official"; data: OfficialChatData & { requestId: number } }
+  | { type: "official.saved"; data: OfficialReadPatch & NotificationReadResult & { read: true; requestId: number } }
+  | { type: "official.error"; data: { requestId: number; message: string; action: "load" | "read" } }
+  | { type: "official.changed"; data: Record<string, never> }
   | { type: "push.opened"; data: Record<string, never> }
   | { type: "data.catalog"; data: Catalog }
   | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
@@ -232,6 +239,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let documentRevision = 0;
   let payoutReadRevision = 0;
   let paymentRoutesRevision = 0;
+  let officialLoadRevision = 0;
   const photoDownloads = new Map<string, Promise<void>>();
   let linkRevision = 0;
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
@@ -449,6 +457,31 @@ export function createBridge(post: (msg: AppMessage) => void) {
       quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
     } catch (error) {
       if (applicable()) emit({ type: "notifications.error", data: { requestId, message: errorMessage(error) } });
+    }
+  };
+  const loadOfficial = async (page: number, requestId: number) => {
+    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, revision = ++officialLoadRevision;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === officialLoadRevision;
+    try {
+      const data = await api.officialChat(page);
+      if (applicable()) emit({ type: "data.official", data: { ...data, requestId } });
+    } catch (error) {
+      if (applicable()) emit({ type: "official.error", data: { requestId, action: "load", message: errorMessage(error) } });
+    }
+  };
+  const readOfficial = async (input: OfficialReadPatch, requestId: number) => {
+    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
+    try {
+      const result = await api.readOfficialChat(input);
+      if (!applicable()) return;
+      // A pending history read may predate this committed receipt.
+      officialLoadRevision++;
+      emit({ type: "official.saved", data: { ...input, ...result, read: true, requestId } });
+      quietly(loadChats(), "chats.reload");
+      quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+    } catch (error) {
+      if (applicable()) emit({ type: "official.error", data: { requestId, action: "read", message: errorMessage(error) } });
     }
   };
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
@@ -776,6 +809,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
         : updateNotifications({ ids: msg.data.ids, read: true }, msg.data.requestId);
       case "notifications.unread": return updateNotifications({ ids: msg.data.ids, read: false }, msg.data.requestId);
       case "notifications.readAll": return updateNotifications({ all: true, read: true }, msg.data.requestId);
+      case "official.load": return loadOfficial(msg.data.page ?? 1, msg.data.requestId);
+      case "official.read": {
+        const { requestId, ...input } = msg.data;
+        return readOfficial(input, requestId);
+      }
       case "catalog.load": return loadCatalog();
       case "themes.load": return loadThemes();
       case "themes.select": {

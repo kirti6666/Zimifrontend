@@ -50,82 +50,87 @@ async function run() {
   try {
     const preview = await open(true);
     await preview.locator('.zh-nav').getByRole('button', { name: 'Profile', exact: true }).click();
-    await preview.locator('.zp-page').waitFor();
+    await preview.locator('.zu-own-page').waitFor();
     for (const width of [373, 390, 630, 1280]) {
       await preview.setViewportSize({ width, height: width === 373 || width === 630 ? 1600 : 900 });
       assert.equal(await preview.locator('.zh-header').count(), 0, 'Profile uses its own page heading');
       assert.equal(await preview.locator('#top').isVisible(), false, 'Profile has no unused Home header strip');
-      assert.equal(await preview.locator('.zh-nav button').count(), 5);
+      assert.equal(await preview.locator('.zh-nav button').count(), 4);
       assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Profile does not overflow at ${width}px`);
-      assert.equal(await preview.locator('.zp-page .zh-skeleton').count(), 0, 'The demo profile is immediately usable');
+      assert.equal(await preview.locator('.zu-own-page .zh-skeleton').count(), 0, 'The demo profile is immediately usable');
       await preview.screenshot({ path: path.join(os.tmpdir(), `zimi-profile-preview-${width}.png`) });
     }
     const page = await open();
     await receive(page, 'session', account);
-    await navigate(page, 'profile');
+    await navigate(page, 'settings');
     await page.locator('.zp-page').waitFor();
     await page.waitForFunction(() => window.__sent.some(message => message.type === 'profile.settings.load'));
-    assert.equal(await page.locator('.zp-stats .zh-skeleton-shape').count(), 4, 'Unknown statistics are skeletons rather than fabricated zeroes');
-    assert.equal(await page.locator('.zp-balance strong').innerText(), '', 'An unknown wallet does not flash a fake balance');
+    assert.equal(await page.locator('.zp-summary-stats .zh-skeleton-shape').count(), 1, 'Unknown statistics are skeletons rather than fabricated zeroes');
+    assert.equal(await page.locator('.zp-balance strong').innerText(), '', 'An unknown wallet does not display sample coins');
     assert.equal(await page.getByRole('switch', { name: '1-on-1 Call Availability', exact: true }).count(), 0, 'Members do not see host availability');
     const animations = await page.locator('.zp-page .zh-skeleton-shape').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).animationName));
-    assert.ok(animations.length >= 4 && animations.every(name => name === 'none'), 'Profile skeletons respect reduced motion');
+    assert.ok(animations.length >= 2 && animations.every(name => name === 'none'), 'Profile skeletons respect reduced motion');
     await settleSettings(page);
     await receive(page, 'wallet.balance', { coins: 3750, earningsPaise: 123450, reservedPaise: 5000 });
     const profile = () => page.locator('.zp-page');
-    const row = name => profile().getByRole('button', { name: new RegExp(`^${name}`) });
+    const row = name => page.locator('.zp-page,.zp-dialog').getByRole('button', { name: new RegExp(`^${name}`) });
     const dialog = name => page.getByRole('dialog', { name, exact: true });
     const close = () => page.getByRole('button', { name: 'Close settings', exact: true }).click();
-    const readyProfile = async () => { await navigate(page, 'profile'); await settleSettings(page, saved); };
+    const openMenu = async name => { await page.evaluate(() => zpClose()); await profile().getByRole('button', { name, exact: true }).click(); };
+    const readyProfile = async () => { await navigate(page, 'settings'); await settleSettings(page, saved); };
     let saved = structuredClone(settings);
-    await profile().getByRole('heading', { name: 'Profile & Settings', exact: true }).waitFor();
-    assert.equal(await page.locator('.zp-person h2').innerText(), 'Mira North');
-    assert.match(await page.locator('.zp-person-text').innerText(), /Pune/);
-    assert.match(await page.locator('.zp-person .zp-id').textContent(), /· Level 3 · Crown$/);
-    await settleSettings(page, { ...settings, standing: { level: 3, crown: false } });
-    assert.equal(await page.locator('.zp-crown').count(), 0, 'No crown once the server drops it');
-    await settleSettings(page);
-    assert.match(await page.locator('.zp-bio').innerText(), /Acoustic songs/);
-    assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Fans' }).locator('b').innerText(), '17');
-    assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Following' }).locator('b').innerText(), '5');
-    assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Gifts sent' }).locator('b').innerText(), '4');
-    assert.equal(await page.locator('.zp-stats > div').filter({ hasText: 'Gifts received' }).locator('b').innerText(), '9');
-    assert.match(await page.locator('.zp-balance strong').innerText(), /3,750/);
+    const settleSelf = async () => {
+      const request = await lastSent(page, 'profile.load'), user = await page.evaluate(() => S.user);
+      await receive(page, 'data.publicProfile', { ...request, profile: { ...user, id: user.id, name: saved.profile.name, about: saved.profile.bio, city: saved.profile.city, languages: saved.profile.languages, verified: user.isVerifiedHost === true, followers: saved.stats.fans, followingCount: saved.stats.following, joined: '2026-01-01T10:00:00Z' } });
+    };
+
+    await profile().getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+    assert.equal(await page.locator('.zp-summary-copy>b').innerText(), 'Mira North');
+    assert.equal(await page.locator('.zp-summary-stats [aria-label="Fans: 17"]').count(), 1);
+    assert.equal(await page.locator('.zp-summary-stats [aria-label="Following: 5"]').count(), 1);
+    assert.equal(await page.locator('.zp-summary-stats [aria-label="Gifts received: 9"]').count(), 1);
     assert.doesNotMatch(await profile().innerText(), /Aditi Rao|VIP Tier|Host Score|858350921|12\.4k|\$38\.50/i, 'Production never substitutes screenshot identity, scores, or an invented exchange rate');
     assert.equal(await row('1:1 Call Studio').count(), 0);
     await loading(page, 'profileSettings', true);
-    assert.equal(await page.locator('.zp-stats .zh-skeleton-shape').count(), 4, 'Reload replaces cached profile statistics with skeletons');
+    assert.equal(await page.locator('.zp-summary-stats .zh-skeleton-shape').count(), 1, 'Reload replaces cached profile statistics with skeletons');
     await loading(page, 'profileSettings', false, { error: 'Account settings are temporarily unavailable' });
     await profile().getByRole('alert').filter({ hasText: 'Account settings are temporarily unavailable' }).waitFor();
-    assert.doesNotMatch(await page.locator('.zp-stats').innerText(), /\b17\b/, 'A failed refresh does not present cached statistics as current');
+    assert.doesNotMatch(await page.locator('.zp-summary-stats').innerText(), /\b17\b/, 'A failed refresh does not present cached statistics as current');
     await profile().getByRole('button', { name: 'Retry', exact: true }).click();
     assert.ok(await sentCount(page, 'profile.settings.load') >= 2);
     await settleSettings(page, saved);
     console.log('PASS profile: responsive layout, production identity/stats/wallet, skeletons, reduced motion and load retry');
 
-    await page.getByRole('button', { name: 'Your BinzoLive QR code', exact: true }).click();
+    await readyProfile();
+    assert.match(await page.locator('.zp-balance strong').innerText(), /3,750/);
+    await openMenu('Account');
+    await row('Account ID & QR code').click();
     await dialog('Your BinzoLive ID').waitFor();
     assert.equal(await dialog('Your BinzoLive ID').locator('.zp-account-id').innerText(), account.user.id);
     assert.ok(await dialog('Your BinzoLive ID').locator('.zp-qr svg').count() > 0, 'The account ID has a generated QR image');
     await dialog('Your BinzoLive ID').getByRole('button', { name: 'Copy account ID', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.__copied), [account.user.id]);
     await close();
-    await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
+    await openMenu('Account');
+    await row('Edit profile').click();
     assert.equal(await page.evaluate(() => S.v), 'editprofile');
     assert.equal(await page.getByLabel('Display name', { exact: true }).inputValue(), 'Mira North');
     await readyProfile();
-    await row('Top Up').click();
+    await row('Add coins').click();
     assert.equal(await page.evaluate(() => S.v), 'coins');
     assert.ok(await sentCount(page, 'catalog.load') > 0);
     await readyProfile();
+    await openMenu('Payments');
     await row('Wallet & Activity').click();
     assert.equal(await page.evaluate(() => S.v), 'wallet');
     await readyProfile();
+    await openMenu('Account');
     await row('Phone & Email Security').click();
     assert.match(await dialog('Phone & Email Security').innerText(), /3210/);
     assert.match(await dialog('Phone & Email Security').innerText(), /Verified for sign-in/);
     await close();
 
+    await openMenu('General');
     await row('Match & Speed Pulse').click();
     const match = dialog('Match & Speed Pulse');
     await match.getByLabel('Match category', { exact: true }).selectOption('Music');
@@ -134,11 +139,11 @@ async function run() {
     assert.equal(request.matchCategory, 'Music');
     await match.getByRole('status', { name: 'Saving preferences', exact: true }).waitFor();
     assert.equal(await match.getByLabel('Match category', { exact: true }).isDisabled(), true);
-    assert.match(await row('Match & Speed Pulse').innerText(), /All creator categories/, 'Pending saves do not claim a persisted preference');
+    assert.equal(await page.evaluate(() => ZProfile.data.preferences.matchCategory), null, 'Pending saves do not claim a persisted preference');
     await receive(page, 'profile.settings.error', { requestId: request.requestId, message: 'Your category could not be saved' });
     await match.getByRole('alert').filter({ hasText: 'Your category could not be saved' }).waitFor();
     assert.equal(await match.getByRole('button', { name: 'Save preferences', exact: true }).isEnabled(), true);
-    assert.match(await row('Match & Speed Pulse').innerText(), /All creator categories/);
+    assert.equal(await page.evaluate(() => ZProfile.data.preferences.matchCategory), null);
     await match.getByRole('button', { name: 'Save preferences', exact: true }).click();
     const retry = await lastSent(page, 'profile.settings.save');
     assert.ok(retry.requestId > request.requestId);
@@ -148,6 +153,7 @@ async function run() {
     await receive(page, 'data.profileSettings', saved);
     await receive(page, 'profile.settings.saved', { settings: saved, requestId: retry.requestId });
     await match.waitFor({ state: 'hidden' });
+    await openMenu('General');
     assert.match(await row('Match & Speed Pulse').innerText(), /Music/);
 
     await row('Language & Region').click();
@@ -165,7 +171,11 @@ async function run() {
     saved = { ...saved, profile: { ...saved.profile, city: 'Mumbai', languages: ['English'] } };
     await receive(page, 'data.profileSettings', saved);
     await receive(page, 'profile.settings.saved', { settings: saved, requestId: request.requestId });
-    assert.match(await page.locator('.zp-person-text').innerText(), /Mumbai/, 'The saved region updates the visible profile');
+    await navigate(page, 'profile');
+    await settleSelf();
+    assert.match(await page.locator('.zu-meta').innerText(), /Mumbai/, 'The saved region updates the visible profile');
+    await readyProfile();
+    await openMenu('General');
     assert.match(await row('Language & Region').innerText(), /English/);
     assert.doesNotMatch(await row('Language & Region').innerText(), /Hindi/);
 
@@ -181,12 +191,13 @@ async function run() {
     assert.equal(request.themeId, themes.items[1].id);
     await receive(page, 'themes.selected', { catalog: { ...themes, selectedThemeId: request.themeId }, requestId: request.requestId });
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
-    await page.getByRole('button', { name: 'Back to profile', exact: true }).click();
-    await page.locator('.zh-nav').getByRole('button', { name: 'Chats', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to settings', exact: true }).click();
+    await page.locator('.zh-nav').getByRole('button', { name: 'Chat', exact: true }).click();
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light', 'Saved appearance applies across tabs');
     await readyProfile();
     console.log('PASS profile: real ID/QR and edit/wallet actions, settings saves wait for acknowledgment, error recovery, stale response isolation, draft preservation and shared appearance');
 
+    await openMenu('General');
     await row('Notifications & Alerts').click();
     const notifications = dialog('Notification preferences');
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Unavailable push registration cannot be presented as functional');
@@ -195,6 +206,7 @@ async function run() {
     await readyProfile();
     const pushCapabilities = status => ({ ...saved, capabilities: { ...saved.capabilities, pushNotifications: true, nativePushRegistered: status === 'registered', nativePushStatus: status } });
     await settleSettings(page, pushCapabilities('denied'));
+    await openMenu('General');
     await row('Notifications & Alerts').click();
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Blocked by the phone: the toggle cannot claim to work');
     assert.match(await notifications.innerText(), /turned off for BinzoLive on this phone/);
@@ -205,6 +217,7 @@ async function run() {
     assert.equal(await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).count(), 0);
     await close();
     await settleSettings(page, saved);
+    await openMenu('Privacy & Terms');
     await row('Privacy & Blocked Users').click();
     const privacy = dialog('Privacy & Blocked Users');
     await privacy.getByRole('status', { name: 'Loading blocked accounts', exact: true }).waitFor();
@@ -229,15 +242,17 @@ async function run() {
     await privacy.getByRole('button', { name: 'Save preferences', exact: true }).click();
     request = await lastSent(page, 'privacy.save');
     assert.equal(request.discoverable, false);
-    assert.match(await row('Privacy & Blocked Users').innerText(), /Discovery, activity/, 'Privacy remains authoritative while saving');
+    assert.equal(await page.evaluate(() => ZProfile.data.privacy.discoverable), true, 'Privacy remains authoritative while saving');
     await receive(page, 'privacy.error', { requestId: request.requestId, message: 'Privacy changes could not be saved' });
     await privacy.getByRole('alert').filter({ hasText: 'Privacy changes could not be saved' }).waitFor();
     await privacy.getByRole('button', { name: 'Save preferences', exact: true }).click();
     request = await lastSent(page, 'privacy.save');
     saved = { ...saved, privacy: { ...saved.privacy, discoverable: false } };
     await receive(page, 'privacy.saved', { privacy: saved.privacy, requestId: request.requestId });
+    await openMenu('Privacy & Terms');
     assert.match(await row('Privacy & Blocked Users').innerText(), /Private discovery/);
 
+    await openMenu('Payments');
     await row('Gift History').click();
     const gifts = dialog('Gift History');
     await gifts.getByRole('status', { name: 'Loading gift history', exact: true }).waitFor();
@@ -250,7 +265,8 @@ async function run() {
     await gifts.getByRole('button', { name: 'All transactions', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'transactions');
     await readyProfile();
-    for (const [button, title] of [['Help Center & Safety Guidelines', 'Help Center'], ['Community Guidelines', 'Community Guidelines']]) {
+    for (const [button, title] of [['Help & tips', 'Help Center'], ['Community Guidelines', 'Community Guidelines']]) {
+      if (button === 'Community Guidelines') await openMenu('Privacy & Terms');
       await row(button).click(); await dialog(title).waitFor(); assert.ok((await dialog(title).innerText()).length > 100); await close();
     }
     // A tapped push opens the inbox, but never navigates away from a call or live room.
@@ -277,6 +293,7 @@ async function run() {
     }
     await receive(page, 'session', approved);
     await readyProfile();
+    await openMenu('Creator tools');
     const availability = () => page.getByRole('switch', { name: '1-on-1 Call Availability', exact: true });
     assert.equal(await availability().getAttribute('aria-checked'), 'false');
     await availability().click();
@@ -293,6 +310,7 @@ async function run() {
     assert.match(await dialog('Your Earnings').innerText(), /50\.00 reserved/);
     assert.doesNotMatch(await dialog('Your Earnings').innerText(), /\$/);
     await close();
+    await openMenu('Creator tools');
     await row('1:1 Call Studio').click();
     assert.equal(await page.evaluate(() => S.v), 'setup');
     assert.equal(await sentCount(page, 'stream.start'), 0, 'Opening private call studio never starts a broadcast');
@@ -302,15 +320,18 @@ async function run() {
     saved = { ...saved, profile: { ...saved.profile, name: hostileName, bio: hostileBio } };
     await receive(page, 'session', { ...approved, user: { ...approved.user, name: hostileName, about: hostileBio } });
     await readyProfile();
-    assert.match(await page.locator('.zp-person h2').innerText(), /<img/);
-    assert.equal(await page.locator('.zp-bio').innerText(), hostileBio);
-    assert.equal(await page.locator('.zp-page [onerror],.zp-page [onload],.zp-page script').count(), 0);
+    await navigate(page, 'profile');
+    await settleSelf();
+    assert.match(await page.locator('.zu-identity h1').innerText(), /<img/);
+    assert.equal(await page.locator('.zu-bio').innerText(), hostileBio);
+    assert.equal(await page.locator('.zu-page [onload],.zu-page script').count(), 0);
     assert.equal(await page.evaluate(() => window.__profileXss), undefined);
-    await row('Log Out').click();
+    await readyProfile();
+    await row('Log out').click();
     const logout = dialog('Log Out');
     await logout.getByRole('button', { name: 'Stay signed in', exact: true }).click();
     assert.equal(await sentCount(page, 'auth.logout'), 0);
-    await row('Log Out').click();
+    await row('Log out').click();
     await logout.getByRole('button', { name: 'Log out of this device', exact: true }).click();
     assert.equal(await sentCount(page, 'auth.logout'), 1);
     assert.equal(await page.locator('.zp-page').count(), 0);

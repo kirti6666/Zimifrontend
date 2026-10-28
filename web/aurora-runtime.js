@@ -164,7 +164,7 @@ const P={home:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/>'
  chev:'<path d="M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/>',
  star:'<path d="M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z" stroke-linejoin="round"/>',
  check:'<path d="M6.8 12.3l3.2 3.2 7.2-7.2" stroke-linecap="round" stroke-linejoin="round"/>',
- set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0015 19.4a1.7 1.7 0 00-1 .6 1.7 1.7 0 00-.4 1.1H9.6a1.7 1.7 0 00-.4-1.1 1.7 1.7 0 00-1-.6 1.7 1.7 0 00-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 003.8 15a1.7 1.7 0 00-.6-1 1.7 1.7 0 00-1.1-.4V9.6A1.7 1.7 0 003.2 9a1.7 1.7 0 00.6-1 1.7 1.7 0 00-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 008.2 3.6a1.7 1.7 0 001-.6 1.7 1.7 0 00.4-1.1h4a1.7 1.7 0 00.4 1.1 1.7 1.7 0 001 .6 1.7 1.7 0 001.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0019.4 8c.13.39.34.73.6 1 .3.29.67.43 1.1.4v4c-.43-.03-.8.11-1.1.4-.26.27-.47.61-.6 1.2z" stroke-linejoin="round"/>',
+ set:'<path d="m9.5 3-.6 2.4-1.3.8-2.4-.7-2.5 4.3 1.8 1.7v1.5l-1.8 1.7L5.2 19l2.4-.7 1.3.8.6 2.4h5l.6-2.4 1.3-.8 2.4.7 2.5-4.3-1.8-1.7v-1.5l1.8-1.7-2.5-4.3-2.4.7-1.3-.8L14.5 3z" stroke-linejoin="round"/><circle cx="12" cy="12.25" r="3.25"/>',
  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4" stroke-linecap="round"/>',
  dots:'<circle cx="12" cy="5.5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="18.5" r="1.6" fill="currentColor"/>',
  eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/>',
@@ -186,6 +186,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(v==='explore')v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
@@ -252,8 +253,8 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
 function nav(){const el=document.getElementById("nav");
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
- if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
- el.innerHTML=[["home","Home","home"],["chats","Chats","chat"],["profile","Profile","user"],["settings","Settings","set"]]
+ if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
+ el.innerHTML=[["home","Home","home"],["chats","Chat","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
 function card(h){
@@ -851,16 +852,12 @@ const TXNS=[
  ["Call with Ananya","2 Sep, 10:24 PM",-285,"call"],
  ["Bonus coins","1 Sep, 9:00 AM",250,"topup"]];
 
-function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct">
- <div class="accthero"><div class="eyebrow">Available balance</div><div class="big">${gem}${window.contentBalance?contentBalance():n(S.bal)}</div>
-  <div class="sub">Use coins for calls and gifts. Your balance is ready across BinzoLive.</div>
-  <button class="cta" onclick="go('coins')">Add coins</button></div>
+function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct zwallet-page">'+pending+'</div>';const activity=window.contentSurface?.('transactions','rows','Loading recent transactions');return `<div class="acct zwallet-page">
+ <section class="accthero zwallet-balance" aria-label="Coin balance"><div><div class="eyebrow">Coin balance</div><div class="big">${coinIcon(25)}${contentBalance()}</div><p class="sub">Available for calls and gifts</p></div>
+  <button type="button" class="cta" onclick="go('coins')">Add coins</button></section>
  ${earnCard()}
- <div class="acctsec"><div class="accttitle"><span>Quick actions</span></div>
-  <div class="support"><button onclick="go('coins')"><b>Recharge</b><span>Choose a coin pack</span></button>
-   <button onclick="go('transactions')"><b>History</b><span>See every movement</span></button></div></div>
- <div class="acctsec"><div class="accttitle"><span>Recent activity</span><button onclick="go('transactions')" style="color:var(--accent-ink)">View all</button></div>
-  <div class="acctcard">${window.contentSurface?.('transactions','rows','Loading recent transactions')||TXNS.slice(0,3).map(txRow).join("")}</div></div></div>`}
+ <section class="acctsec zwallet-recent"><div class="accttitle"><h2>Recent activity</h2><button type="button" onclick="go('transactions')">View all</button></div>
+  <div class="acctcard zwallet-activity">${activity||(TXNS.length?TXNS.slice(0,3).map(txRow).join(""):`<div class="zwallet-empty">${I('clock',25)}<h3>No activity yet</h3><p>Your coin purchases, calls and gifts will appear here.</p></div>`)}</div></section></div>`}
 
 function txAmount(x){return x[2]===0&&Number.isSafeInteger(x[4])&&x[4]!==0?x[4]:x[2]}
 function txRow(x){const [title,time,coins,type,paise]=x,amount=txAmount(x),money=coins===0&&Number.isSafeInteger(paise)&&paise!==0;return `<div class="acctrow">
@@ -1460,25 +1457,12 @@ function toggleMvp(){A().mvp=A().mvp?0:1;Native.send("settings.set",{showMvps:!!
 
 /* ---- Wallet earnings, KYC and payouts ---- */
 function earnCard(){
- if(!isHost())return "";
- const a=A(),k=a.kyc,host=isHost(),locked=!host&&a.earn<PAYOUT_MIN;
- let msg,act="";
- if(locked){msg=`Earn ${n(PAYOUT_MIN)} coins from gifts to unlock payouts.`;
-  act=`<div class="ebar"><i style="width:${Math.min(100,a.earn/PAYOUT_MIN*100).toFixed(0)}%"></i></div>
-   <div class="enums"><span>${n(a.earn)}</span><span>${n(PAYOUT_MIN)}</span></div>`}
- else if(k==="none"){msg=host?"Verify your account to get the verified badge and withdraw.":"Payouts unlocked. A quick check is needed before your first withdrawal.";
-  act=`<button class="ebtn" onclick="go('kyc')">${host?"Start KYC":"Verify for payouts"}</button>`}
- else if(k==="pending"){msg="Verification in progress. This usually takes a few minutes.";
-  act=`<button class="ebtn ghost" onclick="go('kyc')">View status</button>`}
- else{msg=`1,000 coins = ${inr(1000)}. Payouts to UPI are usually instant.`;
-  act=`<button class="ebtn" onclick="S.pdone=0;go('payout')">${I("wal",15)} Withdraw</button>`}
- return `<div class="acctsec"><div class="accttitle"><span>Earnings</span>${k==="verified"?`<span class="vtag">${I("check",11)} Verified</span>`:""}</div>
-  <div class="earnbox">
-   <div class="ehead"><span class="acctico">${I("cup",16)}</span>
-    <span class="etx"><b>Earned coins</b><span>From ${host?"calls, gifts and awards":"gifts you received"}</span></span></div>
-   <div class="eamt"><b>${gem}${n(a.earn)}</b><span>&asymp; ${inr(a.earn)}</span></div>
-   <div class="estat ${locked?"lock":k}"><span class="emsg">${msg}</span>${act}</div>
-  </div></div>`}
+ if(!isApprovedHost())return "";
+ const own=S.walletSnapshot?.owner===S.user?.id,w=own?S.walletSnapshot.data:null,ready=!DEMO&&!contentPending('wallet')&&!ContentLoading.wallet.error&&Number.isSafeInteger(w?.earningsPaise)&&w.earningsPaise>=0;
+ const money=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);
+ const minimum=Number.isSafeInteger(w?.minimumWithdrawalPaise)&&w.minimumWithdrawalPaise>0,canWithdraw=ready&&w.withdrawalsEnabled===true&&minimum&&w.earningsPaise>=w.minimumWithdrawalPaise;
+ const copy=DEMO?'Sign in to view your creator earnings.':!ready?'Refresh your wallet to view available earnings.':w.withdrawalsEnabled===false?'Withdrawals are currently paused.':minimum?'Minimum withdrawal '+money(w.minimumWithdrawalPaise):'Refresh your wallet to check withdrawal availability.';
+ return `<section class="acctsec zwallet-earnings"><div class="accttitle"><h2>Creator earnings</h2></div><div class="earnbox"><div class="zwallet-earnings-heading"><span>Available earnings</span><span>INR</span></div><strong class="zwallet-earnings-amount">${ready?money(w.earningsPaise):'—'}</strong>${ready&&Number.isSafeInteger(w.reservedPaise)&&w.reservedPaise>0?`<p class="zwallet-reserved">${money(w.reservedPaise)} reserved for withdrawals</p>`:''}<p class="zwallet-earnings-note">${copy}</p><div class="zwallet-earnings-actions"><button type="button" class="ebtn" onclick="go('payout')" ${canWithdraw?'':'disabled'}>Withdraw</button><button type="button" class="zwallet-history" onclick="go('payout-history')">Withdrawal history</button></div>${!ready&&!DEMO?`<button type="button" class="zwallet-refresh" onclick="contentStart('wallet');r();Native.send('wallet.load')">Refresh earnings</button>`:''}</div></section>`}
 
 function kf(k,ph,label,type){return `<div class="editgroup"><label class="editlabel" for="kf_${k}">${label}</label>
  <input class="editinput" id="kf_${k}" ${type?`type="${type}"`:""} placeholder="${ph}" value="${esc(S.kf[k]||"")}" oninput="S.kf['${k}']=this.value"></div>`}
@@ -1628,6 +1612,7 @@ function appNotice(message){
 let zimiSecured=null;
 function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call");if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
+ if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
@@ -1680,7 +1665,7 @@ function personFrom(p){const id=String(p.id);
   lvl:p.level||1,sent:p.coinsSent||0,recv:p.coinsReceived||0,v:String(p.followers||0),hosts:0,joined:p.joined||"",callId:p.callId}}
 /* hosts can show up in chats or missed calls before the Home list arrives */
 function knowHost(p){const h=hostFrom(p);if(!g(h.id))EXTRA.push(h);return h}
-const LIST_VIEWS=["home","explore","board","search","chats","calls","wallet","coins","transactions","profile","awards","kyc","payout"];
+const LIST_VIEWS=["home","all-creators","board","search","chats","calls","wallet","coins","transactions","profile","awards","kyc","payout"];
 function refresh(){if(LIST_VIEWS.includes(S.v))r()}
 
 if(!DEMO){
@@ -1725,7 +1710,10 @@ Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map
 Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>[knowHost(c.user).id,c.time||"",c.duration||"",c.coins||0]));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
  S.msgs=zcThreadMessages(d);paint()});
-Native.on("wallet.balance",d=>{if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)A().earn=d.earned;refresh()});
+// Capture the authenticated payload before refresh: later module handlers also
+// consume this event, so reading their caches here would lag by one response.
+Native.on("wallet.balance",d=>{const owner=S.user?.id;if(owner)S.walletSnapshot={owner,data:{...(S.walletSnapshot?.owner===owner?S.walletSnapshot.data:{}),...d}};else S.walletSnapshot=null;if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)A().earn=d.earned;refresh()});
+for(const type of ['session','auth.ok','session.none','session.expired'])Native.on(type,()=>{S.walletSnapshot=null});
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{

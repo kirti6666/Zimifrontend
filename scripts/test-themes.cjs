@@ -10,6 +10,10 @@ const artifacts = path.join(root, 'artifacts');
 const user = { user: { id: '507f1f77bcf86cd799439011', name: 'Theme tester', role: 'sender', hostStatus: 'none', isVerifiedHost: false }, verification: 'none', requiresOnboarding: false };
 const receive = (page, type, data) => page.evaluate(message => Native.receive(message), { type, data });
 const sent = (page, type) => page.evaluate(type => __sent.filter(message => message.type === type), type);
+async function openAppearance(page) {
+  await page.getByRole('button', { name: 'General', exact: true }).click();
+  await page.getByRole('dialog', { name: 'General', exact: true }).getByRole('button', { name: /^Appearance & Theme/ }).click();
+}
 
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
@@ -22,7 +26,8 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     await page.addInitScript(() => { window.__sent = []; window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) }; });
     await page.goto(pathToFileURL(path.join(root, demo ? 'dist/index.html' : 'assets/aurora.html')).href + '?role=sender');
     if (!demo) await receive(page, 'session', user);
-    await page.evaluate(() => { go('profile'); ztOpen(); });
+    await page.evaluate(() => go('settings'));
+    await openAppearance(page);
     return page;
   }
   try {
@@ -31,7 +36,7 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     assert.equal(await preview.evaluate(() => S.v), 'themes', 'Appearance opens its own page');
     assert.equal(await preview.getByRole('dialog').count(), 0, 'Appearance is not a modal');
     assert.equal(await preview.getByRole('heading', { name: 'Appearance & Theme', exact: true }).count(), 1);
-    assert.equal(await preview.getByRole('button', { name: 'Back to profile', exact: true }).count(), 1);
+    assert.equal(await preview.getByRole('button', { name: 'Back to settings', exact: true }).count(), 1);
     assert.equal(await preview.locator('.zh-header').count(), 0, 'The theme page has no Home header');
     assert.equal(await preview.locator('.zh-nav button').count(), 0, 'The theme page has no bottom tabs');
     const fixture = await preview.evaluate(() => structuredClone(ZThemes.catalog));
@@ -49,7 +54,7 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     assert.equal(await preview.evaluate(() => document.documentElement.classList.contains('zt-transition')), true);
     assert.equal(await preview.evaluate(() => __screenNode === document.getElementById('screen').firstElementChild && __navNode === document.getElementById('nav').firstElementChild), true, 'Theme switching never replaces content or shared chrome');
     await preview.waitForFunction(() => !document.documentElement.classList.contains('zt-transition'));
-    assert.equal(await preview.locator('.app').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 245, 250)');
+    assert.equal(await preview.locator('.app').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 255, 255)');
     await preview.screenshot({ path: path.join(artifacts, 'theme-page-mobile-light.png') });
     await preview.setViewportSize({ width: 1280, height: 1000 });
     await preview.screenshot({ path: path.join(artifacts, 'theme-page-desktop.png') });
@@ -59,11 +64,11 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     await preview.getByRole('button', { name: 'Try premium in preview', exact: true }).click();
     await preview.getByRole('button', { name: 'Use Midnight Ocean', exact: true }).click();
     await preview.waitForFunction(() => !document.documentElement.classList.contains('zt-transition'));
-    await preview.getByRole('button', { name: 'Back to profile', exact: true }).click();
-    assert.equal(await preview.evaluate(() => S.v), 'profile');
-    for (const view of ['home', 'explore', 'chats', 'profile']) {
+    await preview.getByRole('button', { name: 'Back to settings', exact: true }).click();
+    assert.equal(await preview.evaluate(() => S.v), 'settings');
+    for (const view of ['home', 'all-creators', 'chats', 'profile', 'settings']) {
       await preview.evaluate(view => go(view), view);
-      assert.equal(await preview.locator('.app').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(16, 27, 45)');
+      assert.equal(await preview.locator('.app').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 255, 255)');
       assert.match(await preview.locator('body').evaluate(el => getComputedStyle(el).fontFamily), /Poppins/);
       if (view === 'home') assert.equal(await preview.locator('.zh-header').evaluate(el => getComputedStyle(el).height), '63px');
       else {
@@ -74,17 +79,15 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     await preview.screenshot({ path: path.join(os.tmpdir(), 'zimi-themes-ocean-profile.png') });
     console.log('PASS dedicated responsive theme page, no modal or tabs, shared palettes/fonts, real color transitions and stable content/chrome');
 
-    for (const origin of ['profile', 'settings']) {
+    for (const origin of ['settings']) {
       await preview.evaluate(origin => go(origin), origin);
-      await preview.getByRole('button', { name: 'Preferences', exact: true }).click();
-      await preview.getByLabel('Search settings', { exact: true }).fill('appearance');
-      await preview.getByRole('button', { name: /^Appearance & Theme/ }).click();
+      await openAppearance(preview);
       assert.equal(await preview.evaluate(() => S.v), 'themes');
       await preview.getByRole('button', { name: `Back to ${origin}`, exact: true }).click();
       assert.equal(await preview.evaluate(() => S.v), origin, 'Header Back returns to the caller');
-      assert.equal(await preview.getByLabel('Search settings', { exact: true }).inputValue(), 'appearance', 'Returning preserves the profile search query');
-      assert.equal(await preview.getByRole('button', { name: 'Preferences', exact: true }).getAttribute('aria-pressed'), 'true', 'Returning preserves the profile category');
-      await preview.getByRole('button', { name: /^Appearance & Theme/ }).click();
+      assert.equal(await preview.locator('.zp-simple-settings').count(), 1, 'Returning restores the simple Settings page');
+      assert.equal(await preview.locator('#zp-search,.zp-filters').count(), 0, 'Returning does not restore removed search controls');
+      await openAppearance(preview);
       await receive(preview, 'app.back', {});
       assert.equal(await preview.evaluate(() => S.v), origin, 'Native Back returns to the same caller');
       assert.equal(await preview.getByRole('dialog').count(), 0);
@@ -93,7 +96,7 @@ const sent = (page, type) => page.evaluate(type => __sent.filter(message => mess
     await preview.getByRole('button', { name: 'Back to profile', exact: true }).click();
     assert.equal(await preview.evaluate(() => S.v), 'profile', 'A direct route safely returns to Profile');
     assert.equal((await sent(preview, 'app.exit.request')).length, 0, 'Leaving the theme page never requests app exit');
-    console.log('PASS profile/settings origins, native Back, preserved search/category and direct-route fallback');
+    console.log('PASS Settings General drilldown, native Back, simple page restoration and direct-route fallback');
 
     const defaultsPage = await open(false, 'no-preference');
     await receive(defaultsPage, 'data.themes', fixture);

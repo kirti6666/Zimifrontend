@@ -135,7 +135,7 @@
 .zr-gift-celebration{position:absolute;inset:0;z-index:5;overflow:hidden;pointer-events:none;animation:zr-gift-presence var(--gift-life) linear both;animation-delay:var(--gift-age)}
 .zr-gift-celebration *{pointer-events:none}
 .zr-gift-stage-art,.zr-gift-halo,.zr-gift-wave,.zr-gift-sparks{position:absolute;left:50%;top:43%}
-.zr-gift-stage-art{width:100px;height:100px;margin:-50px 0 0 -50px;display:grid;place-items:center;animation:zr-gift-pop var(--gift-life) cubic-bezier(.2,.8,.25,1) both;animation-delay:var(--gift-age);filter:drop-shadow(0 12px 20px #0003)}
+.zr-gift-stage-art{width:100px;height:100px;margin:-50px 0 0 -50px;display:grid;place-items:center;animation:zr-gift-pop var(--gift-life) cubic-bezier(.2,.8,.25,1) both;animation-delay:var(--gift-age);filter:none}
 .zr-gift-stage-art>span{font-size:76px;line-height:1}
 .zr-gift-stage-art>img{width:100%;height:100%;object-fit:contain}
 .zr-gift-celebration.is-large .zr-gift-stage-art{width:138px;height:138px;margin:-69px 0 0 -69px}

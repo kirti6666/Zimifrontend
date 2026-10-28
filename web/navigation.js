@@ -1,19 +1,20 @@
 /* Animate the live content once per tab change, never on a data refresh. */
 window.ZimiNavigation=(()=>{
-  const tabs=['home','explore','chats','profile'];
+  const tabs=['home','chats','profile','settings'];
+  const scrollViews=[...tabs,'all-creators'];
   const positions=new Map();
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
   let animation=null,sequence=0;
   function cancel(){sequence++;if(animation){animation.cancel();animation=null}document.getElementById('screen')?.removeAttribute('data-tab-transition')}
   function before(view){
     const from=S.v,scroller=document.getElementById('scroll-root');
-    if(tabs.includes(from))positions.set(from,window.ZimiOffline?.scrollPosition()??scroller?.scrollTop??0);
+    if(scrollViews.includes(from))positions.set(from,window.ZimiOffline?.scrollPosition()??scroller?.scrollTop??0);
     cancel();
     return {from,to:view,animate:from!==view&&tabs.includes(from)&&tabs.includes(view),direction:tabs.indexOf(view)>tabs.indexOf(from)?1:-1,sequence};
   }
   function after(change){
     if(!change||change.sequence!==sequence||S.v!==change.to)return;
-    if(tabs.includes(change.to)){
+    if(scrollViews.includes(change.to)){
       const top=positions.get(change.to)||0;
       if(window.ZimiOffline?.restoreScroll(top))return;
       if(window.zimiScrollTo)window.zimiScrollTo(top);
@@ -23,7 +24,7 @@ window.ZimiNavigation=(()=>{
     const screen=document.getElementById('screen');
     if(!screen?.animate)return;
     screen.dataset.tabTransition=change.to;
-    const current=screen.animate([{opacity:.35,transform:`translateX(${change.direction*12}px)`},{opacity:1,transform:'translateX(0)'}],{duration:240,easing:'cubic-bezier(.22,.8,.25,1)',fill:'none'});
+    const current=screen.animate([{opacity:.75,transform:'translateY(4px)'},{opacity:1,transform:'translateY(0)'}],{duration:180,easing:'cubic-bezier(.2,0,0,1)',fill:'none'});
     current.id='zimi-tab-switch';animation=current;
     current.finished.then(()=>{if(animation===current){animation=null;screen.removeAttribute('data-tab-transition')}},()=>{});
   }

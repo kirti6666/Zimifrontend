@@ -37,7 +37,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     captureErrors(preview);
     await preview.route('https://**/*', route => route.abort());
     await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
-    await preview.getByRole('button', { name: 'Chats', exact: true }).click();
+    await preview.getByRole('button', { name: 'Chat', exact: true }).click();
     await preview.getByRole('heading', { name: 'Chats', exact: true }).waitFor();
     assert.equal(await preview.locator('.zh-header').count(), 0, 'Chats uses its own heading without the Home header');
     assert.equal(await preview.locator('#top').isVisible(), false, 'Chats does not reserve an unused header strip');
@@ -333,7 +333,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await loading('chats', false, { page: 2 });
     assert.equal(await rows().count(), 3, 'The next page appends real conversations');
     assert.equal(await page.locator('.zc-list .zc-skeleton-row').count(), 0);
-    assert.equal(await page.getByRole('button', { name: 'Chats', exact: true }).locator('.zh-nav-dot').count(), 1, 'A page with zero local unread messages cannot hide the global unread badge');
+    assert.equal(await page.getByRole('button', { name: 'Chat', exact: true }).locator('.zh-nav-dot').count(), 1, 'A page with zero local unread messages cannot hide the global unread badge');
     await loading('chats', true);
     await page.getByRole('status', { name: 'Loading conversations', exact: true }).waitFor();
     assert.equal(await rows().count(), 0, 'Refresh conceals stale conversation cards');
@@ -346,7 +346,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await loadChats(chatData([]));
     assert.equal(await rows().count(), 0);
     assert.equal(await page.locator('.zc-list .zh-skeleton').count(), 0);
-    assert.equal(await page.getByRole('button', { name: 'Chats', exact: true }).locator('.zh-nav-dot').count(), 0, 'An authoritative zero unread count clears the navigation badge');
+    assert.equal(await page.getByRole('button', { name: 'Chat', exact: true }).locator('.zh-nav-dot').count(), 0, 'An authoritative zero unread count clears the navigation badge');
     const hostile = { ...mira, id: id('99'), name: '<img src=x onerror="window.__chatXss=1">' };
     await loadChats(chatData([{ ...conversations[1], user: hostile, last: '<svg onload="window.__chatXss=2">unsafe message</svg>' }]));
     assert.match(await rows().innerText(), /<img src=x/);
