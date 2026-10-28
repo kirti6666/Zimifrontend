@@ -1529,6 +1529,36 @@ test('Home starts with every host and keeps the requested mode through paging, s
   h.bridge.close();
 });
 
+test('Following stays selected through paging, search, reconnect and confirmed relationship changes', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const latestQuery = () => plain(h.calls.filter(call => call.name === 'home').at(-1).args[0]);
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'home.reload', data: { mode: 'following', page: 1 } })), 'The trusted web bridge accepts Following');
+  h.bridge.handle({ type: 'home.reload', data: { mode: 'following', page: 1 } }); await settle();
+  assert.deepEqual(latestQuery(), { mode: 'following', page: 1 });
+  h.bridge.handle({ type: 'home.reload', data: { mode: 'following', page: 2 } }); await settle();
+  assert.deepEqual(latestQuery(), { mode: 'following', page: 2 });
+  h.bridge.handle({ type: 'hosts.search', data: { q: 'creator' } }); await settle();
+  h.live[0].onEvent({ type: 'home.updated', data: {} }); await settle();
+  assert.deepEqual(latestQuery(), { mode: 'following', page: 1 }, 'Search cannot replace the selected Home feed');
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: false } });
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } }); await settle();
+  assert.deepEqual(latestQuery(), { mode: 'following', page: 1 }, 'Reconnect refreshes the Following feed');
+  for (const on of [true, false]) {
+    const write = deferred(); h.overrides.follow = () => write.promise;
+    const before = h.count('home');
+    h.bridge.handle({ type: 'follow.set', data: { id: 'host', on } }); await settle();
+    assert.equal(h.count('home'), before, 'A pending relationship change does not refresh or fabricate Following content');
+    write.resolve({ following: on }); await settle();
+    assert.equal(h.find('follow.saved').at(-1).data.on, on);
+    assert.deepEqual(latestQuery(), { mode: 'following', page: 1 }, 'Follow and unfollow refresh the selected feed after server confirmation');
+    assert.equal(h.count('home'), before + 1);
+  }
+  h.bridge.close();
+});
+
 test('a fresh document or replacement account cannot inherit an Explore page as its initial Home feed', async () => {
   for (const replacement of ['document', 'account']) {
     const h = harness(), older = deferred();

@@ -24,7 +24,7 @@ async function assertPhotoCardLayout(page, label) {
 async function testHomeVideoCalls(browser, errors, host, home) {
   const member={user:{id:'507f1f77bcf86cd799439001',name:'Member',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false,isPhoneVerified:true},verification:'none',requiresOnboarding:false};
   async function scenario(run, account=member, creator=host) {
-    const page=await browser.newPage({viewport:{width:390,height:844}});
+    const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
     page.on('pageerror',error=>errors.push(error.message));
     await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>window.__sent.push(JSON.parse(raw))};});
     try {
@@ -128,8 +128,11 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await page.locator('.zh-discover .zh-person-card').count(),4,'The grid excludes the featured creator');
     assert.equal(await page.getByRole('button',{name:'Search creators',exact:true}).count(),1,'Search appears only in the Home header');
     assert.equal(await page.locator('.zh-dashboard .zh-home-search,.zh-dashboard .zh-welcome,.zh-dashboard .zh-shortcuts,.zh-dashboard .zh-home-match,.zh-dashboard .zh-bonus').count(),0,'Home content focuses on discovering live and online hosts');
-    assert.ok(await page.locator('.zh-dashboard-filters [data-dashboard-filter]').count()>=2,'Host discovery has selectable category filters');
-    assert.equal(await page.locator('.zh-dashboard h2').count(),1);
+    assert.equal(await page.locator('.zh-dashboard-filters [data-dashboard-filter],.zh-dashboard .zh-filters').count(),0,'Home omits category and popularity filters');
+    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['Explore','Following'],'The Home header switches between Explore and Following');
+    assert.equal(await page.locator('.zh-brand,.zh-logo').count(),0,'The discovery tabs replace the app-name header');
+    assert.equal(await page.locator('.zh-header-actions').getByRole('button',{name:/^Wallet/}).count(),1,'The header retains the wallet action');
+    assert.equal(await page.locator('.zh-host-status').count(),0,'Sender accounts do not show host availability');
     assert.equal(await page.getByRole('heading',{name:/^Live now/}).count(),0);
     assert.equal(await page.getByRole('heading',{name:'Connect 1:1',exact:true}).count(),1);
     assert.equal(await page.locator('.zh-person-footer').getByRole('button',{name:/^Chat with /}).count(),5);
@@ -152,7 +155,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await page.setViewportSize({width:390,height:844});
     }
 
-    const real=await browser.newPage({viewport:{width:390,height:844}});
+    const real=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
     real.on('pageerror',e=>errors.push(e.message));
     await real.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>window.__sent.push(JSON.parse(raw))};});
     await real.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');
@@ -191,21 +194,16 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.getByRole('button',{name:'Chat with '+busy.name,exact:true}).isEnabled(),true);
     assert.equal(await real.getByRole('button',{name:'Video call '+offline.name,exact:true}).isEnabled(),true,'An offline host can still be called; the server rings until the call is missed');
     assert.equal(await real.getByRole('button',{name:'Chat with '+offline.name,exact:true}).isEnabled(),true,'Offline hosts can still be messaged');
-    await real.locator('[data-dashboard-filter="instant"]').click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'instant'},'Instant Call requests the available host feed');
+    await real.getByRole('tab',{name:'Following',exact:true}).click();
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'following'},'Following requests the authenticated followed-user feed');
     assert.equal(await real.getByRole('status',{name:'Loading featured creator',exact:true}).count(),1,'Filter changes wait for the server feed');
+    await receive('data.home',{...home,hosts:[host,online],stage:[],total:2});
+    assert.deepEqual(await real.locator('article.zh-person-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id],'Following displays only the server-provided followed users');
+    assert.equal(await real.getByRole('tab',{name:'Following',exact:true}).getAttribute('aria-selected'),'true');
+    await real.getByRole('tab',{name:'Explore',exact:true}).click();
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Explore restores the full host feed');
     await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
-    assert.deepEqual(await real.locator('article.zh-person-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id],'Instant Call excludes unavailable and offline hosts');
-    assert.equal(await real.locator('[data-dashboard-filter="instant"]').getAttribute('aria-pressed'),'true');
-    await real.locator('[data-dashboard-filter="Music"]').click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular',category:'Music'},'Category filters request every matching host');
-    await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
-    assert.deepEqual(await real.locator('article.zh-person-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id],'Category cards stay scoped to the selected topic');
-    assert.equal(await real.locator('[data-dashboard-filter="Music"]').getAttribute('aria-pressed'),'true');
-    await real.locator('[data-dashboard-filter="popular"]').click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Popular restores the full host feed');
-    await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
-    assert.deepEqual(await real.locator('article.zh-person-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'Popular restores every host without duplicates');
+    assert.deepEqual(await real.locator('article.zh-person-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'Explore restores every host without duplicates');
     await real.getByRole('button',{name:'Chat with '+online.name,exact:true}).click();
     assert.equal(await real.evaluate(()=>S.v),'thread','Chat opens the selected conversation');
     assert.deepEqual(await lastSent('chat.open'),{with:online.id});
@@ -355,17 +353,12 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.locator('.zh-live-section').count(),0,'Refreshing an empty feed does not invent a Live now section');
     assert.equal(await real.locator('.zh-home-empty-scene').count(),0,'Loading does not leave a stale empty state visible');
     await receive('data.home',emptyHome);
-    await real.locator('[data-dashboard-filter="instant"]').click();
+    await real.getByRole('tab',{name:'Following',exact:true}).click();
     await receive('data.home',emptyHome);
-    assert.equal(await real.getByRole('heading',{name:'No one available to call',exact:true}).count(),1,'Instant Call explains its filtered empty result');
-    await real.getByRole('button',{name:'Show all hosts',exact:true}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Resetting an empty filter requests all hosts');
-    assert.equal(await real.locator('[data-dashboard-filter="popular"]').getAttribute('aria-pressed'),'true');
-    await receive('data.home',emptyHome);
-    await real.locator('[data-dashboard-filter="Music"]').click();
-    await receive('data.home',emptyHome);
-    assert.equal(await real.getByRole('heading',{name:'No hosts in this category',exact:true}).count(),1,'A category empty result does not claim everyone is offline');
-    await real.getByRole('button',{name:'Show all hosts',exact:true}).click();
+    assert.match(await real.locator('.zh-host-empty h3').innerText(),/follow/i,'Following explains its own empty result');
+    await real.getByRole('tab',{name:'Explore',exact:true}).click();
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Leaving empty Following requests all hosts');
+    assert.equal(await real.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true');
     await receive('data.home',emptyHome);
     await real.locator('.zh-empty-actions').getByRole('button',{name:/^Explore creators/}).click();
     assert.equal(await real.evaluate(()=>S.v),'explore','Empty-state discovery opens Explore');

@@ -76,9 +76,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.getByRole('button', { name: 'Explore', exact: true }).click();
     assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeLoads, 'Explore reuses the full feed Home already loaded');
     assert.equal(await page.locator('.zh-tile').count(), 1);
-    await page.getByRole('button', { name: 'Music', exact: true }).click();
-    await visible('Loading creators');
-    assert.equal((await lastSent('home.reload')).category, 'Music');
+    assert.equal(await page.locator('[data-home-filter],[data-dashboard-filter]').count(), 0, 'Explore has no category filters for now');
     await result('data.home', feed([host], { total: 2 }), 'home', { page: 1 });
     await page.getByRole('button', { name: 'Load more creators', exact: true }).click();
     await visible('Loading more creators');
@@ -97,39 +95,34 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.home', feed([]), 'home', { page: 1 });
     await page.getByRole('heading', { name: 'A little quiet right now', exact: true }).waitFor();
     await result('data.home', feed(), 'home', { page: 1 });
+    const exploreLoads = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
     await page.getByRole('button', { name: 'Home', exact: true }).click();
-    await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Returning Home restores its own unfiltered query');
-    await result('data.home', feed(), 'home', { page: 1 });
-    console.log('PASS loading: initial feed, unknown balance, realtime refresh, filters, pagination, failure and retry');
+    assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), exploreLoads, 'Home Explore reuses the unfiltered feed the Explore page loaded');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' });
+    console.log('PASS loading: initial feed, unknown balance, realtime refresh, shared Explore feed, pagination, failure and retry');
 
-    // Home keeps its filter independently of Explore's filter.
-    await page.evaluate(() => homeDashboardFilter('Talk'));
+    // Home keeps its Following tab independently of the Explore page.
+    await page.getByRole('tab', { name: 'Following', exact: true }).click();
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Talk' });
-    assert.equal(await page.evaluate(() => Home.filter), 'Music', 'Home filters preserve the Explore selection');
-    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' });
+    await result('data.home', feed([second]), 'home', { page: 1 });
     await navigate('explore');
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Music' });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Explore always lists every creator');
     await result('data.home', feed(), 'home', { page: 1 });
     await navigate('home');
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular', category: 'Talk' });
-    await result('data.home', feed([{ ...second, category: 'Talk' }]), 'home', { page: 1 });
-    await page.evaluate(() => homeDashboardFilter('instant'));
-    await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'instant' }, 'Instant Call clears the category constraint');
-    await result('data.home', feed(), 'home', { page: 1 });
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' }, 'Home restores its Following tab');
+    await result('data.home', feed([second]), 'home', { page: 1 });
     const homeRequests = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
-    await page.evaluate(() => { homeDashboardFilter('instant'); homeDashboardFilter('unknown category'); });
+    await page.evaluate(() => { homeDashboardFilter('following'); homeDashboardFilter('instant'); homeDashboardFilter('Music'); });
     assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeRequests,
-      'Repeated and invalid filters do not trigger requests');
-    await page.evaluate(() => homeDashboardFilter('popular'));
+      'Repeated and retired filters do not trigger requests');
+    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Popular restores the full feed');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Explore restores the full feed');
     await result('data.home', feed(), 'home', { page: 1 });
-    console.log('PASS loading: independent Home and Explore filters, active-only queries and filter validation');
+    console.log('PASS loading: Home keeps Following across Explore, Explore stays unfiltered and retired filters send nothing');
 
     // Search starts immediately on input, ignores responses for older queries and supports clearing.
     await page.getByRole('button', { name: 'Search creators', exact: true }).click();

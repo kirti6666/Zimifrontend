@@ -105,7 +105,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     for (const view of ['home', 'explore', 'chats', 'profile']) {
       await nav(page, view);
       if (view === 'explore') await receive(page, 'data.home', home);
-      const rules = view === 'home' ? [bg('.zh-person-card', 'surface'), ink('.zh-section-title h2'), ...cta('.zh-person-call'), ...cta('.zh-dashboard-filters [aria-pressed="true"]')] : view === 'explore' ? [bg('.zh-tile-caption', 'surface')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : [bg('.zp-identity', 'surface'), ...cta('.zp-topup')];
+      const rules = view === 'home' ? [bg('.zh-person-card', 'surface'), ink('.zh-section-title h2'), ...cta('.zh-person-call'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'explore' ? [bg('.zh-tile-caption', 'surface')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : [bg('.zp-identity', 'surface'), ...cta('.zp-topup')];
       await mountedThemes(page, view, rules);
     }
     for (const view of ['themes', 'wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {

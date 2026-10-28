@@ -87,7 +87,15 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
           assert.equal(await current(layout), name.toLowerCase());
           assert.equal(await layout.locator('.zh-nav [aria-current="page"]').innerText(), name);
           sameNavigation(await metrics(layout), baseline, `${account.user.role} ${name} at ${width}px`);
-          assert.equal(await layout.locator('.zh-header').count(), name === 'Home' ? 1 : 0, `${name} only shows the branded header on Home`);
+          assert.equal(await layout.locator('.zh-header').count(), name === 'Home' ? 1 : 0, `${name} only shows the discovery-tab header on Home`);
+          assert.equal(await layout.locator('.zh-brand,.zh-logo').count(), 0, `${name} has no app-name header`);
+          if (name === 'Home') {
+            assert.deepEqual(await layout.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['Explore', 'Following']);
+            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Search creators', exact: true }).count(), 1);
+            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 1);
+            assert.equal(await layout.locator('.zh-host-status').count(), account === approved ? 1 : 0, 'Only a host account sees its availability control');
+          }
+          assert.equal(await layout.locator('.zh-dashboard-filters,.zh-explore .zh-filters').count(), 0, `${name} omits category filters`);
           assert.equal(await layout.locator('#top').isVisible(), name === 'Home', `${name} does not reserve an unused header strip`);
           if (name !== 'Home') {
             assert.equal(await layout.locator('#top').innerHTML(), '');
@@ -121,7 +129,7 @@ const tabs = ['Home', 'Explore', 'Chats', 'Profile'];
     assert.equal(await layout.locator('.zh-nav > :not(button[data-tab])').count(), 0, 'The tab bar has no call or approval slot');
     await receive(layout, 'host.access', { approved: true, checking: false, role: 'host', hostStatus: 'approved', verified: true });
     sameNavigation(await metrics(layout), approvedChrome, 'Successful revalidation keeps the tabs in place');
-    console.log('PASS navigation: Home-only branded header, page-specific headings and identical tab bounds for members/hosts at 320/390/630/1280px, reduced motion');
+    console.log('PASS navigation: Home-only Explore/Following header, host-only availability, no category filters, page-specific headings and identical tab bounds at 320/390/630/1280px');
 
     const motion = await open('no-preference');
     await seed(motion, member);

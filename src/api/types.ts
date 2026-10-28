@@ -119,7 +119,7 @@ export interface Mission {
   claimed: boolean;
   endsAt: string;
 }
-export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant" | "online"; page?: number; }
+export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant" | "online" | "following"; page?: number; }
 export interface HomeData {
   hosts: Host[];
   stage: Host[];

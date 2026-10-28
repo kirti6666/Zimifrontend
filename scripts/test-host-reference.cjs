@@ -75,7 +75,7 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     await page.screenshot({ path: path.join(artifacts, 'host-online-light.png') });
     await button('Browse the app').click();
     assert.equal(await page.locator('.zh-host-status').innerText(), 'Online');
-    assert.ok(await page.locator('.zh-host-status-row').evaluate(el => el.getBoundingClientRect().height <= 40), 'Availability fits in a compact Home row');
+    assert.ok(await page.locator('.zh-header .zh-host-status').evaluate(el => el.getBoundingClientRect().height <= 40), 'Availability fits compactly in the Home header');
     await receive('app.background', {});
     await receive('app.foreground', {});
     assert.equal(await page.locator('.zh-host-status').innerText(), 'Online', 'App switching preserves the acknowledged host choice');

@@ -443,6 +443,12 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(onlineHome.total, 21); assert.equal(onlineHome.page, 2);
   assert.equal(onlineHome.hosts[0].online, true); assert.equal(onlineHome.hosts[0].availableForCall, false);
   assert.equal(onlineHome.hosts[0].live, false, 'Home eligibility is independent from call or streaming availability');
+  expect('GET', '/home?mode=following&page=2&limit=20', { items: [creator], stage: [], featured: creator, total: 22, page: 2, limit: 20 });
+  const followingHome = await api.home({ mode: 'following', page: 2 });
+  assert.equal(followingHome.hosts[0].id, creator._id); assert.equal(followingHome.total, 22); assert.equal(followingHome.page, 2);
+  expect('GET', '/home?mode=following&page=1&limit=20', { items: [], stage: [], featured: null, total: 0, page: 1, limit: 20 });
+  const noFollows = await api.home({ mode: 'following', page: 1 });
+  assert.deepEqual(plain(noFollows.hosts), []); assert.equal(noFollows.featured, null); assert.equal(noFollows.total, 0);
   expect('GET', '/home/match?category=Music', { host: creator });
   assert.equal((await api.matchHost('Music')).host.id, creator._id);
   expect('PATCH', '/safety', { onlineForCalls: false, allowRequests: false, showActivity: false, discoverable: true }, body => assert.deepEqual(plain(body), { onlineForCalls: false, allowRequests: false, showActivity: false, discoverable: true }));

@@ -3728,12 +3728,38 @@ button.gpill[onclick]{cursor:pointer}
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.zh-host-status-row{display:flex;justify-content:flex-end;margin:-6px 0 4px}
-.zh-host-status{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:650}
+/* Home header: Explore/Following stand in for the app name. */
+.zh-feed-tabs{display:flex;align-self:stretch;gap:16px;flex:none}
+.zh-feed-tabs>[role="tab"]{position:relative;display:flex;align-items:center;min-width:44px;padding:0 1px;border:0;background:transparent;color:var(--muted);font-size:17px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.zh-feed-tabs>[aria-selected="true"]{color:var(--ink)}
+.zh-feed-tabs>[role="tab"]::after{content:"";position:absolute;left:50%;bottom:10px;width:18px;height:3px;border-radius:3px;background:var(--accent);transform:translateX(-50%) scaleX(0);transition:transform .2s ease}
+.zh-feed-tabs>[aria-selected="true"]::after{transform:translateX(-50%) scaleX(1)}
+.zh-feed-tabs>[role="tab"]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-6px;border-radius:10px}
+.zh-header .zh-header-actions{gap:6px}
+.zh-header .zh-wallet-icon{flex:none;min-height:34px;gap:5px;padding:6px 10px 6px 7px;border:0;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.zh-header .zh-icon{width:34px}
+.zh-host-status{position:relative;display:inline-flex;align-items:center;flex:none;gap:6px;min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:650;white-space:nowrap}
 .zh-host-status>i{width:7px;height:7px;flex:none;border-radius:50%;background:var(--muted)}
 .zh-host-status.is-online{color:var(--ink)}
-.zh-host-status.is-online>i{background:var(--online)}
+.zh-host-status.is-online>i{background:var(--online);box-shadow:0 0 0 3px color-mix(in srgb,var(--online) 22%,transparent)}
 .zh-host-status:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+/* A host's availability outranks the balance on phone widths; the wallet keeps its label. */
+@media(max-width:440px){.zh-header:has(.zh-host-status) .zh-wallet-value{display:none}.zh-header:has(.zh-host-status) .zh-wallet-icon{width:34px;padding:0;justify-content:center}}
+@media(max-width:370px){.zh-feed-tabs{gap:12px}.zh-feed-tabs>[role="tab"]{font-size:15px}.zh-header .zh-header-actions{gap:3px}}
+@media(max-width:350px){.zh-header .zh-host-status{width:34px;padding:0;justify-content:center}.zh-header .zh-host-status>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
+/* Featured creator rotation */
+.zh-featured-controls{display:flex;align-items:center;gap:10px;margin:10px 2px 0}
+.zh-featured-position{flex:none;min-width:36px;color:var(--muted);font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
+.zh-featured-progress{flex:1;height:3px;border-radius:3px;background:var(--line);overflow:hidden}
+.zh-featured-progress>i{display:block;width:100%;height:100%;border-radius:inherit;background:var(--accent);transform:scaleX(0);transform-origin:left}
+.zh-featured-progress[data-running="true"]>i{animation:zh-featured-progress linear forwards}
+@keyframes zh-featured-progress{to{transform:scaleX(1)}}
+.zh-featured-controls>button{display:grid;place-items:center;flex:none;width:40px;height:40px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink)}
+.zh-featured-controls>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.zh-featured-enter .zh-person-media>:is(.zh-photo:not(.zh-photo-pending),.zh-fallback){animation:zh-featured-photo .6s ease both}
+.zh-featured-enter .zh-person-content{animation:zh-featured-copy .45s ease .05s both}
+@keyframes zh-featured-photo{from{opacity:0;transform:scale(1.04)}}
+@keyframes zh-featured-copy{from{opacity:0;transform:translateY(8px)}}
 .zh-home.zh-dashboard .zh-live-section{margin:0}
 .zh-home.zh-dashboard .zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin:0 0 12px}
 .zh-home.zh-dashboard .zh-section-title h2{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--ink);font-size:calc(19px * var(--theme-font-scale,1));line-height:1.35;letter-spacing:-.4px;font-weight:700}
@@ -3744,7 +3770,7 @@ button.gpill[onclick]{cursor:pointer}
 .zh-home.zh-dashboard .zh-home-refresh[aria-busy="true"] svg{animation:zh-home-refresh .9s linear infinite}
 @keyframes zh-home-refresh{to{transform:rotate(360deg)}}
 .zh-home.zh-dashboard .zh-live-rail{display:flex;align-items:flex-start;gap:17px;overflow-x:auto;padding:2px 1px 8px;scrollbar-width:none;scroll-snap-type:x proximity}
-.zh-live-rail::-webkit-scrollbar,.zh-dashboard-filters::-webkit-scrollbar{display:none}
+.zh-live-rail::-webkit-scrollbar{display:none}
 .zh-live-shortcut{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 66px;min-width:0;min-height:92px;padding:0;border:0;background:transparent;color:var(--ink);scroll-snap-align:start}
 .zh-live-shortcut>span:last-child{max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.4}
 .zh-live-ring{display:grid;place-items:center;position:relative;flex:none;width:66px;height:66px;padding:3px;border:2px solid var(--accent);border-radius:50%;background:var(--surface)}
@@ -3752,10 +3778,6 @@ button.gpill[onclick]{cursor:pointer}
 .zh-live-ring>.zh-fallback>span{font-size:30px}
 .zh-live-create .zh-live-ring{border-color:var(--line);border-style:dashed;background:var(--raised);color:var(--accent-ink)}
 .zh-story-loading .zh-live-ring{border-color:transparent}
-.zh-home.zh-dashboard .zh-dashboard-filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:14px -18px 16px;padding:0 18px 3px}
-.zh-dashboard-filters>button{display:flex;align-items:center;justify-content:center;gap:7px;flex:none;min-height:44px;padding:10px 17px;border:1px solid transparent;border-radius:24px;background:var(--raised);color:var(--muted);font-size:13px;font-weight:500;white-space:nowrap}
-.zh-dashboard-filters>button[aria-pressed="true"]{background:var(--accent);color:var(--cta-ink);font-weight:650}
-.zh-dashboard-filters svg{flex:none}
 .zh-home.zh-dashboard .zh-person-card{position:relative;display:flex;flex-direction:column;min-width:0;margin:0;border:1px solid var(--line);border-radius:19px;background:var(--surface);color:var(--ink);overflow:hidden}
 .zh-home.zh-dashboard .zh-person-media{position:relative;aspect-ratio:4/5;min-width:0;background:var(--raised);isolation:isolate}
 .zh-home.zh-dashboard .zh-person-media>.zh-photo,.zh-home.zh-dashboard .zh-person-media>.zh-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;overflow:hidden}
@@ -3845,18 +3867,18 @@ button.gpill[onclick]{cursor:pointer}
 @media(prefers-reduced-motion:no-preference){.zh-empty-stage{animation:zh-empty-float 4.5s ease-in-out infinite}.zh-empty-satellite>.zi-icon{animation:zi-float 3.6s ease-in-out infinite}.zh-empty-music>.zi-icon{animation-delay:-1.2s}.zh-empty-spark>.zi-icon{animation-delay:-2.4s}}
 @keyframes zh-empty-float{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-5px) rotate(-4deg)}}
 @media(min-width:360px) and (max-width:599px){.zh-home.zh-dashboard .zh-featured-host .zh-person-content{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px;padding:16px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(23px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile p{font-size:calc(11px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{gap:6px}.zh-home.zh-dashboard .zh-featured-host .zh-person-action{flex:none;min-height:44px;padding:10px;font-size:11px}.zh-home.zh-dashboard .zh-featured-host .zh-person-chat{width:44px;padding:10px}.zh-featured-host .zh-person-chat>span{display:none}.zh-home.zh-dashboard .zh-hero-placeholder .zh-person-content{display:flex}}
-@media(max-height:760px) and (max-width:599px){.zh-home.zh-dashboard:has(.zh-host-empty){padding-top:4px}.zh-dashboard:has(.zh-host-empty) .zh-live-section .zh-section-title{margin-bottom:6px}.zh-home.zh-dashboard:has(.zh-host-empty) .zh-dashboard-filters{margin-top:12px;margin-bottom:12px}.zh-home.zh-dashboard .zh-discover:has(.zh-host-empty){margin-top:14px}.zh-home.zh-dashboard .zh-host-empty{padding-top:12px;padding-bottom:16px}.zh-host-empty .zh-home-empty-scene{height:96px}.zh-host-empty .zh-empty-stage{top:8px}.zh-host-empty .zh-empty-chat{top:43px}.zh-host-empty .zh-empty-music{top:4px}.zh-host-empty .zh-empty-actions{margin-top:12px}}
+@media(max-height:760px) and (max-width:599px){.zh-home.zh-dashboard:has(.zh-host-empty){padding-top:4px}.zh-dashboard:has(.zh-host-empty) .zh-live-section .zh-section-title{margin-bottom:6px}.zh-home.zh-dashboard .zh-discover:has(.zh-host-empty){margin-top:14px}.zh-home.zh-dashboard .zh-host-empty{padding-top:12px;padding-bottom:16px}.zh-host-empty .zh-home-empty-scene{height:96px}.zh-host-empty .zh-empty-stage{top:8px}.zh-host-empty .zh-empty-chat{top:43px}.zh-host-empty .zh-empty-music{top:4px}.zh-host-empty .zh-empty-actions{margin-top:12px}}
 .zh-home.zh-dashboard .zh-error{margin:0 0 18px;border-color:var(--line);background:var(--surface);color:var(--muted)}
 .zh-home.zh-dashboard .zh-error button{color:var(--accent-ink)}
 .zh-home.zh-dashboard>.zh-skeleton:last-of-type{margin-top:18px}
 .zh-home.zh-dashboard button{touch-action:manipulation;transition:background-color .15s ease,transform .15s ease,border-color .15s ease}
 .zh-home.zh-dashboard button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .zh-home.zh-dashboard .zh-person-media button:focus-visible{outline-color:#fff;outline-offset:-4px}
-.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-dashboard-filters>button,.zh-home-refresh):active:not(:disabled){transform:scale(.97)}
-@media(hover:hover) and (pointer:fine){.zh-home.zh-dashboard .zh-person-action:hover:not(:disabled){filter:brightness(1.08)}.zh-home.zh-dashboard .zh-dashboard-filters>button:hover{border-color:var(--accent-ink)}.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}.zh-person-watch:hover .zh-watch-control{background:rgba(0,0,0,.65)}}
-@media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-dashboard-filters{margin-inline:-24px;padding-inline:24px}.zh-home.zh-dashboard .zh-featured-host{aspect-ratio:1.7;min-height:380px}.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding:25px;gap:18px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(34px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{width:350px;max-width:100%}.zh-home.zh-dashboard .zh-grid{gap:18px}.zh-home.zh-dashboard .zh-grid-host .zh-person-media{aspect-ratio:1.05}.zh-home.zh-dashboard .zh-person-content{padding:15px}.zh-home.zh-dashboard .zh-grid-host .zh-person-profile h3{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-person-action{font-size:12px}.zh-home.zh-dashboard .zh-person-profile p{font-size:12px}}
-@media(max-width:359px){.zh-home.zh-dashboard{padding-inline:14px}.zh-home.zh-dashboard .zh-dashboard-filters{margin-inline:-14px;padding-inline:14px}.zh-home.zh-dashboard .zh-grid{gap:10px}.zh-home.zh-dashboard .zh-grid-host .zh-person-content{padding:10px}.zh-home.zh-dashboard .zh-person-action{gap:3px;padding-inline:3px;font-size:10px}.zh-home.zh-dashboard .zh-person-profile h3{font-size:13px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:25px}.zh-home.zh-dashboard .zh-featured-host .zh-person-status{font-size:9px;padding-inline:6px}.zh-featured-host .zh-watch-control{font-size:10px;padding:9px;gap:4px}}
-@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-dashboard-filters>button,.zh-home-refresh,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-home.zh-dashboard .zh-home-refresh[aria-busy="true"] svg{animation:none!important}}
+.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-home-refresh):active:not(:disabled){transform:scale(.97)}
+@media(hover:hover) and (pointer:fine){.zh-home.zh-dashboard .zh-person-action:hover:not(:disabled){filter:brightness(1.08)}.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}.zh-person-watch:hover .zh-watch-control{background:rgba(0,0,0,.65)}}
+@media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-featured-host{aspect-ratio:1.7;min-height:380px}.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding:25px;gap:18px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(34px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{width:350px;max-width:100%}.zh-home.zh-dashboard .zh-grid{gap:18px}.zh-home.zh-dashboard .zh-grid-host .zh-person-media{aspect-ratio:1.05}.zh-home.zh-dashboard .zh-person-content{padding:15px}.zh-home.zh-dashboard .zh-grid-host .zh-person-profile h3{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-person-action{font-size:12px}.zh-home.zh-dashboard .zh-person-profile p{font-size:12px}}
+@media(max-width:359px){.zh-home.zh-dashboard{padding-inline:14px}.zh-home.zh-dashboard .zh-grid{gap:10px}.zh-home.zh-dashboard .zh-grid-host .zh-person-content{padding:10px}.zh-home.zh-dashboard .zh-person-action{gap:3px;padding-inline:3px;font-size:10px}.zh-home.zh-dashboard .zh-person-profile h3{font-size:13px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:25px}.zh-home.zh-dashboard .zh-featured-host .zh-person-status{font-size:9px;padding-inline:6px}.zh-featured-host .zh-watch-control{font-size:10px;padding:9px;gap:4px}}
+@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-home-refresh,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-home.zh-dashboard .zh-home-refresh[aria-busy="true"] svg{animation:none!important}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-progress>i,.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}
 /* The same gold BinzoLive mark remains recognizable in every app palette. */
 .zc-coin{flex-shrink:0;vertical-align:middle;overflow:visible;filter:drop-shadow(0 1px 1px #71450020)}
 .zw-coins{max-width:620px;margin:0 auto;padding:18px 20px 30px;color:var(--ink)}
@@ -9107,6 +9129,7 @@ const Home = {
 };
 const homeIcons = {
   signal:'<path d="M4 20v-3"/><path d="M9 20v-7"/><path d="M14 20V9"/><path d="M19 20V4"/>',
+  pause:'<path d="M8 5v14M16 5v14"/>',
   close:'<path d="m6 6 12 12M6 18 18 6"/>',
   checks:'<path d="m2 12 5 5L18 6M10 15l2 2L23 6"/>',
   arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
@@ -9134,8 +9157,8 @@ function homeCardVideo(h){return h.video?`<span class="zh-card-video" data-video
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
 function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:h.on?'<span class="zh-badge zh-offline zh-online"><i></i> Online</span>':'<span class="zh-badge zh-offline">Offline</span>'}
-/* Home and Explore list every host, online or offline; only Instant Call narrows to hosts free to call now. */
-function homeFeedQuery(){const explore=S.v==='explore',filter=explore?Home.filter:Home.dashboardFilter;const query={mode:filter==='instant'?'instant':'popular'};if(Home.categories.includes(filter))query.category=filter;return query}
+/* Discovery stays uncategorized; Following is filtered by saved relationships on the server. */
+function homeFeedQuery(){return {mode:S.v==='home'&&Home.dashboardFilter==='following'?'following':'popular'}}
 function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')}
 function homeLoad(more=false){
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
@@ -9150,9 +9173,10 @@ function homeContentPending(){return !DEMO&&(Home.loading||contentPending('home'
 function homeContentError(){return !DEMO&&(Home.error||ContentLoading.home.error)}
 
 function homeFilter(value){Home.filter=value;homeLoad()}
-function homeDashboardFilter(value){if(!['popular','instant',...Home.categories].includes(value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;homeLoad()}
-function homeList(){let list=Home.hosts;if(DEMO){if(Home.filter==='instant')list=list.filter(h=>h.available);else if(Home.categories.includes(Home.filter))list=list.filter(h=>h.cat===Home.filter)}return list}
-function homeHeader(){return `<header class="zh-header"><button class="zh-brand" onclick="go('home')" aria-label="BinzoLive home"><img class="zh-logo" src="${BRAND_LOGO}" alt="" width="76" height="30" decoding="async"></button><div class="zh-header-actions"><button class="zh-balance" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',17)}<span>${contentBalance()}</span></button><button class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',21)}</button><button class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
+function homeDashboardFilter(value){if(!['popular','following'].includes(value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;window.homeFeaturedReset?.();homeLoad()}
+function homeList(){return Home.hosts}
+function homeFeedTabKey(event){if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?'popular':event.key==='End'?'following':Home.dashboardFilter==='following'?'popular':'following';homeDashboardFilter(next);document.getElementById(next==='following'?'home-tab-following':'home-tab-explore')?.focus()}
+function homeHeader(){const following=Home.dashboardFilter==='following';return `<header class="zh-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${[['popular','Explore'],['following','Following']].map(([key,label])=>`<button type="button" id="home-tab-${key==='popular'?'explore':'following'}" role="tab" aria-selected="${following===(key==='following')}" aria-controls="home-feed-panel" tabindex="${following===(key==='following')?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`).join('')}</div><div class="zh-header-actions">${homeDashboardHostEntry()}<button type="button" class="zh-balance zh-wallet-icon" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',20)}<span class="zh-wallet-value">${contentBalance()}</span></button><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',22)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
@@ -9164,7 +9188,7 @@ function homeNav(){
 }
 function homeStage(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return '';const rows=Home.stage.slice(0,12),pending=homeContentPending(),error=homeContentError();return `<section class="zh-stage" aria-label="Live creators"><div class="zh-section-title"><h2><i></i>Stage &amp; Live Calls</h2><span>${pending?skeletonLine('94px',10):error?'':homeCompact(Home.broadcasterCount)+' BROADCASTERS'}</span></div><div class="zh-stories">${isApprovedHost()?`<button class="zh-story zh-story-create" onclick="homeGoLive()"><span class="zh-story-ring">${hi('plus',24)}<i>${hi('vid',10)}</i></span><span>Go Live</span></button>`:''}${pending?contentSkeleton('stories','Loading live creators',4):error?'':rows.map(h=>`<button class="zh-story" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}"><span class="zh-story-ring ${h.stream?'':'zh-story-call'}">${homeCover(h)}<b>${h.stream?'LIVE':hi('ph',9)+' 1:1'}</b></span><span>${esc(first(h.n))}</span></button>`).join('')}${!pending&&!error&&!rows.length?'<span class="zh-stage-empty">Your next favourite creator is on the way.</span>':''}</div></section>`}
 
-function homeFilters(){const filters=[['popular','Popular','&#128293;'],['instant','Instant Call',hi('bolt',15)],...Home.categories.map(c=>[c,c,c==='Music'?hi('music',16):c==='Talk'?hi('chat',15):hi('star',14)])];return `<div class="zh-filters" role="group" aria-label="Browse categories">${filters.map(([key,label,icon])=>`<button class="${Home.filter===key?'selected':''}" data-home-filter="${esc(key)}" aria-pressed="${Home.filter===key}" onclick="homeFilter(this.dataset.homeFilter)">${icon}<span>${esc(label)}</span></button>`).join('')}</div>`}
+function homeFilters(){return ''}
 function homeFeatured(){if(homeContentPending())return `<div class="zh-featured">${contentSkeleton('featured','Loading featured creator')}</div>`;if(homeContentError())return '';const list=homeList(),h=Home.filter==='popular'?Home.featured||list[0]:list[0];if(!h)return '';return `<article class="zh-featured">${homeCover(h,true)}<div class="zh-featured-shade"></div><div class="zh-featured-top">${homeBadge(h)}${h.stream?`<span class="zh-viewers">${hi('eye',13)} ${homeCompact(h.viewers)}</span>`:''}<button class="zh-featured-open" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch live':'View profile'}">${hi(h.stream?'play':'user',12)} ${h.stream?'Watch live':'Creator'}</button></div><button class="zh-featured-hit" aria-label="Open ${esc(h.n)}" onclick="homeOpen('${domId(h.id)}')"></button><div class="zh-featured-bottom"><div class="zh-featured-identity"><button onclick="go('host','${domId(h.id)}')"><h1>${esc(h.n)} ${homeVerified(h)}</h1><p>${esc(h.stream?.title||h.about||h.tag||'Meet your next favourite creator')}</p></button><button class="zh-gift" onclick="homeGifts('${domId(h.id)}')" aria-label="Send a gift to ${esc(h.n)}">${hi('gift',23)}</button></div><div class="zh-live-note"><i></i>${h.stream?`Live now · ${esc(h.cat||'Join the conversation')}`:h.available?'Online and ready to connect':'Follow to connect another time'}</div><div class="zh-featured-actions"><button class="zh-primary" onclick="homeCall('${domId(h.id)}')" ${h.available?'':'disabled'}>${hi('vid',19)} ${h.available?'Instant 1-on-1 Call':'Currently unavailable'}</button><div class="zh-rate"><span>Call rate</span><b>${homeRate(h)}</b></div></div></div></article>`}
 function homeMatch(){if(homeContentPending())return `<div class="zh-match">${contentSkeleton('match','Loading video matches')}</div>`;if(homeContentError())return '';if(!Home.speedMatchEnabled)return '';return `<section class="zh-match"><div><h2>${hi('pulse',20)} Speed Video Pulse</h2><p>Find your next conversation.</p><div class="zh-available"><span class="zh-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>${homeCompact(Home.availableCount)} Available</div></div><button class="zh-primary" onclick="homeMatchNow()" ${Home.matching||!Home.availableCount?'disabled':''}>${hi('bolt',19)} ${Home.matching?'Finding…':'Match'}</button></section>`}
 function homeTile(h){return `<article class="zh-tile"><div class="zh-tile-media">${homeCover(h)}${homeCardVideo(h)}<div class="zh-tile-shade"></div><button class="zh-tile-hit" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Meet'} ${esc(h.n)}"></button><div class="zh-tile-top">${homeBadge(h)}${h.stream?`<span class="zh-viewers">${hi('eye',11)} ${homeCompact(h.viewers)}</span>`:h.available?'<span class="zh-viewers"><i class="zh-online-dot"></i>Online</span>':''}</div>${!h.stream?`<span class="zh-tile-rate">${homeRate(h)}</span>`:''}<button class="zh-tile-action ${h.stream?'':'zh-hot'}" onclick="${h.stream?'homeOpen':'homeCall'}('${domId(h.id)}')" ${!h.stream&&!h.available?'disabled':''} aria-label="${h.stream?'Watch live':'Start call'} with ${esc(h.n)}">${hi(h.stream?'play':'vid',18)}</button></div><button class="zh-tile-caption" onclick="go('host','${domId(h.id)}')"><h3>${esc(h.n)} ${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></button></article>`}
@@ -9290,7 +9314,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='live')return '';
   const title={notifications:'Notifications',broadcast:'Go Live',coins:'Your coins'}[S.v];
   return title?`<header class="zh-subheader">${backButton("go('home')",{label:"Back to home"})}<h1>${title}</h1>${S.v==='coins'?`<span>${hi('rings',15)} ${contentBalance()}</span>`:''}</header>`:null;
-},afterRender:()=>{contentImagesReady();homeShowCloseError();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
+},afterRender:()=>{contentImagesReady();homeShowCloseError();window.homeFeaturedAfterRender?.();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(['home','explore','chats','precall'].includes(S.v))r()});
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
@@ -9352,14 +9376,83 @@ if(DEMO){
 }
 
 /* Photo-led Home discovery; colors follow the selected theme. */
+const HomeFeatured = { id:'', start:'', paused:matchMedia('(prefers-reduced-motion: reduce)').matches, timer:null, due:0, backgrounded:false, offscreen:false };
+const HOME_FEATURE_INTERVAL = 6000;
+function homeFeaturedStop(){clearTimeout(HomeFeatured.timer);HomeFeatured.timer=null;homeFeaturedProgress()}
+function homeFeaturedReset(){homeFeaturedStop();HomeFeatured.id=HomeFeatured.start=''}
+function homeFeaturedPick(all){
+  if(!all.some(h=>h.id===HomeFeatured.id))HomeFeatured.id=HomeFeatured.start=(all.find(h=>h.id===Home.featured?.id)||all[0])?.id||'';
+  return all.find(h=>h.id===HomeFeatured.id)||null;
+}
+// Counted from the first creator shown, so a fresh Home reads 1 / n.
+function homeFeaturedPosition(all){const at=id=>Math.max(0,all.findIndex(h=>h.id===id));return `${(at(HomeFeatured.id)-at(HomeFeatured.start)+all.length)%all.length+1} / ${all.length}`}
+// The bar mirrors the real timer, resuming mid-way after a redraw.
+function homeFeaturedProgress(){
+  const bar=document.querySelector('.zh-featured-progress');if(!bar)return;
+  const fill=document.createElement('i');
+  if(HomeFeatured.timer)Object.assign(fill.style,{animationDuration:`${HOME_FEATURE_INTERVAL}ms`,animationDelay:`${HomeFeatured.due-HOME_FEATURE_INTERVAL-Date.now()}ms`});
+  bar.dataset.running=String(!!HomeFeatured.timer);bar.replaceChildren(fill);
+}
+function homeFeaturedHeld(){
+  const carousel=document.querySelector('.zh-featured-carousel'),grid=document.getElementById('home-host-grid');
+  if([carousel,grid].some(el=>el?.contains(document.activeElement)))return true;
+  return matchMedia('(hover: hover)').matches&&[carousel,grid].some(el=>el?.matches(':hover'));
+}
+function homeFeaturedReady(){return S.v==='home'&&!document.hidden&&!HomeFeatured.backgrounded&&!HomeFeatured.offscreen&&!homeContentPending()&&!Home.loadingMore&&!homeContentError()&&!Home.giftTo&&!!document.getElementById('home-featured-card')&&homeDashboardHosts().all.length>1}
+function homeFeaturedSchedule(){
+  homeFeaturedStop();
+  if(!homeFeaturedReady()||HomeFeatured.paused||homeFeaturedHeld())return;
+  HomeFeatured.due=Date.now()+HOME_FEATURE_INTERVAL;
+  HomeFeatured.timer=setTimeout(()=>{HomeFeatured.timer=null;if(homeFeaturedReady()&&!homeFeaturedHeld())homeFeaturedNext(false);else homeFeaturedSchedule()},HOME_FEATURE_INTERVAL);
+  homeFeaturedProgress();
+}
+function homeFeaturedControls(all){return all.length>1?`<div class="zh-featured-controls"><span class="zh-featured-position" data-featured-position aria-label="Featured profile position">${homeFeaturedPosition(all)}</span><span class="zh-featured-progress" aria-hidden="true"><i></i></span><button type="button" data-featured-pause aria-label="${HomeFeatured.paused?'Resume':'Pause'} profile rotation" onclick="homeFeaturedToggle()">${hi(HomeFeatured.paused?'play':'pause',16)}</button><button type="button" aria-label="Next featured creator" onclick="homeFeaturedNext()">${hi('arrow',18)}</button></div>`:''}
+function homeFeaturedToggle(){
+  HomeFeatured.paused=!HomeFeatured.paused;
+  const button=document.querySelector('[data-featured-pause]');
+  if(button){button.setAttribute('aria-label',`${HomeFeatured.paused?'Resume':'Pause'} profile rotation`);button.innerHTML=hi(HomeFeatured.paused?'play':'pause',16)}
+  homeFeaturedSchedule();
+}
+function homeFeaturedNext(manual=true){
+  const all=homeDashboardHosts().all;
+  if(all.length<2||!homeFeaturedReady()||!manual&&(HomeFeatured.paused||homeFeaturedHeld()))return;
+  const next=all[(Math.max(0,all.findIndex(h=>h.id===HomeFeatured.id))+1)%all.length];
+  HomeFeatured.id=next.id;
+  const hero=document.getElementById('home-featured-card'),grid=document.getElementById('home-host-grid');
+  if(hero){hero.innerHTML=homeDashboardCard(next,true);hero.firstElementChild?.classList.add('zh-featured-enter')}
+  if(grid)grid.innerHTML=all.filter(h=>h.id!==next.id).map(h=>homeDashboardCard(h)).join('');
+  const position=document.querySelector('[data-featured-position]');if(position)position.textContent=homeFeaturedPosition(all);
+  contentImagesReady();window.ZimiCardVideo?.attach();homeFeaturedSchedule();
+}
+// Rotation waits while the card is scrolled away, so the grid never changes under the reader.
+const homeFeaturedObserver=window.IntersectionObserver?new IntersectionObserver(entries=>{
+  const offscreen=!entries[entries.length-1].isIntersecting;
+  if(offscreen===HomeFeatured.offscreen)return;
+  HomeFeatured.offscreen=offscreen;homeFeaturedSchedule();
+},{threshold:.35}):null;
+function homeFeaturedAfterRender(){
+  homeFeaturedObserver?.disconnect();
+  const carousel=document.querySelector('.zh-featured-carousel');
+  if(carousel)homeFeaturedObserver?.observe(carousel);else HomeFeatured.offscreen=false;
+  // Redraws keep a running timer, so frequent updates cannot starve the rotation.
+  if(HomeFeatured.timer&&homeFeaturedReady()&&!HomeFeatured.paused&&!homeFeaturedHeld())homeFeaturedProgress();else homeFeaturedSchedule();
+}
+const homeFeaturedInteraction='onpointerenter="if(event.pointerType===\'mouse\')homeFeaturedStop()" onpointerleave="homeFeaturedSchedule()" onfocusin="homeFeaturedStop()" onfocusout="setTimeout(homeFeaturedSchedule,0)"';
+document.addEventListener('visibilitychange',homeFeaturedSchedule);
+window.addEventListener('pagehide',homeFeaturedStop);
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='home')homeFeaturedStop()});
+Native.on('app.background',()=>{HomeFeatured.backgrounded=true;homeFeaturedStop()});
+Native.on('app.foreground',()=>{HomeFeatured.backgrounded=false;homeFeaturedSchedule()});
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{homeFeaturedReset();HomeFeatured.paused=matchMedia('(prefers-reduced-motion: reduce)').matches}));
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{if(event.matches&&!HomeFeatured.paused)homeFeaturedToggle()});
 function homeDashboardIsLive(h){return window.ZIMI_LIVE_STREAMING_ENABLED&&!!h.stream&&(!h.stream.status||h.stream.status==='live')}
 function homeDashboardCanCall(h){return !!h.available&&(h.on||homeDashboardIsLive(h))}
 function homeDashboardHosts(){
   const hosts=new Map(Home.hosts.map(h=>[h.id,h]));
   Home.stage.filter(homeDashboardIsLive).forEach(h=>{if(!hosts.has(h.id))hosts.set(h.id,h)});
-  const filter=Home.dashboardFilter;
-  // Every host is listed, online or offline; the server sorts who can take a call first.
-  const shown=[...hosts.values()].filter(h=>(filter!=='instant'||h.ready&&homeDashboardCanCall(h))&&(!Home.categories.includes(filter)||h.cat===filter));
+  // Production Following is filtered on the server before pagination. Only the
+  // design preview uses its local follow fixtures.
+  const shown=[...hosts.values()].filter(h=>!DEMO||Home.dashboardFilter!=='following'||S.following[h.id]||h.fol);
   return {all:shown,live:shown.filter(homeDashboardIsLive),online:shown.filter(h=>!homeDashboardIsLive(h))};
 }
 function homeDashboardChat(id){
@@ -9371,14 +9464,11 @@ function homeDashboardHostOpen(){
   if(!window.ZimiHostAccess.guard())return;
   go(S.online?'waiting':'setup');
 }
+// Only an approved host account sees its own availability, in the Home header.
 function homeDashboardHostEntry(){
   if(!isApprovedHost()&&!(window.ZimiHostAccess?.checking()&&S.role==='host'))return '';
   const online=!!S.online;
-  return `<div class="zh-host-status-row"><button type="button" class="zh-host-status ${online?'is-online':''}" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}"><i aria-hidden="true"></i><span>${online?'Online':'Offline'}</span>${hi('chev',13)}</button></div>`;
-}
-function homeDashboardFilters(){
-  const filters=[['popular','Popular','star'],['instant','Instant call','bolt'],...Home.categories.map(c=>[c,c,c==='Music'?'music':c==='Talk'?'chat':'star'])];
-  return '<div class="zh-dashboard-filters" role="group" aria-label="Filter hosts">'+filters.map(([key,label,icon])=>`<button type="button" data-dashboard-filter="${esc(key)}" aria-pressed="${Home.dashboardFilter===key}" onclick="homeDashboardFilter(this.dataset.dashboardFilter)">${hi(icon,16)}<span>${esc(label)}</span></button>`).join('')+'</div>';
+  return `<button type="button" class="zh-host-status ${online?'is-online':''}" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}" title="${online?'You are online for calls':'You are offline'}"><i aria-hidden="true"></i><span>${online?'Online':'Offline'}</span></button>`;
 }
 function homeDashboardStories(hosts,pending,error,more){
   if(!window.ZIMI_LIVE_STREAMING_ENABLED)return '';
@@ -9444,10 +9534,10 @@ function homeDashboardSkeleton(label='Loading creators',count=4){
 }
 function homeDashboardHeroSkeleton(){return `<div class="zh-skeleton" role="status" aria-label="Loading featured creator" aria-busy="true"><div class="zh-person-card zh-featured-host zh-hero-placeholder zh-skeleton-shape" aria-hidden="true"><div class="zh-person-content">${skeletonLine('55%',25)}${skeletonLine('80%',12)}<div class="zh-person-footer">${skeletonLine('35%',46)}${skeletonLine('60%',46)}</div></div></div></div>`}
 function homeDashboardEmpty(){
-  const filtered=Home.dashboardFilter!=='popular';
-  const title=Home.dashboardFilter==='instant'?'No one available to call':filtered?'No hosts in this category':'No hosts to show right now';
-  const description=filtered?'Try all hosts, or explore creators to find your kind of conversation.':'Explore creators or catch up in chats while someone becomes available.';
-  const primary=filtered?`<button type="button" class="zh-empty-primary" onclick="homeDashboardFilter('popular')">${hi('people',18)} Show all hosts</button>`:`<button type="button" class="zh-empty-primary" onclick="go('explore')">${hi('explore',18)} Explore creators</button>`;
+  const following=Home.dashboardFilter==='following';
+  const title=following?'No followed creators yet':'No hosts to show right now';
+  const description=following?'Follow a creator from Explore to see them here.':'Explore creators or catch up in chats while someone becomes available.';
+  const primary=following?`<button type="button" class="zh-empty-primary" onclick="homeDashboardFilter('popular')">${hi('explore',18)} Explore creators</button>`:`<button type="button" class="zh-empty-primary" onclick="go('explore')">${hi('explore',18)} Explore creators</button>`;
   return `<div class="zh-host-empty">
     <div class="zh-home-empty-scene" aria-hidden="true"><span class="zh-empty-orbit"></span><span class="zh-empty-stage zh-empty-photo"><img src="${OB_MEDIA[1]}" alt="" decoding="async"></span><span class="zh-empty-satellite zh-empty-chat">${hi('chat',21)}</span><span class="zh-empty-satellite zh-empty-music">${hi('music',20)}</span><span class="zh-empty-satellite zh-empty-spark">${hi('star',15)}</span><i class="zh-empty-dot"></i><i class="zh-empty-dot"></i></div>
     <span class="zh-empty-eyebrow">Good company is worth the wait</span><h3>${title}</h3><p>${description}</p>
@@ -9459,12 +9549,10 @@ function homeDashboard(){
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all;
-  // The large card goes to someone reachable now; an offline featured host stays in the grid.
-  const reachable=h=>h.on||homeDashboardIsLive(h);
-  const featured=all.find(h=>h.id===Home.featured?.id&&reachable(h))||hosts.live[0]||all.find(reachable)||all[0],remaining=featured?all.filter(h=>h.id!==featured.id):[];
-  const hero=pending?homeDashboardHeroSkeleton():!error&&featured?homeDashboardCard(featured,true):'';
-  const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div class="zh-grid">${remaining.map(h=>homeDashboardCard(h)).join('')}</div>`:!featured?homeDashboardEmpty():'';
-  return `<div class="zh-home zh-dashboard"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardHostEntry()}${homeDashboardStories(hosts,pending,error,more)}${homeDashboardFilters()}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}${!pending&&!error?window.ZimiAds?.card('home')||'':''}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>Connect 1:1</h2><div class="zh-live-tools"><button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
+  const featured=homeFeaturedPick(all),remaining=featured?all.filter(h=>h.id!==featured.id):[];
+  const hero=pending?homeDashboardHeroSkeleton():!error&&featured?`<section class="zh-featured-carousel" aria-roledescription="carousel" aria-label="Featured creators" ${homeFeaturedInteraction}><div id="home-featured-card">${homeDashboardCard(featured,true)}</div>${homeFeaturedControls(all)}</section>`:'';
+  const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div id="home-host-grid" class="zh-grid" ${homeFeaturedInteraction}>${remaining.map(h=>homeDashboardCard(h)).join('')}</div>`:!featured?homeDashboardEmpty():'';
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${Home.dashboardFilter==='following'?'following':'explore'}"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}${!pending&&!error?window.ZimiAds?.card('home')||'':''}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>${Home.dashboardFilter==='following'?'Following':'Connect 1:1'}</h2><div class="zh-live-tools"><button type="button" class="zh-home-refresh" aria-label="Refresh home" title="Refresh home" aria-busy="${!!(pending||more)}" onclick="homeLoad()" ${pending||more?'disabled':''}>${hi('refresh',17)}</button><button type="button" class="zh-see-all" onclick="go('explore')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
 }
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
