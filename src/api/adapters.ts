@@ -121,7 +121,7 @@ export function notificationReadFrom(value: unknown): NotificationReadResult {
 function officialIdentity(value: unknown) {
   const data = record(value);
   if (data.id !== OFFICIAL_CHAT_ID || data.official !== true || data.canSend !== false) throw new ApiError("The official conversation could not be verified. Refresh and try again.", 502);
-  return { data, identity: { id: OFFICIAL_CHAT_ID, name: OFFICIAL_CHAT_NAME, official: true as const, canSend: false as const } };
+  return { data, identity: { id: OFFICIAL_CHAT_ID, name: OFFICIAL_CHAT_NAME, official: true, canSend: false } as const };
 }
 export function officialChatFrom(value: unknown): OfficialChatData {
   const { data, identity } = officialIdentity(value);

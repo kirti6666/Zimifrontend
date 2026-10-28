@@ -42,7 +42,7 @@ window.ZimiPullRefresh=(()=>{
     // A sideways swipe, an upward scroll or a moved page belongs to scrolling.
     if(event.touches.length!==1||scroller().scrollTop>0||(!pull.active&&(dy<-2||Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>SLOP)))return cancel();
     if(!pull.active&&dy<SLOP)return;
-    pull.active=true;pull.distance=Math.min(MAX,(dy-SLOP)*RESISTANCE);
+    pull.active=true;pull.distance=Math.min(MAX,Math.max(0,(dy-SLOP)*RESISTANCE));
     paint(pull.distance);
   }
   function end(){

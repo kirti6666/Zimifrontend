@@ -46,7 +46,7 @@ function zpSettingsRows(){
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
-function zpDarkMode(){if(!window.ZimiThemes)return;window.ZimiThemes.setDark(!window.ZimiThemes.dark());r()}
+function zpDarkMode(){if(!window.ZimiThemes)return;window.ZimiThemes.setDark(!window.ZimiThemes.dark());r();document.querySelector('.zp-toggle-row')?.focus({preventScroll:true})}
 function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-simple-row" onclick="${action}"><span class="zp-simple-icon">${zi(icon,25)}</span><span>${title}</span></button>`}
 function zpMenuRows(kind){
   const rows={

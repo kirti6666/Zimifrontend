@@ -136,11 +136,7 @@
 /* Welcome: a living card deck above a calm headline and one clear choice. */
 .ob-welcome {
   padding-top: 18px;
-  background:
-    radial-gradient(90% 50% at 50% -8%, color-mix(in srgb, var(--ob-pink) 26%, transparent), transparent 70%),
-    radial-gradient(70% 40% at 110% 60%, color-mix(in srgb, var(--ob-soft) 17%, transparent), transparent 70%),
-    radial-gradient(60% 34% at -14% 80%, color-mix(in srgb, var(--ob-pink) 13%, transparent), transparent 70%),
-    var(--ob-bg);
+  background: var(--ob-bg);
 }
 .ob-session-notice { width: 100%; max-width: 480px; margin: 0 auto 14px; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--ob-pink) 30%, transparent); border-radius: 16px; background: color-mix(in srgb, var(--ob-pink) 10%, transparent); color: var(--ob-text); line-height: 1.5; font-size: 13px; }
 .ob-welcome-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 480px; margin: 0 auto 14px; }

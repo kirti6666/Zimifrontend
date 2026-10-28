@@ -1830,11 +1830,7 @@ button.gpill[onclick]{cursor:pointer}
 /* Welcome: a living card deck above a calm headline and one clear choice. */
 .ob-welcome {
   padding-top: 18px;
-  background:
-    radial-gradient(90% 50% at 50% -8%, color-mix(in srgb, var(--ob-pink) 26%, transparent), transparent 70%),
-    radial-gradient(70% 40% at 110% 60%, color-mix(in srgb, var(--ob-soft) 17%, transparent), transparent 70%),
-    radial-gradient(60% 34% at -14% 80%, color-mix(in srgb, var(--ob-pink) 13%, transparent), transparent 70%),
-    var(--ob-bg);
+  background: var(--ob-bg);
 }
 .ob-session-notice { width: 100%; max-width: 480px; margin: 0 auto 14px; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--ob-pink) 30%, transparent); border-radius: 16px; background: color-mix(in srgb, var(--ob-pink) 10%, transparent); color: var(--ob-text); line-height: 1.5; font-size: 13px; }
 .ob-welcome-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 480px; margin: 0 auto 14px; }
@@ -9504,7 +9500,7 @@ window.ZimiPullRefresh=(()=>{
     // A sideways swipe, an upward scroll or a moved page belongs to scrolling.
     if(event.touches.length!==1||scroller().scrollTop>0||(!pull.active&&(dy<-2||Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>SLOP)))return cancel();
     if(!pull.active&&dy<SLOP)return;
-    pull.active=true;pull.distance=Math.min(MAX,(dy-SLOP)*RESISTANCE);
+    pull.active=true;pull.distance=Math.min(MAX,Math.max(0,(dy-SLOP)*RESISTANCE));
     paint(pull.distance);
   }
   function end(){
@@ -12441,7 +12437,7 @@ function zpSettingsRows(){
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
-function zpDarkMode(){if(!window.ZimiThemes)return;window.ZimiThemes.setDark(!window.ZimiThemes.dark());r()}
+function zpDarkMode(){if(!window.ZimiThemes)return;window.ZimiThemes.setDark(!window.ZimiThemes.dark());r();document.querySelector('.zp-toggle-row')?.focus({preventScroll:true})}
 function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-simple-row" onclick="${action}"><span class="zp-simple-icon">${zi(icon,25)}</span><span>${title}</span></button>`}
 function zpMenuRows(kind){
   const rows={
