@@ -42,6 +42,7 @@
     "test:loading": "npm run build:web && node scripts/test-loading.cjs",
     "test:launch": "npm run build:web && node scripts/test-launch.cjs && node scripts/test-auth-bridge.cjs",
     "test:notifications": "npm run build:web && node scripts/test-notifications.cjs",
+    "test:push": "node scripts/test-push.cjs && node scripts/test-auth-bridge.cjs",
     "test:offline": "npm run build:web && node scripts/test-offline.cjs",
     "test:chats": "npm run build:web && node scripts/test-chats.cjs",
     "test:navigation": "npm run build:web && node scripts/test-navigation.cjs",
@@ -55,6 +56,8 @@
     "build:admin": "node scripts/build-admin.mjs"
   },
   "dependencies": {
+    "@react-native-firebase/app": "27.1.0",
+    "@react-native-firebase/messaging": "27.1.0",
     "expo": "~57.0.24",
     "expo-file-system": "~57.0.7",
     "expo-haptics": "~57.0.3",
@@ -66,6 +69,7 @@
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",
+    "react-native-notify-kit": "10.9.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-webview": "13.16.1",
     "socket.io-client": "^4.8.4"

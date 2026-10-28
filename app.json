@@ -32,14 +32,15 @@
         "backgroundImage": "./assets/brand/adaptive-icon-background.png",
         "backgroundColor": "#210F1D"
       },
-      "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"],
+      "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS", "android.permission.USE_FULL_SCREEN_INTENT", "android.permission.MANAGE_OWN_CALLS"],
       "blockedPermissions": ["android.permission.READ_MEDIA_VISUAL_USER_SELECTED"],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
       "expo-secure-store",
-      ["expo-notifications", { "icon": "./assets/brand/notification-icon.png", "color": "#EC0785", "defaultChannel": "default" }],
+      ["expo-notifications", { "icon": "./assets/brand/notification-icon.png", "color": "#EC0785", "defaultChannel": "general" }],
+      ["react-native-notify-kit", { "android": { "foregroundService": { "types": ["phoneCall", "camera", "microphone"] } } }],
       ["expo-media-library", { "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.", "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
       "./plugins/with-onboarding-camera",
       "./plugins/with-development-network",

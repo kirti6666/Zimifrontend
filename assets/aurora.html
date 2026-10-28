@@ -8946,7 +8946,9 @@ Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Nativ
  /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
  if(S.v==="ring"){if(S.caller?.callId!==c.callId)S.queuedInc=c;return}
  if(["dial","dialback","call","voice"].includes(S.v))return;
- S.acceptingCall=false;S.ringBack=S.v;S.caller=c;go("ring")});
+ S.acceptingCall=false;S.ringBack=S.v;S.caller=c;go("ring");if(S.answerCall===c.callId){S.answerCall=null;acceptRing()}});
+/* Answer on the incoming-call notification: accept once that call's ring screen is up. */
+Native.on("call.answer",d=>{if(S.v==="ring"&&S.caller?.callId===d.callId)acceptRing();else S.answerCall=d.callId});
 /* The caller who arrived while another call was ringing: a banner on the call, or the next ring. */
 function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
  if(S.v==="hcall")return ringIncoming(q);

@@ -414,21 +414,33 @@ screenshots in `artifacts/notifications-*.png`. Backend integration coverage is 
 
 ### Push notifications (Firebase)
 
-Android phones receive push through Firebase Cloud Messaging. `src/push.ts` asks
-for the Android 13+ notification permission, reads the device's FCM token and
-creates the `default` channel. `src/bridge.ts` registers the token with
-`POST /notifications/devices` once per signed-in session, and only when the
-server reports push as enabled, so Android's limited permission prompt is never
-spent while the server cannot send. Rotated tokens are re-registered.
+Android phones receive push through Firebase Cloud Messaging
+(`@react-native-firebase/messaging`), shown with `react-native-notify-kit`.
+`src/push.ts` asks for the Android 13+ notification permission, reads the
+device's FCM token and creates the `incoming_calls`, `general` and `ongoing_call`
+channels. `src/bridge.ts` registers the token with `POST /notifications/devices`
+once per signed-in session, and only when the server reports push as enabled, so
+Android's limited permission prompt is never spent while the server cannot send.
+Rotated tokens are re-registered.
+
+Incoming calls ring even while the app is closed or the phone is locked: the
+server's data-only `incoming_call` message is handled in `index.js` before the app
+starts, and shows a full-screen call notification with Answer and Decline.
+Answer opens the existing ring screen and accepts the call; the app may show over
+the lock screen only while a call rings or is connected
+(`modules/call-screen`). On Android 14+, approved hosts without full-screen
+permission are asked to allow it in system settings. Payloads and server duties
+are in `docs/API.md` (**Push messages**). Run `npm run test:push`.
 
 Profile > Notifications shows whether this phone is registered. If the phone
 blocks notifications, it offers **Turn on notifications**, which asks again or
 opens system settings once Android stops asking; returning to the app re-checks.
 Tapping a notification opens the inbox once a signed-in, onboarded screen is
-ready, but never during a call or live room. While the app is open, new pushes go
-to the tray without a banner, since the inbox bell already updates. Logging out
-clears delivered notifications, and the server stops sending to the phone as soon
-as its session ends, even if the phone was offline.
+ready, but never during a call or live room. While the app is open, pushes are
+not shown, since the inbox bell and ring screen already update over the socket.
+Logging out clears delivered notifications and deletes this device's FCM token,
+and the server stops sending to the phone as soon as its session ends, even if
+the phone was offline.
 
 Setup:
 
@@ -445,9 +457,11 @@ Setup:
    Expo reads `android.googleServicesFile` from `app.config.js`, copies the file
    to `android/app/google-services.json`, and adds the Google Services plugin to
    `android/build.gradle` and `android/app/build.gradle`. The Firebase console's
-   manual Gradle instructions are handled by this step; `expo-notifications`
-   already supplies the Firebase Messaging SDK. Firebase Analytics is optional
-   and is not required for push notifications.
+   manual Gradle instructions are handled by this step. `firebase.json` keeps
+   React Native Firebase's default channel and color in step with the
+   `expo-notifications` plugin, which now only supplies the tray icon, color and
+   permission checks. Firebase Analytics is optional and is not required for push
+   notifications.
 4. Configure the backend's Firebase service account and `PUSH_ENABLED=true`; see
    `../backend/README.md`. Then send a test from the admin dashboard's
    announcements with **Also send a push notification** checked.
@@ -512,8 +526,7 @@ earnings, subject to the server's minimum and enablement settings. Requests rese
 earnings and enter admin review; transfers remain manual and are not instant.
 The withdrawal history shows the server's pending, approved, paid, or rejected status.
 
-Android push registration uses Firebase (see **Push notifications (Firebase)**).
-Incoming-call and chat delivery while the app is closed still need call-style
-notifications. The browser preview remains a demo.
+Android push registration and closed-app incoming calls use Firebase (see
+**Push notifications (Firebase)**). The browser preview remains a demo.
 `docs/API.md` includes older screen-facing contracts; the implemented native
 adapters and sibling backend routes are authoritative.

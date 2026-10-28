@@ -15,7 +15,7 @@ import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
 import { LIVE_STREAMING_ENABLED } from "./features";
-import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
+import { askForCallAlerts, clearDeliveredPush, onPushTokenChange, registerPush, startPush, trackCall, type PushMode, type PushStatus } from "./push";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -136,6 +136,8 @@ export type AppMessage =
   | { type: "notifications.error"; data: { requestId: number; message: string } }
   | { type: "notifications.changed"; data: Record<string, never> }
   | { type: "push.opened"; data: Record<string, never> }
+  /** Answer on the incoming-call notification: accept this call once its ring screen is up. */
+  | { type: "call.answer"; data: { callId: string } }
   | { type: "data.catalog"; data: Catalog }
   | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
   | { type: "data.themes"; data: ThemeCatalog }
@@ -259,7 +261,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const operations = new Set<string>();
   const authWork = new Set<string>();
   const current = (version: number) => !closed && version === epoch;
-  const emit = (message: AppMessage) => { if (!closed) post(message); };
+  const emit = (message: AppMessage) => { if (closed) return; post(message); trackCall(message); };
   const stopConnection = onConnectionChanged(data => {
     if (webReady) emit({ type: "connection.status", data });
   });
@@ -472,9 +474,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let pushSession: number | undefined;
   let pushPrompted = false;
   let pushOpenPending = false;
+  let pushAnswer: string | undefined;
   const syncPush = async (mode: PushMode) => {
     const version = epoch, sessionVersion = getSessionVersion();
     const status = await registerPush(token => api.registerPushDevice(token), mode);
+    // Only approved hosts receive calls.
+    if (status === "registered" && mode !== "silent" && current(version) && sessionVersion === getSessionVersion() && hasHostAccess()) askForCallAlerts();
     if (!current(version) || sessionVersion !== getSessionVersion() || status === pushStatus) return;
     pushStatus = status;
     quietly(loadProfileSettings(), "profile.settings.load");
@@ -491,11 +496,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
     emit({ type: "data.profileSettings", data: withPushStatus(settings) });
   };
-  /** Opens the inbox for a tapped notification once a signed-in screen can show it. */
-  const flushPushOpen = () => {
-    if (!pushOpenPending || !webReady || !sessionAvailable || restoring || liveOnboarding || hostAccount?.requiresOnboarding) return;
-    pushOpenPending = false;
-    emit({ type: "push.opened", data: {} });
+  /** Opens the inbox for a tapped notification, or answers a call, once a signed-in screen can show it. */
+  const flushPush = () => {
+    if (!webReady || !sessionAvailable || restoring || liveOnboarding || hostAccount?.requiresOnboarding) return;
+    if (pushAnswer) { emit({ type: "call.answer", data: { callId: pushAnswer } }); pushAnswer = undefined; }
+    if (pushOpenPending) { pushOpenPending = false; emit({ type: "push.opened", data: {} }); }
   };
   const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), emitProfileSettings);
   const loadPublicProfile = (id: string, requestId?: number) => {
@@ -704,7 +709,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
     if (!onboarding) { void loadLists(); void restorePendingPurchases(); }
-    void flushStreamLink(); flushPushOpen();
+    void flushStreamLink(); flushPush();
   };
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
@@ -736,7 +741,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; void flushStreamLink(); flushPushOpen(); }
+    } finally { restoring = false; void flushStreamLink(); flushPush(); }
   };
 
   async function handle(msg: WebMessage) {
@@ -1006,7 +1011,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
               liveOnboarding = account.requiresOnboarding === true;
               stopLive.setActive?.(appActive && !liveOnboarding);
               void loadLists();
-              void flushStreamLink(); flushPushOpen();
+              void flushStreamLink(); flushPush();
             }
             else quietly(loadProfileSettings(), "profile.settings.load");
           }
@@ -1395,7 +1400,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (openStreamLink(event.url)) runtimeLinkReceived = true;
   });
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
-  const stopPush = startPush(() => { pushOpenPending = true; flushPushOpen(); });
+  const stopPush = startPush(() => { pushOpenPending = true; flushPush(); }, callId => { pushAnswer = callId; flushPush(); });
   const stopPushToken = onPushTokenChange(token => {
     if (pushSession === getSessionVersion() && sessionAvailable) void api.registerPushDevice(token).catch(() => {});
   });
