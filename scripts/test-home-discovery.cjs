@@ -14,7 +14,7 @@ const featuredId = page => page.locator('.zh-featured-host').getAttribute('data-
 const timerRunning = page => page.evaluate(() => !!HomeFeatured.timer);
 
 async function assertUniqueProfiles(page, expected) {
-  const ids = await page.locator('article.zh-person-card[data-host-id]').evaluateAll(nodes => nodes.map(node => node.dataset.hostId));
+  const ids = await page.locator('article[data-host-id]').evaluateAll(nodes => nodes.map(node => node.dataset.hostId));
   assert.equal(new Set(ids).size, ids.length, 'Featured and grid cards never duplicate a profile');
   assert.deepEqual([...ids].sort(), [...expected].sort(), 'Rotation keeps every loaded profile available');
   const current = await featuredId(page);
@@ -98,6 +98,20 @@ async function assertUniqueProfiles(page, expected) {
     await receive(page, 'data.home', feed([]));
     assert.equal(await page.locator('.zh-featured-carousel').count(), 0, 'An empty feed has no carousel');
 
+    const ad = { id: '6a0000000000000000000001', format: 'banner', advertiser: 'BinzoLive Studio', headline: 'Edit reels in seconds', body: 'Templates and captions.', ctaLabel: 'Install now', domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/banner.png', mediaType: 'image/png', logoUrl: '', placements: ['home', 'explore'] };
+    const many = Array.from({ length: 10 }, (_, index) => ({ ...creators[index % 3], id: `507f1f77bcf86cd7994391${String(index).padStart(2, '0')}`, name: `Creator ${index}` }));
+    const gridOrder = selector => page.locator(selector).evaluate(grid => [...grid.children].map(child => child.matches('[data-za-slot]') ? 'ad' : 'host'));
+    await receive(page, 'data.ads', { adFree: false, items: [ad] });
+    await receive(page, 'data.home', feed(many));
+    assert.deepEqual(await gridOrder('#home-host-grid'), [...Array(6).fill('host'), 'ad', ...Array(3).fill('host')], 'Home shows six hosts, the ad, then the rest');
+    await page.evaluate(() => { window.__ad = document.querySelector('#home-host-grid [data-za-slot]'); homeFeaturedNext(); });
+    assert.equal(await page.evaluate(() => document.querySelector('#home-host-grid').children[6] === window.__ad), true, 'Rotation keeps the same ad element after the sixth host');
+    await page.evaluate(() => go('explore'));
+    assert.deepEqual(await gridOrder('.zh-explore .zh-grid'), [...Array(6).fill('host'), 'ad', ...Array(4).fill('host')], 'Explore places its ad after six creators too');
+    await page.evaluate(() => go('home'));
+    await receive(page, 'data.home', feed(creators));
+    assert.deepEqual(await gridOrder('#home-host-grid'), ['host', 'host', 'ad'], 'A short grid keeps the ad below its hosts');
+
     const reduced = await open('reduce', host);
     assert.equal(await timerRunning(reduced), false, 'Reduced motion initializes rotation paused');
     assert.equal(await reduced.getByRole('button', { name: 'Resume profile rotation', exact: true }).count(), 1);
@@ -110,6 +124,6 @@ async function assertUniqueProfiles(page, expected) {
     await reduced.getByRole('tab', { name: 'Explore', exact: true }).click();
     assert.deepEqual(await reduced.evaluate(() => __sent.filter(message => message.type === 'home.reload').at(-1).data), { page: 1, mode: 'popular' });
     assert.deepEqual(errors, [], 'No browser exceptions');
-    console.log('PASS Home discovery: Explore/Following header, host-only status, automatic and manual rotation, unique profiles, pause/focus/hover/background/loading guards, and reduced motion');
+    console.log('PASS Home discovery: Explore/Following header, host-only status, automatic and manual rotation, unique profiles, pause/focus/hover/background/loading guards, ads after six hosts, and reduced motion');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

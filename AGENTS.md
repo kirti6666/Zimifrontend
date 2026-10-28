@@ -42,6 +42,11 @@ keeps it identical to the original Next.js version.
   for now. Home shows a featured photo card and a two-column host grid, with
   Chat and Call actions, in the selected theme's colors. Filter hosts on the
   server before pagination; feature a host once across hero/grid.
+- Every host list (Home grid, Explore, Search) uses the photo card `homeTile`
+  in `web/home.js`: Online and price pills over the photo, then avatar, name,
+  tagline and a round video-call button. Only the featured card keeps Chat.
+  Sponsored cards go inside the grid after six hosts (`HOME_AD_AFTER`), or
+  below a shorter grid; never above the hosts.
 - The featured card rotates every 6s (`HomeFeatured` in
   `web/home-dashboard.js`) with Pause and Next controls. It holds while the
   card is hovered, focused or scrolled away, the app is backgrounded or Home is

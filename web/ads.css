@@ -36,8 +36,9 @@
 .za-info-icon{width:32px;height:32px;padding:0;justify-content:center;border:0}
 
 /* Placements. */
-.zh-home.zh-dashboard>.za-card{margin-top:22px}
-.zh-explore>.za-card{margin:10px 0 4px}
+.zh-grid>.za-card{grid-column:1/-1;margin:4px 0}
+.zh-discover>.za-card{margin-top:18px}
+.zh-trending>.za-card{margin-top:14px}
 .zh-summary .za-card{width:100%;margin-top:22px;text-align:left}
 
 /* About this ad. The global reset removes the auto margin that centers a modal dialog. */

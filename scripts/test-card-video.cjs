@@ -76,7 +76,7 @@ const playing = page => page.evaluate(() => [...document.querySelectorAll('.zh-c
     assert.ok(requests.length > loads, 'The next card loads only once it is in view');
 
     await page.evaluate(() => go('explore'));
-    await page.locator('.zh-tile .zh-card-video.is-playing').first().waitFor({ timeout: 8000 });
+    await page.locator('.zh-creator-card .zh-card-video.is-playing').first().waitFor({ timeout: 8000 });
     assert.equal((await playing(page)).length, 1, 'Explore tiles preview one video at a time too');
 
     await page.evaluate(() => go('chats'));
