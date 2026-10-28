@@ -46,6 +46,16 @@
 :root[data-theme-id] .zr-room{color:var(--room-ink)}
 
 /* Private calls keep the app palette and give the conversation the full stage. */
+.zr-call{overflow:hidden}
+:root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
+.zr-call .zr-video{background:var(--media-canvas)}
+.zr-call .zr-video>video[data-zimi-shape=landscape]{object-fit:contain}
+.zr-call .zr-shade{display:none}
+.zr-call .zr-top{background:var(--canvas);padding-bottom:8px}
+.zr-network{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin:0 0 7px;padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:var(--room-glass);color:var(--theme-danger);font-size:11px;font-weight:650}
+.zr-network[hidden]{display:none}
+.zr-network svg{flex:none}
+.zr-network svg path:nth-child(n+2){opacity:.25}
 .zi-icon:is([data-icon=callgrid],[data-icon=callmore]){--zi-tap:zi-bounce;--zi-time:400ms}
 .zr-call .zr-top{padding:0 10px}
 .zr-call-heading{min-height:42px;padding:6px 0 5px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);color:var(--room-muted)}
@@ -70,7 +80,7 @@
 .zr-call-stat:nth-child(2) .zr-stat-track>i{width:12px;background:var(--accent-ink)}
 .zr-call .zr-pip{top:169px;right:10px;width:82px;height:116px;border:2px solid var(--line);border-radius:15px;box-shadow:0 5px 18px #0002;color:var(--room-muted)}
 .zr-call .zr-pip>span{bottom:4px;left:4px;padding:2px 3px;font-size:9px}
-.zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--canvas));width:100%}
+.zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:var(--canvas);width:100%}
 .zr-call .zr-status{background:none;padding:0;margin:0 0 3px;font-size:11px;line-height:1.4;border-radius:0;max-width:100%;text-align:left}
 .zr-call-cost{font-size:10px;color:var(--room-muted);margin-bottom:5px;line-height:1.5}
 .zr-call .zr-call-feed{max-height:min(18vh,155px);gap:6px;margin:0 0 10px;padding:3px 0;overscroll-behavior:contain}
@@ -149,9 +159,6 @@
 /* The host's call follows the host studio reference: their own camera on the full stage, the
    caller in the corner, compact targets and controls. Colours stay with the selected theme. */
 .zr-call-reference .zr-reference-stage>video[data-zimi-shape=landscape]{object-fit:contain}
-.zr-call-reference .zr-reference-stage>video[data-zimi-fill]{z-index:-1;display:none;filter:blur(22px) brightness(.6);transform:scale(1.15)}
-.zr-call-reference .zr-reference-stage>video[data-zimi-fill][data-zimi-facing=user]{transform:scaleX(-1) scale(1.15)}
-.zr-call-reference .zr-reference-stage:has(>video[data-zimi-shape=landscape]:not([data-zimi-fill]))>video[data-zimi-fill]{display:block}
 .zr-call-reference .zr-reference-stage.camera-off>video{visibility:hidden}
 .zr-call-reference .zr-camera-off{position:absolute;inset:26% 0 32%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--room-muted)}
 .zr-call-reference .zr-top{padding:0 14px}

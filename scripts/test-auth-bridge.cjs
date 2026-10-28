@@ -584,7 +584,8 @@ test('native app inactivity explicitly notifies the WebView and removes its list
   assert.ok(web);
   web.props.ref.current = { injectJavaScript: script => vm.runInNewContext(script, { window: { zimiReceive: raw => received.push(JSON.parse(raw)) } }) };
   for (const listener of [...h.activities]) listener('active');
-  assert.deepEqual(received, [], 'Foregrounding does not cancel an ongoing recording or preview');
+  assert.deepEqual(received, [{ type: 'app.foreground', data: {} }], 'Foregrounding resumes media without sending a background cleanup event');
+  received.length = 0;
   for (const state of ['inactive', 'background']) for (const listener of [...h.activities]) listener(state);
   assert.deepEqual(received, [{ type: 'app.background', data: {} }, { type: 'app.background', data: {} }], 'Cleanup does not depend on document.hidden reaching the WebView');
   assert.equal(h.count('endCall'), 0, 'The voice cleanup event does not change call lifecycle behavior');
@@ -1797,6 +1798,23 @@ test('reconnect revalidates approval while preserving an established host call u
   access = h.find('host.access').at(-1).data;
   assert.equal(access.approved, false); assert.equal(access.checking, false); assert.equal(access.hostStatus, 'suspended');
   assert.equal(h.find('call.ended').at(-1).data.callId, 'active-host-call'); assert.equal(h.count('endCall'), 1);
+  h.bridge.close();
+});
+
+test('a recovered incoming ring waits for reconnect approval instead of being declined', async () => {
+  const h = harness(), checking = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => checking.promise;
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: false } });
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } });
+  const ring = { type: 'call.incoming', data: { callId: 'recovered-ring', from: { id: 'member', name: 'Member' }, voice: false } };
+  h.live[0].onEvent(ring); await settle();
+  assert.equal(h.count('declineCall'), 0, 'Checking approval is not a decline');
+  assert.equal(h.find('call.incoming').length, 0, 'Unknown approval cannot display a new ring');
+  checking.resolve(approvedAccount()); await settle();
+  assert.equal(h.find('call.incoming').at(-1).data.callId, 'recovered-ring');
+  assert.equal(h.count('declineCall'), 0);
   h.bridge.close();
 });
 

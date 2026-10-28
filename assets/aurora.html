@@ -42,7 +42,7 @@ html.lenis body {
  --accent:#e8117a;--accent-ink:#c40e68;--accent-wash:#ffeaf4;--accent-line:#ffd0e6;
  --live:#e8117a;--live-wash:#ffeaf4;--online:#1bc5a4;
  --cta:#e8117a;--cta-ink:#ffffff;--btn:#e8117a;--btn-ink:#ffffff;
- --gold:#e0a200;
+ --gold:#e0a200;--media-canvas:#0b0c0f;
  --shadow:0 1px 2px rgb(16 16 18/.06),0 12px 28px -16px rgb(16 16 18/.22);
 }
 [data-theme="dark"]{
@@ -3194,6 +3194,16 @@ button.gpill[onclick]{cursor:pointer}
 :root[data-theme-id] .zr-room{color:var(--room-ink)}
 
 /* Private calls keep the app palette and give the conversation the full stage. */
+.zr-call{overflow:hidden}
+:root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
+.zr-call .zr-video{background:var(--media-canvas)}
+.zr-call .zr-video>video[data-zimi-shape=landscape]{object-fit:contain}
+.zr-call .zr-shade{display:none}
+.zr-call .zr-top{background:var(--canvas);padding-bottom:8px}
+.zr-network{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin:0 0 7px;padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:var(--room-glass);color:var(--theme-danger);font-size:11px;font-weight:650}
+.zr-network[hidden]{display:none}
+.zr-network svg{flex:none}
+.zr-network svg path:nth-child(n+2){opacity:.25}
 .zi-icon:is([data-icon=callgrid],[data-icon=callmore]){--zi-tap:zi-bounce;--zi-time:400ms}
 .zr-call .zr-top{padding:0 10px}
 .zr-call-heading{min-height:42px;padding:6px 0 5px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);color:var(--room-muted)}
@@ -3218,7 +3228,7 @@ button.gpill[onclick]{cursor:pointer}
 .zr-call-stat:nth-child(2) .zr-stat-track>i{width:12px;background:var(--accent-ink)}
 .zr-call .zr-pip{top:169px;right:10px;width:82px;height:116px;border:2px solid var(--line);border-radius:15px;box-shadow:0 5px 18px #0002;color:var(--room-muted)}
 .zr-call .zr-pip>span{bottom:4px;left:4px;padding:2px 3px;font-size:9px}
-.zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--canvas));width:100%}
+.zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:var(--canvas);width:100%}
 .zr-call .zr-status{background:none;padding:0;margin:0 0 3px;font-size:11px;line-height:1.4;border-radius:0;max-width:100%;text-align:left}
 .zr-call-cost{font-size:10px;color:var(--room-muted);margin-bottom:5px;line-height:1.5}
 .zr-call .zr-call-feed{max-height:min(18vh,155px);gap:6px;margin:0 0 10px;padding:3px 0;overscroll-behavior:contain}
@@ -3297,9 +3307,6 @@ button.gpill[onclick]{cursor:pointer}
 /* The host's call follows the host studio reference: their own camera on the full stage, the
    caller in the corner, compact targets and controls. Colours stay with the selected theme. */
 .zr-call-reference .zr-reference-stage>video[data-zimi-shape=landscape]{object-fit:contain}
-.zr-call-reference .zr-reference-stage>video[data-zimi-fill]{z-index:-1;display:none;filter:blur(22px) brightness(.6);transform:scale(1.15)}
-.zr-call-reference .zr-reference-stage>video[data-zimi-fill][data-zimi-facing=user]{transform:scaleX(-1) scale(1.15)}
-.zr-call-reference .zr-reference-stage:has(>video[data-zimi-shape=landscape]:not([data-zimi-fill]))>video[data-zimi-fill]{display:block}
 .zr-call-reference .zr-reference-stage.camera-off>video{visibility:hidden}
 .zr-call-reference .zr-camera-off{position:absolute;inset:26% 0 32%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--room-muted)}
 .zr-call-reference .zr-top{padding:0 14px}
@@ -3385,17 +3392,13 @@ button.gpill[onclick]{cursor:pointer}
 .hc-setup button,.hc-waiting button,.hc-summary button{font-family:inherit;touch-action:manipulation}
 .hc-setup button:focus-visible,.hc-waiting button:focus-visible,.hc-summary button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .hc-setup{position:relative;isolation:isolate;display:flex;flex-direction:column;height:100%;padding:0 12px;background:linear-gradient(170deg,var(--raised),var(--canvas) 88%);overflow:hidden}
-/* The camera fills the whole screen behind the controls, like a video call. A landscape camera
-   is shown whole over a blurred copy of itself instead of being zoomed to fill a tall screen. */
-.hc-stage{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+/* Keep landscape framing whole on one solid media surface, with no blurred duplicate. */
+.hc-stage{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background:var(--media-canvas)}
 .hc-stage>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
 .hc-stage>video[data-zimi-facing=user]{transform:scaleX(-1)}
 .hc-stage>video[data-zimi-shape=landscape]{object-fit:contain}
-.hc-stage>video[data-zimi-fill]{z-index:-1;display:none;object-fit:cover;filter:blur(22px) brightness(.6);transform:scale(1.15)}
-.hc-stage>video[data-zimi-fill][data-zimi-facing=user]{transform:scaleX(-1) scale(1.15)}
-.hc-stage:has(>video[data-zimi-shape=landscape]:not([data-zimi-fill]))>video[data-zimi-fill]{display:block}
 .hc-preview.is-off .hc-stage>video{display:none}
-.hc-stage-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,var(--canvas) 45%,transparent),transparent 28%,transparent 68%,color-mix(in srgb,var(--canvas) 72%,transparent))}
+.hc-stage-shade{display:none}
 .hc-setup-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:58px;padding:9px 2px 8px}
 .hc-setup-header .zb-back,.hc-preview-tools>button{width:36px;height:36px;min-height:36px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--surface) 86%,transparent);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(10px)}
 .hc-preview-tools{display:flex;gap:8px}
@@ -3725,16 +3728,12 @@ button.gpill[onclick]{cursor:pointer}
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.zh-host-entry{display:flex;align-items:center;gap:10px;min-height:76px;padding:13px 12px;margin:0 0 4px;border:1px solid var(--line);border-radius:19px;background:linear-gradient(115deg,var(--surface),color-mix(in srgb,var(--accent) 8%,var(--surface)));color:var(--ink)}
-.zh-host-entry-icon{position:relative;display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:50%;background:var(--raised);color:var(--muted)}
-.zh-host-entry.is-online .zh-host-entry-icon{color:var(--online);background:color-mix(in srgb,var(--online) 12%,var(--surface))}
-.zh-host-entry-icon>i{position:absolute;right:0;bottom:0;width:8px;height:8px;border-radius:50%;background:var(--online);outline:2px solid var(--surface)}
-.zh-host-entry-copy{flex:1;min-width:0}
-.zh-host-entry-copy h2{margin:0 0 3px;font-size:calc(14px * var(--theme-font-scale,1));font-weight:750;letter-spacing:-.25px;line-height:1.3}
-.zh-host-entry-copy p{margin:0;color:var(--muted);font-size:calc(10px * var(--theme-font-scale,1));line-height:1.4;text-wrap:pretty}
-.zh-host-entry>button{display:flex;align-items:center;justify-content:center;gap:5px;flex:none;min-height:44px;padding:10px 12px;border:0;border-radius:999px;background:var(--accent);color:var(--cta-ink);font-size:11px;font-weight:700}
-.zh-host-entry.is-online>button{background:var(--raised);color:var(--ink)}
-.zh-host-entry>button:active{transform:scale(.97)}
+.zh-host-status-row{display:flex;justify-content:flex-end;margin:-6px 0 4px}
+.zh-host-status{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:650}
+.zh-host-status>i{width:7px;height:7px;flex:none;border-radius:50%;background:var(--muted)}
+.zh-host-status.is-online{color:var(--ink)}
+.zh-host-status.is-online>i{background:var(--online)}
+.zh-host-status:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .zh-home.zh-dashboard .zh-live-section{margin:0}
 .zh-home.zh-dashboard .zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin:0 0 12px}
 .zh-home.zh-dashboard .zh-section-title h2{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--ink);font-size:calc(19px * var(--theme-font-scale,1));line-height:1.35;letter-spacing:-.4px;font-weight:700}
@@ -8800,9 +8799,10 @@ function r(){
  if(window.ZimiHome)window.ZimiHome.theme();
  document.getElementById("top").innerHTML=topFor();
  const el=document.getElementById("screen");
- el.innerHTML={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+ const html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
- if(S.loggedIn&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
+ if(window.ZimiMedia)window.ZimiMedia.render(el,html);else el.innerHTML=html;
+ if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
  nav();
  if(S.v==="call"){tick();paintFeed();
@@ -8873,7 +8873,7 @@ Native.on("auth.error",obAuthError);
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
-Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set"){S.online=0;refresh()}});
+Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set")refresh()});
 Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);go(S.editBack||"profile");appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
@@ -9106,6 +9106,7 @@ const Home = {
   checkout: null, checkoutBusy: false, packId: '', notifyLoading: false
 };
 const homeIcons = {
+  signal:'<path d="M4 20v-3"/><path d="M9 20v-7"/><path d="M14 20V9"/><path d="M19 20V4"/>',
   close:'<path d="m6 6 12 12M6 18 18 6"/>',
   checks:'<path d="m2 12 5 5L18 6M10 15l2 2L23 6"/>',
   arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
@@ -9298,7 +9299,7 @@ Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;
 Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||S.v==='thread'||Home.giftTo)r()});
 Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
 Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
-Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=isApprovedHost()&&d.online?1:0;S.vis=isApprovedHost()&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}else if(['home','waiting'].includes(S.v))r()});
+Native.on('presence.saved',d=>{const changed=Home.presenceBusy,knownHost=isApprovedHost()||window.ZimiHostAccess?.checking()&&S.role==='host';Home.presenceBusy=false;S.online=knownHost&&d.online?1:0;S.vis=knownHost&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}else if(['home','waiting'].includes(S.v))r()});
 Native.on('call.created',d=>{S.callId=d.callId});
 Native.on('stream.opened',d=>{if(!window.ZIMI_LIVE_STREAMING_ENABLED){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}if(Home.dashboardCall&&d.stream.id!==Home.dashboardCall.streamId){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.streamBusy=false;if(d.hosting&&!isApprovedHost()){Native.send('stream.end',{streamId:d.stream.id});window.ZimiMedia?.stop();return}if(!['live','broadcast'].includes(S.v)){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.stream=d.stream;Home.hosting=d.hosting;Home.messages=d.messages||[];Home.mediaStatus='Connecting video…';go('live');window.ZimiMedia?.openStream(d.stream,d.hosting)});
 Native.on('stream.message',d=>{if(Home.stream?.id!==d.streamId)return;if(!Home.messages.some(x=>x.id===d.id))Home.messages.push(d);if(Home.messages.length>200)Home.messages.splice(0,Home.messages.length-200);if(S.v==='live'&&window.zrPaintMessages){zrPaintMessages();return}if(S.v==='live'){const input=document.getElementById('home-stream-message'),draft=input?.value;r();const next=document.getElementById('home-stream-message');if(next&&draft)next.value=draft}});
@@ -9310,7 +9311,8 @@ Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;
 // Revocation immediately closes host surfaces; member calls and viewing remain available.
 window.addEventListener('zimi:host-access',event=>{
   // A reconnect checks permission for new activity without interrupting an existing session.
-  if(event.detail.checking&&((Home.hosting&&Home.stream)||(S.v==='hcall'&&S.callId)))return;
+  // Checking is not a revocation and must never erase the saved online choice.
+  if(event.detail.checking)return;
   if(!event.detail.approved){
     if(homeCallPreparation?.view==='dialback')homeCancelPrepare('',false);
     const hostCall=['ring','hcall','dialback'].includes(S.v);
@@ -9370,13 +9372,9 @@ function homeDashboardHostOpen(){
   go(S.online?'waiting':'setup');
 }
 function homeDashboardHostEntry(){
-  if(!isApprovedHost())return '';
+  if(!isApprovedHost()&&!(window.ZimiHostAccess?.checking()&&S.role==='host'))return '';
   const online=!!S.online;
-  return `<section class="zh-host-entry ${online?'is-online':''}" aria-label="Your host availability">
-    <span class="zh-host-entry-icon" aria-hidden="true">${hi(online?'ph':'vid',23)}${online?'<i></i>':''}</span>
-    <div class="zh-host-entry-copy"><h2>${online?'You’re online':'You’re offline'}</h2><p>${online?'Ready to receive 1:1 calls.':'Go online to start receiving calls.'}</p></div>
-    <button type="button" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}">${online?'Manage':'Go online'}${hi('arrow',15)}</button>
-  </section>`;
+  return `<div class="zh-host-status-row"><button type="button" class="zh-host-status ${online?'is-online':''}" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}"><i aria-hidden="true"></i><span>${online?'Online':'Offline'}</span>${hi('chev',13)}</button></div>`;
 }
 function homeDashboardFilters(){
   const filters=[['popular','Popular','star'],['instant','Instant call','bolt'],...Home.categories.map(c=>[c,c,c==='Music'?'music':c==='Talk'?'chat':'star'])];
@@ -9584,9 +9582,42 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
      portrait size made the browser crop a narrow strip out of each frame (the zoomed preview);
      'none' keeps the camera's own framing so a full-screen video looks like a normal call. */
-  const CAMERA_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 }, resizeMode: 'none' };
+  const CAMERA_SIZE = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 }, resizeMode: 'none' };
   /* Last known frame shape per stream, so a redrawn video is laid out before its metadata loads. */
   const shapes = { local: '', remote: '' };
+  let quality = 'good';
+  const MEDIA_SELECTOR = 'video[data-zimi-local], video[data-zimi-remote], audio[data-zimi-remote]';
+
+  // Connect the new layout before moving videos, so moveBefore can preserve their
+  // decoder and playback state. Older WebViews resume from their pause event.
+  function render(container, html) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const available = [...container.querySelectorAll(MEDIA_SELECTOR)];
+    if (!available.length) { container.replaceChildren(template.content); return; }
+    const previous = [...container.childNodes], slots = [...template.content.querySelectorAll(MEDIA_SELECTOR)], preserved = new Set();
+    container.append(template.content);
+    slots.forEach(slot => {
+      const index = available.findIndex(el => el.tagName === slot.tagName && el.hasAttribute('data-zimi-local') === slot.hasAttribute('data-zimi-local'));
+      if (index < 0) return;
+      const video = available.splice(index, 1)[0];
+      preserved.add(video);
+      if (typeof slot.parentElement?.moveBefore === 'function') {
+        slot.parentElement.moveBefore(video, slot); slot.remove();
+      } else slot.replaceWith(video);
+    });
+    previous.forEach(node => { if (!preserved.has(node)) node.remove(); });
+  }
+  function paintQuality() {
+    document.querySelectorAll('[data-zimi-network]').forEach(el => {
+      el.hidden = quality === 'good';
+      el.dataset.quality = quality;
+      const label = quality === 'reconnecting' ? 'Reconnecting' : 'Poor connection';
+      const text = el.querySelector('span');
+      if (text && text.textContent !== label) text.textContent = label;
+    });
+  }
+  function setQuality(value) { quality = value; paintQuality(); }
 
   function status(message, error) {
     if (typeof Home !== 'undefined') Home.mediaStatus = message;
@@ -9612,12 +9643,16 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     peer.pc.onicecandidate = null;
     peer.pc.ontrack = null;
     peer.pc.onconnectionstatechange = null;
+    peer.pc.oniceconnectionstatechange = null;
+    clearInterval(peer.monitor);
+    clearTimeout(peer.recoveryTimer);
     peer.pc.close();
   }
   function clearPeers() {
     [...peers.keys()].forEach(closePeer);
     stopTracks(remote);
     remote = null;
+    setQuality('good');
   }
   function stop() {
     generation++;
@@ -9635,6 +9670,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     stopTracks(local);
     local = null;
     shapes.local = shapes.remote = '';
+    setQuality('good');
     if (configRequest) {
       const pending = configRequest;
       configRequest = null;
@@ -9668,6 +9704,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     el.addEventListener('resize', update);
   }
   function attach() {
+    paintQuality();
     if (switchingStream) switchingStream.getVideoTracks().forEach(track => { track.enabled = cameraEnabled(); });
     if (local) {
       const muted = typeof S !== 'undefined' && S.mic === 0;
@@ -9677,14 +9714,22 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     }
     [['local', local], ['remote', remote]].forEach(([kind, stream]) => {
       document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
+        if (!el.zimiPlaybackWatched) {
+          el.zimiPlaybackWatched = true;
+          el.addEventListener('pause', () => {
+            // A fallback DOM move can pause media after attach() has already run.
+            if (!el.isConnected || document.hidden || !el.srcObject || ![local, remote].includes(el.srcObject)) return;
+            el.play()?.catch(() => {});
+          });
+        }
         el.muted = kind === 'local' || playbackMuted;
         if (kind === 'local') el.dataset.zimiFacing = facingMode;
         if (el.tagName === 'VIDEO') watchShape(el, kind);
-        if (el.srcObject === stream) return;
-        el.srcObject = stream;
+        const unchanged = el.srcObject === stream;
+        if (!unchanged) el.srcObject = stream;
         el.playsInline = true;
         el.autoplay = true;
-        if (!stream) return;
+        if (!stream || unchanged && !el.paused) return;
         const playing = el.play();
         if (playing && playing.catch) playing.catch(() => {
           if (el.srcObject !== stream || kind === 'local') return;
@@ -9744,7 +9789,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   }
   function getState() {
     return {
-      facingMode, playbackMuted, switchingCamera: !!cameraSwitch,
+      facingMode, playbackMuted, switchingCamera: !!cameraSwitch, connectionQuality: quality,
       microphoneEnabled: typeof S === 'undefined' || S.mic !== 0,
       cameraEnabled: cameraEnabled()
     };
@@ -9887,10 +9932,88 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     stop();
     status(message, true);
   }
+  async function tuneVideo(peer, poor) {
+    if (peer.tuning || peer.tuned === poor) return;
+    peer.tuning = true;
+    try {
+      for (const sender of peer.pc.getSenders()) {
+        if (sender.track?.kind !== 'video' || !sender.getParameters || !sender.setParameters) continue;
+        const params = sender.getParameters();
+        if (!params.encodings?.length) continue;
+        params.encodings.forEach(encoding => {
+          encoding.maxBitrate = poor ? 350000 : 1200000;
+          encoding.maxFramerate = poor ? 15 : 24;
+          encoding.scaleResolutionDownBy = poor ? 2 : 1;
+        });
+        await sender.setParameters(params);
+      }
+      peer.tuned = poor;
+    } catch (_) { /* Older WebViews still use WebRTC's built-in congestion control. */ }
+    finally { peer.tuning = false; }
+  }
+  async function sampleQuality(session, id, peer) {
+    if (active !== session || peers.get(id) !== peer || peer.sampling || !peer.pc.getStats) return;
+    peer.sampling = true;
+    try {
+      const report = await peer.pc.getStats();
+      if (active !== session || peers.get(id) !== peer) return;
+      let poor = navigator.onLine === false, cpuLimited = false;
+      report.forEach(stat => {
+        if (stat.type === 'candidate-pair' && stat.state === 'succeeded' && stat.nominated && stat.currentRoundTripTime > .6) poor = true;
+        if (['inbound-rtp', 'remote-inbound-rtp'].includes(stat.type)) {
+          const before = peer.stats.get(stat.id);
+          if (stat.jitter > .08 || stat.roundTripTime > .6) poor = true;
+          if (before) {
+            const received = Math.max(0, (stat.packetsReceived || 0) - before.received);
+            const lost = Math.max(0, (stat.packetsLost || 0) - before.lost);
+            if (received + lost >= 20 && lost / (received + lost) > .08) poor = true;
+            if (stat.freezeCount > before.freezes) poor = true;
+          }
+          peer.stats.set(stat.id, { received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0 });
+        }
+        if (stat.type === 'outbound-rtp' && stat.qualityLimitationReason === 'bandwidth') poor = true;
+        if (stat.type === 'outbound-rtp' && stat.qualityLimitationReason === 'cpu') cpuLimited = true;
+      });
+      if (peer.pc.connectionState !== 'connected') return;
+      peer.goodSamples = poor ? 0 : peer.goodSamples + 1;
+      if (poor || peer.goodSamples >= 3) {
+        setQuality(poor ? 'poor' : 'good');
+        void tuneVideo(peer, poor || cpuLimited);
+      }
+    } catch (_) { /* A stats read may race call cleanup or be unsupported. */ }
+    finally { peer.sampling = false; }
+  }
+  function recoverPeer(session, id, peer) {
+    if (active !== session || peers.get(id) !== peer || peer.recoveryTimer) return;
+    if (!peer.recoveryStarted) peer.recoveryStarted = Date.now();
+    setQuality('reconnecting');
+    status('Connection interrupted. Reconnecting…');
+    peer.recoveryTimer = setTimeout(() => {
+      peer.recoveryTimer = null;
+      if (active !== session || peers.get(id) !== peer) return;
+      if (peer.pc.connectionState === 'connected' && peer.pc.iceConnectionState !== 'failed') return;
+      if (Date.now() - peer.recoveryStarted >= 30000) return fail(session, new Error('The media connection could not recover. Please reconnect.'));
+      // Only the original offerer restarts ICE, avoiding competing offers.
+      if (peer.offerer) enqueue(session, id, async current => {
+        if (current.pc.signalingState === 'stable') {
+          current.candidates.length = 0;
+          const description = await current.pc.createOffer({ iceRestart: true });
+          if (active !== session || peers.get(id) !== current) return;
+          await current.pc.setLocalDescription(description);
+        }
+        const description = current.pc.localDescription;
+        if (description?.type === 'offer') {
+          sendSignal(session, id, { description: { type: description.type, sdp: description.sdp } });
+          current.candidates.forEach(candidate => sendSignal(session, id, { candidate }));
+        }
+      });
+      recoverPeer(session, id, peer);
+    }, 3000);
+  }
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
     const pc = new RTCPeerConnection(session.config);
-    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer };
+    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0 };
     peers.set(id, peer);
     if ((session.kind === 'call' || session.hosting) && local) local.getTracks().forEach(track => pc.addTrack(track, local));
     pc.onicecandidate = event => {
@@ -9911,13 +10034,28 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     };
     pc.onconnectionstatechange = () => {
       if (active !== session) return;
-      if (pc.connectionState === 'connected') status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
-      if (pc.connectionState === 'disconnected') status('Connection interrupted. Reconnecting…');
+      if (pc.connectionState === 'connected') {
+        clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
+        setQuality('good');
+        status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
+        if (session.kind === 'call') void tuneVideo(peer, false);
+      }
+      if (pc.connectionState === 'disconnected') {
+        if (session.kind === 'call') recoverPeer(session, id, peer);
+        else status('Connection interrupted. Reconnecting…');
+      }
       if (pc.connectionState === 'failed') {
         if (session.kind === 'stream' && session.hosting) { closePeer(id); status('One viewer disconnected. Your broadcast is still live.'); }
+        else if (session.kind === 'call') recoverPeer(session, id, peer);
         else fail(session, new Error('The media connection failed. Please reconnect.'));
       }
     };
+    if (session.kind === 'call') {
+      pc.oniceconnectionstatechange = () => {
+        if (['failed', 'disconnected'].includes(pc.iceConnectionState)) recoverPeer(session, id, peer);
+      };
+      peer.monitor = setInterval(() => void sampleQuality(session, id, peer), 2000);
+    }
     return peer;
   }
   function enqueue(session, id, work) {
@@ -10067,6 +10205,12 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   ['stream.closed', 'stream.ended'].forEach(type => Native.on(type, data => { if (active && active.kind === 'stream' && active.id === data.streamId) stop(); }));
   ['session.none', 'session.expired'].forEach(type => Native.on(type, stop));
   Native.on('realtime.status', data => {
+    if (active?.kind === 'call') {
+      if (data.connected) peers.forEach((peer, id) => {
+        if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer);
+      });
+      return;
+    }
     if (!active || active.kind !== 'stream') return;
     if (!data.connected) active.reconnecting = true;
     else if (active.reconnecting && active.ready) {
@@ -10084,7 +10228,8 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
       pending.reject(new Error(data.message || 'Could not load video connection settings.'));
     } else if (data.action === 'stream.start') { stop(); status(data.message || 'The broadcast could not be started.', true); }
     else if (active && ['rtc.signal', 'stream.signal', 'stream.ready'].includes(data.action)) {
-      if (active.kind === 'call' || data.action === 'stream.ready') fail(active, new Error(data.message || 'The media connection was interrupted.'));
+      if (active.kind === 'call') peers.forEach((peer, id) => { if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer); });
+      else if (data.action === 'stream.ready') fail(active, new Error(data.message || 'The media connection was interrupted.'));
       else status(data.message || 'The media connection was interrupted.', true);
     }
   });
@@ -10096,7 +10241,19 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   window.addEventListener('pagehide', stop);
   const screen = document.getElementById('screen');
   if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
-  window.ZimiMedia = { prepare, attach, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
+  function resume() {
+    if (document.hidden) return;
+    attach();
+    if (active?.kind === 'call') peers.forEach((peer, id) => {
+      if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer);
+      else void sampleQuality(active, id, peer);
+    });
+  }
+  document.addEventListener('visibilitychange', resume);
+  window.addEventListener('online', resume);
+  window.addEventListener('offline', () => { if (active?.kind === 'call') setQuality('reconnecting'); });
+  Native.on('app.foreground', resume);
+  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
 })();
 
 /* Live rooms share the authenticated native transport and WebRTC media layer.
@@ -10134,7 +10291,7 @@ function zrEnsure(){
 }
 function zrAvatar(p,size=34){return avc(p||{n:'Viewer',seed:12},size)}
 function zrRound(icon,label,action,extra=''){return `<button type="button" class="zr-round ${extra}" aria-label="${esc(label)}" onclick="${action}">${hi(icon,21)}</button>`}
-function zrStatus(){return `<p class="zh-media-status zr-status" role="status">${esc(Home.mediaStatus||(DEMO?'Design preview':'Connecting…'))}</p>`}
+function zrStatus(){return `${zrIsCall()?`<div class="zr-network" data-zimi-network role="status" aria-live="polite" hidden>${hi('signal',16)}<span>Poor connection</span></div>`:''}<p class="zh-media-status zr-status" role="status">${esc(Home.mediaStatus||(DEMO?'Design preview':'Connecting…'))}</p>`}
 function zrIdentity(p,host,call){
   return `<header class="zr-header"><div class="zr-identity">${zrAvatar(p)}<div class="zr-person"><strong>${esc(p?.n||'Live creator')}</strong><span><i></i>${call?'PRIVATE CALL':'LIVE'}${host&&!call?' <b data-room-clock>00:00</b>':''}</span></div>${!host&&!call?`<button class="zr-follow ${S.following[p?.id]?'is-following':''}" onclick="toggleFollow('${domId(p?.id||'')}',event)" aria-label="${S.following[p?.id]?'Unfollow':'Follow'} ${esc(p?.n||'creator')}">${S.following[p?.id]?'Following':'+ Follow'}</button>`:''}</div><div class="zr-header-right">${call?`<span class="zr-pill zr-timer">${hi('lock',12)} <span id="ck">${clock(S.sec)}</span></span>`:host?`<button class="zr-pill zr-earnings" onclick="zrOpen('supporters')" aria-label="Session gifts">${hi('coin',13)} ${homeCompact(Room.received)}</button>`:''}${!call?`<button class="zr-pill zr-viewers" onclick="zrOpen('audience')" aria-label="Live viewers">${hi('eye',14)} <span data-room-viewers>${homeCompact(Home.stream.viewers)}</span></button>`:''}${zrRound('close',call?'End call':host?'End broadcast':'Leave live',"zrExit()",'zr-close')}</div></header>`;
 }
@@ -10434,10 +10591,9 @@ function hcIdentityAvatar(person, size = 104) {
   const hue = person === me ? 19 : (seedOf(person?.id || name) % 220) + 90;
   return `<span class="hc-identity-avatar" style="width:${size}px;height:${size}px;--hc-avatar-hue:${hue}"><b style="font-size:${Math.max(11, Math.round(size * .34))}px">${esc(initials)}</b>${src ? `<img src="${src}" alt="${esc(name)}" onerror="this.remove()">` : ''}</span>`;
 }
-/* The host's own camera across the whole screen. The second, muted copy is a soft fill shown
-   only behind a landscape camera, which is displayed whole rather than cropped. */
+/* One decoder per camera; landscape frames sit whole on a consistent solid stage. */
 function hcStageVideo() {
-  return '<video data-zimi-local autoplay muted playsinline></video><video data-zimi-local data-zimi-fill autoplay muted playsinline></video>';
+  return '<video data-zimi-local autoplay muted playsinline></video>';
 }
 
 /* The same entrance timeline survives status acknowledgments and other redraws. */
@@ -10503,7 +10659,7 @@ function hcWaitingView() {
   return `<section class="hc-waiting" style="${hcSceneStyle('waiting')}" aria-label="Online and waiting for calls">
     <div class="hc-waiting-main"><div class="hc-host-avatar is-waiting">${hcIdentityAvatar(me, 104)}<i aria-hidden="true"></i><i aria-hidden="true"></i></div>
     <h1>You’re online</h1><p class="hc-waiting-status">Waiting for callers… ${S.vis ? 'you’re visible on Home.' : 'you’re hidden from Home.'}</p>
-    <p class="hc-waiting-note">You stay online when you leave this screen. Incoming calls ring wherever you are in the app. Keep the app connected so you don’t miss a call.</p>
+    <p class="hc-waiting-note">You stay online when you switch apps or come back later. Tap Go offline when you want to stop receiving calls.</p>
     <div class="hc-waiting-actions"><button type="button" class="hc-primary" onclick="go('home')">Browse the app</button>
     <button type="button" class="hc-offline" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Going offline…' : 'Go offline'}</button></div></div>
     </section>`;

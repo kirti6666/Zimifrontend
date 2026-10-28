@@ -1,16 +1,12 @@
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.zh-host-entry{display:flex;align-items:center;gap:10px;min-height:76px;padding:13px 12px;margin:0 0 4px;border:1px solid var(--line);border-radius:19px;background:linear-gradient(115deg,var(--surface),color-mix(in srgb,var(--accent) 8%,var(--surface)));color:var(--ink)}
-.zh-host-entry-icon{position:relative;display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:50%;background:var(--raised);color:var(--muted)}
-.zh-host-entry.is-online .zh-host-entry-icon{color:var(--online);background:color-mix(in srgb,var(--online) 12%,var(--surface))}
-.zh-host-entry-icon>i{position:absolute;right:0;bottom:0;width:8px;height:8px;border-radius:50%;background:var(--online);outline:2px solid var(--surface)}
-.zh-host-entry-copy{flex:1;min-width:0}
-.zh-host-entry-copy h2{margin:0 0 3px;font-size:calc(14px * var(--theme-font-scale,1));font-weight:750;letter-spacing:-.25px;line-height:1.3}
-.zh-host-entry-copy p{margin:0;color:var(--muted);font-size:calc(10px * var(--theme-font-scale,1));line-height:1.4;text-wrap:pretty}
-.zh-host-entry>button{display:flex;align-items:center;justify-content:center;gap:5px;flex:none;min-height:44px;padding:10px 12px;border:0;border-radius:999px;background:var(--accent);color:var(--cta-ink);font-size:11px;font-weight:700}
-.zh-host-entry.is-online>button{background:var(--raised);color:var(--ink)}
-.zh-host-entry>button:active{transform:scale(.97)}
+.zh-host-status-row{display:flex;justify-content:flex-end;margin:-6px 0 4px}
+.zh-host-status{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:650}
+.zh-host-status>i{width:7px;height:7px;flex:none;border-radius:50%;background:var(--muted)}
+.zh-host-status.is-online{color:var(--ink)}
+.zh-host-status.is-online>i{background:var(--online)}
+.zh-host-status:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .zh-home.zh-dashboard .zh-live-section{margin:0}
 .zh-home.zh-dashboard .zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin:0 0 12px}
 .zh-home.zh-dashboard .zh-section-title h2{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--ink);font-size:calc(19px * var(--theme-font-scale,1));line-height:1.35;letter-spacing:-.4px;font-weight:700}

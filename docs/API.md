@@ -81,7 +81,7 @@ for it (login, call failed).
 | App opens with a saved login | `GET /me` | `Account` |
 | Finish sign-up, edit profile | `PUT /me/profile` | – |
 | Submit verification | `POST /me/verification` | `{status}` |
-| Go online, offline, visible or hidden | `PUT /me/presence` `{online, visible}` | – |
+| Go online or offline | `PATCH /safety` `{onlineForCalls, allowRequests, showActivity, discoverable}` | Saved safety flags; `onlineForCalls` persists through backgrounding and socket loss |
 | Show MVPs switch | `PUT /me/settings` | – |
 | Home | `GET /home?mode=online&page=1` | Adapter returns `HomeData` with active hosts, live stage and pagination |
 | Explore | `GET /home?mode=popular` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |

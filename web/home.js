@@ -12,6 +12,7 @@ const Home = {
   checkout: null, checkoutBusy: false, packId: '', notifyLoading: false
 };
 const homeIcons = {
+  signal:'<path d="M4 20v-3"/><path d="M9 20v-7"/><path d="M14 20V9"/><path d="M19 20V4"/>',
   close:'<path d="m6 6 12 12M6 18 18 6"/>',
   checks:'<path d="m2 12 5 5L18 6M10 15l2 2L23 6"/>',
   arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
@@ -204,7 +205,7 @@ Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;
 Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||S.v==='thread'||Home.giftTo)r()});
 Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
 Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
-Native.on('presence.saved',d=>{const changed=Home.presenceBusy;Home.presenceBusy=false;S.online=isApprovedHost()&&d.online?1:0;S.vis=isApprovedHost()&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}else if(['home','waiting'].includes(S.v))r()});
+Native.on('presence.saved',d=>{const changed=Home.presenceBusy,knownHost=isApprovedHost()||window.ZimiHostAccess?.checking()&&S.role==='host';Home.presenceBusy=false;S.online=knownHost&&d.online?1:0;S.vis=knownHost&&d.visible?1:0;if(changed){go(d.online?'waiting':'home');homeLoad()}else if(['home','waiting'].includes(S.v))r()});
 Native.on('call.created',d=>{S.callId=d.callId});
 Native.on('stream.opened',d=>{if(!window.ZIMI_LIVE_STREAMING_ENABLED){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}if(Home.dashboardCall&&d.stream.id!==Home.dashboardCall.streamId){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.streamBusy=false;if(d.hosting&&!isApprovedHost()){Native.send('stream.end',{streamId:d.stream.id});window.ZimiMedia?.stop();return}if(!['live','broadcast'].includes(S.v)){Native.send(d.hosting?'stream.end':'stream.leave',{streamId:d.stream.id});return}Home.stream=d.stream;Home.hosting=d.hosting;Home.messages=d.messages||[];Home.mediaStatus='Connecting video…';go('live');window.ZimiMedia?.openStream(d.stream,d.hosting)});
 Native.on('stream.message',d=>{if(Home.stream?.id!==d.streamId)return;if(!Home.messages.some(x=>x.id===d.id))Home.messages.push(d);if(Home.messages.length>200)Home.messages.splice(0,Home.messages.length-200);if(S.v==='live'&&window.zrPaintMessages){zrPaintMessages();return}if(S.v==='live'){const input=document.getElementById('home-stream-message'),draft=input?.value;r();const next=document.getElementById('home-stream-message');if(next&&draft)next.value=draft}});
@@ -216,7 +217,8 @@ Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;
 // Revocation immediately closes host surfaces; member calls and viewing remain available.
 window.addEventListener('zimi:host-access',event=>{
   // A reconnect checks permission for new activity without interrupting an existing session.
-  if(event.detail.checking&&((Home.hosting&&Home.stream)||(S.v==='hcall'&&S.callId)))return;
+  // Checking is not a revocation and must never erase the saved online choice.
+  if(event.detail.checking)return;
   if(!event.detail.approved){
     if(homeCallPreparation?.view==='dialback')homeCancelPrepare('',false);
     const hostCall=['ring','hcall','dialback'].includes(S.v);

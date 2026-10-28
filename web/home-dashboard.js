@@ -19,13 +19,9 @@ function homeDashboardHostOpen(){
   go(S.online?'waiting':'setup');
 }
 function homeDashboardHostEntry(){
-  if(!isApprovedHost())return '';
+  if(!isApprovedHost()&&!(window.ZimiHostAccess?.checking()&&S.role==='host'))return '';
   const online=!!S.online;
-  return `<section class="zh-host-entry ${online?'is-online':''}" aria-label="Your host availability">
-    <span class="zh-host-entry-icon" aria-hidden="true">${hi(online?'ph':'vid',23)}${online?'<i></i>':''}</span>
-    <div class="zh-host-entry-copy"><h2>${online?'You’re online':'You’re offline'}</h2><p>${online?'Ready to receive 1:1 calls.':'Go online to start receiving calls.'}</p></div>
-    <button type="button" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}">${online?'Manage':'Go online'}${hi('arrow',15)}</button>
-  </section>`;
+  return `<div class="zh-host-status-row"><button type="button" class="zh-host-status ${online?'is-online':''}" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}"><i aria-hidden="true"></i><span>${online?'Online':'Offline'}</span>${hi('chev',13)}</button></div>`;
 }
 function homeDashboardFilters(){
   const filters=[['popular','Popular','star'],['instant','Instant call','bolt'],...Home.categories.map(c=>[c,c,c==='Music'?'music':c==='Talk'?'chat':'star'])];

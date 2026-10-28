@@ -12,7 +12,7 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
 (async () => {
   const server = http.createServer((_req, res) => {
     res.setHeader('Content-Type', 'text/html');
-    res.end('<div id="screen"><video data-zimi-local autoplay muted playsinline></video><video data-zimi-remote autoplay playsinline></video><p data-zimi-media-status></p></div>');
+    res.end('<div id="screen"><video data-zimi-local autoplay muted playsinline></video><video data-zimi-remote autoplay playsinline></video><div data-zimi-network hidden><span>Poor connection</span></div><p data-zimi-media-status></p></div>');
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -132,6 +132,46 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     await receive(pages.viewer, 'call.connected', { callId: 'call-one', initiator: false, peerId: 'host', voice: false });
     await receive(pages.host, 'call.connected', { callId: 'call-one', initiator: true, peerId: 'viewer', voice: false });
     await Promise.all(Object.values(pages).map(page => page.waitForFunction(() => document.querySelector('[data-zimi-remote]').readyState >= 2, { timeout: 15000 })));
+    const reused = await pages.host.evaluate(() => {
+      const container=document.getElementById('screen'),video=container.querySelector('[data-zimi-remote]'),stream=video.srcObject,captures=captureCount;
+      for(let i=0;i<25;i++){ZimiMedia.render(container,'<video data-zimi-local autoplay muted playsinline></video><video data-zimi-remote autoplay playsinline></video><div data-zimi-network hidden><span>Poor connection</span></div>');ZimiMedia.attach()}
+      return {sameVideo:video===container.querySelector('[data-zimi-remote]'),sameStream:video.srcObject===stream,captureUnchanged:captures===captureCount};
+    });
+    assert.deepEqual(reused,{sameVideo:true,sameStream:true,captureUnchanged:true},'Repeated call redraws preserve the actual playing video and capture');
+    await pages.host.evaluate(() => {
+      const move=Element.prototype.moveBefore;Element.prototype.moveBefore=undefined;
+      try {
+        const container=document.getElementById('screen');
+        ZimiMedia.render(container,'<video data-zimi-local autoplay muted playsinline></video><video data-zimi-remote autoplay playsinline></video><div data-zimi-network hidden><span>Poor connection</span></div>');
+        ZimiMedia.attach();window.lastRemoteTime=container.querySelector('[data-zimi-remote]').currentTime;
+      } finally { Element.prototype.moveBefore=move; }
+    });
+    await pages.host.waitForFunction(() => document.querySelector('[data-zimi-remote]').currentTime>lastRemoteTime);
+    await pages.host.evaluate(() => { document.querySelector('[data-zimi-remote]').pause(); Native.receive('app.foreground',{}); });
+    await pages.host.waitForFunction(() => !document.querySelector('[data-zimi-remote]').paused);
+    const healthyCallEnds=messages.filter(message=>message.type==='call.end').length;
+    await receive(pages.host,'operation.error',{action:'rtc.signal',message:'Temporary signaling outage'});
+    assert.equal(messages.filter(message=>message.type==='call.end').length,healthyCallEnds,'A signaling acknowledgment failure does not terminate healthy call media');
+    await pages.host.evaluate(() => {
+      const pc=peerConnections.at(-1);window.realStats=pc.getStats.bind(pc);window.weakNetwork=true;
+      pc.getStats=async()=>new Map([['inbound',{id:'inbound',type:'inbound-rtp',packetsReceived:100,packetsLost:0,jitter:weakNetwork ? .12 : 0}],['path',{id:'path',type:'candidate-pair',state:'succeeded',nominated:true,currentRoundTripTime:weakNetwork ? .9 : .03}]]);
+    });
+    await pages.host.waitForFunction(() => ZimiMedia.getState().connectionQuality==='poor');
+    assert.equal(await pages.host.locator('[data-zimi-network]').isVisible(),true,'Weak media quality displays the network signal warning');
+    await pages.host.waitForFunction(() => peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').getParameters().encodings[0].maxBitrate===350000);
+    await pages.host.evaluate(() => { window.weakNetwork=false; });
+    await pages.host.waitForFunction(() => ZimiMedia.getState().connectionQuality==='good',{timeout:10000});
+    assert.equal(await pages.host.locator('[data-zimi-network]').isVisible(),false,'Sustained recovery hides the signal warning');
+    const offersBeforeRecovery=messages.filter(message=>message.id==='host'&&message.type==='rtc.signal'&&message.data.description?.type==='offer').length;
+    await pages.host.evaluate(() => {
+      const pc=peerConnections.at(-1);pc.getStats=realStats;
+      Object.defineProperty(pc,'connectionState',{configurable:true,get:()=> 'failed'});pc.onconnectionstatechange();
+    });
+    assert.equal(await pages.host.evaluate(() => ZimiMedia.getState().connectionQuality),'reconnecting');
+    await new Promise((resolve,reject)=>{const deadline=Date.now()+8000;const timer=setInterval(()=>{if(messages.filter(message=>message.id==='host'&&message.type==='rtc.signal'&&message.data.description?.type==='offer').length>offersBeforeRecovery){clearInterval(timer);resolve()}else if(Date.now()>deadline){clearInterval(timer);reject(new Error('ICE recovery did not offer again'))}},50)});
+    await pages.host.evaluate(() => { const pc=peerConnections.at(-1);delete pc.connectionState;pc.onconnectionstatechange(); });
+    await pages.host.waitForFunction(() => peerConnections.at(-1).connectionState==='connected'&&peerConnections.at(-1).signalingState==='stable');
+    assert.equal(messages.filter(message=>message.type==='call.end').length,healthyCallEnds,'ICE recovery keeps the same call alive');
     await pages.host.evaluate(() => { S.mic=0; S.cam=0; ZimiMedia.attach(); });
     assert.equal(await pages.host.evaluate(() => document.querySelector('[data-zimi-local]').srcObject.getTracks().every(track => !track.enabled)), true, 'Mute and camera controls affect transmitted tracks');
     await Promise.all(Object.values(pages).map(page => receive(page, 'call.ended', {callId:'call-one'})));

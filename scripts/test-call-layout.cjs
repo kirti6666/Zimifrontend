@@ -79,11 +79,22 @@ async function checkLayout(page, label, voice = false) {
       Home.mediaStatus = 'Connected'; r();
     }, { hosting, creator, member });
     await page.locator('.zr-call').waitFor();
+    await page.waitForFunction(() => {
+      const video = document.querySelector('video[data-zimi-local]');
+      return video?.readyState >= 2 && !video.paused && video.videoWidth > 0;
+    });
     return page;
   }
   try {
     const page = await open();
     assert.equal(await page.evaluate(() => DEMO), false, 'Checks use the production UI with mocked account data');
+    assert.equal(await page.evaluate(() => {
+      const video=document.querySelector('video[data-zimi-local]');
+      for(let i=0;i<10;i++)r();
+      return video===document.querySelector('video[data-zimi-local]')&&video.srcObject?.active;
+    }),true,'Production screen redraws preserve the playing camera element');
+    await page.evaluate(() => { window.__lastCameraTime=document.querySelector('video[data-zimi-local]').currentTime; });
+    await page.waitForFunction(() => document.querySelector('video[data-zimi-local]').currentTime > __lastCameraTime, { timeout: 5000 });
     await receive(page, 'data.loading', { resource: 'catalog', loading: true });
     await page.getByRole('status', { name: 'Loading call gifts', exact: true }).waitFor();
     await receive(page, 'data.loading', { resource: 'catalog', loading: false, error: 'Gifts unavailable' });
