@@ -414,6 +414,8 @@ screenshots in `artifacts/notifications-*.png`. Backend integration coverage is 
 
 ### Push notifications (Firebase)
 
+Full push set-up, changes and rollout: [docs/PUSH_NOTIFICATIONS.md](docs/PUSH_NOTIFICATIONS.md).
+
 Android phones receive push through Firebase Cloud Messaging
 (`@react-native-firebase/messaging`), shown with `react-native-notify-kit`.
 `src/push.ts` asks for the Android 13+ notification permission, reads the
