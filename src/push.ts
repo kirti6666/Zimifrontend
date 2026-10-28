@@ -192,6 +192,7 @@ export async function registerPush(save: (token: string) => Promise<void>, mode:
     if (!permission.granted) return "denied";
     const token = await getToken(fcm);
     if (!token) return "unavailable";
+    if (DEVELOPMENT) console.log("FCM token (for scripts/send-test-push.mjs):", token);
     await save(token);
     return "registered";
   } catch (error) {
