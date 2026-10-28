@@ -3,6 +3,7 @@
 const ZNotices={q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,limit:20,total:0,totalCount:0,loaded:false,sequence:0,requestId:0,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,detail:null,accountId:'',changed:false,filtersOpen:false,selecting:false};
 function znAccepts(data){return data.requestId==null||data.requestId===ZNotices.requestId}
 function znBusy(){return !DEMO&&contentPending('notifications')}
+ZimiPullRefresh.register('notifications',{refresh:()=>znLoad(),busy:()=>znBusy()||ZNotices.pending});
 function znFiltered(){return !!(ZNotices.q.trim()||ZNotices.status!=='all'||ZNotices.audience!=='all'||ZNotices.period!=='all')}
 function znBounds(){
   if(ZNotices.period==='all')return {};
@@ -107,7 +108,7 @@ function znRow(item){
 function znResults(){
   const state=ContentLoading.notifications,loading=znBusy(),more=state.page>1;
   if(loading&&!more)return contentSkeleton('rows','Loading notifications',4);
-  if(state.error&&!more)return `<div class="zn-empty zn-load-error" role="alert"><span class="zn-empty-icon">${hi('refresh',30)}</span><h3>Unable to load your updates</h3><p>${esc(state.error)}</p><button class="zn-primary" onclick="znLoad()">Retry</button></div>`;
+  if(state.error&&!more)return `<div class="zn-empty zn-load-error" role="alert"><span class="zn-empty-icon">${hi('bell',30)}</span><h3>Unable to load your updates</h3><p>${esc(state.error)}</p><button class="zn-primary" onclick="znLoad()">Retry</button></div>`;
   let list=Home.notifications.map(znRow).join('');
   if(!list&&!loading)list=`<div class="zn-empty"><span class="zn-empty-icon">${hi(znFiltered()?'srch':'checks',32)}</span><h3>${znFiltered()?'No matching notifications':"You're all caught up"}</h3><p>${znFiltered()?'Try another search or adjust your filters to find an update.':'New personal updates and community announcements will appear here.'}</p>${znFiltered()?'<button class="zn-primary" onclick="znResetFilters()">Reset filters</button>':''}</div>`;
   if(loading&&more)list+=contentSkeleton('rows','Loading more notifications',2);
@@ -134,7 +135,7 @@ function znView(){
       <div class="zn-filter-label">Read status</div><div class="zn-status" role="group" aria-label="Notification status">${[['all','All'],['unread','Unread'],['read','Read']].map(([key,label])=>`<button aria-pressed="${ZNotices.status===key}" class="${ZNotices.status===key?'on':''}" onclick="znFilter('status','${key}')" ${disabled}>${label}</button>`).join('')}</div>
       <div class="zn-filter-label">Updates</div><div class="zn-audience" role="group" aria-label="Notification audience">${[['all','All updates'],['personal','For you'],['announcements','Announcements']].map(([key,label])=>`<button aria-pressed="${ZNotices.audience===key}" class="${ZNotices.audience===key?'on':''}" onclick="znFilter('audience','${key}')" ${disabled}>${label}</button>`).join('')}</div>
       <div class="zn-filter-row"><label><span>Time period</span><select aria-label="Time period" id="zn-period" onchange="znFilter('period',this.value)" ${disabled}>${[['all','All time'],['today','Today'],['yesterday','Yesterday'],['earlier','Earlier'],['week','Last 7 days'],['month','Last 30 days']].map(([key,label])=>`<option value="${key}" ${ZNotices.period===key?'selected':''}>${label}</option>`).join('')}</select></label><label><span>Sort by</span><select aria-label="Sort notifications" id="zn-sort" onchange="znFilter('sort',this.value)" ${disabled}><option value="newest" ${ZNotices.sort==='newest'?'selected':''}>Newest first</option><option value="oldest" ${ZNotices.sort==='oldest'?'selected':''}>Oldest first</option></select></label></div>
-      <div class="zn-filter-actions"><button aria-label="Clear notification filters" onclick="znResetFilters()" ${disabled}>Reset filters</button><button aria-label="Refresh notifications" onclick="znLoad()" ${busy||ZNotices.pending?'disabled':''}>${hi('refresh',16)}Refresh</button><button aria-label="Notification preferences" onclick="znPreferences()">${hi('set',16)}Preferences</button></div>
+      <div class="zn-filter-actions"><button aria-label="Clear notification filters" onclick="znResetFilters()" ${disabled}>Reset filters</button><button aria-label="Notification preferences" onclick="znPreferences()">${hi('set',16)}Preferences</button></div>
     </div>
     <div class="zn-summary"><span>${busy?'Loading&hellip;':known?(znFiltered()?`${n(ZNotices.total)} matching`:Home.unreadCount?`${n(Home.unreadCount)} unread`:'All caught up'):''}</span><div><button class="zn-mark-all" onclick="znUpdate(true,null,true)" ${!known||!Home.unreadCount||ZNotices.pending?'disabled':''}>Mark all read</button><button aria-label="${ZNotices.selecting?'Done selecting':'Select notifications'}" onclick="znToggleSelecting()" ${disabled}>${ZNotices.selecting?'Done':'Select'}</button></div></div>
     ${ZNotices.changed?'<div class="zn-live-update"><span>New updates available</span><button onclick="znLoad()">Show updates</button></div>':''}

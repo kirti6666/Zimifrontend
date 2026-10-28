@@ -74,7 +74,7 @@ window.ZimiOffline = (() => {
     }
     if (offline && key !== renderedKey) {
       const label = checking ? 'Checking connection…' : 'Try again';
-      const retry = `<button class="zo-retry" onclick="ZimiOffline.retry()" ${checking ? 'disabled' : ''}>${icon('refresh', 19)}<span>${label}</span></button>`;
+      const retry = `<button class="zo-retry" onclick="ZimiOffline.retry()" ${checking ? 'disabled' : ''}><span>${label}</span></button>`;
       panel.innerHTML = `<div class="zo-content">
         <span class="zo-eyebrow"><i></i>${noInternet ? 'OFFLINE MODE' : 'CONNECTION PAUSED'}</span>
         ${illustration()}

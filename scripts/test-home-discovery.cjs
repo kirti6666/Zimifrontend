@@ -40,7 +40,7 @@ async function assertUniqueProfiles(page, expected) {
   try {
     const page = await open();
     assert.equal(await page.evaluate(() => DEMO), false);
-    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['Explore', 'Following']);
+    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['All', 'Following']);
     assert.equal(await page.locator('.zh-brand,.zh-logo,.zh-dashboard-filters,.zh-dashboard .zh-filters').count(), 0);
     assert.equal(await page.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 1);
     assert.equal(await page.locator('.zh-header-actions').getByRole('button', { name: 'Search creators', exact: true }).count(), 1);
@@ -63,16 +63,16 @@ async function assertUniqueProfiles(page, expected) {
     assert.equal(await timerRunning(page), false, 'Manual advancement preserves Pause');
     await page.getByRole('button', { name: 'Resume profile rotation', exact: true }).click();
     await page.mouse.move(1, 1);
-    await page.getByRole('tab', { name: 'Explore', exact: true }).focus();
+    await page.getByRole('tab', { name: 'All', exact: true }).focus();
     await page.locator('.zh-featured-carousel').evaluate(element => element.dispatchEvent(new MouseEvent('mouseleave')));
     await page.waitForFunction(() => !!HomeFeatured.timer);
     await page.locator('.zh-featured-carousel').hover();
     assert.equal(await timerRunning(page), false, 'Hover keeps the profile stable for interaction');
     await page.mouse.move(1, 1);
     await page.waitForFunction(() => !!HomeFeatured.timer);
-    await page.locator('.zh-featured-host .zh-person-profile').focus();
+    await page.locator('.zh-featured-host .zh-featured-profile-hit').focus();
     assert.equal(await timerRunning(page), false, 'Keyboard focus keeps the profile stable');
-    await page.getByRole('tab', { name: 'Explore', exact: true }).focus();
+    await page.getByRole('tab', { name: 'All', exact: true }).focus();
     await page.waitForFunction(() => !!HomeFeatured.timer);
 
     await receive(page, 'app.background');
@@ -106,8 +106,8 @@ async function assertUniqueProfiles(page, expected) {
     assert.deepEqual(await gridOrder('#home-host-grid'), [...Array(6).fill('host'), 'ad', ...Array(3).fill('host')], 'Home shows six hosts, the ad, then the rest');
     await page.evaluate(() => { window.__ad = document.querySelector('#home-host-grid [data-za-slot]'); homeFeaturedNext(); });
     assert.equal(await page.evaluate(() => document.querySelector('#home-host-grid').children[6] === window.__ad), true, 'Rotation keeps the same ad element after the sixth host');
-    await page.evaluate(() => go('explore'));
-    assert.deepEqual(await gridOrder('.zh-explore .zh-grid'), [...Array(6).fill('host'), 'ad', ...Array(4).fill('host')], 'Explore places its ad after six creators too');
+    await page.evaluate(() => go('all-creators'));
+    assert.deepEqual(await gridOrder('.zac-page .zh-grid'), [...Array(6).fill('host'), 'ad', ...Array(4).fill('host')], 'All Creators places its ad after six creators too');
     await page.evaluate(() => go('home'));
     await receive(page, 'data.home', feed(creators));
     assert.deepEqual(await gridOrder('#home-host-grid'), ['host', 'host', 'ad'], 'A short grid keeps the ad below its hosts');
@@ -121,9 +121,9 @@ async function assertUniqueProfiles(page, expected) {
     await receive(reduced, 'data.home', feed([creators[2]]));
     assert.equal(await featuredId(reduced), creators[2].id, 'Following features only a server-confirmed followed creator');
     await assertUniqueProfiles(reduced, [creators[2].id]);
-    await reduced.getByRole('tab', { name: 'Explore', exact: true }).click();
+    await reduced.getByRole('tab', { name: 'All', exact: true }).click();
     assert.deepEqual(await reduced.evaluate(() => __sent.filter(message => message.type === 'home.reload').at(-1).data), { page: 1, mode: 'popular' });
     assert.deepEqual(errors, [], 'No browser exceptions');
-    console.log('PASS Home discovery: Explore/Following header, host-only status, automatic and manual rotation, unique profiles, pause/focus/hover/background/loading guards, ads after six hosts, and reduced motion');
+    console.log('PASS Home discovery: All/Following header, host-only status, automatic and manual rotation, unique profiles, pause/focus/hover/background/loading guards, ads after six hosts, and reduced motion');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

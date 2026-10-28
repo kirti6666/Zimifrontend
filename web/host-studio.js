@@ -16,7 +16,7 @@ function hsTargetGift() {
   return gifts.find(gift => gift.id === HostStudio.giftId) || gifts[0] || null;
 }
 function hsGiftArt(gift) {
-  const src = gift && homeGiftUrl(gift.mediaUrl);
+  const src = gift && giftStillUrl(gift.name, gift.mediaUrl);
   return src ? `<img src="${src}" alt="">` : esc(gift?.emoji || '🎁');
 }
 function hsGiftProgress(gift = hsTargetGift()) {
@@ -79,7 +79,7 @@ function hsSetEffect(value) {
 function hsCatalogPlaceholder(rail = false) {
   if (!DEMO && contentPending('catalog')) return `<div class="hs-gift-loading ${rail ? 'hs-rail-loading' : ''}" role="status" aria-label="Loading gift targets" aria-busy="true">${Array.from({ length: rail ? 7 : 6 }, () => `<span aria-hidden="true">${skeletonLine('30px', 30)}${skeletonLine('36px', 8)}</span>`).join('')}</div>`;
   const error = !DEMO && ContentLoading.catalog.error;
-  return `<div class="hs-empty" ${error ? 'role="alert"' : ''}><span>${esc(error || 'Gift targets will appear when gifts are available.')}</span>${!DEMO ? `<button type="button" onclick="hsReloadCatalog()" data-hs-focus="retry-catalog">${hi('refresh', 14)} ${error ? 'Retry gift targets' : 'Load gift targets'}</button>` : ''}</div>`;
+  return `<div class="hs-empty" ${error ? 'role="alert"' : ''}><span>${esc(error || 'Gift targets will appear when gifts are available.')}</span>${!DEMO ? `<button type="button" onclick="hsReloadCatalog()" data-hs-focus="retry-catalog">${error ? 'Retry gift targets' : 'Load gift targets'}</button>` : ''}</div>`;
 }
 function hsTaskRows() {
   if (DEMO) return S.tasks.slice(0, 3).map(task => `<div class="hs-task"><span class="hs-task-icon">${hi(task.ico || 'cup', 18)}</span><span class="hs-task-copy"><b>${esc(task.d || task.t)}</b><small>${n(Math.min(task.p, task.goal))} / ${n(task.goal)} ${esc(task.u || '')}</small><i><em style="width:${hsPercent(task.p, task.goal)}%"></em></i></span><strong>${coinIcon(14)} ${n(task.rw)}</strong></div>`).join('');

@@ -33,7 +33,8 @@ async function recordClip(browser) {
 }
 
 async function open(browser, clip, { reducedMotion = 'no-preference', saveData = false } = {}) {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion });
+  // A short phone screen keeps the host grid below the fold, so only the featured card is in view.
+  const page = await browser.newPage({ viewport: { width: 390, height: 568 }, reducedMotion });
   const requests = [];
   await page.route('https://**/*', route => {
     const url = route.request().url();

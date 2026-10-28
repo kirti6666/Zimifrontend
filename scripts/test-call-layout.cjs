@@ -35,9 +35,9 @@ async function checkLayout(page, label, voice = false) {
       pip: pip ? { inside: pip.left >= box.left && pip.right <= box.right + 1, belowTop: pip.top >= top.bottom - 1, aboveDock: pip.bottom < dock.top } : null,
       outside: controls.filter(({ rect }) => rect.left < box.left - 1 || rect.right > box.right + 1 || rect.bottom > innerHeight + 1).map(x => x.label),
       crowded: controls.filter(({ rect }) => rect.width < 32 || rect.height < 32).map(x => x.label),
-      roomBackground: getComputedStyle(room).backgroundColor, expectedBackground: color(theme.colors.background),
-      roomColor: getComputedStyle(room).color, expectedColor: color(theme.colors.text),
-      theme: document.documentElement.dataset.theme, expectedTheme: theme.mode,
+      roomBackground: getComputedStyle(room).backgroundColor, expectedBackground: color(ztDisplayColors(theme).background),
+      roomColor: getComputedStyle(room).color, expectedColor: color(ztDisplayColors(theme).text),
+      theme: document.documentElement.dataset.theme, expectedTheme: window.ZimiThemes.dark() ? 'dark' : 'light',
       fonts: [...room.querySelectorAll('button,input')].filter(el => el.getBoundingClientRect().width && getComputedStyle(el).fontFamily !== getComputedStyle(document.body).fontFamily).map(el => el.className),
       primaryTabs: document.getElementById('nav').getBoundingClientRect().height,
     };
@@ -46,9 +46,9 @@ async function checkLayout(page, label, voice = false) {
   assert.equal(result.bottomVisible, true, `${label}: bottom controls remain on screen`);
   assert.deepEqual(result.outside, [], `${label}: every control stays inside the call`);
   assert.deepEqual(result.crowded, [], `${label}: controls have usable touch targets`);
-  assert.equal(result.roomBackground, result.expectedBackground, `${label}: current theme canvas is preserved`);
-  assert.equal(result.roomColor, result.expectedColor, `${label}: current theme text is preserved`);
-  assert.equal(result.theme, result.expectedTheme, `${label}: native theme mode is preserved`);
+  assert.equal(result.roomBackground, result.expectedBackground, `${label}: the app canvas (white, or black in Dark Mode) is used`);
+  assert.equal(result.roomColor, result.expectedColor, `${label}: the app text color is used`);
+  assert.equal(result.theme, result.expectedTheme, `${label}: native chrome follows Dark Mode`);
   assert.deepEqual(result.fonts, [], `${label}: controls inherit the selected font`);
   assert.equal(result.primaryTabs, 0, `${label}: main tabs are absent in calls`);
   if (voice) assert.equal(result.pip, null, `${label}: voice calls have no camera preview`);
@@ -106,6 +106,7 @@ async function checkLayout(page, label, voice = false) {
         const base = mode === 'dark' ? ZThemeOriginal : ZThemeRose;
         const theme = mode === 'custom' ? { ...base, id: 'call-custom-theme', colors: { ...base.colors, background: '#f3f2fc', surface: '#fffcff', surfaceElevated: '#e5def3', text: '#12132c', textMuted: '#615879', primary: '#6543b8', primaryContrast: '#f4ecff', secondary: '#4e2f94', border: '#c6b8de' }, typography: { fontFamily: 'mono', fontScale: 1.1, fontWeight: '500', headingWeight: '800' } } : base;
         Native.receive({ type: 'data.themes', data: { items: [theme], selectedThemeId: theme.id } });
+        window.ZimiThemes.setDark(mode === 'dark');
       }, mode);
       for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
         await page.setViewportSize(viewport);

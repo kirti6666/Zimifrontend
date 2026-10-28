@@ -228,7 +228,7 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
     assert.equal(await access.getByRole('button', { name: 'Start a live broadcast', exact: true }).count(), 0, 'Home has no duplicate broadcast shortcut');
     await navigate(access, 'wallet');
     assert.equal(await access.locator('.earnbox').count(), 1, 'Approved hosts retain their earnings card');
-    assert.equal(await access.getByRole('button', { name: /Withdraw/i }).count(), 1);
+    assert.equal(await access.getByRole('button', { name: 'Withdraw', exact: true }).count(), 1);
     await navigate(access, 'settings');
     await access.getByRole('button', { name: 'Creator tools', exact: true }).click();
     await access.getByRole('dialog', { name: 'Creator tools', exact: true }).getByRole('button', { name: /^Creator Verification/ }).click();

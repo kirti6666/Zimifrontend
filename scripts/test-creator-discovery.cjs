@@ -27,13 +27,26 @@ async function acceptProfile(page,creator) {
   const posts = await last(page,'profile.posts.load');
   if(posts?.id===creator.id)await receive(page,'data.publicPosts',{...posts,posts:[],total:0,page:1,limit:20});
 }
+// Pulls the page down from the top the way a finger does, then releases.
+const pullToRefresh=page=>page.evaluate(()=>{
+  const target=document.getElementById('screen'),touch=y=>new Touch({identifier:1,target,clientX:180,clientY:y});
+  const fire=(type,y)=>{const active=type==='touchend'?[]:[touch(y)];target.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches:active,targetTouches:active,changedTouches:[touch(y)]}))};
+  fire('touchstart',120);for(const y of [150,190,230,270,300])fire('touchmove',y);fire('touchend',300);
+});
 async function assertProfileCards(page,scope,expected) {
   const area = page.locator(scope);
-  assert.equal(await area.locator('.zh-creator-call,.zh-person-call,.zh-person-chat,.zh-person-footer').count(),0,'Discovery has no direct chat/call controls');
+  assert.equal(await area.locator('.zh-person-call,.zh-person-chat,.zh-person-footer').count(),0,'Discovery has no Chat controls');
   const ids = await area.locator('[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId));
   assert.equal(ids.length,expected,'Every creator is represented once');
   assert.equal(new Set(ids).size,expected,'Featured creators are not duplicated in the grid');
-  for(const card of await area.locator('[data-host-id]').all())assert.equal(await card.getByRole('button').count(),1,'Each discovery card has one profile action');
+  for(const card of await area.locator('[data-host-id]').all()){
+    const labels=await card.getByRole('button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label')||''));
+    assert.equal(labels.filter(label=>/^View .+ profile$/.test(label)).length,1,'Each discovery card has one profile action');
+    if(await card.evaluate(el=>el.matches('article.zh-creator-card'))){
+      assert.equal(labels.filter(label=>/^Video call /.test(label)).length,1,'Each host card has a video call button');
+      assert.equal(await card.locator('.zh-creator-call').isEnabled(),true,'The video call button is always active');
+    }
+  }
 }
 
 (async()=>{
@@ -115,7 +128,9 @@ async function assertProfileCards(page,scope,expected) {
       if(width===390){await page.evaluate(()=>window.zimiScrollTo?.(0));await page.screenshot({path:path.join(shots,'all-creators.png')})}
     }
     await page.setViewportSize({width:390,height:844});
-    await button(page,'Refresh creators').click();
+    assert.equal(await page.locator('.zac-refresh,[aria-label="Refresh creators"]').count(),0,'All Creators has no refresh button');
+    await pullToRefresh(page);
+    assert.deepEqual(await last(page,'home.reload'),{page:1,mode:'popular'},'Pulling down refreshes the creator list');
     await receive(page,'data.loading',{resource:'home',loading:false,page:1,error:'Creators are temporarily unavailable'});
     await page.getByRole('alert').filter({hasText:'Creators are temporarily unavailable'}).waitFor();
     await button(page,'Retry').click();
@@ -133,6 +148,6 @@ async function assertProfileCards(page,scope,expected) {
     await acceptFeed(page,feed(hosts.slice(0,8)));
     await page.screenshot({path:path.join(shots,'home.png')});
     assert.deepEqual(errors,[],'The discovery flow has no browser errors');
-    console.log('PASS creator discovery: profile-first featured/grid cards, profile-only chat/call actions, Home all/following server feeds, separate All Creators pagination/error/retry, mode restoration, legacy Explore redirect and responsive layout');
+    console.log('PASS creator discovery: profile-first featured/grid cards with always-active video call buttons, pull to refresh, Home all/following server feeds, separate All Creators pagination/error/retry, mode restoration, legacy Explore redirect and responsive layout');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

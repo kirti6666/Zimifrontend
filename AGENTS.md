@@ -14,9 +14,15 @@ keeps it identical to the original Next.js version.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
 - `web/flat.css` — the final shared design layer: a pure white canvas, no box,
-  text or filter shadows, and 10px corners throughout the app, except circular
-  44px Back buttons with a visible border. Account
-  themes customize accents and typography while keeping the white canvas.
+  text or filter shadows, and 10px corners on every element, including the
+  bordered 44px Back button. Headers sit on the page without a divider line.
+  Account themes customize accents and typography while keeping the white canvas.
+- Dark Mode is a Settings toggle remembered on the device (`zimi.darkMode` in
+  localStorage, `ZimiThemes.dark()`/`setDark()` in `web/themes.js`). It swaps
+  the palette to black and keeps the theme's accent; the native status bar
+  follows `data-theme`/`data-canvas`. Style with tokens (`--canvas`,
+  `--surface`, `--raised`, `--ink`, `--muted`, `--line`), never hard-coded
+  white or near-black, so both modes work.
 - Keep the visual hierarchy restrained: 20px mobile gutters, 24px/600 page
   titles, 18px/600 section headings, 14px body copy and 12px metadata. Use accent
   for primary actions and selection; navigation/metadata are neutral. Profiles
@@ -51,12 +57,14 @@ keeps it identical to the original Next.js version.
   balance, Search and Notifications. All lists every host; Following uses
   the server's `mode: "following"` feed. No category chips on Home or All Creators
   for now. Home shows a featured photo card and a two-column host grid. Cards
-  open the creator profile; Chat and Call actions belong on that profile. Use
+  open the creator profile; Chat belongs on that profile. Use
   the selected theme's colors. Filter hosts on the
   server before pagination; feature a host once across hero/grid.
 - Every host list (Home grid, All Creators, Search) uses the photo card `homeTile`
-  in `web/home.js`: Online and price pills over the photo, then avatar, name,
-  tagline. Do not add Chat or Call buttons to discovery cards.
+  in `web/home.js`, matching the user's reference: Online and price pills over
+  the photo, then avatar, name, tagline and a video call button that is always
+  active (never disabled, whatever the host's status; `homeCall` explains when a
+  call can't start). Do not add Chat buttons to discovery cards.
   Sponsored cards go inside the grid after six hosts (`HOME_AD_AFTER`), or
   below a shorter grid; never above the hosts.
 - The featured card rotates every 6s (`HomeFeatured` in
@@ -82,9 +90,26 @@ keeps it identical to the original Next.js version.
   upload and own-photo actions. Keep its bottom tabs and owner-only controls;
   public gallery publishing still requires current approved creator access.
 - Settings follows the simple reference layout: Back header, compact profile,
-  balance card and plain icon/title rows. Account, Payments, Privacy & Terms and
-  General open their detailed options. Do not add a search box, category chips,
-  decorative footer or helper subtitles to the main Settings list.
+  balance card and one compact list of plain icon/title rows, with the Dark Mode
+  switch after General. Account, Payments, Privacy & Terms and General open their
+  detailed options; Appearance & Theme lives under General. Call availability,
+  Match & Speed Pulse and Notifications & Alerts are not settings items (hosts
+  go online from Home; notification preferences open from the inbox). Anywhere
+  in Settings, including the detail rows, keep only titles, icons and status
+  controls: no search box, category chips, theme banners, section headings,
+  helper subtitles, divider lines or decorative footer.
+- There are no refresh buttons or refresh icons. Screens reload with pull to
+  refresh (`web/pull-refresh.js`): register a screen with
+  `ZimiPullRefresh.register(view,{refresh,busy})`. The indicator only follows the
+  finger; the screen's own skeletons show the reload. Error states keep a text
+  Retry/Try again button.
+- Automated welcome messages show in chats without an automation label.
+- Animated gift stickers live in `web/stickers/` (built with
+  `scripts/build-gift-sticker.py`) and are matched to catalog gifts by name in
+  `web/gift-stickers.js`; the backend catalog seed uses the same names. Gift
+  pickers and receipts show the still cover; the animation plays only when a
+  gift is sent or received (the cover under reduced motion). Read gift artwork
+  through `giftStillUrl`/`giftMotionUrl`, not the raw `mediaUrl`.
 - Show the All/Following Home header only on Home. Chat, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
   the same size across those main screens; All Creators, Notifications and Themes

@@ -6,7 +6,7 @@
 .hc-setup,.hc-waiting,.hc-summary{width:100%;min-height:100%;max-width:560px;margin:0 auto;color:var(--ink);font-family:inherit;line-height:1.4}
 .hc-setup button,.hc-waiting button,.hc-summary button{font-family:inherit;touch-action:manipulation}
 .hc-setup button:focus-visible,.hc-waiting button:focus-visible,.hc-summary button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
-.hc-setup{position:relative;isolation:isolate;display:flex;flex-direction:column;height:100%;padding:0 12px;background:linear-gradient(170deg,var(--raised),var(--canvas) 88%);overflow:hidden}
+.hc-setup{position:relative;isolation:isolate;display:flex;flex-direction:column;height:100%;padding:0 12px;background:var(--canvas);overflow:hidden}
 /* Keep landscape framing whole on one solid media surface, with no blurred duplicate. */
 .hc-stage{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background:var(--media-canvas)}
 .hc-stage>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}

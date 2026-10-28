@@ -27,7 +27,7 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--canvas);color:var(-
 .body{position:relative;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}.body::-webkit-scrollbar{display:none}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 input{font:inherit;color:inherit;background:none;border:none;outline:none;width:100%}
-.hdr{background:var(--canvas);border-bottom:1px solid var(--line);
+.hdr{background:var(--canvas);
  padding:10px 16px;display:flex;align-items:center;gap:9px}
 .hdr>*:first-child{max-width:none}
 .title{font-family:"Poppins",Inter,sans-serif;font-size:clamp(20px,5.6vw,23px);font-weight:800;
@@ -357,10 +357,10 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .fxg .em{font-size:74px;line-height:1;display:block;filter:none}
 .fxg.big .em{font-size:118px;
  filter:none}
-.fxg.water{top:50%;animation:waterGiftIn 5.2s cubic-bezier(.2,.8,.25,1) forwards}
-.fxg.water img{display:block;width:min(62vw,360px);max-height:68vh;object-fit:contain;
+.fxg.sticker{top:50%;animation:stickerGiftIn 5.2s cubic-bezier(.2,.8,.25,1) forwards}
+.fxg.sticker img{display:block;width:min(62vw,360px);max-height:68vh;object-fit:contain;
  filter:none}
-.fxg.water ~ .fxtag{top:78%;animation-duration:5.2s,2.2s}
+.fxg.sticker ~ .fxtag{top:78%;animation-duration:5.2s,2.2s}
 .fxtag{position:absolute;left:50%;top:62%;transform:translate(-50%,0);display:flex;align-items:center;gap:6px;
  padding:5px 14px;border-radius:99px;font-size:12px;font-weight:800;color:#ffffff;white-space:nowrap;
  background:linear-gradient(110deg,#ffc02e 0%,#fff6da 22%,#ff2e93 48%,#ffc02e 72%,#fff6da 100%);
@@ -490,7 +490,7 @@ html{scroll-behavior:smooth}
  34%{transform:translate(-50%,0) scale(1) rotate(0deg)}
  72%{transform:translate(-50%,0) scale(1.04);opacity:1}
  100%{transform:translate(-50%,-90px) scale(.9);opacity:0}}
-@keyframes waterGiftIn{
+@keyframes stickerGiftIn{
  0%{transform:translate(-50%,calc(-50% + 55px)) scale(.68);opacity:0}
  14%{transform:translate(-50%,calc(-50% - 8px)) scale(1.04);opacity:1}
  24%,82%{transform:translate(-50%,-50%) scale(1);opacity:1}
@@ -651,7 +651,7 @@ button.acctrow:active{background:var(--raised)}
 .callav{position:relative;flex:0 0 auto}.callav .badge{position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border:2px solid var(--surface);border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent);color:#fff}
 
 /* leaderboard */
-.bsticky{background:var(--canvas);border-bottom:1px solid var(--line)}
+.bsticky{background:var(--canvas)}
 .bhdr{display:flex;align-items:center;gap:12px;padding:12px 14px 10px;max-width:720px;margin:0 auto}
 .btab{font-family:"Poppins",Inter,sans-serif;font-size:clamp(21px,6vw,26px);font-weight:800;
  letter-spacing:-.03em;color:var(--faint);transition:color .2s}

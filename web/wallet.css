@@ -1,6 +1,6 @@
 /* The wallet keeps purchased coins separate from confirmed creator earnings. */
 .zwallet-page {max-width:620px;margin:0 auto;padding:20px 20px 30px}
-:root[data-theme-id] .zwallet-page .accthero {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+:root[data-theme-id] .zwallet-page .accthero {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 .zwallet-page .accthero::after {display:none}
 .zwallet-page .accthero>div {min-width:0}
 :root[data-theme-id] .zwallet-page .accthero .eyebrow {font-size:13px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted)}
@@ -12,7 +12,7 @@
 .zwallet-page .accttitle {padding:0 0 12px;letter-spacing:0;text-transform:none}
 :root[data-theme-id] .zwallet-page .accttitle h2 {margin:0;font-size:16px;font-weight:500;line-height:1.5;color:var(--ink);letter-spacing:0}
 .zwallet-page .accttitle>button {min-height:44px;padding:8px 0 8px 12px;font-size:12px;font-weight:500;color:var(--accent-ink)}
-.zwallet-page .acctcard {border-color:var(--line);background:#fff}
+.zwallet-page .acctcard {border-color:var(--line);background:var(--surface)}
 .zwallet-page .acctrow {padding:16px 14px;gap:11px;min-height:76px}
 .zwallet-page .acctrow .acctico {background:var(--raised);color:var(--muted);width:36px;height:36px}
 .zwallet-page .acctrow .main {font-size:13px;font-weight:500;line-height:1.45;overflow-wrap:anywhere}
@@ -22,7 +22,7 @@
 .zwallet-empty>svg {margin-bottom:13px}
 :root[data-theme-id] .zwallet-empty h3 {font-size:15px;font-weight:500;color:var(--ink);margin:0 0 7px}
 .zwallet-empty p {font-size:12px;line-height:1.6;margin:0}
-.zwallet-page .earnbox {padding:18px;border-color:var(--line);background:#fff;gap:0}
+.zwallet-page .earnbox {padding:18px;border-color:var(--line);background:var(--surface);gap:0}
 .zwallet-earnings-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted)}
 .zwallet-earnings-heading>span:last-child {font-size:11px}
 .zwallet-earnings-amount {display:block;margin-top:10px;font-size:30px;font-weight:600;line-height:1.25;letter-spacing:-.6px;color:var(--ink);overflow-wrap:anywhere}

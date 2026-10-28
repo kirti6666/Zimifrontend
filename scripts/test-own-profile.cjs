@@ -40,13 +40,13 @@ async function audit(page,label) {
     canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,
     wrong:[...document.querySelectorAll('body *')].filter(el=>el.getClientRects().length).flatMap(el=>{
       const style=getComputedStyle(el),name=el.id||el.className||el.tagName;
-      const radiusOK=el.matches('.zb-back')?['50%','22px'].includes(style.borderRadius):style.borderRadius==='10px';
+      const radiusOK=style.borderRadius==='10px';
       return [!radiusOK&&`${name}: radius ${style.borderRadius}`,style.boxShadow!=='none'&&`${name}: shadow`,style.textShadow!=='none'&&`${name}: text shadow`,style.filter.includes('drop-shadow')&&`${name}: filter shadow`].filter(Boolean);
     })
   }));
   assert.equal(result.overflow,false,`${label}: no width overflow`);
   assert.equal(result.canvas,'rgb(255, 255, 255)',`${label}: white app canvas`);
-  assert.deepEqual(result.wrong,[],`${label}: 10px UI corners, circular Back controls and no shadows`);
+  assert.deepEqual(result.wrong,[],`${label}: 10px corners on every control, including Back, and no shadows`);
 }
 (async()=>{
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});

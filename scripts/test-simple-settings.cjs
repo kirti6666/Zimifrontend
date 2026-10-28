@@ -28,12 +28,12 @@ async function audit(page,label) {
     const visible=[document.documentElement,...document.querySelectorAll('body,body *')].filter(el=>el.getClientRects().length);
     const wrong=visible.flatMap(el=>{
       const c=getComputedStyle(el),name=el.id||el.classList?.value||el.tagName;
-      const radiusOK=el.matches('.zb-back')?['50%','22px'].includes(c.borderRadius):c.borderRadius==='10px';
+      const radiusOK=c.borderRadius==='10px';
       return [c.boxShadow!=='none'&&`${name}: shadow`,c.textShadow!=='none'&&`${name}: text shadow`,c.filter.includes('drop-shadow')&&`${name}: filter shadow`,!radiusOK&&`${name}: radius ${c.borderRadius}`].filter(Boolean);
     });
     return {wrong,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1};
   });
-  assert.deepEqual(state.wrong,[],`${label}: 10px UI corners, circular Back controls and no shadows`);
+  assert.deepEqual(state.wrong,[],`${label}: 10px corners on every control, including Back, and no shadows`);
   assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: white canvas`);
   assert.equal(state.overflow,false,`${label}: no horizontal overflow`);
 }
@@ -42,11 +42,12 @@ async function audit(page,label) {
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
   const errors=[];
   try {
-    const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+    const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+    const page=await context.newPage();
     page.setDefaultTimeout(6000);
     page.on('pageerror',error=>errors.push(error.message));
     await page.route('https://**/*',route=>route.abort());
-    await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
+    await context.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
     await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');
     await receive(page,'session',member);
     await receive(page,'data.home',{hosts:[],stage:[],total:0,page:1,categories:[],unreadCount:0});
@@ -136,7 +137,24 @@ async function audit(page,label) {
     await navigate(page,'settings');
     await button(page,'Open your profile').click();
     assert.equal(await page.evaluate(()=>S.v),'profile');
+
+    await navigate(page,'settings');
+    const darkMode=()=>page.getByRole('switch',{name:'Dark Mode',exact:true});
+    const canvas=target=>target.evaluate(()=>({mode:document.documentElement.dataset.theme,canvas:document.documentElement.dataset.canvas,body:getComputedStyle(document.body).backgroundColor,stored:localStorage.getItem('zimi.darkMode')}));
+    assert.equal(await darkMode().getAttribute('aria-checked'),'false','Dark Mode starts off on a white canvas');
+    await darkMode().click();
+    assert.equal(await darkMode().getAttribute('aria-checked'),'true');
+    assert.deepEqual(await canvas(page),{mode:'dark',canvas:'#000000',body:'rgb(0, 0, 0)',stored:'1'},'Dark Mode paints the canvas and the native chrome black, and is remembered');
+    const accent=await page.evaluate(()=>{const probe=document.createElement('i');probe.style.color='var(--accent)';document.body.append(probe);const value=getComputedStyle(probe).color;probe.remove();return value});
+    assert.equal(await page.locator('.zp-wallet .zp-topup').evaluate(el=>getComputedStyle(el).backgroundColor),accent,'The account accent stays in Dark Mode');
+    const relaunched=await context.newPage();
+    await relaunched.route('https://**/*',route=>route.abort());
+    await relaunched.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');
+    assert.equal((await canvas(relaunched)).mode,'dark','The next launch opens in Dark Mode');
+    await relaunched.close();
+    await darkMode().click();
+    assert.deepEqual(await canvas(page),{mode:'light',canvas:'#ffffff',body:'rgb(255, 255, 255)',stored:'0'},'Turning Dark Mode off restores the white canvas');
     assert.deepEqual(errors,[],'No browser or bridge errors');
-    console.log('PASS simple Settings: reference-style unboxed rows, black outline icons, no search/filter clutter, working account/payment/privacy/general drilldowns, live balance, Add coins, version and Back/profile navigation at 320/390/768px');
+    console.log('PASS simple Settings: reference-style unboxed rows, black outline icons, no search/filter clutter, remembered Dark Mode, working account/payment/privacy/general drilldowns, live balance, Add coins, version and Back/profile navigation at 320/390/768px');
   } finally { await browser.close() }
 })().catch(error=>{console.error(error);process.exitCode=1});

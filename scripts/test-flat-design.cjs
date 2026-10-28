@@ -15,12 +15,12 @@ async function audit(page,label){
     const nodes=[document.documentElement,...document.querySelectorAll('body,body *')].filter(el=>el.getClientRects().length);
     const wrong=nodes.flatMap(el=>{
       const c=getComputedStyle(el),name=el.id||el.classList?.value||el.tagName;
-      const radiusOK=el.matches('.zb-back')?['50%','22px'].includes(c.borderRadius):c.borderRadius==='10px';
+      const radiusOK=c.borderRadius==='10px';
       return [c.boxShadow!=='none'&&`${name}: shadow`,c.textShadow!=='none'&&`${name}: text shadow`,c.filter.includes('drop-shadow')&&`${name}: filter shadow`,!radiusOK&&`${name}: radius ${c.borderRadius}`].filter(Boolean);
     });
     return {wrong,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1};
   });
-  assert.deepEqual(state.wrong,[],`${label}: 10px UI corners, circular Back controls and no shadows`);
+  assert.deepEqual(state.wrong,[],`${label}: 10px corners on every control, including Back, and no shadows`);
   assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: pure white background`);
   assert.equal(state.overflow,false,`${label}: fits viewport`);
 }

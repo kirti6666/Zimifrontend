@@ -58,7 +58,7 @@
 .zr-network svg path:nth-child(n+2){opacity:.25}
 .zi-icon:is([data-icon=callgrid],[data-icon=callmore]){--zi-tap:zi-bounce;--zi-time:400ms}
 .zr-call .zr-top{padding:0 10px}
-.zr-call-heading{min-height:42px;padding:6px 0 5px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);color:var(--room-muted)}
+.zr-call-heading{min-height:42px;padding:6px 0 5px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--room-muted)}
 .zr-call-heading strong{font-size:11px;font-weight:var(--theme-heading-weight,700);color:var(--room-ink)}
 .zr-call-heading strong>span{font-size:10px;font-weight:500;color:var(--room-muted)}
 .zr-call-heading p{font-size:10px;line-height:1.3;margin:2px 0 0}
@@ -140,6 +140,12 @@
 .zr-gift-stage-art>img{width:100%;height:100%;object-fit:contain}
 .zr-gift-celebration.is-large .zr-gift-stage-art{width:138px;height:138px;margin:-69px 0 0 -69px}
 .zr-gift-celebration.is-large .zr-gift-stage-art>span{font-size:108px}
+/* Bundled stickers carry their own sparkle, so they play large without the burst. */
+.zr-gift-celebration.is-sticker{--sticker-h:min(58vh,104vw,500px)}
+.zr-gift-celebration.is-sticker :is(.zr-gift-stage-art,.zr-gift-halo){top:46%}
+.zr-gift-celebration.is-sticker .zr-gift-stage-art{width:calc(var(--sticker-h) * 9 / 16);height:var(--sticker-h);margin:calc(var(--sticker-h) / -2) 0 0 calc(var(--sticker-h) * -9 / 32)}
+.zr-gift-celebration.is-sticker :is(.zr-gift-wave,.zr-gift-sparks){display:none}
+.zr-gift-celebration.is-sticker .zr-gift-caption{top:calc(46% + var(--sticker-h) * .42)}
 .zr-gift-halo{width:230px;height:230px;margin:-115px 0 0 -115px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 32%,transparent),transparent 67%);animation:zr-gift-glow var(--gift-life) ease-out both;animation-delay:var(--gift-age)}
 .zr-gift-wave{width:120px;height:120px;margin:-60px 0 0 -60px;border:1px solid color-mix(in srgb,var(--accent) 60%,transparent);border-radius:50%;animation:zr-gift-wave var(--gift-life) ease-out both;animation-delay:var(--gift-age)}
 .zr-gift-sparks>i{position:absolute;width:4px;height:4px;margin:-2px;border-radius:50%;background:var(--accent-ink);box-shadow:0 0 8px color-mix(in srgb,var(--accent) 55%,transparent);animation:zr-gift-spark var(--gift-life) ease-out both;animation-delay:var(--gift-age)}

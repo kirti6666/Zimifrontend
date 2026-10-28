@@ -131,31 +131,8 @@ async function run() {
     await close();
 
     await openMenu('General');
-    await row('Match & Speed Pulse').click();
-    const match = dialog('Match & Speed Pulse');
-    await match.getByLabel('Match category', { exact: true }).selectOption('Music');
-    await match.getByRole('button', { name: 'Save preferences', exact: true }).click();
-    let request = await lastSent(page, 'profile.settings.save');
-    assert.equal(request.matchCategory, 'Music');
-    await match.getByRole('status', { name: 'Saving preferences', exact: true }).waitFor();
-    assert.equal(await match.getByLabel('Match category', { exact: true }).isDisabled(), true);
-    assert.equal(await page.evaluate(() => ZProfile.data.preferences.matchCategory), null, 'Pending saves do not claim a persisted preference');
-    await receive(page, 'profile.settings.error', { requestId: request.requestId, message: 'Your category could not be saved' });
-    await match.getByRole('alert').filter({ hasText: 'Your category could not be saved' }).waitFor();
-    assert.equal(await match.getByRole('button', { name: 'Save preferences', exact: true }).isEnabled(), true);
-    assert.equal(await page.evaluate(() => ZProfile.data.preferences.matchCategory), null);
-    await match.getByRole('button', { name: 'Save preferences', exact: true }).click();
-    const retry = await lastSent(page, 'profile.settings.save');
-    assert.ok(retry.requestId > request.requestId);
-    await receive(page, 'profile.settings.saved', { settings: saved, requestId: request.requestId });
-    assert.equal(await match.isVisible(), true, 'A stale acknowledgment cannot close a newer request');
-    saved = { ...saved, preferences: { ...saved.preferences, matchCategory: 'Music' } };
-    await receive(page, 'data.profileSettings', saved);
-    await receive(page, 'profile.settings.saved', { settings: saved, requestId: retry.requestId });
-    await match.waitFor({ state: 'hidden' });
-    await openMenu('General');
-    assert.match(await row('Match & Speed Pulse').innerText(), /Music/);
-
+    for (const removed of ['Match & Speed Pulse', 'Notifications & Alerts', '1-on-1 Call Availability'])
+      assert.equal(await page.locator('.zp-page,.zp-dialog').getByText(removed, { exact: true }).count(), 0, `${removed} is not a settings item`);
     await row('Language & Region').click();
     const language = dialog('Language & Region');
     const city = language.getByLabel('City / region', { exact: true });
@@ -165,19 +142,35 @@ async function run() {
     assert.deepEqual(await city.evaluate(input => ({ value: input.value, focused: document.activeElement === input, start: input.selectionStart, end: input.selectionEnd })), { value: 'Mumbai', focused: true, start: 1, end: 4 }, 'Background account refresh preserves an unsaved dialog draft and cursor');
     await language.getByLabel('Hindi', { exact: true }).uncheck();
     await language.getByRole('button', { name: 'Save preferences', exact: true }).click();
-    request = await lastSent(page, 'profile.settings.save');
+    let request = await lastSent(page, 'profile.settings.save');
     assert.equal(request.city, 'Mumbai');
     assert.deepEqual(request.languages, ['English']);
+    await language.getByRole('status', { name: 'Saving preferences', exact: true }).waitFor();
+    assert.equal(await city.isDisabled(), true);
+    assert.deepEqual(await page.evaluate(() => ZProfile.data.profile.languages), ['English', 'Hindi'], 'Pending saves do not claim a persisted preference');
+    await receive(page, 'profile.settings.error', { requestId: request.requestId, message: 'Your languages could not be saved' });
+    await language.getByRole('alert').filter({ hasText: 'Your languages could not be saved' }).waitFor();
+    assert.equal(await language.getByRole('button', { name: 'Save preferences', exact: true }).isEnabled(), true);
+    assert.deepEqual(await page.evaluate(() => ZProfile.data.profile.languages), ['English', 'Hindi']);
+    await language.getByRole('button', { name: 'Save preferences', exact: true }).click();
+    const retry = await lastSent(page, 'profile.settings.save');
+    assert.ok(retry.requestId > request.requestId);
+    await receive(page, 'profile.settings.saved', { settings: saved, requestId: request.requestId });
+    assert.equal(await language.isVisible(), true, 'A stale acknowledgment cannot close a newer request');
     saved = { ...saved, profile: { ...saved.profile, city: 'Mumbai', languages: ['English'] } };
     await receive(page, 'data.profileSettings', saved);
-    await receive(page, 'profile.settings.saved', { settings: saved, requestId: request.requestId });
+    await receive(page, 'profile.settings.saved', { settings: saved, requestId: retry.requestId });
+    await language.waitFor({ state: 'hidden' });
     await navigate(page, 'profile');
     await settleSelf();
     assert.match(await page.locator('.zu-meta').innerText(), /Mumbai/, 'The saved region updates the visible profile');
     await readyProfile();
     await openMenu('General');
-    assert.match(await row('Language & Region').innerText(), /English/);
-    assert.doesNotMatch(await row('Language & Region').innerText(), /Hindi/);
+    await row('Language & Region').click();
+    assert.equal(await dialog('Language & Region').getByLabel('English', { exact: true }).isChecked(), true, 'Saved languages reopen selected');
+    assert.equal(await dialog('Language & Region').getByLabel('Hindi', { exact: true }).isChecked(), false);
+    await close();
+    await openMenu('General');
 
     await row('Appearance & Theme').click();
     const appearance = page.locator('.zt-page');
@@ -197,8 +190,7 @@ async function run() {
     await readyProfile();
     console.log('PASS profile: real ID/QR and edit/wallet actions, settings saves wait for acknowledgment, error recovery, stale response isolation, draft preservation and shared appearance');
 
-    await openMenu('General');
-    await row('Notifications & Alerts').click();
+    await page.evaluate(() => znPreferences());
     const notifications = dialog('Notification preferences');
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Unavailable push registration cannot be presented as functional');
     await notifications.getByRole('button', { name: 'Open notifications', exact: true }).click();
@@ -206,8 +198,7 @@ async function run() {
     await readyProfile();
     const pushCapabilities = status => ({ ...saved, capabilities: { ...saved.capabilities, pushNotifications: true, nativePushRegistered: status === 'registered', nativePushStatus: status } });
     await settleSettings(page, pushCapabilities('denied'));
-    await openMenu('General');
-    await row('Notifications & Alerts').click();
+    await page.evaluate(() => znPreferences());
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Blocked by the phone: the toggle cannot claim to work');
     assert.match(await notifications.innerText(), /turned off for BinzoLive on this phone/);
     await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).click();
@@ -250,7 +241,9 @@ async function run() {
     saved = { ...saved, privacy: { ...saved.privacy, discoverable: false } };
     await receive(page, 'privacy.saved', { privacy: saved.privacy, requestId: request.requestId });
     await openMenu('Privacy & Terms');
-    assert.match(await row('Privacy & Blocked Users').innerText(), /Private discovery/);
+    await row('Privacy & Blocked Users').click();
+    assert.equal(await page.getByRole('checkbox', { name: 'Discoverable profile', exact: true }).isChecked(), false, 'The saved discovery choice reopens off');
+    await close();
 
     await openMenu('Payments');
     await row('Gift History').click();
@@ -285,26 +278,12 @@ async function run() {
     for (const hostStatus of ['none', 'pending', 'rejected', 'suspended']) {
       await receive(page, 'session', { ...approved, user: { ...approved.user, hostStatus } });
       await readyProfile();
-      assert.equal(await page.getByRole('switch', { name: '1-on-1 Call Availability', exact: true }).count(), 0);
       assert.equal(await row('1:1 Call Studio').count(), 0);
-      const before = await sentCount(page, 'presence.set');
-      await page.evaluate(() => zpAvailabilitySet(true));
-      assert.equal(await sentCount(page, 'presence.set'), before);
     }
     await receive(page, 'session', approved);
     await readyProfile();
     await openMenu('Creator tools');
-    const availability = () => page.getByRole('switch', { name: '1-on-1 Call Availability', exact: true });
-    assert.equal(await availability().getAttribute('aria-checked'), 'false');
-    await availability().click();
-    assert.equal((await lastSent(page, 'presence.set')).online, true);
-    assert.equal(await availability().isDisabled(), true);
-    assert.equal(await availability().getAttribute('aria-checked'), 'false', 'Pending presence changes do not advertise the host as online');
-    await receive(page, 'operation.error', { action: 'presence.set', message: 'Presence service unavailable' });
-    assert.equal(await availability().isEnabled(), true);
-    await availability().click();
-    await receive(page, 'presence.saved', { online: true, visible: false });
-    assert.equal(await availability().getAttribute('aria-checked'), 'true');
+    assert.equal(await page.getByRole('switch', { name: '1-on-1 Call Availability', exact: true }).count(), 0, 'Approved hosts manage availability from Home and the call studio');
     await row('Earnings & Wallet').click();
     assert.match(await dialog('Your Earnings').innerText(), /1,234\.50/);
     assert.match(await dialog('Your Earnings').innerText(), /50\.00 reserved/);

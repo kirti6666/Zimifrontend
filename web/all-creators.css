@@ -1,6 +1,5 @@
-/* Discovery is one profile link per photo card; call/chat controls belong to the
-   profile. Keep the featured card's complete surface keyboard-accessible too. */
-.zh-creator-open{display:grid;place-items:center;flex:none;width:20px;color:#ffffffc7;pointer-events:none}
+/* A photo card opens the profile; its video call button starts the call. Keep the
+   featured card's complete surface keyboard-accessible too. */
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit{position:absolute;inset:0;z-index:3;width:100%;height:100%;min-height:44px;flex:none;padding:0;border:0;background:transparent}
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit:focus-visible{outline:2px solid #fff;outline-offset:-5px}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding-right:48px;pointer-events:none}
@@ -10,20 +9,17 @@
 .zac-heading{display:flex;align-items:center;gap:12px;min-height:48px;margin:0 0 14px}
 .zac-heading .zb-back{flex:none;width:44px;height:44px;background:transparent;border:0}
 :root[data-theme-id] .zac-heading h1{flex:1;min-width:0;margin:0;font-size:24px;line-height:1.3;font-weight:600;letter-spacing:-.4px}
-.zac-refresh{display:grid;place-items:center;flex:none;width:44px;height:44px;background:transparent;color:var(--muted)}
-.zac-refresh:disabled{opacity:.5;cursor:default}
 .zac-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;color:var(--muted);font-size:12px;line-height:1.6}
 .zac-intro p{font-size:14px;flex:1;min-width:0}
 .zac-intro>span{flex:none;padding-top:2px;font-variant-numeric:tabular-nums}
 .zac-page .zh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .zac-page .zh-error{margin:16px 0;border-color:var(--line);background:var(--surface);color:var(--muted)}
 .zac-page .zh-error button{color:var(--accent-ink)}
-.zac-load-more{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:24px;padding:12px 18px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:13px;font-weight:500}
+.zac-load-more{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:24px;padding:12px 18px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;font-weight:500}
 .zac-empty{padding:46px 16px;text-align:center;color:var(--muted)}
 .zac-empty>svg{color:var(--muted)}
 .zac-empty h2{margin:16px 0 8px;font-size:18px;font-weight:600;color:var(--ink)}
 .zac-empty p{font-size:14px;line-height:1.6;margin-bottom:22px}
-.zac-empty button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:11px 15px;border:1px solid var(--line);background:#fff;font-size:13px;color:var(--ink)}
 .zac-page .zh-skeleton+.zh-skeleton{margin-top:12px}
 .zac-page button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 @media(min-width:680px){.zac-page{padding-top:20px}.zac-page .zh-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}}

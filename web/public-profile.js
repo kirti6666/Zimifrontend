@@ -77,6 +77,7 @@ function zuLoad(){
   }else Native.send('profile.load',{id,requestId:Zu.requestId});
 }
 function zuRetry(){zuLoad();zuPaint()}
+ZimiPullRefresh.register(['profile','host','user'],{refresh:()=>zuRetry(),busy:()=>Zu.loading});
 function zuLoadPosts(more=false){
   if(DEMO||Zu.postsLoading||!zuApproved(Zu.profile))return;
   Zu.postsLoading=true;Zu.postsError='';Zu.postsRequestId=++Zu.sequence;
@@ -140,7 +141,7 @@ function zuIdentity(p){
   const owner=zuSelf();
   return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
     ${canFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${Zu.followBusy?'Updating…':p.following?'Following':'Follow'}</button>`:''}</div>
-    ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">${hi('refresh',17)} Try again</button></div>`:`
+    ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
     <div class="zu-identity"><h1>${esc(p.name)}</h1>
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
@@ -168,7 +169,7 @@ function zuPosts(p){
   if(!zuApproved(p))return `<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>${zuSelf()?'Upload a profile photo or cover photo.':'This member hasn’t shared any public posts.'}</p><button class="zu-text-button" onclick="${zuSelf()?"zuEditMedia('photos')":"zuTab('about')"}">${zuSelf()?'Upload profile photos':'Get to know '+esc(first(p.name))} ${hi('arrow',15)}</button></div>`;
   if(Zu.postsLoading&&!Zu.page)return zuSkeleton('posts');
   return `${Zu.posts.length?`<div class="zu-gallery">${Zu.posts.map(zuMedia).join('')}</div>`:!Zu.postsError?`<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>${zuSelf()?'Your uploaded photos appear here.':'Photos and updates from '+esc(first(p.name))+' will appear here.'}</p>${zuSelf()?'<button class="zu-text-button" onclick="zuEditMedia(\'photos\')">'+zi('camera',17)+' Upload a photo</button>':''}</div>`:''}
-    ${Zu.postsError?`<div class="zu-error zu-post-error" role="alert"><p>${esc(Zu.postsError)}</p><button class="zu-secondary" onclick="zuLoadPosts(${!!Zu.page})">${hi('refresh',17)} Retry photos</button></div>`:''}
+    ${Zu.postsError?`<div class="zu-error zu-post-error" role="alert"><p>${esc(Zu.postsError)}</p><button class="zu-secondary" onclick="zuLoadPosts(${!!Zu.page})">Retry photos</button></div>`:''}
     ${Zu.postsLoading?zuSkeleton('posts'):Zu.page*Zu.limit<Zu.total?'<button class="zu-load-more" onclick="zuLoadPosts(true)">Load more posts</button>':''}`;
 }
 function zuContent(p){

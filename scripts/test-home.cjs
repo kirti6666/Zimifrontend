@@ -6,6 +6,12 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const artifacts = path.join(root, 'artifacts');
 
+// Pulls the page down from the top the way a finger does, then releases.
+const pullToRefresh=page=>page.evaluate(()=>{
+  const target=document.getElementById('screen'),touch=y=>new Touch({identifier:1,target,clientX:180,clientY:y});
+  const fire=(type,y)=>{const active=type==='touchend'?[]:[touch(y)];target.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches:active,targetTouches:active,changedTouches:[touch(y)]}))};
+  fire('touchstart',120);for(const y of [150,190,230,270,300])fire('touchmove',y);fire('touchend',300);
+});
 async function assertPhotoCardLayout(page, label) {
   const boxes=await page.locator('.zh-discover .zh-creator-card').evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {left:box.left,right:box.right,top:box.top,bottom:box.bottom};}));
   assert.ok(boxes.length>1,`${label} has multiple discovery cards to check`);
@@ -17,7 +23,9 @@ async function assertPhotoCardLayout(page, label) {
   const hero=await page.locator('.zh-featured-host').boundingBox();
   assert.ok(hero&&hero.width>(boxes[0].right-boxes[0].left)*1.5,`${label} gives the featured creator a wide photo`);
   assert.ok(hero.x>=0&&hero.x+hero.width<=page.viewportSize().width+1,`${label} keeps the entire featured card inside the viewport`);
-  assert.equal(await page.locator('.zh-person-footer,.zh-creator-call,.zh-person-call').count(),0,`${label} opens profiles without direct Chat or Call controls`);
+  const calls=await page.locator('.zh-discover article.zh-creator-card').evaluateAll(cards=>cards.map(card=>{const button=card.querySelector('button.zh-creator-call');return !!button&&!button.disabled&&/^Video call /.test(button.getAttribute('aria-label')||'')}));
+  assert.ok(calls.every(Boolean),`${label}: every host card has an always-active video call button`);
+  assert.equal(await page.locator('.zh-person-footer,.zh-person-chat').count(),0,`${label}: host cards carry no Chat controls`);
 }
 
 async function acceptCreatorProfile(page, creator) {
@@ -42,7 +50,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await receive('data.home',{...home,hosts:[creator],stage:[creator],featured:creator});
       await receive('wallet.balance',{coins:1000});
       await page.evaluate(()=>{window.__prepared=0;window.ZimiMedia.prepare=async()=>{window.__prepared++};window.ZimiMedia.openStream=()=>{};window.ZimiMedia.attach=()=>{};});
-      assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Video call |^Chat with /}).count(),0,'Discovery waits for the profile before offering chat or calls');
+      assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Video call |^Chat with /}).count(),0,'The featured card opens the profile before chat or calls');
       assert.equal(await page.locator('.zh-person-cost').count(),0,'Home does not disclose call rates before the call action');
       assert.doesNotMatch(await page.locator('.zh-dashboard').innerText(),/\bfree\b|\bpremium\b|call rate|coins\s*\/\s*min/i,'Home discovery has no pricing labels');
       await page.getByRole('button',{name:'View '+creator.name+' profile',exact:true}).click();
@@ -147,10 +155,10 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await page.locator('.zh-host-status').count(),0,'Sender accounts do not show host availability');
     assert.equal(await page.getByRole('heading',{name:/^Live now/}).count(),0);
     assert.equal(await page.getByRole('heading',{name:'Connect 1:1',exact:true}).count(),1);
-    assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Chat with |^Video call /}).count(),0,'Discovery cards have no direct Chat or Call buttons');
+    assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Discovery cards have no Chat buttons');
     const gridCard=page.locator('.zh-discover article.zh-creator-card').first();
     assert.equal(await gridCard.locator('.zh-creator-avatar').count(),1,'Grid cards show the host avatar beside the name');
-    assert.equal(await gridCard.getByRole('button').count(),1,'The entire grid card has one profile action');
+    assert.deepEqual(await gridCard.getByRole('button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label').split(' ').slice(0,2).join(' '))),['View '+(await gridCard.locator('h3').innerText()).split(' ')[0],'Video call'],'A grid card opens the profile and starts a video call');
     assert.match(await gridCard.locator('.zh-creator-price').innerText(),/^(Free|\d[\d,]*\/min)$/,'Grid cards show the call price over the photo');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     for(const theme of ['dark','light']){
@@ -174,7 +182,8 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await page.evaluate(()=>S.v),'all-creators','See all opens the full creator profile directory');
     assert.equal(await page.locator('.zac-page article[data-host-id]').count(),5,'All Creators includes every loaded creator once');
     assert.equal(await page.locator('#nav').isVisible(),false,'All Creators uses a Back header without bottom tabs');
-    assert.equal(await page.locator('.zac-page').getByRole('button',{name:/^Video call |^Chat with /}).count(),0,'The full directory also opens profiles before social actions');
+    assert.equal(await page.locator('.zac-page').getByRole('button',{name:/^Chat with /}).count(),0,'The full directory has no Chat buttons');
+    assert.equal(await page.locator('.zac-page').getByRole('button',{name:/^Video call /}).count(),5,'Every creator in the full directory has a video call button');
     await page.getByRole('button',{name:'Back to home',exact:true}).click();
     await page.evaluate(()=>go('explore'));
     assert.equal(await page.evaluate(()=>S.v),'home','Old Explore routes safely resolve to Home');
@@ -212,7 +221,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.locator('.zh-discover article[data-host-id]').count(),4,'Discovery lists every host, online or offline');
     assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'Offline hosts are listed and live hosts are not duplicated');
     assert.deepEqual(await real.locator('article[data-host-id] :is(.zh-person-status,.zh-creator-status)').allInnerTexts(),['Online','Online','Online','Online','Online'],'Members never see a host as offline');
-    assert.equal(await real.locator('.zh-dashboard').getByRole('button',{name:/^Video call |^Chat with /}).count(),0,'Host availability does not add direct call or Chat buttons to cards');
+    assert.deepEqual(await real.locator('.zh-discover article.zh-creator-card .zh-creator-call').evaluateAll(nodes=>nodes.map(node=>node.disabled)),[false,false,false,false],'The video call button stays active for busy and offline hosts');
     assert.equal(await real.getByRole('button',{name:'View '+busy.name+' profile',exact:true}).isEnabled(),true,'Unavailable hosts still open their profile, where chat is offered');
     assert.equal(await real.getByRole('button',{name:'View '+offline.name+' profile',exact:true}).isEnabled(),true,'Offline hosts still open their profile for messaging');
     assert.deepEqual(await real.locator('.zh-discover .zh-creator-price').allInnerTexts(),['Free','Free','Free','Free'],'Zero-rate hosts read Free on their card');
@@ -252,10 +261,12 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await receive('data.home',{...home,hosts:[online,busy],stage:[host],total:3,page:2});
     assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id],'Paging deduplicates repeated hosts across featured and discovery cards');
     assert.equal(await real.getByRole('status',{name:'Loading more hosts',exact:true}).count(),0);
-    await real.getByRole('button',{name:'Refresh home',exact:true}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Home refresh requests every host from the server');
-    assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).getAttribute('aria-busy'),'true','Refresh feedback follows the active request');
-    assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).isDisabled(),true,'A refresh cannot be submitted twice while pending');
+    assert.equal(await real.locator('.zh-home-refresh,[aria-label="Refresh home"]').count(),0,'Home has no refresh button');
+    const reloads=await real.evaluate(()=>window.__sent.filter(message=>message.type==='home.reload').length);
+    await pullToRefresh(real);
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Pulling down refreshes every host from the server');
+    await pullToRefresh(real);
+    assert.equal(await real.evaluate(()=>window.__sent.filter(message=>message.type==='home.reload').length),reloads+1,'A pull cannot start a second refresh while one is pending');
     assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Refresh uses real request skeletons');
     assert.equal(await real.getByRole('status',{name:'Loading live creators',exact:true}).count(),0);
     assert.equal(await real.getByRole('status',{name:'Loading featured creator',exact:true}).count(),1);
@@ -266,7 +277,6 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     }
     await real.setViewportSize({width:390,height:844});
     await receive('data.home',home);
-    assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).isEnabled(),true,'The authoritative response restores refresh');
     await real.getByRole('button',{name:'Chat',exact:true}).click();
     assert.equal(await real.evaluate(()=>S.v),'chats');
     await real.getByRole('button',{name:'Home',exact:true}).click();
@@ -327,7 +337,8 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await receive('session',{user:{id:'507f1f77bcf86cd799439017',name:'Host',role:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified',requiresOnboarding:false});
     assert.equal(await real.getByRole('button',{name:'Find a match',exact:true}).count(),0,'Creator accounts do not see member matching');
     assert.equal(await real.getByRole('button',{name:'Start a live broadcast',exact:true}).count(),0,'Home remains focused on live and online hosts for creator accounts');
-    assert.equal(await real.locator('.zh-dashboard').getByRole('button',{name:/^Video call |^Chat with /}).count(),0,'Creator accounts also discover profiles without direct call controls');
+    assert.equal(await real.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Creator accounts see no Chat buttons on cards');
+    assert.equal(await real.locator('.zh-dashboard .zh-creator-call').evaluateAll(nodes=>nodes.every(node=>!node.disabled)),true,'Any video call button stays active for creator accounts too');
     await real.evaluate(id=>homeDashboardCall(id),hostId);
     assert.equal(await real.evaluate(()=>S.v),'home','Host accounts cannot initiate member-only calls through the underlying guard');
     await real.evaluate(()=>homeClaim());
@@ -385,14 +396,15 @@ async function testHomeVideoCalls(browser, errors, host, home) {
         await real.setViewportSize({width,height:900});
         assert.equal(await real.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${theme} empty Home fits ${width}px`);
         const controls=await real.locator('.zh-empty-actions button,.zh-empty-links button').evaluateAll(nodes=>nodes.map(node=>{const b=node.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,height:b.height,overflow:node.scrollWidth>node.clientWidth+1};}));
-        assert.ok(controls.length>=4&&controls.every(b=>b.height>=44&&!b.overflow&&b.left>=0&&b.right<=width+1),`${theme} empty actions fit and remain tappable at ${width}px`);
+        assert.ok(controls.length>=3&&controls.every(b=>b.height>=44&&!b.overflow&&b.left>=0&&b.right<=width+1),`${theme} empty actions fit and remain tappable at ${width}px`);
         assert.equal(controls.some((a,i)=>controls.slice(i+1).some(b=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)),false,`${theme} empty actions do not overlap at ${width}px`);
       }
       await real.setViewportSize({width:390,height:844});
       await real.screenshot({path:path.join(artifacts,`home-empty-mobile-${theme}.png`)});
     }
-    await real.locator('.zh-empty-actions').getByRole('button',{name:/^Check again/}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Empty-state refresh requests the real feed');
+    assert.equal(await real.locator('.zh-empty-actions').getByRole('button',{name:/^Check again/}).count(),0,'The empty state relies on pull to refresh');
+    await pullToRefresh(real);
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Pulling the empty state refreshes the real feed');
     assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Empty-state refresh waits on the request skeleton');
     assert.equal(await real.locator('.zh-live-section').count(),0,'Refreshing an empty feed does not invent a Live now section');
     assert.equal(await real.locator('.zh-home-empty-scene').count(),0,'Loading does not leave a stale empty state visible');

@@ -13,9 +13,8 @@ const H=[
 const CH=[["aanya","that request list is getting long","6:02 pm",2],["noor","free for a call in ten","5:54 pm",1],
  ["tara","send your birth time when you can","5:31 pm",0],["ishaan","you: gg, rough last round","4:12 pm",0],
  ["meher","recording the folk set tonight","2:47 pm",0],["dev","you: form check tomorrow?","Yesterday",0]];
-const WATER_STICKER="__WATER_FLOWING_STICKER__";
 const GIFTS=[
- ["Rose waterfall","&#127801;",9999,"water"],
+ ["Rose Waterfall","&#127801;",9999],
  ["Rose","&#127801;",99],["Kiss","&#128139;",199],["Berry","&#127827;",299],["Bear","&#128059;",399],
  ["Cheers","&#129346;",499],["Party","&#127881;",699],["Tulip","&#127799;",899],["Bunny","&#128048;",999],
  ["Blossom","&#127800;",1299],["Bouquet","&#128144;",1599],["Hibiscus","&#127802;",1999],["Champagne","&#127870;",2499],
@@ -541,7 +540,7 @@ function vCall(){const h=g(S.h);
  <div id="wn" style="position:relative;margin-top:auto;padding:0 14px"></div>
  <div class="lvfeed" id="rfeed"></div>
  <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
-   onclick="sendGift('${l}','${e}',${v},'${k||""}')">${k==="water"?`<span class="em media"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
+   onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
 
  ${S.cmp?"":`<div class="lvbar">
   <button class="rndb" aria-label="Chat" onclick="S.cmp=!S.cmp;r()">${I("chat",21)}</button>
@@ -616,9 +615,9 @@ function giftTray(){
     <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?esc(first(S.caller.n)):"the host"}</span></span>
     <button class="addc" onclick="go('coins')">${gem}${window.contentBalance?contentBalance():n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
-   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${k==="water"?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
+   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${giftSticker(l)?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
-     ${k==="water"?`<span class="gl"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gn">${l}</span><span class="gc">${gem}${n(v)}</span></button>`).join("")}</div>`}
+     ${giftSticker(l)?`<span class="gl"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gn">${l}</span><span class="gc">${gem}${n(v)}</span></button>`).join("")}</div>`}
   </div></div>`}
 
 function sendGift(l,e,v,k){
@@ -642,7 +641,7 @@ function sendGift(l,e,v,k){
    take over the frame with a flash, rotating rays and a spark burst. */
 function playGift(l,e,v,k,label){
  const f=document.getElementById("fl"); if(!f)return;
- const water=k==="water",big=water||v>=19999,mid=water||v>=5999,life=water?5200:big?3000:2000;
+ const sticker=giftSticker(l),big=!!sticker||v>=19999,mid=!!sticker||v>=5999,life=sticker?5200:big?3000:2000;
  const frag=document.createElement("div");
  frag.style.cssText="position:absolute;inset:0";
  const add=(cls,style)=>{const d=document.createElement("div");d.className=cls;
@@ -669,13 +668,13 @@ function playGift(l,e,v,k,label){
  }
 
  const gl=document.createElement("div");
- gl.className="fxg"+(big?" big":"")+(water?" water":"");
- gl.innerHTML=water?`<img src="${WATER_STICKER}" alt="Animated rose waterfall">`:`<span class="em">${giftGlyph(e)}</span>`;
+ gl.className="fxg"+(big?" big":"")+(sticker?" sticker":"");
+ gl.innerHTML=sticker?`<img src="${giftMotionUrl(l)}" alt="">`:`<span class="em">${giftGlyph(e)}</span>`;
  frag.appendChild(gl);
 
  const tag=document.createElement("div");
  tag.className="fxtag";
- tag.textContent=String(label||(water?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} · ${n(v)}`)).replace(/&middot;/g,"·");
+ tag.textContent=String(label||(sticker?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} · ${n(v)}`)).replace(/&middot;/g,"·");
  if(big){tag.style.animationDuration="3s, 2.2s";tag.style.fontSize="13px"}
  frag.appendChild(tag);
 
@@ -1185,7 +1184,7 @@ function vHostCall(){const c=S.caller;
 
  <div class="lvfeed" id="rfeed"></div>
  <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
-   onclick="sendGift('${l}','${e}',${v},'${k||""}')">${k==="water"?`<span class="em media"><img src="${WATER_STICKER}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
+   onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
  ${S.cmp?`<div class="lvcomp">
    ${av(me,34,"none")}
    <input id="rmsg" placeholder="Say something..." onkeydown="if(event.key==='Enter')rsay()">
@@ -1458,7 +1457,7 @@ function toggleMvp(){A().mvp=A().mvp?0:1;Native.send("settings.set",{showMvps:!!
 /* ---- Wallet earnings, KYC and payouts ---- */
 function earnCard(){
  if(!isApprovedHost())return "";
- const own=S.walletSnapshot?.owner===S.user?.id,w=own?S.walletSnapshot.data:null,ready=!DEMO&&!contentPending('wallet')&&!ContentLoading.wallet.error&&Number.isSafeInteger(w?.earningsPaise)&&w.earningsPaise>=0;
+ const own=!!S.walletSnapshot&&S.walletSnapshot.owner===S.user?.id,w=own?S.walletSnapshot.data:null,ready=!DEMO&&!contentPending('wallet')&&!ContentLoading.wallet.error&&Number.isSafeInteger(w?.earningsPaise)&&w.earningsPaise>=0;
  const money=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);
  const minimum=Number.isSafeInteger(w?.minimumWithdrawalPaise)&&w.minimumWithdrawalPaise>0,canWithdraw=ready&&w.withdrawalsEnabled===true&&minimum&&w.earningsPaise>=w.minimumWithdrawalPaise;
  const copy=DEMO?'Sign in to view your creator earnings.':!ready?'Refresh your wallet to view available earnings.':w.withdrawalsEnabled===false?'Withdrawals are currently paused.':minimum?'Minimum withdrawal '+money(w.minimumWithdrawalPaise):'Refresh your wallet to check withdrawal availability.';

@@ -53,57 +53,18 @@
 .zp-wallet-actions>button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:10px 9px;border-radius:11px;background:var(--raised);color:var(--ink);font-size:10px;line-height:1.5;text-align:left}
 .zp-wallet-actions>button>svg{flex:none}.zp-wallet-actions>button>svg:last-child{width:12px;margin-left:auto;color:var(--muted)}
 
-/* Decorative miniature cards: the entire banner opens the theme gallery. */
-.zp-appearance{position:relative;display:flex;align-items:center;justify-content:space-between;width:100%;gap:5px;padding:20px;margin-top:16px;border:1px solid var(--zp-border);border-radius:22px;overflow:hidden;text-align:left;color:var(--ink);background:linear-gradient(115deg,var(--surface),var(--raised))}
-.zp-appearance-copy{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:7px}
-.zp-appearance .zp-eyebrow{font-size:8px;letter-spacing:1.2px}
-.zp-appearance-copy>b{font-size:17px;letter-spacing:-.35px;line-height:1.4}
-.zp-appearance-copy>span:not(.zp-eyebrow){color:var(--muted);font-size:10px;line-height:1.5}
-.zp-appearance-copy>strong{display:flex;align-items:center;gap:8px;margin-top:4px;color:var(--accent-ink);font-size:11px;font-weight:600}
-.zp-theme-art{position:relative;width:85px;height:94px;flex:none;margin-left:3px}
-.zp-mini-theme{position:absolute;display:block;width:59px;height:82px;top:7px;left:0;padding:9px 7px;border:1px solid var(--accent-ink);border-radius:10px;background:var(--canvas);transform:rotate(-13deg);box-shadow:0 6px 14px #00000012}
-.zp-mini-theme:nth-child(2){left:23px;top:12px;background:var(--raised);transform:rotate(12deg)}
-.zp-mini-theme>span{display:block;width:15px;height:15px;border-radius:50%;background:var(--accent-ink);opacity:.75}
-.zp-mini-theme>b{display:block;height:5px;width:22px;margin-top:6px;border-radius:2px;background:var(--muted)}
-.zp-mini-theme>em{display:block;height:9px;margin-top:6px;border-radius:3px;background:color-mix(in srgb,var(--accent) 30%,var(--surface))}
-.zp-mini-theme>em:last-child{height:5px;width:70%;background:var(--accent)}
-.zp-theme-art>svg{position:absolute;right:-5px;top:-4px;color:var(--accent-ink)}
-
-.zp-settings-tools{margin-top:30px}
-.zp-settings-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:15px}
-.zp-settings-title h2{font-size:19px;line-height:1.4;letter-spacing:-.45px}
-.zp-settings-title>span{color:var(--muted);font-size:7px;line-height:1.5;letter-spacing:1px;text-align:right}
-.zp-search{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 4px 0 14px;border:1px solid var(--zp-border);border-radius:14px;background:var(--surface);color:var(--muted);transition:border-color 180ms,box-shadow 180ms}
-.zp-search>svg{flex:none}
-.zp-search:focus-within{border-color:var(--accent-ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
-.zp-search>input{min-width:0;flex:1;width:100%;height:46px;padding:0;border:0;outline:0;background:transparent;color:var(--ink);font-size:12px}
-:root[data-theme-id] .zp-search>input:focus-visible{outline:none}
-.zp-search>input::-webkit-search-cancel-button{-webkit-appearance:none}
-.zp-search>button{display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:10px;color:var(--muted);font-size:23px}
-.zp-filters{display:flex;gap:5px;margin-top:11px;padding:4px;border:1px solid var(--zp-border);border-radius:13px;background:color-mix(in srgb,var(--surface) 60%,transparent)}
-.zp-filters>button{flex:1;min-width:0;min-height:38px;padding:8px 5px;border-radius:9px;color:var(--muted);font-size:10px;line-height:1.3;font-weight:550;transition:background-color 180ms,color 180ms,box-shadow 180ms}
-.zp-filters>button[aria-pressed=true]{background:var(--raised);color:var(--ink);box-shadow:0 2px 6px #0000000a,inset 0 0 0 1px var(--zp-border)}
-.zp-group{margin-top:24px}
-.zp-group>h2{margin:0 2px 9px;color:var(--muted);font-size:9px;line-height:1.5;font-weight:650;text-transform:uppercase;letter-spacing:1.2px}
-.zp-group-card{overflow:hidden;padding:4px;border:1px solid var(--zp-border);border-radius:19px;background:var(--surface)}
 .zp-row{display:flex;align-items:center;width:100%;min-height:72px;gap:11px;padding:12px 10px;border-radius:13px;background:transparent;color:var(--ink);text-align:left}
-.zp-row+.zp-row{border-top:1px solid color-mix(in srgb,var(--line) 25%,transparent)}
 .zp-row-icon{display:grid;place-items:center;width:37px;height:39px;flex:none;border:1px solid color-mix(in srgb,var(--line) 30%,transparent);border-radius:12px;background:var(--raised);color:var(--accent-ink)}
 .zp-row-text{display:flex;flex-direction:column;flex:1;min-width:0;gap:4px}
 .zp-row-text>b{font-size:13px;line-height:1.5;font-weight:600;overflow-wrap:anywhere}
-.zp-row-text>small{font-size:11px;line-height:1.55;color:var(--muted);overflow-wrap:anywhere}
-.zp-row-text>small:empty{display:none}
 .zp-chevron{flex:none;font-size:23px;line-height:20px;color:var(--muted)}
 .zp-badge{max-width:82px;padding:4px 7px;border:1px solid var(--zp-border);border-radius:7px;background:var(--raised);color:var(--accent-ink);font-size:8px;line-height:1.5;text-align:center}
 .zp-logout,.zp-logout .zp-row-icon{color:var(--theme-danger)}
-.zp-switch{position:relative;display:flex;align-items:center;justify-content:flex-start;width:44px;height:28px;flex:none;padding:3px;border-radius:20px;background:var(--raised);transition:background-color 180ms}
+.zp-switch{position:relative;display:flex;align-items:center;justify-content:flex-start;width:44px;height:28px;flex:none;padding:3px;background:color-mix(in srgb,var(--muted) 45%,var(--canvas));transition:background-color 180ms}
 .zp-switch::before{content:'';position:absolute;inset:-8px 0}
-.zp-switch>i{display:block;width:22px;height:22px;border-radius:50%;background:var(--ink);box-shadow:0 1px 4px #0003;transition:transform 180ms}
+.zp-switch>i{display:block;width:22px;height:22px;background:#fff;transition:transform 180ms}
 .zp-switch.is-on{background:var(--accent)}.zp-switch.is-on>i{transform:translateX(16px);background:var(--cta-ink)}
-.zp-switch>.zh-skeleton-shape{width:22px;height:22px;border-radius:50%}
-.zp-search-empty{margin-top:18px;padding:32px 20px;border:1px dashed var(--zp-border);border-radius:20px;text-align:center;background:var(--surface);color:var(--muted)}
-.zp-search-empty>svg{color:var(--accent-ink)}.zp-search-empty h3{margin:13px 0 8px;color:var(--ink);font-size:17px}.zp-search-empty p{font-size:12px;line-height:1.7}
-.zp-search-empty button{min-height:44px;padding:10px 17px;margin-top:17px;border-radius:11px;background:var(--raised);color:var(--ink);font-size:12px}
+.zp-toggle-row .zp-switch{margin-left:auto}
 .zp-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .zp-footer{padding:32px 5px 4px;color:var(--muted);text-align:center;font-size:10px;line-height:1.8}
 .zp-footer>span{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;font-size:12px;font-weight:650}.zp-footer-logo{display:block;width:auto;height:24px;margin-bottom:2px}.zp-footer small{font-size:9px}
@@ -111,10 +72,10 @@
 /* Dialogs retain native focus trapping and request-bound save states. */
 .zp-dialog{position:fixed;inset:0;width:calc(100% - 28px);max-width:470px;max-height:calc(100dvh - 40px);margin:auto;padding:0;border:1px solid var(--line);border-radius:24px;background:var(--surface);color:var(--ink);box-shadow:0 25px 100px #0006;overflow:auto;overscroll-behavior:contain;color-scheme:dark}
 .zp-dialog::backdrop{background:#10081299;backdrop-filter:blur(8px)}
-.zp-dialog-heading{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 12px;background:var(--surface);border-bottom:1px solid color-mix(in srgb,var(--line) 40%,transparent)}
+.zp-dialog-heading{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 12px;background:var(--surface)}
 .zp-dialog-heading h2{font-size:21px;line-height:1.35;letter-spacing:-.6px}
 .zp-dialog-heading>button{display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:14px;background:var(--raised);color:var(--ink);font-size:23px}
-.zp-dialog-body{padding:12px 22px 25px}
+.zp-dialog-body{padding:6px 22px 20px}
 .zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p{color:var(--muted);font-size:13px;line-height:1.8;margin:10px 0 18px}
 .zp-dialog .zp-note{color:var(--muted);font-size:11px;margin:7px 0 16px}
 .zp-dialog h3{font-size:14px;margin:22px 0 8px}
@@ -132,19 +93,20 @@
 .zp-languages label{display:flex;align-items:center;gap:7px;min-height:44px;padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--raised);font-size:12px;cursor:pointer}
 :root[data-theme-id] .zp-languages label:has(input:checked){border-color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
 .zp-dialog input[type=checkbox]{flex:none;width:18px;height:18px;accent-color:var(--accent)}
-.zp-preference{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:14px 0;font-size:13px;cursor:pointer}
+.zp-preference{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:8px 0;font-size:13px;cursor:pointer}
 .zp-preference input[type=checkbox]{position:relative;appearance:none;width:42px;height:26px;border:1px solid var(--line);border-radius:16px;background:var(--raised);cursor:pointer;transition:background-color 180ms}
 .zp-preference input::before{position:absolute;content:'';width:18px;height:18px;top:3px;left:3px;border-radius:50%;background:var(--muted);transition:transform 180ms}
 .zp-preference input:checked{background:var(--accent);border-color:var(--accent)}
 .zp-preference input:checked::before{transform:translateX(16px);background:var(--cta-ink)}
 .zp-preference input:disabled{opacity:.4;cursor:default}
-.zp-detail{display:flex;flex-direction:column;gap:7px;padding:18px 0;border-bottom:1px solid var(--line);font-size:14px;overflow-wrap:anywhere}
+.zp-detail{display:flex;flex-direction:column;gap:7px;padding:12px 0;font-size:14px;overflow-wrap:anywhere}
 .zp-detail>span,.zp-detail>small{color:var(--muted);font-size:11px}
 .zp-qr{width:220px;max-width:100%;padding:8px;margin:24px auto;border-radius:18px;background:white}.zp-qr svg{display:block;width:100%;height:auto}
 .zp-account-id{display:block;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--raised);text-align:center;font-size:12px;user-select:text;overflow-wrap:anywhere}
 .zp-empty{padding:24px 5px;color:var(--muted);text-align:center}.zp-empty>svg{color:var(--accent-ink)}.zp-empty p{font-size:12px;line-height:1.7}
 .zp-earnings{display:flex;flex-direction:column;gap:10px;padding:22px 18px;border:1px solid var(--line);border-radius:16px;background:var(--raised)}
 .zp-earnings>span,.zp-earnings>small{font-size:11px;color:var(--muted)}.zp-earnings>strong{font-size:30px}
+.zp-blocked-list{margin-top:14px}
 .zp-blocked>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;font-size:12px}
 .zp-blocked button{min-height:44px;padding:10px 12px;border-radius:10px;background:var(--raised);color:var(--ink);font-size:11px}
 .zp-history .acctrow{padding-left:0;padding-right:0}.zp-danger{background:var(--theme-danger)}
@@ -154,12 +116,11 @@
   .zp-page{max-width:1100px;padding:30px 28px 36px}.zp-heading{margin-bottom:30px}
   :root[data-theme-id] .zp-page .zp-heading h1{font-size:calc(34px * var(--theme-font-scale,1))}
   .zp-heading p{font-size:13px}.zp-layout{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:32px;align-items:start}
-  .zp-overview{position:sticky;top:24px}.zp-settings-tools{margin-top:0}
+  .zp-overview{position:sticky;top:24px}
   .zp-cover{min-height:104px;padding:22px}.zp-identity-body{padding:0 22px 22px}
   .zp-person{padding-top:21px;gap:16px}.zp-person h2{font-size:23px}.zp-avatar{width:80px;height:80px}
   .zp-stats{margin-top:20px}.zp-stats>div{min-height:87px}.zp-wallet{padding:22px}
-  .zp-row{min-height:77px;gap:13px;padding:13px 14px}.zp-group{margin-top:23px}.zp-group>h2{font-size:10px}
-  .zp-settings-title>span{font-size:8px}.zp-filters>button{font-size:11px}
+  .zp-row{gap:13px;padding:10px 14px}
 }
 @media(max-width:380px){
   .zp-page{padding-left:13px;padding-right:13px}
@@ -167,16 +128,13 @@
   .zp-cover{padding-left:14px;padding-right:14px}.zp-card-label{font-size:7px;letter-spacing:.8px}.zp-account-type{font-size:7px}
   .zp-identity-body{padding-left:14px;padding-right:14px}.zp-person{gap:11px}.zp-avatar{width:67px;height:67px}.zp-person h2{font-size:19px}
   .zp-wallet{padding-left:14px;padding-right:14px}.zp-wallet-actions>button{gap:5px;padding:8px 7px;font-size:9px}.zp-wallet-actions>button>svg:last-child{display:none}
-  .zp-appearance{padding:18px 14px}.zp-appearance-copy>b{font-size:15px}.zp-theme-art{width:73px;transform:scale(.9);transform-origin:right center}
-  .zp-filters{gap:2px}.zp-filters>button{font-size:9px}
   .zp-row{gap:9px;padding-left:7px;padding-right:7px}.zp-row-icon{width:32px;height:36px}.zp-badge{max-width:63px;padding:3px 5px;font-size:7px}
 }
 @media(hover:hover) and (pointer:fine){
-  .zp-page button:not(:disabled),.zp-dialog button:not(:disabled),.zp-chevron,.zp-mini-theme{transition:transform 180ms ease,background-color 180ms ease,border-color 180ms ease,box-shadow 180ms ease}
+  .zp-page button:not(:disabled),.zp-dialog button:not(:disabled),.zp-chevron{transition:transform 180ms ease,background-color 180ms ease,border-color 180ms ease,box-shadow 180ms ease}
   .zp-row:is(button):hover{background:color-mix(in srgb,var(--raised) 60%,transparent)}.zp-row:is(button):hover .zp-chevron{transform:translateX(3px);color:var(--accent-ink)}
   .zp-edit-profile:hover,.zp-heading-actions>button:hover{border-color:var(--accent-ink);background:var(--raised)}
-  .zp-appearance:hover{border-color:var(--accent-ink)}.zp-appearance:hover .zp-mini-theme:first-child{transform:translate(-3px,-2px) rotate(-18deg)}.zp-appearance:hover .zp-mini-theme:nth-child(2){transform:translate(3px,-2px) rotate(16deg)}
-  .zp-topup:hover,.zp-save:hover{transform:translateY(-2px)}.zp-search>button:hover,.zp-filters>button:hover{background:var(--raised);color:var(--ink)}
+  .zp-topup:hover,.zp-save:hover{transform:translateY(-2px)}
 }
 @media(prefers-reduced-motion:no-preference){
   .zp-page button:not(:disabled):active,.zp-dialog button:not(:disabled):active{transform:scale(.98)}

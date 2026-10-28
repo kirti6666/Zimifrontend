@@ -28,8 +28,7 @@ const homeIcons = {
   rings:'<circle cx="14" cy="12" r="7"/><path d="M6 5a8 8 0 0 0 0 14"/>',
   gift:'<path d="M3 9h18v5H3zM5 14v7h14v-7M12 9v12M12 9C3 9 5 1 9 4l3 5Zm0 0c9 0 7-8 3-5z"/>',
   pulse:'<circle cx="12" cy="12" r="9"/><path d="M16 17a6 6 0 1 1 2-5c0 4-5 4-5 1V9m0 0a3 3 0 1 0 0 5"/>',
-  broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>',
-  refresh:'<path d="M20 11a8 8 0 0 0-14.8-3.6M4 4v4h4M4 13a8 8 0 0 0 14.8 3.6M20 20v-4h-4"/>'
+  broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>'
 };
 function hi(name,size=20){if(['coin','rings'].includes(name))return coinIcon(size);return `<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${homeIcons[name]||P[name]||P.star}</svg>`}
 function homeCompact(value){const x=Math.max(0,Number(value)||0);return x>=1000?(x/1000).toFixed(x>=10000?0:1).replace(/\.0$/,'')+'k':n(x)}
@@ -81,13 +80,13 @@ function homeMatch(){if(homeContentPending())return `<div class="zh-match">${con
 function homeAvatar(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return `<span class="zh-creator-avatar"><span class="zh-creator-face" aria-hidden="true">${esc((first(h.n||'')||'?').charAt(0).toUpperCase())}${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>${homeVerified(h)}</span>`}
 function homeTile(h){
   const id=domId(h.id),live=!!h.stream;
-  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><div class="zh-creator-top"><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><span class="zh-creator-price ${live||h.rate>0?'':'is-free'}">${live?`${hi('eye',11)} ${homeCompact(h.viewers)}`:h.rate>0?`${hi('rings',13)}${n(h.rate)}/min`:'Free'}</span></div><div class="zh-creator-bottom">${homeAvatar(h)}<div class="zh-creator-text"><h3>${esc(h.n)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><span class="zh-creator-open" aria-hidden="true">${hi('arrow',17)}</span></div></article>`;
+  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><div class="zh-creator-top"><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><span class="zh-creator-price ${live||h.rate>0?'':'is-free'}">${live?`${hi('eye',11)} ${homeCompact(h.viewers)}`:h.rate>0?`${hi('rings',13)}${n(h.rate)}/min`:'Free'}</span></div><div class="zh-creator-bottom">${homeAvatar(h)}<div class="zh-creator-text"><h3>${esc(h.n)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',18)}</button></div></article>`;
 }
 function homeBonus(){if(!isApprovedHost())return '';if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
 // Sponsored cards sit inside a host grid after its first rows (or below a short grid), never above the hosts.
 const HOME_AD_AFTER=6;
 function homeGridWithAd(cards,placement){const ad=window.ZimiAds?.card(placement)||'';return ad?[...cards.slice(0,HOME_AD_AFTER),ad,...cards.slice(HOME_AD_AFTER)].join(''):cards.join('')}
-function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A little quiet right now</h3><p>${Home.filter==='instant'?'No creators are available for a call right now. Try again shortly.':'Try another category or come back for a conversation.'}</p><button class="zh-soft" onclick="homeLoad()">Refresh ${hi('refresh',14)}</button></div>`}
+function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A little quiet right now</h3><p>${Home.filter==='instant'?'No creators are available for a call right now. Pull down to refresh.':'Try another category or come back for a conversation.'}</p></div>`}
 
 function homeScreen(){return homeDashboard()}
 
@@ -197,6 +196,8 @@ function homeSearchRequest(more=false){if(more&&Home.searchLoading)return;const 
 function homeSearchResults(){const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),list=Home.searchQuery===(S.sq||'')?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('cards','Finding creators',4);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;return `${list.length?`<div class="zh-grid">${list.map(homeTile).join('')}</div>`:!pending?'<div class="zh-empty"><h3>No creators found</h3><p>Try another name or category.</p></div>':''}${more?contentSkeleton('cards','Loading more search results',2):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more</button>':''}`}
 
 function homePaintSearch(){const el=document.getElementById('home-search-results');if(el)el.innerHTML=homeSearchResults()}
+ZimiPullRefresh.register(['home','all-creators'],{refresh:()=>homeLoad(),busy:()=>Home.loading||contentPending('home')});
+ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>Home.searchLoading||contentPending('search')});
 function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>Find your next connection</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
 function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','chats','profile','settings'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
@@ -265,6 +266,6 @@ if(DEMO){
   Home.total=5;Home.broadcasterCount=1400;Home.availableCount=1420;S.bal=1250;
   Home.bonus={id:'demo-bonus',title:'Creator Bonus',description:'Connect in your first 1:1 call',rewardCoins:200,progress:0,target:1,claimed:false};
   Home.notifications=[{id:'demo-welcome',title:'Welcome to BinzoLive',body:'Find your people. Make your first connection.',createdAt:new Date().toISOString(),read:false}];Home.unreadCount=1;
-  Home.gifts=[{id:'demo-rose',name:'Rose',emoji:'🌹',coins:99},{id:'demo-heart',name:'Love',emoji:'💗',coins:199},{id:'demo-party',name:'Party',emoji:'🎉',coins:499},{id:'demo-crown',name:'Crown',emoji:'👑',coins:999}];
+  Home.gifts=[{id:'demo-rose',name:'Rose',emoji:'🌹',coins:99},{id:'demo-heart',name:'Love',emoji:'💗',coins:199},{id:'demo-party',name:'Party',emoji:'🎉',coins:499},{id:'demo-crown',name:'Crown',emoji:'👑',coins:999},{id:'demo-sticker-heart',name:'Heart',emoji:'💖',coins:999},{id:'demo-golden-rose',name:'Golden Rose',emoji:'🌹',coins:1999},{id:'demo-rose-waterfall',name:'Rose Waterfall',emoji:'🌹',coins:9999}];
   Home.packs=[{id:'demo-small',name:'A little love',coins:200,pricePaise:9900},{id:'demo-medium',name:'Fan favourite',coins:625,pricePaise:24900},{id:'demo-large',name:'Make it special',coins:1250,pricePaise:49900}];Home.paymentsAvailable=true;
 }

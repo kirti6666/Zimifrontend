@@ -101,13 +101,11 @@
 .zh-creator-text h3{margin:0;overflow:hidden;color:#fff;font-size:13px;font-weight:700;line-height:1.25;letter-spacing:-.2px;text-overflow:ellipsis;white-space:nowrap}
 .zh-creator-text p{margin:2px 0 0;overflow:hidden;color:rgba(255,255,255,.86);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
 .zh-creator-call{position:relative;display:grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:var(--accent);color:var(--cta-ink);box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent);pointer-events:auto}
-.zh-creator-call:disabled{background:rgba(255,255,255,.22);color:rgba(255,255,255,.72);box-shadow:none;backdrop-filter:blur(6px);cursor:default}
 .zh-creator-call:focus-visible,.zh-creator-hit:focus-visible{outline:2px solid #fff;outline-offset:-3px}
 .zh-creator-call::before{content:"";position:absolute;inset:-4px;border-radius:50%}
-.zh-creator-call:active:not(:disabled){transform:scale(.94)}
+.zh-creator-call:active{transform:scale(.94)}
 .zh-creator-placeholder{background:var(--raised);box-shadow:none}
 .zh-creator-placeholder .zh-creator-text{display:flex;flex-direction:column;gap:6px;text-shadow:none}
-.zh-skeleton-round{border-radius:50%!important}
 @media(hover:hover) and (pointer:fine){.zh-creator-card>.zh-photo{transition:transform .35s}.zh-creator-card:hover>.zh-photo{transform:scale(1.035)}}
 @media(min-width:600px){.zh-creator-card{border-radius:18px}.zh-creator-top{top:12px;left:12px;right:12px}.zh-creator-bottom{left:12px;right:12px;bottom:12px;gap:10px}.zh-creator-avatar{width:40px;height:40px}.zh-creator-text h3{font-size:16px}.zh-creator-text p{font-size:12px}.zh-creator-call{width:48px;height:48px}.zh-creator-status,.zh-creator-price{font-size:12px;padding:5px 11px}}
 @media(max-width:359px){.zh-creator-top{top:7px;left:7px;right:7px}.zh-creator-bottom{left:7px;right:7px;bottom:7px;gap:5px}.zh-creator-avatar{width:26px;height:26px}.zh-creator-face{font-size:11px}.zh-creator-call{width:34px;height:34px}.zh-creator-text h3{font-size:12.5px}.zh-creator-text p{font-size:10px}.zh-creator-status,.zh-creator-price{font-size:10px;padding:3px 7px;gap:4px}}

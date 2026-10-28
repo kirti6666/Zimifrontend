@@ -17,7 +17,7 @@ async function style(page, selector) {
       backgroundImage:c.backgroundImage, height:el.getBoundingClientRect().height };
   });
 }
-async function circularBack(page,label) {
+async function backControl(page,label) {
   const controls=await page.locator('.zb-back').evaluateAll(nodes=>nodes.filter(el=>el.getClientRects().length).map(el=>{
     const c=getComputedStyle(el),box=el.getBoundingClientRect(),icon=el.querySelector('svg')?.getBoundingClientRect();
     return {width:box.width,height:box.height,radius:c.borderRadius,borders:[c.borderTopWidth,c.borderRightWidth,c.borderBottomWidth,c.borderLeftWidth],style:c.borderStyle,color:c.borderTopColor,iconCentered:!!icon&&Math.abs(icon.x+icon.width/2-box.x-box.width/2)<1&&Math.abs(icon.y+icon.height/2-box.y-box.height/2)<1};
@@ -26,7 +26,7 @@ async function circularBack(page,label) {
   const control=controls[0];
   assert.equal(control.width,44,`${label}: 44px Back target width`);
   assert.equal(control.height,44,`${label}: 44px Back target height`);
-  assert.ok(['50%','22px'].includes(control.radius),`${label}: circular Back border`);
+  assert.equal(control.radius,'10px',`${label}: Back shares the 10px control corners`);
   assert.deepEqual(control.borders,['1px','1px','1px','1px'],`${label}: complete 1px border`);
   assert.equal(control.style,'solid',`${label}: visible solid border`);
   assert.ok(!['transparent','rgba(0, 0, 0, 0)'].includes(control.color),`${label}: border is not transparent`);
@@ -45,14 +45,14 @@ async function audit(page, label) {
       filledActiveBubble:painted && parseFloat(before.height) > 4,
       wrong:[...document.querySelectorAll('body *')].filter(el => el.getClientRects().length).flatMap(el => {
         const c = getComputedStyle(el), name = el.id || el.className || el.tagName;
-        const radiusOK=el.matches('.zb-back')?['50%','22px'].includes(c.borderRadius):c.borderRadius==='10px';
+        const radiusOK=c.borderRadius==='10px';
         return [!radiusOK && `${name}: radius ${c.borderRadius}`, c.boxShadow !== 'none' && `${name}: box shadow`, c.textShadow !== 'none' && `${name}: text shadow`, c.filter.includes('drop-shadow') && `${name}: filter shadow`].filter(Boolean);
       })
     };
   });
   assert.equal(result.overflow, false, `${label}: fits the viewport`);
   assert.equal(result.canvas, 'rgb(255, 255, 255)', `${label}: pure white canvas`);
-  assert.deepEqual(result.wrong, [], `${label}: flat styling with 10px UI corners and circular Back controls`);
+  assert.deepEqual(result.wrong, [], `${label}: flat styling with 10px corners on every control, including Back`);
   assert.ok(Math.abs(result.height - 58) < .6, `${label}: compact shared tab height`);
   assert.ok(Math.abs(result.bottom - result.appBottom) < .6, `${label}: no gap below tabs`);
   assert.equal(result.filledActiveBubble, false, `${label}: no decorative filled tab bubble`);
@@ -85,7 +85,7 @@ async function audit(page, label) {
           assert.equal(heading.weight, '600', 'Page headings use restrained semibold type');
           assert.equal((await style(page, '.zc-name')).fontSize, '15px', 'Conversation names use the shared body hierarchy');
         } else if (view === 'profile') {
-          await circularBack(page,`Own profile ${width}px`);
+          await backControl(page,`Own profile ${width}px`);
           const cover = await style(page, '.zu-cover');
           assert.ok(Math.abs(cover.height - (width < 760 ? 192 : 220)) < .6, 'Profile cover does not dominate the first screen');
           assert.equal(await page.locator('.zu-cover.has-photo').count(), 0, 'This fixture covers a profile without a cover image');
@@ -99,7 +99,7 @@ async function audit(page, label) {
           assert.equal(await page.getByRole('button', { name:'Edit profile', exact:true }).isVisible(), true);
           assert.equal(await page.getByRole('button', { name:'Upload photos', exact:true }).isVisible(), true);
         } else {
-          await circularBack(page,`Settings ${width}px`);
+          await backControl(page,`Settings ${width}px`);
           assert.equal(await page.locator('#zp-search,.zp-filters').count(), 0, 'Settings remains a simple list');
           const account = await style(page, '.zp-simple-row');
           assert.equal(account.fontSize, '16px', 'Settings rows use balanced body sizing');
@@ -111,10 +111,10 @@ async function audit(page, label) {
     }
     for(const view of ['coins','all-creators']) {
       await navigate(page,view);
-      await circularBack(page,view);
+      await backControl(page,view);
     }
     await page.evaluate(()=>go('host','aanya'));
-    await circularBack(page,'Public profile');
+    await backControl(page,'Public profile');
     assert.deepEqual(errors, [], 'No browser errors during the visual review');
     console.log('PASS professional UI: restrained typography, plain settings/icons, compact neutral profile, readable content, white/no-shadow/10px styling and gap-free 58px tabs at 320/390/768px');
   } finally { await browser.close(); }

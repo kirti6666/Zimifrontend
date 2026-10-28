@@ -73,7 +73,7 @@
 .zn-filter-actions button:first-child{color:var(--accent-ink)}
 .zn-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 64px);padding:0;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);font:calc(13px * var(--theme-font-scale,1))/1.6 var(--theme-font,Inter,sans-serif);box-shadow:0 24px 80px #0004;overflow:auto;overscroll-behavior:contain}
 .zn-dialog::backdrop{background:#0006;backdrop-filter:blur(3px)}
-.zn-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px 12px 22px;border-bottom:1px solid var(--line);font-size:.85em;font-weight:500;color:var(--muted)}
+.zn-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px 12px 22px;font-size:.85em;font-weight:500;color:var(--muted)}
 .zn-dialog-heading button{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:var(--ink)}
 .zn-detail-content{padding:24px}
 .zn-detail-icon{width:48px;height:48px;display:grid;place-items:center;background:var(--raised);color:var(--accent-ink);border-radius:50%;margin-bottom:20px}

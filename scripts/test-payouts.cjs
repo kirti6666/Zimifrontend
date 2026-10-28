@@ -13,6 +13,13 @@ const receive=(page,type,data={})=>page.evaluate(message=>Native.receive(message
 const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type===type).map(message=>message.data),type);
 const last=async(page,type)=>(await sent(page,type)).at(-1);
 const button=(page,name)=>page.getByRole('button',{name,exact:true});
+// Pulls the page down from the top the way a finger does, then releases.
+const pullToRefresh=page=>page.evaluate(()=>{
+  window.zimiScrollTo(0);
+  const target=document.getElementById('screen'),touch=y=>new Touch({identifier:1,target,clientX:180,clientY:y});
+  const fire=(type,y)=>{const active=type==='touchend'?[]:[touch(y)];target.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches:active,targetTouches:active,changedTouches:[touch(y)]}))};
+  fire('touchstart',120);for(const y of [150,190,230,270,300])fire('touchmove',y);fire('touchend',300);
+});
 const go=(page,view)=>page.evaluate(view=>go(view),view);
 const settleHistory=async(page,items=[],extra={})=>receive(page,'payout.loaded',{items,total:items.length,page:1,limit:20,requestId:(await last(page,'payout.load')).requestId,...extra});
 const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locator('#zpay-amount').fill(amount);await page.locator('#zpay-address').fill(address)};
@@ -121,7 +128,7 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   assert.equal(await button(restored,'Edit details').isDisabled(),true);assert.equal((await sent(restored,'payout.request')).length,0,'Recovery is never submitted automatically');
   await button(restored,'Retry same withdrawal').click();const restoredRequest=await last(restored,'payout.request');assert.equal(restoredRequest.idempotencyKey,pending.idempotencyKey);
   await receive(restored,'payout.error',{action:'payout.request',requestId:restoredRequest.requestId,idempotencyKey:pending.idempotencyKey,message:'Connection interrupted'});
-  await button(restored,'Refresh withdrawal history').click();await settleHistory(restored,[{...record,idempotencyKey:pending.idempotencyKey}],{recovered:{...record,idempotencyKey:pending.idempotencyKey},pending:null});
+  assert.equal(await restored.locator('[aria-label="Refresh withdrawal history"]').count(),0,'Withdrawal history has no refresh button');await pullToRefresh(restored);await settleHistory(restored,[{...record,idempotencyKey:pending.idempotencyKey}],{recovered:{...record,idempotencyKey:pending.idempotencyKey},pending:null});
   assert.equal(await restored.getByRole('heading',{name:'Withdrawal requested',exact:true}).count(),1);assert.equal(await restored.evaluate(()=>PayoutUI.attempt),null);
   const conflict=await open();await receive(conflict,'wallet.balance',wallet);await settleHistory(conflict);await fill(conflict);await button(conflict,'Review withdrawal').click();await button(conflict,'Confirm withdrawal request').click();
   const conflicting=await last(conflict,'payout.request');await receive(conflict,'payout.error',{action:'payout.request',requestId:conflicting.requestId,idempotencyKey:conflicting.idempotencyKey,status:409,code:'PAYOUT_PENDING_RECOVERY',message:'Recover the earlier request first'});
