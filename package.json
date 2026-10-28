@@ -22,6 +22,7 @@
     "test:render-security": "node scripts/test-render-security.cjs",
     "test:coins": "npm run build:web && node scripts/test-coins.cjs",
     "test:coin-checkout": "npm run build:web && node scripts/test-coin-checkout.cjs",
+    "test:payment-return": "npm run build:web && node scripts/test-payment-return.cjs",
     "test:wallet": "npm run build:web && node scripts/test-wallet.cjs",
     "test:payouts": "npm run build:web && node scripts/test-payout-cache.cjs && node scripts/test-payouts.cjs",
     "test:payments": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-payment-routes.cjs && node scripts/test-coins.cjs && node scripts/test-themes.cjs && node scripts/test-profile-premium.cjs",

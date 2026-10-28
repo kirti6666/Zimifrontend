@@ -94,8 +94,13 @@ keeps it identical to the original Next.js version.
 - Your Coins uses a compact Wallet summary and a 3-by-2 pack grid so the balance
   and six packages fit a normal phone viewport. Get Coins opens payment-method
   selection before creating a new checkout. Use only server-supported routes,
-  retain pending-payment route/idempotency recovery, and leave premium checkout
-  separate. Errors and recovery controls must remain scrollable and visible.
+  retain uncertain-request route/idempotency recovery, and leave premium checkout
+  separate. On return from an incomplete external coin payment, refresh the
+  balance/catalog, dismiss its pending and saved-method cards, show
+  "Your payment failed. You can try again." and allow any package with a fresh
+  method/checkout. Native order tracking continues for late server confirmation;
+  old callbacks must not restore a dismissed checkout or replace a newer attempt.
+  Errors and recovery controls must remain scrollable and visible.
 - Wallet uses a compact balance card and recent activity. Approved creators see
   authenticated INR earnings and withdrawal links; never convert coin balances
   into assumed earnings or promise instant payouts. Keep loading, error/retry

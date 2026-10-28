@@ -9980,16 +9980,16 @@ window.ZimiAllCreators={render:allCreatorsView};
 ZimiHome.views['all-creators']=allCreatorsView;
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
-const CoinUI={giftId:'',topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),receipts:new Map(),confirmed:new Set()};
+const CoinUI={giftId:'',topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
 function coinPaint(){if(Home.giftTo||S.v==='coins')r()}
 function coinWalletReady(){return DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error)}
-function coinHasPendingPayment(){return coinPendingPayment()||Array.from(CoinUI.orders.values()).some(p=>p.status==='PENDING')}
-function coinPendingPayment(){return !!Home.checkout&&!['SUCCESS','FAILED','REVERTED'].includes(Home.checkout.status)}
+function coinHasPendingPayment(){return coinPendingPayment()||Array.from(CoinUI.orders.values()).some(p=>p.status==='PENDING'&&!CoinUI.dismissedOrders.has(p.merchantOrderId))}
+function coinPendingPayment(){return !!Home.checkout&&!CoinUI.dismissedOrders.has(Home.checkout.merchantOrderId)&&!['SUCCESS','FAILED','REVERTED'].includes(Home.checkout.status)}
 function coinPrice(paise){return '₹'+(Number(paise||0)/100).toLocaleString('en-IN',{maximumFractionDigits:2})}
 function coinRefresh(){if(DEMO)return;contentStart('wallet');coinPaint();Native.send('wallet.load')}
 function coinSelectPack(id){if(Home.checkoutBusy||coinHasPendingPayment()||Home.checkoutAttempt||CoinUI.checkoutPrompt)return;Home.packId=id;CoinUI.paymentError='';coinPaint()}
-function coinReviewPayment(order){if(Home.checkoutBusy||CoinUI.verifyBusy)return;const payment=CoinUI.orders.get(order);if(!payment||payment.status!=='PENDING')return;Home.checkout=payment;Home.checkoutAttempt=payment.packId&&payment.idempotencyKey?{packId:payment.packId,idempotencyKey:payment.idempotencyKey,...paymentRestoredRoute(payment,Home.checkoutAttempt)}:null;CoinUI.packSnapshot=payment.coins!=null?{id:payment.packId,coins:payment.coins,pricePaise:payment.amountPaise??payment.payableAmountPaise??0,name:'Pending coin pack'}:null;CoinUI.paymentError='';coinPaint()}
-function coinOtherPayments(){const other=Array.from(CoinUI.orders.values()).filter(p=>p.status==='PENDING'&&p.merchantOrderId!==Home.checkout?.merchantOrderId);return other.length?`<div class="zw-recovery"><p>${other.length} other payment${other.length===1?' is':'s are'} awaiting confirmation.</p>${other.map(p=>`<button class="zh-soft" onclick="coinReviewPayment('${domId(p.merchantOrderId)}')" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>Review pending payment${p.coins?' &middot; '+n(p.coins)+' coins':''}</button>`).join('')}</div>`:''}
+function coinReviewPayment(order){if(Home.checkoutBusy||CoinUI.verifyBusy||CoinUI.dismissedOrders.has(order))return;const payment=CoinUI.orders.get(order);if(!payment||payment.status!=='PENDING')return;Home.checkout=payment;Home.checkoutAttempt=payment.packId&&payment.idempotencyKey?{packId:payment.packId,idempotencyKey:payment.idempotencyKey,...paymentRestoredRoute(payment,Home.checkoutAttempt)}:null;CoinUI.packSnapshot=payment.coins!=null?{id:payment.packId,coins:payment.coins,pricePaise:payment.amountPaise??payment.payableAmountPaise??0,name:'Pending coin pack'}:null;CoinUI.paymentError='';coinPaint()}
+function coinOtherPayments(){const other=Array.from(CoinUI.orders.values()).filter(p=>p.status==='PENDING'&&!CoinUI.dismissedOrders.has(p.merchantOrderId)&&p.merchantOrderId!==Home.checkout?.merchantOrderId);return other.length?`<div class="zw-recovery"><p>${other.length} other payment${other.length===1?' is':'s are'} awaiting confirmation.</p>${other.map(p=>`<button class="zh-soft" onclick="coinReviewPayment('${domId(p.merchantOrderId)}')" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>Review pending payment${p.coins?' &middot; '+n(p.coins)+' coins':''}</button>`).join('')}</div>`:''}
 function coinPaymentView(){
  const p=Home.checkout;if(!p)return '';
  const status=p.status,pending=coinPendingPayment(),title=status==='SUCCESS'?'Payment confirmed':status==='FAILED'?'Payment not completed':status==='REVERTED'?'Payment reversed':'Your payment is pending';
@@ -10055,6 +10055,22 @@ function homeCheckout(resume=false){
  Home.checkoutBusy=true;CoinUI.paymentError='';Native.send('wallet.checkout',{...Home.checkoutAttempt});coinPaint();
 }
 function homeVerifyPayment(){if(!Home.checkout?.merchantOrderId||CoinUI.verifyBusy||Home.checkoutBusy||window.ZimiOffline?.isOffline())return;CoinUI.verifyBusy=true;CoinUI.paymentError='';Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId});coinPaint()}
+function coinPaymentReturned(d){
+ if(!S.loggedIn||!d.merchantOrderId||CoinUI.returnedOrders.has(d.merchantOrderId))return;
+ const known=CoinUI.orders.get(d.merchantOrderId);
+ if(!known||d.status==='SUCCESS'||known.status==='SUCCESS')return;
+ // Dismiss the abandoned checkout, while the native shell continues tracking
+ // its real server status. A late confirmation must still update the wallet.
+ CoinUI.dismissedOrders.add(d.merchantOrderId);CoinUI.returnedOrders.add(d.merchantOrderId);
+ const active=Home.checkout?Home.checkout.merchantOrderId===d.merchantOrderId:!!(d.idempotencyKey&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey);
+ if(!active&&(Home.checkout||Home.checkoutAttempt||Home.checkoutBusy||CoinUI.checkoutPrompt)){coinPaint();return}
+ Home.checkout=null;Home.checkoutAttempt=null;Home.checkoutBusy=false;
+ CoinUI.verifyBusy=false;CoinUI.paymentError='';CoinUI.packSnapshot=null;
+ coinCloseCheckoutPrompt(false);PaymentRoutes.choices.coins='';
+ if(!DEMO){contentStart('wallet');contentStart('catalog');Native.send('wallet.load');Native.send('catalog.load')}
+ coinPaint();if(S.v==='coins')window.zimiScrollTo?.(0);
+ appNotice('Your payment failed. You can try again.');
+}
 function coinAcceptPayment(d,checkout=false){
  if(d.kind&&d.kind!=='coins')return;
  const known=CoinUI.orders.get(d.merchantOrderId);
@@ -10062,6 +10078,12 @@ function coinAcceptPayment(d,checkout=false){
  if(known?.status==='REVERTED'&&d.status!=='REVERTED')return;
  if(known?.status==='SUCCESS'&&d.status==='FAILED')return;
  if(d.merchantOrderId)CoinUI.orders.set(d.merchantOrderId,{...known,...d});
+ // A restored order is history, not the checkout the user is starting now.
+ // Keep it for reconciliation without interrupting a fresh package/method.
+ if(d.status==='PENDING'&&Home.checkout?.merchantOrderId!==d.merchantOrderId&&(!d.idempotencyKey||Home.checkoutAttempt?.idempotencyKey!==d.idempotencyKey))CoinUI.dismissedOrders.add(d.merchantOrderId);
+ // Old provider callbacks may arrive after the user starts a different pack.
+ // Retain the receipt without restoring the abandoned order or its method.
+ if(CoinUI.dismissedOrders.has(d.merchantOrderId))return;
  if(checkout&&Home.checkoutAttempt&&d.idempotencyKey!==Home.checkoutAttempt.idempotencyKey)return;
  if(!checkout&&Home.checkout?.merchantOrderId&&d.merchantOrderId!==Home.checkout.merchantOrderId){if(coinPendingPayment()||Home.checkoutAttempt||d.status!=='PENDING'){coinPaint();return}}
  if(!checkout&&!Home.checkout&&Home.checkoutAttempt&&d.idempotencyKey!==Home.checkoutAttempt.idempotencyKey)return;
@@ -10117,6 +10139,7 @@ Native.on('gift.sent',d=>{
 });
 Native.on('wallet.checkout',d=>coinAcceptPayment(d,true));
 Native.on('wallet.purchase',d=>coinAcceptPayment(d));
+Native.on('wallet.payment-returned',coinPaymentReturned);
 Native.on('operation.error',d=>{
  if(d.action==='gift.send'&&coinGiftMatches(d)){Home.giftBusy=false;CoinUI.giftError=d.message||'Delivery could not be confirmed. Retry this gift.';if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){Home.giftAttempt=null;if(d.code==='INSUFFICIENT_COINS')coinRefresh()}coinPaint()}
  if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint();if(routeRejected)paymentRoutesLoad()}
@@ -10124,7 +10147,7 @@ Native.on('operation.error',d=>{
 });
 document.addEventListener('aurora:navigate',()=>{if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
 document.addEventListener('keydown',e=>{if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
-window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
+window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
 
 /* Real media stays in the WebView. The authenticated native bridge carries
    signaling only; camera/microphone capture begins from an explicit action. */

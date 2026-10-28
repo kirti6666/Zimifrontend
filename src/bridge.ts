@@ -188,6 +188,7 @@ export type AppMessage =
   | { type: "call.matched"; data: { host: Host } }
   | { type: "call.created"; data: { callId: string; to: string; voice: boolean } }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
+  | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
   | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } }
@@ -263,7 +264,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let streamRequestsRevision = 0;
   type PurchaseKind = "coins" | "premium";
   const pendingPurchases = new Map<string, PendingPayment & { epoch: number; sessionVersion: number }>();
-  const verifyingPurchases = new Set<string>();
+  const verifyingPurchases = new Map<string, Promise<Purchase | undefined>>();
+  type CoinReturn = { payment: PendingPayment; owner?: string; epoch: number; sessionVersion: number; document: number; departed: boolean; settling: boolean; terminal?: Purchase };
+  const externalCoinCheckouts = new Map<string, CoinReturn>();
   const operations = new Set<string>();
   const authWork = new Set<string>();
   const current = (version: number) => !closed && version === epoch;
@@ -560,15 +563,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       emit({ type: "data.chats", data });
     }, { page });
-  const verifyPurchase = async (orderId: string, kind: PurchaseKind = "coins") => {
-    const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${kind}:${orderId}`;
-    if (verifyingPurchases.has(key)) return;
-    verifyingPurchases.add(key);
-    try {
+  const verifyPurchase = (orderId: string, kind: PurchaseKind = "coins"): Promise<Purchase | undefined> => {
+    const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${sessionVersion}:${kind}:${orderId}`;
+    const existing = verifyingPurchases.get(key);
+    if (existing) return existing;
+    const work = (async () => { try {
       const purchase = await (kind === "premium" ? api.verifyPremium(orderId) : api.verifyPurchase(orderId));
-      if (current(version) && getSessionVersion() === sessionVersion) {
+      if (current(version) && getSessionVersion() === sessionVersion && owner === accountId) {
         const resolvedKind = purchase.kind ?? kind;
         const pending = pendingPurchases.get(orderId);
+        const external = externalCoinCheckouts.get(orderId);
+        if (resolvedKind === "coins" && external && purchase.status !== "PENDING") external.terminal = purchase;
         emit({ type: resolvedKind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: { ...(pending?.packId ? { packId: pending.packId } : {}), ...(pending?.idempotencyKey ? { idempotencyKey: pending.idempotencyKey } : {}), ...(pending?.requestedRoute ? { requestedRoute: pending.requestedRoute } : {}), ...purchase, merchantOrderId: orderId } });
         if (purchase.status !== "PENDING") {
           pendingPurchases.delete(orderId);
@@ -576,10 +581,34 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         // Only a fresh authenticated catalog can grant or revoke theme access.
         if (resolvedKind === "premium") { quietly(loadThemes(), "themes.load"); void loadAds(); } else quietly(refreshWallet(), "wallet.load");
+        return purchase;
       }
     } catch (error) {
-      if (current(version) && getSessionVersion() === sessionVersion) operationError(error, kind === "premium" ? "themes.premium.verify" : "wallet.verify", { merchantOrderId: orderId });
-    } finally { verifyingPurchases.delete(key); }
+      if (current(version) && getSessionVersion() === sessionVersion && owner === accountId) operationError(error, kind === "premium" ? "themes.premium.verify" : "wallet.verify", { merchantOrderId: orderId });
+    } })().finally(() => verifyingPurchases.delete(key));
+    verifyingPurchases.set(key, work);
+    return work;
+  };
+  // Returning without completing a coin checkout releases its UI attempt. The
+  // order remains pending on the server and in secure storage until confirmed.
+  const coinPaymentReturned = async (entry: CoinReturn) => {
+    if (entry.settling) return;
+    entry.settling = true;
+    const applicable = () => current(entry.epoch) && entry.sessionVersion === getSessionVersion() && entry.owner === accountId && entry.document === documentRevision;
+    try {
+      if (!applicable()) return;
+      const purchase = entry.terminal ?? await verifyPurchase(entry.payment.orderId);
+      if (!applicable()) return;
+      const status = entry.terminal?.status ?? purchase?.status;
+      emit({ type: "wallet.payment-returned", data: {
+        merchantOrderId: entry.payment.orderId,
+        status: status === "SUCCESS" || status === "FAILED" || status === "REVERTED" || status === "PENDING" ? status : "UNKNOWN",
+        ...(entry.payment.idempotencyKey ? { idempotencyKey: entry.payment.idempotencyKey } : {}),
+        ...(entry.payment.packId ? { packId: entry.payment.packId } : {}),
+      } });
+    } finally {
+      if (externalCoinCheckouts.get(entry.payment.orderId) === entry) externalCoinCheckouts.delete(entry.payment.orderId);
+    }
   };
   const restorePendingPurchases = async () => {
     const owner = accountId, version = epoch, sessionVersion = getSessionVersion();
@@ -588,22 +617,26 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!current(version) || accountId !== owner || sessionVersion !== getSessionVersion()) return;
     for (const payment of payments) {
       pendingPurchases.set(payment.orderId, { ...payment, epoch: version, sessionVersion });
-      // Restore the unconfirmed order before contacting the provider. A failed
-      // verification must leave a retryable checkout in the UI, never make a
-      // second purchase look necessary. No balance or entitlement comes from disk.
+      // Restore order correlation before verification. Coin orders can release
+      // their abandoned UI while native tracking still reconciles late credit.
       emit({ type: payment.kind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: {
         purchaseId: "", merchantOrderId: payment.orderId, kind: payment.kind, status: "PENDING",
         ...(payment.packId ? { packId: payment.packId } : {}), ...(payment.idempotencyKey ? { idempotencyKey: payment.idempotencyKey } : {}),
         ...(payment.requestedRoute ? { requestedRoute: payment.requestedRoute } : {}),
       } });
-      void verifyPurchase(payment.orderId, payment.kind);
+      if (payment.kind === "coins") void coinPaymentReturned({ payment, owner, epoch: version, sessionVersion, document: documentRevision, departed: false, settling: false });
+      else void verifyPurchase(payment.orderId, payment.kind);
     }
   };
   const activity = AppState?.addEventListener("change", state => {
     if (closed) return;
     appActive = state === "active";
     stopLive.setActive?.(appActive && !liveOnboarding);
-    if (!appActive) return;
+    if (!appActive) {
+      for (const external of externalCoinCheckouts.values()) if (!external.settling) external.departed = true;
+      return;
+    }
+    for (const external of externalCoinCheckouts.values()) if (external.departed) void coinPaymentReturned(external);
     for (const pending of pendingPurchases.values()) {
       if (pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
         quietly(verifyPurchase(pending.orderId, pending.kind), pending.kind === "premium" ? "themes.premium.verify" : "wallet.verify");
@@ -742,7 +775,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -948,8 +981,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         // Payment pages stay outside the privileged application WebView.
         if (purchase.status === "PENDING" && purchase.paymentUrl) {
+          const external: CoinReturn | undefined = kind === "coins" ? { payment: { orderId: purchase.merchantOrderId, kind, packId: purchase.packId, idempotencyKey: purchase.idempotencyKey }, owner, epoch: version, sessionVersion, document: documentRevision, departed: !appActive, settling: false } : undefined;
+          if (external) externalCoinCheckouts.set(purchase.merchantOrderId, external);
           try { await Linking.openURL(purchase.paymentUrl); }
-          catch { throw new ApiError("Couldn't open the payment app. Continue this checkout or check its status.", 0, "PAYMENT_OPEN_FAILED"); }
+          catch {
+            if (external) await coinPaymentReturned(external);
+            else throw new ApiError("Couldn't open the payment app. Continue this checkout or check its status.", 0, "PAYMENT_OPEN_FAILED");
+          }
         }
         return;
       }
@@ -975,7 +1013,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; notificationQueryOwner = undefined; pendingPurchases.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
+          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
@@ -1003,7 +1041,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -1439,7 +1477,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; },
+    documentLoading: () => { webReady = false; documentRevision++; externalCoinCheckouts.clear(); homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
