@@ -6,6 +6,27 @@
 Status: **in review, not on `main`**. Backend branch `claude/fcm-push`;
 app branch `claude/nice-ptolemy-c8o5g2`. Android only.
 
+## Done and left
+
+**Done**
+
+- [x] Firebase project `binzolive-e48d2`: Android app `com.aurora.liveapp` registered, Cloud Messaging API (V1) enabled.
+- [x] Backend service-account key saved as the GitHub secret `FIREBASE_SERVICE_ACCOUNT_JSON` (`zimibackend`).
+- [x] Backend code on `claude/fcm-push`: FCM sender, call/gift/coin/follower pushes, ring re-sent on socket connect, ring 30s, deploy installs the key, tests written.
+- [x] App code on `claude/nice-ptolemy-c8o5g2`: FCM token, full-screen ring with Answer/Decline, Missed call, general notifications, call foreground service, Android 14 full-screen check, tests.
+- [x] This document, in both repos.
+
+**Left (in order)**
+
+- [ ] Review both branches.
+- [ ] Put `google-services.json` (project `binzolive-e48d2`) next to `app.json` locally, and/or upload it to EAS as `GOOGLE_SERVICES_JSON` for each profile. Never commit it.
+- [ ] Open the backend PR `claude/fcm-push` → `main` and get CI green (MongoDB tests have not run yet).
+- [ ] On the VPS set `PUSH_ENABLED=true` in `/opt/binzolive/backend/.env.production`, then merge the backend PR (the deploy installs the key).
+- [ ] Build the app (`eas build --profile development --platform android`) and install it on a phone.
+- [ ] Test with `scripts/send-test-push.mjs`, then real calls (checklist under Testing).
+- [ ] Open and merge the app PR `claude/nice-ptolemy-c8o5g2` → `main`.
+- [ ] Release build, internal-testing upload, Play Console declarations (Full-screen intent; Foreground service: phone call, camera, microphone).
+
 ## What it does
 
 - A member calls a host → the host's phone rings even if the app is closed or
