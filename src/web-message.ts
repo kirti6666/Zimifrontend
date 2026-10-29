@@ -130,6 +130,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "presence.duringCalls": valid = boolean(d.on); break;
     case "host.callStatus.load": valid = true; break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
+    case "call.permission.set": valid = identifier(d.id) && boolean(d.video) && (d.requestId === undefined || Number.isSafeInteger(d.requestId)) && Object.keys(d).every(key => ["id", "video", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "chats.readAll": valid = true; break;

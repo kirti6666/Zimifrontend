@@ -2235,7 +2235,7 @@ test('a successful message send refreshes conversations while failed sends leave
   h.bridge.close();
 });
 
-test('chat rejects host-to-host and unapproved host requests before sending them to the API', async () => {
+test('approved hosts message other hosts, while unapproved hosts are stopped before the API', async () => {
   for (const status of ['approved', 'pending', 'suspended']) {
     const h = harness();
     h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host', role: status === 'approved' ? 'host' : 'sender', hostStatus: status, isVerifiedHost: status === 'approved' }, verification: status === 'approved' ? 'verified' : 'pending' });
@@ -2244,8 +2244,13 @@ test('chat rejects host-to-host and unapproved host requests before sending them
     h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
     h.bridge.handle({ type: 'chat.open', data: { with: 'other-host' } }); await settle();
     h.bridge.handle({ type: 'chat.send', data: { to: 'other-host', text: 'Hello' } }); await settle();
-    assert.equal(h.count('thread'), 0); assert.equal(h.count('sendMessage'), 0);
-    assert.match(h.find('operation.error').at(-1).data.message, status === 'approved' ? /reply to members only/ : /admin approval/);
+    if (status === 'approved') {
+      assert.equal(h.count('thread'), 1, 'The open conversation is read before the first send');
+      assert.equal(h.count('sendMessage'), 1, 'Approved hosts message other hosts');
+    } else {
+      assert.equal(h.count('thread'), 0); assert.equal(h.count('sendMessage'), 0);
+      assert.match(h.find('operation.error').at(-1).data.message, /admin approval/);
+    }
     h.bridge.close();
   }
 });
@@ -2995,5 +3000,48 @@ test('a tapped notification opens the inbox once a signed-in, onboarded screen c
   h.overrides.saveProfile = () => ({ ...account(), requiresOnboarding: false });
   h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
   assert.equal(h.find('push.opened').length, 3);
+  h.bridge.close();
+});
+
+test('members answer a verified host\'s call, and a refused answer keeps the call ringing', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'from-host', from: { id: 'host-1', name: 'Ananya', host: true }, voice: true, fromHost: true, rate: 60 } }); await settle();
+  assert.equal(h.find('call.incoming').at(-1).data.callId, 'from-host', 'A host\'s call reaches the member');
+  assert.equal(h.count('declineCall'), 0);
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'not-from-host', from: { id: 'member-2' } } }); await settle();
+  assert.equal(h.count('declineCall'), 1, 'Only calls a host started ring a member');
+
+  h.overrides.acceptCall = () => { throw new h.ApiError('You need at least 60 coins to answer this call (one minute). Recharge to answer.', 402, 'INSUFFICIENT_COINS'); };
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'from-host' } }); await settle();
+  const refused = h.find('call.failed').at(-1).data;
+  assert.deepEqual([refused.callId, refused.code], ['from-host', 'INSUFFICIENT_COINS']);
+  assert.match(refused.message, /60 coins/);
+  assert.equal(h.find('call.ended').length, 0, 'A refused answer does not end the ringing call');
+
+  h.overrides.acceptCall = () => ({ peerId: 'host-1', voice: true, rate: 60 });
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'from-host' } }); await settle();
+  assert.equal(h.count('acceptCall'), 2, 'The member can answer again after recharging');
+  const connected = h.find('call.connected').at(-1).data;
+  assert.deepEqual([connected.callId, connected.initiator, connected.peerId], ['from-host', false, 'host-1']);
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'from-host', initiator: false, peerId: 'host-1', voice: true } }); await settle();
+  assert.equal(h.find('call.connected').length, 2, 'The server event for an answered host call is not treated as a stray host call');
+  assert.equal(h.count('endCall'), 0);
+  h.bridge.close();
+});
+
+test('a member saves which host may video-call them', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.setCallPermission = (id, video) => ({ video });
+  h.bridge.handle({ type: 'call.permission.set', data: { id: 'host-1', video: true, requestId: 7 } }); await settle();
+  assert.deepEqual({ ...h.find('call.permission.saved').at(-1).data }, { id: 'host-1', video: true, requestId: 7 });
+  h.overrides.setCallPermission = () => { throw new h.ApiError('Your call permission could not be confirmed. Try again.', 502); };
+  h.bridge.handle({ type: 'call.permission.set', data: { id: 'host-1', video: false, requestId: 8 } }); await settle();
+  assert.deepEqual({ ...h.find('call.permission.error').at(-1).data }, { id: 'host-1', video: false, message: 'Your call permission could not be confirmed. Try again.', requestId: 8 });
   h.bridge.close();
 });

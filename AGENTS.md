@@ -108,6 +108,13 @@ keeps it identical to the original Next.js version.
   finger; the screen's own skeletons show the reload. Error states keep a text
   Retry/Try again button.
 - Automated welcome messages show in chats without an automation label.
+- Approved hosts may message any member or another approved host at any time;
+  members message approved hosts. A host calls a member by voice once they
+  follow each other (hosts can Follow back on a member's profile), or by video
+  (and voice) once the member turns on "Video calls from …" on that host's
+  profile. The member pays the host's rate after answering, with no entry fee,
+  on the `incoming` ring screen. The server checks every permission again
+  (`calls/call-access.ts` in the backend); see `docs/POLICIES.md`.
 - Animated gift stickers live in `web/stickers/` (built with
   `scripts/build-gift-sticker.py`) and are matched to catalog gifts by name in
   `web/gift-stickers.js`; the backend catalog seed uses the same names. Gift

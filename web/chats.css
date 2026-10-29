@@ -249,3 +249,5 @@
 .zc-gift-strip span{font-size:24px;line-height:1}
 .zc-gift-strip img{width:28px;height:28px;object-fit:contain}
 .zc-gift-strip b{font-size:10.5px;line-height:1;font-weight:750;color:var(--accent-ink);font-variant-numeric:tabular-nums}
+/* A host's call buttons stay visible; a locked one explains how to unlock it when tapped. */
+.zc-thread-actions>button[aria-disabled=true]{opacity:.4}

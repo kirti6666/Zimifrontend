@@ -42,3 +42,13 @@
 @media(max-width:350px){.zu-layout{padding:0 15px}.zu-cover{height:210px}.zu-toolbar{inset-inline:15px}.zu-identity h1{font-size:26px}.zu-live-card{gap:8px;padding:11px}.zu-live-symbol{display:none}.zu-live-card p{font-size:8px}.zu-call-info>span{font-size:7px;letter-spacing:.6px}.zu-actionbar{padding-inline:15px}.zu-call,.zu-message{font-size:11px;padding-inline:10px}.zu-action-buttons{gap:7px}.zu-gallery{gap:6px}.zu-photo{border-radius:9px}}
 @media(hover:hover) and (prefers-reduced-motion:no-preference){.zu-photo:hover>img{transform:scale(1.035)}.zu-follow:active{transform:scale(.97)}}
 @media(prefers-reduced-motion:reduce){.zu-photo>img,.zu-photo>video,.zu-follow{transition:none}}
+/* "Follows you" beside a name, the member's video-call permission for a host,
+   and a host's Voice and Video calls to a member. */
+.zu-follows-you{display:inline-block;margin-top:8px;padding:3px 9px;border:1px solid var(--line);border-radius:10px;background:var(--raised);color:var(--muted);font-size:11px;font-weight:500;line-height:1.5}
+.zu-permission{display:flex;align-items:center;gap:12px;width:100%;margin:8px 0 6px;padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.zu-permission>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.zu-permission b{font-size:12px;font-weight:600}
+.zu-permission small{font-size:10px;line-height:1.45;color:var(--muted)}
+.zu-permission>.zp-switch{flex:none}
+.zu-action-buttons.has-host-calls>button{flex:1;min-width:0;gap:6px;padding-inline:8px}
+.zu-call-voice{background:var(--raised);color:var(--ink);border:1px solid var(--line)}

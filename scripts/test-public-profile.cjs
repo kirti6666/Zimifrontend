@@ -305,18 +305,20 @@ async function run() {
     await receive(page, 'data.chats', { chats: [{ id: id('61'), user: member, last: 'Hello', time: 'Today', unread: 0, automatedOnly: false }], total: 1, page: 1 });
     await navigate(page, creator);
     await acceptProfile(page); await acceptPosts(page);
-    assert.equal(await button(page, 'Message').isDisabled(), true, 'A host cannot message another host');
+    assert.equal(await button(page, 'Message').isEnabled(), true, 'Hosts can message other hosts');
     assert.equal(await button(page, 'Follow').count(), 0, 'Host-to-host Follow is unavailable');
     await navigate(page, member);
     await acceptProfile(page, member);
     assert.equal(await button(page, 'Message').isEnabled(), true, 'An approved host can reply to an existing member');
-    assert.equal(await button(page, 'Follow').count(), 0, 'A member profile has no unsupported Follow action');
-    assert.equal(await button(page, 'Start video call').count(), 0, 'Member profiles do not advertise host call actions');
+    assert.equal(await button(page, 'Follow').count(), 1, 'A host can follow a member');
+    assert.equal(await button(page, 'Start video call').count(), 0, 'Member profiles do not advertise the member call action');
+    assert.deepEqual([await button(page, 'Voice call').isDisabled(), await button(page, 'Video call').isDisabled()], [true, true],
+      'Without a mutual follow or the member\'s permission, host calls stay locked');
     assert.equal(await page.locator('.zu-page [aria-label="Verified creator"],.zu-page [aria-label="Verified user"]').count(), 0, 'An unverified member receives no verified badge');
     assert.doesNotMatch(await page.locator('.zu-page').innerText(), /127|Acoustic evenings/, 'A member profile never leaks the previously viewed creator content');
     await button(page, 'Message').click();
     assert.equal((await lastSent(page, 'chat.open')).with, member.id, 'Member Message uses S.u rather than a stale host target');
-    console.log('PASS public profile: creator/member permissions, privacy and chat-target isolation');
+    console.log('PASS public profile: creator/member permissions, host Follow and locked calls, privacy and chat-target isolation');
 
     await receive(page, 'session', account);
     await receive(page, 'data.home', feed);

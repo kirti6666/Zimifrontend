@@ -11,7 +11,7 @@ numbers.
 | --- | --- | --- |
 | Minors | Sign-up cannot finish without the 18+ confirmation | `auth/auth.validation.ts` |
 | Fake creators | Only admin-approved hosts can go live, take calls, receive gifts or withdraw; approval can be suspended | `hosts/host-access.ts` |
-| Unwanted contact | Only members start chats, calls and gifts, and only with approved hosts; a host can message or view a member only after the member writes first | `hosts/host-access.ts`, `chat/chat.controller.ts`, `users/user.service.ts` |
+| Unwanted contact | Members start chats, calls and gifts only with approved hosts. Approved hosts may message any member or another approved host (owner decision, 29 Oct 2026). A host calls a member only by voice after they follow each other, or by video (and voice) after the member allows that host on the host's profile; the member pays the host's rate once they answer. A host views a member's profile only after a chat, a follow either way, a call or that permission | `hosts/host-access.ts`, `calls/call-access.ts`, `chat/chat.controller.ts`, `users/user.service.ts` |
 | Harassment | A block hides both people from each other in chats, posts, profiles and search | `users/user.service.ts` (`hiddenUserIds`) |
 | Off-platform contact and abuse | Phone numbers (any spacing, or spelled out in English or Hindi words) and abusive words (Hinglish, Hindi, English) are hidden from private, in-call and live chat before they are saved or delivered; the other person sees a blur | `lib/moderation.ts` |
 | Gift farming | Nobody can gift themselves | `commerce/commerce.controller.ts` |

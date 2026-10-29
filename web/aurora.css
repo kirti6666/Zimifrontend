@@ -1628,3 +1628,5 @@ button.gpill[onclick]{cursor:pointer}
 @keyframes host-call-ripple{from{transform:scale(.92);opacity:.7}to{transform:scale(1.4);opacity:0}}
 @media(max-height:600px){.ringscr.host.ring{justify-content:flex-start;padding-top:32px}.ringscr.host.ring .ringeye{margin-bottom:18px}.ringscr.host.ring .ringact{margin-top:28px}.ringscr.host.ring h2{margin-top:16px}}
 @media(prefers-reduced-motion:reduce){.ringscr.host.ring .ringorb::before,.ringscr.host.ring .ringorb::after,.ringscr.host.ring .ringeye i,.ringscr.host.ring .accept{animation:none}.ringscr.host.ring .ringorb::after{display:none}.ringscr.host.ring .accept,.ringscr.host.ring .voiceend{transition:none}}
+/* A member who is short of coins can add them from the ring screen. */
+.ring-add-coins{margin-top:12px;padding:9px 16px;min-height:40px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;font-weight:600}

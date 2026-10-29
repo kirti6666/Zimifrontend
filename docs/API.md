@@ -86,11 +86,11 @@ for it (login, call failed).
 | Home | `GET /home?mode=online&page=1` | Adapter returns `HomeData` with active hosts, live stage and pagination |
 | Explore | `GET /home?mode=popular` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
-| Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
+| Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}`; a host opening a member's chat also gets `canVoiceCall`, `canVideoCall` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
 | Call history | `GET /calls` | `{calls: CallRecord[]}` |
 | Transactions | `GET /wallet/transactions` | `{items: Transaction[]}` |
-| Start a call, call back | `POST /calls` `{to, voice}` | `{callId}` |
+| Start a call, call back | `POST /calls` `{to, voice}` | `{callId}`; a host may call a member by voice after a mutual follow, or by video once the member allows it |
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
@@ -100,7 +100,8 @@ for it (login, call failed).
 | Reply to a message | `POST /chats/:id` `{text, replyTo}` (or `{imageKey, replyTo}`) | The message, with a `reply` quote |
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
-| Follow | `PUT /follows/:id` `{on}` | – |
+| Follow | `POST /users/:id/follow` `{following}` | `{following}`; members follow hosts, hosts follow members back |
+| Allow a host's video calls | `PUT /users/:id/call-permission` `{video}` (members only) | `{video}`; profiles show `allowsVideoCalls` to the member and `canVoiceCall`/`canVideoCall` to the host |
 | Payment methods | `GET /payments/routes` | `{mode,routeChoice,routes:[{route,pageStyle,upiIntent,takingPayments,currency}]}`; available INR routes only |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey, route?}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Unlock lifetime premium | `POST /themes/premium/purchase` `{idempotencyKey, route?}`; `POST /themes/premium/verify` `{merchantOrderId}` | `Purchase` with `kind: "premium"` |

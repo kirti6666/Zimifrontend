@@ -115,6 +115,16 @@ function homePrecall(){if(window.zpcScreen)return zpcScreen();const h=g(S.h);if(
 // The pending object is an intent token: navigating away and returning to the
 // same person never revives an earlier camera permission request.
 let homeCallPreparation = null;
+/* An approved host calls a member: voice once they follow each other, video once the member allows it.
+   The server checks the permission again; the member pays the host's rate once they answer. */
+function hostCallMember(id,voice,person={}){
+  if(!isApprovedHost()){window.ZimiHostAccess?.guard();return}
+  if(Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
+  S.caller=personFrom({id,name:person.name,avatarUrl:person.avatarUrl,city:person.city,gender:person.gender});
+  S.nextCallVoice=!!voice;S.dialFrom={view:S.v,id:S.v==='user'?S.u:['thread','host'].includes(S.v)?S.h:undefined};
+  if(DEMO)return go('dialback',id);
+  homePrepareCall('dialback',id);
+}
 function homeCallUnavailable(id){return !g(id)||(!DEMO&&!g(id).available)}
 function homeCallFundsReady(h){
   if(!h)return false;
@@ -158,7 +168,7 @@ async function homePrepareCall(view,id){
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
   if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
-  const voice=view==='dialback'?false:!!S.nextCallVoice;
+  const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
   const cancelled=new Promise(resolve=>{pending.cancel=()=>resolve(false)});
   homeCallPreparation=pending;Home.preparingCall=true;Home.preparingVoice=voice;

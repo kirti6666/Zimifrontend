@@ -81,8 +81,12 @@ export function publicProfileFrom(value: unknown): PublicProfile {
     interests: stringList(profile.interests),
     ...(typeof profile.level === "number" && Number.isSafeInteger(profile.level) && profile.level >= 0 ? { level: profile.level } : {}),
     ...(typeof profile.crown === "boolean" ? { crown: profile.crown } : {}),
+    ...flags(profile, ["followsYou", "allowsVideoCalls", "canVoiceCall", "canVideoCall"]),
   };
 }
+/** Copies the boolean fields the server sent; an absent field stays absent. */
+const flags = <K extends string>(data: Record<string, unknown>, keys: K[]) =>
+  Object.fromEntries(keys.filter(key => typeof data[key] === "boolean").map(key => [key, data[key]])) as Partial<Record<K, boolean>>;
 export function publicPostsFrom(value: unknown): PublicPosts {
   const data = record(value);
   if ([data.total, data.page, data.limit].some(value => typeof value !== "number" || !Number.isSafeInteger(value)) ||
@@ -261,10 +265,11 @@ export function messageFrom(value: unknown, userId: string): Message {
     ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, ...(reply.voice === true ? { voice: true } : {}), deleted: reply.deleted === true } } : {}),
     ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
 }
-export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {
+export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; canVoiceCall?: boolean; canVideoCall?: boolean } {
   const data = record(value);
   return { ...(typeof data.canSend === "boolean" ? { canSend: data.canSend } : {}),
     ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
+    ...flags(data, ["canVoiceCall", "canVideoCall"]),
     messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
@@ -317,6 +322,8 @@ export function callerFrom(call: Record<string, unknown>) {
   return {
     id: idOf(call.callerId), name: string(caller.name), avatarUrl: string(caller.avatarUrl), city: string(caller.city),
     ...(level && level > 0 ? { level } : {}), ...genderOf(caller.gender),
+    // A verified host calling a member who allowed it.
+    ...(caller.role === "host" && caller.verified === true ? { host: true } : {}),
   };
 }
 /** A host's price tier, entry fee and early endings, shown before going online. */

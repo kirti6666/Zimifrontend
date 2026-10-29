@@ -298,6 +298,12 @@ export const api = {
     if (typeof data.following !== "boolean") throw new ApiError("Your follow preference could not be confirmed. Try again.", 502);
     return { following: data.following };
   },
+  /** A member lets one host video-call them, or takes it back. */
+  async setCallPermission(hostId: string, video: boolean) {
+    const data = record(await request("PUT", `/users/${encodeURIComponent(hostId)}/call-permission`, { video }));
+    if (typeof data.video !== "boolean") throw new ApiError("Your call permission could not be confirmed. Try again.", 502);
+    return { video: data.video };
+  },
   async paymentRoutes() { return paymentRoutesFrom(await request("GET", "/payments/routes")); },
   async checkout(packId: string, idempotencyKey: string, route?: string) {
     if (route !== undefined && !validPaymentRoute(route)) throw new ApiError("Choose a valid payment method.", 400);

@@ -81,6 +81,7 @@ export type WebMessage =
   | { type: "blocked.load"; data: { page?: number } }
   | { type: "block.set"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "follow.set"; data: { id: string; on: boolean; requestId?: number } }
+  | { type: "call.permission.set"; data: { id: string; video: boolean; requestId?: number } }
   | { type: "chat.open"; data: { with: string } }
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
@@ -161,6 +162,8 @@ export type AppMessage =
   | { type: "block.error"; data: { id: string; blocked: boolean; message: string; requestId?: number } }
   | { type: "follow.saved"; data: { id: string; on: boolean; requestId?: number } }
   | { type: "follow.error"; data: { id: string; on: boolean; message: string; requestId?: number } }
+  | { type: "call.permission.saved"; data: { id: string; video: boolean; requestId?: number } }
+  | { type: "call.permission.error"; data: { id: string; video: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls.saved"; data: { on: boolean } }
   | { type: "host.callStatus"; data: Awaited<ReturnType<typeof api.hostCallStatus>> }
@@ -191,7 +194,7 @@ export type AppMessage =
   | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
-  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } }
+  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; canVoiceCall?: boolean; canVideoCall?: boolean } }
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
@@ -207,8 +210,8 @@ export type AppMessage =
   | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
-  | { type: "call.failed"; data: { message: string } }
-  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
+  | { type: "call.failed"; data: { message: string; callId?: string; code?: string } }
+  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
   | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
@@ -255,6 +258,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let hostRevision = 0;
   let hostChecking = false;
   let activeHostCall = false;
+  /** A host's call this member picked up; the member is its callee. */
+  let answeredHostCall: string | undefined;
   let publishingAt: number | undefined;
   // Home lists every host, online or offline, each with their status.
   let homeQuery: HomeQuery = { mode: "popular" };
@@ -391,6 +396,23 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!approvedHost(account)) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
     return revision;
   };
+  const acceptHostCall = async (callId: string, version: number) => {
+    const generation = ++callGeneration, sessionVersion = getSessionVersion();
+    activeCall = callId; activeHostCall = false; answeredHostCall = callId;
+    try {
+      const details = await api.acceptCall(callId);
+      if (!current(version) || generation !== callGeneration || cancelledCalls.has(callId)) {
+        await endCancelledCall(callId, sessionVersion);
+        return;
+      }
+      emit({ type: "call.connected", data: { callId, initiator: false, ...details } });
+    } catch (error) {
+      if (current(version) && generation === callGeneration) {
+        activeCall = undefined; answeredHostCall = undefined;
+        emit({ type: "call.failed", data: { message: errorMessage(error), callId, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
+      }
+    }
+  };
   const requireChatPair = async (peerId: string) => {
     if (!hostAccount || hostChecking) await refreshHostAccount();
     if (!hostAccount || hostChecking) throw new ApiError("Your account is being checked. Try again in a moment.", 403);
@@ -398,7 +420,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (accountRole === "admin" || (accountRole === "host" && !hasHostAccess())) throw new ApiError("Your creator profile needs admin approval before you can chat.", 403);
     const peer = chatPeers.get(peerId);
     const peerRole = peer?.serverRole ?? (peer?.role === "host" || peer?.verified === true ? "host" : peer?.role === "sender" ? "user" : undefined);
-    if (accountRole === "host" && peerRole === "host") throw new ApiError("Host accounts can reply to members only. Use a member account to message a host.", 403);
     if (accountRole === "user" && peerRole && peerRole !== "host") throw new ApiError("Members can message approved hosts only.", 403);
   };
   /** The checks the server makes before a direct message: an allowed pair and an open conversation. False when the session changed. */
@@ -413,16 +434,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
       rememberThreadPermission(to, data);
     }
     const permission = threadPermissions.get(to);
-    if (!permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
+    if (!permission?.canSend) throw new ApiError(permission?.reason || "You can't send messages in this conversation right now.", 403);
     return true;
   };
   const rememberHomePeers = (data: HomeData) => {
     for (const peer of [...data.hosts, ...(data.stage ?? []), ...(data.featured ? [data.featured] : [])]) chatPeers.set(peer.id, { ...peer, serverRole: "host" });
   };
   const rememberThreadPermission = (peerId: string, data: { canSend?: boolean; sendDisabledReason?: string }) => {
-    // Older servers may omit this flag; they still enforce every send. Hosts
-    // require explicit permission because welcomes do not unlock manual replies.
-    threadPermissions.set(peerId, { canSend: data.canSend ?? accountRole === "user", reason: data.sendDisabledReason });
+    // Older servers may omit this flag; they still enforce every send.
+    threadPermissions.set(peerId, { canSend: data.canSend ?? true, reason: data.sendDisabledReason });
   };
   const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number; background?: boolean } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, requestId = (readRequests.get(resource) ?? 0) + 1;
@@ -764,7 +784,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         activeCall = callId; activeHostCall = event.data?.initiator === false;
         if (event.data?.streamId === activeStream?.id) activeStream = undefined;
       }
-      if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
+      if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess() &&
+        !(accountRole === "user" && event.data?.fromHost === true)) {
         if (hostChecking && approvedHost(hostAccount)) {
           // A replayed ring can beat the reconnect approval read. Revalidate it
           // before showing it, without treating temporary uncertainty as a decline.
@@ -783,7 +804,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
       }
       if (event.type === "call.connected" && typeof callId === "string") {
-        if (event.data?.initiator === false && !hasHostAccess() && !(hostChecking && activeHostCall && activeCall === callId)) {
+        if (event.data?.initiator === false && !hasHostAccess() && !(hostChecking && activeHostCall && activeCall === callId) &&
+          !(accountRole === "user" && answeredHostCall === callId)) {
           quietly(endCancelledCall(callId, getSessionVersion()), "call.end");
           emit({ type: "call.ended", data: { callId } }); return;
         }
@@ -1232,6 +1254,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       }
+      case "call.permission.set": {
+        const { id, video, requestId } = msg.data, sessionVersion = getSessionVersion();
+        try {
+          const result = await api.setCallPermission(id, video);
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "call.permission.saved", data: { id, video: result.video, requestId } });
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "call.permission.error", data: { id, video, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
       case "chats.reload": return loadChats(msg.data.page);
       case "chats.readAll": {
         const data = await api.readAllChats();
@@ -1351,6 +1383,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "call.accept": {
         if (cancelledCalls.has(msg.data.callId)) return;
+        if (accountRole === "user") return acceptHostCall(msg.data.callId, version);
         const generation = ++callGeneration, sessionVersion = getSessionVersion();
         activeCall = msg.data.callId; activeHostCall = true;
         try {
@@ -1523,8 +1556,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
+      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "call.permission.set", "payout.request", "ads.click"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "call.permission.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

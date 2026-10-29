@@ -422,14 +422,16 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.evaluate(() => S.user.serverRole), 'host');
     await page.evaluate(() => document.getElementById('app-notice')?.remove());
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
-    assert.deepEqual(await picker.locator('.zc-contact b').allTextContents(), ['Rohan Patel'], 'Approved creators can select only existing member-initiated conversations');
+    assert.deepEqual(await picker.locator('.zc-contact b').allTextContents(), ['Rohan Patel', 'Welcome-only Member', 'Mira North', 'Asha Sen'],
+      'Approved creators can start a chat with any member they know and with other creators');
     await page.keyboard.press('Escape');
     opened = await sentCount('chat.open');
     await page.evaluate(value => go('thread', value), mira.id);
-    assert.equal(await page.evaluate(() => S.v), 'chats');
-    assert.equal(await sentCount('chat.open'), opened, 'An approved creator cannot open another creator from stale discovery data');
+    assert.equal(await page.evaluate(() => S.v), 'thread');
+    assert.equal((await lastSent('chat.open')).with, mira.id, 'An approved creator can open a chat with another creator');
     await page.evaluate(value => go('thread', value), id('98'));
-    assert.equal(await sentCount('chat.open'), opened, 'A creator cannot initiate a chat with an unknown member ID');
+    assert.equal((await lastSent('chat.open')).with, id('98'), 'The server decides whether a creator may message an unfamiliar account');
+    assert.equal(await sentCount('chat.open'), opened + 2);
     await page.evaluate(value => go('thread', value), rohan.id);
     assert.equal(await page.evaluate(() => S.v), 'thread');
     assert.equal((await lastSent('chat.open')).with, rohan.id, 'Existing member conversations remain accessible to approved creators');
@@ -453,9 +455,9 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal((await lastSent('chat.open')).with, rohan.id, 'Profile Message targets the displayed member rather than the previous creator profile');
     assert.equal(await page.evaluate(() => S.h), rohan.id);
     await page.evaluate(value => go('host', value), mira.id);
-    assert.equal(await profileMessage.isDisabled(), true, 'A creator profile cannot offer another creator a Message action');
-    await profileMessage.evaluate(button => button.click());
-    assert.equal(await sentCount('chat.open'), opened + 1, 'A disabled creator-to-creator profile action never opens a thread');
+    assert.equal(await profileMessage.isEnabled(), true, 'A creator can message another creator from their profile');
+    await profileMessage.click();
+    assert.equal((await lastSent('chat.open')).with, mira.id);
     console.log('PASS chats: member profile Message targets its displayed account despite a stale creator back target');
 
     for (const hostStatus of ['pending', 'suspended']) {

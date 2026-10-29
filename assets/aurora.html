@@ -1666,6 +1666,8 @@ button.gpill[onclick]{cursor:pointer}
 @keyframes host-call-ripple{from{transform:scale(.92);opacity:.7}to{transform:scale(1.4);opacity:0}}
 @media(max-height:600px){.ringscr.host.ring{justify-content:flex-start;padding-top:32px}.ringscr.host.ring .ringeye{margin-bottom:18px}.ringscr.host.ring .ringact{margin-top:28px}.ringscr.host.ring h2{margin-top:16px}}
 @media(prefers-reduced-motion:reduce){.ringscr.host.ring .ringorb::before,.ringscr.host.ring .ringorb::after,.ringscr.host.ring .ringeye i,.ringscr.host.ring .accept{animation:none}.ringscr.host.ring .ringorb::after{display:none}.ringscr.host.ring .accept,.ringscr.host.ring .voiceend{transition:none}}
+/* A member who is short of coins can add them from the ring screen. */
+.ring-add-coins{margin-top:12px;padding:9px 16px;min-height:40px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;font-weight:600}
 #scroll-root {
   position: relative;
   flex: 1;
@@ -2671,6 +2673,8 @@ button.gpill[onclick]{cursor:pointer}
 .zc-gift-strip span{font-size:24px;line-height:1}
 .zc-gift-strip img{width:28px;height:28px;object-fit:contain}
 .zc-gift-strip b{font-size:10.5px;line-height:1;font-weight:750;color:var(--accent-ink);font-variant-numeric:tabular-nums}
+/* A host's call buttons stay visible; a locked one explains how to unlock it when tapped. */
+.zc-thread-actions>button[aria-disabled=true]{opacity:.4}
 /* A compact composer keeps text and controls together above the keyboard. */
 .zc-composer{padding:10px max(12px,calc(50% - 384px)) 12px}
 .zc-composer[hidden]{display:none}
@@ -3638,6 +3642,16 @@ button.gpill[onclick]{cursor:pointer}
 @media(max-width:350px){.zu-layout{padding:0 15px}.zu-cover{height:210px}.zu-toolbar{inset-inline:15px}.zu-identity h1{font-size:26px}.zu-live-card{gap:8px;padding:11px}.zu-live-symbol{display:none}.zu-live-card p{font-size:8px}.zu-call-info>span{font-size:7px;letter-spacing:.6px}.zu-actionbar{padding-inline:15px}.zu-call,.zu-message{font-size:11px;padding-inline:10px}.zu-action-buttons{gap:7px}.zu-gallery{gap:6px}.zu-photo{border-radius:9px}}
 @media(hover:hover) and (prefers-reduced-motion:no-preference){.zu-photo:hover>img{transform:scale(1.035)}.zu-follow:active{transform:scale(.97)}}
 @media(prefers-reduced-motion:reduce){.zu-photo>img,.zu-photo>video,.zu-follow{transition:none}}
+/* "Follows you" beside a name, the member's video-call permission for a host,
+   and a host's Voice and Video calls to a member. */
+.zu-follows-you{display:inline-block;margin-top:8px;padding:3px 9px;border:1px solid var(--line);border-radius:10px;background:var(--raised);color:var(--muted);font-size:11px;font-weight:500;line-height:1.5}
+.zu-permission{display:flex;align-items:center;gap:12px;width:100%;margin:8px 0 6px;padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.zu-permission>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.zu-permission b{font-size:12px;font-weight:600}
+.zu-permission small{font-size:10px;line-height:1.45;color:var(--muted)}
+.zu-permission>.zp-switch{flex:none}
+.zu-action-buttons.has-host-calls>button{flex:1;min-width:0;gap:6px;padding-inline:8px}
+.zu-call-voice{background:var(--raised);color:var(--ink);border:1px solid var(--line)}
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -7778,7 +7792,7 @@ function go(v,id){
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
  if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
- if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
+ if(v==="dialback"){S.caller.voice=!!S.nextCallVoice;if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id,voice:!!S.nextCallVoice})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
@@ -7807,7 +7821,7 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
 function nav(){const el=document.getElementById("nav");
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
- if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
+ if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chat","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
@@ -8295,7 +8309,7 @@ function missedRows(){
  return S.missed[S.role].map(m=>{const p=isHost()?sender(m.id):g(m.id);return p&&{...m,p}}).filter(Boolean)}
 function callBack(id){
  S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
- if(isHost()){S.caller=sender(id);go("dialback")}else go("precall",id)}
+ if(isHost()){S.caller=sender(id);S.nextCallVoice=false;S.dialFrom={view:"calls"};go("dialback")}else go("precall",id)}
 function missedList(){
  const pending=window.contentSurface?.('missed','rows','Loading missed calls');if(pending)return pending;
  const L=missedRows();
@@ -8687,7 +8701,9 @@ function vDial(){
   <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
  </div>`}
 
-function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")go("chats");else go("precall",S.h)}
+function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
+/* A host's call to a member ended before it connected: back to where it was placed. */
+function dialReturn(notice){if(notice)appNotice(notice);const from=S.dialFrom||{};S.dialFrom=null;go(from.view||"chats",from.id)}
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
@@ -8727,6 +8743,39 @@ function vRing(){const c=S.caller;
    <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
   ${S.acceptingCall?'<span class="ring-connecting-note" role="status">Preparing your private call…</span>':''}
  </div>`}
+
+/* ---- Member: a host they follow back, or allowed to video call, is calling ---- */
+function memberIncoming(d){
+ /* S.callId outlives a finished call, so only the screen tells whether the member is busy. */
+ const busy=["dial","call","voice","incoming"].includes(S.v)||window.Home?.preparingCall;
+ if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
+ const from=d.from||{},h=knowHost({id:from.id,name:from.name,avatarUrl:from.avatarUrl,city:from.city,gender:from.gender,verified:true,role:"host",serverRole:"host"});
+ S.memberRing={callId:d.callId,id:h.id,voice:!!d.voice,rate:d.rate||0,error:""};
+ S.acceptingCall=false;if(S.v!=="incoming")S.ringBack={view:S.v,id:S.v==="thread"||S.v==="host"?S.h:undefined};go("incoming")}
+function ringReturn(){const back=S.ringBack||{};S.ringBack=null;go(back.view&&back.view!=="incoming"?back.view:"home",back.id)}
+function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
+ const name=first(h.n),short=m.rate>0&&S.bal<m.rate;
+ return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${m.voice?'voice':'video'} call from ${esc(h.n)}">
+  <div class="ringbg" aria-hidden="true"></div>
+  <span class="ringeye"><i></i>Incoming ${m.voice?'voice':'video'} call</span>
+  <div class="ringorb pulse">${hcIdentityAvatar(h,112)}</div>
+  <h2>${esc(h.n)}</h2><p>Verified creator</p>
+  <span class="ringearn">${m.rate>0?`${gem}${n(m.rate)} coins/min · charged once you answer`:'Free call &middot; gifts are optional'}</span>
+  ${short?`<span class="ringfee">You need ${n(m.rate)} coins to answer. Add coins, then call ${esc(name)} back.</span><button type="button" class="ring-add-coins" onclick="memberRingAddCoins()">Add coins</button>`:''}
+  ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
+  <div class="ringact two">
+   <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall||short?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+ </div>`}
+async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)return;
+ S.acceptingCall=true;m.error="";r();
+ try{
+  if(window.ZimiMedia?.prepare)await window.ZimiMedia.prepare(!m.voice);
+  if(S.v!=="incoming"||S.memberRing!==m){S.acceptingCall=false;window.ZimiMedia?.stop();return}
+  Native.send("call.accept",{callId:m.callId});
+ }catch(error){S.acceptingCall=false;m.error=error?.message||"Your camera or microphone could not be started. Try again.";r()}}
+function declineMemberRing(){const m=S.memberRing;if(!m)return;S.memberRing=null;S.acceptingCall=false;window.ZimiMedia?.stop();Native.send("call.decline",{callId:m.callId});ringReturn()}
+function memberRingAddCoins(){declineMemberRing();go("coins")}
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
@@ -9177,7 +9226,7 @@ function r(){
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
  let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
-  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
+  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,incoming:vMemberRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
  else if(window.ZimiMedia)window.ZimiMedia.render(el,html);else el.innerHTML=html;
@@ -9277,7 +9326,8 @@ Native.on("call.connected",d=>{
  if(S.v==="hcall"&&d.callId!==S.callId&&d.callId!==S.connecting?.to.callId)return;
  S.callRate=d.rate||0;
  if(S.v==="dial"){S.callId=d.callId;S.callFee=d.entryFee||0;go(d.voice?'voice':"call",S.h)}
- else if(S.v==="dialback"){S.caller.callId=d.callId;hcCallTerms(d);go("hcall")}
+ else if(S.v==="dialback"){S.caller.callId=d.callId;S.caller.voice=!!d.voice;hcCallTerms(d);go("hcall")}
+ else if(S.v==="incoming"&&S.memberRing?.callId===d.callId){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;S.callId=d.callId;S.callFee=0;go(m.voice?"voice":"call",m.id)}
  else if(S.v==="ring"&&S.caller.callId===d.callId){hcCallTerms(d);S.callId=d.callId;S.acceptingCall=false;go('hcall');ringQueued()}
  else if(S.v==="hcall"&&S.connecting)finishSwitch(d);
  /* The answer and the realtime event both report the call; the answer adds today's early endings. */
@@ -9285,9 +9335,10 @@ Native.on("call.connected",d=>{
 Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
- else if(S.v==="dialback")go("chats");
+ else if(S.v==="dialback")dialReturn(d.message||"The call didn't go through. Try again.");
+ else if(S.v==="incoming"&&d.callId&&S.memberRing?.callId===d.callId){S.memberRing.error=d.message||"The call couldn't be answered. Try again.";r()}
  else if(S.v==="ring"){appNotice(d.message||"The call didn't connect. Please try again.");r()}});
-Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
+Native.on("call.incoming",d=>{if(d.fromHost&&!isHost())return memberIncoming(d);if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
  /* Already in a call: the new caller rings as a banner, never a busy signal. */
@@ -9308,6 +9359,8 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="hcall"&&S.connecting){const c=S.connecting;
   if(c.from.callId===id){c.fromEnded=true;return}
   if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
+ if(S.v==="incoming"&&S.memberRing?.callId===id){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();appNotice(`Missed call from ${first(g(m.id)?.n||"a creator")}`);return ringReturn()}
+ if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
@@ -9315,6 +9368,8 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
+/* A balance update can let the member answer: show it on the ring screen at once. */
+Native.on("wallet.balance",()=>{if(S.v==="incoming")r()});
 Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  const gf=GIFTS.find(x=>x[0]===d.gift)||["Gift","&#127873;",d.coins||0];
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
@@ -9740,6 +9795,16 @@ function homePrecall(){if(window.zpcScreen)return zpcScreen();const h=g(S.h);if(
 // The pending object is an intent token: navigating away and returning to the
 // same person never revives an earlier camera permission request.
 let homeCallPreparation = null;
+/* An approved host calls a member: voice once they follow each other, video once the member allows it.
+   The server checks the permission again; the member pays the host's rate once they answer. */
+function hostCallMember(id,voice,person={}){
+  if(!isApprovedHost()){window.ZimiHostAccess?.guard();return}
+  if(Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
+  S.caller=personFrom({id,name:person.name,avatarUrl:person.avatarUrl,city:person.city,gender:person.gender});
+  S.nextCallVoice=!!voice;S.dialFrom={view:S.v,id:S.v==='user'?S.u:['thread','host'].includes(S.v)?S.h:undefined};
+  if(DEMO)return go('dialback',id);
+  homePrepareCall('dialback',id);
+}
 function homeCallUnavailable(id){return !g(id)||(!DEMO&&!g(id).available)}
 function homeCallFundsReady(h){
   if(!h)return false;
@@ -9783,7 +9848,7 @@ async function homePrepareCall(view,id){
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
   if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
-  const voice=view==='dialback'?false:!!S.nextCallVoice;
+  const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
   const cancelled=new Promise(resolve=>{pending.cancel=()=>resolve(false)});
   homeCallPreparation=pending;Home.preparingCall=true;Home.preparingVoice=voice;
@@ -11814,12 +11879,12 @@ function zcChatBlockReason(id){
   const self=zcSelfRole(),row=Chats.rows.find(c=>c.user.id===id),peer=row?.user||g(id),role=peer?.serverRole||(peer?.role==='host'||peer?.verified?'host':peer?.role==='sender'?'user':undefined);
   if(window.ZimiHostAccess?.checking())return 'Checking your account. Try again in a moment.';
   if(self==='host'&&!isApprovedHost())return 'Your creator profile needs admin approval before you can chat.';
-  if(self==='host')return role==='host'?'Host accounts can reply to members only. Use a member account to message a host.':row&&role==='user'?'':'A member must start the conversation before a host can reply.';
+  if(self==='host')return '';
   return self!=='user'||(role&&role!=='host')?'Members can message approved hosts only.':'';
 }
 function zcCanChat(id){return !zcChatBlockReason(id)}
 function zcGuardChat(id){const reason=zcChatBlockReason(id);if(reason)appNotice(reason);return !reason}
-function zcThreadBlocked(){if(DEMO)return '';return zcChatBlockReason(S.h)||(contentPending('thread')?'Loading this conversation. Please wait.':ContentLoading.thread.error)||((Chats.threadPermission?.with===S.h&&Chats.threadPermission.canSend===false)?Chats.threadPermission.reason||'Wait for this member to reply before sending a message.':'')}
+function zcThreadBlocked(){if(DEMO)return '';return zcChatBlockReason(S.h)||(contentPending('thread')?'Loading this conversation. Please wait.':ContentLoading.thread.error)||((Chats.threadPermission?.with===S.h&&Chats.threadPermission.canSend===false)?Chats.threadPermission.reason||'You can\'t send messages in this conversation right now.':'')}
 function zcUnread(){return DEMO?Chats.rows.filter(c=>c.unread>0).length:Chats.unreadConversations}
 window.ZimiChats={unread:zcUnread};
 function zcCaptureFocus(){const el=document.activeElement;if(!el||!['cq','zc-contact-query'].includes(el.id))return null;return {id:el.id,start:el.selectionStart,end:el.selectionEnd}}
@@ -11854,7 +11919,7 @@ function zcExploreAvailable(){go('explore');homeFilter('instant')}
 function zcReadAll(){if(Chats.readBusy||zcPending()||!zcUnread())return;Chats.readError='';if(DEMO){Chats.rows.forEach(c=>c.unread=0);CH.forEach(c=>c[3]=0);r();return}Chats.readBusy=true;Native.send('chats.readAll');r()}
 function zcOpen(id){Chats.composeOpen=false;Chats.filtersOpen=false;Chats.revealed={};Chats.menu='';Chats.reply=null;Chats.editing=null;go('thread',id)}
 function zcFilters(){if(!Chats.filtersOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog" role="dialog" aria-modal="true" aria-label="Conversation filters"><div class="zc-dialog-heading"><h2>Conversation filters</h2><button onclick="zcCloseDialogs()" aria-label="Close filters">×</button></div><label class="zc-toggle"><span>Online only</span><input type="checkbox" ${Chats.onlineOnly?'checked':''} onchange="Chats.onlineOnly=this.checked;zcPaintList()"></label><label class="zc-sort">Sort conversations<select aria-label="Sort conversations" onchange="Chats.sort=this.value;zcPaintList()">${[['recent','Most recent'],['unread','Unread first'],['name','Name']].map(([key,label])=>`<option value="${key}" ${Chats.sort===key?'selected':''}>${label}</option>`).join('')}</select></label><button class="zc-dialog-reset" onclick="zcResetFilters()">Reset filters</button><button class="zh-primary zh-full" onclick="zcCloseDialogs()">Show conversations</button></section></div>`}
-function zcContacts(){const rows=[...Chats.rows.filter(c=>!c.bot).map(zcPerson),...Home.hosts,...H],seen=new Set(),q=Chats.composeQuery.trim().toLowerCase();return rows.filter(h=>{if(seen.has(h.id)||!h.id||!zcCanChat(h.id))return false;if(!DEMO&&zcSelfRole()==='host'){const row=Chats.rows.find(c=>c.user.id===h.id);if(!row||row.canSend===false||row.automatedOnly)return false}seen.add(h.id);return !q||(h.n+' '+(h.cat||'')).toLowerCase().includes(q)})}
+function zcContacts(){const rows=[...Chats.rows.filter(c=>!c.bot).map(zcPerson),...Home.hosts,...H],seen=new Set(),q=Chats.composeQuery.trim().toLowerCase();return rows.filter(h=>{if(seen.has(h.id)||!h.id||!zcCanChat(h.id))return false;if(!DEMO&&zcSelfRole()==='host'&&Chats.rows.find(c=>c.user.id===h.id)?.canSend===false)return false;seen.add(h.id);return !q||(h.n+' '+(h.cat||'')).toLowerCase().includes(q)})}
 function zcContactList(){if(!DEMO&&contentPending('chats')&&contentPending('home'))return contentSkeleton('rows','Loading contacts');const contacts=zcContacts();return contacts.length?contacts.map(h=>`<button class="zc-contact" onclick="zcOpen('${domId(h.id)}')">${zcPhoto(h)}<span><b>${esc(h.n)}</b><small>${esc(h.cat||'BinzoLive member')}</small></span>${hi('chat',20)}</button>`).join(''):'<p class="zc-empty-contact">No contacts match. Discover more creators to start a conversation.</p>'}
 function zcCompose(){Chats.composeQuery='';Chats.composeOpen=true;Chats.filtersOpen=false;r()}
 function zcPaintContacts(){const list=document.getElementById('zc-contacts');if(list)list.innerHTML=zcContactList();contentImagesReady()}
@@ -11873,7 +11938,7 @@ Native.on('chats.readAll',()=>{Chats.readBusy=false;Chats.readError='';if(S.v===
 Native.on('chat.message',d=>{if(!DEMO&&!d.inCall&&S.v==='thread'&&String(d.from)===S.h)Native.send('chat.open',{with:S.h})});
 Native.on('operation.error',d=>{if(d.action==='chats.readAll'){Chats.readBusy=false;Chats.readError=d.message;if(S.v==='chats')r()}if(d.action==='chats.reload'){Chats.loadingMore=false;Object.assign(ContentLoading.chats,{loading:false,error:d.message});if(S.v==='chats')r()}});
 function zcReset(){Object.assign(Chats,{rows:[],query:'',filter:'all',sort:'recent',onlineOnly:false,filtersOpen:false,composeOpen:false,composeQuery:'',readBusy:false,readError:'',page:1,total:0,unreadCount:0,unreadConversations:0,loadingMore:false,drafts:{},gifts:{},playing:'',threadPermission:null,reply:null,editing:null,menu:'',contextPeer:null});zcEndGesture()}
-Native.on('data.thread',d=>{if(d.with===S.h){Chats.threadPermission={with:d.with,canSend:d.canSend,reason:d.sendDisabledReason};if(S.v==='thread'){zcUpdateSendControls();if(Chats.reply){const original=zcFind(Chats.reply.id);if(original)zcRefreshReplies(original);else zcClearContext()}}}});
+Native.on('data.thread',d=>{if(d.with===S.h){Chats.threadPermission={with:d.with,canSend:d.canSend,reason:d.sendDisabledReason,voice:d.canVoiceCall===true,video:d.canVideoCall===true};if(S.v==='thread'){zcUpdateSendControls();zcSyncHostCalls();if(Chats.reply){const original=zcFind(Chats.reply.id);if(original)zcRefreshReplies(original);else zcClearContext()}}}});
 Native.on('session.none',zcReset);Native.on('session.expired',zcReset);
 document.addEventListener('aurora:navigate',()=>{if(S.v!=='chats'){Chats.composeOpen=false;Chats.filtersOpen=false}});
 
@@ -11885,7 +11950,17 @@ function zcThreadMessages(d){const rows=(d.messages||[]).map(m=>({id:m.id,mine:!
 /* Inbox rows carry identity and presence; a known creator record adds rate and live status. */
 function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'BinzoLive member',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
 function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
-function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}')">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
+function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}')">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:zcPeerIsMember(h)?zcHostCallButtons(h):''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
+/* A host calls a member: voice once they follow each other, video once the member allows it. */
+function zcPeerIsMember(h){return h?.serverRole==='user'||(!!h&&!h.verified&&h.role!=='host'&&h.serverRole!=='host')}
+function zcHostCallAccess(id){const p=Chats.threadPermission;return p?.with===id?p:null}
+function zcHostCallButtons(h){const id=domId(h.id),access=zcHostCallAccess(h.id);return `<button id="zc-host-voice" aria-label="Voice call" aria-disabled="${!access?.voice}" onclick="zcHostCall('${id}',true)">${hi('ph',22)}</button><button id="zc-host-video" class="zc-thread-video" aria-label="Video call" aria-disabled="${!access?.video}" onclick="zcHostCall('${id}',false)">${hi('vid',22)}</button>`}
+function zcSyncHostCalls(){const access=zcHostCallAccess(S.h);for(const [el,on] of [[document.getElementById('zc-host-voice'),access?.voice],[document.getElementById('zc-host-video'),access?.video]])if(el)el.setAttribute('aria-disabled',String(!on))}
+function zcHostCall(id,voice){const h=g(id)||Chats.rows.find(c=>c.user.id===id)?.user,name=first(h?.n||h?.name||'This member'),access=zcHostCallAccess(id);
+ if(!access)return appNotice('Loading this conversation. Try again in a moment.');
+ if(voice&&!access.voice)return appNotice(`You can voice call ${name} when you follow each other.`);
+ if(!voice&&!access.video)return appNotice(`${name} hasn’t allowed video calls from you yet.`);
+ hostCallMember(id,voice,{name:h?.n||h?.name,avatarUrl:h?.avatarUrl,city:h?.c||h?.city,gender:h?.gender})}
 function zcThreadLive(h){if(!h.stream)return '';const id=domId(h.id),name=first(h.n),viewers=h.stream.viewers||h.viewers;return `<section class="zc-thread-live" aria-label="${esc(name)} is live now"><span class="zc-thread-live-cover">${homeCover(h)}<b><i></i>LIVE</b></span><div class="zc-thread-live-text"><h2><span>${esc(name)} is Live Now</span><i></i></h2><p>${esc(h.stream.title||h.tag||'Streaming now')}${viewers?' · '+homeCompact(viewers)+' watching':''}</p></div><div class="zc-thread-live-actions"><button class="zc-thread-join" onclick="homeOpen('${id}')">Join Stream</button>${!isHost()&&(h.available||DEMO)?`<button class="zc-thread-call" onclick="homeCall('${id}')">${hi('vid',18)} 1:1 Call${h.rate>0?` (${n(h.rate)}c/m)`:''}</button>`:''}</div></section>`}
 function zcThreadNote(h){return `<p class="zc-thread-note">${hi('lock',13)} Never share sign-in codes or payment details${h.verified?' · Creator ID verified':''}</p>`}
 function zcGiftCard(m,h){const x=m.gift||{},still=giftSticker(x.name)?giftStillUrl(x.name):x.image,mark=still?`<img src="${still}" alt="">`:`<span>${x.html?giftGlyph(x.html):esc(x.emoji||'🎁')}</span>`;return `<div class="zc-gift-card"><div class="zc-gift-top"><span>${ci('sparkle',18)} ${m.mine?'Gift sent':'Gift received'}</span><b>${m.mine?'−':'+'}${n(x.coins)} Coins</b></div><div class="zc-gift-body"><span class="zc-gift-icon">${mark}<i>${ci('crown',13)}</i></span><div><h3>${esc(x.name||'Gift')}</h3><p>${m.mine?'Delivered to':'From'} ${esc(first(h.n))}</p></div></div></div>`}
@@ -13056,6 +13131,7 @@ window.ZimiNavigation=(()=>{
     if(['live','call','voice','hcall'].includes(S.v)){zrExit();return}
     if(['dial','dialback'].includes(S.v)){cancelDial();return}
     if(S.v==='ring'){window.ZimiMedia?.stop();declineRing();return}
+    if(S.v==='incoming'){declineMemberRing();return}
     if(S.v==='login'){if(S.auth)obBack();return}
     // Reuse screen-specific destinations (including public-profile return
     // routes), and respect disabled Back controls during an in-flight save.
@@ -13310,6 +13386,10 @@ const zuCurrent = () => Zu.id === zuId();
 const zuMatches = (d, posts=false) => d.id === Zu.id && d.requestId === (posts ? Zu.postsRequestId : Zu.requestId);
 const zuApproved = p => p?.verified === true && p?.serverRole === 'host';
 const zuMember = () => DEMO ? !isHost() : zcSelfRole() === 'user';
+const zuHostViewer = () => DEMO ? isHost() : zcSelfRole() === 'host' && isApprovedHost();
+const zuIsMember = p => p?.serverRole === 'user';
+/* An approved host looking at a member: they may follow back and call within the member's permissions. */
+const zuHostToMember = p => !!p && zuHostViewer() && zuIsMember(p) && !zuSelf();
 // The Profile tab shares this layout, with owner controls instead of social actions.
 const zuSelf = () => !!zuSelfId() && zuId() === zuSelfId();
 const zuOffline = () => !!window.ZimiOffline?.isOffline();
@@ -13397,7 +13477,7 @@ function zuTabKeys(event){
   document.getElementById('zu-tab-'+Zu.tab)?.focus();
 }
 function zuFollow(){
-  const p=Zu.profile;if(!p||!zuApproved(p)||!zuMember()||Zu.loading||Zu.followBusy||zuOffline())return;
+  const p=Zu.profile;if(!p||!((zuApproved(p)&&zuMember())||zuHostToMember(p))||Zu.loading||Zu.followBusy||zuOffline())return;
   Zu.followBusy=true;Zu.followError='';Zu.followRequestId=++Zu.sequence;
   zuPendingFollows.set(p.id,Zu.followRequestId);
   const data={id:p.id,on:!p.following,requestId:Zu.followRequestId};
@@ -13410,8 +13490,28 @@ function zuFollowSaved(d){
   S.following[d.id]=!!d.on;
   const known=zuKnown(d.id);if(known)known.fol=d.on?1:0;
   if(d.id!==Zu.id||d.requestId!==Zu.followRequestId)return;
-  if(Zu.profile){const changed=Zu.profile.following!==!!d.on;Zu.profile.following=!!d.on;if(changed)Zu.profile.followers=Math.max(0,(Zu.profile.followers||0)+(d.on?1:-1))}
+  if(Zu.profile){const p=Zu.profile,changed=p.following!==!!d.on;p.following=!!d.on;if(changed)p.followers=Math.max(0,(p.followers||0)+(d.on?1:-1));
+    // Following each other opens voice calls; the member's permission keeps video (and voice) open.
+    if(zuIsMember(p))p.canVoiceCall=!!p.canVideoCall||(p.following&&!!p.followsYou)}
   Zu.followBusy=false;Zu.followError='';zuPaint();
+}
+function zuCallPermission(){
+  const p=Zu.profile;if(!p||!zuApproved(p)||!zuMember()||zuSelf()||Zu.loading||Zu.permissionBusy||zuOffline())return;
+  Zu.permissionBusy=true;Zu.permissionError='';Zu.permissionRequestId=++Zu.sequence;
+  const data={id:p.id,video:!p.allowsVideoCalls,requestId:Zu.permissionRequestId};
+  if(DEMO){zuCallPermissionSaved(data);return}
+  Native.send('call.permission.set',data);zuPaint();
+}
+function zuCallPermissionSaved(d){
+  if(d.requestId!==Zu.permissionRequestId)return;
+  Zu.permissionBusy=false;Zu.permissionError='';
+  if(Zu.profile&&d.id===Zu.profile.id)Zu.profile.allowsVideoCalls=!!d.video;
+  zuPaint();
+}
+function zuHostCall(voice){
+  const p=Zu.profile;if(!zuHostToMember(p)||Zu.loading||Zu.error||zuOffline())return;
+  if(!(voice?p.canVoiceCall:p.canVideoCall))return;
+  hostCallMember(p.id,voice,{name:p.name,avatarUrl:p.avatarUrl,city:p.city,gender:p.gender});
 }
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
 function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&p.availableForCall&&!zuOffline())homeCall(p.id)}
@@ -13435,18 +13535,21 @@ function zuAvatar(p){
 }
 function zuIdentity(p){
   const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember()&&!zuSelf();
-  const owner=zuSelf();
+  const owner=zuSelf(),followBack=ready&&zuHostToMember(p),showFollow=canFollow||followBack;
+  const followLabel=Zu.followBusy?'Updating…':p.following?'Following':followBack&&p.followsYou?'Follow back':'Follow';
   return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
-    ${canFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${Zu.followBusy?'Updating…':p.following?'Following':'Follow'}</button>`:''}</div>
+    ${showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
-    <div class="zu-identity"><h1>${esc(p.name)}</h1>
+    <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
     <div class="zu-stats" aria-label="Profile statistics"><div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div><div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div></div>
     <p class="zu-bio">${esc(p.about||'A new face. A new connection. Say hello when you’re ready.')}</p>
     ${p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
     ${owner?`<div class="zu-self-bar zu-owner-actions"><button id="zu-edit-self" class="zu-owner-edit" onclick="go('editprofile')">${zi('edit',17)} Edit profile</button><button id="zu-upload-self" class="zu-owner-upload" onclick="zuEditMedia('photos')" ${zuOffline()?'disabled':''}>${zi('camera',17)} Upload photos</button></div>`:''}
-    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
+    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>
+    <div class="zu-permission"><span class="zu-gift-icon">${hi('vid',22)}</span><span id="zu-permission-label"><b>Video calls from ${esc(first(p.name))}</b><small>${p.allowsVideoCalls?`${esc(first(p.name))} can video call you. Turn this off any time.`:`Let ${esc(first(p.name))} video call you. You pay their call rate once you answer.`}</small></span><button id="zu-permission" type="button" class="zp-switch ${p.allowsVideoCalls?'is-on':''}" role="switch" aria-checked="${!!p.allowsVideoCalls}" aria-labelledby="zu-permission-label" onclick="zuCallPermission()" ${Zu.permissionBusy||zuOffline()?'disabled':''}><i></i></button></div>
+    ${Zu.permissionError?`<p class="zu-inline-error" role="alert">${esc(Zu.permissionError)}</p>`:''}`:''}
     </div>`}</aside>`;
 }
 function zuAbout(p){
@@ -13480,10 +13583,10 @@ function zuActions(p){
   if(!p||Zu.error)return '';
   if(zuSelf())return '';
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
-  const messageBlocked=zuOffline()||!zcCanChat(p.id);
+  const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
   return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
-    <div class="zu-action-buttons"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}</div>
-    ${!zuMember()&&!zcCanChat(p.id)?'<p class="zu-action-note">Creators can reply to existing member conversations.</p>':''}</div></div>`;
+    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${p.canVoiceCall&&!zuOffline()?'':'disabled'}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${p.canVideoCall&&!zuOffline()?'':'disabled'}>${hi('vid',21)}<span>Video</span></button>`:''}</div>
+    ${hostCalls&&!p.canVideoCall?`<p class="zu-action-note">${p.canVoiceCall?`${esc(first(p.name))} hasn’t allowed video calls yet.`:`Voice calls open when you follow each other. Video calls need ${esc(first(p.name))}’s permission.`}</p>`:''}</div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
@@ -13573,6 +13676,11 @@ Native.on('data.home',d=>{
   zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
+Native.on('call.permission.saved',zuCallPermissionSaved);
+Native.on('call.permission.error',d=>{
+  if(d.requestId!==Zu.permissionRequestId)return;
+  Zu.permissionBusy=false;Zu.permissionError=d.message||'Could not update video call permission. Please try again.';zuPaint();
+});
 Native.on('follow.error',d=>{
   if(zuPendingFollows.get(d.id)!==d.requestId)return;
   zuPendingFollows.delete(d.id);

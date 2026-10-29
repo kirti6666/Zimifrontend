@@ -66,7 +66,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const call = record(payload), callId = idOf(call);
       if (!callId || !userId) return;
-      if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: callerFrom(call), kind: call.kind, voice: call.kind === "audio", ...callPrice(call) });
+      if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: callerFrom(call), kind: call.kind, voice: call.kind === "audio", ...(call.hostInitiated === true ? { fromHost: true } : {}), ...callPrice(call) });
       else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call) });
       else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId, ...callCharge(call) });
     } catch { /* Ignore malformed events instead of corrupting screen state. */ }

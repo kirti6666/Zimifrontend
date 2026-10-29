@@ -88,6 +88,13 @@ export interface PublicProfile extends Host {
   interests: string[];
   level?: number;
   crown?: boolean;
+  /** This person follows the viewer. */
+  followsYou?: boolean;
+  /** A member viewing a host: whether they let this host video-call them. */
+  allowsVideoCalls?: boolean;
+  /** A host viewing a member: which calls the host may start. */
+  canVoiceCall?: boolean;
+  canVideoCall?: boolean;
 }
 
 export interface PublicPosts {

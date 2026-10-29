@@ -13,6 +13,10 @@ const zuCurrent = () => Zu.id === zuId();
 const zuMatches = (d, posts=false) => d.id === Zu.id && d.requestId === (posts ? Zu.postsRequestId : Zu.requestId);
 const zuApproved = p => p?.verified === true && p?.serverRole === 'host';
 const zuMember = () => DEMO ? !isHost() : zcSelfRole() === 'user';
+const zuHostViewer = () => DEMO ? isHost() : zcSelfRole() === 'host' && isApprovedHost();
+const zuIsMember = p => p?.serverRole === 'user';
+/* An approved host looking at a member: they may follow back and call within the member's permissions. */
+const zuHostToMember = p => !!p && zuHostViewer() && zuIsMember(p) && !zuSelf();
 // The Profile tab shares this layout, with owner controls instead of social actions.
 const zuSelf = () => !!zuSelfId() && zuId() === zuSelfId();
 const zuOffline = () => !!window.ZimiOffline?.isOffline();
@@ -100,7 +104,7 @@ function zuTabKeys(event){
   document.getElementById('zu-tab-'+Zu.tab)?.focus();
 }
 function zuFollow(){
-  const p=Zu.profile;if(!p||!zuApproved(p)||!zuMember()||Zu.loading||Zu.followBusy||zuOffline())return;
+  const p=Zu.profile;if(!p||!((zuApproved(p)&&zuMember())||zuHostToMember(p))||Zu.loading||Zu.followBusy||zuOffline())return;
   Zu.followBusy=true;Zu.followError='';Zu.followRequestId=++Zu.sequence;
   zuPendingFollows.set(p.id,Zu.followRequestId);
   const data={id:p.id,on:!p.following,requestId:Zu.followRequestId};
@@ -113,8 +117,28 @@ function zuFollowSaved(d){
   S.following[d.id]=!!d.on;
   const known=zuKnown(d.id);if(known)known.fol=d.on?1:0;
   if(d.id!==Zu.id||d.requestId!==Zu.followRequestId)return;
-  if(Zu.profile){const changed=Zu.profile.following!==!!d.on;Zu.profile.following=!!d.on;if(changed)Zu.profile.followers=Math.max(0,(Zu.profile.followers||0)+(d.on?1:-1))}
+  if(Zu.profile){const p=Zu.profile,changed=p.following!==!!d.on;p.following=!!d.on;if(changed)p.followers=Math.max(0,(p.followers||0)+(d.on?1:-1));
+    // Following each other opens voice calls; the member's permission keeps video (and voice) open.
+    if(zuIsMember(p))p.canVoiceCall=!!p.canVideoCall||(p.following&&!!p.followsYou)}
   Zu.followBusy=false;Zu.followError='';zuPaint();
+}
+function zuCallPermission(){
+  const p=Zu.profile;if(!p||!zuApproved(p)||!zuMember()||zuSelf()||Zu.loading||Zu.permissionBusy||zuOffline())return;
+  Zu.permissionBusy=true;Zu.permissionError='';Zu.permissionRequestId=++Zu.sequence;
+  const data={id:p.id,video:!p.allowsVideoCalls,requestId:Zu.permissionRequestId};
+  if(DEMO){zuCallPermissionSaved(data);return}
+  Native.send('call.permission.set',data);zuPaint();
+}
+function zuCallPermissionSaved(d){
+  if(d.requestId!==Zu.permissionRequestId)return;
+  Zu.permissionBusy=false;Zu.permissionError='';
+  if(Zu.profile&&d.id===Zu.profile.id)Zu.profile.allowsVideoCalls=!!d.video;
+  zuPaint();
+}
+function zuHostCall(voice){
+  const p=Zu.profile;if(!zuHostToMember(p)||Zu.loading||Zu.error||zuOffline())return;
+  if(!(voice?p.canVoiceCall:p.canVideoCall))return;
+  hostCallMember(p.id,voice,{name:p.name,avatarUrl:p.avatarUrl,city:p.city,gender:p.gender});
 }
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
 function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&p.availableForCall&&!zuOffline())homeCall(p.id)}
@@ -138,18 +162,21 @@ function zuAvatar(p){
 }
 function zuIdentity(p){
   const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember()&&!zuSelf();
-  const owner=zuSelf();
+  const owner=zuSelf(),followBack=ready&&zuHostToMember(p),showFollow=canFollow||followBack;
+  const followLabel=Zu.followBusy?'Updating…':p.following?'Following':followBack&&p.followsYou?'Follow back':'Follow';
   return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
-    ${canFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${Zu.followBusy?'Updating…':p.following?'Following':'Follow'}</button>`:''}</div>
+    ${showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
-    <div class="zu-identity"><h1>${esc(p.name)}</h1>
+    <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
     <div class="zu-stats" aria-label="Profile statistics"><div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div><div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div></div>
     <p class="zu-bio">${esc(p.about||'A new face. A new connection. Say hello when you’re ready.')}</p>
     ${p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
     ${owner?`<div class="zu-self-bar zu-owner-actions"><button id="zu-edit-self" class="zu-owner-edit" onclick="go('editprofile')">${zi('edit',17)} Edit profile</button><button id="zu-upload-self" class="zu-owner-upload" onclick="zuEditMedia('photos')" ${zuOffline()?'disabled':''}>${zi('camera',17)} Upload photos</button></div>`:''}
-    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
+    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>
+    <div class="zu-permission"><span class="zu-gift-icon">${hi('vid',22)}</span><span id="zu-permission-label"><b>Video calls from ${esc(first(p.name))}</b><small>${p.allowsVideoCalls?`${esc(first(p.name))} can video call you. Turn this off any time.`:`Let ${esc(first(p.name))} video call you. You pay their call rate once you answer.`}</small></span><button id="zu-permission" type="button" class="zp-switch ${p.allowsVideoCalls?'is-on':''}" role="switch" aria-checked="${!!p.allowsVideoCalls}" aria-labelledby="zu-permission-label" onclick="zuCallPermission()" ${Zu.permissionBusy||zuOffline()?'disabled':''}><i></i></button></div>
+    ${Zu.permissionError?`<p class="zu-inline-error" role="alert">${esc(Zu.permissionError)}</p>`:''}`:''}
     </div>`}</aside>`;
 }
 function zuAbout(p){
@@ -183,10 +210,10 @@ function zuActions(p){
   if(!p||Zu.error)return '';
   if(zuSelf())return '';
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
-  const messageBlocked=zuOffline()||!zcCanChat(p.id);
+  const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
   return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
-    <div class="zu-action-buttons"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}</div>
-    ${!zuMember()&&!zcCanChat(p.id)?'<p class="zu-action-note">Creators can reply to existing member conversations.</p>':''}</div></div>`;
+    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${p.canVoiceCall&&!zuOffline()?'':'disabled'}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${p.canVideoCall&&!zuOffline()?'':'disabled'}>${hi('vid',21)}<span>Video</span></button>`:''}</div>
+    ${hostCalls&&!p.canVideoCall?`<p class="zu-action-note">${p.canVoiceCall?`${esc(first(p.name))} hasn’t allowed video calls yet.`:`Voice calls open when you follow each other. Video calls need ${esc(first(p.name))}’s permission.`}</p>`:''}</div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
@@ -276,6 +303,11 @@ Native.on('data.home',d=>{
   zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
+Native.on('call.permission.saved',zuCallPermissionSaved);
+Native.on('call.permission.error',d=>{
+  if(d.requestId!==Zu.permissionRequestId)return;
+  Zu.permissionBusy=false;Zu.permissionError=d.message||'Could not update video call permission. Please try again.';zuPaint();
+});
 Native.on('follow.error',d=>{
   if(zuPendingFollows.get(d.id)!==d.requestId)return;
   zuPendingFollows.delete(d.id);

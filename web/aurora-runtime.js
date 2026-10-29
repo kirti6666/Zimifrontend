@@ -223,7 +223,7 @@ function go(v,id){
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
  if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
- if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
+ if(v==="dialback"){S.caller.voice=!!S.nextCallVoice;if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id,voice:!!S.nextCallVoice})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
@@ -252,7 +252,7 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
 function nav(){const el=document.getElementById("nav");
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
- if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
+ if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chat","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
@@ -740,7 +740,7 @@ function missedRows(){
  return S.missed[S.role].map(m=>{const p=isHost()?sender(m.id):g(m.id);return p&&{...m,p}}).filter(Boolean)}
 function callBack(id){
  S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
- if(isHost()){S.caller=sender(id);go("dialback")}else go("precall",id)}
+ if(isHost()){S.caller=sender(id);S.nextCallVoice=false;S.dialFrom={view:"calls"};go("dialback")}else go("precall",id)}
 function missedList(){
  const pending=window.contentSurface?.('missed','rows','Loading missed calls');if(pending)return pending;
  const L=missedRows();
@@ -1132,7 +1132,9 @@ function vDial(){
   <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
  </div>`}
 
-function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")go("chats");else go("precall",S.h)}
+function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
+/* A host's call to a member ended before it connected: back to where it was placed. */
+function dialReturn(notice){if(notice)appNotice(notice);const from=S.dialFrom||{};S.dialFrom=null;go(from.view||"chats",from.id)}
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
@@ -1172,6 +1174,39 @@ function vRing(){const c=S.caller;
    <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
   ${S.acceptingCall?'<span class="ring-connecting-note" role="status">Preparing your private call…</span>':''}
  </div>`}
+
+/* ---- Member: a host they follow back, or allowed to video call, is calling ---- */
+function memberIncoming(d){
+ /* S.callId outlives a finished call, so only the screen tells whether the member is busy. */
+ const busy=["dial","call","voice","incoming"].includes(S.v)||window.Home?.preparingCall;
+ if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
+ const from=d.from||{},h=knowHost({id:from.id,name:from.name,avatarUrl:from.avatarUrl,city:from.city,gender:from.gender,verified:true,role:"host",serverRole:"host"});
+ S.memberRing={callId:d.callId,id:h.id,voice:!!d.voice,rate:d.rate||0,error:""};
+ S.acceptingCall=false;if(S.v!=="incoming")S.ringBack={view:S.v,id:S.v==="thread"||S.v==="host"?S.h:undefined};go("incoming")}
+function ringReturn(){const back=S.ringBack||{};S.ringBack=null;go(back.view&&back.view!=="incoming"?back.view:"home",back.id)}
+function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
+ const name=first(h.n),short=m.rate>0&&S.bal<m.rate;
+ return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${m.voice?'voice':'video'} call from ${esc(h.n)}">
+  <div class="ringbg" aria-hidden="true"></div>
+  <span class="ringeye"><i></i>Incoming ${m.voice?'voice':'video'} call</span>
+  <div class="ringorb pulse">${hcIdentityAvatar(h,112)}</div>
+  <h2>${esc(h.n)}</h2><p>Verified creator</p>
+  <span class="ringearn">${m.rate>0?`${gem}${n(m.rate)} coins/min · charged once you answer`:'Free call &middot; gifts are optional'}</span>
+  ${short?`<span class="ringfee">You need ${n(m.rate)} coins to answer. Add coins, then call ${esc(name)} back.</span><button type="button" class="ring-add-coins" onclick="memberRingAddCoins()">Add coins</button>`:''}
+  ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
+  <div class="ringact two">
+   <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall||short?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+ </div>`}
+async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)return;
+ S.acceptingCall=true;m.error="";r();
+ try{
+  if(window.ZimiMedia?.prepare)await window.ZimiMedia.prepare(!m.voice);
+  if(S.v!=="incoming"||S.memberRing!==m){S.acceptingCall=false;window.ZimiMedia?.stop();return}
+  Native.send("call.accept",{callId:m.callId});
+ }catch(error){S.acceptingCall=false;m.error=error?.message||"Your camera or microphone could not be started. Try again.";r()}}
+function declineMemberRing(){const m=S.memberRing;if(!m)return;S.memberRing=null;S.acceptingCall=false;window.ZimiMedia?.stop();Native.send("call.decline",{callId:m.callId});ringReturn()}
+function memberRingAddCoins(){declineMemberRing();go("coins")}
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
@@ -1622,7 +1657,7 @@ function r(){
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
  let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
-  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
+  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,incoming:vMemberRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
  else if(window.ZimiMedia)window.ZimiMedia.render(el,html);else el.innerHTML=html;
@@ -1722,7 +1757,8 @@ Native.on("call.connected",d=>{
  if(S.v==="hcall"&&d.callId!==S.callId&&d.callId!==S.connecting?.to.callId)return;
  S.callRate=d.rate||0;
  if(S.v==="dial"){S.callId=d.callId;S.callFee=d.entryFee||0;go(d.voice?'voice':"call",S.h)}
- else if(S.v==="dialback"){S.caller.callId=d.callId;hcCallTerms(d);go("hcall")}
+ else if(S.v==="dialback"){S.caller.callId=d.callId;S.caller.voice=!!d.voice;hcCallTerms(d);go("hcall")}
+ else if(S.v==="incoming"&&S.memberRing?.callId===d.callId){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;S.callId=d.callId;S.callFee=0;go(m.voice?"voice":"call",m.id)}
  else if(S.v==="ring"&&S.caller.callId===d.callId){hcCallTerms(d);S.callId=d.callId;S.acceptingCall=false;go('hcall');ringQueued()}
  else if(S.v==="hcall"&&S.connecting)finishSwitch(d);
  /* The answer and the realtime event both report the call; the answer adds today's early endings. */
@@ -1730,9 +1766,10 @@ Native.on("call.connected",d=>{
 Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
- else if(S.v==="dialback")go("chats");
+ else if(S.v==="dialback")dialReturn(d.message||"The call didn't go through. Try again.");
+ else if(S.v==="incoming"&&d.callId&&S.memberRing?.callId===d.callId){S.memberRing.error=d.message||"The call couldn't be answered. Try again.";r()}
  else if(S.v==="ring"){appNotice(d.message||"The call didn't connect. Please try again.");r()}});
-Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
+Native.on("call.incoming",d=>{if(d.fromHost&&!isHost())return memberIncoming(d);if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
  /* Already in a call: the new caller rings as a banner, never a busy signal. */
@@ -1753,6 +1790,8 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="hcall"&&S.connecting){const c=S.connecting;
   if(c.from.callId===id){c.fromEnded=true;return}
   if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
+ if(S.v==="incoming"&&S.memberRing?.callId===id){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();appNotice(`Missed call from ${first(g(m.id)?.n||"a creator")}`);return ringReturn()}
+ if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
@@ -1760,6 +1799,8 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
+/* A balance update can let the member answer: show it on the ring screen at once. */
+Native.on("wallet.balance",()=>{if(S.v==="incoming")r()});
 Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  const gf=GIFTS.find(x=>x[0]===d.gift)||["Gift","&#127873;",d.coins||0];
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
