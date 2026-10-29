@@ -115,6 +115,8 @@ const page = (demo, hosted = false) =>
   read("web/verification-call.css") +
   read("web/offline.css") +
   read("web/public-profile.css") +
+  read("web/post-create.css") +
+  read("web/post-view.css") +
   read("web/home-dashboard.css") +
   read("web/coins.css") +
   read("web/notifications.css") +
@@ -164,6 +166,8 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/icons.js") +
   "\n" + read("web/offline.js") +
   "\n" + read("web/public-profile.js") +
+  "\n" + read("web/post-create.js") +
+  "\n" + read("web/post-view.js") +
   "\n" + read("web/payouts.js") +
   "\n" + read("web/payment-routes.js") +
   "\n" + read("web/ads.js") +

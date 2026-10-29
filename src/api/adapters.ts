@@ -1,6 +1,6 @@
 import { ApiError } from "./client";
 import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
-import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -45,7 +45,22 @@ export function accountFrom(value: unknown): Account {
 export function postFrom(value: unknown): UserPost {
   const post = record(value), id = idOf(post);
   if (!id || typeof post.mediaUrl !== "string" || !/^https:\/\/[^\s"'<>]+$/.test(post.mediaUrl) || (post.kind !== "photo" && post.kind !== "video")) throw new ApiError("Your post could not be loaded. Please try again.", 502);
-  return { id, mediaUrl: post.mediaUrl, kind: post.kind, caption: string(post.caption) };
+  return { id, mediaUrl: post.mediaUrl, kind: post.kind, caption: string(post.caption), ...(typeof post.createdAt === "string" && Number.isFinite(Date.parse(post.createdAt)) ? { createdAt: post.createdAt } : {}),
+    ...(typeof post.likes === "number" ? { likes: count(post.likes) } : {}), ...(typeof post.comments === "number" ? { comments: count(post.comments) } : {}),
+    ...(typeof post.liked === "boolean" ? { liked: post.liked } : {}) };
+}
+/** A comment and its author, as the server populates it. */
+export function commentFrom(value: unknown): PostComment {
+  const comment = record(value), author = typeof comment.userId === "object" && comment.userId ? record(comment.userId) : {};
+  const avatar = author.avatar && typeof author.avatar === "object" ? record(author.avatar) : {};
+  const id = idOf(comment);
+  if (!id || typeof comment.text !== "string") throw new ApiError("This comment could not be loaded. Try again.", 502);
+  return { id, text: comment.text, ...(typeof comment.createdAt === "string" && Number.isFinite(Date.parse(comment.createdAt)) ? { createdAt: comment.createdAt } : {}),
+    user: { id: idOf(comment.userId), name: string(author.name) || "BinzoLive member", avatarUrl: string(author.avatarUrl || avatar.url) } };
+}
+export function commentsFrom(value: unknown, postId: string): PostComments {
+  const data = record(value);
+  return { id: postId, comments: items(data).map(commentFrom), total: count(data.total), page: Math.max(1, count(data.page)), limit: Math.max(1, count(data.limit)) };
 }
 export function hostFrom(value: unknown): Host {
   const host = typeof value === "string" ? { _id: value } : record(value);
@@ -81,7 +96,7 @@ export function publicProfileFrom(value: unknown): PublicProfile {
     interests: stringList(profile.interests),
     ...(typeof profile.level === "number" && Number.isSafeInteger(profile.level) && profile.level >= 0 ? { level: profile.level } : {}),
     ...(typeof profile.crown === "boolean" ? { crown: profile.crown } : {}),
-    ...flags(profile, ["followsYou", "allowsVideoCalls", "canVoiceCall", "canVideoCall"]),
+    ...flags(profile, ["followsYou"]),
   };
 }
 /** Copies the boolean fields the server sent; an absent field stays absent. */
@@ -265,11 +280,10 @@ export function messageFrom(value: unknown, userId: string): Message {
     ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, ...(reply.voice === true ? { voice: true } : {}), deleted: reply.deleted === true } } : {}),
     ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
 }
-export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; canVoiceCall?: boolean; canVideoCall?: boolean } {
+export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {
   const data = record(value);
   return { ...(typeof data.canSend === "boolean" ? { canSend: data.canSend } : {}),
     ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
-    ...flags(data, ["canVoiceCall", "canVideoCall"]),
     messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }

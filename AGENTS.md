@@ -17,9 +17,21 @@ keeps it identical to the original Next.js version.
   text or filter shadows, and 10px corners on every element except its round
   list: the bordered 44px Back button and the close/more buttons beside it,
   every call button, avatars and switches are always circles. Keep that list in
-  step with `ROUND` in `scripts/flat-corners.cjs`. Headers sit on the page
-  without a divider line, and settings rows have no dividers.
+  step with `ROUND` in `scripts/flat-corners.cjs`. Lines never get rounded
+  ends: dividers, single-side borders, tab and navigation underlines and
+  edge-to-edge surfaces (the post feed, page shells) keep square corners via the
+  straight list in `web/flat.css`, mirrored by `STRAIGHT` in
+  `scripts/flat-corners.cjs`. Headers sit on the page without a divider line,
+  and settings rows have no dividers.
   Account themes customize accents and typography while keeping the white canvas.
+- Posts: `web/post-create.js` is a separate New post page (`create-post`
+  view) that keeps its draft for the session. Tapping a profile photo opens
+  `web/post-view.js`, a vertical feed like other photo apps, starting at that
+  post: author row, the whole photo, a heart (tap it, or double-tap the photo
+  to like with a large heart), comments in a sheet (add; authors delete their
+  own and the post owner deletes any), caption with "more", relative time and
+  more posts as you scroll. Likes update at once and roll back if the server
+  refuses; the server hides phone numbers and abuse in comments.
 - Dark Mode is a Settings toggle remembered on the device (`zimi.darkMode` in
   localStorage, `ZimiThemes.dark()`/`setDark()` in `web/themes.js`). It swaps
   the palette to black and keeps the theme's accent; the native status bar
@@ -114,12 +126,11 @@ keeps it identical to the original Next.js version.
   Retry/Try again button.
 - Automated welcome messages show in chats without an automation label.
 - Approved hosts may message any member or another approved host at any time;
-  members message approved hosts. A host calls a member by voice once they
-  follow each other (hosts can Follow back on a member's profile), or by video
-  (and voice) once the member turns on "Video calls from …" on that host's
-  profile. The member pays the host's rate after answering, with no entry fee,
-  on the `incoming` ring screen. The server checks every permission again
-  (`calls/call-access.ts` in the backend); see `docs/POLICIES.md`.
+  members message approved hosts. Approved hosts may also call any member by
+  voice or video at any time (there is no member permission switch), and can
+  Follow members back. The member pays the host's rate after answering, with
+  no entry fee, on the `incoming` ring screen; blocks still stop calls. See
+  `docs/POLICIES.md`.
 - Animated gift stickers live in `web/stickers/` (built with
   `scripts/build-gift-sticker.py`) and are matched to catalog gifts by name in
   `web/gift-stickers.js`; the backend catalog seed uses the same names. Gift

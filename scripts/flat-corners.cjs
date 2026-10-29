@@ -14,4 +14,5 @@ const ROUND = [
   `:is(${AVATARS})>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face)`,
 ].join(',');
 
-module.exports = { ROUND };
+const STRAIGHT='html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed,.zu-feed-header,.zu-feed-post,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i';
+module.exports = { ROUND, STRAIGHT };

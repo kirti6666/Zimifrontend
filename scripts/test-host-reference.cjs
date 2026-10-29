@@ -54,6 +54,27 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     }
     await page.setViewportSize({ width: 390, height: 844 });
 
+    await button('Set creator card image').click();
+    const cardPhoto=Buffer.from(await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=800;canvas.height=600;const ctx=canvas.getContext('2d');ctx.fillStyle='#b85c87';ctx.fillRect(0,0,800,600);return canvas.toDataURL('image/png').split(',')[1]}),'base64');
+    await page.getByLabel('Choose creator card image',{exact:true}).setInputFiles({name:'card.png',mimeType:'image/png',buffer:cardPhoto});
+    await page.waitForFunction(()=>!HostStudio.cardPreparing&&!!HostStudio.cardDraft);
+    assert.equal(await page.evaluate(()=>__sent.filter(m=>m.type==='creator.card.save').length),0,'Card images are saved only after confirmation');
+    await page.screenshot({path:path.join(artifacts,'creator-card-image-picker.png')});
+    await button('Save card image').click();
+    const cardSave=await page.evaluate(()=>__sent.filter(m=>m.type==='creator.card.save').at(-1).data);
+    assert.match(cardSave.photo,/^data:image\/jpeg;base64,/);
+    await receive('creator.card.error',{requestId:cardSave.requestId,message:'Image upload failed'});
+    assert.ok(await page.evaluate(()=>HostStudio.cardDraft),'A failed save retains the chosen card');
+    await button('Save card image').click();
+    const cardRetry=await page.evaluate(()=>__sent.filter(m=>m.type==='creator.card.save').at(-1).data);
+    const savedHost={user:{...host,coverUrl:'https://media.example.test/creator-card.jpg'},verification:'verified',requiresOnboarding:false};
+    await receive('creator.card.saved',{requestId:cardSave.requestId,account:savedHost});
+    assert.equal(await page.evaluate(()=>HostStudio.cardSaving),true,'A stale save cannot finish the current upload');
+    await receive('creator.card.saved',{requestId:cardRetry.requestId,account:savedHost});
+    assert.equal(await page.evaluate(()=>S.v),'setup','Saving a card keeps the go-online setup open');
+    assert.equal(await page.locator('.hc-card-image img').getAttribute('src'),savedHost.user.coverUrl);
+    assert.equal(await page.evaluate(()=>__captures),0,'Changing the creator card does not capture the camera');
+
     // Choosing a mission target updates the open sheet in place instead of redrawing the screen.
     await button('Mission').click();
     await page.locator('.hs-sheet').waitFor();

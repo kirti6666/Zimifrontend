@@ -17,7 +17,7 @@ const lastRequest = (page, type) => page.evaluate(type => window.__messages.filt
     await page.route('**/*', route => route.abort());
     await page.setContent('<main><div id="top"></div><div id="screen"></div><div id="nav"></div></main>');
     await page.addScriptTag({ content: 'window.ZIMI_DEMO=false;window.__messages=[];window.ReactNativeWebView={postMessage(json){window.__messages.push(JSON.parse(json))}};' });
-    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
+    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js', 'loading.js', 'post-create.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
     const rendering = await page.evaluate(() => {
       const avatar = 'https://media.example.test/creator.jpg?v=1&size=small', cover = 'https://media.example.test/cover.jpg';
       const h = hostFrom({ id: '507f1f77bcf86cd799439012', name: 'Riya <3 & friends', avatarUrl: avatar, coverUrl: cover });
@@ -65,17 +65,17 @@ const lastRequest = (page, type) => page.evaluate(type => window.__messages.filt
     assert.equal(await page.evaluate(() => S.coverData), saved.user.coverUrl);
     assert.deepEqual(await page.evaluate(() => S.mediaDirty), {}, 'After save, previews use authenticated R2 URLs');
 
-    await page.evaluate(() => go('editprofile'));
+    await page.evaluate(() => ZimiPostCreate.open());
     await page.locator('input[onchange*="posts"]').setInputFiles({ name: 'post.png', mimeType: 'image/png', buffer: photo });
     await page.waitForFunction(() => !!S.postDraftData && !S.mediaPreparing);
     await page.locator('#postcaption').fill('A new moment');
-    await page.getByRole('button', { name: 'Publish photo', exact: true }).click();
+    await page.getByRole('button', { name: 'Publish post', exact: true }).click();
     const publication = await lastRequest(page, 'media.post.create');
     assert.ok(publication.data.photo.startsWith('data:image/jpeg;base64,')); assert.equal(publication.data.caption, 'A new moment');
     assert.equal(await page.evaluate(() => S.postData.length), 0, 'An unconfirmed upload is not shown as a published post');
     await receive(page, 'post.error', { requestId: publication.data.requestId, message: 'Upload failed. Try again.' });
     assert.ok(await page.evaluate(() => S.postDraftData)); assert.equal(await page.locator('#postcaption').inputValue(), 'A new moment');
-    await page.getByRole('button', { name: 'Publish photo', exact: true }).click();
+    await page.getByRole('button', { name: 'Publish post', exact: true }).click();
     const secondPublication = await lastRequest(page, 'media.post.create');
     const post = { id: 'post-id', mediaUrl: 'https://media.example.test/post.jpg', kind: 'photo', caption: 'A new moment' };
     await receive(page, 'post.saved', { requestId: publication.data.requestId, post });
@@ -85,7 +85,7 @@ const lastRequest = (page, type) => page.evaluate(type => window.__messages.filt
     assert.equal(await page.evaluate(() => S.postDraftData), '');
 
     await page.evaluate(account => { obApplyAccount(account); go('editprofile'); }, account('sender'));
-    assert.equal(await page.locator('input[onchange*="posts"]').count(), 0, 'Publishing remains available only to approved creators');
+    assert.equal(await page.locator('input[onchange*="posts"]').count(), 0, 'Post creation is separate from profile editing');
     await page.locator('input[onchange*="avatar"]').setInputFiles({ name: 'not-an-image.txt', mimeType: 'text/plain', buffer: Buffer.from('not an image') });
     await page.waitForFunction(() => !S.mediaPreparing && !!S.mediaError);
     assert.match(await page.getByRole('alert').textContent(), /image file/);

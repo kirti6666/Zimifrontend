@@ -50,9 +50,11 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await receive('data.home',{...home,hosts:[creator],stage:[creator],featured:creator});
       await receive('wallet.balance',{coins:1000});
       await page.evaluate(()=>{window.__prepared=0;window.ZimiMedia.prepare=async()=>{window.__prepared++};window.ZimiMedia.openStream=()=>{};window.ZimiMedia.attach=()=>{};});
-      assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Video call |^Chat with /}).count(),0,'The featured card opens the profile before chat or calls');
+      // Like the grid cards, the featured card offers its always-active video call; chat stays on the profile.
+      assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Chat belongs on the profile');
+      assert.equal(await page.locator('.zh-featured-host .zh-featured-call').isEnabled(),true,'The featured card has the always-active video call button');
       assert.equal(await page.locator('.zh-person-cost').count(),0,'Home does not disclose call rates before the call action');
-      assert.doesNotMatch(await page.locator('.zh-dashboard').innerText(),/\bfree\b|\bpremium\b|call rate|coins\s*\/\s*min/i,'Home discovery has no pricing labels');
+      assert.doesNotMatch(await page.locator('.zh-dashboard').innerText(),/\bpremium\b|call rate|coins\s*\/\s*min/i,'Home discovery has no detailed pricing');
       await page.getByRole('button',{name:'View '+creator.name+' profile',exact:true}).click();
       assert.equal(await page.evaluate(()=>S.v),'host','The card opens the selected creator profile');
       assert.equal((await sent('call.start')).length,0,'Opening the profile never places a call');
@@ -211,7 +213,9 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.locator('.zh-person-card h3').innerText(),host.name);
     assert.equal(await real.locator('.zh-dashboard script,.zh-dashboard img[onerror]').count(),0);
     assert.equal(await real.locator('.zh-person-cost').count(),0,'Home live cards do not expose call pricing');
-    assert.doesNotMatch(await real.locator('.zh-dashboard').innerText(),/\bfree\b|\bpremium\b|call rate|coins\s*\/\s*min/i,'Pricing labels appear only after opening call confirmation');
+    // Like the grid cards, the featured card shows a short price pill; the detailed rate appears in the call confirmation.
+    assert.equal(await real.locator('.zh-featured-host .zh-featured-price').innerText(),'Free','The featured card shows the same price pill as the grid');
+    assert.doesNotMatch(await real.locator('.zh-dashboard').innerText(),/\bpremium\b|call rate|coins\s*\/\s*min/i,'Detailed call pricing appears only after opening call confirmation');
     const online={...host,id:'507f1f77bcf86cd799439031',name:'Online host',category:'Talk',stream:null};
     const busy={...online,id:'507f1f77bcf86cd799439032',name:'Online with calls off',availableForCall:false};
     const offline={...online,id:'507f1f77bcf86cd799439033',name:'Offline host',online:false,availableForCall:false};

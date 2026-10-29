@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -53,6 +53,17 @@ export const api = {
   logout: (token?: string) => {
     identity = undefined;
     return request<void>("POST", "/auth/logout", undefined, token ? { auth: false, bearerToken: token, refresh: false } : undefined);
+  },
+  deactivateAccount: () => request("POST", "/account/deactivate", { confirmed: true }),
+  async saveCreatorCard(photo: string) {
+    const version = getSessionVersion();
+    decodePhoto(photo);
+    const mediaKey = await uploadMedia(photo, "cover", version);
+    ensureSession(version);
+    await request("PATCH", "/profile", { coverKey: mediaKey });
+    ensureSession(version);
+    pendingProfile = undefined;
+    return api.me(true);
   },
   async me(fresh = false): Promise<Account> {
     const version = getSessionVersion();
@@ -118,13 +129,22 @@ export const api = {
     decodePhoto(photo);
     const account = await api.me();
     ensureSession(version);
-    if (!approvedHost(account)) throw new ApiError("Your creator profile must be approved before you can publish posts.", 403);
+    if (account.user.serverRole !== "user" && !approvedHost(account)) throw new ApiError("Verify your account before publishing photos.", 403);
     const mediaKey = await uploadMedia(photo, "post", version);
     ensureSession(version);
     const response = await request("POST", "/posts", { caption: caption.trim(), kind: "photo", mediaKey });
     ensureSession(version);
     return postFrom(response);
   },
+  deletePost: (id: string) => request("DELETE", `/posts/${encodeURIComponent(id)}`),
+  async likePost(id: string, liked: boolean) {
+    const data = record(await request("POST", `/posts/${encodeURIComponent(id)}/like`, { liked }));
+    if (typeof data.liked !== "boolean" || typeof data.likes !== "number") throw new ApiError("Your like could not be confirmed. Try again.", 502);
+    return { liked: data.liked, likes: Math.max(0, Math.floor(data.likes)) };
+  },
+  async postComments(id: string, page = 1) { return commentsFrom(await request("GET", `/posts/${encodeURIComponent(id)}/comments?page=${page}&limit=20`), id); },
+  async addPostComment(id: string, text: string) { return commentFrom(await request("POST", `/posts/${encodeURIComponent(id)}/comments`, { text: text.trim() })); },
+  deletePostComment: (id: string, commentId: string) => request("DELETE", `/posts/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}`),
   async submitVerification(details: Record<string, unknown>): Promise<{ status: Verification }> {
     const displayName = typeof details.name === "string" ? details.name.trim() : "";
     const bio = typeof details.bio === "string" ? details.bio.trim() : "";
@@ -297,12 +317,6 @@ export const api = {
     const data = record(await request("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }));
     if (typeof data.following !== "boolean") throw new ApiError("Your follow preference could not be confirmed. Try again.", 502);
     return { following: data.following };
-  },
-  /** A member lets one host video-call them, or takes it back. */
-  async setCallPermission(hostId: string, video: boolean) {
-    const data = record(await request("PUT", `/users/${encodeURIComponent(hostId)}/call-permission`, { video }));
-    if (typeof data.video !== "boolean") throw new ApiError("Your call permission could not be confirmed. Try again.", 502);
-    return { video: data.video };
   },
   async paymentRoutes() { return paymentRoutesFrom(await request("GET", "/payments/routes")); },
   async checkout(packId: string, idempotencyKey: string, route?: string) {

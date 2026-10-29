@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
-const { ROUND } = require('./flat-corners.cjs');
+const { ROUND, STRAIGHT } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const shots = path.join(root, 'artifacts', 'professional');
 const navigate = (page, view) => page.evaluate(view => go(view), view);
@@ -34,7 +34,7 @@ async function backControl(page,label) {
   assert.equal(control.iconCentered,true,`${label}: arrow is centered inside the circle`);
 }
 async function audit(page, label) {
-  const result = await page.evaluate(round => {
+  const result = await page.evaluate(({round,straight}) => {
     const app = document.querySelector('.app'), nav = document.getElementById('nav');
     const box = nav.getBoundingClientRect(), appBox = app.getBoundingClientRect();
     const active = nav.querySelector('[aria-current="page"]'), before = getComputedStyle(active, '::before');
@@ -46,11 +46,11 @@ async function audit(page, label) {
       filledActiveBubble:painted && parseFloat(before.height) > 4,
       wrong:[...document.querySelectorAll('body *')].filter(el => el.getClientRects().length).flatMap(el => {
         const c = getComputedStyle(el), name = el.id || el.className || el.tagName;
-        const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round);
+        const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
         return [!radiusOK && `${name}: radius ${c.borderRadius}`, c.boxShadow !== 'none' && `${name}: box shadow`, c.textShadow !== 'none' && `${name}: text shadow`, c.filter.includes('drop-shadow') && `${name}: filter shadow`].filter(Boolean);
       })
     };
-  }, ROUND);
+  }, {round:ROUND,straight:STRAIGHT});
   assert.equal(result.overflow, false, `${label}: fits the viewport`);
   assert.equal(result.canvas, 'rgb(255, 255, 255)', `${label}: pure white canvas`);
   assert.deepEqual(result.wrong, [], `${label}: flat styling with 10px corners except the round Back, call, avatar and switch controls`);

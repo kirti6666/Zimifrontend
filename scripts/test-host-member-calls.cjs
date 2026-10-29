@@ -1,6 +1,6 @@
-/* Hosts call members within the member's permissions, and members answer: video-call
-   permission on a host profile, Follow back, host Voice/Video buttons, the member's ring
-   screen and host-to-anyone messaging. All bridge traffic stays local. */
+/* Hosts call members at any time, and members answer: no permission switch on a host
+   profile, Follow back, host Voice/Video buttons, the member's ring screen and
+   host-to-anyone messaging. All bridge traffic stays local. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -37,25 +37,12 @@ const notice = page => page.locator('#app-notice').innerText();
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
   try {
-    // The member lets this host video-call them from the host's profile.
+    // A host's profile has no video-call permission switch: hosts may call members at any time.
     const m = await open(browser, member);
     await m.receive('wallet.balance', { coins: 30, earningsPaise: 0 });
     await openProfile(m, hostId, hostProfile);
-    const permission = m.page.locator('#zu-permission');
-    assert.equal(await permission.getAttribute('aria-checked'), 'false');
-    assert.match(await m.page.locator('.zu-permission').innerText(), /Video calls from Ananya[\s\S]*Let Ananya video call you/);
-    await permission.click();
-    const asked = (await m.sent('call.permission.set')).at(-1);
-    assert.deepEqual([asked.id, asked.video], [hostId, true]);
-    await m.receive('call.permission.error', { ...asked, message: 'Your call permission could not be confirmed. Try again.' });
-    assert.match(await m.page.locator('.zu-inline-error').innerText(), /could not be confirmed/);
-    assert.equal(await permission.getAttribute('aria-checked'), 'false', 'A failed save keeps the old setting');
-    await permission.click();
-    const retried = (await m.sent('call.permission.set')).at(-1);
-    await m.receive('call.permission.saved', { id: hostId, video: true, requestId: retried.requestId });
-    assert.equal(await permission.getAttribute('aria-checked'), 'true');
-    assert.match(await m.page.locator('.zu-permission').innerText(), /Ananya can video call you/);
-    assert.equal(await m.page.locator('#zu-permission').evaluate(el => getComputedStyle(el).borderRadius), '999px', 'Switches are round');
+    assert.equal(await m.page.locator('#zu-permission,.zu-permission').count(), 0);
+    assert.doesNotMatch(await m.page.locator('.zu-page').innerText(), /Video calls from/);
 
     // A host's call rings the member, who needs one minute of coins to answer.
     await m.page.evaluate(() => go('chats'));
@@ -93,22 +80,20 @@ const notice = page => page.locator('#app-notice').innerText();
     assert.deepEqual(m.errors, []);
     await m.page.close();
 
-    // The host follows the member back, which opens voice calls; video waits for the member.
+    // The host can call the member straight away, and may follow them back.
     const h = await open(browser, host);
     await openProfile(h, memberId, memberProfile);
     assert.equal(await h.page.locator('#zu-follow').innerText(), 'Follow back');
     assert.equal(await h.page.locator('.zu-follows-you').innerText(), 'Follows you');
     const voiceCall = h.page.getByRole('button', { name: 'Voice call', exact: true }), videoCall = h.page.getByRole('button', { name: 'Video call', exact: true });
-    assert.deepEqual([await voiceCall.isDisabled(), await videoCall.isDisabled()], [true, true]);
-    assert.match(await h.page.locator('.zu-action-note').innerText(), /Voice calls open when you follow each other\. Video calls need Riya’s permission\./);
+    assert.deepEqual([await voiceCall.isDisabled(), await videoCall.isDisabled()], [false, false], 'Hosts call members at any time');
+    assert.equal(await h.page.locator('.zu-action-note').count(), 0, 'No permission note');
     assert.equal(await h.page.getByRole('button', { name: 'Message', exact: true }).isDisabled(), false, 'Hosts message members at any time');
     await h.page.locator('#zu-follow').click();
     const follow = (await h.sent('follow.set')).at(-1);
     assert.deepEqual([follow.id, follow.on], [memberId, true]);
     await h.receive('follow.saved', { id: memberId, on: true, requestId: follow.requestId });
     assert.equal(await h.page.locator('#zu-follow').innerText(), 'Following');
-    assert.deepEqual([await voiceCall.isDisabled(), await videoCall.isDisabled()], [false, true]);
-    assert.match(await h.page.locator('.zu-action-note').innerText(), /Riya hasn’t allowed video calls yet\./);
     const fits = await h.page.locator('.zu-action-buttons').evaluate(el => el.scrollWidth <= el.clientWidth + 1);
     assert.equal(fits, true, 'Message, Voice and Video fit the action bar');
 
@@ -116,11 +101,11 @@ const notice = page => page.locator('#app-notice').innerText();
     await h.page.waitForFunction(() => __sent.some(message => message.type === 'call.start'));
     assert.deepEqual((await h.sent('call.start')).at(-1), { to: memberId, voice: true });
     assert.equal(await view(h.page), 'dialback');
-    await h.receive('call.failed', { message: 'You can voice-call a member when you follow each other.' });
+    await h.receive('call.failed', { message: 'This member can\'t take a call right now. Try again later.' });
     assert.equal(await view(h.page), 'host', 'A refused call returns to the profile');
-    assert.equal(await notice(h.page), 'You can voice-call a member when you follow each other.');
+    assert.equal(await notice(h.page), 'This member can\'t take a call right now. Try again later.');
     const reload = (await h.sent('profile.load')).at(-1);
-    await h.receive('data.publicProfile', { ...reload, profile: { ...memberProfile, following: true, canVoiceCall: true } });
+    await h.receive('data.publicProfile', { ...reload, profile: { ...memberProfile, following: true } });
 
     await voiceCall.click();
     await h.page.waitForFunction(() => __sent.filter(message => message.type === 'call.start').length === 2);
@@ -130,18 +115,17 @@ const notice = page => page.locator('#app-notice').innerText();
     assert.deepEqual(await h.page.evaluate(() => [S.caller.id, S.caller.voice, S.caller.callId]), [memberId, true, 'to-member']);
     await h.receive('call.ended', { callId: 'to-member' });
 
-    // The chat header shows the same permissions, and explains a locked call.
+    // The chat header offers Voice and Video calls to the member too.
     await h.page.evaluate(id => go('thread', id), memberId);
-    await h.receive('data.thread', { with: memberId, messages: [], canSend: true, canVoiceCall: true, canVideoCall: false });
-    assert.equal(await h.page.locator('#zc-host-voice').getAttribute('aria-disabled'), 'false');
-    assert.equal(await h.page.locator('#zc-host-video').getAttribute('aria-disabled'), 'true');
-    // A locked call button still answers a tap with how to unlock it.
-    await h.page.locator('#zc-host-video').click({ force: true });
-    assert.match(await notice(h.page), /hasn’t allowed video calls from you yet/);
+    await h.receive('data.thread', { with: memberId, messages: [], canSend: true });
+    for (const id of ['#zc-host-voice', '#zc-host-video']) assert.equal(await h.page.locator(id).getAttribute('aria-disabled'), null);
+    await h.page.locator('#zc-host-video').click();
+    await h.page.waitForFunction(() => __sent.filter(message => message.type === 'call.start').length === 3);
+    assert.deepEqual((await h.sent('call.start')).at(-1), { to: memberId, voice: false }, 'Video calls start from the chat header');
     assert.equal(await h.page.evaluate(() => zcThreadBlocked()), '', 'The host can write to the member straight away');
     assert.equal(await h.page.evaluate(id => zcChatBlockReason(id), otherHostId), '', 'Hosts can message other hosts');
     assert.deepEqual(h.errors, []);
     await h.page.close();
-    console.log('PASS host and member calls: member video-call permission, ring screen with coins check, answer/decline/missed, Follow back, host Voice/Video within permissions, refused calls and open host messaging');
+    console.log('PASS host and member calls: no permission switch, ring screen with coins check, answer/decline/missed, Follow back, host Voice/Video at any time, refused calls and open host messaging');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

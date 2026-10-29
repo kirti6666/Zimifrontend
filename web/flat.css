@@ -269,6 +269,26 @@ html,body,.app,#top,#scroll-root,#screen {
 .zu-owner-actions {gap:12px;margin-top:20px}
 .zu-owner-actions>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:500;min-height:44px}
 .zu-cover-upload {top:70px;min-height:36px;font-size:calc(11px * var(--theme-font-scale,1));border:1px solid var(--line);background:var(--surface)}
+/* The account profile keeps its identity and three stats above the photo grid. */
+.zu-own-page .zu-cover {height:128px}
+.zu-own-page .zu-presence {display:none}
+.zu-own-page .zu-avatar {width:64px;height:64px}
+.zu-own-page .zu-identity-top {margin-top:-24px;align-items:center}
+.zu-own-page .zu-owner-edit {display:grid;place-items:center;width:40px;height:40px;min-height:40px;margin-top:28px;padding:0;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.zu-own-page .zu-identity {padding-top:10px}
+.zu-own-page .zu-identity h1 {font-size:calc(20px * var(--theme-font-scale,1));line-height:1.25}
+.zu-own-page .zu-meta {margin-top:5px}
+.zu-own-page .zu-stats {margin:14px 0;padding:6px 0;gap:0}
+.zu-own-page .zu-stats>div {align-items:center;padding-inline:8px}
+.zu-own-page .zu-stats>div+div {border-left:0;background:linear-gradient(var(--line),var(--line)) left center/1px 28px no-repeat}
+.zu-own-page .zu-stats strong {font-size:calc(18px * var(--theme-font-scale,1))}
+.zu-own-page .zu-stats span {font-size:calc(11px * var(--theme-font-scale,1))}
+:root[data-theme-id] .zu-own-page .zu-bio {font-size:calc(12px * var(--theme-font-scale,1));line-height:1.5}
+.zu-own-page .zu-bio:empty {display:none}
+.zu-own-page .zu-content {margin-top:16px}
+.zu-content-header {display:flex;align-items:flex-start;gap:12px}
+.zu-content-header .zu-tabs {flex:1;min-width:0}
+.zu-add-photo {display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:1px solid var(--line);background:var(--raised);color:var(--ink)}
 .zu-tabs {gap:24px;margin-bottom:16px}
 .zu-tabs>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:500;min-height:44px}
 .zu-tabs>button[aria-selected=true]::after {height:2px}
@@ -348,3 +368,9 @@ html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::after
 /* No divider lines under headers or between settings rows. */
 .zu-tabs {border-bottom:0}
 .acctrow+.acctrow {border-top:0}
+
+/* Straight page edges and single-line separators never inherit a card's corners. */
+html:root{border-radius:0!important}
+html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i){border-radius:0!important}
+/* Tab and navigation underlines and list dividers are drawn as straight lines too. */
+html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}

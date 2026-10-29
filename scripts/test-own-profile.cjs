@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
-const { ROUND } = require('./flat-corners.cjs');
+const { ROUND, STRAIGHT } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const ownerId = '507f1f77bcf86cd799439001';
 const peerId = '507f1f77bcf86cd799439011';
@@ -36,15 +36,15 @@ async function settlePosts(page,posts=[]) {
   await receive(page,'data.publicPosts',{...request,posts,total:posts.length,page:1,limit:12});
 }
 async function audit(page,label) {
-  const result=await page.evaluate(round=>({
+  const result=await page.evaluate(({round,straight})=>({
     overflow:document.documentElement.scrollWidth>innerWidth+1,
     canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,
     wrong:[...document.querySelectorAll('body *')].filter(el=>el.getClientRects().length).flatMap(el=>{
       const style=getComputedStyle(el),name=el.id||el.className||el.tagName;
-      const radiusOK=style.borderRadius==='10px'||style.borderRadius==='999px'&&el.matches(round);
+      const radiusOK=style.borderRadius==='10px'||style.borderRadius==='999px'&&el.matches(round)||style.borderRadius==='0px'&&el.matches(straight);
       return [!radiusOK&&`${name}: radius ${style.borderRadius}`,style.boxShadow!=='none'&&`${name}: shadow`,style.textShadow!=='none'&&`${name}: text shadow`,style.filter.includes('drop-shadow')&&`${name}: filter shadow`].filter(Boolean);
     })
-  }),ROUND);
+  }),{round:ROUND,straight:STRAIGHT});
   assert.equal(result.overflow,false,`${label}: no width overflow`);
   assert.equal(result.canvas,'rgb(255, 255, 255)',`${label}: white app canvas`);
   assert.deepEqual(result.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
@@ -61,6 +61,7 @@ async function audit(page,label) {
     await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
     await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');
     await receive(page,'session',member);
+    await receive(page,'wallet.balance',{coins:1250,earned:0});
     await receive(page,'data.home',{hosts:[],stage:[],total:0,page:1,categories:[],unreadCount:0});
     await page.locator('#nav').getByRole('button',{name:'Profile',exact:true}).click();
     assert.equal(await page.evaluate(()=>S.v),'profile','The tab keeps its own primary route');
@@ -76,8 +77,12 @@ async function audit(page,label) {
     await receive(page,'data.publicProfile',{...initial,profile:{...publicProfile(),name:'Stale profile'}});
     assert.equal(await page.getByRole('heading',{name:'Stale profile',exact:true}).count(),0,'A retired read cannot replace the current profile');
     await settleProfile(page,publicProfile());
+    await settlePosts(page);
     await page.getByRole('heading',{name:member.user.name,exact:true}).waitFor();
-    assert.deepEqual(await page.locator('.zu-tabs [role="tab"]').allInnerTexts(),['Posts','About']);
+    assert.deepEqual(await page.locator('.zu-tabs [role="tab"]').allInnerTexts(),['Posts\n0','About']);
+    assert.deepEqual(await page.locator('.zu-stats>div>span').allInnerTexts(),['Coins','Followers','Following']);
+    assert.equal(await page.locator('.zu-stats strong').first().innerText(),'1,250','Profile coins use the authenticated wallet balance');
+    assert.equal(await button(page,'Edit profile').count(),1,'One compact edit icon');
     assert.equal(await page.locator('.zu-tabs').evaluate(el=>getComputedStyle(el).borderBottomWidth),'0px','No divider line under the profile tabs');
     for(const selector of ['.zu-cover','.zu-overview','.zu-identity','.zu-stats','.zu-tabs','.zu-panel'])assert.equal(await page.locator(selector).count(),1,`${selector} reuses the public profile structure`);
     for(const selector of ['#zu-follow','#zu-message','#zu-call','.zu-gift'])assert.equal(await page.locator(selector).count(),0,'Own profiles never offer social actions on yourself');
@@ -98,7 +103,7 @@ async function audit(page,label) {
     await page.locator('#zu-edit-self').click();
     assert.equal(await page.evaluate(()=>S.v),'editprofile');
     assert.equal(await page.getByLabel('Display name',{exact:true}).inputValue(),member.user.name);
-    assert.equal(await page.locator('input[onchange*="posts"]').count(),0,'Members edit avatar and cover without creator publishing access');
+    assert.equal(await page.locator('input[onchange*="posts"]').count(),0,'Profile editing no longer contains post creation');
     const photo=Buffer.from(await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=1200;const context=canvas.getContext('2d');context.fillStyle='#e5007e';context.fillRect(0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png').split(',')[1]}),'base64');
     await page.getByLabel('Display name',{exact:true}).fill('Asha Updated');
     await page.locator('input[onchange*="avatar"]').setInputFiles({name:'avatar.png',mimeType:'image/png',buffer:photo});
@@ -147,27 +152,65 @@ async function audit(page,label) {
     assert.equal(await page.locator('#nav [aria-current="page"]').innerText(),'Profile');
 
     const creator={...updated,user:{...updated.user,role:'host',serverRole:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified'};
-    await receive(page,'session',creator);await navigate(page,'profile');await settleProfile(page,publicProfile(creator));await settlePosts(page);
+    // Sender accounts use the same confirmed photo-publishing flow.
+    await navigate(page,'profile');await settleProfile(page,publicProfile(updated));await settlePosts(page);
     await page.locator('#zu-upload-self').click();
-    assert.equal(await page.evaluate(()=>S.v),'editprofile');
+    assert.equal(await page.evaluate(()=>S.v),'create-post');
     await page.locator('input[onchange*="posts"]').setInputFiles({name:'moment.png',mimeType:'image/png',buffer:photo});
     await page.waitForFunction(()=>!S.mediaPreparing&&!!S.postDraftData);
     await page.getByLabel('Caption',{exact:true}).fill('A confirmed moment');
-    await button(page,'Publish photo').click();
+    await button(page,'Publish post').click();
     const publication=await lastSent(page,'media.post.create');
     assert.equal(publication.caption,'A confirmed moment');
     assert.equal(await page.evaluate(()=>S.postData.includes('https://media.fixture.test/moment.jpg')),false,'A draft is never presented as a published photo');
     await receive(page,'post.error',{requestId:publication.requestId,message:'Photo could not be published'});
     assert.ok(await page.evaluate(()=>!!S.postDraftData),'Publication failures retain the selected photo');
-    await button(page,'Publish photo').click();
+    await button(page,'Publish post').click();
     const postRetry=await lastSent(page,'media.post.create');
     const post={id:'507f1f77bcf86cd799439031',kind:'photo',mediaUrl:media('moment'),caption:'A confirmed moment'};
     await receive(page,'post.saved',{requestId:postRetry.requestId,post});
-    await navigate(page,'profile');await settleProfile(page,publicProfile(creator));await settlePosts(page,[post]);
+    await navigate(page,'profile');await settleProfile(page,publicProfile(updated));await settlePosts(page,[post]);
     assert.equal(await page.locator('.zu-gallery .zu-photo').count(),1,'Confirmed uploaded posts appear in the shared public gallery');
     assert.equal(await page.locator('.zu-gallery img').getAttribute('src'),post.mediaUrl);
+    await page.locator('.zu-photo').click();
+    await button(page,'Delete post').click();
+    assert.equal(await sentCount(page,'media.post.delete'),0,'Deletion requires confirmation');
+    await button(page,'Cancel').click();
+    assert.equal(await page.locator('.zu-photo').count(),1,'Cancelling keeps the post');
+    await page.locator('.zu-photo').click();await button(page,'Delete post').click();await button(page,'Delete post').click();
+    const deletion=await lastSent(page,'media.post.delete');
+    assert.equal(deletion.id,post.id);
+    assert.equal(await page.locator('.zu-photo').count(),1,'Post remains until the server confirms deletion');
+    await receive(page,'post.delete.error',{...deletion,message:'Delete failed. Try again.'});
+    await page.getByRole('alert').filter({hasText:'Delete failed'}).waitFor();
+    await button(page,'Delete post').click();
+    const deleteRetry=await lastSent(page,'media.post.delete');
+    await receive(page,'post.deleted',deletion);
+    assert.equal(await page.locator('.zu-photo').count(),1,'An old acknowledgement cannot finish a new deletion');
+    await receive(page,'post.deleted',deleteRetry);await settlePosts(page);
+    assert.equal(await page.locator('.zu-photo').count(),0,'Confirmed deletion removes the post');
+    assert.equal(await page.evaluate(()=>S.postData.includes('https://media.fixture.test/moment.jpg')),false);
+    await receive(page,'session',creator);await navigate(page,'profile');await settleProfile(page,publicProfile(creator));await settlePosts(page);
     await audit(page,'Creator own profile');
+    await button(page,'Open settings').click();await button(page,'Account').click();
+    await button(page,'Deactivate account').click();
+    assert.equal(await sentCount(page,'account.deactivate'),0,'Opening deactivation does not change the account');
+    await button(page,'Keep my account').click();
+    assert.equal(await page.evaluate(()=>S.loggedIn),1,'Cancelling keeps the session');
+    await button(page,'Account').click();await button(page,'Deactivate account').click();await button(page,'Deactivate account').click();
+    const deactivate=await lastSent(page,'account.deactivate');
+    assert.equal(deactivate.confirmed,true);
+    assert.equal(await page.evaluate(()=>S.loggedIn),1,'The app waits for backend confirmation');
+    await receive(page,'account.deactivate.error',{requestId:deactivate.requestId,message:'Could not deactivate. Retry.'});
+    await page.getByRole('alert').filter({hasText:'Could not deactivate'}).waitFor();
+    await button(page,'Deactivate account').click();
+    const deactivateRetry=await lastSent(page,'account.deactivate');
+    await receive(page,'account.deactivated',{requestId:deactivate.requestId});
+    assert.equal(await page.evaluate(()=>S.loggedIn),1,'A stale success cannot finish a new attempt');
+    await receive(page,'account.deactivated',{requestId:deactivateRetry.requestId});
+    assert.equal(await page.evaluate(()=>S.v),'welcome');
+    assert.equal(await page.evaluate(()=>S.user),null,'Confirmed deactivation clears local account data');
     assert.deepEqual(errors,[],'No browser or bridge handler errors');
-    console.log('PASS own Profile: shared public layout and owner controls, real profile loading/retry, selected tab, 320/390/768px layout, avatar/cover confirmed saves and stale isolation, Settings return, approved gallery uploads and member publishing restrictions');
+    console.log('PASS own Profile: compact layout, profile saves, sender photo publishing, post deletion and deactivation confirmation/retry/stale isolation');
   } finally {await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -43,7 +43,10 @@ async function checkLayout(page, label, voice = false) {
       primaryTabs: document.getElementById('nav').getBoundingClientRect().height,
       fullStage: Math.abs(stage.left-box.left)<1 && Math.abs(stage.top-box.top)<1 && Math.abs(stage.width-box.width)<1 && Math.abs(stage.height-box.height)<1 && Math.abs(box.width-innerWidth)<1,
       opaqueChrome: [...room.querySelectorAll('.zr-top,.zr-bottom,.zr-call-stat,.hs-target-card')].filter(el=>getComputedStyle(el).backgroundColor!=='rgba(0, 0, 0, 0)').map(el=>el.className),
-      croppedVideos: [...room.querySelectorAll('video')].filter(el=>getComputedStyle(el).objectFit!=='contain'||getComputedStyle(el).objectPosition!=='50% 50%').map(el=>el.outerHTML),
+      incorrectVideoFit: [...room.querySelectorAll('video')].filter(el=>{
+        const fillStage=room.classList.contains('zr-sender-call')&&el.parentElement.classList.contains('zr-video');
+        return getComputedStyle(el).objectFit!==(fillStage?'cover':'contain')||getComputedStyle(el).objectPosition!=='50% 50%';
+      }).map(el=>el.outerHTML),
       blurred: [room,...room.querySelectorAll('*')].filter(el=>{const style=getComputedStyle(el);return style.backdropFilter!=='none'||/blur\(/.test(style.filter)}).map(el=>el.className),
       overlayColor: getComputedStyle(room.querySelector('.zr-top')).color,
     };
@@ -59,7 +62,7 @@ async function checkLayout(page, label, voice = false) {
   assert.equal(result.primaryTabs, 0, `${label}: main tabs are absent in calls`);
   assert.equal(result.fullStage, true, `${label}: the camera stage reaches every screen edge behind the controls`);
   assert.deepEqual(result.opaqueChrome, [], `${label}: header, footer and stats remain transparent`);
-  assert.deepEqual(result.croppedVideos, [], `${label}: main video and self preview preserve their full framing`);
+  assert.deepEqual(result.incorrectVideoFit, [], `${label}: sender video fills the stage and previews preserve their framing`);
   assert.deepEqual(result.blurred, [], `${label}: camera, overlays and dialogs never blur the screen`);
   assert.equal(result.overlayColor, voice ? result.expectedColor : 'rgb(255, 255, 255)', `${label}: video controls remain readable in every theme`);
   if (voice) assert.equal(result.pip, null, `${label}: voice calls have no camera preview`);
@@ -138,12 +141,23 @@ async function screenshotCall(page, name) {
     }),true,'Production screen redraws preserve the playing camera element');
     await page.evaluate(() => { window.__lastCameraTime=document.querySelector('video[data-zimi-local]').currentTime; });
     await page.waitForFunction(() => document.querySelector('video[data-zimi-local]').currentTime > __lastCameraTime, { timeout: 5000 });
-    await receive(page, 'data.loading', { resource: 'catalog', loading: true });
-    await page.getByRole('status', { name: 'Loading call gifts', exact: true }).waitFor();
+    assert.equal(await page.locator('.zr-call-heading,.zr-gift-rail').count(), 0, 'Sender call has no heading, disclaimer or inline gift strip');
+    assert.equal(await page.locator('.zr-call-stat').count(), 1, 'Only the call rate remains in sender stats');
+    assert.doesNotMatch(await page.locator('.zr-call').innerText(), /GIFTS SENT|Content is user-generated|BinzoLive/);
+    assert.equal(await button(page, 'Call controls').count(), 0, 'Controls are available through the three-dot menu only');
+    assert.equal(await page.locator('.zr-hangup + .zr-call-gift[aria-label="Send a gift"]').count(), 1, 'Gift button sits next to End call');
+    await button(page, 'Send a gift').click();
+    await page.getByRole('status', { name: 'Loading gifts', exact: true }).waitFor();
     await receive(page, 'data.loading', { resource: 'catalog', loading: false, error: 'Gifts unavailable' });
-    await button(page, 'Retry loading gifts').waitFor();
+    await page.getByRole('dialog', { name: 'Send a gift', exact: true }).getByRole('button', { name: 'Retry', exact: true }).click();
+    await page.getByRole('status', { name: 'Loading gifts', exact: true }).waitFor();
+    await receive(page, 'data.catalog', { ...catalog, gifts: [] });
+    await page.getByText('No gifts are available right now.', { exact: true }).waitFor();
     await receive(page, 'data.catalog', catalog);
-    assert.equal(await page.locator('.zr-gift-rail button').count(), catalog.gifts.length, 'A completed catalog request restores the call gift rail');
+    assert.equal(await page.locator('.zw-gifts button').count(), catalog.gifts.length, 'The panel shows the full gift catalog after loading');
+    assert.equal(await page.evaluate(() => document.querySelector('video[data-zimi-local]').srcObject?.active), true, 'Opening gifts keeps the camera active');
+    await button(page, 'Close gifts').click();
+    assert.equal(await button(page, 'Send a gift').evaluate(el => el===document.activeElement), true, 'Closing gifts returns focus to the gift button');
     for (const mode of ['dark', 'light', 'custom']) {
       await setTheme(page, mode);
       for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
@@ -162,7 +176,7 @@ async function screenshotCall(page, name) {
     assert.equal(await page.locator('#ck').innerText(), '00:30');
     assert.match(await page.locator('#zr-call-cost').innerText(), /60\/min · 30 coins/);
 
-    await button(page, 'Call controls').click();
+    await button(page, 'Call options').click();
     await page.locator('.zr-sheet').waitFor();
     await checkLayout(page, 'call controls panel without blur');
     await button(page, 'Mute').click();
@@ -188,10 +202,22 @@ async function screenshotCall(page, name) {
     assert.match(await page.locator('#rfeed').innerText(), /Glad you made it/);
 
     const before = (await sent(page, 'gift.send')).length;
-    await page.locator('.zr-gift-rail button').first().click();
+    await button(page, 'Send a gift').click();
     await receive(page, 'data.catalog', catalog);
-    assert.equal((await sent(page, 'gift.send')).length, before, 'Selecting a rail gift does not spend coins');
-    assert.equal(await page.evaluate(() => CoinUI.giftId), catalog.gifts[0].id, 'Rail selection is retained in the confirmation sheet');
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: width===320?640:844 });
+      await page.locator('.zw-gifts button').last().click();
+      assert.equal(await page.evaluate(() => CoinUI.giftId), catalog.gifts.at(-1).id, 'The last catalog gift is reachable');
+      const layout=await page.locator('.zw-sheet').evaluate(sheet=>({overflow:sheet.scrollWidth>sheet.clientWidth+1,bottom:sheet.getBoundingClientRect().bottom,height:innerHeight,columns:getComputedStyle(sheet.querySelector('.zw-gifts')).gridTemplateColumns.split(' ').length}));
+      assert.equal(layout.overflow,false,`Gift panel ${width}: no horizontal overflow`);
+      assert.ok(layout.bottom<=layout.height+1,`Gift panel ${width}: panel stays inside the viewport`);
+      assert.equal(layout.columns,width===320?3:4,`Gift panel ${width}: responsive gift grid`);
+    }
+    await page.locator('.zw-gifts button').first().click();
+    await page.locator('.zw-sheet').evaluate(sheet=>{sheet.scrollTop=0});
+    await screenshotCall(page, 'call-sender-gift-panel.png');
+    assert.equal((await sent(page, 'gift.send')).length, before, 'Opening gifts and choosing a gift does not spend coins');
+    assert.equal(await page.evaluate(() => CoinUI.giftId), catalog.gifts[0].id, 'The selected gift is retained until confirmation');
     await button(page, 'Send gift').click();
     const gift = (await sent(page, 'gift.send')).at(-1);
     assert.equal(gift.data.gift, catalog.gifts[0].id);
@@ -200,7 +226,8 @@ async function screenshotCall(page, name) {
     await receive(page, 'gift.sent', { ...gift.data, id: 'confirmed-call-gift', coins: 99 });
     await receive(page, 'wallet.balance', { coins: 1151 });
     assert.equal(await page.evaluate(() => S.v), 'call', 'Gift confirmation keeps the call open');
-    assert.match(await page.locator('.zr-call-stats').innerText(), /99/, 'Gift totals reflect confirmed activity');
+    assert.deepEqual(await page.evaluate(() => [S.giftN,S.gifted]), [1,99], 'Confirmed gifts still update call accounting');
+    assert.doesNotMatch(await page.locator('.zr-call-stats').innerText(), /GIFTS SENT|99/, 'Gift totals stay off the sender screen');
     await page.evaluate(() => zrCallTopup());
     await receive(page, 'data.catalog', catalog);
     await page.getByRole('dialog', { name: 'Add coins', exact: true }).waitFor();
@@ -212,6 +239,7 @@ async function screenshotCall(page, name) {
 
     const hostPage = await open(true);
     await checkLayout(hostPage, 'host video');
+    assert.doesNotMatch(await hostPage.locator('.zr-call-person').innerText(), /ID |507f1f77bcf86cd799439012/, 'Sender profile shows the name without its account ID');
     await receive(hostPage, 'gift.received', { id: 'received-call-gift', senderId: member.id, senderName: member.name, giftName: 'Rose', emoji: '🌹', coins: 99 });
     assert.match(await hostPage.locator('.zr-call-stats').innerText(), /99/, 'Host gift total uses received events');
     for(const mode of ['dark','light','custom']) {

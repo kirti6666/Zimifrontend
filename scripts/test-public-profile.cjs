@@ -148,7 +148,7 @@ async function run() {
     await button(page, 'Open photo 1: An acoustic evening.').click();
     const viewer = page.getByRole('dialog');
     await viewer.getByRole('heading', { name: 'Photo 1 of 2', exact: true }).waitFor();
-    assert.equal(await viewer.locator('img').getAttribute('src'), photo.mediaUrl);
+    assert.equal(await viewer.locator('.zu-viewer>img').getAttribute('src'), photo.mediaUrl);
     assert.equal(await button(page, 'Previous post').isDisabled(), true);
     await button(page, 'Next post').click();
     await page.getByRole('dialog').getByRole('heading', { name: 'Photo 2 of 2', exact: true }).waitFor();
@@ -312,13 +312,13 @@ async function run() {
     assert.equal(await button(page, 'Message').isEnabled(), true, 'An approved host can reply to an existing member');
     assert.equal(await button(page, 'Follow').count(), 1, 'A host can follow a member');
     assert.equal(await button(page, 'Start video call').count(), 0, 'Member profiles do not advertise the member call action');
-    assert.deepEqual([await button(page, 'Voice call').isDisabled(), await button(page, 'Video call').isDisabled()], [true, true],
-      'Without a mutual follow or the member\'s permission, host calls stay locked');
+    assert.deepEqual([await button(page, 'Voice call').isDisabled(), await button(page, 'Video call').isDisabled()], [false, false],
+      'Hosts can call a member at any time');
     assert.equal(await page.locator('.zu-page [aria-label="Verified creator"],.zu-page [aria-label="Verified user"]').count(), 0, 'An unverified member receives no verified badge');
     assert.doesNotMatch(await page.locator('.zu-page').innerText(), /127|Acoustic evenings/, 'A member profile never leaks the previously viewed creator content');
     await button(page, 'Message').click();
     assert.equal((await lastSent(page, 'chat.open')).with, member.id, 'Member Message uses S.u rather than a stale host target');
-    console.log('PASS public profile: creator/member permissions, host Follow and locked calls, privacy and chat-target isolation');
+    console.log('PASS public profile: creator/member permissions, host Follow and calls, privacy and chat-target isolation');
 
     await receive(page, 'session', account);
     await receive(page, 'data.home', feed);
@@ -348,7 +348,8 @@ async function run() {
     await acceptProfile(page, self);
     await acceptPosts(page, self, [photo]);
     await page.getByRole('heading', { name: 'Approved creator', exact: true }).waitFor();
-    assert.match(await page.locator('.zu-self-bar').innerText(), /Edit profile[\s\S]*Upload photos/);
+    assert.equal(await button(page,'Edit profile').count(),1,'The owner has one compact edit control');
+    assert.equal(await button(page,'Upload photos').count(),1,'Photo upload is next to the content tabs');
     assert.equal(await page.locator('#nav [aria-current="page"]').innerText(), 'Profile', 'The shared layout retains the selected primary tab');
     assert.equal(await page.locator('#zu-follow, #zu-message, #zu-call, .zu-gift').count(), 0, 'Nothing to follow, message, call or gift on your own profile');
     assert.equal(await button(page, 'More profile options').count(), 0, 'You cannot report or block yourself');

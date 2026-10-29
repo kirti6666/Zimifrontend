@@ -78,6 +78,10 @@ for it (login, call failed).
 | Continue (phone number) | `POST /auth/otp/request` `{country_code, phone}` (the screen sends E.164 plus the chosen calling code; any country) | – |
 | Enter the 6-digit code | `POST /auth/otp/verify` `{country_code, phone, otp}` | `Session` |
 | Log out | `POST /auth/logout` | – |
+| Deactivate account | `POST /account/deactivate` `{confirmed: true}` | `{deactivated: true}`; ends calls and revokes all sessions. A newly verified OTP reactivates the same account and preserves its wallet and posts. |
+| Share a profile photo post | `POST /media/upload-url` `{purpose: "post", contentType, contentLength}`, PUT to storage, then `POST /posts` `{mediaKey, kind: "photo", caption}` | A confirmed post; available to verified members and approved hosts. Video posts still require approved host access. |
+| Delete your post | `DELETE /posts/:id` | The deleted post. Only its owner may delete it; repeated deletion is safe. |
+| Set creator card image in call setup | Upload with `purpose: "cover"`, then `PATCH /profile` `{coverKey}` | Saved profile cover, also used on creator cards. The setup stays open. |
 | App opens with a saved login | `GET /me` | `Account` |
 | Finish sign-up, edit profile | `PUT /me/profile` | – |
 | Submit verification | `POST /me/verification` | `{status}` |
@@ -86,11 +90,11 @@ for it (login, call failed).
 | Home | `GET /home?mode=online&page=1` | Adapter returns `HomeData` with active hosts, live stage and pagination |
 | Explore | `GET /home?mode=popular` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
-| Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}`; a host opening a member's chat also gets `canVoiceCall`, `canVideoCall` |
+| Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
 | Call history | `GET /calls` | `{calls: CallRecord[]}` |
 | Transactions | `GET /wallet/transactions` | `{items: Transaction[]}` |
-| Start a call, call back | `POST /calls` `{to, voice}` | `{callId}`; a host may call a member by voice after a mutual follow, or by video once the member allows it |
+| Start a call, call back | `POST /calls` `{to, voice}` | `{callId}`; approved hosts may also call members, by voice or video, at any time |
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
@@ -101,7 +105,10 @@ for it (login, call failed).
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
 | Follow | `POST /users/:id/follow` `{following}` | `{following}`; members follow hosts, hosts follow members back |
-| Allow a host's video calls | `PUT /users/:id/call-permission` `{video}` (members only) | `{video}`; profiles show `allowsVideoCalls` to the member and `canVoiceCall`/`canVideoCall` to the host |
+| A profile's posts | `GET /users/:id/posts?page=1` | `{items, total, page, limit}`; each post has `likes`, `comments` and the viewer's `liked` |
+| Like a post | `POST /posts/:id/like` `{liked}` | `{liked, likes}` |
+| Post comments | `GET /posts/:id/comments?page=1`, `POST /posts/:id/comments` `{text}` | Newest first, with the author; text is moderated like chat |
+| Delete a comment | `DELETE /posts/:id/comments/:commentId` (its author or the post owner) | `{_id}` |
 | Payment methods | `GET /payments/routes` | `{mode,routeChoice,routes:[{route,pageStyle,upiIntent,takingPayments,currency}]}`; available INR routes only |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey, route?}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Unlock lifetime premium | `POST /themes/premium/purchase` `{idempotencyKey, route?}`; `POST /themes/premium/verify` `{merchantOrderId}` | `Purchase` with `kind: "premium"` |

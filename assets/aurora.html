@@ -2673,8 +2673,6 @@ button.gpill[onclick]{cursor:pointer}
 .zc-gift-strip span{font-size:24px;line-height:1}
 .zc-gift-strip img{width:28px;height:28px;object-fit:contain}
 .zc-gift-strip b{font-size:10.5px;line-height:1;font-weight:750;color:var(--accent-ink);font-variant-numeric:tabular-nums}
-/* A host's call buttons stay visible; a locked one explains how to unlock it when tapped. */
-.zc-thread-actions>button[aria-disabled=true]{opacity:.4}
 /* A compact composer keeps text and controls together above the keyboard. */
 .zc-composer{padding:10px max(12px,calc(50% - 384px)) 12px}
 .zc-composer[hidden]{display:none}
@@ -3101,6 +3099,8 @@ button.gpill[onclick]{cursor:pointer}
 :root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
 .zr-call .zr-video{background:var(--media-canvas)}
 .zr-call .zr-video>video,.zr-call .zr-pip>video{object-fit:contain;object-position:center}
+/* The sender's main video fills the call viewport behind the floating controls. */
+.zr-sender-call .zr-video>video{object-fit:cover}
 .zr-call .zr-shade{display:none}
 .zr-call .zr-top{background:transparent;padding-bottom:8px}
 .zr-call:not(.zr-voice-call)>:is(.zr-top,.zr-bottom,.zr-pip,.zr-video){--room-ink:var(--call-ink);--room-muted:var(--call-muted);--room-glass:var(--call-control);color:var(--room-ink)}
@@ -3117,16 +3117,13 @@ button.gpill[onclick]{cursor:pointer}
 .zr-network svg path:nth-child(n+2){opacity:.25}
 .zi-icon:is([data-icon=callgrid],[data-icon=callmore]){--zi-tap:zi-bounce;--zi-time:400ms}
 .zr-call .zr-top{padding:0 10px}
-.zr-call-heading{min-height:42px;padding:6px 0 5px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--room-muted)}
-.zr-call-heading strong{font-size:11px;font-weight:var(--theme-heading-weight,700);color:var(--room-ink)}
-.zr-call-heading strong>span{font-size:10px;font-weight:500;color:var(--room-muted)}
-.zr-call-heading p{font-size:10px;line-height:1.3;margin:2px 0 0}
 .zr-call-toolbar{display:flex;align-items:center;gap:8px;padding:9px 0}
 .zr-call-toolbar .zr-round,.zr-call-toolbar .zr-call-back{width:36px;height:36px;min-height:36px;flex:0 0 36px;border:1px solid var(--line);border-radius:50%;background:var(--room-glass);color:var(--room-ink)}
 .zr-call-toolbar .zr-timer{min-height:30px;padding:6px 10px;font-size:12px;gap:6px}
 .zr-timer>i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 9px color-mix(in srgb,var(--accent) 35%,transparent)}
 .zr-call-private{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:10px;color:var(--room-muted)}
 .zr-call-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.zr-sender-call .zr-call-stats{grid-template-columns:minmax(0,1fr);max-width:185px}
 .zr-call-stat{display:flex;align-items:center;gap:9px;min-width:0;min-height:57px;padding:9px 10px;border-radius:14px;background:transparent}
 .zr-stat-icon{color:var(--accent-ink);display:grid;place-items:center;flex:none}
 .zr-call-stat>div{flex:1;min-width:0}
@@ -3139,6 +3136,7 @@ button.gpill[onclick]{cursor:pointer}
 .zr-call-stat:nth-child(2) .zr-stat-track>i{width:12px;background:var(--accent-ink)}
 .zr-call .zr-pip{top:169px;right:10px;width:82px;height:116px;border:2px solid var(--line);border-radius:15px;box-shadow:0 5px 18px #0002;background:var(--media-canvas);color:var(--room-muted)}
 .zr-call .zr-pip>span{bottom:4px;left:4px;padding:2px 3px;font-size:9px}
+.zr-sender-call .zr-pip{top:122px}
 .zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:transparent;width:100%}
 .zr-call .zr-status{background:none;padding:0;margin:0 0 3px;font-size:11px;line-height:1.4;border-radius:0;max-width:100%;text-align:left}
 .zr-call-cost{font-size:10px;color:var(--room-muted);margin-bottom:5px;line-height:1.5}
@@ -3153,17 +3151,9 @@ button.gpill[onclick]{cursor:pointer}
 .zr-call .zr-gift-alert strong{font-size:10px}
 .zr-call .zr-gift-alert>div>span{font-size:9px}
 .zr-call .zr-gift-alert .zr-combo{display:none}
-.zr-gift-rail{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;padding:8px 1px 10px;margin-bottom:7px;min-height:66px;mask-image:linear-gradient(90deg,#000 96%,transparent)}
-.zr-gift-rail::-webkit-scrollbar{display:none}
-.zr-gift-rail>button{flex:0 0 48px;min-width:48px;min-height:49px;padding:0 2px;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:5px;border-radius:9px}
-.zr-gift-rail>button:focus-visible{outline-offset:-2px}
-.zr-gift-rail>button:hover{background:var(--raised)}
-.zr-rail-art{height:30px;display:grid;place-items:center;font-size:27px;line-height:1}
-.zr-rail-art img{height:30px;width:36px;object-fit:contain}
-.zr-rail-price{display:flex;align-items:center;justify-content:center;gap:3px;font-size:9px;font-weight:var(--theme-heading-weight,700);color:var(--room-ink);white-space:nowrap}
-.zr-gifts-loading{gap:14px}
-.zr-gifts-loading>div{display:flex;align-items:center;flex-direction:column;gap:8px;flex:0 0 45px}
-.zr-gifts-empty{display:flex;gap:7px;align-items:center;padding:12px 0;margin:0 0 7px;background:transparent;color:var(--room-muted)!important;font-size:11px}
+.zr-sender-call .zr-gift-alert{top:122px}
+.zr-sender-call .zw-sheet .zw-gifts{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:359px){.zr-sender-call .zw-sheet .zw-gifts{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .zr-call-dock{display:flex;align-items:center;gap:9px;min-height:48px}
 .zr-call-dock>.zr-round{width:44px;height:44px;flex-basis:44px;background:var(--raised)}
 .zr-call-dock .zr-call-chat-toggle.is-active{background:var(--accent);color:var(--cta-ink)}
@@ -3187,7 +3177,7 @@ button.gpill[onclick]{cursor:pointer}
 .zr-call .zr-sheet .zr-tool small{font-size:10px;white-space:nowrap}
 .zr-call .zr-demo-note{margin-top:5px;font-size:8px}
 @media(max-width:360px){.zr-call .zr-top,.zr-call .zr-bottom{padding-inline:8px}.zr-call-stats{gap:6px}.zr-call-stat{gap:5px;padding-inline:8px}.zr-stat-label{font-size:8px}.zr-call-dock{gap:6px}.zr-call-dock>.zr-round{width:39px;height:39px;flex-basis:39px}.zr-call-dock .zr-hangup{width:41px;height:41px;flex-basis:41px}.zr-call-person{gap:5px}.zr-call-person>.av{width:30px!important;height:30px!important}.zr-call-person strong{font-size:11px}.zr-call-person>div>span small{display:none}.zr-call-topup{width:32px;height:32px;flex-basis:32px}.zr-call .zr-gift-alert{right:100px}}
-@media(max-height:660px){.zr-call .zr-call-feed{max-height:70px}.zr-call .zr-pip{width:70px;height:96px}.zr-gift-rail{padding-top:4px;padding-bottom:6px;margin-bottom:4px;min-height:58px}.zr-call .zr-bottom{padding-top:5px}.zr-call .zr-video-wait{inset:36% 28% 41% 15%;font-size:10px;gap:5px;padding:8px}.zr-call .zr-video-wait svg{width:22px;height:22px}.zr-call .zr-voice{inset:27% 0 38%;gap:8px}.zr-call .zr-voice>.av{width:66px!important;height:66px!important}.zr-call .zr-voice h2{font-size:18px;margin:4px 0 0}.zr-call .zr-voice>span:last-child{font-size:10px}}
+@media(max-height:660px){.zr-call .zr-call-feed{max-height:70px}.zr-call .zr-pip{width:70px;height:96px}.zr-call .zr-bottom{padding-top:5px}.zr-call .zr-video-wait{inset:36% 28% 41% 15%;font-size:10px;gap:5px;padding:8px}.zr-call .zr-video-wait svg{width:22px;height:22px}.zr-call .zr-voice{inset:27% 0 38%;gap:8px}.zr-call .zr-voice>.av{width:66px!important;height:66px!important}.zr-call .zr-voice h2{font-size:18px;margin:4px 0 0}.zr-call .zr-voice>span:last-child{font-size:10px}}
 
 /* Event-driven gifts float over the camera without intercepting call controls.
    Every layer uses the same elapsed event time, including after a redraw. */
@@ -3449,6 +3439,14 @@ button.gpill[onclick]{cursor:pointer}
 @media(max-height:650px){.hc-waiting{padding-top:20px}.hc-waiting-actions{margin-top:25px}.hc-summary{padding-block:25px}.hc-camera-space{min-height:150px}.hc-setup-header{min-height:50px;padding-block:6px}}
 @media(min-width:600px){.hc-setup,.hc-waiting,.hc-summary{border-inline:1px solid var(--line)}.hc-waiting,.hc-summary{max-width:480px}}
 /* Host studio sheets and in-call targets. Colours come from the selected theme. */
+.hc-card-image{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--line);color:var(--ink);text-align:left;font-size:12px}
+.hc-card-image>img{width:38px;height:38px;object-fit:cover}
+.hc-card-image>span{flex:1}
+.hs-card-preview{display:grid;place-items:center;aspect-ratio:4/3;max-height:280px;overflow:hidden;background:var(--raised);color:var(--muted);margin-bottom:14px}
+.hs-card-preview>img{width:100%;height:100%;object-fit:cover}
+.hs-card-choose{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;margin-bottom:12px;background:var(--raised);border:1px solid var(--line);font-size:13px}
+.hs-card-choose>input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.hs-card-error{font-size:12px;color:var(--theme-danger);margin-bottom:12px}
 .hs-sheet-backdrop{position:fixed;inset:0;z-index:180;display:flex;align-items:flex-end;justify-content:center;background:#0008;backdrop-filter:blur(5px);color:var(--ink)}
 .hs-sheet{width:100%;max-width:560px;max-height:min(82dvh,650px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:max(18px,env(safe-area-inset-bottom));border:1px solid var(--line);border-bottom:0;border-radius:24px 24px 0 0;background:radial-gradient(ellipse 48% 110px at 50% 0,color-mix(in srgb,var(--accent) 34%,transparent),transparent 72%),var(--surface);color:var(--ink);font-family:inherit;box-shadow:0 -16px 60px #0004;animation:hs-sheet-in .25s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--hs-enter-age,0ms);scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .hs-sheet header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 12px}
@@ -3642,16 +3640,127 @@ button.gpill[onclick]{cursor:pointer}
 @media(max-width:350px){.zu-layout{padding:0 15px}.zu-cover{height:210px}.zu-toolbar{inset-inline:15px}.zu-identity h1{font-size:26px}.zu-live-card{gap:8px;padding:11px}.zu-live-symbol{display:none}.zu-live-card p{font-size:8px}.zu-call-info>span{font-size:7px;letter-spacing:.6px}.zu-actionbar{padding-inline:15px}.zu-call,.zu-message{font-size:11px;padding-inline:10px}.zu-action-buttons{gap:7px}.zu-gallery{gap:6px}.zu-photo{border-radius:9px}}
 @media(hover:hover) and (prefers-reduced-motion:no-preference){.zu-photo:hover>img{transform:scale(1.035)}.zu-follow:active{transform:scale(.97)}}
 @media(prefers-reduced-motion:reduce){.zu-photo>img,.zu-photo>video,.zu-follow{transition:none}}
-/* "Follows you" beside a name, the member's video-call permission for a host,
-   and a host's Voice and Video calls to a member. */
+/* "Follows you" beside a name, and a host's Voice and Video calls to a member. */
 .zu-follows-you{display:inline-block;margin-top:8px;padding:3px 9px;border:1px solid var(--line);border-radius:10px;background:var(--raised);color:var(--muted);font-size:11px;font-weight:500;line-height:1.5}
-.zu-permission{display:flex;align-items:center;gap:12px;width:100%;margin:8px 0 6px;padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
-.zu-permission>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-.zu-permission b{font-size:12px;font-weight:600}
-.zu-permission small{font-size:10px;line-height:1.45;color:var(--muted)}
-.zu-permission>.zp-switch{flex:none}
 .zu-action-buttons.has-host-calls>button{flex:1;min-width:0;gap:6px;padding-inline:8px}
 .zu-call-voice{background:var(--raised);color:var(--ink);border:1px solid var(--line)}
+.zpost-create{max-width:960px;margin:0 auto;color:var(--ink);padding:0 20px 28px}
+:root:has(.zpost-create) #screen{padding:0!important}
+.zpost-header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;min-height:76px;padding:14px 0;background:var(--canvas)}
+.zpost-header h1{font-size:20px;line-height:1.3;font-weight:600;margin:0}
+.zpost-publish{margin-left:auto;min-height:40px;padding:0 18px;background:var(--accent);color:var(--cta-ink);font-size:13px;font-weight:600}
+.zpost-create button:disabled{opacity:.45;cursor:default}
+.zpost-content{display:grid;gap:24px;min-width:0}
+.zpost-preview{position:relative;display:grid;place-items:center;min-height:250px;aspect-ratio:1;overflow:hidden;background:var(--raised);border:1px dashed var(--line)}
+.zpost-preview.has-photo{border:1px solid var(--line)}
+.zpost-preview>img{width:100%;height:100%;position:absolute;inset:0;object-fit:contain}
+.zpost-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px;color:var(--muted)}
+.zpost-empty>svg{margin-bottom:16px;color:var(--muted)}
+.zpost-empty h2{margin:0 0 8px;color:var(--ink);font-size:20px;font-weight:600}
+.zpost-empty p{font-size:13px;line-height:1.5;margin:0 0 22px}
+.zpost-choose,.zpost-replace{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:0 14px;font-size:13px;font-weight:500;cursor:pointer;background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.zpost-file{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+.zpost-photo-column:focus-within .zpost-preview{outline:2px solid var(--accent);outline-offset:3px}
+.zpost-photo-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.zpost-photo-actions>button{display:flex;align-items:center;gap:6px;min-height:42px;padding:0 10px;color:var(--muted);font-size:12px;background:transparent}
+.zpost-author{display:flex;align-items:center;gap:10px;margin-bottom:24px}
+.zpost-avatar{display:block;width:40px;height:40px;flex:0 0 40px;overflow:hidden;background:var(--raised)}
+.zpost-avatar>img{width:100%;height:100%;object-fit:cover}
+.zpost-author>div{min-width:0;display:flex;flex-direction:column;gap:4px}
+.zpost-author strong{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.zpost-author>div>span{font-size:12px;color:var(--muted)}
+.zpost-caption-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.zpost-caption-heading>label{font-size:14px;font-weight:600}
+.zpost-caption-heading>span{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.zpost-caption{display:block;width:100%;min-height:160px;resize:vertical;max-height:340px;padding:14px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:14px;line-height:1.65}
+.zpost-caption:focus{outline:2px solid var(--accent);outline-offset:2px}
+.zpost-visibility{display:flex;align-items:center;gap:7px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.zpost-draft-note{margin-top:18px;font-size:11px;line-height:1.5;color:var(--muted)}
+.zpost-error{font-size:13px;line-height:1.6;margin-top:12px;color:var(--theme-danger)}
+.zpost-status{font-size:13px;margin-top:14px;color:var(--muted)}
+.zpost-preparing{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:var(--raised);font-size:12px;color:var(--muted)}
+.zpost-editor-link{display:flex;align-items:center;gap:8px;width:100%;min-height:46px;margin-top:22px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-size:13px}
+.zpost-editor-link>svg:last-child{margin-left:auto}
+@media(min-width:720px){.zpost-create{padding:8px 28px 36px}.zpost-content{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:32px;padding-top:14px}.zpost-copy-column{padding-top:8px}}
+@media(max-width:350px){.zpost-create{padding-inline:15px}.zpost-header{gap:8px}.zpost-header h1{font-size:18px}.zpost-publish{padding-inline:12px}.zpost-preview{min-height:220px}.zpost-content{gap:20px}}
+/* Post feed: one column of posts under a Back header, like other photo apps.
+   Colours come from the theme tokens; only the liked heart uses the app's red. */
+html:root .zu-dialog.zu-photo-dialog.zu-feed-dialog{width:100%;max-width:none;height:100dvh;max-height:100dvh;margin:0;padding:0;border:0;border-radius:0!important;background:var(--canvas);color:var(--ink);overflow:hidden}
+.zu-dialog.zu-feed-dialog[open]{display:flex;flex-direction:column}
+.zu-feed-dialog::backdrop{background:var(--canvas)}
+.zu-dialog>.zu-feed-header{flex:none;display:flex;align-items:center;justify-content:flex-start;gap:12px;margin:0;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:var(--canvas)}
+.zu-feed-title{display:flex;flex-direction:column;min-width:0}
+.zu-feed-title>span{font-size:12px;line-height:1.3;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zu-feed-header .zu-feed-title h2{margin:0;font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-.2px}
+.zu-feed{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom,0px)}
+.zu-feed-post{width:100%;max-width:520px;margin:0 auto;padding-bottom:22px;outline:none}
+.zu-feed-author{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 8px 8px 16px}
+.zu-feed-avatar{position:relative;display:block;width:34px;height:34px;flex:none;overflow:hidden;background:var(--raised)}
+.zu-feed-avatar>img,.zu-feed-avatar>.zf-face{display:block;width:100%;height:100%;object-fit:cover}
+.zu-feed-who{flex:1;min-width:0;display:flex;align-items:center;gap:4px}
+.zu-feed-who>strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zu-feed-who svg{width:14px;height:14px;flex:none}
+.zu-feed-options{display:grid;place-items:center;width:44px;height:44px;flex:none;padding:0;border:0;background:transparent;color:var(--ink)}
+/* The photo keeps its whole frame; a tall photo fills a 4:5 frame like most photo feeds. */
+.zu-feed-media{position:relative;width:100%;aspect-ratio:4/5;max-height:72dvh;overflow:hidden;background:var(--raised);touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+/* The feed runs edge to edge: its scroller, posts and photos keep square edges. */
+html:root :is(.zu-feed,.zu-feed-header,.zu-feed-post,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video){border-radius:0!important}
+.zu-feed-media>img,.zu-feed-media>video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
+.zu-feed-media>:is(img,video)[hidden]{display:none}
+.zu-feed-media>.zu-post-loading{position:absolute;inset:0;z-index:1;display:grid;place-items:center;pointer-events:none}
+.zu-feed-media>.zu-post-unavailable{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;text-align:center;color:var(--ink)}
+.zu-feed-media>.zu-post-unavailable[hidden]{display:none}
+.zu-post-unavailable>strong{font-size:16px;font-weight:600}
+.zu-post-unavailable>p{font-size:12px;color:var(--muted)}
+.zu-post-unavailable>button{min-height:40px;padding:8px 16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;font-weight:600}
+.zu-like-burst{position:absolute;left:50%;top:50%;z-index:3;width:92px;height:92px;margin:-46px 0 0 -46px;color:#fff;opacity:0;pointer-events:none}
+.zu-like-burst>svg{width:92px;height:92px;fill:currentColor;stroke:currentColor}
+.zu-like-burst.is-bursting{animation:zu-like-burst 800ms ease-out both}
+@keyframes zu-like-burst{0%{opacity:0;transform:scale(.3)}15%{opacity:.95;transform:scale(1.15)}30%{transform:scale(.94)}45%,75%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+.zu-feed-actions{display:flex;align-items:center;gap:2px;padding:4px 8px 0}
+.zu-feed-actions>button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;background:transparent;color:var(--ink)}
+.zu-feed-actions>button:disabled{opacity:.45}
+.zu-like.is-liked{color:var(--live,#ed2b4a)}
+.zu-like.is-liked>svg{fill:currentColor}
+.zu-like.is-popping>svg{animation:zu-like-pop 320ms ease-out}
+@keyframes zu-like-pop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+.zu-feed-likes{padding:0 16px;font-size:14px;font-weight:600;line-height:1.5}
+.zu-feed-caption{padding:4px 16px 0}
+.zu-feed-caption>p{font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.zu-feed-caption>p.is-clamped{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.zu-feed-caption strong{font-weight:600}
+.zu-feed-more{min-height:32px;padding:0;border:0;background:transparent;color:var(--muted);font-size:14px}
+.zu-feed-comments{display:block;min-height:32px;margin:0 16px;padding:0;border:0;background:transparent;color:var(--muted);font-size:14px;text-align:left}
+.zu-feed-comments[hidden]{display:none}
+.zu-feed-time{display:block;padding:4px 16px 0;font-size:11px;color:var(--muted)}
+.zu-feed-end{display:grid;place-items:center;gap:10px;padding:16px 16px 32px;font-size:13px;color:var(--muted);text-align:center}
+/* Comments: a sheet over the feed with the newest first and a composer at the bottom. */
+.zu-comments-backdrop{position:fixed;inset:0;z-index:5;background:#00000059}
+html:root .zu-comments-backdrop{border-radius:0!important}
+.zu-comments{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;flex-direction:column;max-height:78dvh;min-height:45dvh;margin:0 auto;max-width:620px;background:var(--surface);color:var(--ink)}
+html:root .zu-comments{border-radius:10px 10px 0 0!important}
+.zu-comments>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 12px 6px 20px}
+.zu-comments h3{margin:0;font-size:16px;font-weight:600}
+.zu-comments-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 20px 8px}
+.zu-comment{display:flex;align-items:flex-start;gap:10px;padding:10px 0}
+.zu-comment>.av,.zu-comment-form>.av{position:relative;display:block;width:32px;height:32px;flex:none;overflow:hidden;background:var(--raised)}
+.zu-comment>.av>img,.zu-comment>.av>.zf-face,.zu-comment-form>.av>img,.zu-comment-form>.av>.zf-face{display:block;width:100%;height:100%;object-fit:cover}
+.zu-comment>div{flex:1;min-width:0}
+.zu-comment p{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.zu-comment strong{font-weight:600}
+.zu-comment-meta{display:flex;align-items:center;gap:14px;margin-top:3px;font-size:11px;color:var(--muted)}
+.zu-comment-meta>button{min-height:28px;padding:0;border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:600}
+.zu-comments-state{display:grid;justify-items:center;gap:6px;padding:28px 0;text-align:center;font-size:13px;color:var(--muted)}
+.zu-comments-state h4{font-size:16px;font-weight:600;color:var(--ink)}
+.zu-comments-state>.zu-comment{width:100%}
+.zu-comments-more{display:block;margin:6px auto 0;min-height:36px;padding:0 12px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:600}
+.zu-comment-form{display:flex;align-items:center;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:var(--surface)}
+.zu-comment-form>input{flex:1;min-width:0;min-height:44px;padding:0 14px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);font-size:14px}
+.zu-comment-form>input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.zu-comment-post{min-height:44px;padding:0 6px;border:0;background:transparent;color:var(--accent-ink);font-size:14px;font-weight:600}
+.zu-comment-post:disabled{opacity:.4}
+@media(prefers-reduced-motion:reduce){.zu-like-burst.is-bursting{animation-duration:600ms;animation-name:zu-like-fade}.zu-like.is-popping>svg{animation:none}}
+@keyframes zu-like-fade{0%,100%{opacity:0}20%,70%{opacity:.95}}
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -4332,6 +4441,26 @@ html,body,.app,#top,#scroll-root,#screen {
 .zu-owner-actions {gap:12px;margin-top:20px}
 .zu-owner-actions>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:500;min-height:44px}
 .zu-cover-upload {top:70px;min-height:36px;font-size:calc(11px * var(--theme-font-scale,1));border:1px solid var(--line);background:var(--surface)}
+/* The account profile keeps its identity and three stats above the photo grid. */
+.zu-own-page .zu-cover {height:128px}
+.zu-own-page .zu-presence {display:none}
+.zu-own-page .zu-avatar {width:64px;height:64px}
+.zu-own-page .zu-identity-top {margin-top:-24px;align-items:center}
+.zu-own-page .zu-owner-edit {display:grid;place-items:center;width:40px;height:40px;min-height:40px;margin-top:28px;padding:0;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.zu-own-page .zu-identity {padding-top:10px}
+.zu-own-page .zu-identity h1 {font-size:calc(20px * var(--theme-font-scale,1));line-height:1.25}
+.zu-own-page .zu-meta {margin-top:5px}
+.zu-own-page .zu-stats {margin:14px 0;padding:6px 0;gap:0}
+.zu-own-page .zu-stats>div {align-items:center;padding-inline:8px}
+.zu-own-page .zu-stats>div+div {border-left:0;background:linear-gradient(var(--line),var(--line)) left center/1px 28px no-repeat}
+.zu-own-page .zu-stats strong {font-size:calc(18px * var(--theme-font-scale,1))}
+.zu-own-page .zu-stats span {font-size:calc(11px * var(--theme-font-scale,1))}
+:root[data-theme-id] .zu-own-page .zu-bio {font-size:calc(12px * var(--theme-font-scale,1));line-height:1.5}
+.zu-own-page .zu-bio:empty {display:none}
+.zu-own-page .zu-content {margin-top:16px}
+.zu-content-header {display:flex;align-items:flex-start;gap:12px}
+.zu-content-header .zu-tabs {flex:1;min-width:0}
+.zu-add-photo {display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:1px solid var(--line);background:var(--raised);color:var(--ink)}
 .zu-tabs {gap:24px;margin-bottom:16px}
 .zu-tabs>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:500;min-height:44px}
 .zu-tabs>button[aria-selected=true]::after {height:2px}
@@ -4411,6 +4540,12 @@ html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::after
 /* No divider lines under headers or between settings rows. */
 .zu-tabs {border-bottom:0}
 .acctrow+.acctrow {border-top:0}
+
+/* Straight page edges and single-line separators never inherit a card's corners. */
+html:root{border-radius:0!important}
+html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i){border-radius:0!important}
+/* Tab and navigation underlines and list dividers are drawn as straight lines too. */
+html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
 /* A photo card opens the profile; its video call button starts the call. Keep the
    featured card's complete surface keyboard-accessible too. */
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit{position:absolute;inset:0;z-index:3;width:100%;height:100%;min-height:44px;flex:none;padding:0;border:0;background:transparent}
@@ -7822,6 +7957,7 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
  `<div class="sk dark" style="height:78px;border-radius:15px"></div>`).join("")}</div>`}
 
 function nav(){const el=document.getElementById("nav");
+ if(S.v==='create-post'){el.style.display='none';el.replaceChildren();return}
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
  if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
@@ -8485,7 +8621,6 @@ let mediaSequence=0;
 async function pickMedia(e,k){
  const files=Array.from(e.target.files||[]);e.target.value="";
  if(!files.length||S.profileSaving||S.mediaPreparing||S.postPublishing||!["avatar","cover","posts"].includes(k))return;
- if(k==="posts"&&!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
  const owner=S.user;S.mediaPreparing=true;S.mediaError="";r();
  try{
   const image=await obReadPhoto(files[0]);
@@ -8499,8 +8634,7 @@ async function pickMedia(e,k){
 }
 function publishPost(){
  if(S.postPublishing||S.profileSaving||S.mediaPreparing||!S.postDraftData)return;
- if(!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
- if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";r();return appNotice("Preview post added.")}
+ if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";if(S.v==='create-post')go('profile');else r();return appNotice("Preview post added.")}
  S.postPublishing=true;S.postError="";S.postRequestId=++mediaSequence;
  Native.send("media.post.create",{photo:S.postDraftData,caption:S.postCaption||"",requestId:S.postRequestId});r();
 }
@@ -8523,11 +8657,7 @@ function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPubl
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
- ${isHost()?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
-  <label class="editpost add">${I('grid',18)} Add photo<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'posts')" ${disabled}></label>
-  ${window.contentSurface?.('posts','posts','Loading your posts')||(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
-  ${DEMO&&!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
- </div>${S.postDraftData?`<div class="editposts"><span class="editpost"><img src="${imageSrc(S.postDraftData)}" alt="Photo ready to publish"></span></div><label class="editlabel" for="postcaption">Caption</label><textarea id="postcaption" class="editinput" maxlength="2000" placeholder="Say something about this moment" oninput="S.postCaption=this.value" ${disabled}>${esc(S.postCaption||"")}</textarea>${S.postError?`<div class="ob-error" role="alert">${esc(S.postError)}</div>`:""}<button class="editsave" onclick="publishPost()" ${disabled}>${S.postPublishing?"Publishing photo…":"Publish photo"}</button>`:""}</div>`:""}</div>`}
+ <button type="button" class="zpost-editor-link" onclick="ZimiPostCreate.open()" ${disabled}>${I('plus',18)} Create a post ${I('chev',16)}</button></div>`}
 
 function vProfile(){
  const host=isHost();
@@ -9222,13 +9352,14 @@ function r(){
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const postFocus=window.ZimiPostCreate?.capture();
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
  if(window.ZimiHome)window.ZimiHome.theme();
  const top=document.getElementById("top"),header=topFor();
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
- let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+ let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,'create-post':()=>ZimiPostCreate.render(),
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,incoming:vMemberRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
@@ -9247,7 +9378,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -9308,7 +9439,7 @@ Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.reque
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
 Native.on("data.posts",d=>{S.postData=(d.posts||[]).filter(p=>p.kind==="photo").map(p=>obPhotoUrl(p.mediaUrl)).filter(Boolean);refresh()});
-Native.on("post.saved",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError="";S.postDraftData="";S.postCaption="";const url=obPhotoUrl(d.post?.mediaUrl);if(url)S.postData=[url,...S.postData.filter(src=>src!==url)];r();appNotice("Your photo is published.");obHaptic("success")});
+Native.on("post.saved",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError="";S.postDraftData="";S.postCaption="";const url=obPhotoUrl(d.post?.mediaUrl);if(url)S.postData=[url,...S.postData.filter(src=>src!==url)];if(S.v==='create-post')go('profile');else r();appNotice("Your photo is published.");obHaptic("success")});
 Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError=d.message||"Your photo could not be published. Please try again.";r();obHaptic("error")});
 
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});
@@ -11159,15 +11290,7 @@ function zrLive(){
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
-function zrCallStats(host){return `<div class="zr-call-stats"><div class="zr-call-stat"><span class="zr-stat-icon">${hi('ph',19)}</span><div><span class="zr-stat-label">CALL RATE</span><strong>${S.callRate?`${coinIcon(14)} ${n(S.callRate)} <small>/ min</small>`:'Free call'}</strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div><div class="zr-call-stat"><span class="zr-stat-icon">${hi('gift',20)}</span><div>${host?`<span class="zr-stat-label">THIS SESSION <small>${n(S.recvN||0)} gifts</small></span><strong id="earn">${gem}+${kfmt(Math.round(S.earned||0))}</strong>`:`<span class="zr-stat-label">GIFTS SENT <small>${n(S.giftN||0)}</small></span><strong>${coinIcon(14)} ${n(S.gifted||0)} <small>coins</small></strong>`}<span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div></div>`}
-function zrCallGifts(host){
-  if(host)return '';
-  const pending=!DEMO&&contentPending('catalog'),error=!DEMO&&ContentLoading.catalog.error;
-  if(pending)return `<div class="zr-gift-rail zr-gifts-loading" role="status" aria-label="Loading call gifts" aria-busy="true">${Array.from({length:6},()=>`<div aria-hidden="true">${skeletonLine('32px',32)}${skeletonLine('38px',10)}</div>`).join('')}</div>`;
-  if(error||!Home.gifts.length)return `<button class="zr-gifts-empty" onclick="homeGifts('${domId(zrPerson()?.id||'')}')">${hi('gift',17)} ${error?'Retry loading gifts':'Browse gifts'} ${hi('chev',13)}</button>`;
-  return `<div class="zr-gift-rail" role="group" aria-label="Call gifts" data-lenis-prevent>${Home.gifts.map(gift=>`<button onclick="zrChooseGift('${domId(gift.id)}')" aria-label="Choose ${esc(gift.name)}, ${n(gift.coins)} coins" ${Home.giftBusy?'disabled':''}><span class="zr-rail-art">${giftStillUrl(gift.name,gift.mediaUrl)?`<img src="${giftStillUrl(gift.name,gift.mediaUrl)}" alt="">`:esc(gift.emoji||'🎁')}</span><span class="zr-rail-price">${coinIcon(13)} ${n(gift.coins)}</span></button>`).join('')}</div>`;
-}
-function zrChooseGift(id){if(!zrIsCall()||zrIsHost()||Home.giftBusy)return;homeGifts(zrPerson()?.id);homeSelectGift(id)}
+function zrCallStats(){return `<div class="zr-call-stats"><div class="zr-call-stat"><span class="zr-stat-icon">${hi('ph',19)}</span><div><span class="zr-stat-label">CALL RATE</span><strong>${S.callRate?`${coinIcon(14)} ${n(S.callRate)} <small>/ min</small>`:'Free call'}</strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div></div>`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
 function zrCallChat(){Room.chatOpen=!Room.chatOpen;r();if(Room.chatOpen)document.getElementById('rmsg')?.focus();else document.querySelector('.zr-call-chat-toggle')?.focus({preventScroll:true})}
 function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
@@ -11180,7 +11303,6 @@ function zrHostStage(p,voice){
     <button type="button" class="zr-pip ${localPip&&!S.cam?'camera-off':''}" aria-label="Swap videos" onclick="S.swap=!S.swap;r()"><video ${localPip?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>${localPip&&!S.cam?hi('camoff',21):''}<span>${localPip?'You':esc(first(p.n))}${localPip&&!S.mic?hi('micoff',12):''}</span></button>`;
 }
 function zrHostReferenceCall(p,voice){
-  const publicId=p.publicId||p.uid||p.id;
   return `<section class="zh-room zr-room zr-call zr-call-reference ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrHostStage(p,voice)}
     <div class="zr-top"><header class="zr-call-toolbar">
       ${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}
@@ -11191,7 +11313,7 @@ function zrHostReferenceCall(p,voice){
     <div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>
       ${typeof hsGiftRail==='function'?hsGiftRail():''}${Room.chatOpen?zrCallComposer():''}
       <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button>
-        <div class="zr-call-person">${hcIdentityAvatar(p,38)}<div><strong>${esc(p.n)}</strong><span>${publicId?`ID ${esc(publicId)}`:'Private call'}</span></div></div>
+        <div class="zr-call-person">${hcIdentityAvatar(p,38)}<div><strong>${esc(p.n)}</strong></div></div>
         <button type="button" class="zr-call-target" onclick="hsOpenSheet('gift-target')" aria-label="Choose gift target">${hi('plus',15)}</button>
         <button type="button" class="zr-hangup" onclick="hostEnd('end')" aria-label="End call">${hi('ph',23)}</button>
         ${zrRound('gift','Gift target',"hsOpenSheet('gift-target')",'zr-dock-controls')}
@@ -11211,7 +11333,17 @@ function zrCall(host){
   zrEnsure();const p=zrPerson(),voice=S.v==='voice'||!!p?.voice;
   if(!p)return '<div class="zh-empty">This call has ended.<button onclick="go(\'home\')">Back to Home</button></div>';
   if(host)return zrHostReferenceCall(p,voice);
-  return `<section class="zh-room zr-room zr-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}<div class="zr-top"><div class="zr-call-heading"><div><strong>BinzoLive <span>· 1:1 ${voice?'voice':'video'} call</span></strong><p>Content is user-generated and unverified.</p></div>${hi('lock',15)}</div><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span>${host?hcVisPill():''}<span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats(host)}${host?hcFeeChip():''}${zrGiftBanner()}</div>${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}<div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(host)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${zrCallGifts(host)}${Room.chatOpen?zrCallComposer():''}<div class="zr-call-dock"><button class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button><div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${host?`${hi('lock',12)} Private conversation`:`${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small>`}</span></div></div>${!host?`<button class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>`:''}<button class="zr-hangup" onclick="${host?"hostEnd('end')":"endCall()"}" aria-label="End call">${hi('ph',23)}</button>${zrRound('callgrid','Call controls',"zrOpen('call-controls')",'zr-dock-controls')}</div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}${host?hcCallExtras():''}</section>`;
+  return `<section class="zh-room zr-room zr-call zr-sender-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}
+    <div class="zr-top"><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats()}${zrGiftBanner()}</div>
+    ${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}
+    <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():''}
+      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button>
+        <div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small></span></div></div>
+        <button type="button" class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>
+        <button type="button" class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',23)}</button>
+        ${zrRound('gift','Send a gift',`homeGifts('${domId(p.id)}')`,'zr-call-gift')}
+      </div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
+    </div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 function zrOpen(sheet){Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r()}
 function zrClose(){Room.sheet='';Room.confirm='';S.confirm=0;r()}
@@ -11462,7 +11594,7 @@ function hcSetupView() {
         <button type="button" onclick="hcSetupMic()" aria-pressed="${!S.mic}" aria-label="${S.mic ? 'Mute microphone' : 'Unmute microphone'}">${hi(S.mic ? 'mic' : 'micoff', 18)}</button>
         <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'vid' : 'camoff', 18)}</button>
       </div></header>
-    <div class="hc-setup-panels">${hcRateCard()}${hcVisibilityRow()}</div>
+    <div class="hc-setup-panels">${hcRateCard()}${hcVisibilityRow()}${hsCardButton()}</div>
     <div class="hc-camera-space"><i class="hc-guide" aria-hidden="true"></i>
       <div class="hc-camera-message" ${p === 'failed' ? 'role="alert"' : p === 'starting' ? 'role="status" aria-busy="true"' : ''}>
         ${status ? `<b>${esc(status)}</b>` : ''}
@@ -11641,7 +11773,7 @@ function hsReloadCatalog() {
   contentStart('catalog'); Native.send('catalog.load'); r();
 }
 function hsOpenSheet(kind) {
-  if (!['mission', 'gift-target', 'appearance'].includes(kind) || !hsAllowed()) return;
+  if (!['mission', 'gift-target', 'appearance', 'card-image'].includes(kind) || !hsAllowed()) return;
   const active = document.activeElement;
   HostStudio.opener = active?.getAttribute('aria-label') || active?.getAttribute('data-hs-focus') || null;
   HostStudio.focus = 'close'; HostStudio.sheet = kind; HostStudio.openedAt = Date.now();
@@ -11711,6 +11843,10 @@ function hsSheet() {
     title = 'Gift target'; subtitle = 'Pick the gift you’d love to receive';
     const gift = hsTargetGift();
     body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${coinIcon(10)} ${n(item.coins)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${n((gift?.coins || 0) * HostStudio.giftCount)} coins</span></div><p class="hs-sheet-note">A personal target for gifts you receive during this session.</p>`;
+  } else if (kind === 'card-image') {
+    title = 'Creator card image'; subtitle = 'Shown on your creator card and profile cover';
+    const src=imageSrc(HostStudio.cardDraft||S.coverData||S.user?.coverUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
+    body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:hi('user',48)}</div><label class="hs-card-choose">${zi('camera',18)} Choose image<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label>${HostStudio.cardPreparing?'<p role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}<button type="button" class="hc-primary" onclick="hsSaveCard()" ${!HostStudio.cardDraft||busy?'disabled':''}>${HostStudio.cardSaving?'Saving…':'Save card image'}</button>`;
   } else {
     title = 'Beauty & filters'; subtitle = 'Choose the look of your camera preview';
     body = `<div class="hs-effects" role="group" aria-label="Camera preview filter">${HS_EFFECTS.map(([key, label]) => `<button type="button" class="${HostStudio.previewEffect === key ? 'is-on' : ''}" aria-pressed="${HostStudio.previewEffect === key}" data-hs-focus="effect-${key}" onclick="hsSetEffect('${key}')"><span class="hs-effect-swatch hs-effect-${key}">${hi('star', 22)}</span><span>${label}</span></button>`).join('')}</div><p class="hs-preview-only">${hi('eye', 14)} Preview only</p><p class="hs-sheet-note">These filters change your own preview. Your caller sees the original camera video.</p>`;
@@ -11719,6 +11855,30 @@ function hsSheet() {
   const age = Math.min(250, Math.max(0, Date.now() - HostStudio.openedAt));
   return `<div class="hs-sheet-backdrop" onclick="if(event.target===this)hsCloseSheet()"><section class="hs-sheet hs-sheet-${kind}" style="--hs-enter-age:-${age}ms" role="dialog" aria-modal="true" aria-labelledby="hs-title" data-lenis-prevent><header><div><h2 id="hs-title">${title}</h2><p>${subtitle}</p></div><button type="button" class="hs-sheet-close" aria-label="Close ${title}" data-hs-focus="close" onclick="hsCloseSheet()">${hi('close', 18)}</button></header><div class="hs-sheet-body">${body}</div></section></div>`;
 }
+function hsCardButton(){
+  const src=imageSrc(S.coverData||S.user?.coverUrl);
+  return `<button type="button" class="hc-card-image" aria-label="Set creator card image" onclick="hsOpenSheet('card-image')">${src?`<img src="${src}" alt="">`:zi('camera',22)}<span>Creator card image</span>${hi('chev',16)}</button>`;
+}
+async function hsPickCard(event){
+  const file=event.target.files?.[0];event.target.value='';if(!file||!hsAllowed()||HostStudio.cardSaving||HostStudio.cardPreparing)return;
+  const owner=S.user;HostStudio.cardPreparing=true;HostStudio.cardError='';hsPaintSheet();
+  try{const photo=await obReadPhoto(file);if(S.user===owner){if(photo.length>2*1024*1024)throw new Error('Choose a smaller image.');HostStudio.cardDraft=photo}}
+  catch(error){if(S.user===owner)HostStudio.cardError=error.message||'Could not prepare this image.'}
+  finally{if(S.user===owner){HostStudio.cardPreparing=false;if(hsAllowed())hsPaintSheet()}}
+}
+function hsSaveCard(){
+  if(!hsAllowed()||!HostStudio.cardDraft||HostStudio.cardSaving||HostStudio.cardPreparing)return;
+  HostStudio.cardSaving=true;HostStudio.cardError='';HostStudio.cardRequestId=++mediaSequence;
+  if(DEMO){S.coverData=HostStudio.cardDraft;HostStudio.cardDraft='';HostStudio.cardSaving=false;hsCloseSheet();return}
+  Native.send('creator.card.save',{photo:HostStudio.cardDraft,requestId:HostStudio.cardRequestId});hsPaintSheet();
+}
+Native.on('creator.card.saved',d=>{
+  if(d.requestId!==HostStudio.cardRequestId)return;
+  obApplyAccount(d.account);HostStudio.cardDraft='';HostStudio.cardSaving=false;
+  if(HostStudio.sheet==='card-image')hsCloseSheet();else if(hsAllowed())r();
+  appNotice('Creator card image saved.');
+});
+Native.on('creator.card.error',d=>{if(d.requestId!==HostStudio.cardRequestId)return;HostStudio.cardSaving=false;HostStudio.cardError=d.message||'Could not save the image. Try again.';if(HostStudio.sheet==='card-image'&&hsAllowed())hsPaintSheet()});
 function hsTargets() {
   const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
   return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${coinIcon(10)} ${n(gift.coins)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
@@ -11751,7 +11911,7 @@ function hsResetProgress() {
   HostStudio.receivedCoins = 0; HostStudio.received = Object.create(null); HostStudio.giftNames = Object.create(null); HostStudio.receipts = new Set();
 }
 function hsReset() {
-  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '' });
+  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardError:'',cardRequestId:null });
   delete document.documentElement.dataset.hostPreviewEffect;
 }
 function hsAfter() {
@@ -11953,7 +12113,7 @@ Native.on('chats.readAll',()=>{Chats.readBusy=false;Chats.readError='';if(S.v===
 Native.on('chat.message',d=>{if(!DEMO&&!d.inCall&&S.v==='thread'&&String(d.from)===S.h)Native.send('chat.open',{with:S.h})});
 Native.on('operation.error',d=>{if(d.action==='chats.readAll'){Chats.readBusy=false;Chats.readError=d.message;if(S.v==='chats')r()}if(d.action==='chats.reload'){Chats.loadingMore=false;Object.assign(ContentLoading.chats,{loading:false,error:d.message});if(S.v==='chats')r()}});
 function zcReset(){Object.assign(Chats,{rows:[],query:'',filter:'all',sort:'recent',onlineOnly:false,filtersOpen:false,composeOpen:false,composeQuery:'',readBusy:false,readError:'',page:1,total:0,unreadCount:0,unreadConversations:0,loadingMore:false,drafts:{},gifts:{},playing:'',threadPermission:null,reply:null,editing:null,menu:'',contextPeer:null});zcEndGesture()}
-Native.on('data.thread',d=>{if(d.with===S.h){Chats.threadPermission={with:d.with,canSend:d.canSend,reason:d.sendDisabledReason,voice:d.canVoiceCall===true,video:d.canVideoCall===true};if(S.v==='thread'){zcUpdateSendControls();zcSyncHostCalls();if(Chats.reply){const original=zcFind(Chats.reply.id);if(original)zcRefreshReplies(original);else zcClearContext()}}}});
+Native.on('data.thread',d=>{if(d.with===S.h){Chats.threadPermission={with:d.with,canSend:d.canSend,reason:d.sendDisabledReason};if(S.v==='thread'){zcUpdateSendControls();if(Chats.reply){const original=zcFind(Chats.reply.id);if(original)zcRefreshReplies(original);else zcClearContext()}}}});
 Native.on('session.none',zcReset);Native.on('session.expired',zcReset);
 document.addEventListener('aurora:navigate',()=>{if(S.v!=='chats'){Chats.composeOpen=false;Chats.filtersOpen=false}});
 
@@ -11966,15 +12126,10 @@ function zcThreadMessages(d){const rows=(d.messages||[]).map(m=>({id:m.id,mine:!
 function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'BinzoLive member',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
 function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
 function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}')">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:zcPeerIsMember(h)?zcHostCallButtons(h):''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
-/* A host calls a member: voice once they follow each other, video once the member allows it. */
+/* A host may call a member at any time, by voice or video. */
 function zcPeerIsMember(h){return h?.serverRole==='user'||(!!h&&!h.verified&&h.role!=='host'&&h.serverRole!=='host')}
-function zcHostCallAccess(id){const p=Chats.threadPermission;return p?.with===id?p:null}
-function zcHostCallButtons(h){const id=domId(h.id),access=zcHostCallAccess(h.id);return `<button id="zc-host-voice" aria-label="Voice call" aria-disabled="${!access?.voice}" onclick="zcHostCall('${id}',true)">${hi('ph',22)}</button><button id="zc-host-video" class="zc-thread-video" aria-label="Video call" aria-disabled="${!access?.video}" onclick="zcHostCall('${id}',false)">${hi('vid',22)}</button>`}
-function zcSyncHostCalls(){const access=zcHostCallAccess(S.h);for(const [el,on] of [[document.getElementById('zc-host-voice'),access?.voice],[document.getElementById('zc-host-video'),access?.video]])if(el)el.setAttribute('aria-disabled',String(!on))}
-function zcHostCall(id,voice){const h=g(id)||Chats.rows.find(c=>c.user.id===id)?.user,name=first(h?.n||h?.name||'This member'),access=zcHostCallAccess(id);
- if(!access)return appNotice('Loading this conversation. Try again in a moment.');
- if(voice&&!access.voice)return appNotice(`You can voice call ${name} when you follow each other.`);
- if(!voice&&!access.video)return appNotice(`${name} hasn’t allowed video calls from you yet.`);
+function zcHostCallButtons(h){const id=domId(h.id);return `<button id="zc-host-voice" aria-label="Voice call" onclick="zcHostCall('${id}',true)">${hi('ph',22)}</button><button id="zc-host-video" class="zc-thread-video" aria-label="Video call" onclick="zcHostCall('${id}',false)">${hi('vid',22)}</button>`}
+function zcHostCall(id,voice){const h=g(id)||Chats.rows.find(c=>c.user.id===id)?.user;
  hostCallMember(id,voice,{name:h?.n||h?.name,avatarUrl:h?.avatarUrl,city:h?.c||h?.city,gender:h?.gender})}
 function zcThreadLive(h){if(!h.stream)return '';const id=domId(h.id),name=first(h.n),viewers=h.stream.viewers||h.viewers;return `<section class="zc-thread-live" aria-label="${esc(name)} is live now"><span class="zc-thread-live-cover">${homeCover(h)}<b><i></i>LIVE</b></span><div class="zc-thread-live-text"><h2><span>${esc(name)} is Live Now</span><i></i></h2><p>${esc(h.stream.title||h.tag||'Streaming now')}${viewers?' · '+homeCompact(viewers)+' watching':''}</p></div><div class="zc-thread-live-actions"><button class="zc-thread-join" onclick="homeOpen('${id}')">Join Stream</button>${!isHost()&&(h.available||DEMO)?`<button class="zc-thread-call" onclick="homeCall('${id}')">${hi('vid',18)} 1:1 Call${h.rate>0?` (${n(h.rate)}c/m)`:''}</button>`:''}</div></section>`}
 function zcThreadNote(h){return `<p class="zc-thread-note">${hi('lock',13)} Never share sign-in codes or payment details${h.verified?' · Creator ID verified':''}</p>`}
@@ -12681,7 +12836,7 @@ function zpDarkMode(){if(!window.ZimiThemes)return;window.ZimiThemes.setDark(!wi
 function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-simple-row" onclick="${action}"><span class="zp-simple-icon">${zi(icon,25)}</span><span>${title}</span></button>`}
 function zpMenuRows(kind){
   const rows={
-    account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')"),
+    account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')")+zpRow('logout','Deactivate account',"zpOpen('deactivate')"),
     payments:()=>zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+zpRow('cash','Withdrawal history',"zpGo('payout-history')"),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
@@ -12729,12 +12884,22 @@ function zpDialogContent(kind){
   if(kind==='privacy')return `${zpToggle('Discoverable profile','discoverable',draft.discoverable!==false)}${zpToggle('Show activity status','showActivity',draft.showActivity!==false)}${zpSaveButton('zpPrivacySave()')}<div class="zp-blocked-list" role="group" aria-label="Blocked accounts">${zpBlockedContent()}</div>`;
   if(kind==='gifts'){const surface=contentSurface('transactions','rows','Loading gift history');if(surface)return surface;const gifts=TXNS.filter(x=>x[3]==='gift');return gifts.length?`<div class="zp-history">${gifts.map(txRow).join('')}</div><button class="zp-secondary" onclick="zpGo('transactions')">All transactions</button>`:'<div class="zp-empty">'+hi('gift',34)+'<h3>No gifts yet</h3><p>Your gift transactions will appear here.</p></div>'}
   if(kind==='earnings'){const surface=contentSurface('wallet','wallet','Loading earnings');if(surface)return surface;if(!isApprovedHost())return '<p>Creator earnings are available after admin approval.</p>';return `<div class="zp-earnings"><span>Available earnings</span><strong>${contentPending('wallet')?skeletonLine('140px',32):zpMoney(ZProfile.wallet?.earningsPaise)}</strong><small>${Number(ZProfile.wallet?.reservedPaise)>0?zpMoney(ZProfile.wallet.reservedPaise)+' reserved for withdrawals':'Currency: INR'}</small></div><button class="zp-save" onclick="zpGo('payout')">Withdraw earnings</button><button class="zp-secondary" onclick="zpGo('transactions')">View earning history</button>`}
-  if(kind==='help')return `<details open><summary>Getting started</summary><p>Explore creators and start a private 1:1 call with an available host.</p></details><details><summary>Coins & gifts</summary><p>Use Top Up to view current coin packs. Gift prices are shown before you send. Find completed payments and gifts in your transaction history.</p></details><details><summary>Becoming a creator</summary><p>Submit a creator application for admin review. Only approved hosts can receive calls and publish posts.</p></details><details><summary>Staying safe</summary><p>Manage discovery, activity visibility and your blocked accounts in Privacy & Blocked Users.</p></details><button class="zp-secondary" onclick="zpOpen('privacy')">Privacy & blocked users</button>`;
+  if(kind==='help')return `<details open><summary>Getting started</summary><p>Explore creators and start a private 1:1 call with an available host.</p></details><details><summary>Coins & gifts</summary><p>Use Top Up to view current coin packs. Gift prices are shown before you send. Find completed payments and gifts in your transaction history.</p></details><details><summary>Becoming a creator</summary><p>Submit a creator application for admin review. Only approved hosts can receive calls and publish videos. Members and approved hosts can share photo posts.</p></details><details><summary>Staying safe</summary><p>Manage discovery, activity visibility and your blocked accounts in Privacy & Blocked Users.</p></details><button class="zp-secondary" onclick="zpOpen('privacy')">Privacy & blocked users</button>`;
   if(kind==='guidelines')return `<div class="zp-guidelines"><h3>Be kind. Be yourself.</h3><p>BinzoLive is for adults aged 18 and over. Respect other people’s boundaries and personal information.</p><h3>Keep connections safe</h3><p>Never share your sign-in code or payment details in a chat. Block or report accounts that make you uncomfortable.</p><h3>Your creator account</h3><p>Host features require admin approval. Account reviews and moderation decisions determine whether these features remain available.</p></div>`;
   if(kind==='logout')return '<p>You’ll need a verification code to sign in again on this device.</p><button class="zp-save zp-danger" onclick="zpClose();logout()">Log out of this device</button><button class="zp-secondary" onclick="zpClose()">Stay signed in</button>';
+  if(kind==='deactivate')return `<p>Your profile and posts will be hidden, active calls will end, and you’ll be signed out on all devices. Your coins and account data are kept. Sign in again with a verification code to reactivate your account.</p><button type="button" class="zp-save zp-danger" onclick="zpDeactivate()" ${ZProfile.deactivating?'disabled':''}>${ZProfile.deactivating?'Deactivating…':'Deactivate account'}</button><button type="button" class="zp-secondary" onclick="zpClose()">Keep my account</button>`;
   return '';
 }
-function zpPaintDialog(){const el=document.getElementById('zp-dialog');if(!el)return;const titles={account:'Account',payments:'Payments','privacy-menu':'Privacy & Terms',general:'General',creator:'Creator tools',about:'About',identity:'Your BinzoLive ID',language:'Language & Region',notifications:'Notification preferences',security:'Phone & Email Security',privacy:'Privacy & Blocked Users',gifts:'Gift History',earnings:'Your Earnings',help:'Help Center',guidelines:'Community Guidelines',logout:'Log Out'};el.innerHTML=`<div class="zp-dialog-heading"><h2 id="zp-dialog-title">${titles[ZProfile.dialog]||'Your settings'}</h2><button aria-label="Close settings" onclick="zpClose()">×</button></div><div class="zp-dialog-body">${zpDialogContent(ZProfile.dialog)}${ZProfile.saveError?`<p class="zp-save-error" role="alert">${esc(ZProfile.saveError)}</p>`:''}</div>`}
+function zpPaintDialog(){const el=document.getElementById('zp-dialog');if(!el)return;const titles={account:'Account',payments:'Payments','privacy-menu':'Privacy & Terms',general:'General',creator:'Creator tools',about:'About',identity:'Your BinzoLive ID',language:'Language & Region',notifications:'Notification preferences',security:'Phone & Email Security',privacy:'Privacy & Blocked Users',gifts:'Gift History',earnings:'Your Earnings',help:'Help Center',guidelines:'Community Guidelines',logout:'Log Out',deactivate:'Deactivate account?'};el.innerHTML=`<div class="zp-dialog-heading"><h2 id="zp-dialog-title">${titles[ZProfile.dialog]||'Your settings'}</h2><button aria-label="Close settings" onclick="zpClose()">×</button></div><div class="zp-dialog-body">${zpDialogContent(ZProfile.dialog)}${ZProfile.saveError?`<p class="zp-save-error" role="alert">${esc(ZProfile.saveError)}</p>`:''}</div>`}
+function zpDeactivate(){
+  if(ZProfile.deactivating)return;
+  ZProfile.deactivating=true;ZProfile.saveError='';ZProfile.deactivateRequestId=++ZProfile.requestId;zpPaintDialog();
+  if(DEMO){zpDeactivated({requestId:ZProfile.deactivateRequestId});return}
+  Native.send('account.deactivate',{confirmed:true,requestId:ZProfile.deactivateRequestId});
+}
+function zpDeactivated(d){if(d.requestId!==ZProfile.deactivateRequestId)return;ZProfile.deactivating=false;zpReset();obResetSession('Your account is deactivated. Sign in to reactivate it.')}
+Native.on('account.deactivated',zpDeactivated);
+Native.on('account.deactivate.error',d=>{if(d.requestId!==ZProfile.deactivateRequestId)return;ZProfile.deactivating=false;ZProfile.saveError=d.message||'Could not deactivate your account. Please try again.';zpPaintDialog()});
 function zpLanguage(input){const languages=ZProfile.draft.languages;if(input.checked){if(languages.length>=8){input.checked=false;appNotice('Choose up to 8 languages.');return}languages.push(input.value)}else ZProfile.draft.languages=languages.filter(x=>x!==input.value)}
 function zpSave(){if(ZProfile.saving||!ZProfile.data)return;const d=ZProfile.draft,k=ZProfile.dialog,payload=k==='language'?{languages:d.languages,city:d.city.trim()}:k==='notifications'?{pushNotifications:!!d.pushNotifications}:null;if(!payload)return;ZProfile.saveError='';ZProfile.saving=true;const requestId=++ZProfile.requestId;zpPaintDialog();if(DEMO){zpApply({...ZProfile.data,preferences:{...ZProfile.data.preferences,...payload},profile:{...ZProfile.data.profile,...(payload.languages?{languages:payload.languages,city:payload.city}:{})}});ZProfile.saving=false;zpClose();r();appNotice('Preview preferences saved.');return}Native.send('profile.settings.save',{...payload,requestId})}
 function zpPrivacySave(){if(ZProfile.privacyBusy)return;ZProfile.privacyBusy=true;ZProfile.saveError='';const data={discoverable:!!ZProfile.draft.discoverable,showActivity:!!ZProfile.draft.showActivity,requestId:++ZProfile.requestId};zpPaintDialog();if(DEMO){ZProfile.data.privacy={...ZProfile.data.privacy,...data};ZProfile.privacyBusy=false;zpClose();r();return}Native.send('privacy.save',data)}
@@ -12762,7 +12927,7 @@ Native.on('block.error',d=>{if(ZProfile.blockBusy!==d.id)return;ZProfile.blockBu
 Native.on('block.saved',()=>{ZProfile.blockBusy='';zpBlockedLoad()});
 Native.on('data.loading',d=>{if(d.resource==='transactions'&&ZProfile.dialog==='gifts')zpPaintDialog();if(['profileSettings','blocked'].includes(d.resource)){if(d.resource==='profileSettings'){ZProfile.requested=true;ZProfile.error=d.error||'';}if(zpActive())r();if(ZProfile.dialog&&!ZProfile.saving&&!ZProfile.privacyBusy&&(ZProfile.dialogLoading||d.resource==='blocked'))zpPaintDialog()}});
 Native.on('operation.error',d=>{if(d.action==='block.set'){ZProfile.blockBusy='';ZProfile.saveError=d.message;zpPaintDialog()}if(d.action==='profile.settings.load'){ZProfile.error=d.message;Object.assign(ContentLoading.profileSettings,{loading:false,error:d.message});if(zpActive())r();zpPaintDialog()}});
-function zpReset(){zpClose();Object.assign(ZProfile,{data:null,requested:false,error:'',draft:{},saving:false,saveError:'',privacyBusy:false,blocked:[],blockedTotal:0,blockedPage:1,blockBusy:'',wallet:null});ZProfile.requestId++;zpTheme()}
+function zpReset(){zpClose();Object.assign(ZProfile,{data:null,requested:false,error:'',draft:{},saving:false,saveError:'',privacyBusy:false,deactivating:false,deactivateRequestId:null,blocked:[],blockedTotal:0,blockedPage:1,blockBusy:'',wallet:null});ZProfile.requestId++;zpTheme()}
 Native.on('session.none',zpReset);Native.on('session.expired',zpReset);
 Native.on('session',d=>{if(ZProfile.data?.profile.id!==d.user?.id)zpReset()});
 Native.on('profile.saved',d=>{if(!d.onboarding&&d.account){if(ZProfile.data)Object.assign(ZProfile.data.profile,{name:d.account.user.name,bio:d.account.user.about,city:d.account.user.city,languages:d.account.user.languages||[]});if(zpActive())r()}});
@@ -13400,6 +13565,7 @@ const zuKnown = id => g(id) || PEOPLE[id] || (DEMO ? sender(id) : null);
 const zuCurrent = () => Zu.id === zuId();
 const zuMatches = (d, posts=false) => d.id === Zu.id && d.requestId === (posts ? Zu.postsRequestId : Zu.requestId);
 const zuApproved = p => p?.verified === true && p?.serverRole === 'host';
+const zuGalleryAllowed = p => zuApproved(p) || p?.serverRole === 'user';
 const zuMember = () => DEMO ? !isHost() : zcSelfRole() === 'user';
 const zuHostViewer = () => DEMO ? isHost() : zcSelfRole() === 'host' && isApprovedHost();
 const zuIsMember = p => p?.serverRole === 'user';
@@ -13453,7 +13619,7 @@ function zuLoad(){
   if(DEMO){
     if(zuSelf()){
       Zu.profile=zuOwnPeer();Zu.profile.joined||='2025-04-12T00:00:00Z';
-      if(zuApproved(Zu.profile)){Zu.posts=(S.postData||[]).map((mediaUrl,index)=>({id:'preview-self-'+index,kind:'photo',mediaUrl,caption:''}));Zu.total=Zu.posts.length;Zu.page=1}
+      if(zuGalleryAllowed(Zu.profile)){Zu.posts=(S.postData||[]).map((mediaUrl,index)=>({id:'preview-self-'+index,kind:'photo',mediaUrl,caption:''}));Zu.total=Zu.posts.length;Zu.page=1}
       return;
     }
     const h=zuKnown(id);if(!h){Zu.error='This profile is no longer available.';return}
@@ -13471,7 +13637,7 @@ function zuLoad(){
 function zuRetry(){zuLoad();zuPaint()}
 ZimiPullRefresh.register(['profile','host','user'],{refresh:()=>zuRetry(),busy:()=>Zu.loading});
 function zuLoadPosts(more=false){
-  if(DEMO||Zu.postsLoading||!zuApproved(Zu.profile))return;
+  if(DEMO||Zu.postsLoading||!zuGalleryAllowed(Zu.profile))return;
   Zu.postsLoading=true;Zu.postsError='';Zu.postsRequestId=++Zu.sequence;
   Native.send('profile.posts.load',{id:Zu.id,page:more?Zu.page+1:1,requestId:Zu.postsRequestId});
   zuPaint();
@@ -13479,7 +13645,8 @@ function zuLoadPosts(more=false){
 function zuBack(){if(S.v==='profile'){go('home');return}const back=Zu.back;go(back.view||'home',back.id)}
 function zuEditMedia(kind){
   if(!zuSelf()||zuOffline())return;
-  const target=kind==='photos'?(isApprovedHost()?'posts':'avatar'):kind;
+  if(kind==='photos')return window.ZimiPostCreate.open();
+  const target=kind;
   go('editprofile');
   const input=[...document.querySelectorAll('.editwrap input[type=file]')].find(el=>el.getAttribute('onchange')?.includes("'"+target+"'"));
   input?.closest(target==='posts'?'.editgroup':'.editmedia')?.scrollIntoView({block:'center',behavior:'instant'});
@@ -13505,27 +13672,11 @@ function zuFollowSaved(d){
   S.following[d.id]=!!d.on;
   const known=zuKnown(d.id);if(known)known.fol=d.on?1:0;
   if(d.id!==Zu.id||d.requestId!==Zu.followRequestId)return;
-  if(Zu.profile){const p=Zu.profile,changed=p.following!==!!d.on;p.following=!!d.on;if(changed)p.followers=Math.max(0,(p.followers||0)+(d.on?1:-1));
-    // Following each other opens voice calls; the member's permission keeps video (and voice) open.
-    if(zuIsMember(p))p.canVoiceCall=!!p.canVideoCall||(p.following&&!!p.followsYou)}
+  if(Zu.profile){const p=Zu.profile,changed=p.following!==!!d.on;p.following=!!d.on;if(changed)p.followers=Math.max(0,(p.followers||0)+(d.on?1:-1))}
   Zu.followBusy=false;Zu.followError='';zuPaint();
-}
-function zuCallPermission(){
-  const p=Zu.profile;if(!p||!zuApproved(p)||!zuMember()||zuSelf()||Zu.loading||Zu.permissionBusy||zuOffline())return;
-  Zu.permissionBusy=true;Zu.permissionError='';Zu.permissionRequestId=++Zu.sequence;
-  const data={id:p.id,video:!p.allowsVideoCalls,requestId:Zu.permissionRequestId};
-  if(DEMO){zuCallPermissionSaved(data);return}
-  Native.send('call.permission.set',data);zuPaint();
-}
-function zuCallPermissionSaved(d){
-  if(d.requestId!==Zu.permissionRequestId)return;
-  Zu.permissionBusy=false;Zu.permissionError='';
-  if(Zu.profile&&d.id===Zu.profile.id)Zu.profile.allowsVideoCalls=!!d.video;
-  zuPaint();
 }
 function zuHostCall(voice){
   const p=Zu.profile;if(!zuHostToMember(p)||Zu.loading||Zu.error||zuOffline())return;
-  if(!(voice?p.canVoiceCall:p.canVideoCall))return;
   hostCallMember(p.id,voice,{name:p.name,avatarUrl:p.avatarUrl,city:p.city,gender:p.gender});
 }
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
@@ -13553,18 +13704,15 @@ function zuIdentity(p){
   const owner=zuSelf(),followBack=ready&&zuHostToMember(p),showFollow=canFollow||followBack;
   const followLabel=Zu.followBusy?'Updating…':p.following?'Following':followBack&&p.followsYou?'Follow back':'Follow';
   return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
-    ${showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
+    ${owner?`<button type="button" id="zu-edit-self" class="zu-owner-edit" aria-label="Edit profile" onclick="go('editprofile')">${zi('edit',18)}</button>`:showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
-    <div class="zu-stats" aria-label="Profile statistics"><div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div><div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div></div>
-    <p class="zu-bio">${esc(p.about||'A new face. A new connection. Say hello when you’re ready.')}</p>
-    ${p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
-    ${owner?`<div class="zu-self-bar zu-owner-actions"><button id="zu-edit-self" class="zu-owner-edit" onclick="go('editprofile')">${zi('edit',17)} Edit profile</button><button id="zu-upload-self" class="zu-owner-upload" onclick="zuEditMedia('photos')" ${zuOffline()?'disabled':''}>${zi('camera',17)} Upload photos</button></div>`:''}
-    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>
-    <div class="zu-permission"><span class="zu-gift-icon">${hi('vid',22)}</span><span id="zu-permission-label"><b>Video calls from ${esc(first(p.name))}</b><small>${p.allowsVideoCalls?`${esc(first(p.name))} can video call you. Turn this off any time.`:`Let ${esc(first(p.name))} video call you. You pay their call rate once you answer.`}</small></span><button id="zu-permission" type="button" class="zp-switch ${p.allowsVideoCalls?'is-on':''}" role="switch" aria-checked="${!!p.allowsVideoCalls}" aria-labelledby="zu-permission-label" onclick="zuCallPermission()" ${Zu.permissionBusy||zuOffline()?'disabled':''}><i></i></button></div>
-    ${Zu.permissionError?`<p class="zu-inline-error" role="alert">${esc(Zu.permissionError)}</p>`:''}`:''}
+    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${contentBalance()}</strong><span>Coins</span></div>`:''}<div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div>${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
+    <p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>
+    ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
+    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
     </div>`}</aside>`;
 }
 function zuAbout(p){
@@ -13581,7 +13729,7 @@ function zuMedia(post,index){
     <span class="zu-media-unavailable">${ci('image',23)}<span>Media unavailable</span></span><span class="zu-photo-shade"></span>${video?`<span class="zu-play">${hi('play',19)}</span>`:''}<span class="zu-photo-expand">${hi('arrow',16)}</span></button>`;
 }
 function zuPosts(p){
-  if(!zuApproved(p))return `<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>${zuSelf()?'Upload a profile photo or cover photo.':'This member hasn’t shared any public posts.'}</p><button class="zu-text-button" onclick="${zuSelf()?"zuEditMedia('photos')":"zuTab('about')"}">${zuSelf()?'Upload profile photos':'Get to know '+esc(first(p.name))} ${hi('arrow',15)}</button></div>`;
+  if(!zuGalleryAllowed(p))return `<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>This account has no shared posts.</p></div>`;
   if(Zu.postsLoading&&!Zu.page)return zuSkeleton('posts');
   return `${Zu.posts.length?`<div class="zu-gallery">${Zu.posts.map(zuMedia).join('')}</div>`:!Zu.postsError?`<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>${zuSelf()?'Your uploaded photos appear here.':'Photos and updates from '+esc(first(p.name))+' will appear here.'}</p>${zuSelf()?'<button class="zu-text-button" onclick="zuEditMedia(\'photos\')">'+zi('camera',17)+' Upload a photo</button>':''}</div>`:''}
     ${Zu.postsError?`<div class="zu-error zu-post-error" role="alert"><p>${esc(Zu.postsError)}</p><button class="zu-secondary" onclick="zuLoadPosts(${!!Zu.page})">Retry photos</button></div>`:''}
@@ -13591,7 +13739,7 @@ function zuContent(p){
   if(Zu.loading)return `<div class="zu-content">${zuSkeleton('posts')}</div>`;
   if(Zu.error||!p)return '';
   return `<div class="zu-content">${window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream?`<section class="zu-live-card"><div class="zu-live-symbol">${hi('broadcast',24)}</div><div><span><i></i> LIVE RIGHT NOW</span><h2>${esc(p.stream.title||'Come join the conversation')}</h2><p>${n(p.stream.viewers||0)} watching · Drop in and say hello</p></div><button onclick="zuWatch()" ${zuOffline()?'disabled':''}>Join live ${hi('arrow',16)}</button></section>`:''}
-    <div class="zu-tabs" role="tablist" aria-label="Profile content" onkeydown="zuTabKeys(event)">${['posts','about'].map(tab=>`<button id="zu-tab-${tab}" role="tab" aria-selected="${Zu.tab===tab}" aria-controls="zu-panel" tabindex="${Zu.tab===tab?0:-1}" onclick="zuTab('${tab}')">${hi(tab==='posts'?'grid':'user',17)}${tab==='posts'?'Posts':'About'}${tab==='posts'&&zuApproved(p)?`<span>${Zu.postsLoading&&!Zu.page?'…':Zu.total}</span>`:''}</button>`).join('')}</div>
+    <div class="zu-content-header"><div class="zu-tabs" role="tablist" aria-label="Profile content" onkeydown="zuTabKeys(event)">${['posts','about'].map(tab=>`<button id="zu-tab-${tab}" role="tab" aria-selected="${Zu.tab===tab}" aria-controls="zu-panel" tabindex="${Zu.tab===tab?0:-1}" onclick="zuTab('${tab}')">${hi(tab==='posts'?'grid':'user',17)}${tab==='posts'?'Posts':'About'}${tab==='posts'&&zuGalleryAllowed(p)?`<span>${Zu.postsLoading&&!Zu.page?'…':Zu.total}</span>`:''}</button>`).join('')}</div>${zuSelf()?`<button type="button" id="zu-upload-self" class="zu-add-photo" aria-label="Upload photos" onclick="zuEditMedia('photos')" ${zuOffline()?'disabled':''}>${zi('camera',18)}</button>`:''}</div>
     <div id="zu-panel" class="zu-panel" role="tabpanel" aria-labelledby="zu-tab-${Zu.tab}" tabindex="0">${Zu.tab==='about'?zuAbout(p):zuPosts(p)}</div></div>`;
 }
 function zuActions(p){
@@ -13600,8 +13748,7 @@ function zuActions(p){
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
   return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
-    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${p.canVoiceCall&&!zuOffline()?'':'disabled'}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${p.canVideoCall&&!zuOffline()?'':'disabled'}>${hi('vid',21)}<span>Video</span></button>`:''}</div>
-    ${hostCalls&&!p.canVideoCall?`<p class="zu-action-note">${p.canVoiceCall?`${esc(first(p.name))} hasn’t allowed video calls yet.`:`Voice calls open when you follow each other. Video calls need ${esc(first(p.name))}’s permission.`}</p>`:''}</div></div>`;
+    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
@@ -13655,20 +13802,46 @@ function zuBlocked(d){
   if(d.id!==Zu.id||d.requestId!==Zu.blockRequestId||!d.blocked)return;
   Zu.blockBusy=false;zuCloseDialog();if(zuActive()&&zuCurrent())go('home');appNotice('User blocked. You can manage blocked accounts in Settings.');
 }
-function zuOpenPhoto(index){
-  const post=Zu.posts[index];if(!post||!imageSrc(post.mediaUrl))return;
-  Zu.gallery=index;
-  const src=imageSrc(post.mediaUrl),video=post.kind==='video';
-  const dialog=zuDialog(`${video?'Video':'Photo'} ${index+1} of ${Zu.posts.length}`,`<div class="zu-viewer">${video?`<video src="${src}" controls playsinline preload="metadata"></video>`:`<img src="${src}" alt="${esc(post.caption||'Photo by '+Zu.profile.name)}">`}</div>${post.caption?`<p class="zu-caption">${esc(post.caption)}</p>`:''}<div class="zu-viewer-actions"><button class="zu-secondary" aria-label="Previous post" onclick="zuOpenPhoto(${index-1})" ${index===0?'disabled':''}>${hi('back',17)} Previous</button><button class="zu-secondary" aria-label="Next post" onclick="zuOpenPhoto(${index+1})" ${index===Zu.posts.length-1?'disabled':''}>Next ${hi('arrow',17)}</button></div>`,'photo');
-  dialog.addEventListener('keydown',event=>{if(event.target.tagName==='VIDEO')return;const next=event.key==='ArrowRight'?index+1:event.key==='ArrowLeft'?index-1:-1;if(next>=0&&next<Zu.posts.length){event.preventDefault();zuOpenPhoto(next)}});
+function zuConfirmDelete(){
+  const post=Zu.posts[Zu.gallery];if(!zuSelf()||!post||Zu.deleting)return;
+  Zu.deleteCandidate={...post,owner:Zu.id};
+  zuDialog('Delete this post?',`<p class="zu-dialog-intro">This photo will be removed from your profile. This cannot be undone.</p><p class="zu-dialog-status" role="alert"></p><div class="zu-dialog-actions"><button class="zu-secondary" onclick="zuCloseDialog()">Cancel</button><button class="zu-block-confirm" onclick="zuDeletePost()">Delete post</button></div>`,'delete-post');
 }
+function zuDeletePost(){
+  const post=Zu.deleteCandidate;if(!zuSelf()||post?.owner!==Zu.id||Zu.deleting||zuOffline())return;
+  Zu.deleting={...post,requestId:++Zu.sequence};
+  const button=document.querySelector('.zu-block-confirm');if(button){button.disabled=true;button.textContent='Deleting…'}
+  const data={id:post.id,requestId:Zu.deleting.requestId};
+  if(DEMO){zuPostDeleted(data);return}Native.send('media.post.delete',data);
+}
+function zuPostDeleted(d){
+  const pending=Zu.deleting;if(!pending||pending.id!==d.id||pending.requestId!==d.requestId)return;
+  Zu.deleting=null;Zu.deleteCandidate=null;
+  S.postData=S.postData.filter(url=>url!==pending.mediaUrl);
+  if(Zu.id===pending.owner){
+    Zu.posts=Zu.posts.filter(post=>post.id!==d.id);Zu.total=Math.max(0,Zu.total-1);
+    Zu.postsLoading=false;Zu.postsRequestId=++Zu.sequence;
+    if(Zu.dialog==='delete-post')zuCloseDialog();
+    if(zuActive()&&zuSelf()){zuLoadPosts();zuPaint()}
+  }
+  appNotice('Post deleted.');
+}
+Native.on('post.deleted',zuPostDeleted);
+Native.on('post.delete.error',d=>{
+  if(Zu.deleting?.id!==d.id||Zu.deleting.requestId!==d.requestId)return;
+  Zu.deleting=null;
+  if(Zu.dialog!=='delete-post')return;
+  const status=document.querySelector('.zu-dialog-status');if(status)status.textContent=d.message||'Could not delete this post. Try again.';
+  const button=document.querySelector('.zu-block-confirm');if(button){button.disabled=false;button.textContent='Delete post'}
+});
+Native.on('post.saved',()=>{if(zuActive()&&zuSelf()&&Zu.profile)zuLoadPosts()});
 
 /* Profiles follow the same rule as cards: a host is never shown offline (see hostFrom). */
 function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostShownOnline(p),availableForCall:hostCallable(p)});return p}
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
   Zu.profile=zuShownPresence(d.profile);Zu.loading=false;Zu.error='';zuRemember(d.profile);
-  if(zuApproved(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
+  if(zuGalleryAllowed(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
   zuPaint();
 });
 Native.on('data.publicPosts',d=>{
@@ -13676,10 +13849,11 @@ Native.on('data.publicPosts',d=>{
   const rows=(d.posts||[]).filter(post=>imageSrc(post.mediaUrl));
   Zu.posts=d.page>1?[...Zu.posts,...rows.filter(post=>!Zu.posts.some(old=>old.id===post.id))]:rows;
   Zu.total=d.total||0;Zu.page=d.page||1;Zu.limit=d.limit||20;Zu.postsLoading=false;Zu.postsError='';zuPaint();
+  if(typeof zuFeedSync==='function')zuFeedSync();
 });
 Native.on('data.loading',d=>{
   if(d.resource==='publicProfile'&&zuMatches(d)){Zu.loading=!!d.loading;Zu.error=d.error||'';zuPaint()}
-  if(d.resource==='publicPosts'&&zuMatches(d,true)){Zu.postsLoading=!!d.loading;Zu.postsError=d.error||'';zuPaint()}
+  if(d.resource==='publicPosts'&&zuMatches(d,true)){Zu.postsLoading=!!d.loading;Zu.postsError=d.error||'';zuPaint();if(typeof zuFeedSync==='function')zuFeedSync()}
 });
 Native.on('data.home',d=>{
   if(!zuActive()||!Zu.profile||Zu.loading)return;
@@ -13691,11 +13865,6 @@ Native.on('data.home',d=>{
   zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
-Native.on('call.permission.saved',zuCallPermissionSaved);
-Native.on('call.permission.error',d=>{
-  if(d.requestId!==Zu.permissionRequestId)return;
-  Zu.permissionBusy=false;Zu.permissionError=d.message||'Could not update video call permission. Please try again.';zuPaint();
-});
 Native.on('follow.error',d=>{
   if(zuPendingFollows.get(d.id)!==d.requestId)return;
   zuPendingFollows.delete(d.id);
@@ -13716,7 +13885,7 @@ Native.on('gift.sent',()=>{if(zuActive())zuPaint()});
 Native.on('operation.error',d=>{if(zuActive()&&d.action==='gift.send')zuPaint()});
 Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.checking&&(Zu.error||Zu.postsError))zuRetry();else zuPaint()});
 for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
-for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();zuPendingFollows.clear();zuPendingBlocks.clear();Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
 window.ZimiPublicProfile={
   render:zuScreen,
   beforeNavigate(view,id){
@@ -13727,6 +13896,283 @@ window.ZimiPublicProfile={
 };
 ZimiHome.views.profile=zuScreen;
 if(DEMO&&previewMode==='profile'){S.v='host';S.h='aanya';S.loggedIn=1;zuLoad()}
+
+/* A post has its own composer. Drafts stay in this session until publication or removal. */
+P.close=P.close||'<path d="m6 6 12 12M18 6 6 18" stroke-linecap="round"/>';
+window.ZimiPostCreate = (() => {
+  function open(){if(S.loggedIn)go('create-post')}
+  function back(){if(!S.postPublishing&&!S.mediaPreparing)go('profile')}
+  function remove(){
+    if(S.postPublishing||S.mediaPreparing)return;
+    S.postDraftData='';S.postError='';S.mediaError='';r();document.getElementById('post-photo')?.focus({preventScroll:true});
+  }
+  function caption(input){
+    S.postCaption=input.value;
+    const count=document.getElementById('post-caption-count');if(count)count.textContent=`${input.value.length.toLocaleString('en-IN')} / 2,000`;
+  }
+  function capture(){const input=document.activeElement;return S.v==='create-post'&&input?.id==='postcaption'?{start:input.selectionStart,end:input.selectionEnd}:null}
+  function after(focus){
+    if(S.v!=='create-post'||!focus)return;
+    const input=document.getElementById('postcaption');if(input&&!input.disabled){input.focus({preventScroll:true});input.setSelectionRange(focus.start,focus.end)}
+  }
+  function render(){
+    const busy=S.postPublishing||S.mediaPreparing,disabled=busy?'disabled':'',src=imageSrc(S.postDraftData),offline=!!window.ZimiOffline?.isOffline();
+    const name=S.user?.name||me.n||'Your profile',avatar=imageSrc(S.avatarData||S.user?.avatarUrl);
+    return `<section class="zpost-create" aria-label="Create a post">
+      <header class="zpost-header">${backButton('ZimiPostCreate.back()',{label:'Back to profile',attrs:disabled})}<h1>New post</h1><button type="button" class="zpost-publish" aria-label="Publish post" onclick="publishPost()" ${busy||!src||offline?'disabled':''}>${S.postPublishing?'Publishing…':'Publish'}</button></header>
+      <div class="zpost-content"><div class="zpost-photo-column">
+        <div class="zpost-preview ${src?'has-photo':''}">${src?`<img src="${src}" alt="Photo ready to publish">`:`<div class="zpost-empty">${I('grid',34)}<h2>Share a moment</h2><p>Choose a photo for your profile.</p><label class="zpost-choose" for="post-photo">${I('plus',18)} Choose a photo</label></div>`}
+          ${S.mediaPreparing?'<div class="zpost-preparing" role="status" aria-busy="true" aria-label="Preparing your photo">'+skeletonLine('120px',16)+'<span>Preparing your photo…</span></div>':''}
+        </div><input class="zpost-file" id="post-photo" type="file" accept="image/*" aria-label="Choose post photo" onchange="pickMedia(event,'posts')" ${disabled}>
+        ${src?`<div class="zpost-photo-actions"><label class="zpost-replace" for="post-photo">${I('flip',17)} Change photo</label><button type="button" onclick="ZimiPostCreate.remove()" ${disabled}>${I('close',17)} Remove</button></div>`:''}
+        ${S.mediaError?`<p class="zpost-error" role="alert">${esc(S.mediaError)}</p>`:''}
+      </div><div class="zpost-copy-column">
+        <div class="zpost-author"><span class="av zpost-avatar">${avatar?`<img src="${avatar}" alt="">`:face(me)}</span><div><strong>${esc(name)}</strong><span>Posting to your profile</span></div></div>
+        <div class="zpost-caption-heading"><label for="postcaption">Caption</label><span id="post-caption-count">${n((S.postCaption||'').length)} / 2,000</span></div>
+        <textarea id="postcaption" class="zpost-caption" maxlength="2000" rows="6" placeholder="Write something about this moment…" oninput="ZimiPostCreate.caption(this)" ${disabled}>${esc(S.postCaption||'')}</textarea>
+        <p class="zpost-visibility">${I('user',16)} Visible on your profile</p>
+        ${S.postPublishing?'<p class="zpost-status" role="status" aria-busy="true">Publishing your post…</p>':''}
+        ${S.postError?`<p class="zpost-error" role="alert">${esc(S.postError)}</p>`:''}
+        ${offline?'<p class="zpost-error" role="status">Connect to the internet to publish your post.</p>':''}
+        <p class="zpost-draft-note">Your draft stays here while you use the app.</p>
+      </div></div></section>`;
+  }
+  return {open,back,remove,caption,capture,after,render};
+})();
+
+/* A profile's posts open as a scrolling feed, like other photo apps: author, photo,
+   likes (tap the heart or double-tap the photo), caption, comments and time.
+   Likes and comments are confirmed by the server; a failed like puts the old state back. */
+const ZuFeed = { likes:new Map(), lastTap:null, observer:null,
+  comments:{ postId:'', items:[], total:0, page:0, loading:false, error:'', sending:false, deleting:'', requestId:0, sendId:0 } };
+
+function zuAgo(iso,short=false){
+  const at=Date.parse(iso||'');if(!Number.isFinite(at))return '';
+  const minutes=Math.max(0,Math.round((Date.now()-at)/60000));
+  if(minutes<1)return short?'now':'Just now';
+  const unit=(value,word)=>short?`${value}${word[0]}`:`${value} ${word}${value===1?'':'s'} ago`;
+  if(minutes<60)return unit(minutes,'minute');
+  if(minutes<1440)return unit(Math.floor(minutes/60),'hour');
+  if(minutes<10080)return unit(Math.floor(minutes/1440),'day');
+  return new Date(at).toLocaleDateString('en-IN',{day:'numeric',month:'short',...(new Date(at).getFullYear()!==new Date().getFullYear()?{year:'numeric'}:{})});
+}
+const zuPostAuthor = () => Zu.profile||zuPeer()||{};
+function zuLikesLabel(post){const likes=post.likes||0;return likes?`${n(likes)} ${likes===1?'like':'likes'}`:'Be the first to like this'}
+function zuCommentsLabel(post){const count=post.comments||0;return count===1?'View 1 comment':`View all ${n(count)} comments`}
+
+function zuFeedPost(post,index){
+  const p=zuPostAuthor(),src=imageSrc(post.mediaUrl),video=post.kind==='video',id=domId(post.id),caption=post.caption||'';
+  const time=post.createdAt?`<time class="zu-feed-time" datetime="${esc(post.createdAt)}">${esc(zuAgo(post.createdAt))}</time>`:'';
+  return `<article class="zu-feed-post" id="zu-post-${id}" data-post-id="${esc(post.id)}" tabindex="-1" aria-posinset="${index+1}" aria-setsize="${Math.max(Zu.total,Zu.posts.length)}" aria-label="Post ${index+1} by ${esc(p.name||'this account')}">
+    <header class="zu-feed-author"><span class="av zu-feed-avatar">${zuAvatar(p)}</span><div class="zu-feed-who"><strong>${esc(p.name||'BinzoLive member')}</strong>${zuApproved(p)?homeVerified(p):''}</div>
+      ${zuSelf()?`<button type="button" class="zu-feed-options" aria-label="Post options" onclick="zuPostOptions(${index})">${ci('more',20)}</button>`:''}</header>
+    <div class="zu-feed-media ${video?'is-video':''}" ${video?'':`onpointerup="zuFeedTap(event,${index})"`}>
+      <div class="zu-post-loading" role="status" aria-label="Loading post ${video?'video':'photo'}" aria-busy="true">${skeletonLine('100px',14)}</div>
+      ${video?`<video src="${src}" controls playsinline preload="metadata" onloadeddata="zuPostMediaReady(this)" onerror="zuPostMediaFailed(this)"></video>`:`<img src="${src}" alt="${esc(caption||'Photo by '+(p.name||'this account'))}" decoding="async" ${index>2?'loading="lazy"':''} draggable="false" onload="zuPostMediaReady(this)" onerror="zuPostMediaFailed(this)">`}
+      <div class="zu-post-unavailable" hidden role="alert"><strong>${video?'Video':'Photo'} unavailable</strong><p>Check your connection and try again.</p><button type="button" onclick="zuRetryPostMedia(${index})">Try again</button></div>
+      <span class="zu-like-burst" aria-hidden="true">${hi('heart',92)}</span>
+    </div>
+    <div class="zu-feed-actions">
+      <button type="button" class="zu-like ${post.liked?'is-liked':''}" aria-pressed="${!!post.liked}" aria-label="Like" onclick="zuToggleLike(${index})" ${zuOffline()?'disabled':''}>${hi('heart',26)}</button>
+      <button type="button" class="zu-comment-button" aria-label="Comment" onclick="zuOpenComments(${index})">${hi('chat',25)}</button>
+    </div>
+    <p class="zu-feed-likes" aria-live="polite">${zuLikesLabel(post)}</p>
+    ${caption?`<div class="zu-feed-caption"><p class="${caption.length>110||caption.split('\n').length>2?'is-clamped':''}"><strong>${esc(p.name||'')}</strong> ${esc(caption)}</p>${caption.length>110||caption.split('\n').length>2?`<button type="button" class="zu-feed-more" onclick="zuExpandCaption(this)">more</button>`:''}</div>`:''}
+    <button type="button" class="zu-feed-comments" onclick="zuOpenComments(${index})" ${post.comments?'':'hidden'}>${zuCommentsLabel(post)}</button>
+    ${time}
+  </article>`;
+}
+function zuFeedMore(){
+  if(Zu.postsError)return `<div class="zu-feed-end" role="alert"><p>${esc(Zu.postsError)}</p><button type="button" class="zu-secondary" onclick="zuLoadPosts(true)">Try again</button></div>`;
+  if(Zu.postsLoading)return `<div class="zu-feed-end" role="status" aria-label="Loading more posts" aria-busy="true">${skeletonLine('120px',14)}</div>`;
+  return Zu.page*Zu.limit<Zu.total?`<div class="zu-feed-end"><button type="button" class="zu-secondary" data-feed-more onclick="zuLoadPosts(true)">Load more posts</button></div>`:'';
+}
+
+function zuOpenPhoto(index){
+  const post=Zu.posts[index];if(!post||!imageSrc(post.mediaUrl))return;
+  Zu.gallery=index;
+  const p=zuPostAuthor();
+  const dialog=zuDialog('Posts',`<div class="zu-feed" role="feed" aria-label="Posts by ${esc(p.name||'this account')}">${Zu.posts.map(zuFeedPost).join('')}<div class="zu-feed-tail">${zuFeedMore()}</div></div>`,'photo');
+  dialog.classList.add('zu-feed-dialog');
+  const header=dialog.querySelector('header');header.className='zu-feed-header';
+  header.innerHTML=`${backButton('zuCloseDialog()',{label:'Back to profile'})}<div class="zu-feed-title"><span>${esc(p.name||'')}</span><h2 id="zu-dialog-title">Posts</h2></div>`;
+  // Back closes the comments first, then the feed.
+  dialog.addEventListener('cancel',event=>{if(ZuFeed.comments.postId){event.preventDefault();zuCloseComments()}});
+  const feed=dialog.querySelector('.zu-feed');
+  feed.querySelector(`#zu-post-${domId(post.id)}`)?.scrollIntoView({block:'start'});
+  feed.addEventListener('scroll',()=>{
+    // The post nearest the top is the current one, so options act on what is on screen.
+    const top=feed.getBoundingClientRect().top;let current=Zu.gallery;
+    feed.querySelectorAll('.zu-feed-post').forEach((article,i)=>{if(article.getBoundingClientRect().top-top<=120)current=i});
+    Zu.gallery=current;
+  },{passive:true});
+  ZuFeed.observer?.disconnect();
+  ZuFeed.observer=window.IntersectionObserver?new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)&&!Zu.postsLoading&&!Zu.postsError&&Zu.page*Zu.limit<Zu.total)zuLoadPosts(true)},{root:feed,rootMargin:'0px 0px 600px 0px'}):null;
+  ZuFeed.observer?.observe(feed.querySelector('.zu-feed-tail'));
+  feed.querySelector(`#zu-post-${domId(post.id)}`)?.focus({preventScroll:true});
+}
+/* Pagination adds posts to an open feed without moving what is on screen. */
+function zuFeedSync(){
+  const feed=document.querySelector('.zu-feed-dialog .zu-feed');if(!feed)return;
+  const shown=new Set([...feed.querySelectorAll('.zu-feed-post')].map(article=>article.dataset.postId));
+  const tail=feed.querySelector('.zu-feed-tail');
+  Zu.posts.forEach((post,index)=>{if(!shown.has(post.id)&&imageSrc(post.mediaUrl))tail.insertAdjacentHTML('beforebegin',zuFeedPost(post,index))});
+  tail.innerHTML=zuFeedMore();
+}
+function zuFeedArticle(index){const post=Zu.posts[index];return post?document.getElementById(`zu-post-${domId(post.id)}`):null}
+function zuPostMediaReady(media){media.parentElement.querySelector('.zu-post-loading')?.remove()}
+function zuPostMediaFailed(media){
+  zuPostMediaReady(media);media.hidden=true;media.parentElement.querySelector('.zu-post-unavailable').hidden=false;
+}
+function zuRetryPostMedia(index){
+  const article=zuFeedArticle(index),media=article?.querySelector('.zu-feed-media>img,.zu-feed-media>video');if(!media)return;
+  article.querySelector('.zu-post-unavailable').hidden=true;media.hidden=false;
+  if(!article.querySelector('.zu-post-loading'))media.insertAdjacentHTML('beforebegin',`<div class="zu-post-loading" role="status" aria-label="Loading post photo" aria-busy="true">${skeletonLine('100px',14)}</div>`);
+  const src=media.getAttribute('src');media.src='';media.src=src+(src.includes('?')?'&':'?')+'retry='+Date.now();
+}
+function zuExpandCaption(button){button.previousElementSibling?.classList.remove('is-clamped');button.remove()}
+
+/* Likes: the heart answers at once and the server confirms; a failure restores the old state. */
+function zuPaintReactions(index){
+  const post=Zu.posts[index],article=zuFeedArticle(index);if(!post||!article)return;
+  const like=article.querySelector('.zu-like');like.classList.toggle('is-liked',!!post.liked);like.setAttribute('aria-pressed',String(!!post.liked));
+  article.querySelector('.zu-feed-likes').textContent=zuLikesLabel(post);
+  const comments=article.querySelector('.zu-feed-comments');comments.hidden=!post.comments;comments.textContent=zuCommentsLabel(post);
+}
+function zuToggleLike(index,liked){
+  const post=Zu.posts[index];if(!post||zuOffline()||ZuFeed.likes.has(post.id))return;
+  const next=liked??!post.liked;if(next===!!post.liked)return;
+  const requestId=++Zu.sequence;
+  ZuFeed.likes.set(post.id,{requestId,liked:!!post.liked,likes:post.likes||0});
+  post.liked=next;post.likes=Math.max(0,(post.likes||0)+(next?1:-1));
+  zuPaintReactions(index);
+  if(next){const heart=zuFeedArticle(index)?.querySelector('.zu-like');heart?.classList.remove('is-popping');void heart?.offsetWidth;heart?.classList.add('is-popping')}
+  const data={id:post.id,liked:next,requestId};
+  if(DEMO)return zuLiked({...data,likes:post.likes});
+  Native.send('post.like',data);
+}
+function zuLiked(d){
+  const pending=ZuFeed.likes.get(d.id);if(!pending||pending.requestId!==d.requestId)return;
+  ZuFeed.likes.delete(d.id);
+  const index=Zu.posts.findIndex(post=>post.id===d.id);if(index<0)return;
+  Object.assign(Zu.posts[index],{liked:!!d.liked,likes:d.likes});zuPaintReactions(index);
+}
+Native.on('post.liked',zuLiked);
+Native.on('post.like.error',d=>{
+  const pending=ZuFeed.likes.get(d.id);if(!pending||pending.requestId!==d.requestId)return;
+  ZuFeed.likes.delete(d.id);
+  const index=Zu.posts.findIndex(post=>post.id===d.id);
+  if(index>=0){Object.assign(Zu.posts[index],{liked:pending.liked,likes:pending.likes});zuPaintReactions(index)}
+  appNotice(d.message||'Your like could not be saved. Try again.');
+});
+/* A double tap on a photo likes it (never unlikes it) and shows a large heart. */
+function zuFeedTap(event,index){
+  if(event.pointerType==='mouse'&&event.button!==0)return;
+  const now=Date.now(),last=ZuFeed.lastTap;
+  if(last&&last.index===index&&now-last.at<320&&Math.hypot(event.clientX-last.x,event.clientY-last.y)<40){
+    ZuFeed.lastTap=null;
+    const burst=zuFeedArticle(index)?.querySelector('.zu-like-burst');
+    if(burst){burst.classList.remove('is-bursting');void burst.offsetWidth;burst.classList.add('is-bursting')}
+    zuToggleLike(index,true);return;
+  }
+  ZuFeed.lastTap={index,at:now,x:event.clientX,y:event.clientY};
+}
+function zuPostOptions(index){Zu.gallery=index;zuConfirmDelete()}
+
+/* Comments open in a sheet over the feed. Authors delete their own comments;
+   the post owner may delete any comment on their post. */
+function zuCommentsMarkup(){
+  const c=ZuFeed.comments,me=S.user?.id||'',owner=zuSelf();
+  if(c.loading&&!c.items.length)return `<div class="zu-comments-state" role="status" aria-label="Loading comments" aria-busy="true">${[0,1,2].map(()=>`<div class="zu-comment">${'<span class="av zh-skeleton-shape"></span>'}<div>${skeletonLine('70%',12)}${skeletonLine('40%',10)}</div></div>`).join('')}</div>`;
+  if(c.error&&!c.items.length)return `<div class="zu-comments-state" role="alert"><p>${esc(c.error)}</p><button type="button" class="zu-secondary" onclick="zuLoadComments()">Try again</button></div>`;
+  if(!c.items.length)return `<div class="zu-comments-state"><h4>No comments yet</h4><p>Start the conversation.</p></div>`;
+  return c.items.map(comment=>{const mine=comment.user?.id===me,canDelete=mine||owner;return `<div class="zu-comment" data-comment-id="${esc(comment.id)}"><span class="av">${zuAvatar({name:comment.user?.name,avatarUrl:comment.user?.avatarUrl})}</span><div><p><strong>${esc(comment.user?.name||'BinzoLive member')}</strong> ${esc(comment.text)}</p><span class="zu-comment-meta">${esc(zuAgo(comment.createdAt,true))}${canDelete?`<button type="button" onclick="zuDeleteComment('${domId(comment.id)}')" ${c.deleting===comment.id?'disabled':''}>${c.deleting===comment.id?'Deleting…':'Delete'}</button>`:''}</span></div></div>`}).join('')
+    +(c.items.length<c.total?`<button type="button" class="zu-comments-more" onclick="zuLoadComments(true)" ${c.loading?'disabled':''}>${c.loading?'Loading…':'Load more comments'}</button>`:'');
+}
+function zuPaintComments(){
+  const list=document.querySelector('.zu-comments-list');if(list)list.innerHTML=zuCommentsMarkup();
+  const post=document.querySelector('.zu-comment-post');if(post)post.disabled=ZuFeed.comments.sending||!document.getElementById('zu-comment-input')?.value.trim();
+}
+function zuOpenComments(index){
+  const post=Zu.posts[index],dialog=document.querySelector('.zu-feed-dialog');if(!post||!dialog)return;
+  zuCloseComments();
+  Object.assign(ZuFeed.comments,{postId:post.id,index,items:[],total:post.comments||0,page:0,error:'',sending:false,deleting:''});
+  const avatar=zuAvatar({name:S.user?.name||me.n,avatarUrl:S.user?.avatarUrl});
+  dialog.insertAdjacentHTML('beforeend',`<div class="zu-comments-backdrop" onclick="zuCloseComments()"></div><section class="zu-comments" role="dialog" aria-modal="true" aria-labelledby="zu-comments-title">
+    <header><h3 id="zu-comments-title">Comments</h3><button type="button" class="zu-icon-button" aria-label="Close comments" onclick="zuCloseComments()">${hi('close',20)}</button></header>
+    <div class="zu-comments-list" aria-live="polite"></div>
+    <form class="zu-comment-form" onsubmit="event.preventDefault();zuSendComment()"><span class="av">${avatar}</span><input id="zu-comment-input" maxlength="1000" placeholder="Add a comment…" aria-label="Add a comment" autocomplete="off" enterkeyhint="send" oninput="zuPaintComments()"><button type="submit" class="zu-comment-post" disabled>Post</button></form>
+  </section>`);
+  zuLoadComments();
+  document.getElementById('zu-comment-input')?.focus({preventScroll:true});
+}
+function zuCloseComments(){
+  document.querySelectorAll('.zu-comments,.zu-comments-backdrop').forEach(el=>el.remove());
+  const index=ZuFeed.comments.index;ZuFeed.comments.postId='';
+  zuFeedArticle(index)?.querySelector('.zu-comment-button')?.focus({preventScroll:true});
+}
+function zuLoadComments(more=false){
+  const c=ZuFeed.comments;if(!c.postId||c.loading)return;
+  c.loading=true;c.error='';c.requestId=++Zu.sequence;
+  const data={id:c.postId,page:more?c.page+1:1,requestId:c.requestId};
+  zuPaintComments();
+  if(DEMO){Native.receive({type:'data.postComments',data:{...data,comments:[],total:0,limit:20}});return}
+  Native.send('post.comments.load',data);
+}
+Native.on('data.postComments',d=>{
+  const c=ZuFeed.comments;if(d.id!==c.postId||d.requestId!==c.requestId)return;
+  c.loading=false;c.error='';c.page=d.page||1;c.total=d.total||0;
+  const rows=d.comments||[];
+  c.items=c.page>1?[...c.items,...rows.filter(row=>!c.items.some(old=>old.id===row.id))]:rows;
+  zuPaintComments();
+});
+Native.on('post.comments.error',d=>{
+  const c=ZuFeed.comments;if(d.id!==c.postId||d.requestId!==c.requestId)return;
+  c.loading=false;c.error=d.message||'Comments could not be loaded. Try again.';zuPaintComments();
+});
+function zuSendComment(){
+  const c=ZuFeed.comments,input=document.getElementById('zu-comment-input'),text=input?.value.trim()||'';
+  if(!c.postId||!text||c.sending||zuOffline())return;
+  c.sending=true;c.sendId=++Zu.sequence;input.disabled=true;zuPaintComments();
+  const data={id:c.postId,text,requestId:c.sendId};
+  if(DEMO){Native.receive({type:'post.comment.saved',data:{id:c.postId,requestId:c.sendId,comment:{id:'preview-'+c.sendId,text,createdAt:new Date().toISOString(),user:{id:S.user?.id||'',name:S.user?.name||me.n,avatarUrl:S.user?.avatarUrl||''}}}});return}
+  Native.send('post.comment.add',data);
+}
+function zuCommentCount(postId,delta){
+  const index=Zu.posts.findIndex(post=>post.id===postId);if(index<0)return;
+  Zu.posts[index].comments=Math.max(0,(Zu.posts[index].comments||0)+delta);zuPaintReactions(index);
+}
+Native.on('post.comment.saved',d=>{
+  const c=ZuFeed.comments;if(d.requestId!==c.sendId)return;
+  c.sending=false;zuCommentCount(d.id,1);
+  if(d.id!==c.postId)return;
+  c.items=[d.comment,...c.items];c.total++;
+  const input=document.getElementById('zu-comment-input');if(input){input.disabled=false;input.value='';input.focus({preventScroll:true})}
+  zuPaintComments();
+});
+Native.on('post.comment.error',d=>{
+  const c=ZuFeed.comments;if(d.requestId!==c.sendId)return;
+  c.sending=false;const input=document.getElementById('zu-comment-input');if(input)input.disabled=false;
+  zuPaintComments();appNotice(d.message||'Your comment could not be posted. Try again.');
+});
+function zuDeleteComment(commentId){
+  const c=ZuFeed.comments;if(!c.postId||c.deleting||zuOffline())return;
+  c.deleting=commentId;c.deleteId=++Zu.sequence;zuPaintComments();
+  const data={id:c.postId,commentId,requestId:c.deleteId};
+  if(DEMO){Native.receive({type:'post.comment.deleted',data});return}
+  Native.send('post.comment.delete',data);
+}
+Native.on('post.comment.deleted',d=>{
+  const c=ZuFeed.comments;if(d.requestId!==c.deleteId)return;
+  c.deleting='';zuCommentCount(d.id,-1);
+  if(d.id!==c.postId)return;
+  c.items=c.items.filter(comment=>comment.id!==d.commentId);c.total=Math.max(0,c.total-1);zuPaintComments();
+});
+Native.on('post.comment.delete.error',d=>{
+  const c=ZuFeed.comments;if(d.requestId!==c.deleteId)return;
+  c.deleting='';zuPaintComments();appNotice(d.message||'The comment could not be deleted. Try again.');
+});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{ZuFeed.likes.clear();ZuFeed.comments.postId=''});
 
 /* Earnings are INR paise. Withdrawal requests never spend or convert coins. */
 const PayoutUI={accountId:'',sequence:0,loadRequest:0,loadSubmitRequest:0,submitRequest:0,recoveryRequired:false,wallet:null,walletRequested:false,requested:false,loading:false,loadError:'',items:[],total:0,page:1,limit:20,amount:'',address:'',review:null,attempt:null,busy:false,error:'',success:null};

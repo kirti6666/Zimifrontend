@@ -5,22 +5,22 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
-const { ROUND } = require('./flat-corners.cjs');
+const { ROUND, STRAIGHT } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const account = { user: { id:'507f1f77bcf86cd799439001', name:'Asha Sharma', role:'sender', serverRole:'user', hostStatus:'none', isVerifiedHost:false, isPhoneVerified:true, city:'Pune' }, verification:'none', requiresOnboarding:false };
 const settings = { profile:{...account.user,bio:'Here for good conversations.',languages:['Hindi','English'],maskedPhone:'+91 *******3210'},stats:{fans:17,following:5,giftsSent:4,giftsReceived:9},standing:{},preferences:{pushNotifications:false,matchCategory:null},privacy:{discoverable:true,showActivity:true,allowRequests:false},categories:['Music','Talk'],capabilities:{pushNotifications:false} };
 const receive = (page,type,data) => page.evaluate(message=>Native.receive(message),{type,data});
 const navigate = (page,view) => page.evaluate(view=>go(view),view);
 async function audit(page,label){
-  const state = await page.evaluate(round=>{
+  const state = await page.evaluate(({round,straight})=>{
     const nodes=[document.documentElement,...document.querySelectorAll('body,body *')].filter(el=>el.getClientRects().length);
     const wrong=nodes.flatMap(el=>{
       const c=getComputedStyle(el),name=el.id||el.classList?.value||el.tagName;
-      const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round);
+      const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
       return [c.boxShadow!=='none'&&`${name}: shadow`,c.textShadow!=='none'&&`${name}: text shadow`,c.filter.includes('drop-shadow')&&`${name}: filter shadow`,!radiusOK&&`${name}: radius ${c.borderRadius}`].filter(Boolean);
     });
     return {wrong,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1};
-  },ROUND);
+  },{round:ROUND,straight:STRAIGHT});
   assert.deepEqual(state.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
   assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: pure white background`);
   assert.equal(state.overflow,false,`${label}: fits viewport`);

@@ -50,6 +50,26 @@ export interface UserPost {
   mediaUrl: string;
   kind: "photo" | "video";
   caption: string;
+  createdAt?: string;
+  /** Reactions, present on profile post lists. */
+  likes?: number;
+  comments?: number;
+  liked?: boolean;
+}
+
+export interface PostComment {
+  id: string;
+  text: string;
+  createdAt?: string;
+  user: { id: string; name: string; avatarUrl: string };
+}
+
+export interface PostComments {
+  id: string;
+  comments: PostComment[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface Host {
@@ -90,11 +110,6 @@ export interface PublicProfile extends Host {
   crown?: boolean;
   /** This person follows the viewer. */
   followsYou?: boolean;
-  /** A member viewing a host: whether they let this host video-call them. */
-  allowsVideoCalls?: boolean;
-  /** A host viewing a member: which calls the host may start. */
-  canVoiceCall?: boolean;
-  canVideoCall?: boolean;
 }
 
 export interface PublicPosts {

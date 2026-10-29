@@ -250,6 +250,7 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
  `<div class="sk dark" style="height:78px;border-radius:15px"></div>`).join("")}</div>`}
 
 function nav(){const el=document.getElementById("nav");
+ if(S.v==='create-post'){el.style.display='none';el.replaceChildren();return}
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
  if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
@@ -913,7 +914,6 @@ let mediaSequence=0;
 async function pickMedia(e,k){
  const files=Array.from(e.target.files||[]);e.target.value="";
  if(!files.length||S.profileSaving||S.mediaPreparing||S.postPublishing||!["avatar","cover","posts"].includes(k))return;
- if(k==="posts"&&!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
  const owner=S.user;S.mediaPreparing=true;S.mediaError="";r();
  try{
   const image=await obReadPhoto(files[0]);
@@ -927,8 +927,7 @@ async function pickMedia(e,k){
 }
 function publishPost(){
  if(S.postPublishing||S.profileSaving||S.mediaPreparing||!S.postDraftData)return;
- if(!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
- if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";r();return appNotice("Preview post added.")}
+ if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";if(S.v==='create-post')go('profile');else r();return appNotice("Preview post added.")}
  S.postPublishing=true;S.postError="";S.postRequestId=++mediaSequence;
  Native.send("media.post.create",{photo:S.postDraftData,caption:S.postCaption||"",requestId:S.postRequestId});r();
 }
@@ -951,11 +950,7 @@ function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPubl
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
- ${isHost()?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
-  <label class="editpost add">${I('grid',18)} Add photo<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'posts')" ${disabled}></label>
-  ${window.contentSurface?.('posts','posts','Loading your posts')||(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
-  ${DEMO&&!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
- </div>${S.postDraftData?`<div class="editposts"><span class="editpost"><img src="${imageSrc(S.postDraftData)}" alt="Photo ready to publish"></span></div><label class="editlabel" for="postcaption">Caption</label><textarea id="postcaption" class="editinput" maxlength="2000" placeholder="Say something about this moment" oninput="S.postCaption=this.value" ${disabled}>${esc(S.postCaption||"")}</textarea>${S.postError?`<div class="ob-error" role="alert">${esc(S.postError)}</div>`:""}<button class="editsave" onclick="publishPost()" ${disabled}>${S.postPublishing?"Publishing photo…":"Publish photo"}</button>`:""}</div>`:""}</div>`}
+ <button type="button" class="zpost-editor-link" onclick="ZimiPostCreate.open()" ${disabled}>${I('plus',18)} Create a post ${I('chev',16)}</button></div>`}
 
 function vProfile(){
  const host=isHost();
@@ -1650,13 +1645,14 @@ function r(){
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const postFocus=window.ZimiPostCreate?.capture();
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
  if(window.ZimiHome)window.ZimiHome.theme();
  const top=document.getElementById("top"),header=topFor();
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
- let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+ let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,'create-post':()=>ZimiPostCreate.render(),
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,incoming:vMemberRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
@@ -1675,7 +1671,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1736,7 +1732,7 @@ Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.reque
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
 Native.on("data.posts",d=>{S.postData=(d.posts||[]).filter(p=>p.kind==="photo").map(p=>obPhotoUrl(p.mediaUrl)).filter(Boolean);refresh()});
-Native.on("post.saved",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError="";S.postDraftData="";S.postCaption="";const url=obPhotoUrl(d.post?.mediaUrl);if(url)S.postData=[url,...S.postData.filter(src=>src!==url)];r();appNotice("Your photo is published.");obHaptic("success")});
+Native.on("post.saved",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError="";S.postDraftData="";S.postCaption="";const url=obPhotoUrl(d.post?.mediaUrl);if(url)S.postData=[url,...S.postData.filter(src=>src!==url)];if(S.v==='create-post')go('profile');else r();appNotice("Your photo is published.");obHaptic("success")});
 Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError=d.message||"Your photo could not be published. Please try again.";r();obHaptic("error")});
 
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});

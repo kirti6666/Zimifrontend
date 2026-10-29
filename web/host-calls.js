@@ -63,7 +63,7 @@ function hcSetupView() {
         <button type="button" onclick="hcSetupMic()" aria-pressed="${!S.mic}" aria-label="${S.mic ? 'Mute microphone' : 'Unmute microphone'}">${hi(S.mic ? 'mic' : 'micoff', 18)}</button>
         <button type="button" onclick="hcSetupCam()" aria-pressed="${!cam}" aria-label="${cam ? 'Turn camera off' : 'Turn camera on'}">${hi(cam ? 'vid' : 'camoff', 18)}</button>
       </div></header>
-    <div class="hc-setup-panels">${hcRateCard()}${hcVisibilityRow()}</div>
+    <div class="hc-setup-panels">${hcRateCard()}${hcVisibilityRow()}${hsCardButton()}</div>
     <div class="hc-camera-space"><i class="hc-guide" aria-hidden="true"></i>
       <div class="hc-camera-message" ${p === 'failed' ? 'role="alert"' : p === 'starting' ? 'role="status" aria-busy="true"' : ''}>
         ${status ? `<b>${esc(status)}</b>` : ''}

@@ -3032,16 +3032,74 @@ test('members answer a verified host\'s call, and a refused answer keeps the cal
   h.bridge.close();
 });
 
-test('a member saves which host may video-call them', async () => {
+test('verified members publish photos and delete their own posts through correlated native events',async()=>{
+  const h=harness();
+  h.overrides.me=()=>({...account(),user:{...account().user,serverRole:'user'},requiresOnboarding:false});
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.createPost=()=>({id:'member-photo',kind:'photo',mediaUrl:'https://media.example.test/photo.jpg'});
+  h.bridge.handle({type:'media.post.create',data:{photo:'data:image/png;base64,AAAA',caption:'A member photo',requestId:11}});await settle();
+  assert.equal(h.count('createPost'),1);assert.equal(h.find('post.saved').at(-1).data.requestId,11);
+  h.bridge.handle({type:'media.post.delete',data:{id:'member-photo',requestId:12}});await settle();
+  assert.deepEqual({...h.find('post.deleted').at(-1).data},{id:'member-photo',requestId:12});
+  h.overrides.deletePost=()=>{throw new h.ApiError('Not your post',404)};
+  h.bridge.handle({type:'media.post.delete',data:{id:'other-photo',requestId:13}});await settle();
+  assert.equal(h.find('post.delete.error').at(-1).data.requestId,13);
+  h.bridge.close();
+});
+
+test('deactivation waits for a confirmed API result, deduplicates requests and preserves a newer login',async()=>{
+  const h=harness(),pending=deferred();await h.session.setSessionTokens(tokenPair());
+  h.overrides.deactivateAccount=()=>{throw new h.ApiError('Please retry',503)};
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:1}});await settle();
+  assert.equal(h.find('account.deactivate.error').at(-1).data.requestId,1);
+  assert.ok(await h.session.getToken(),'A failed request keeps the session');
+  h.overrides.deactivateAccount=()=>pending.promise;
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:2}});
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:2}});await settle();
+  assert.equal(h.count('deactivateAccount'),2,'One failed attempt and one pending retry');
+  pending.resolve({deactivated:true});await settle();
+  assert.equal(h.find('account.deactivated').at(-1).data.requestId,2);
+  assert.equal(await h.session.getToken(),null,'Successful deactivation clears stored credentials');
+  await h.session.setSessionTokens(tokenPair());const stale=deferred();h.overrides.deactivateAccount=()=>stale.promise;
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:3}});await settle();
+  h.bridge.handle({type:'auth.logout',data:{}});await settle();await h.session.setSessionTokens(tokenPair('bob'));
+  stale.resolve({deactivated:true});await settle();
+  assert.equal(await h.session.getToken(),tokenPair('bob').accessToken,'An old completion cannot clear another account');
+  assert.equal(h.find('account.deactivated').length,1);h.bridge.close();
+});
+
+test('creator card saves require current approved access and their bridge messages reject forged payloads',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:1}});await settle();
+  assert.equal(h.count('saveCreatorCard'),0);
+  h.overrides.me=()=>approvedAccount();h.overrides.saveCreatorCard=()=>({...approvedAccount(),user:{...approvedAccount().user,coverUrl:'https://media.example.test/card.jpg'}});
+  h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:2}});await settle();
+  assert.equal(h.find('creator.card.saved').at(-1).data.requestId,2);
+  for(const message of [{type:'account.deactivate',data:{confirmed:false,requestId:1}},{type:'media.post.delete',data:{id:'post',requestId:1,userId:'someone-else'}},{type:'creator.card.save',data:{photo:'https://untrusted.example/image.jpg',requestId:1}}])assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)),null);
+  h.bridge.close();
+});
+
+test('post likes and comments go through the server and report failures', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
   await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
-  h.overrides.setCallPermission = (id, video) => ({ video });
-  h.bridge.handle({ type: 'call.permission.set', data: { id: 'host-1', video: true, requestId: 7 } }); await settle();
-  assert.deepEqual({ ...h.find('call.permission.saved').at(-1).data }, { id: 'host-1', video: true, requestId: 7 });
-  h.overrides.setCallPermission = () => { throw new h.ApiError('Your call permission could not be confirmed. Try again.', 502); };
-  h.bridge.handle({ type: 'call.permission.set', data: { id: 'host-1', video: false, requestId: 8 } }); await settle();
-  assert.deepEqual({ ...h.find('call.permission.error').at(-1).data }, { id: 'host-1', video: false, message: 'Your call permission could not be confirmed. Try again.', requestId: 8 });
+  const json = value => JSON.parse(JSON.stringify(value));
+  h.overrides.likePost = (id, liked) => ({ liked, likes: 5 });
+  h.bridge.handle({ type: 'post.like', data: { id: 'post-1', liked: true, requestId: 3 } }); await settle();
+  assert.deepEqual(json(h.find('post.liked').at(-1).data), { id: 'post-1', liked: true, likes: 5, requestId: 3 });
+  h.overrides.likePost = () => { throw new h.ApiError('Your like could not be confirmed. Try again.', 502); };
+  h.bridge.handle({ type: 'post.like', data: { id: 'post-1', liked: false, requestId: 4 } }); await settle();
+  assert.deepEqual(json(h.find('post.like.error').at(-1).data), { id: 'post-1', liked: false, message: 'Your like could not be confirmed. Try again.', requestId: 4 });
+  h.overrides.postComments = (id, page) => ({ id, comments: [], total: 0, page, limit: 20 });
+  h.bridge.handle({ type: 'post.comments.load', data: { id: 'post-1', page: 2, requestId: 5 } }); await settle();
+  assert.deepEqual(json(h.find('data.postComments').at(-1).data), { id: 'post-1', comments: [], total: 0, page: 2, limit: 20, requestId: 5 });
+  h.overrides.addPostComment = (id, text) => ({ id: 'comment-1', text, user: { id: 'alice', name: 'alice', avatarUrl: '' } });
+  h.bridge.handle({ type: 'post.comment.add', data: { id: 'post-1', text: 'Nice', requestId: 6 } }); await settle();
+  assert.equal(h.find('post.comment.saved').at(-1).data.comment.text, 'Nice');
+  h.bridge.handle({ type: 'post.comment.add', data: { id: 'post-1', text: '   ', requestId: 7 } }); await settle();
+  assert.equal(h.count('addPostComment'), 1, 'Blank comments never reach the server');
+  h.bridge.handle({ type: 'post.comment.delete', data: { id: 'post-1', commentId: 'comment-1', requestId: 8 } }); await settle();
+  assert.deepEqual(json(h.find('post.comment.deleted').at(-1).data), { id: 'post-1', commentId: 'comment-1', requestId: 8 });
   h.bridge.close();
 });

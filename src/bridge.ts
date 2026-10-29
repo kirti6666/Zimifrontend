@@ -6,7 +6,7 @@ import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnect
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet, PostComment, PostComments } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
@@ -67,8 +67,15 @@ export type WebMessage =
   | { type: "auth.google"; data: { role: Role; signup: boolean } }
   | { type: "auth.emailCheck"; data: { email: string; requestId: number } }
   | { type: "auth.logout"; data: Record<string, never> }
+  | { type: "account.deactivate"; data: { confirmed: true; requestId: number } }
+  | { type: "creator.card.save"; data: { photo: string; requestId: number } }
   | { type: "profile.save"; data: Record<string, unknown> }
   | { type: "media.post.create"; data: { photo: string; caption: string; requestId?: number } }
+  | { type: "media.post.delete"; data: { id: string; requestId: number } }
+  | { type: "post.like"; data: { id: string; liked: boolean; requestId?: number } }
+  | { type: "post.comments.load"; data: { id: string; page?: number; requestId?: number } }
+  | { type: "post.comment.add"; data: { id: string; text: string; requestId: number } }
+  | { type: "post.comment.delete"; data: { id: string; commentId: string; requestId: number } }
   | { type: "verification.submit"; data: Record<string, unknown> }
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls"; data: { on: boolean } }
@@ -81,7 +88,6 @@ export type WebMessage =
   | { type: "blocked.load"; data: { page?: number } }
   | { type: "block.set"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "follow.set"; data: { id: string; on: boolean; requestId?: number } }
-  | { type: "call.permission.set"; data: { id: string; video: boolean; requestId?: number } }
   | { type: "chat.open"; data: { with: string } }
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
@@ -124,6 +130,12 @@ export type AppMessage =
   | { type: "auth.emailChecked"; data: { email: string; requestId: number; available?: boolean; message?: string; code?: string; status?: number } }
   | { type: "post.saved"; data: { post: UserPost; requestId?: number } }
   | { type: "post.error"; data: { message: string; requestId?: number } }
+  | { type: "post.deleted"; data: { id: string; requestId: number } }
+  | { type: "post.delete.error"; data: { id: string; requestId: number; message: string } }
+  | { type: "creator.card.saved"; data: { account: Account; requestId: number } }
+  | { type: "creator.card.error"; data: { message: string; requestId: number } }
+  | { type: "account.deactivated"; data: { requestId: number } }
+  | { type: "account.deactivate.error"; data: { message: string; requestId: number } }
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } }
   | { type: "data.loaded"; data: Record<string, never> }
@@ -161,9 +173,15 @@ export type AppMessage =
   | { type: "block.saved"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "block.error"; data: { id: string; blocked: boolean; message: string; requestId?: number } }
   | { type: "follow.saved"; data: { id: string; on: boolean; requestId?: number } }
+  | { type: "post.liked"; data: { id: string; liked: boolean; likes: number; requestId?: number } }
+  | { type: "post.like.error"; data: { id: string; liked: boolean; message: string; requestId?: number } }
+  | { type: "data.postComments"; data: PostComments & { requestId?: number } }
+  | { type: "post.comments.error"; data: { id: string; page: number; message: string; requestId?: number } }
+  | { type: "post.comment.saved"; data: { id: string; comment: PostComment; requestId: number } }
+  | { type: "post.comment.error"; data: { id: string; message: string; requestId: number } }
+  | { type: "post.comment.deleted"; data: { id: string; commentId: string; requestId: number } }
+  | { type: "post.comment.delete.error"; data: { id: string; commentId: string; message: string; requestId: number } }
   | { type: "follow.error"; data: { id: string; on: boolean; message: string; requestId?: number } }
-  | { type: "call.permission.saved"; data: { id: string; video: boolean; requestId?: number } }
-  | { type: "call.permission.error"; data: { id: string; video: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls.saved"; data: { on: boolean } }
   | { type: "host.callStatus"; data: Awaited<ReturnType<typeof api.hostCallStatus>> }
@@ -194,7 +212,7 @@ export type AppMessage =
   | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
-  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; canVoiceCall?: boolean; canVideoCall?: boolean } }
+  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } }
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
@@ -387,13 +405,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!current(version) || sessionVersion !== getSessionVersion() || revision !== hostRevision) return;
     applyHostAccount(account);
   };
-  const requireApprovedHost = async () => {
+  const requireApprovedHost = async (allowMemberPhotos = false) => {
     const version = epoch, sessionVersion = getSessionVersion(), revision = hostRevision;
     const account = await api.me(true);
     if (!current(version) || sessionVersion !== getSessionVersion()) throw new ApiError("Your sign-in changed. Please try again.", 409);
     if (revision !== hostRevision) throw new ApiError("Your creator approval changed. Please try again.", 403);
     applyHostAccount(account);
-    if (!approvedHost(account)) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
+    if (!approvedHost(account) && !(allowMemberPhotos && account.user.serverRole === "user")) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
     return revision;
   };
   const acceptHostCall = async (callId: string, version: number) => {
@@ -714,7 +732,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       readResource("missed", () => api.missedCalls(), data => deliver({ type: "data.missed", data })),
       readResource("calls", () => api.callHistory(), data => deliver({ type: "data.calls", data })),
       readResource("transactions", () => api.transactions(), data => deliver({ type: "data.transactions", data })),
-      readResource("posts", () => hasHostAccess() ? api.myPosts() : Promise.resolve({ posts: [] }), data => deliver({ type: "data.posts", data })),
+      readResource("posts", () => accountRole === "user" || hasHostAccess() ? api.myPosts() : Promise.resolve({ posts: [] }), data => deliver({ type: "data.posts", data })),
       refreshWallet(),
     ]);
     if (!current(version)) return;
@@ -1122,6 +1140,33 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       }
+      case "account.deactivate": {
+        const sessionVersion = getSessionVersion();
+        try {
+          await api.deactivateAccount();
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "account.deactivated", data: { requestId: msg.data.requestId } });
+            await handle({ type: "auth.logout", data: {} });
+          }
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "account.deactivate.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+        }
+        return;
+      }
+      case "creator.card.save": {
+        try {
+          const approval = await requireApprovedHost();
+          const account = await api.saveCreatorCard(msg.data.photo);
+          if (current(version) && approval === hostRevision && hasHostAccess()) {
+            applyHostAccount(account, false);
+            emit({ type: "creator.card.saved", data: { account, requestId: msg.data.requestId } });
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
+          }
+        } catch (error) {
+          if (current(version)) emit({ type: "creator.card.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+        }
+        return;
+      }
       case "profile.save": {
         const { onboarding, requestId, ...profile } = msg.data;
         const id = typeof requestId === "number" ? requestId : undefined;
@@ -1162,12 +1207,61 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (publishingAt === version) return;
         publishingAt = version;
         try {
-          const approval = await requireApprovedHost();
+          const approval = await requireApprovedHost(true), member = accountRole === "user";
           const post = await api.createPost(msg.data.photo, msg.data.caption);
-          if (current(version) && approval === hostRevision && hasHostAccess()) emit({ type: "post.saved", data: { post, requestId: msg.data.requestId } });
+          if (current(version) && approval === hostRevision && (member || hasHostAccess())) emit({ type: "post.saved", data: { post, requestId: msg.data.requestId } });
         } catch (error) {
           if (current(version)) emit({ type: "post.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
         } finally { if (publishingAt === version) publishingAt = undefined; }
+        return;
+      }
+      case "post.like": {
+        const { id, liked, requestId } = msg.data;
+        try {
+          const result = await api.likePost(id, liked);
+          if (current(version)) emit({ type: "post.liked", data: { id, ...result, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.like.error", data: { id, liked, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "post.comments.load": {
+        const { id, page = 1, requestId } = msg.data;
+        try {
+          const data = await api.postComments(id, page);
+          if (current(version)) emit({ type: "data.postComments", data: { ...data, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.comments.error", data: { id, page, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "post.comment.add": {
+        const { id, text, requestId } = msg.data;
+        try {
+          const comment = await api.addPostComment(id, text);
+          if (current(version)) emit({ type: "post.comment.saved", data: { id, comment, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.comment.error", data: { id, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "post.comment.delete": {
+        const { id, commentId, requestId } = msg.data;
+        try {
+          await api.deletePostComment(id, commentId);
+          if (current(version)) emit({ type: "post.comment.deleted", data: { id, commentId, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.comment.delete.error", data: { id, commentId, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "media.post.delete": {
+        try {
+          await api.deletePost(msg.data.id);
+          if (current(version)) emit({ type: "post.deleted", data: msg.data });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.delete.error", data: { ...msg.data, message: errorMessage(error) } });
+        }
         return;
       }
       case "verification.submit":
@@ -1251,16 +1345,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "follow.error", data: { id, on, message: errorMessage(error), requestId } });
-        }
-        return;
-      }
-      case "call.permission.set": {
-        const { id, video, requestId } = msg.data, sessionVersion = getSessionVersion();
-        try {
-          const result = await api.setCallPermission(id, video);
-          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "call.permission.saved", data: { id, video: result.video, requestId } });
-        } catch (error) {
-          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "call.permission.error", data: { id, video, message: errorMessage(error), requestId } });
         }
         return;
       }
@@ -1556,8 +1640,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "call.permission.set", "payout.request", "ads.click"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "call.permission.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
+      const serialized = notificationWrite || ["account.deactivate", "creator.card.save", "media.post.delete", "call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

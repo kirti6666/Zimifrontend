@@ -71,6 +71,12 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const adapters = load('src/api/adapters.ts');
   const media = load('src/api/uploads.ts');
+  const reacted = adapters.postFrom({ _id: 'p1', mediaUrl: 'https://media.example.test/p.jpg', kind: 'photo', caption: 'Hi', likes: 3.7, comments: -2, liked: true });
+  assert.deepEqual([reacted.likes, reacted.comments, reacted.liked], [3, 0, true], 'Post reactions are whole, non-negative counts');
+  assert.equal('likes' in adapters.postFrom({ _id: 'p2', mediaUrl: 'https://media.example.test/p.jpg', kind: 'photo' }), false, 'Posts without reactions stay without them');
+  assert.deepEqual(plain(adapters.commentFrom({ _id: 'c1', text: 'Lovely', createdAt: '2026-10-29T09:00:00.000Z', userId: { _id: 'u1', name: 'Asha', avatar: { url: 'https://media.example.test/a.jpg' } } })),
+    { id: 'c1', text: 'Lovely', createdAt: '2026-10-29T09:00:00.000Z', user: { id: 'u1', name: 'Asha', avatarUrl: 'https://media.example.test/a.jpg' } });
+  assert.throws(() => adapters.commentFrom({ _id: 'c2' }), /comment could not be loaded/);
   assert.deepEqual(plain(phonePayload('+91 98765 43210')), { country_code: '+91', phone: '9876543210' });
   assert.throws(() => phonePayload('+91 5467985456'), /Indian/, 'India keeps its mobile number check');
   assert.deepEqual(plain(phonePayload('+14155550123', '+1')), { country_code: '+1', phone: '4155550123' });
@@ -204,9 +210,22 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(uploads.length, 0, 'Removing a cover does not issue an upload'); finished();
 
   reset();
+  expect('GET', '/auth/me', { user: { ...user, role:'host', hostStatus:'pending', isVerifiedHost:false } });
+  await assert.rejects(api.createPost(png, 'Hello'), /Verify your account/);
+  assert.equal(uploads.length, 0, 'A pending host cannot bypass publishing access'); finished();
+  reset();
+  const memberPost={_id:'sender-post',mediaKey:'posts/member-id/sender.png',mediaUrl:'https://cdn.example.test/sender.png',kind:'photo',caption:'Hello'};
   expect('GET', '/auth/me', { user });
-  await assert.rejects(api.createPost(png, 'Hello'), /approved/);
-  assert.equal(uploads.length, 0, 'A member cannot upload post media through the creator UI'); finished();
+  expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/member-post',key:memberPost.mediaKey},body=>assert.equal(body.purpose,'post'));
+  expect('POST','/posts',memberPost,body=>assert.equal(body.kind,'photo'));
+  assert.equal((await api.createPost(png,'Hello')).id,'sender-post','Sender photos use the confirmed upload and publication path');finished();
+  expect('DELETE','/posts/sender-post',{});await api.deletePost('sender-post');finished();
+  expect('POST','/account/deactivate',{deactivated:true},body=>assert.deepEqual(plain(body),{confirmed:true}));await api.deactivateAccount();finished();
+  reset();
+  expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/card',key:'covers/member-id/card.png'},body=>assert.equal(body.purpose,'cover'));
+  expect('PATCH','/profile',{},body=>assert.deepEqual(plain(body),{coverKey:'covers/member-id/card.png'}));
+  expect('GET','/auth/me',{user:{...user,coverUrl:'https://cdn.example.test/card.png'}});
+  assert.equal((await api.saveCreatorCard(png)).user.coverUrl,'https://cdn.example.test/card.png');finished();
   reset();
   const approvedUser = { ...updatedUser, role: 'host', hostStatus: 'approved', isVerifiedHost: true };
   const newPost = { _id: 'new-post', mediaKey: 'posts/member-id/new.png', mediaUrl: 'https://cdn.example.test/post.png', kind: 'photo', caption: 'Hello' };

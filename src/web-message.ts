@@ -114,6 +114,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{4,8}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
     case "auth.google": valid = role(d.role) && boolean(d.signup); break;
     case "auth.emailCheck": valid = text(d.email, 254) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(d.email)) && d.requestId !== undefined && Object.keys(d).every(key => ["email", "requestId"].includes(key)); break;
+    case "account.deactivate": valid = d.confirmed === true && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["confirmed", "requestId"].includes(key)); break;
+    case "creator.card.save": valid = photoData(d.photo) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["photo", "requestId"].includes(key)); break;
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&
         (d.avatar === undefined || photoData(d.avatar)) && (d.cover === undefined || d.cover === null || photoData(d.cover)) &&
@@ -125,12 +127,16 @@ export function parseWebMessage(raw: string): WebMessage | null {
         (d.gender === undefined || d.gender === "female" || d.gender === "male" || d.gender === "undisclosed");
       break;
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
+    case "post.like": valid = identifier(d.id) && boolean(d.liked) && (d.requestId === undefined || Number.isSafeInteger(d.requestId)) && Object.keys(d).every(key => ["id", "liked", "requestId"].includes(key)); break;
+    case "post.comments.load": valid = identifier(d.id) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && (d.requestId === undefined || Number.isSafeInteger(d.requestId)) && Object.keys(d).every(key => ["id", "page", "requestId"].includes(key)); break;
+    case "post.comment.add": valid = identifier(d.id) && text(d.text, 1000) && String(d.text).trim().length > 0 && Number.isSafeInteger(d.requestId) && Object.keys(d).every(key => ["id", "text", "requestId"].includes(key)); break;
+    case "post.comment.delete": valid = identifier(d.id) && identifier(d.commentId) && Number.isSafeInteger(d.requestId) && Object.keys(d).every(key => ["id", "commentId", "requestId"].includes(key)); break;
+    case "media.post.delete": valid = identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
     case "presence.duringCalls": valid = boolean(d.on); break;
     case "host.callStatus.load": valid = true; break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
-    case "call.permission.set": valid = identifier(d.id) && boolean(d.video) && (d.requestId === undefined || Number.isSafeInteger(d.requestId)) && Object.keys(d).every(key => ["id", "video", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "chats.readAll": valid = true; break;

@@ -12,6 +12,7 @@ const zuKnown = id => g(id) || PEOPLE[id] || (DEMO ? sender(id) : null);
 const zuCurrent = () => Zu.id === zuId();
 const zuMatches = (d, posts=false) => d.id === Zu.id && d.requestId === (posts ? Zu.postsRequestId : Zu.requestId);
 const zuApproved = p => p?.verified === true && p?.serverRole === 'host';
+const zuGalleryAllowed = p => zuApproved(p) || p?.serverRole === 'user';
 const zuMember = () => DEMO ? !isHost() : zcSelfRole() === 'user';
 const zuHostViewer = () => DEMO ? isHost() : zcSelfRole() === 'host' && isApprovedHost();
 const zuIsMember = p => p?.serverRole === 'user';
@@ -65,7 +66,7 @@ function zuLoad(){
   if(DEMO){
     if(zuSelf()){
       Zu.profile=zuOwnPeer();Zu.profile.joined||='2025-04-12T00:00:00Z';
-      if(zuApproved(Zu.profile)){Zu.posts=(S.postData||[]).map((mediaUrl,index)=>({id:'preview-self-'+index,kind:'photo',mediaUrl,caption:''}));Zu.total=Zu.posts.length;Zu.page=1}
+      if(zuGalleryAllowed(Zu.profile)){Zu.posts=(S.postData||[]).map((mediaUrl,index)=>({id:'preview-self-'+index,kind:'photo',mediaUrl,caption:''}));Zu.total=Zu.posts.length;Zu.page=1}
       return;
     }
     const h=zuKnown(id);if(!h){Zu.error='This profile is no longer available.';return}
@@ -83,7 +84,7 @@ function zuLoad(){
 function zuRetry(){zuLoad();zuPaint()}
 ZimiPullRefresh.register(['profile','host','user'],{refresh:()=>zuRetry(),busy:()=>Zu.loading});
 function zuLoadPosts(more=false){
-  if(DEMO||Zu.postsLoading||!zuApproved(Zu.profile))return;
+  if(DEMO||Zu.postsLoading||!zuGalleryAllowed(Zu.profile))return;
   Zu.postsLoading=true;Zu.postsError='';Zu.postsRequestId=++Zu.sequence;
   Native.send('profile.posts.load',{id:Zu.id,page:more?Zu.page+1:1,requestId:Zu.postsRequestId});
   zuPaint();
@@ -91,7 +92,8 @@ function zuLoadPosts(more=false){
 function zuBack(){if(S.v==='profile'){go('home');return}const back=Zu.back;go(back.view||'home',back.id)}
 function zuEditMedia(kind){
   if(!zuSelf()||zuOffline())return;
-  const target=kind==='photos'?(isApprovedHost()?'posts':'avatar'):kind;
+  if(kind==='photos')return window.ZimiPostCreate.open();
+  const target=kind;
   go('editprofile');
   const input=[...document.querySelectorAll('.editwrap input[type=file]')].find(el=>el.getAttribute('onchange')?.includes("'"+target+"'"));
   input?.closest(target==='posts'?'.editgroup':'.editmedia')?.scrollIntoView({block:'center',behavior:'instant'});
@@ -117,27 +119,11 @@ function zuFollowSaved(d){
   S.following[d.id]=!!d.on;
   const known=zuKnown(d.id);if(known)known.fol=d.on?1:0;
   if(d.id!==Zu.id||d.requestId!==Zu.followRequestId)return;
-  if(Zu.profile){const p=Zu.profile,changed=p.following!==!!d.on;p.following=!!d.on;if(changed)p.followers=Math.max(0,(p.followers||0)+(d.on?1:-1));
-    // Following each other opens voice calls; the member's permission keeps video (and voice) open.
-    if(zuIsMember(p))p.canVoiceCall=!!p.canVideoCall||(p.following&&!!p.followsYou)}
+  if(Zu.profile){const p=Zu.profile,changed=p.following!==!!d.on;p.following=!!d.on;if(changed)p.followers=Math.max(0,(p.followers||0)+(d.on?1:-1))}
   Zu.followBusy=false;Zu.followError='';zuPaint();
-}
-function zuCallPermission(){
-  const p=Zu.profile;if(!p||!zuApproved(p)||!zuMember()||zuSelf()||Zu.loading||Zu.permissionBusy||zuOffline())return;
-  Zu.permissionBusy=true;Zu.permissionError='';Zu.permissionRequestId=++Zu.sequence;
-  const data={id:p.id,video:!p.allowsVideoCalls,requestId:Zu.permissionRequestId};
-  if(DEMO){zuCallPermissionSaved(data);return}
-  Native.send('call.permission.set',data);zuPaint();
-}
-function zuCallPermissionSaved(d){
-  if(d.requestId!==Zu.permissionRequestId)return;
-  Zu.permissionBusy=false;Zu.permissionError='';
-  if(Zu.profile&&d.id===Zu.profile.id)Zu.profile.allowsVideoCalls=!!d.video;
-  zuPaint();
 }
 function zuHostCall(voice){
   const p=Zu.profile;if(!zuHostToMember(p)||Zu.loading||Zu.error||zuOffline())return;
-  if(!(voice?p.canVoiceCall:p.canVideoCall))return;
   hostCallMember(p.id,voice,{name:p.name,avatarUrl:p.avatarUrl,city:p.city,gender:p.gender});
 }
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
@@ -165,18 +151,15 @@ function zuIdentity(p){
   const owner=zuSelf(),followBack=ready&&zuHostToMember(p),showFollow=canFollow||followBack;
   const followLabel=Zu.followBusy?'Updating…':p.following?'Following':followBack&&p.followsYou?'Follow back':'Follow';
   return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
-    ${showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
+    ${owner?`<button type="button" id="zu-edit-self" class="zu-owner-edit" aria-label="Edit profile" onclick="go('editprofile')">${zi('edit',18)}</button>`:showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
-    <div class="zu-stats" aria-label="Profile statistics"><div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div><div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div></div>
-    <p class="zu-bio">${esc(p.about||'A new face. A new connection. Say hello when you’re ready.')}</p>
-    ${p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
-    ${owner?`<div class="zu-self-bar zu-owner-actions"><button id="zu-edit-self" class="zu-owner-edit" onclick="go('editprofile')">${zi('edit',17)} Edit profile</button><button id="zu-upload-self" class="zu-owner-upload" onclick="zuEditMedia('photos')" ${zuOffline()?'disabled':''}>${zi('camera',17)} Upload photos</button></div>`:''}
-    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>
-    <div class="zu-permission"><span class="zu-gift-icon">${hi('vid',22)}</span><span id="zu-permission-label"><b>Video calls from ${esc(first(p.name))}</b><small>${p.allowsVideoCalls?`${esc(first(p.name))} can video call you. Turn this off any time.`:`Let ${esc(first(p.name))} video call you. You pay their call rate once you answer.`}</small></span><button id="zu-permission" type="button" class="zp-switch ${p.allowsVideoCalls?'is-on':''}" role="switch" aria-checked="${!!p.allowsVideoCalls}" aria-labelledby="zu-permission-label" onclick="zuCallPermission()" ${Zu.permissionBusy||zuOffline()?'disabled':''}><i></i></button></div>
-    ${Zu.permissionError?`<p class="zu-inline-error" role="alert">${esc(Zu.permissionError)}</p>`:''}`:''}
+    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${contentBalance()}</strong><span>Coins</span></div>`:''}<div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div>${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
+    <p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>
+    ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
+    ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
     </div>`}</aside>`;
 }
 function zuAbout(p){
@@ -193,7 +176,7 @@ function zuMedia(post,index){
     <span class="zu-media-unavailable">${ci('image',23)}<span>Media unavailable</span></span><span class="zu-photo-shade"></span>${video?`<span class="zu-play">${hi('play',19)}</span>`:''}<span class="zu-photo-expand">${hi('arrow',16)}</span></button>`;
 }
 function zuPosts(p){
-  if(!zuApproved(p))return `<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>${zuSelf()?'Upload a profile photo or cover photo.':'This member hasn’t shared any public posts.'}</p><button class="zu-text-button" onclick="${zuSelf()?"zuEditMedia('photos')":"zuTab('about')"}">${zuSelf()?'Upload profile photos':'Get to know '+esc(first(p.name))} ${hi('arrow',15)}</button></div>`;
+  if(!zuGalleryAllowed(p))return `<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>This account has no shared posts.</p></div>`;
   if(Zu.postsLoading&&!Zu.page)return zuSkeleton('posts');
   return `${Zu.posts.length?`<div class="zu-gallery">${Zu.posts.map(zuMedia).join('')}</div>`:!Zu.postsError?`<div class="zu-empty">${ci('image',30)}<h2>No photos yet</h2><p>${zuSelf()?'Your uploaded photos appear here.':'Photos and updates from '+esc(first(p.name))+' will appear here.'}</p>${zuSelf()?'<button class="zu-text-button" onclick="zuEditMedia(\'photos\')">'+zi('camera',17)+' Upload a photo</button>':''}</div>`:''}
     ${Zu.postsError?`<div class="zu-error zu-post-error" role="alert"><p>${esc(Zu.postsError)}</p><button class="zu-secondary" onclick="zuLoadPosts(${!!Zu.page})">Retry photos</button></div>`:''}
@@ -203,7 +186,7 @@ function zuContent(p){
   if(Zu.loading)return `<div class="zu-content">${zuSkeleton('posts')}</div>`;
   if(Zu.error||!p)return '';
   return `<div class="zu-content">${window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream?`<section class="zu-live-card"><div class="zu-live-symbol">${hi('broadcast',24)}</div><div><span><i></i> LIVE RIGHT NOW</span><h2>${esc(p.stream.title||'Come join the conversation')}</h2><p>${n(p.stream.viewers||0)} watching · Drop in and say hello</p></div><button onclick="zuWatch()" ${zuOffline()?'disabled':''}>Join live ${hi('arrow',16)}</button></section>`:''}
-    <div class="zu-tabs" role="tablist" aria-label="Profile content" onkeydown="zuTabKeys(event)">${['posts','about'].map(tab=>`<button id="zu-tab-${tab}" role="tab" aria-selected="${Zu.tab===tab}" aria-controls="zu-panel" tabindex="${Zu.tab===tab?0:-1}" onclick="zuTab('${tab}')">${hi(tab==='posts'?'grid':'user',17)}${tab==='posts'?'Posts':'About'}${tab==='posts'&&zuApproved(p)?`<span>${Zu.postsLoading&&!Zu.page?'…':Zu.total}</span>`:''}</button>`).join('')}</div>
+    <div class="zu-content-header"><div class="zu-tabs" role="tablist" aria-label="Profile content" onkeydown="zuTabKeys(event)">${['posts','about'].map(tab=>`<button id="zu-tab-${tab}" role="tab" aria-selected="${Zu.tab===tab}" aria-controls="zu-panel" tabindex="${Zu.tab===tab?0:-1}" onclick="zuTab('${tab}')">${hi(tab==='posts'?'grid':'user',17)}${tab==='posts'?'Posts':'About'}${tab==='posts'&&zuGalleryAllowed(p)?`<span>${Zu.postsLoading&&!Zu.page?'…':Zu.total}</span>`:''}</button>`).join('')}</div>${zuSelf()?`<button type="button" id="zu-upload-self" class="zu-add-photo" aria-label="Upload photos" onclick="zuEditMedia('photos')" ${zuOffline()?'disabled':''}>${zi('camera',18)}</button>`:''}</div>
     <div id="zu-panel" class="zu-panel" role="tabpanel" aria-labelledby="zu-tab-${Zu.tab}" tabindex="0">${Zu.tab==='about'?zuAbout(p):zuPosts(p)}</div></div>`;
 }
 function zuActions(p){
@@ -212,8 +195,7 @@ function zuActions(p){
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
   return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
-    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${p.canVoiceCall&&!zuOffline()?'':'disabled'}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${p.canVideoCall&&!zuOffline()?'':'disabled'}>${hi('vid',21)}<span>Video</span></button>`:''}</div>
-    ${hostCalls&&!p.canVideoCall?`<p class="zu-action-note">${p.canVoiceCall?`${esc(first(p.name))} hasn’t allowed video calls yet.`:`Voice calls open when you follow each other. Video calls need ${esc(first(p.name))}’s permission.`}</p>`:''}</div></div>`;
+    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
@@ -267,20 +249,46 @@ function zuBlocked(d){
   if(d.id!==Zu.id||d.requestId!==Zu.blockRequestId||!d.blocked)return;
   Zu.blockBusy=false;zuCloseDialog();if(zuActive()&&zuCurrent())go('home');appNotice('User blocked. You can manage blocked accounts in Settings.');
 }
-function zuOpenPhoto(index){
-  const post=Zu.posts[index];if(!post||!imageSrc(post.mediaUrl))return;
-  Zu.gallery=index;
-  const src=imageSrc(post.mediaUrl),video=post.kind==='video';
-  const dialog=zuDialog(`${video?'Video':'Photo'} ${index+1} of ${Zu.posts.length}`,`<div class="zu-viewer">${video?`<video src="${src}" controls playsinline preload="metadata"></video>`:`<img src="${src}" alt="${esc(post.caption||'Photo by '+Zu.profile.name)}">`}</div>${post.caption?`<p class="zu-caption">${esc(post.caption)}</p>`:''}<div class="zu-viewer-actions"><button class="zu-secondary" aria-label="Previous post" onclick="zuOpenPhoto(${index-1})" ${index===0?'disabled':''}>${hi('back',17)} Previous</button><button class="zu-secondary" aria-label="Next post" onclick="zuOpenPhoto(${index+1})" ${index===Zu.posts.length-1?'disabled':''}>Next ${hi('arrow',17)}</button></div>`,'photo');
-  dialog.addEventListener('keydown',event=>{if(event.target.tagName==='VIDEO')return;const next=event.key==='ArrowRight'?index+1:event.key==='ArrowLeft'?index-1:-1;if(next>=0&&next<Zu.posts.length){event.preventDefault();zuOpenPhoto(next)}});
+function zuConfirmDelete(){
+  const post=Zu.posts[Zu.gallery];if(!zuSelf()||!post||Zu.deleting)return;
+  Zu.deleteCandidate={...post,owner:Zu.id};
+  zuDialog('Delete this post?',`<p class="zu-dialog-intro">This photo will be removed from your profile. This cannot be undone.</p><p class="zu-dialog-status" role="alert"></p><div class="zu-dialog-actions"><button class="zu-secondary" onclick="zuCloseDialog()">Cancel</button><button class="zu-block-confirm" onclick="zuDeletePost()">Delete post</button></div>`,'delete-post');
 }
+function zuDeletePost(){
+  const post=Zu.deleteCandidate;if(!zuSelf()||post?.owner!==Zu.id||Zu.deleting||zuOffline())return;
+  Zu.deleting={...post,requestId:++Zu.sequence};
+  const button=document.querySelector('.zu-block-confirm');if(button){button.disabled=true;button.textContent='Deleting…'}
+  const data={id:post.id,requestId:Zu.deleting.requestId};
+  if(DEMO){zuPostDeleted(data);return}Native.send('media.post.delete',data);
+}
+function zuPostDeleted(d){
+  const pending=Zu.deleting;if(!pending||pending.id!==d.id||pending.requestId!==d.requestId)return;
+  Zu.deleting=null;Zu.deleteCandidate=null;
+  S.postData=S.postData.filter(url=>url!==pending.mediaUrl);
+  if(Zu.id===pending.owner){
+    Zu.posts=Zu.posts.filter(post=>post.id!==d.id);Zu.total=Math.max(0,Zu.total-1);
+    Zu.postsLoading=false;Zu.postsRequestId=++Zu.sequence;
+    if(Zu.dialog==='delete-post')zuCloseDialog();
+    if(zuActive()&&zuSelf()){zuLoadPosts();zuPaint()}
+  }
+  appNotice('Post deleted.');
+}
+Native.on('post.deleted',zuPostDeleted);
+Native.on('post.delete.error',d=>{
+  if(Zu.deleting?.id!==d.id||Zu.deleting.requestId!==d.requestId)return;
+  Zu.deleting=null;
+  if(Zu.dialog!=='delete-post')return;
+  const status=document.querySelector('.zu-dialog-status');if(status)status.textContent=d.message||'Could not delete this post. Try again.';
+  const button=document.querySelector('.zu-block-confirm');if(button){button.disabled=false;button.textContent='Delete post'}
+});
+Native.on('post.saved',()=>{if(zuActive()&&zuSelf()&&Zu.profile)zuLoadPosts()});
 
 /* Profiles follow the same rule as cards: a host is never shown offline (see hostFrom). */
 function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostShownOnline(p),availableForCall:hostCallable(p)});return p}
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
   Zu.profile=zuShownPresence(d.profile);Zu.loading=false;Zu.error='';zuRemember(d.profile);
-  if(zuApproved(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
+  if(zuGalleryAllowed(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
   zuPaint();
 });
 Native.on('data.publicPosts',d=>{
@@ -288,10 +296,11 @@ Native.on('data.publicPosts',d=>{
   const rows=(d.posts||[]).filter(post=>imageSrc(post.mediaUrl));
   Zu.posts=d.page>1?[...Zu.posts,...rows.filter(post=>!Zu.posts.some(old=>old.id===post.id))]:rows;
   Zu.total=d.total||0;Zu.page=d.page||1;Zu.limit=d.limit||20;Zu.postsLoading=false;Zu.postsError='';zuPaint();
+  if(typeof zuFeedSync==='function')zuFeedSync();
 });
 Native.on('data.loading',d=>{
   if(d.resource==='publicProfile'&&zuMatches(d)){Zu.loading=!!d.loading;Zu.error=d.error||'';zuPaint()}
-  if(d.resource==='publicPosts'&&zuMatches(d,true)){Zu.postsLoading=!!d.loading;Zu.postsError=d.error||'';zuPaint()}
+  if(d.resource==='publicPosts'&&zuMatches(d,true)){Zu.postsLoading=!!d.loading;Zu.postsError=d.error||'';zuPaint();if(typeof zuFeedSync==='function')zuFeedSync()}
 });
 Native.on('data.home',d=>{
   if(!zuActive()||!Zu.profile||Zu.loading)return;
@@ -303,11 +312,6 @@ Native.on('data.home',d=>{
   zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
-Native.on('call.permission.saved',zuCallPermissionSaved);
-Native.on('call.permission.error',d=>{
-  if(d.requestId!==Zu.permissionRequestId)return;
-  Zu.permissionBusy=false;Zu.permissionError=d.message||'Could not update video call permission. Please try again.';zuPaint();
-});
 Native.on('follow.error',d=>{
   if(zuPendingFollows.get(d.id)!==d.requestId)return;
   zuPendingFollows.delete(d.id);
@@ -328,7 +332,7 @@ Native.on('gift.sent',()=>{if(zuActive())zuPaint()});
 Native.on('operation.error',d=>{if(zuActive()&&d.action==='gift.send')zuPaint()});
 Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.checking&&(Zu.error||Zu.postsError))zuRetry();else zuPaint()});
 for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
-for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();zuPendingFollows.clear();zuPendingBlocks.clear();Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
 window.ZimiPublicProfile={
   render:zuScreen,
   beforeNavigate(view,id){
