@@ -11,7 +11,7 @@ const ROUND = [
   '.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge',
   '.hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i',
   '.zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified',
-  '.zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,#zimi-pull',
+  '.zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,#zimi-pull,.zc-call-badge,.zc-call-back',
   `:is(${AVATARS})>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face)`,
 ].join(',');
 

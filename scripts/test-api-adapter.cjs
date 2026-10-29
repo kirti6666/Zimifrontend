@@ -383,6 +383,16 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(restrictedInbox.chats[0].canSend, false); assert.equal(restrictedInbox.chats[0].automatedOnly, true);
   expect('GET', '/calls?limit=100', { items: [{ callerId: { _id: 'host-id' }, calleeId: { _id: 'member-id' }, status: 'missed', kind: 'audio' }, { callerId: 'member-id', calleeId: 'host-id', status: 'missed' }] });
   const missed = await api.missedCalls(); assert.equal(missed.calls.length, 1); assert.equal(missed.calls[0].kind, 'voice');
+  // Call history keeps voice/video, who placed the call and how it ended, from this account's side.
+  expect('GET', '/calls?limit=100', { items: [
+    { callerId: { _id: 'member-id' }, calleeId: { _id: 'host-id', name: 'Mira' }, status: 'ended', kind: 'video', durationSeconds: 125, coins: 120, createdAt: chatAt },
+    { callerId: { _id: 'host-id', name: 'Mira' }, calleeId: { _id: 'member-id' }, status: 'missed', kind: 'audio', createdAt: chatAt },
+    { callerId: { _id: 'host-id', name: 'Mira' }, calleeId: 'member-id', status: 'paused' }] });
+  const history = await api.callHistory();
+  assert.deepEqual(plain(history.calls.map(call => [call.user.id, call.direction, call.kind, call.status ?? null, call.duration, call.coins ?? null, call.at ?? null])), [
+    ['host-id', 'outgoing', 'video', 'ended', '2:05', 120, chatAt],
+    ['host-id', 'incoming', 'voice', 'missed', '0:00', null, chatAt],
+    ['host-id', 'incoming', 'video', null, '0:00', null, null]], 'Unknown statuses and missing times are left out');
   expect('GET', '/wallet', { coins: 200, earningsPaise: 12345, reservedPaise: 2000 });
   const wallet = await api.wallet(); assert.equal(wallet.earningsPaise, 12345); assert.equal(wallet.earned, undefined);
   assert.throws(() => adapters.walletFrom({ coins: '200', earningsPaise: 0 }), /wallet/);

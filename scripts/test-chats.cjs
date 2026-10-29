@@ -49,7 +49,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
       assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Chats does not overflow at ${width}px`);
       assert.equal(await preview.getByRole('button', { name: 'New chat', exact: true }).isVisible(), true);
       assert.equal(await preview.locator('.zh-nav button').count(), 4);
-      const animations = await preview.locator('.zc-row,.zc-person').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).animationName));
+      const animations = await preview.locator('.zc-row').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).animationName));
       assert.ok(animations.every(name => name === 'none'), 'Reduced motion removes decorative chat entrance animations');
       await preview.screenshot({ path: path.join(os.tmpdir(), `zimi-chats-preview-${width}.png`) });
     }
@@ -182,13 +182,49 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.match((await names())[0], /Rohan Patel/);
     assert.deepEqual(await page.getByRole('tab').allInnerTexts(), ['All', 'Unread', 'Calls', 'Missed calls'], 'Four plain filters, without counts');
     assert.equal(await page.locator('.zc-pulse,.zc-match-footer').count(), 0, 'Speed matching stays on Home, not in the chat list');
+    // Calls lists call history, not conversations; a row opens the other person's profile.
     await selectTab('Calls');
     assert.equal(await rows().count(), 1);
-    assert.match((await names())[0], /Mira North/);
+    assert.match((await names())[0], /Mira North[\s\S]*Yesterday[\s\S]*Outgoing video call · 1:20/, 'Older call records read as outgoing video calls');
+    await settle('data.calls', { calls: [] }, 'calls');
+    await page.getByRole('heading', { name: 'No calls yet', exact: true }).waitFor();
+    await settle('data.calls', { calls: [
+      { user: mira, time: 'Oct 29, 11:42 AM', at: at(5), duration: '7:05', coins: 420, kind: 'video', direction: 'outgoing', status: 'ended' },
+      { user: asha, time: 'Oct 29, 09:10 AM', at: at(150), duration: '0:00', coins: 0, kind: 'voice', direction: 'incoming', status: 'missed' },
+      { user: mira, time: 'Oct 28, 08:00 PM', at: at(1500), duration: '0:00', coins: 0, kind: 'video', direction: 'outgoing', status: 'declined' },
+    ] }, 'calls');
+    const calls = await names();
+    assert.equal(calls.length, 3, 'Every call is listed, including repeat calls with one person');
+    assert.match(calls[0], /Mira North[\s\S]*5m ago[\s\S]*Outgoing video call · 7:05/);
+    assert.match(calls[1], /Asha Sen[\s\S]*2h ago[\s\S]*Missed voice call/);
+    assert.match(calls[2], /Mira North[\s\S]*Outgoing video call · Not answered/);
+    assert.equal(await page.locator('.zc-call-row .zc-call-badge').count(), 1, 'Only the missed call is marked');
+    assert.equal(await page.locator('#zc-list .zc-unread-count,#zc-list .zc-presence').count(), 0, 'Call rows carry no message counts or presence');
+    await receive('data.loading', { resource: 'calls', loading: true, background: true });
+    assert.equal(await page.getByRole('status', { name: 'Loading call history' }).count(), 0, 'A refresh after a call keeps the shown calls');
+    assert.equal(await rows().count(), 3);
+    await search().fill('asha');
+    assert.equal(await rows().count(), 1, 'Search filters calls by name');
+    await search().fill('');
+    await rows().first().click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', mira.id], "A call opens the other person's profile");
+    await navigate('chats');
     await selectTab('Unread');
     assert.equal(await rows().count(), 2);
+    // Missed calls fill the list width like conversations; the row opens the caller, Call back calls.
     await selectTab('Missed calls');
     await page.getByRole('heading', { name: 'No missed calls', exact: true }).waitFor();
+    await settle('data.missed', { calls: [{ user: asha, when: 'Oct 29, 09:10 AM', at: at(150), kind: 'voice' }] }, 'missed');
+    const missed = page.locator('.zc-missed-row');
+    assert.match(await missed.innerText(), /Asha Sen[\s\S]*2h ago[\s\S]*Missed voice call[\s\S]*Call back/);
+    const [missedBox, listBox] = [await missed.boundingBox(), await page.locator('#zc-list').boundingBox()];
+    assert.ok(missedBox.width >= listBox.width - 1, `Missed calls use the full list width (${missedBox.width} of ${listBox.width})`);
+    await missed.getByRole('button', { name: /^Asha Sen, missed voice call/ }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', asha.id], "A missed call opens the caller's profile");
+    await navigate('chats');
+    await page.getByRole('button', { name: 'Call Asha Sen back', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['precall', asha.id], 'Call back starts a call to the caller');
+    await navigate('chats');
     await selectTab('All');
     await search().fill('coffee');
     assert.equal(await rows().count(), 1);
@@ -226,7 +262,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await filters.getByLabel('Sort conversations', { exact: true }).inputValue(), 'recent');
     await page.keyboard.press('Escape');
     await filters.waitFor({ state: 'hidden' });
-    console.log('PASS chats: All/Creators/Calls/Unread filters, name/message/tag search, sort and online filter');
+    console.log('PASS chats: All/Unread conversations, Calls history and full-width Missed calls that open profiles, name/message/tag search, sort and online filter');
 
     const readAll = () => page.getByRole('button', { name: 'Mark all as read', exact: true });
     await readAll().click();
@@ -317,10 +353,8 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await picker.getByRole('button', { name: 'Find more creators', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'search');
     await navigate('chats');
-    await page.locator('.zc-available .zc-person').filter({ hasText: 'Mira' }).click();
-    assert.equal(await page.evaluate(() => S.v), 'precall');
-    assert.equal(await page.evaluate(() => S.h), mira.id);
-    console.log('PASS chats: real thread navigation, new contact picker and available creator');
+    assert.equal(await page.getByText('Online now', { exact: true }).count(), 0, 'Chats has no Online now strip');
+    console.log('PASS chats: real thread navigation, new contact picker and no Online now strip');
 
     await navigate('chats');
     await loadChats({ ...chatData(conversations.slice(0, 2)), total: 3 });

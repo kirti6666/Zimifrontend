@@ -292,14 +292,19 @@ export interface Message {
 export interface MissedCall {
   user: Person & Partial<Host>;
   when: string;
+  at?: string; // ISO time the call was placed
   kind: "video" | "voice";
 }
 
 export interface CallRecord {
   user: Host;
   time: string;
+  at?: string; // ISO time the call was placed
   duration: string;
   coins?: number;
+  kind?: "video" | "voice";
+  direction?: "incoming" | "outgoing"; // from this account's side
+  status?: "ringing" | "accepted" | "ended" | "declined" | "missed";
 }
 
 export interface Transaction {

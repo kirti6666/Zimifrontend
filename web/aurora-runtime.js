@@ -67,8 +67,8 @@ const roleParam=new URLSearchParams(location.search).get("role");
 const S={v:callPreview?"call":roleParam?"home":"welcome",role:roleParam==="host"?"host":"sender",
  acct:{sender:{earn:0,kyc:"none",mvp:0},host:{earn:184250,kyc:"none",mvp:1}},
  vis:1,kf:{},giftedTo:{},loggedIn:roleParam?1:0,auth:{step:"phone"},early:0,feeLog:[],cel:{ask:0,mission:0},hcel:{ask:0,mission:0},celq:[],mall:0,
- missed:{sender:[{id:"meher",when:"Today, 5:40 pm",kind:"video"},{id:"tara",when:"Today, 1:12 pm",kind:"voice"},{id:"noor",when:"Yesterday, 9:05 pm",kind:"video"}],
-  host:[{id:"u_zoyak",when:"Today, 6:10 pm",kind:"video"},{id:"u_sahilb",when:"Today, 2:31 pm",kind:"video"},{id:"u_imranq",when:"Yesterday, 11:48 pm",kind:"voice"}]},
+ missed:{sender:[{id:"meher",when:"Today, 5:40 pm",at:new Date(Date.now()-25*6e4).toISOString(),kind:"video"},{id:"tara",when:"Today, 1:12 pm",at:new Date(Date.now()-4*36e5).toISOString(),kind:"voice"},{id:"noor",when:"Yesterday, 9:05 pm",at:new Date(Date.now()-26*36e5).toISOString(),kind:"video"}],
+  host:[{id:"u_zoyak",when:"Today, 6:10 pm",at:new Date(Date.now()-12*6e4).toISOString(),kind:"video"},{id:"u_sahilb",when:"Today, 2:31 pm",at:new Date(Date.now()-3*36e5).toISOString(),kind:"video"},{id:"u_imranq",when:"Yesterday, 11:48 pm",at:new Date(Date.now()-28*36e5).toISOString(),kind:"voice"}]},
 kerr:0,ci:0,spent:0,giftN:0,
  tasks:[
   {k:"mins",ico:"ph",t:"Call marathon",d:"Spend 60 minutes on calls",goal:60,p:59,u:"min",rw:5000},
@@ -738,7 +738,7 @@ function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return go("coins");se
 function kfmt(v){return v>=1e6?(v/1e6).toFixed(v>=1e7?1:2).replace(/\.0+$/,"")+"M":v>=1e5?(v/1e3).toFixed(1).replace(/\.0$/,"")+"K":n(v)}
 /* Missed calls, per role: senders miss hosts, hosts miss senders. */
 function missedRows(){
- return S.missed[S.role].map(m=>{const p=isHost()?sender(m.id):g(m.id);return p&&{...m,p}}).filter(Boolean)}
+ return S.missed[S.role].map(m=>{const p=callPerson(m.id);return p&&{...m,p}}).filter(Boolean)}
 function callBack(id){
  S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
  if(isHost()){S.caller=sender(id);S.nextCallVoice=false;S.dialFrom={view:"calls"};go("dialback")}else go("precall",id)}
@@ -871,15 +871,18 @@ function vTransactions(){const pending=window.contentSurface?.('transactions','r
  ${L.length?"":`<div class="s13 muted" style="text-align:center;padding:36px 20px">No activity yet.</div>`}
  ${DEMO?`<div class="s11 muted" style="padding:11px 3px;text-align:center">Showing recent demo activity</div>`:""}</div>`}
 
+/* Call history, newest first: who, when, how long, coins, voice or video, who placed
+   it and how it ended (status). The other person is a creator, or a member for hosts. */
 const CALLS=[
- ["aanya","Today, 11:42 AM","7m 00s",420],
- ["noor","2 Sep, 10:24 PM","5m 42s",285],
- ["tara","31 Aug, 9:08 PM","3m 16s",156],
- ["meher","29 Aug, 8:31 PM","11m 04s",552]];
-function vCalls(){const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
+ {id:"aanya",time:"Today, 11:42 AM",at:new Date(Date.now()-2*36e5).toISOString(),duration:"7:00",coins:420,kind:"video",direction:"outgoing",status:"ended"},
+ {id:"noor",time:"2 Sep, 10:24 PM",duration:"5:42",coins:285,kind:"voice",direction:"outgoing",status:"ended"},
+ {id:"tara",time:"31 Aug, 9:08 PM",duration:"0:00",coins:0,kind:"video",direction:"outgoing",status:"missed"},
+ {id:"meher",time:"29 Aug, 8:31 PM",duration:"11:04",coins:552,kind:"video",direction:"incoming",status:"ended"}];
+function callPerson(id){return g(id)||sender(id)}
+function vCalls(){const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct"><div class="acctcard">${CALLS.map(({id,time,duration,coins})=>{const h=callPerson(id);if(!h)return '';return `<div class="acctrow">
  <span class="callav">${av(h,38,'none')}<span class="badge">${I('ph',9)}</span></span>
- <span style="flex:1;min-width:0"><span class="main">${esc(h.n)}</span><span class="meta">${esc(time)} · ${esc(dur)}</span></span>
- <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('precall','${domId(id)}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
+ <span style="flex:1;min-width:0"><span class="main">${esc(h.n)}</span><span class="meta">${esc(time)} · ${esc(duration)}</span></span>
+ <span class="end"><span class="meta">${gem}${n(coins)}</span><button onclick="go('precall','${domId(id)}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
 
 function vBlocked(){return `<div class="acct">${S.blocked.length?`<div class="acctcard">${S.blocked.map(id=>{const h=g(id);return `<div class="acctrow">${av(h,38,'none')}<span style="flex:1"><span class="main">${esc(h.n)}</span><span class="meta">Blocked host</span></span><button class="softbtn" style="margin:0" onclick="S.blocked=S.blocked.filter(x=>x!=='${domId(id)}');r()">Unblock</button></div>`}).join('')}</div>`:`<div class="acctcard emptycompact"><span class="acctico">${I('shield',22)}</span><h3>No blocked hosts</h3><p>People you block can’t call or message you. You can manage them here anytime.</p><button class="softbtn" onclick="go('home')">Browse creators</button></div>`}</div>`}
 
@@ -1737,9 +1740,10 @@ Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublish
 
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});
 Native.on("data.chats",d=>{CH.splice(0,CH.length,...(d.chats||[]).map(c=>[knowHost(c.user).id,c.last||"",c.time||"",c.unread||0]));refresh()});
-Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()?personFrom(c.user):knowHost(c.user)).id,when:c.when||"",kind:c.kind||"video"}));refresh()});
+Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()?personFrom(c.user):knowHost(c.user)).id,when:c.when||"",at:c.at||"",kind:c.kind||"video"}));refresh()});
 Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise]));refresh()});
-Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>[knowHost(c.user).id,c.time||"",c.duration||"",c.coins||0]));refresh()});
+Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>({id:knowHost(c.user).id,time:c.time||"",at:c.at||"",duration:c.duration||"",coins:c.coins||0,
+ kind:c.kind==="voice"?"voice":"video",direction:c.direction==="incoming"?"incoming":"outgoing",status:c.status||""})));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
  S.msgs=zcThreadMessages(d);paint()});
 // Capture the authenticated payload before refresh: later module handlers also

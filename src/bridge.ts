@@ -478,6 +478,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const refreshWallet = () => readResource("wallet", () => api.wallet(), data => emit({ type: "wallet.balance", data }));
+  // A call that ends, is declined or goes unanswered belongs in Chats' Calls and Missed calls
+  // tabs. A background read keeps the shown list until the new one arrives.
+  const refreshCalls = () => Promise.allSettled([
+    readResource("calls", () => api.callHistory(), data => emit({ type: "data.calls", data }), { background: true }),
+    readResource("missed", () => api.missedCalls(), data => emit({ type: "data.missed", data }), { background: true }),
+  ]);
   const homeFlightCurrent = () => homeFlight && current(homeFlight.epoch) && homeFlight.session === getSessionVersion() && homeFlight.document === documentRevision;
   const loadHome = (query = homeQuery, background = false): Promise<void> => {
     query = { ...query };
@@ -820,6 +826,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "call.ended" && typeof callId === "string") {
         rememberCancelledCall(callId);
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
+        void refreshCalls();
       }
       if (event.type === "call.connected" && typeof callId === "string") {
         if (event.data?.initiator === false && !hasHostAccess() && !(hostChecking && activeHostCall && activeCall === callId) &&

@@ -2917,6 +2917,17 @@ test('accepted calls allow the first host message with server-verified call cont
   assert.equal(h.count('sendMessage'),1,'Ending the call does not grant permission to start ordinary text chat');h.bridge.close();
 });
 
+test('a finished, declined or missed call refreshes call history and missed calls in the background', async () => {
+  const h=harness();await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const before={history:h.count('callHistory'),missed:h.count('missedCalls')};
+  h.overrides.callHistory=()=>({calls:[{user:{id:'host-id',name:'Mira'},time:'Now',duration:'0:00',kind:'video',direction:'incoming',status:'missed'}]});
+  h.live[0].onEvent({type:'call.ended',data:{callId:'missed-call'}});await settle();
+  assert.deepEqual([h.count('callHistory')-before.history,h.count('missedCalls')-before.missed],[1,1],'Both call lists are read again');
+  const loads=h.find('data.loading').filter(message=>['calls','missed'].includes(message.data.resource)).slice(-4);
+  assert.ok(loads.length===4&&loads.every(message=>message.data.background===true),'The refresh is a background read');
+  assert.equal(h.find('data.calls').at(-1).data.calls[0].status,'missed');h.bridge.close();
+});
+
 const pushSettings = (serverPush = true) => { const settings = profileSettings(); settings.capabilities.pushNotifications = serverPush; return settings; };
 const signedIn = (id = 'alice') => ({ ...account(id), requiresOnboarding: false, tokens: tokenPair(id), isNew: false });
 const pushCapability = h => h.find('data.profileSettings').at(-1).data.capabilities;

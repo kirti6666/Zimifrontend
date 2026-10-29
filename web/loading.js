@@ -43,12 +43,14 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
-  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile','editprofile'],thread:['thread']};
+  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls','chats'],posts:['profile','editprofile'],thread:['thread']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
   if(views[key]?.includes(S.v)||(['catalog','wallet'].includes(key)&&(Home.giftTo||['call','voice','hcall'].includes(S.v))))r();
 }
 Native.on('data.loading',d=>{
   if(!ContentLoading[d.resource])return;
+  // A background refresh keeps an already shown list in place; only its new data replaces it.
+  if(d.background&&d.resource!=='home'&&ContentLoading[d.resource].loaded)return;
   if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(d.resource==='search'&&d.q!==(S.sq||''))return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});

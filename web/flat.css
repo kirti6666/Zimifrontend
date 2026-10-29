@@ -230,10 +230,6 @@ html,body,.app,#top,#scroll-root,#screen {
 .zc-tabs {margin-bottom:16px}
 .zc-tabs>button {font-size:calc(13px * var(--theme-font-scale,1));font-weight:400;min-height:38px}
 .zc-tabs>button.selected {font-weight:600}
-.zc-section-heading {margin-bottom:12px}
-:root[data-theme-id] .zc-section-heading h2 {font-size:calc(12px * var(--theme-font-scale,1));font-weight:500;color:var(--muted)}
-.zc-section-heading>button {font-size:calc(12px * var(--theme-font-scale,1));font-weight:500}
-.zc-available {margin-bottom:12px}
 .zc-row {position:relative;min-height:76px;padding:14px 0;gap:12px}
 .zc-row::after {content:'';position:absolute;left:64px;right:0;bottom:0;height:1px;background:var(--line)}
 :root[data-theme-id] .zc-name {font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.15px;line-height:1.4}
@@ -358,7 +354,7 @@ html:root :is(
   .av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
   .hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i,
   .zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified,
-  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch
+  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,.zc-call-badge,.zc-call-back
 ) {border-radius:999px!important}
 html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
 html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::before,

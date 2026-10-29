@@ -287,14 +287,20 @@ export function messagesFrom(value: unknown, userId: string): { messages: Messag
     messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
+const CALL_STATUSES = ["ringing", "accepted", "ended", "declined", "missed"] as const;
 export function callsFrom(value: unknown, userId: string): { calls: CallRecord[] } {
   return { calls: items(value).map(record).map(call => {
-    const seconds = finite(call.durationSeconds) ?? 0;
-    return { user: hostFrom(idOf(call.callerId) === userId ? call.calleeId : call.callerId), time: timeOf(call.createdAt), duration: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`, coins: finite(call.coins) };
+    const seconds = finite(call.durationSeconds) ?? 0, outgoing = idOf(call.callerId) === userId;
+    const status = CALL_STATUSES.find(known => known === call.status);
+    return {
+      user: hostFrom(outgoing ? call.calleeId : call.callerId), time: timeOf(call.createdAt), at: string(call.createdAt) || undefined,
+      duration: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`, coins: finite(call.coins),
+      kind: call.kind === "audio" ? "voice" : "video", direction: outgoing ? "outgoing" : "incoming", ...(status ? { status } : {}),
+    };
   }) };
 }
 export function missedFrom(value: unknown, userId: string): { calls: MissedCall[] } {
-  return { calls: items(value).map(record).filter(call => idOf(call.calleeId) === userId && call.status === "missed").map(call => ({ user: hostFrom(call.callerId), when: timeOf(call.createdAt), kind: call.kind === "audio" ? "voice" : "video" })) };
+  return { calls: items(value).map(record).filter(call => idOf(call.calleeId) === userId && call.status === "missed").map(call => ({ user: hostFrom(call.callerId), when: timeOf(call.createdAt), at: string(call.createdAt) || undefined, kind: call.kind === "audio" ? "voice" : "video" })) };
 }
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);

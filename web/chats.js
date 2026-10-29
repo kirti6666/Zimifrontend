@@ -21,11 +21,12 @@ const chatIcons={
   sparkle:'<path d="M10 3l1.6 4.4L16 9l-4.4 1.6L10 15l-1.6-4.4L4 9l4.4-1.6zM18 13l.9 2.1L21 16l-2.1.9L18 19l-.9-2.1L15 16l2.1-.9z"/>',
   crown:'<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z"/>',
   playFill:'<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
-  pause:'<path d="M8 5v14M16 5v14"/>'
+  pause:'<path d="M8 5v14M16 5v14"/>',
+  callOut:'<path d="M7 17 17 7M9 7h8v8"/>',
+  callIn:'<path d="M17 7 7 17M15 17H7V9"/>'
 };
 function ci(name,size=20){return chatIcons[name]?`<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${chatIcons[name]}</svg>`:hi(name,size)}
 function zcPending(){return !DEMO&&contentPending('chats')&&!Chats.loadingMore}
-function zcHasCalls(c){return !!c.hasCalls||CALLS.some(x=>x[0]===c.user.id)}
 function zcPerson(c){const old=g(c.user.id)||{};return {...old,...homeCreator(c.user),role:c.user.role}}
 function zcSelfRole(){return S.hostAccess?.serverRole||S.user?.serverRole||(isApprovedHost()?'host':'user')}
 function zcChatBlockReason(id){
@@ -47,7 +48,6 @@ function zcRestoreFocus(saved){if(!saved)return;const el=document.getElementById
 function zcTime(c){if(c.displayTime)return c.displayTime;const at=new Date(c.lastAt);if(Number.isNaN(at.getTime()))return c.time||'';const age=Math.max(0,Date.now()-at.getTime()),minutes=Math.floor(age/60000);if(minutes<1)return 'Now';if(minutes<60)return minutes+'m ago';if(minutes<1440)return Math.floor(minutes/60)+'h ago';const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);return at.toDateString()===yesterday.toDateString()?'Yesterday':at.toLocaleDateString('en-IN',{month:'short',day:'numeric'})}
 function zcPhoto(h,extra=''){return `<span class="zc-avatar ${extra}">${homeCover({...h,coverUrl:h.avatarUrl||h.coverUrl})}</span>`}
 function zcRows(){const q=Chats.query.trim().toLowerCase();let rows=Chats.rows.filter(c=>{
-  if(Chats.filter==='calls'&&!zcHasCalls(c))return false;
   if(Chats.filter==='unread'&&!c.unread)return false;
   if(Chats.onlineOnly&&!hostShownOnline(c.user))return false;
   return !q||[c.user.name,c.user.category,c.user.tag,c.last].some(value=>String(value||'').toLowerCase().includes(q));
@@ -56,8 +56,35 @@ function zcTabs(){const tabs=[['all','All'],['unread','Unread'],['calls','Calls'
 function zcSetFilter(value){Chats.filter=value;r()}
 function zcRow(c){const h=zcPerson(c),bot=DEMO&&c.bot;return `<button class="zc-row rowlink ${c.unread?'zc-unread':''}" onclick="${bot?'homeNotifications()':`zcOpen('${domId(h.id)}')`}" aria-label="${esc(h.n)}${c.unread?', '+c.unread+' unread messages':''}"><span class="zc-avatar-wrap">${bot?`<span class="zc-avatar zc-bot">${ci('robot',30)}</span><span class="zc-bot-label">BOT</span>`:zcPhoto(h)+`<i class="zc-presence ${h.on?'online':''}" aria-label="${h.on?'Online':'Offline'}"></i>`}</span><span class="zc-row-body"><span class="zc-row-heading"><span class="zc-name">${esc(h.n)}${bot?' '+hi('shield',17):''}</span><time datetime="${esc(c.lastAt||'')}">${esc(zcTime(c))}</time></span><span class="zc-row-preview"><span class="zc-message ${c.lastKind==='gift'?'zc-gift-message':''}">${c.lastKind==='gift'?hi('gift',17):c.lastKind==='voice'?hi('mic',17):c.lastKind==='image'?ci('image',17):c.lastKind==='call'?hi('ph',17):c.lastMine?ci(c.lastStatus==='read'?'checks':'check',17):''}<span>${c.lastDeleted?'Message deleted':escChat(c.last||(c.lastKind==='image'?'Photo':c.lastKind==='voice'?'Voice message':'Start a conversation'))}</span></span>${c.unread?`<span class="zc-unread-count">${c.unread>99?'99+':n(c.unread)}</span>`:''}</span></span></button>`}
 function zcSkeleton(){return `<div class="zc-inbox-skeleton" role="status" aria-label="Loading conversations" aria-busy="true"><div aria-hidden="true">${Array.from({length:6},()=>`<div class="zc-row zc-skeleton-row"><span class="zh-skeleton-shape zc-avatar"></span><span class="zc-row-body"><span class="zc-row-heading">${skeletonLine('60%',17)}${skeletonLine('36px',10)}</span>${skeletonLine('90%',12)}</span></div>`).join('')}</div></div>`}
+/* Calls and Missed calls are call history, not conversations. Their rows share the chat
+   row geometry: a row opens the other person's profile; a missed call adds Call back. */
+function zcOpenPerson(id){go(g(id)?'host':'user',id)}
+function zcCallTime(call){return zcTime({lastAt:call.at,time:call.time||call.when})}
+function zcCallMatches(p){const q=Chats.query.trim().toLowerCase();return !q||String(p.n||'').toLowerCase().includes(q)}
+function zcCallAvatar(p,kind,missed){return `<span class="zc-avatar-wrap">${zcPhoto(p)}${missed?`<i class="zc-call-badge" aria-hidden="true">${hi(kind==='voice'?'ph':'vid',10)}</i>`:''}</span>`}
+function zcCallMeta(icon,text,missed){return `<span class="zc-row-preview"><span class="zc-message zc-call-meta${missed?' is-missed':''}">${ci(icon,15)}<span>${esc(text)}</span></span></span>`}
+function zcCallsEmpty(title,text){return `<div class="zc-empty">${hi('ph',34)}<h2>${title}</h2><p>${text}</p></div>`}
+// How a call went, from this account's side: only an unanswered incoming call is missed.
+function zcCallSummary(call){
+  const kind=call.kind==='voice'?'voice':'video',talked=!!call.duration&&!/^0+:00$/.test(call.duration);
+  if(call.direction==='incoming')return call.status==='missed'?{text:`Missed ${kind} call`,missed:true}:{text:call.status==='declined'?`Declined ${kind} call`:`Incoming ${kind} call${talked?' · '+call.duration:''}`};
+  return {text:`Outgoing ${kind} call${talked?' · '+call.duration:['missed','declined'].includes(call.status)?' · Not answered':''}`};
+}
+function zcCallList(){
+  const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return pending;
+  const rows=CALLS.map(call=>({...call,p:callPerson(call.id)})).filter(call=>call.p&&zcCallMatches(call.p));
+  if(!rows.length)return Chats.query.trim()?zcCallsEmpty('No calls found','Try a different name.'):zcCallsEmpty('No calls yet','Calls you make and receive will show up here.');
+  return rows.map(call=>{const summary=zcCallSummary(call),when=zcCallTime(call);return `<button type="button" class="zc-row rowlink zc-call-row" onclick="zcOpenPerson('${domId(call.id)}')" aria-label="${esc(call.p.n)}, ${esc(summary.text)}${when?', '+esc(when):''}. Open profile">${zcCallAvatar(call.p,call.kind,summary.missed)}<span class="zc-row-body"><span class="zc-row-heading"><span class="zc-name">${esc(call.p.n)}</span><time${call.at?` datetime="${esc(call.at)}"`:''}>${esc(when)}</time></span>${zcCallMeta(call.direction==='incoming'?'callIn':'callOut',summary.text,summary.missed)}</span></button>`}).join('');
+}
+function zcMissedList(){
+  const pending=window.contentSurface?.('missed','rows','Loading missed calls');if(pending)return pending;
+  const rows=missedRows().filter(call=>zcCallMatches(call.p));
+  if(!rows.length)return Chats.query.trim()?zcCallsEmpty('No missed calls found','Try a different name.'):zcCallsEmpty('No missed calls','Calls you miss will show up here so you can call back.');
+  return rows.map(call=>{const id=domId(call.id),kind=call.kind==='voice'?'voice':'video',when=zcCallTime(call);return `<div class="zc-row rowlink zc-call-row zc-missed-row"><button type="button" class="zc-call-open" onclick="zcOpenPerson('${id}')" aria-label="${esc(call.p.n)}, missed ${kind} call${when?', '+esc(when):''}. Open profile">${zcCallAvatar(call.p,kind,true)}<span class="zc-row-body"><span class="zc-row-heading"><span class="zc-name">${esc(call.p.n)}</span><time${call.at?` datetime="${esc(call.at)}"`:''}>${esc(when)}</time></span>${zcCallMeta('callIn',`Missed ${kind} call`,true)}</span></button><button type="button" class="zc-call-back" onclick="callBack('${id}')" aria-label="Call ${esc(call.p.n)} back">${hi(kind==='voice'?'ph':'vid',16)}<span>Call back</span></button></div>`}).join('');
+}
 function zcList(){
-  if(Chats.filter==='missed')return missedList();
+  if(Chats.filter==='calls')return zcCallList();
+  if(Chats.filter==='missed')return zcMissedList();
   if(zcPending())return zcSkeleton();
   const error=!DEMO&&ContentLoading.chats.error;
   if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="zcReload()">Retry</button></div>`;
@@ -65,12 +92,10 @@ function zcList(){
 }
 function zcPaintList(){const list=document.getElementById('zc-list');if(list)list.innerHTML=zcList();contentImagesReady()}
 function zcReload(more=false){if(DEMO)return;if(more&&contentPending('chats'))return;Chats.loadingMore=more;contentStart('chats',{page:more?Chats.page+1:1});Native.send('chats.reload',{page:more?Chats.page+1:1});r()}
-ZimiPullRefresh.register('chats',{refresh:()=>zcReload(),busy:()=>contentPending('chats')});
+// Pull to refresh reloads what the selected tab shows.
+const zcResource=()=>({calls:'calls',missed:'missed'})[Chats.filter]||'chats';
+ZimiPullRefresh.register('chats',{refresh:()=>zcResource()==='chats'?zcReload():contentRetry(zcResource()),busy:()=>contentPending(zcResource())});
 function zcResetFilters(){Chats.query='';Chats.filter='all';Chats.onlineOnly=false;Chats.sort='recent';r()}
-function zcAvailable(){const seen=new Set();return [...Home.stage,...Home.hosts].filter(h=>{if(seen.has(h.id)||(!h.available&&!h.stream))return false;seen.add(h.id);return true}).slice(0,12)}
-function zcShortName(value){const names=String(value).trim().split(/\s+/);return names.length>1?names[0]+' '+names.at(-1)[0]+'.':names[0]}
-function zcAvailableView(){const pending=!DEMO&&contentPending('home'),error=!DEMO&&ContentLoading.home.error,rows=zcAvailable();if(!pending&&!error&&!rows.length)return '';return `<section class="zc-available" aria-label="Available creators"><div class="zc-section-heading"><h2>Online now</h2><button onclick="zcExploreAvailable()">See all</button></div><div class="zc-people">${pending?contentSkeleton('stories','Loading available creators',5):error?`<div class="zh-error" role="alert">${esc(error)}<button onclick="homeLoad()">Retry</button></div>`:rows.map(h=>`<button class="zc-person" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}">${zcPhoto(h)}${h.stream?'<b>LIVE</b>':'<i aria-hidden="true"></i>'}<span>${esc(zcShortName(h.n))}</span></button>`).join('')}</div></section>`}
-function zcExploreAvailable(){go('explore');homeFilter('instant')}
 function zcReadAll(){if(Chats.readBusy||zcPending()||!zcUnread())return;Chats.readError='';if(DEMO){Chats.rows.forEach(c=>c.unread=0);CH.forEach(c=>c[3]=0);r();return}Chats.readBusy=true;Native.send('chats.readAll');r()}
 function zcOpen(id){Chats.composeOpen=false;Chats.filtersOpen=false;Chats.revealed={};Chats.menu='';Chats.reply=null;Chats.editing=null;go('thread',id)}
 function zcFilters(){if(!Chats.filtersOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog" role="dialog" aria-modal="true" aria-label="Conversation filters"><div class="zc-dialog-heading"><h2>Conversation filters</h2><button onclick="zcCloseDialogs()" aria-label="Close filters">×</button></div><label class="zc-toggle"><span>Online only</span><input type="checkbox" ${Chats.onlineOnly?'checked':''} onchange="Chats.onlineOnly=this.checked;zcPaintList()"></label><label class="zc-sort">Sort conversations<select aria-label="Sort conversations" onchange="Chats.sort=this.value;zcPaintList()">${[['recent','Most recent'],['unread','Unread first'],['name','Name']].map(([key,label])=>`<option value="${key}" ${Chats.sort===key?'selected':''}>${label}</option>`).join('')}</select></label><button class="zc-dialog-reset" onclick="zcResetFilters()">Reset filters</button><button class="zh-primary zh-full" onclick="zcCloseDialogs()">Show conversations</button></section></div>`}
@@ -81,7 +106,7 @@ function zcPaintContacts(){const list=document.getElementById('zc-contacts');if(
 function zcComposeView(){if(!Chats.composeOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog zc-compose" role="dialog" aria-modal="true" aria-label="New conversation"><div class="zc-dialog-heading"><h2>New conversation</h2><button onclick="zcCloseDialogs()" aria-label="Close new conversation">×</button></div><label class="zc-compose-search">${hi('srch',19)}<input id="zc-contact-query" placeholder="Find a creator or contact" aria-label="Search contacts" value="${esc(Chats.composeQuery)}" oninput="Chats.composeQuery=this.value;zcPaintContacts()"></label><div id="zc-contacts">${zcContactList()}</div><button class="zh-soft zh-full" onclick="zcCloseDialogs();go('search')">Find more creators ${hi('explore',17)}</button></section></div>`}
 function zcCloseDialogs(){Chats.composeOpen=false;Chats.filtersOpen=false;r();document.querySelector('.zc-compose-button')?.focus({preventScroll:true})}
 function zcCloseOverlay(event){if(event.target===event.currentTarget)zcCloseDialogs()}
-function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search chats" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<div class="zc-layout"><div class="zc-discovery">${zcAvailableView()}</div><section class="zc-conversations" aria-label="Conversations">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}${window.ZimiAds?.banner('chats')||''}<div id="zc-list" class="zc-list">${zcList()}</div></section></div>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations'+MODEL_NOTE+'</p>':''}</div>${zcFilters()}${zcComposeView()}`}
+function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search chats" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<section class="zc-conversations" aria-label="${Chats.filter==='calls'?'Call history':Chats.filter==='missed'?'Missed calls':'Conversations'}">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}${window.ZimiAds?.banner('chats')||''}<div id="zc-list" class="zc-list">${zcList()}</div></section>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations'+MODEL_NOTE+'</p>':''}</div>${zcFilters()}${zcComposeView()}`}
 window.ZimiHome.views.chats=zcScreen;
 const chatsAfterRender=window.ZimiHome.afterRender;
 window.ZimiHome.afterRender=()=>{chatsAfterRender();const dialog=document.querySelector('.zc-dialog');if(dialog&&!dialog.contains(document.activeElement))(dialog.querySelector('input[type="text"],input:not([type]),button'))?.focus({preventScroll:true})};

@@ -132,6 +132,11 @@ keeps it identical to the original Next.js version.
   is true (at least briefly, at most 15s) and then shrinks away. Error states
   keep a text Retry/Try again button.
 - Automated welcome messages show in chats without an automation label.
+- Chats has no "Online now" strip. Its tabs: All and Unread list conversations;
+  Calls lists call history (`data.calls`: voice/video, direction, status) and
+  Missed calls lists missed calls with Call back. Call rows use the full-width
+  conversation row and open the other person's profile. When a call ends, is
+  declined or is missed, the bridge re-reads both lists in the background.
 - Approved hosts may message any member or another approved host at any time;
   members message approved hosts. Approved hosts may also call any member by
   voice or video at any time (there is no member permission switch), and can
