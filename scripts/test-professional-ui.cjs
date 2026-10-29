@@ -87,8 +87,9 @@ async function audit(page, label) {
           assert.equal((await style(page, '.zc-name')).fontSize, '15px', 'Conversation names use the shared body hierarchy');
         } else if (view === 'profile') {
           await backControl(page,`Own profile ${width}px`);
+          // The compact account profile keeps a short cover at every width.
           const cover = await style(page, '.zu-cover');
-          assert.ok(Math.abs(cover.height - (width < 760 ? 192 : 220)) < .6, 'Profile cover does not dominate the first screen');
+          assert.ok(Math.abs(cover.height - 128) < .6, 'Profile cover does not dominate the first screen');
           assert.equal(await page.locator('.zu-cover.has-photo').count(), 0, 'This fixture covers a profile without a cover image');
           assert.equal((await style(page, '.zu-cover-art')).backgroundImage, 'none', 'Missing covers use a simple neutral surface');
           const shadeVisible = await page.locator('.zu-cover-shade').evaluateAll(nodes => nodes.some(node => { const c = getComputedStyle(node); return c.display !== 'none' && c.visibility !== 'hidden' && Number(c.opacity) > 0; }));
@@ -96,7 +97,7 @@ async function audit(page, label) {
           assert.equal(await page.locator('.zu-eyebrow').evaluateAll(nodes => nodes.some(node => node.getClientRects().length)), false, 'Profile has no decorative all-caps eyebrow');
           const stats = await style(page, '.zu-stats');
           assert.equal(stats.border, '0px', 'Profile statistics remain a simple unboxed row');
-          assert.equal((await style(page, '.zu-bio')).fontSize, '14px', 'Profile biography stays readable');
+          assert.equal((await style(page, '.zu-bio')).fontSize, '12px', 'The compact profile biography uses the small text size');
           assert.equal(await page.getByRole('button', { name:'Edit profile', exact:true }).isVisible(), true);
           assert.equal(await page.getByRole('button', { name:'Upload photos', exact:true }).isVisible(), true);
         } else {

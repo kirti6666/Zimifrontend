@@ -146,13 +146,13 @@ async function run() {
     assert.equal(await page.getByRole('button', { name: /^Open photo/ }).count(), 2, 'Pagination deduplicates repeated server posts');
     assert.equal(await button(page, 'Load more posts').count(), 0);
     await button(page, 'Open photo 1: An acoustic evening.').click();
-    const viewer = page.getByRole('dialog');
-    await viewer.getByRole('heading', { name: 'Photo 1 of 2', exact: true }).waitFor();
-    assert.equal(await viewer.locator('.zu-viewer>img').getAttribute('src'), photo.mediaUrl);
-    assert.equal(await button(page, 'Previous post').isDisabled(), true);
-    await button(page, 'Next post').click();
-    await page.getByRole('dialog').getByRole('heading', { name: 'Photo 2 of 2', exact: true }).waitFor();
-    assert.equal(await button(page, 'Next post').isDisabled(), true);
+    // Photos open as a feed of every loaded post, starting at the tapped one.
+    const postFeed = page.locator('.zu-feed-dialog');
+    await postFeed.waitFor();
+    assert.equal(await postFeed.locator('.zu-feed-post').count(), 2);
+    assert.equal(await postFeed.locator('.zu-feed-media>img').first().getAttribute('src'), photo.mediaUrl);
+    assert.match(await postFeed.locator('.zu-feed-post').nth(1).innerText(), /A second moment\./);
+    assert.equal(await button(postFeed, 'Post options').count(), 0, 'Visitors cannot delete a creator\'s posts');
     await page.keyboard.press('Escape');
     assert.equal(await page.getByRole('dialog').count(), 0);
     await tab(page, 'Posts').focus();
@@ -160,7 +160,7 @@ async function run() {
     assert.equal(await tab(page, 'About').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
     await page.keyboard.press('Home');
     assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true');
-    console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, media viewer and keyboard tabs');
+    console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, post feed and keyboard tabs');
 
     const readsBeforePresence = await sentCount(page, 'profile.load');
     const unavailable = { ...creator, online: true, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };

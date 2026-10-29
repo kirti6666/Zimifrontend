@@ -121,9 +121,10 @@ keeps it identical to the original Next.js version.
   helper subtitles, divider lines or decorative footer.
 - There are no refresh buttons or refresh icons. Screens reload with pull to
   refresh (`web/pull-refresh.js`): register a screen with
-  `ZimiPullRefresh.register(view,{refresh,busy})`. The indicator only follows the
-  finger; the screen's own skeletons show the reload. Error states keep a text
-  Retry/Try again button.
+  `ZimiPullRefresh.register(view,{refresh,busy})`. The indicator is the
+  platform-default round spinner: it follows the finger, spins while `busy()`
+  is true (at least briefly, at most 15s) and then shrinks away. Error states
+  keep a text Retry/Try again button.
 - Automated welcome messages show in chats without an automation label.
 - Approved hosts may message any member or another approved host at any time;
   members message approved hosts. Approved hosts may also call any member by

@@ -19,8 +19,21 @@
 /* Informational notices never block the action underneath them. */
 #app-notice{pointer-events:none}
 
-/* Pull to refresh: the ring fills with the pull and turns accent when releasing reloads. */
-#zimi-pull{position:fixed;left:50%;z-index:30;display:grid;place-items:center;width:36px;height:36px;margin-left:-18px;border:1px solid var(--line);background:var(--surface);color:var(--muted);transform:translateY(calc(var(--pull,0px) - 40px));opacity:calc(var(--pull-progress,0) * 1.6);pointer-events:none}
+/* Pull to refresh, like the platform default: a disc slides down with the pull
+   while its arc and arrow grow and turn, goes solid once releasing reloads,
+   spins in place until the screen has reloaded, then shrinks away. */
+#zimi-pull{position:fixed;left:50%;z-index:30;display:grid;place-items:center;width:40px;height:40px;margin-left:-20px;border:1px solid var(--line);background:var(--surface);color:var(--accent-ink);transform:translateY(calc(var(--pull,0px) - 44px));opacity:calc(var(--pull-progress,0) * 2);pointer-events:none}
 #zimi-pull[hidden]{display:none}
-#zimi-pull circle{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:56.55;stroke-dashoffset:calc(56.55 * (1 - var(--pull-progress,0)));transform:rotate(-90deg);transform-origin:center}
-#zimi-pull.is-ready{color:var(--accent-ink);border-color:var(--accent-ink)}
+#zimi-pull svg{transform:rotate(calc(var(--pull-progress,0) * 180deg))}
+#zimi-pull :is(circle,path){opacity:.4;transform-origin:center}
+#zimi-pull circle{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;transform:rotate(-90deg)}
+#zimi-pull path{fill:currentColor;transform:rotate(calc(var(--pull-progress,0) * 288deg))}
+#zimi-pull:is(.is-ready,.is-refreshing) :is(circle,path){opacity:1}
+#zimi-pull.is-refreshing{opacity:1;transition:transform .2s ease-out}
+#zimi-pull.is-refreshing path{display:none}
+#zimi-pull.is-refreshing svg{animation:zimi-pull-turn 1.4s linear -.7s infinite}
+#zimi-pull.is-refreshing circle{animation:zimi-pull-dash 1.4s ease-in-out -.7s infinite}
+#zimi-pull.is-done{transform:translateY(calc(var(--pull,0px) - 44px)) scale(0);transition:transform .18s ease-in}
+@keyframes zimi-pull-turn{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes zimi-pull-dash{0%{stroke-dasharray:1 84;stroke-dashoffset:0}50%{stroke-dasharray:40 84;stroke-dashoffset:-6}100%{stroke-dasharray:40 84;stroke-dashoffset:-52}}
+@media(prefers-reduced-motion:reduce){#zimi-pull:is(.is-refreshing,.is-done){transition:none}#zimi-pull.is-refreshing svg{animation-duration:2.8s}#zimi-pull.is-refreshing circle{animation:none;stroke-dasharray:40 84}}

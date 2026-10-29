@@ -172,12 +172,13 @@ async function audit(page,label) {
     await navigate(page,'profile');await settleProfile(page,publicProfile(updated));await settlePosts(page,[post]);
     assert.equal(await page.locator('.zu-gallery .zu-photo').count(),1,'Confirmed uploaded posts appear in the shared public gallery');
     assert.equal(await page.locator('.zu-gallery img').getAttribute('src'),post.mediaUrl);
+    // The owner deletes from the post's options in the feed, after a confirmation.
     await page.locator('.zu-photo').click();
-    await button(page,'Delete post').click();
+    await button(page,'Post options').click();
     assert.equal(await sentCount(page,'media.post.delete'),0,'Deletion requires confirmation');
     await button(page,'Cancel').click();
     assert.equal(await page.locator('.zu-photo').count(),1,'Cancelling keeps the post');
-    await page.locator('.zu-photo').click();await button(page,'Delete post').click();await button(page,'Delete post').click();
+    await page.locator('.zu-photo').click();await button(page,'Post options').click();await button(page,'Delete post').click();
     const deletion=await lastSent(page,'media.post.delete');
     assert.equal(deletion.id,post.id);
     assert.equal(await page.locator('.zu-photo').count(),1,'Post remains until the server confirms deletion');

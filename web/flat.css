@@ -363,6 +363,8 @@ html:root :is(
 html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
 html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::before,
 html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::after {border-radius:999px!important}
+/* The pull-to-refresh spinner is a disc like the platform's own (also in ROUND). */
+html:root #zimi-pull {border-radius:999px!important}
 .ringorb {display:grid}
 
 /* No divider lines under headers or between settings rows. */

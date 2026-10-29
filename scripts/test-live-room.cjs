@@ -219,10 +219,11 @@ async function previewChecks(browser, errors) {
   await call.locator('.zr-call').waitFor();
   await layout(call, call.locator('.zr-room'), () => [
     button(call, 'Leave call'), button(call, 'Call options'), button(call, 'Open call chat'),
-    button(call, 'Add coins'), button(call, 'Call controls'), call.locator('.zr-hangup'),
+    button(call, 'Add coins'), button(call, 'Send a gift'), call.locator('.zr-hangup'),
   ], 'Private video call');
   await call.screenshot({ path: path.join(root, 'live-preview-call.png') });
-  await button(call, 'Call controls').click();
+  // Microphone, camera and sound controls open from the three-dot menu.
+  await button(call, 'Call options').click();
   await button(call, 'Mute').click();
   assert.equal(await button(call, 'Unmute').getAttribute('aria-pressed'), 'true');
   await button(call, 'Camera off').click();
