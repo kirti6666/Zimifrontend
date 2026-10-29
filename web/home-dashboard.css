@@ -21,14 +21,6 @@
 @media(max-width:370px){.zh-feed-tabs{gap:12px}.zh-feed-tabs>[role="tab"]{font-size:15px}.zh-header .zh-header-actions{gap:3px}}
 @media(max-width:350px){.zh-header .zh-host-status{width:34px;padding:0;justify-content:center}.zh-header .zh-host-status>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
 /* Featured creator rotation */
-.zh-featured-controls{display:flex;align-items:center;gap:10px;margin:10px 2px 0}
-.zh-featured-position{flex:none;min-width:36px;color:var(--muted);font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
-.zh-featured-progress{flex:1;height:3px;border-radius:3px;background:var(--line);overflow:hidden}
-.zh-featured-progress>i{display:block;width:100%;height:100%;border-radius:inherit;background:var(--accent);transform:scaleX(0);transform-origin:left}
-.zh-featured-progress[data-running="true"]>i{animation:zh-featured-progress linear forwards}
-@keyframes zh-featured-progress{to{transform:scaleX(1)}}
-.zh-featured-controls>button{display:grid;place-items:center;flex:none;width:40px;height:40px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink)}
-.zh-featured-controls>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .zh-featured-enter .zh-person-media>:is(.zh-photo:not(.zh-photo-pending),.zh-fallback){animation:zh-featured-photo .6s ease both}
 .zh-featured-enter .zh-person-content{animation:zh-featured-copy .45s ease .05s both}
 @keyframes zh-featured-photo{from{opacity:0;transform:scale(1.04)}}
@@ -58,7 +50,6 @@
 .zh-person-status.is-online>i{background:var(--online)}
 .zh-person-status.is-offline>i{background:rgba(255,255,255,.5)}
 .zh-person-status>b{font-size:9px;opacity:.7}
-.zh-featured-label{position:absolute;z-index:2;right:14px;top:14px;max-width:52%;padding:6px 10px;border:1px solid #ffffff35;border-radius:999px;background:#0005;color:#fff;font-size:10px;font-weight:600;backdrop-filter:blur(8px);pointer-events:none}
 .zh-home.zh-dashboard .zh-person-watch,.zh-home.zh-dashboard .zh-person-photo-link{position:absolute;inset:0;display:block;width:100%;min-height:44px;border:0;padding:0;background:transparent;color:#fff;z-index:1}
 .zh-watch-control{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px;min-width:44px;min-height:44px;padding:11px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(0,0,0,.45);color:#fff}
 .zh-watch-control>svg{width:17px;height:17px;flex:none}
@@ -137,4 +128,22 @@
 @media(hover:hover) and (pointer:fine){.zh-home.zh-dashboard .zh-person-action:hover:not(:disabled){filter:brightness(1.08)}.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}.zh-person-watch:hover .zh-watch-control{background:rgba(0,0,0,.65)}}
 @media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-featured-host{aspect-ratio:1.7;min-height:380px}.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding:25px;gap:18px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(34px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{width:350px;max-width:100%}.zh-home.zh-dashboard .zh-grid{gap:18px}.zh-home.zh-dashboard .zh-person-content{padding:15px}.zh-home.zh-dashboard .zh-person-action{font-size:12px}.zh-home.zh-dashboard .zh-person-profile p{font-size:12px}}
 @media(max-width:359px){.zh-home.zh-dashboard{padding-inline:14px}.zh-home.zh-dashboard .zh-grid{gap:10px}.zh-home.zh-dashboard .zh-person-action{gap:3px;padding-inline:3px;font-size:10px}.zh-home.zh-dashboard .zh-person-profile h3{font-size:13px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:25px}.zh-home.zh-dashboard .zh-featured-host .zh-person-status{font-size:9px;padding-inline:6px}.zh-featured-host .zh-watch-control{font-size:10px;padding:9px;gap:4px}}
-@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-progress>i,.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}
+/* The spotlight card: Online and price pills, a Featured label, the always-active
+   video call and position dots. A sideways swipe changes creator, so vertical
+   scrolling stays with the page. */
+.zh-featured-carousel{position:relative;touch-action:pan-y}
+.zh-home.zh-dashboard .zh-featured-host .zh-featured-price{position:absolute;z-index:2;top:14px;right:14px}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-content{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
+.zh-featured-eyebrow{display:inline-flex;align-items:center;gap:5px;margin-bottom:6px;color:rgba(255,255,255,.88);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600;letter-spacing:.3px;line-height:1.4}
+.zh-featured-eyebrow>svg{width:12px;height:12px;flex:none}
+.zh-home.zh-dashboard .zh-featured-host .zh-featured-call{z-index:4;width:52px;height:52px;pointer-events:auto}
+/* The photo fills the card behind the text, so its spacer never pushes the text out of view. */
+.zh-home.zh-dashboard .zh-featured-host .zh-person-media{min-height:0}
+.zh-home.zh-dashboard .zh-featured-carousel.has-dots .zh-featured-host .zh-person-content{padding-bottom:34px}
+.zh-featured-dots{position:absolute;z-index:5;left:0;right:0;bottom:7px;display:flex;justify-content:center;gap:2px;pointer-events:none}
+.zh-featured-dots>button{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:transparent;pointer-events:auto}
+.zh-featured-dots>button>i{display:block;width:6px;height:6px;background:rgba(255,255,255,.5);transition:width .18s ease,background-color .18s ease}
+.zh-featured-dots>button[aria-current="true"]>i{width:18px;background:#fff}
+.zh-featured-dots>button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+@media(prefers-reduced-motion:reduce){.zh-featured-dots>button>i{transition:none}}

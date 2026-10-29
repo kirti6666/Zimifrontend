@@ -71,10 +71,15 @@ keeps it identical to the original Next.js version.
   call can't start). Do not add Chat buttons to discovery cards.
   Sponsored cards go inside the grid after six hosts (`HOME_AD_AFTER`), or
   below a shorter grid; never above the hosts.
-- The featured card rotates every 6s (`HomeFeatured` in
-  `web/home-dashboard.js`) with Pause and Next controls. It holds while the
-  card is hovered, focused or scrolled away, the app is backgrounded or Home is
-  loading, and starts paused for reduced motion.
+- The featured card (`HomeFeatured` in `web/home-dashboard.js`) spotlights
+  the server's featured creator and the next four, rotating every 6s. It has
+  no control row under it (no position text, progress bar, Pause or Next):
+  dots inside the card show the position and jump to a creator, a sideways
+  swipe moves it, a tap opens the profile, and the card carries the Online and
+  price pills plus a round, always-active video call button like the grid
+  cards. It holds while touched, hovered, focused or scrolled away, while the
+  app is backgrounded or Home is loading, and never rotates by itself for
+  reduced motion.
 - Never show a host as offline. `hostFrom` in `web/aurora-runtime.js` marks
   every host online and lets members call an offline host (the server rings
   until the call is missed); only an online host's own call settings make

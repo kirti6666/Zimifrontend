@@ -49,19 +49,52 @@ async function assertUniqueProfiles(page, expected) {
     assert.equal(first, creators[0].id);
     await page.waitForFunction(id => document.querySelector('.zh-featured-host')?.dataset.hostId !== id, first, { timeout: 8000 });
     await assertUniqueProfiles(page, creators.map(creator => creator.id));
-    await page.getByRole('button', { name: 'Pause profile rotation', exact: true }).click();
-    assert.equal(await timerRunning(page), false, 'Pause cancels the rotation interval');
-    assert.equal(await page.getByRole('button', { name: 'Resume profile rotation', exact: true }).count(), 1);
-    const paused = await featuredId(page), cycle = [];
+    // No control row under the card: dots show the position and jump to a creator.
+    assert.equal(await page.locator('.zh-featured-controls,.zh-featured-progress,.zh-featured-position').count(), 0, 'The featured card has no control row');
+    const dots = page.locator('.zh-featured-dots > button');
+    assert.equal(await dots.count(), creators.length);
+    const currentDot = () => dots.evaluateAll(nodes => nodes.findIndex(node => node.getAttribute('aria-current') === 'true'));
+    const shownId = await featuredId(page);
+    const shownName = creators.find(creator => creator.id === shownId).name;
+    assert.match(await dots.nth(await currentDot()).getAttribute('aria-label'), new RegExp(`^Show ${shownName}, \\d of ${creators.length}$`), 'The current dot names the featured creator');
+    await dots.nth(2).click();
+    assert.equal(await featuredId(page), creators[2].id, 'A dot shows its creator');
+    assert.equal(await currentDot(), 2);
+    await assertUniqueProfiles(page, creators.map(creator => creator.id));
+    const start = await featuredId(page), cycle = [];
     for (let index = 0; index < creators.length; index++) {
       await page.evaluate(() => homeFeaturedNext());
       cycle.push(await featuredId(page));
       await assertUniqueProfiles(page, creators.map(creator => creator.id));
     }
     assert.equal(new Set(cycle).size, creators.length, 'Manual advancement visits every creator');
-    assert.equal(cycle.at(-1), paused, 'The rotation wraps to the current creator');
-    assert.equal(await timerRunning(page), false, 'Manual advancement preserves Pause');
-    await page.getByRole('button', { name: 'Resume profile rotation', exact: true }).click();
+    assert.equal(cycle.at(-1), start, 'The rotation wraps to the current creator');
+
+    // A sideways swipe moves the spotlight without opening the profile under the finger.
+    const box = await page.locator('.zh-featured-host').boundingBox(), y = box.y + box.height / 2;
+    // Like a browser, the click that may end a gesture targets whatever is under the finger after it lifts.
+    const swipe = (from, to) => page.locator('.zh-featured-carousel').evaluate((el, { from, to, y }) => {
+      for (const [type, x] of [['pointerdown', from], ['pointerup', to]]) el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }));
+      document.elementFromPoint(to, y).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: to, clientY: y }));
+    }, { from, to, y });
+    const beforeSwipe = await featuredId(page);
+    await swipe(box.x + box.width - 30, box.x + 30);
+    assert.notEqual(await featuredId(page), beforeSwipe, 'Swiping left shows the next creator');
+    assert.equal(await page.evaluate(() => S.v), 'home', 'The swipe never opens a profile');
+    await swipe(box.x + 30, box.x + box.width - 30);
+    assert.equal(await featuredId(page), beforeSwipe, 'Swiping right goes back');
+    await page.locator('.zh-featured-host').click({ position: { x: 40, y: 60 } });
+    assert.equal(await page.evaluate(() => S.v), 'host', 'A tap still opens the featured profile');
+    await page.evaluate(() => go('home'));
+
+    // The always-active video call starts from the card itself.
+    const call = page.locator('.zh-featured-host .zh-featured-call');
+    assert.equal(await call.isEnabled(), true);
+    assert.match(await call.getAttribute('aria-label'), /^Video call /);
+    assert.equal(await call.evaluate(el => getComputedStyle(el).borderRadius), '999px', 'Call buttons are round');
+    await call.click();
+    assert.equal(await page.evaluate(() => S.v), 'precall', 'The featured call button opens the call setup');
+    await page.evaluate(() => go('home'));
     await page.mouse.move(1, 1);
     await page.getByRole('tab', { name: 'All', exact: true }).focus();
     await page.locator('.zh-featured-carousel').evaluate(element => element.dispatchEvent(new MouseEvent('mouseleave')));
@@ -114,7 +147,8 @@ async function assertUniqueProfiles(page, expected) {
 
     const reduced = await open('reduce', host);
     assert.equal(await timerRunning(reduced), false, 'Reduced motion initializes rotation paused');
-    assert.equal(await reduced.getByRole('button', { name: 'Resume profile rotation', exact: true }).count(), 1);
+    assert.equal(await reduced.locator('.zh-featured-controls').count(), 0, 'Reduced motion has no control row either; dots and swipes still work');
+    assert.equal(await reduced.locator('.zh-featured-dots > button').count(), creators.length);
     assert.equal(await reduced.locator('.zh-host-status').count(), 1, 'Approved host accounts retain their availability control');
     await reduced.getByRole('tab', { name: 'Following', exact: true }).click();
     assert.deepEqual(await reduced.evaluate(() => __sent.filter(message => message.type === 'home.reload').at(-1).data), { page: 1, mode: 'following' });
@@ -124,6 +158,6 @@ async function assertUniqueProfiles(page, expected) {
     await reduced.getByRole('tab', { name: 'All', exact: true }).click();
     assert.deepEqual(await reduced.evaluate(() => __sent.filter(message => message.type === 'home.reload').at(-1).data), { page: 1, mode: 'popular' });
     assert.deepEqual(errors, [], 'No browser exceptions');
-    console.log('PASS Home discovery: All/Following header, host-only status, automatic and manual rotation, unique profiles, pause/focus/hover/background/loading guards, ads after six hosts, and reduced motion');
+    console.log('PASS Home discovery: All/Following header, host-only status, featured card without a control row (dots, swipe, call button), automatic and manual rotation, unique profiles, focus/hover/background/loading guards, ads after six hosts, and reduced motion');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

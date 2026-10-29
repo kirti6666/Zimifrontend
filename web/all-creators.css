@@ -2,9 +2,8 @@
    featured card's complete surface keyboard-accessible too. */
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit{position:absolute;inset:0;z-index:3;width:100%;height:100%;min-height:44px;flex:none;padding:0;border:0;background:transparent}
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit:focus-visible{outline:2px solid #fff;outline-offset:-5px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding-right:48px;pointer-events:none}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-content{pointer-events:none}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-profile{min-height:0;pointer-events:none}
-.zh-featured-profile-arrow{position:absolute;right:18px;bottom:24px;display:grid;place-items:center;width:20px;color:#fff;pointer-events:none}
 .zac-page{width:100%;max-width:1040px;margin:0 auto;padding:12px 20px 28px;color:var(--ink)}
 .zac-heading{display:flex;align-items:center;gap:12px;min-height:48px;margin:0 0 14px}
 .zac-heading .zb-back{flex:none;width:44px;height:44px;background:transparent;border:0}

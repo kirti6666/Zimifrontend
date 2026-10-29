@@ -3675,14 +3675,6 @@ button.gpill[onclick]{cursor:pointer}
 @media(max-width:370px){.zh-feed-tabs{gap:12px}.zh-feed-tabs>[role="tab"]{font-size:15px}.zh-header .zh-header-actions{gap:3px}}
 @media(max-width:350px){.zh-header .zh-host-status{width:34px;padding:0;justify-content:center}.zh-header .zh-host-status>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
 /* Featured creator rotation */
-.zh-featured-controls{display:flex;align-items:center;gap:10px;margin:10px 2px 0}
-.zh-featured-position{flex:none;min-width:36px;color:var(--muted);font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
-.zh-featured-progress{flex:1;height:3px;border-radius:3px;background:var(--line);overflow:hidden}
-.zh-featured-progress>i{display:block;width:100%;height:100%;border-radius:inherit;background:var(--accent);transform:scaleX(0);transform-origin:left}
-.zh-featured-progress[data-running="true"]>i{animation:zh-featured-progress linear forwards}
-@keyframes zh-featured-progress{to{transform:scaleX(1)}}
-.zh-featured-controls>button{display:grid;place-items:center;flex:none;width:40px;height:40px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink)}
-.zh-featured-controls>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .zh-featured-enter .zh-person-media>:is(.zh-photo:not(.zh-photo-pending),.zh-fallback){animation:zh-featured-photo .6s ease both}
 .zh-featured-enter .zh-person-content{animation:zh-featured-copy .45s ease .05s both}
 @keyframes zh-featured-photo{from{opacity:0;transform:scale(1.04)}}
@@ -3712,7 +3704,6 @@ button.gpill[onclick]{cursor:pointer}
 .zh-person-status.is-online>i{background:var(--online)}
 .zh-person-status.is-offline>i{background:rgba(255,255,255,.5)}
 .zh-person-status>b{font-size:9px;opacity:.7}
-.zh-featured-label{position:absolute;z-index:2;right:14px;top:14px;max-width:52%;padding:6px 10px;border:1px solid #ffffff35;border-radius:999px;background:#0005;color:#fff;font-size:10px;font-weight:600;backdrop-filter:blur(8px);pointer-events:none}
 .zh-home.zh-dashboard .zh-person-watch,.zh-home.zh-dashboard .zh-person-photo-link{position:absolute;inset:0;display:block;width:100%;min-height:44px;border:0;padding:0;background:transparent;color:#fff;z-index:1}
 .zh-watch-control{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px;min-width:44px;min-height:44px;padding:11px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(0,0,0,.45);color:#fff}
 .zh-watch-control>svg{width:17px;height:17px;flex:none}
@@ -3791,7 +3782,25 @@ button.gpill[onclick]{cursor:pointer}
 @media(hover:hover) and (pointer:fine){.zh-home.zh-dashboard .zh-person-action:hover:not(:disabled){filter:brightness(1.08)}.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}.zh-person-watch:hover .zh-watch-control{background:rgba(0,0,0,.65)}}
 @media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-featured-host{aspect-ratio:1.7;min-height:380px}.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding:25px;gap:18px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(34px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{width:350px;max-width:100%}.zh-home.zh-dashboard .zh-grid{gap:18px}.zh-home.zh-dashboard .zh-person-content{padding:15px}.zh-home.zh-dashboard .zh-person-action{font-size:12px}.zh-home.zh-dashboard .zh-person-profile p{font-size:12px}}
 @media(max-width:359px){.zh-home.zh-dashboard{padding-inline:14px}.zh-home.zh-dashboard .zh-grid{gap:10px}.zh-home.zh-dashboard .zh-person-action{gap:3px;padding-inline:3px;font-size:10px}.zh-home.zh-dashboard .zh-person-profile h3{font-size:13px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:25px}.zh-home.zh-dashboard .zh-featured-host .zh-person-status{font-size:9px;padding-inline:6px}.zh-featured-host .zh-watch-control{font-size:10px;padding:9px;gap:4px}}
-@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-progress>i,.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}
+/* The spotlight card: Online and price pills, a Featured label, the always-active
+   video call and position dots. A sideways swipe changes creator, so vertical
+   scrolling stays with the page. */
+.zh-featured-carousel{position:relative;touch-action:pan-y}
+.zh-home.zh-dashboard .zh-featured-host .zh-featured-price{position:absolute;z-index:2;top:14px;right:14px}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-content{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
+.zh-featured-eyebrow{display:inline-flex;align-items:center;gap:5px;margin-bottom:6px;color:rgba(255,255,255,.88);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600;letter-spacing:.3px;line-height:1.4}
+.zh-featured-eyebrow>svg{width:12px;height:12px;flex:none}
+.zh-home.zh-dashboard .zh-featured-host .zh-featured-call{z-index:4;width:52px;height:52px;pointer-events:auto}
+/* The photo fills the card behind the text, so its spacer never pushes the text out of view. */
+.zh-home.zh-dashboard .zh-featured-host .zh-person-media{min-height:0}
+.zh-home.zh-dashboard .zh-featured-carousel.has-dots .zh-featured-host .zh-person-content{padding-bottom:34px}
+.zh-featured-dots{position:absolute;z-index:5;left:0;right:0;bottom:7px;display:flex;justify-content:center;gap:2px;pointer-events:none}
+.zh-featured-dots>button{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:transparent;pointer-events:auto}
+.zh-featured-dots>button>i{display:block;width:6px;height:6px;background:rgba(255,255,255,.5);transition:width .18s ease,background-color .18s ease}
+.zh-featured-dots>button[aria-current="true"]>i{width:18px;background:#fff}
+.zh-featured-dots>button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+@media(prefers-reduced-motion:reduce){.zh-featured-dots>button>i{transition:none}}
 /* The same gold BinzoLive mark remains recognizable in every app palette. */
 .zc-coin{flex-shrink:0;vertical-align:middle;overflow:visible;filter:none}
 .zw-coins{max-width:620px;margin:0 auto;padding:18px 20px 30px;color:var(--ink)}
@@ -4260,12 +4269,7 @@ html,body,.app,#top,#scroll-root,#screen {
 .zh-home.zh-dashboard .zh-featured-host {aspect-ratio:1.22;min-height:288px}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.45px}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-profile p {font-size:calc(12px * var(--theme-font-scale,1));font-weight:400;line-height:1.5}
-.zh-featured-label {font-size:calc(10px * var(--theme-font-scale,1));font-weight:500;border-color:#ffffff40;backdrop-filter:none}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-status {font-weight:500;letter-spacing:0}
-.zh-featured-controls {gap:8px;margin-top:8px}
-.zh-featured-controls>button {width:44px;height:44px;border:0;background:transparent}
-.zh-featured-position {font-size:calc(11px * var(--theme-font-scale,1));font-weight:400;color:var(--muted)}
-.zh-featured-progress {height:2px}
 .zh-home.zh-dashboard .zh-person-action {min-height:44px;font-weight:600}
 .zh-home.zh-dashboard .zh-grid {gap:12px}
 .zh-creator-text h3 {font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;line-height:1.35;letter-spacing:-.15px}
@@ -4411,9 +4415,8 @@ html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::after
    featured card's complete surface keyboard-accessible too. */
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit{position:absolute;inset:0;z-index:3;width:100%;height:100%;min-height:44px;flex:none;padding:0;border:0;background:transparent}
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit:focus-visible{outline:2px solid #fff;outline-offset:-5px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding-right:48px;pointer-events:none}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-content{pointer-events:none}
 .zh-home.zh-dashboard .zh-featured-host .zh-person-profile{min-height:0;pointer-events:none}
-.zh-featured-profile-arrow{position:absolute;right:18px;bottom:24px;display:grid;place-items:center;width:20px;color:#fff;pointer-events:none}
 .zac-page{width:100%;max-width:1040px;margin:0 auto;padding:12px 20px 28px;color:var(--ink)}
 .zac-heading{display:flex;align-items:center;gap:12px;min-height:48px;margin:0 0 14px}
 .zac-heading .zb-back{flex:none;width:44px;height:44px;background:transparent;border:0}
@@ -9972,22 +9975,19 @@ if(DEMO){
 /* Photo-led Home discovery; colors follow the selected theme. */
 const HomeFeatured = { id:'', start:'', paused:matchMedia('(prefers-reduced-motion: reduce)').matches, timer:null, due:0, backgrounded:false, offscreen:false, observed:null, touching:false };
 const HOME_FEATURE_INTERVAL = 6000;
-function homeFeaturedStop(){clearTimeout(HomeFeatured.timer);HomeFeatured.timer=null;homeFeaturedProgress()}
+// The spotlight rotates through the first few creators, so its dots stay readable.
+const HOME_FEATURE_MAX = 5;
+function homeFeaturedStop(){clearTimeout(HomeFeatured.timer);HomeFeatured.timer=null}
 function homeFeaturedReset(){homeFeaturedStop();HomeFeatured.id=HomeFeatured.start=''}
-function homeFeaturedPick(all){
-  if(!all.some(h=>h.id===HomeFeatured.id))HomeFeatured.id=HomeFeatured.start=(all.find(h=>h.id===Home.featured?.id)||all[0])?.id||'';
-  return all.find(h=>h.id===HomeFeatured.id)||null;
+// The server's featured creator leads the spotlight, followed by the next creators in the feed.
+function homeFeaturedPool(all){
+  const pinned=all.find(h=>h.id===Home.featured?.id);
+  return (pinned?[pinned,...all.filter(h=>h!==pinned)]:all).slice(0,HOME_FEATURE_MAX);
 }
-// Counted from the first creator shown, so a fresh Home reads 1 / n.
-function homeFeaturedPosition(all){const at=id=>Math.max(0,all.findIndex(h=>h.id===id));return `${(at(HomeFeatured.id)-at(HomeFeatured.start)+all.length)%all.length+1} / ${all.length}`}
-// The bar mirrors the real timer, resuming mid-way after a redraw.
-function homeFeaturedProgress(){
-  const bar=document.querySelector('.zh-featured-progress');if(!bar)return;
-  if(bar.dataset.due===String(HomeFeatured.timer?HomeFeatured.due:0))return;
-  const fill=bar.firstElementChild||document.createElement('i');
-  if(HomeFeatured.timer)Object.assign(fill.style,{animationDuration:`${HOME_FEATURE_INTERVAL}ms`,animationDelay:`${HomeFeatured.due-HOME_FEATURE_INTERVAL-Date.now()}ms`});
-  else{fill.style.animationDuration='';fill.style.animationDelay=''}
-  bar.dataset.running=String(!!HomeFeatured.timer);bar.dataset.due=String(HomeFeatured.timer?HomeFeatured.due:0);if(!fill.parentNode)bar.append(fill);
+function homeFeaturedPick(all){
+  const pool=homeFeaturedPool(all);
+  if(!pool.some(h=>h.id===HomeFeatured.id))HomeFeatured.id=HomeFeatured.start=(pool.find(h=>h.id===Home.featured?.id)||pool[0])?.id||'';
+  return pool.find(h=>h.id===HomeFeatured.id)||null;
 }
 function homeFeaturedHeld(){
   if(HomeFeatured.touching)return true;
@@ -10001,19 +10001,15 @@ function homeFeaturedSchedule(){
   if(!homeFeaturedReady()||HomeFeatured.paused||homeFeaturedHeld())return;
   HomeFeatured.due=Date.now()+HOME_FEATURE_INTERVAL;
   HomeFeatured.timer=setTimeout(()=>{HomeFeatured.timer=null;if(homeFeaturedReady()&&!homeFeaturedHeld())homeFeaturedNext(false);else homeFeaturedSchedule()},HOME_FEATURE_INTERVAL);
-  homeFeaturedProgress();
 }
-function homeFeaturedControls(all){return all.length>1?`<div class="zh-featured-controls"><span class="zh-featured-position" data-featured-position aria-label="Featured profile position">${homeFeaturedPosition(all)}</span><span class="zh-featured-progress" aria-hidden="true"><i></i></span><button type="button" data-featured-pause aria-label="${HomeFeatured.paused?'Resume':'Pause'} profile rotation" onclick="homeFeaturedToggle()">${hi(HomeFeatured.paused?'play':'pause',16)}</button><button type="button" aria-label="Next featured creator" onclick="homeFeaturedNext()">${hi('arrow',18)}</button></div>`:''}
-function homeFeaturedToggle(){
-  HomeFeatured.paused=!HomeFeatured.paused;
-  const button=document.querySelector('[data-featured-pause]');
-  if(button){button.setAttribute('aria-label',`${HomeFeatured.paused?'Resume':'Pause'} profile rotation`);button.innerHTML=hi(HomeFeatured.paused?'play':'pause',16)}
-  homeFeaturedSchedule();
+// Dots show where the spotlight is; each one also jumps to its creator.
+function homeFeaturedDots(pool){
+  if(pool.length<2)return '';
+  return `<div class="zh-featured-dots" role="group" aria-label="Featured creators">${pool.map((h,index)=>`<button type="button" aria-label="Show ${esc(h.n)}, ${index+1} of ${pool.length}" ${h.id===HomeFeatured.id?'aria-current="true"':''} onclick="homeFeaturedShow('${domId(h.id)}')"><i></i></button>`).join('')}</div>`;
 }
-function homeFeaturedNext(manual=true){
-  const all=homeDashboardHosts().all;
-  if(all.length<2||!homeFeaturedReady()||!manual&&(HomeFeatured.paused||homeFeaturedHeld()))return;
-  const next=all[(Math.max(0,all.findIndex(h=>h.id===HomeFeatured.id))+1)%all.length];
+function homeFeaturedShow(id,manual=true){
+  const all=homeDashboardHosts().all,pool=homeFeaturedPool(all),next=pool.find(h=>h.id===id);
+  if(!next||!homeFeaturedReady()||!manual&&(HomeFeatured.paused||homeFeaturedHeld()))return;
   HomeFeatured.id=next.id;
   const hero=document.getElementById('home-featured-card'),grid=document.getElementById('home-host-grid');
   if(hero)window.ZimiHomeRender.render(hero,homeDashboardCard(next,true));
@@ -10021,9 +10017,28 @@ function homeFeaturedNext(manual=true){
     // The sponsored card keeps its element, so rotation never reloads it or counts a second view.
     window.ZimiHomeRender.render(grid,homeGridWithAd(all.filter(h=>h.id!==next.id).map(h=>homeDashboardCard(h)),'home'));
   }
-  const position=document.querySelector('[data-featured-position]');if(position)position.textContent=homeFeaturedPosition(all);
+  document.querySelectorAll('.zh-featured-dots>button').forEach((dot,index)=>{if(pool[index]?.id===next.id)dot.setAttribute('aria-current','true');else dot.removeAttribute('aria-current')});
   contentImagesReady();window.ZimiCardVideo?.attach();homeFeaturedSchedule();
 }
+function homeFeaturedStep(delta,manual=true){
+  const pool=homeFeaturedPool(homeDashboardHosts().all);
+  if(pool.length<2)return;
+  const at=Math.max(0,pool.findIndex(h=>h.id===HomeFeatured.id));
+  homeFeaturedShow(pool[(at+delta+pool.length)%pool.length].id,manual);
+}
+function homeFeaturedNext(manual=true){homeFeaturedStep(1,manual)}
+// A sideways swipe on the card moves the spotlight; it never also opens the profile below the finger.
+// Only the click that ends the same gesture is swallowed; a new touch clears the guard.
+const HomeSwipe={pointer:null,x:0,y:0,swipedAt:0};
+function homeFeaturedSwipeStart(event){if(event.pointerType==='mouse'&&event.button!==0)return;Object.assign(HomeSwipe,{pointer:event.pointerId,x:event.clientX,y:event.clientY,swipedAt:0})}
+function homeFeaturedSwipeEnd(event){
+  if(HomeSwipe.pointer!==event.pointerId)return;
+  HomeSwipe.pointer=null;
+  const dx=event.clientX-HomeSwipe.x,dy=event.clientY-HomeSwipe.y;
+  if(Math.abs(dx)<48||Math.abs(dx)<Math.abs(dy)*1.5)return;
+  HomeSwipe.swipedAt=Date.now();homeFeaturedStep(dx<0?1:-1);
+}
+document.addEventListener('click',event=>{if(HomeSwipe.swipedAt&&Date.now()-HomeSwipe.swipedAt<600&&event.target?.closest?.('.zh-featured-carousel')){HomeSwipe.swipedAt=0;event.preventDefault();event.stopPropagation()}},true);
 // Rotation waits while the card is scrolled away, so the grid never changes under the reader.
 const homeFeaturedObserver=window.IntersectionObserver?new IntersectionObserver(entries=>{
   const offscreen=!entries[entries.length-1].isIntersecting;
@@ -10034,7 +10049,7 @@ function homeFeaturedAfterRender(){
   const carousel=document.querySelector('.zh-featured-carousel');
   if(carousel!==HomeFeatured.observed){homeFeaturedObserver?.disconnect();HomeFeatured.observed=carousel;if(carousel)homeFeaturedObserver?.observe(carousel);else HomeFeatured.offscreen=false}
   // Redraws keep a running timer, so frequent updates cannot starve the rotation.
-  if(HomeFeatured.timer&&homeFeaturedReady()&&!HomeFeatured.paused&&!homeFeaturedHeld())homeFeaturedProgress();else homeFeaturedSchedule();
+  if(!(HomeFeatured.timer&&homeFeaturedReady()&&!HomeFeatured.paused&&!homeFeaturedHeld()))homeFeaturedSchedule();
 }
 const homeFeaturedInteraction='onpointerenter="if(event.pointerType===\'mouse\')homeFeaturedStop()" onpointerleave="homeFeaturedSchedule()" onfocusin="homeFeaturedStop()" onfocusout="setTimeout(homeFeaturedSchedule,0)"';
 document.addEventListener('visibilitychange',homeFeaturedSchedule);
@@ -10047,7 +10062,7 @@ document.addEventListener('pointercancel',homeFeaturedRelease,{passive:true});
 Native.on('app.background',()=>{HomeFeatured.backgrounded=true;HomeFeatured.touching=false;homeFeaturedStop()});
 Native.on('app.foreground',()=>{HomeFeatured.backgrounded=false;homeFeaturedSchedule()});
 ['session.none','session.expired'].forEach(type=>Native.on(type,()=>{homeFeaturedReset();HomeFeatured.paused=matchMedia('(prefers-reduced-motion: reduce)').matches}));
-matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{if(event.matches&&!HomeFeatured.paused)homeFeaturedToggle()});
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{HomeFeatured.paused=event.matches;homeFeaturedSchedule()});
 function homeDashboardIsLive(h){return window.ZIMI_LIVE_STREAMING_ENABLED&&!!h.stream&&(!h.stream.status||h.stream.status==='live')}
 function homeDashboardCanCall(h){return !!h.available&&(h.on||homeDashboardIsLive(h))}
 function homeDashboardHosts(){
@@ -10086,8 +10101,8 @@ function homeDashboardCard(h,featured=false){
   if(!featured)return homeTile(h);
   const id=domId(h.id),live=homeDashboardIsLive(h),status=live?'is-live':h.on?'is-online':'is-offline';
   return `<article class="zh-tile zh-person-card zh-featured-host ${status}" data-host-id="${esc(h.id)}">
-    <div class="zh-person-media">${homeCover(h,true)}${homeCardVideo(h)}<div class="zh-photo-shade"></div><span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)} watching`:h.on?'Online':'Offline'}</span>${live?'':'<span class="zh-featured-label">Featured creator</span>'}</div>
-    <div class="zh-person-content"><div class="zh-person-profile"><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><span class="zh-featured-profile-arrow" aria-hidden="true">${hi('arrow',20)}</span></div>
+    <div class="zh-person-media">${homeCover(h,true)}${homeCardVideo(h)}<div class="zh-photo-shade"></div><span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)} watching`:h.on?'Online':'Offline'}</span>${live?'':`<span class="zh-creator-price zh-featured-price ${h.rate>0?'':'is-free'}">${h.rate>0?`${hi('rings',13)}${n(h.rate)}/min`:'Free'}</span>`}</div>
+    <div class="zh-person-content"><div class="zh-person-profile"><span class="zh-featured-eyebrow">${hi('star',12)}Featured creator</span><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><button type="button" class="zh-creator-call zh-featured-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',22)}</button></div>
     <button type="button" class="zh-person-photo-link zh-featured-profile-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button>
   </article>`;
 }
@@ -10147,8 +10162,8 @@ function homeDashboard(){
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all;
-  const featured=pending?null:homeFeaturedPick(all),remaining=featured?all.filter(h=>h.id!==featured.id):[];
-  const hero=pending?homeDashboardHeroSkeleton():!error&&featured?`<section class="zh-featured-carousel" aria-roledescription="carousel" aria-label="Featured creators" ${homeFeaturedInteraction}><div id="home-featured-card">${homeDashboardCard(featured,true)}</div>${homeFeaturedControls(all)}</section>`:'';
+  const featured=pending?null:homeFeaturedPick(all),remaining=featured?all.filter(h=>h.id!==featured.id):[],pool=homeFeaturedPool(all);
+  const hero=pending?homeDashboardHeroSkeleton():!error&&featured?`<section class="zh-featured-carousel ${pool.length>1?'has-dots':''}" aria-roledescription="carousel" aria-label="Featured creators" ${homeFeaturedInteraction} onpointerdown="homeFeaturedSwipeStart(event)" onpointerup="homeFeaturedSwipeEnd(event)"><div id="home-featured-card">${homeDashboardCard(featured,true)}</div>${homeFeaturedDots(pool)}</section>`:'';
   const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div id="home-host-grid" class="zh-grid" ${homeFeaturedInteraction}>${homeGridWithAd(remaining.map(h=>homeDashboardCard(h)),'home')}</div>`:(!featured?homeDashboardEmpty():'')+(window.ZimiAds?.card('home')||'');
   return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${Home.dashboardFilter==='following'?'following':'all'}"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>${Home.dashboardFilter==='following'?'Following':'Instant Connect'}</h2><div class="zh-live-tools"><button type="button" class="zh-see-all" onclick="go('all-creators')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
 }
