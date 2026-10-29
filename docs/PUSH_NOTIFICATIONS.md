@@ -3,8 +3,10 @@
 > The same file lives in both repositories (`zimibackend/docs/` and
 > `Zimifrontend/docs/`). Change both together.
 
-Status: **in review, not on `main`**. Backend branch `claude/fcm-push`;
-app branch `claude/nice-ptolemy-c8o5g2`. Android only.
+Status: **in review, not on `main`**. Android only.
+
+- Backend PR: [kirti6666/zimibackend#23](https://github.com/kirti6666/zimibackend/pull/23) (branch `claude/fcm-push`), CI green.
+- App PR: [kirti6666/Zimifrontend#17](https://github.com/kirti6666/Zimifrontend/pull/17) (branch `claude/nice-ptolemy-c8o5g2`, up to date with `main`), local tests green; the repo has no CI.
 
 ## Done and left
 
@@ -12,19 +14,19 @@ app branch `claude/nice-ptolemy-c8o5g2`. Android only.
 
 - [x] Firebase project `binzolive-e48d2`: Android app `com.aurora.liveapp` registered, Cloud Messaging API (V1) enabled.
 - [x] Backend service-account key saved as the GitHub secret `FIREBASE_SERVICE_ACCOUNT_JSON` (`zimibackend`).
-- [x] Backend code on `claude/fcm-push`: FCM sender, call/gift/coin/follower pushes, ring re-sent on socket connect, ring 30s, deploy installs the key, tests written.
+- [x] Backend code on `claude/fcm-push`: FCM sender, call/gift/coin/follower pushes, ringing call re-sent on socket connect with the caller's name, ring 30s, ring kept alive when the host's socket drops, deploy installs the key and turns push on, tests written. CI green (229 tests, audit, lint, image smoke test).
 - [x] App code on `claude/nice-ptolemy-c8o5g2`: FCM token, full-screen ring with Answer/Decline, Missed call, general notifications, call foreground service, Android 14 full-screen check, tests.
-- [x] This document, in both repos.
+- [x] Both PRs open; this document in both repos.
 
 **Left (in order)**
 
 - [ ] Review both branches.
 - [ ] Put `google-services.json` (project `binzolive-e48d2`) next to `app.json` locally, and/or upload it to EAS as `GOOGLE_SERVICES_JSON` for each profile. Never commit it.
-- [ ] Open the backend PR `claude/fcm-push` → `main` and get CI green (MongoDB tests have not run yet).
-- [ ] On the VPS set `PUSH_ENABLED=true` in `/opt/binzolive/backend/.env.production`, then merge the backend PR (the deploy installs the key).
-- [ ] Build the app (`eas build --profile development --platform android`) and install it on a phone.
+- [ ] On the VPS run `uname -r`: if the kernel is 6.19 or newer, MongoDB 8.0 will not start (see Known limits) — plan the MongoDB 8.2 upgrade first.
+- [ ] Merge backend PR #23 (the deploy installs the key and turns push on).
+- [ ] Build a test app (`eas build --profile preview --platform android`, a standalone APK) and install it on two phones.
 - [ ] Test with `scripts/send-test-push.mjs`, then real calls (checklist under Testing).
-- [ ] Open and merge the app PR `claude/nice-ptolemy-c8o5g2` → `main`.
+- [ ] Merge app PR #17.
 - [ ] Release build, internal-testing upload, Play Console declarations (Full-screen intent; Foreground service: phone call, camera, microphone).
 
 ## What it does
@@ -92,15 +94,18 @@ notification.
 | `src/modules/notifications/notification.controller.ts` | `POST/DELETE /notifications/devices` accept FCM tokens (was Expo tokens only, which the app never sent) |
 | `src/modules/calls/call.service.ts` | `pushRing()`; `finishCall` sends `call_cancelled` when a ring ends (`declined` by the host, otherwise `missed`) |
 | `src/modules/calls/call.controller.ts` | `incoming_call` on create, `call_cancelled answered` on accept; **ring timeout 60s → 30s** |
-| `src/modules/calls/signaling.ts` | On socket connect, re-sends a still-ringing call to the callee (needed for Answer) |
+| `src/modules/calls/signaling.ts` | On socket connect, re-sends a still-ringing call to the callee (needed for Answer); a callee losing the socket keeps their incoming ring (they can answer from the push) |
+| `src/modules/calls/call.service.ts` (`withCaller`) | The ringing `call:updated` event carries `caller {name, avatarUrl, city, gender}`; the ring screen showed no caller name before |
 | `src/modules/commerce/commerce.controller.ts` / `commerce.service.ts` | `gift_received` push; `coins_credited` when a coin purchase is paid |
 | `src/modules/users/user.controller.ts` | `new_follower` push on a new follow |
 | `src/config/env.ts` | `EXPO_ACCESS_TOKEN` removed; `GOOGLE_APPLICATION_CREDENTIALS` added; `PUSH_ENABLED=true` requires it |
 | `.github/workflows/backend.yml` | Deploy writes the secret to `/opt/binzolive/backend/secrets/firebase-service-account.json` (dir 700, file 644 so the container's `node` user can read it) and checks it is a service-account key |
-| `deploy/vps/compose.yml` | Mounts that file read-only at `/run/secrets/firebase-service-account.json`; sets `GOOGLE_APPLICATION_CREDENTIALS` |
+| `deploy/vps/compose.yml` | Mounts that file read-only at `/run/secrets/firebase-service-account.json`; sets `GOOGLE_APPLICATION_CREDENTIALS` and `PUSH_ENABLED=true` |
+| `package-lock.json` | `undici` and `zod` updated past new high-severity advisories (CI audit; `main` fails the same check) |
+| `ci/smoke.sh` | Smoke test uses `mongo:8.2.6` (8.0 refuses to start on the runners' Linux 6.19 kernel) and prints dependency logs on failure |
 | `.gitignore`, `.env.example`, `deploy/vps/production.env.example`, READMEs | `/secrets/` ignored; env docs updated |
 | `package.json` | `firebase-admin` added |
-| `tests/call-billing.test.ts`, `tests/commerce.test.ts` | Call ring pushes (incoming/declined/missed/answered, none after a connected call); announcement worker over FCM incl. token deletion |
+| `tests/call-billing.test.ts`, `tests/commerce.test.ts`, `tests/account-settings.test.ts` | Call ring pushes (incoming/declined/missed/answered, none after a connected call); ring survives a callee disconnect; caller name on the ringing event; announcement worker over FCM incl. token deletion; push opt-out |
 
 ## App changes (`Zimifrontend`, branch `claude/nice-ptolemy-c8o5g2`)
 
@@ -120,16 +125,15 @@ notification.
 
 ## Rollout (after review)
 
-1. **Backend PR** `claude/fcm-push` → `main`: CI must be green (it runs the
-   MongoDB tests). Before merging, set `PUSH_ENABLED=true` in
-   `/opt/binzolive/backend/.env.production` on the VPS. The key file comes from
-   the deploy; if the `FIREBASE_SERVICE_ACCOUNT_JSON` secret is missing the
-   deploy stops.
+1. **Backend PR #23** → `main` (CI is green). The deploy installs the key
+   from the `FIREBASE_SERVICE_ACCOUNT_JSON` secret and turns push on; no server
+   login needed. If the secret is missing the deploy stops.
 2. **App PR** `claude/nice-ptolemy-c8o5g2` → `main`. Put `google-services.json`
    in the app folder (local) or upload it once for EAS:
    `eas env:create --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret --environment <development|preview|production>`.
-3. **New native build** (`eas build --platform android`); an OTA update cannot
-   ship this.
+3. **New native build**; an OTA update cannot ship this.
+   `--profile preview` = standalone APK for testing; `--profile development` =
+   needs `npx expo start --dev-client`; `--profile production` = AAB for Play.
 4. **Play Console** (after an internal-testing upload):
    App content → **Full-screen intent** → "Calling"; App content →
    **Foreground service permissions** → Phone call, Camera, Microphone, with a
@@ -176,6 +180,12 @@ notification.
 ## Known limits
 
 - Not yet run end to end on a device or against real FCM.
+- Production runs `mongo:8.0` (`deploy/vps/compose.yml`). MongoDB 8.0 refuses
+  to start on Linux 6.19+ (SERVER-121912). Fine while the VPS kernel is older;
+  a kernel upgrade there would take the backend down. Upgrading to 8.2 is a
+  separate, planned database change (backup first).
+- "Missed call" can arrive up to 10s after the ring stops (the server sweeps
+  expired rings every 10s).
 - A phone whose clock is more than 30s ahead of the server drops rings
   (`sentAt` check).
 - While a call rings or is live over the lock screen, the rest of the app is
