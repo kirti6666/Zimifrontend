@@ -115,6 +115,25 @@ Do not use `--clean` on a native project with manual changes. EAS **preview**
 APKs and production builds use release configuration and require an HTTPS API;
 an internally distributed release APK is not a Debug development build.
 
+The EAS `production` profile pins the public API to
+`https://api.binzolive.com/api/v1` and Socket.IO to `https://api.binzolive.com`.
+For a local production APK from PowerShell, explicitly set those values and
+regenerate the JavaScript bundle so Gradle cannot reuse a bundle containing
+development addresses:
+
+```powershell
+npm.cmd run build:web
+$env:NODE_ENV = 'production'
+$env:EXPO_PUBLIC_API_URL = 'https://api.binzolive.com/api/v1'
+$env:EXPO_PUBLIC_SOCKET_URL = 'https://api.binzolive.com'
+Push-Location android
+.\gradlew.bat :app:createBundleReleaseJsAndAssets --rerun :app:packageRelease --rerun :app:assembleRelease
+Pop-Location
+```
+
+The APK is written to `android/app/build/outputs/apk/release/app-release.apk`.
+The local development `.env` can retain its local server addresses.
+
 ## Run the website
 
 ```bash

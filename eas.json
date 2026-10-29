@@ -10,7 +10,11 @@
       "android": { "buildType": "apk" }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.binzolive.com/api/v1",
+        "EXPO_PUBLIC_SOCKET_URL": "https://api.binzolive.com"
+      }
     }
   },
   "submit": { "production": {} }
