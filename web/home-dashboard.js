@@ -1,5 +1,5 @@
 /* Photo-led Home discovery; colors follow the selected theme. */
-const HomeFeatured = { id:'', start:'', paused:matchMedia('(prefers-reduced-motion: reduce)').matches, timer:null, due:0, backgrounded:false, offscreen:false };
+const HomeFeatured = { id:'', start:'', paused:matchMedia('(prefers-reduced-motion: reduce)').matches, timer:null, due:0, backgrounded:false, offscreen:false, observed:null, touching:false };
 const HOME_FEATURE_INTERVAL = 6000;
 function homeFeaturedStop(){clearTimeout(HomeFeatured.timer);HomeFeatured.timer=null;homeFeaturedProgress()}
 function homeFeaturedReset(){homeFeaturedStop();HomeFeatured.id=HomeFeatured.start=''}
@@ -12,16 +12,19 @@ function homeFeaturedPosition(all){const at=id=>Math.max(0,all.findIndex(h=>h.id
 // The bar mirrors the real timer, resuming mid-way after a redraw.
 function homeFeaturedProgress(){
   const bar=document.querySelector('.zh-featured-progress');if(!bar)return;
-  const fill=document.createElement('i');
+  if(bar.dataset.due===String(HomeFeatured.timer?HomeFeatured.due:0))return;
+  const fill=bar.firstElementChild||document.createElement('i');
   if(HomeFeatured.timer)Object.assign(fill.style,{animationDuration:`${HOME_FEATURE_INTERVAL}ms`,animationDelay:`${HomeFeatured.due-HOME_FEATURE_INTERVAL-Date.now()}ms`});
-  bar.dataset.running=String(!!HomeFeatured.timer);bar.replaceChildren(fill);
+  else{fill.style.animationDuration='';fill.style.animationDelay=''}
+  bar.dataset.running=String(!!HomeFeatured.timer);bar.dataset.due=String(HomeFeatured.timer?HomeFeatured.due:0);if(!fill.parentNode)bar.append(fill);
 }
 function homeFeaturedHeld(){
+  if(HomeFeatured.touching)return true;
   const carousel=document.querySelector('.zh-featured-carousel'),grid=document.getElementById('home-host-grid');
   if([carousel,grid].some(el=>el?.contains(document.activeElement)))return true;
   return matchMedia('(hover: hover)').matches&&[carousel,grid].some(el=>el?.matches(':hover'));
 }
-function homeFeaturedReady(){return S.v==='home'&&!document.hidden&&!HomeFeatured.backgrounded&&!HomeFeatured.offscreen&&!homeContentPending()&&!Home.loadingMore&&!homeContentError()&&!Home.giftTo&&!!document.getElementById('home-featured-card')&&homeDashboardHosts().all.length>1}
+function homeFeaturedReady(){return S.v==='home'&&!document.hidden&&!HomeFeatured.backgrounded&&!HomeFeatured.offscreen&&!homeContentPending()&&!Home.loading&&!Home.loadingMore&&!homeContentError()&&!Home.giftTo&&!!document.getElementById('home-featured-card')&&homeDashboardHosts().all.length>1}
 function homeFeaturedSchedule(){
   homeFeaturedStop();
   if(!homeFeaturedReady()||HomeFeatured.paused||homeFeaturedHeld())return;
@@ -42,12 +45,10 @@ function homeFeaturedNext(manual=true){
   const next=all[(Math.max(0,all.findIndex(h=>h.id===HomeFeatured.id))+1)%all.length];
   HomeFeatured.id=next.id;
   const hero=document.getElementById('home-featured-card'),grid=document.getElementById('home-host-grid');
-  if(hero){hero.innerHTML=homeDashboardCard(next,true);hero.firstElementChild?.classList.add('zh-featured-enter')}
+  if(hero)window.ZimiHomeRender.render(hero,homeDashboardCard(next,true));
   if(grid){
     // The sponsored card keeps its element, so rotation never reloads it or counts a second view.
-    const ad=grid.querySelector(':scope>[data-za-slot]');
-    grid.innerHTML=all.filter(h=>h.id!==next.id).map(h=>homeDashboardCard(h)).join('');
-    if(ad)grid.insertBefore(ad,grid.children[HOME_AD_AFTER]||null);
+    window.ZimiHomeRender.render(grid,homeGridWithAd(all.filter(h=>h.id!==next.id).map(h=>homeDashboardCard(h)),'home'));
   }
   const position=document.querySelector('[data-featured-position]');if(position)position.textContent=homeFeaturedPosition(all);
   contentImagesReady();window.ZimiCardVideo?.attach();homeFeaturedSchedule();
@@ -59,17 +60,20 @@ const homeFeaturedObserver=window.IntersectionObserver?new IntersectionObserver(
   HomeFeatured.offscreen=offscreen;homeFeaturedSchedule();
 },{threshold:.35}):null;
 function homeFeaturedAfterRender(){
-  homeFeaturedObserver?.disconnect();
   const carousel=document.querySelector('.zh-featured-carousel');
-  if(carousel)homeFeaturedObserver?.observe(carousel);else HomeFeatured.offscreen=false;
+  if(carousel!==HomeFeatured.observed){homeFeaturedObserver?.disconnect();HomeFeatured.observed=carousel;if(carousel)homeFeaturedObserver?.observe(carousel);else HomeFeatured.offscreen=false}
   // Redraws keep a running timer, so frequent updates cannot starve the rotation.
   if(HomeFeatured.timer&&homeFeaturedReady()&&!HomeFeatured.paused&&!homeFeaturedHeld())homeFeaturedProgress();else homeFeaturedSchedule();
 }
 const homeFeaturedInteraction='onpointerenter="if(event.pointerType===\'mouse\')homeFeaturedStop()" onpointerleave="homeFeaturedSchedule()" onfocusin="homeFeaturedStop()" onfocusout="setTimeout(homeFeaturedSchedule,0)"';
 document.addEventListener('visibilitychange',homeFeaturedSchedule);
 window.addEventListener('pagehide',homeFeaturedStop);
-document.addEventListener('aurora:navigate',()=>{if(S.v!=='home')homeFeaturedStop()});
-Native.on('app.background',()=>{HomeFeatured.backgrounded=true;homeFeaturedStop()});
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='home'){HomeFeatured.touching=false;homeFeaturedStop()}});
+document.addEventListener('pointerdown',event=>{if(S.v==='home'&&event.pointerType!=='mouse'&&event.target?.closest?.('.zh-featured-carousel,#home-host-grid')){HomeFeatured.touching=true;homeFeaturedStop()}},{passive:true});
+const homeFeaturedRelease=()=>{if(HomeFeatured.touching){HomeFeatured.touching=false;homeFeaturedSchedule()}};
+document.addEventListener('pointerup',homeFeaturedRelease,{passive:true});
+document.addEventListener('pointercancel',homeFeaturedRelease,{passive:true});
+Native.on('app.background',()=>{HomeFeatured.backgrounded=true;HomeFeatured.touching=false;homeFeaturedStop()});
 Native.on('app.foreground',()=>{HomeFeatured.backgrounded=false;homeFeaturedSchedule()});
 ['session.none','session.expired'].forEach(type=>Native.on(type,()=>{homeFeaturedReset();HomeFeatured.paused=matchMedia('(prefers-reduced-motion: reduce)').matches}));
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{if(event.matches&&!HomeFeatured.paused)homeFeaturedToggle()});
@@ -175,5 +179,5 @@ function homeDashboard(){
   const featured=pending?null:homeFeaturedPick(all),remaining=featured?all.filter(h=>h.id!==featured.id):[];
   const hero=pending?homeDashboardHeroSkeleton():!error&&featured?`<section class="zh-featured-carousel" aria-roledescription="carousel" aria-label="Featured creators" ${homeFeaturedInteraction}><div id="home-featured-card">${homeDashboardCard(featured,true)}</div>${homeFeaturedControls(all)}</section>`:'';
   const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div id="home-host-grid" class="zh-grid" ${homeFeaturedInteraction}>${homeGridWithAd(remaining.map(h=>homeDashboardCard(h)),'home')}</div>`:(!featured?homeDashboardEmpty():'')+(window.ZimiAds?.card('home')||'');
-  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${Home.dashboardFilter==='following'?'following':'all'}"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>${Home.dashboardFilter==='following'?'Following':'Connect 1:1'}</h2><div class="zh-live-tools"><button type="button" class="zh-see-all" onclick="go('all-creators')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${Home.dashboardFilter==='following'?'following':'all'}"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>${Home.dashboardFilter==='following'?'Following':'Instant Connect'}</h2><div class="zh-live-tools"><button type="button" class="zh-see-all" onclick="go('all-creators')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
 }

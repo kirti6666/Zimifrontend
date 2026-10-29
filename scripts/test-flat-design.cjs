@@ -5,22 +5,23 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
+const { ROUND } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const account = { user: { id:'507f1f77bcf86cd799439001', name:'Asha Sharma', role:'sender', serverRole:'user', hostStatus:'none', isVerifiedHost:false, isPhoneVerified:true, city:'Pune' }, verification:'none', requiresOnboarding:false };
 const settings = { profile:{...account.user,bio:'Here for good conversations.',languages:['Hindi','English'],maskedPhone:'+91 *******3210'},stats:{fans:17,following:5,giftsSent:4,giftsReceived:9},standing:{},preferences:{pushNotifications:false,matchCategory:null},privacy:{discoverable:true,showActivity:true,allowRequests:false},categories:['Music','Talk'],capabilities:{pushNotifications:false} };
 const receive = (page,type,data) => page.evaluate(message=>Native.receive(message),{type,data});
 const navigate = (page,view) => page.evaluate(view=>go(view),view);
 async function audit(page,label){
-  const state = await page.evaluate(()=>{
+  const state = await page.evaluate(round=>{
     const nodes=[document.documentElement,...document.querySelectorAll('body,body *')].filter(el=>el.getClientRects().length);
     const wrong=nodes.flatMap(el=>{
       const c=getComputedStyle(el),name=el.id||el.classList?.value||el.tagName;
-      const radiusOK=c.borderRadius==='10px';
+      const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round);
       return [c.boxShadow!=='none'&&`${name}: shadow`,c.textShadow!=='none'&&`${name}: text shadow`,c.filter.includes('drop-shadow')&&`${name}: filter shadow`,!radiusOK&&`${name}: radius ${c.borderRadius}`].filter(Boolean);
     });
     return {wrong,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1};
-  });
-  assert.deepEqual(state.wrong,[],`${label}: 10px corners on every control, including Back, and no shadows`);
+  },ROUND);
+  assert.deepEqual(state.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
   assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: pure white background`);
   assert.equal(state.overflow,false,`${label}: fits viewport`);
 }
@@ -62,17 +63,24 @@ async function audit(page,label){
         if(width===390&&['profile','settings','coins'].includes(view))await page.screenshot({path:path.join(shots,`${view}.png`)});
       }
     }
+    await page.setViewportSize({width:390,height:844});
     await navigate(page,'settings');
+    assert.deepEqual(await page.locator('.zb-back').evaluate(el=>{const c=getComputedStyle(el);return [c.borderRadius,c.borderTopWidth,c.borderTopStyle]}),['999px','1px','solid'],'Back is a circle that keeps its 1px border');
+    assert.equal(await page.locator('.zp-summary-avatar').evaluate(el=>getComputedStyle(el).borderRadius),'999px','Avatars are round');
+    assert.equal(await page.locator('.zp-wallet').evaluate(el=>getComputedStyle(el).borderRadius),'10px','Cards keep the shared 10px corners');
     await page.getByRole('button',{name:'Privacy & Terms',exact:true}).click();
     const privacyMenu=page.getByRole('dialog',{name:'Privacy & Terms',exact:true});
     await privacyMenu.getByRole('button',{name:/Privacy & Blocked Users/}).click();
     await audit(page,'privacy dialog');
     await page.getByRole('button',{name:'Close settings',exact:true}).click();
+    await navigate(page,'safety');
+    assert.deepEqual([...new Set(await page.locator('.acctrow').evaluateAll(rows=>rows.map(row=>getComputedStyle(row).borderTopWidth)))],['0px'],'No divider lines between settings rows');
+    await navigate(page,'settings');
     // A previously saved dark palette must not override the flat white design.
     await receive(page,'data.themes',{items:[{...await page.evaluate(()=>ZThemeOriginal),mode:'dark',colors:{...await page.evaluate(()=>ZThemeOriginal.colors),background:'#101b2d',text:'#ffffff',primary:'#88d9ee'}}],selectedThemeId:'000000000000000000000001',premium:{active:false}});
     await audit(page,'saved dark theme');
     assert.equal(await page.evaluate(()=>document.documentElement.dataset.canvas),'#ffffff');
     assert.deepEqual(errors,[],'No browser errors');
-    console.log('PASS flat design: separate Settings tab, live balance and Add coins, six-pack layout, settings drilldowns, white canvas, 10px corners and no shadows across 10 screens at 320/390/768/1280px');
+    console.log('PASS flat design: separate Settings tab, live balance and Add coins, six-pack layout, settings drilldowns, white canvas, 10px corners with round Back/call/avatar controls, no settings dividers and no shadows across 10 screens at 320/390/768/1280px');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

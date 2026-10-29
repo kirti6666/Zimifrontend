@@ -45,6 +45,7 @@ async function assertProfileCards(page,scope,expected) {
     if(await card.evaluate(el=>el.matches('article.zh-creator-card'))){
       assert.equal(labels.filter(label=>/^Video call /.test(label)).length,1,'Each host card has a video call button');
       assert.equal(await card.locator('.zh-creator-call').isEnabled(),true,'The video call button is always active');
+      assert.equal(await card.locator('.zh-creator-call').evaluate(el=>getComputedStyle(el).borderRadius),'999px','The video call button is round');
     }
   }
 }

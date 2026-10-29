@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
+const { ROUND } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const ownerId = '507f1f77bcf86cd799439001';
 const peerId = '507f1f77bcf86cd799439011';
@@ -35,18 +36,18 @@ async function settlePosts(page,posts=[]) {
   await receive(page,'data.publicPosts',{...request,posts,total:posts.length,page:1,limit:12});
 }
 async function audit(page,label) {
-  const result=await page.evaluate(()=>({
+  const result=await page.evaluate(round=>({
     overflow:document.documentElement.scrollWidth>innerWidth+1,
     canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,
     wrong:[...document.querySelectorAll('body *')].filter(el=>el.getClientRects().length).flatMap(el=>{
       const style=getComputedStyle(el),name=el.id||el.className||el.tagName;
-      const radiusOK=style.borderRadius==='10px';
+      const radiusOK=style.borderRadius==='10px'||style.borderRadius==='999px'&&el.matches(round);
       return [!radiusOK&&`${name}: radius ${style.borderRadius}`,style.boxShadow!=='none'&&`${name}: shadow`,style.textShadow!=='none'&&`${name}: text shadow`,style.filter.includes('drop-shadow')&&`${name}: filter shadow`].filter(Boolean);
     })
-  }));
+  }),ROUND);
   assert.equal(result.overflow,false,`${label}: no width overflow`);
   assert.equal(result.canvas,'rgb(255, 255, 255)',`${label}: white app canvas`);
-  assert.deepEqual(result.wrong,[],`${label}: 10px corners on every control, including Back, and no shadows`);
+  assert.deepEqual(result.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
 }
 (async()=>{
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
@@ -77,6 +78,7 @@ async function audit(page,label) {
     await settleProfile(page,publicProfile());
     await page.getByRole('heading',{name:member.user.name,exact:true}).waitFor();
     assert.deepEqual(await page.locator('.zu-tabs [role="tab"]').allInnerTexts(),['Posts','About']);
+    assert.equal(await page.locator('.zu-tabs').evaluate(el=>getComputedStyle(el).borderBottomWidth),'0px','No divider line under the profile tabs');
     for(const selector of ['.zu-cover','.zu-overview','.zu-identity','.zu-stats','.zu-tabs','.zu-panel'])assert.equal(await page.locator(selector).count(),1,`${selector} reuses the public profile structure`);
     for(const selector of ['#zu-follow','#zu-message','#zu-call','.zu-gift'])assert.equal(await page.locator(selector).count(),0,'Own profiles never offer social actions on yourself');
     assert.equal(await button(page,'Open settings').count(),1);

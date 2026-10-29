@@ -154,7 +154,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await page.locator('.zh-header-actions').getByRole('button',{name:/^Wallet/}).count(),1,'The header retains the wallet action');
     assert.equal(await page.locator('.zh-host-status').count(),0,'Sender accounts do not show host availability');
     assert.equal(await page.getByRole('heading',{name:/^Live now/}).count(),0);
-    assert.equal(await page.getByRole('heading',{name:'Connect 1:1',exact:true}).count(),1);
+    assert.equal(await page.getByRole('heading',{name:'Instant Connect',exact:true}).count(),1);
     assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Discovery cards have no Chat buttons');
     const gridCard=page.locator('.zh-discover article.zh-creator-card').first();
     assert.equal(await gridCard.locator('.zh-creator-avatar').count(),1,'Grid cards show the host avatar beside the name');

@@ -143,6 +143,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/pull-refresh.js") +
+  "\n" + read("web/home-render.js") +
   "\n" + read("web/home.js") +
   "\n" + read("web/home-dashboard.js") +
   "\n" + read("web/all-creators.js") +

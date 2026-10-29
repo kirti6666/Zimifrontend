@@ -126,12 +126,12 @@ export type AppMessage =
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } }
   | { type: "data.loaded"; data: Record<string, never> }
-  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string } }
+  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string; background?: boolean } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
   | { type: "keyboard"; data: { open: boolean } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
-  | { type: "data.home"; data: HomeData }
+  | { type: "data.home"; data: HomeData & { background?: boolean } }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
   | { type: "home.updated"; data: Record<string, never> }
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> & { requestId?: number } }
@@ -258,6 +258,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let publishingAt: number | undefined;
   // Home lists every host, online or offline, each with their status.
   let homeQuery: HomeQuery = { mode: "popular" };
+  let homeFlight: { key: string; epoch: number; session: number; document: number; background: boolean; work: Promise<void> } | undefined;
+  let homeInvalidated = false;
+  let homeRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastHomeRefresh = 0;
+  const resetHomeReads = () => { homeFlight = undefined; homeInvalidated = false; clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined; lastHomeRefresh = 0; };
   let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
@@ -419,7 +424,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     // require explicit permission because welcomes do not unlock manual replies.
     threadPermissions.set(peerId, { canSend: data.canSend ?? accountRole === "user", reason: data.sendDisabledReason });
   };
-  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number } = {}) => {
+  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number; background?: boolean } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
     const latest = () => current(version) && getSessionVersion() === sessionVersion && documentRevision === document && readRequests.get(resource) === requestId;
@@ -435,9 +440,39 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const refreshWallet = () => readResource("wallet", () => api.wallet(), data => emit({ type: "wallet.balance", data }));
-  const loadHome = (query = homeQuery) => {
+  const homeFlightCurrent = () => homeFlight && current(homeFlight.epoch) && homeFlight.session === getSessionVersion() && homeFlight.document === documentRevision;
+  const loadHome = (query = homeQuery, background = false): Promise<void> => {
+    query = { ...query };
+    const key = JSON.stringify([query.mode, query.category, query.q, query.page ?? 1]);
+    if (homeFlightCurrent() && homeFlight!.key === key && (background || !homeFlight!.background)) {
+      if (background) homeInvalidated = true;
+      return homeFlight!.work;
+    }
+    clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined;
     homeQuery = query;
-    return readResource("home", () => api.home(query), data => { rememberHomePeers(data); emit({ type: "data.home", data }); }, { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}) });
+    homeInvalidated = false;
+    const flight = { key, epoch, session: getSessionVersion(), document: documentRevision, background, work: Promise.resolve() };
+    homeFlight = flight;
+    flight.work = readResource("home", () => api.home(query), data => { rememberHomePeers(data); emit({ type: "data.home", data: { ...data, ...(background ? { background: true } : {}) } }); }, { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}), ...(background ? { background: true } : {}) }).finally(() => {
+      if (homeFlight !== flight) return;
+      homeFlight = undefined;
+      if (homeInvalidated && current(flight.epoch) && flight.session === getSessionVersion() && flight.document === documentRevision) invalidateHome();
+    });
+    return flight.work;
+  };
+  // A burst of presence/call events needs at most one in-flight read and one
+  // trailing read. A hidden app waits until foreground instead of redrawing.
+  const invalidateHome = () => {
+    homeInvalidated = true;
+    if (!appActive || homeFlightCurrent()) return;
+    const delay = 750 - (Date.now() - lastHomeRefresh);
+    if (delay > 0) {
+      if (!homeRefreshTimer) homeRefreshTimer = setTimeout(() => { homeRefreshTimer = undefined; invalidateHome(); }, delay);
+      return;
+    }
+    homeInvalidated = false;
+    lastHomeRefresh = Date.now();
+    void loadHome({ ...homeQuery, page: 1 }, true).catch(() => {});
   };
   const loadNotifications = (query?: NotificationsQuery, requestId?: number, ownQuery = false) => {
     if (notificationQueryOwner && (!current(notificationQueryOwner.epoch) || notificationQueryOwner.sessionVersion !== getSessionVersion() || notificationQueryOwner.document !== documentRevision)) notificationQueryOwner = undefined;
@@ -457,7 +492,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       const result = await api.updateNotificationRead(input);
       if (!applicable()) return;
       emit({ type: "notifications.saved", data: { ...input, ...result, requestId } });
-      quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+      quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
     } catch (error) {
       if (applicable()) emit({ type: "notifications.error", data: { requestId, message: errorMessage(error) } });
     }
@@ -482,7 +517,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       officialLoadRevision++;
       emit({ type: "official.saved", data: { ...input, ...result, read: true, requestId } });
       quietly(loadChats(), "chats.reload");
-      quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+      quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
     } catch (error) {
       if (applicable()) emit({ type: "official.error", data: { requestId, action: "read", message: errorMessage(error) } });
     }
@@ -633,9 +668,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
     appActive = state === "active";
     stopLive.setActive?.(appActive && !liveOnboarding);
     if (!appActive) {
+      clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined;
       for (const external of externalCoinCheckouts.values()) if (!external.settling) external.departed = true;
       return;
     }
+    if (homeInvalidated && accountId && getCachedToken()) { lastHomeRefresh = 0; invalidateHome(); }
     for (const external of externalCoinCheckouts.values()) if (external.departed) void coinPaymentReturned(external);
     for (const pending of pendingPurchases.values()) {
       if (pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
@@ -671,6 +708,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     liveOnboarding = onboarding;
     sessionAvailable = true;
     const version = epoch;
+    let connectedBefore = false;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
       if (!LIVE_STREAMING_ENABLED && event.type.startsWith("stream.") && event.type !== "stream.ended") {
@@ -758,10 +796,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
         activeHostCall = event.data?.initiator === false;
       }
       if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
-      if (event.type === "home.updated") quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+      if (event.type === "home.updated") invalidateHome();
       if (event.type === "realtime.status" && event.data?.connected === true && !liveOnboarding) {
+        const reconnecting = connectedBefore;
+        connectedBefore = true;
         if (activeStream) quietly(loadStreamRequests(activeStream.id), "stream.requests.load");
-        quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+        // loadLists already owns the initial snapshot. Reconnects revalidate it.
+        if (reconnecting) invalidateHome();
         quietly(loadChats(), "chats.reload");
         quietly(loadProfileSettings(), "profile.settings.load");
         quietly(loadThemes(), "themes.load");
@@ -775,7 +816,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -898,7 +939,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const messages = await api.streamMessages(stream.id).catch(() => []);
         if (current(version) && activeStream?.id === stream.id) emit({ type: "stream.opened", data: { stream, hosting, messages } });
         if (current(version) && activeStream?.id === stream.id) quietly(loadStreamRequests(stream.id), "stream.requests.load");
-        quietly(loadHome(), "home.reload");
+        quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
         return;
       }
       case "stream.share": {
@@ -914,7 +955,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version)) {
           if (activeStream?.id === msg.data.streamId) activeStream = undefined;
           emit({ type: "stream.closed", data: { streamId: msg.data.streamId } });
-          quietly(loadHome(), "home.reload");
+          quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
         }
         return;
       }
@@ -1041,7 +1082,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -1118,7 +1159,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "presence.set": {
         const approval = msg.data.online ? await requireApprovedHost() : hostRevision;
         const data = await api.setPresence(msg.data.online, msg.data.visible);
-        if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
+        if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload"); }
         return;
       }
       case "presence.duringCalls": {
@@ -1153,7 +1194,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (current(version) && sessionVersion === getSessionVersion()) {
             emit({ type: "privacy.saved", data: { privacy, requestId } });
             quietly(loadProfileSettings(), "profile.settings.load");
-            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "privacy.error", data: { message: errorMessage(error), requestId } });
@@ -1169,7 +1210,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
             quietly(loadBlocked(), "blocked.load");
             quietly(loadProfileSettings(), "profile.settings.load");
             quietly(loadChats(), "chats.reload");
-            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "block.error", data: { id, blocked, message: errorMessage(error), requestId } });
@@ -1184,7 +1225,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
             publicFollows.set(id, { on: result.following, revision: (publicFollows.get(id)?.revision ?? 0) + 1, sessionVersion });
             emit({ type: "follow.saved", data: { id, on: result.following, requestId } });
             quietly(loadProfileSettings(), "profile.settings.load");
-            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "follow.error", data: { id, on, message: errorMessage(error), requestId } });
@@ -1436,7 +1477,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "awards.claim": {
         const approval = await requireApprovedHost();
         const wallet = await api.claimAward(msg.data.task);
-        if (current(version) && approval === hostRevision && hasHostAccess()) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome(), "home.reload"); }
+        if (current(version) && approval === hostRevision && hasHostAccess()) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload"); }
         return;
       }
       case "ads.load": return loadAds();
@@ -1477,7 +1518,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; externalCoinCheckouts.clear(); homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; },
+    documentLoading: () => { webReady = false; documentRevision++; externalCoinCheckouts.clear(); homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
@@ -1499,6 +1540,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
+    close: () => { closed = true; epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }

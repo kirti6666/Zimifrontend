@@ -59,6 +59,7 @@ export default function App() {
   const cache = useMemo(() => readThemeCache(), []);
   const cached = cache.account?.theme ?? cache.default;
   const page = useMemo(() => html && withThemeCache(html, cache), [cache]);
+  const webSource = useMemo(() => ({ html: page, baseUrl: "https://aurora.localhost/" }), [page]);
   const [theme, setTheme] = useState<Theme>("light");
   const [canvasOverride, setCanvasOverride] = useState<string | null>("#ffffff");
   const [palette, setPalette] = useState<NativePalette>({ ink: "#18181b", primary: cached?.colors.primary ?? "#c71862", contrast: "#ffffff", surface: "#ffffff", raised: "#f8f8fa" });
@@ -143,7 +144,8 @@ export default function App() {
       setCanvasOverride(typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : null);
       // Replace the palette, rather than merging it, so returning to login clears
       // the previous account's colors when the web theme attributes are removed.
-      setPalette({ ink: msg.data.ink, primary: msg.data.primary, contrast: msg.data.contrast, surface: msg.data.surface, raised: msg.data.raised });
+      const next: NativePalette = { ink: msg.data.ink, primary: msg.data.primary, contrast: msg.data.contrast, surface: msg.data.surface, raised: msg.data.raised };
+      setPalette(previous => Object.keys(next).every(key => previous[key as keyof NativePalette] === next[key as keyof NativePalette]) ? previous : next);
     } else if (msg.type === "ui.haptic") {
       // Guard against bursts of pointer events; OS settings still decide if
       // tactile feedback is available on this device.
@@ -212,7 +214,7 @@ export default function App() {
               ref={webRef}
               style={[styles.web, { backgroundColor: canvas }]}
               originWhitelist={["https://aurora.localhost", "about:blank"]}
-              source={{ html: page, baseUrl: "https://aurora.localhost/" }}
+              source={webSource}
               onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
               setSupportMultipleWindows={false}
               allowFileAccess={false}

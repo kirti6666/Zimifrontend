@@ -1622,6 +1622,60 @@ test('transaction history reloads independently and discards older ledger respon
   h.bridge.close();
 });
 
+test('Home coalesces live-update bursts, revalidates on reconnect and waits while backgrounded', async () => {
+  const h = harness(), pending = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const before = h.count('home');
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } }); await settle();
+  assert.equal(h.count('home'), before, 'The first socket connect shares the initial snapshot');
+  h.overrides.home = () => pending.promise;
+  for (let i = 0; i < 30; i++) h.live[0].onEvent({ type: 'home.updated', data: {} });
+  assert.equal(h.count('home'), before + 1, 'Only one live refresh runs at a time');
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'home').at(-1).data.background, true);
+  h.overrides.home = () => ({ hosts: [], page: 1, total: 0 });
+  pending.resolve({ hosts: [], page: 1, total: 0 }); await settle();
+  assert.equal(h.count('home'), before + 1, 'A fast response does not trigger another immediate fetch during a burst');
+  await new Promise(resolve => setTimeout(resolve, 800)); await settle();
+  assert.equal(h.count('home'), before + 2, 'One trailing read covers changes during the active read');
+  assert.equal(h.find('data.home').at(-1).data.background, true);
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } });
+  await new Promise(resolve => setTimeout(resolve, 800)); await settle();
+  assert.equal(h.count('home'), before + 3, 'A later connection revalidates Home');
+  h.activities.forEach(listener => listener('background'));
+  for (let i = 0; i < 20; i++) h.live[0].onEvent({ type: 'home.updated', data: {} });
+  await settle(); assert.equal(h.count('home'), before + 3, 'A hidden app does not repeatedly fetch Home');
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.count('home'), before + 4, 'Foreground fetches the outstanding updates once');
+  h.bridge.close();
+});
+
+test('a live Home refresh cannot replace a newer filter or continue after logout', async () => {
+  const h = harness(), old = deferred(), retired = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.home = query => query.mode === 'following' ? { hosts: [{ id: 'followed' }], page: 1, total: 1 } : old.promise;
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  h.bridge.handle({ type: 'home.reload', data: { mode: 'following', page: 1 } }); await settle();
+  const delivered = h.find('data.home').length, reads = h.count('home');
+  old.resolve({ hosts: [{ id: 'outdated' }], page: 1, total: 1 }); await settle();
+  assert.equal(h.find('data.home').length, delivered);
+  assert.equal(h.count('home'), reads, 'An older query cannot queue another invalidation');
+  assert.equal(h.find('data.home').at(-1).data.hosts[0].id, 'followed');
+  h.overrides.home = () => retired.promise;
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  const beforeLogout = h.count('home');
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  retired.resolve({ hosts: [{ id: 'retired-account' }], page: 1, total: 1 }); await settle();
+  assert.equal(h.count('home'), beforeLogout);
+  assert.equal(h.find('data.home').length, delivered);
+  h.bridge.close();
+});
+
 test('Home starts with every host and keeps the requested mode through paging, search and realtime refresh', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });

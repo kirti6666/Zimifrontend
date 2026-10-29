@@ -14,8 +14,11 @@ keeps it identical to the original Next.js version.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
 - `web/flat.css` — the final shared design layer: a pure white canvas, no box,
-  text or filter shadows, and 10px corners on every element, including the
-  bordered 44px Back button. Headers sit on the page without a divider line.
+  text or filter shadows, and 10px corners on every element except its round
+  list: the bordered 44px Back button and the close/more buttons beside it,
+  every call button, avatars and switches are always circles. Keep that list in
+  step with `ROUND` in `scripts/flat-corners.cjs`. Headers sit on the page
+  without a divider line, and settings rows have no dividers.
   Account themes customize accents and typography while keeping the white canvas.
 - Dark Mode is a Settings toggle remembered on the device (`zimi.darkMode` in
   localStorage, `ZimiThemes.dark()`/`setDark()` in `web/themes.js`). It swaps
@@ -56,13 +59,14 @@ keeps it identical to the original Next.js version.
   (approved hosts only) the host's own Online/Offline status, the coin
   balance, Search and Notifications. All lists every host; Following uses
   the server's `mode: "following"` feed. No category chips on Home or All Creators
-  for now. Home shows a featured photo card and a two-column host grid. Cards
+  for now. Home shows a featured photo card and a two-column host grid titled
+  "Instant Connect" ("Following" on that tab). Cards
   open the creator profile; Chat belongs on that profile. Use
   the selected theme's colors. Filter hosts on the
   server before pagination; feature a host once across hero/grid.
 - Every host list (Home grid, All Creators, Search) uses the photo card `homeTile`
   in `web/home.js`, matching the user's reference: Online and price pills over
-  the photo, then avatar, name, tagline and a video call button that is always
+  the photo, then avatar, name, tagline and a round video call button that is always
   active (never disabled, whatever the host's status; `homeCall` explains when a
   call can't start). Do not add Chat buttons to discovery cards.
   Sponsored cards go inside the grid after six hosts (`HOME_AD_AFTER`), or

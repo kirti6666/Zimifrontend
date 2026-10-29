@@ -4189,9 +4189,9 @@ html,body,.app,#top,#scroll-root,#screen {
 .zu-cover-art>i {display:none}
 .zu-page,.zu-content,.zu-panel {background:var(--canvas)}
 .zr-call .zr-video.zr-audio {background:var(--canvas)}
-/* The camera reaches every edge; controls retain the shared button geometry. */
-:root:has(.zr-call),:root:has(.zr-call) :is(body,.app,#scroll-root,#screen),
-:root .zr-call,:root .zr-call>.zr-video,:root .zr-call>.zr-video>video {border-radius:0!important}
+/* The camera and the ringing screens reach every edge; controls retain the shared button geometry. */
+:root:has(:is(.zr-call,.ringscr)),:root:has(:is(.zr-call,.ringscr)) :is(body,.app,#scroll-root,#screen),
+:root .zr-call,:root .zr-call>.zr-video,:root .zr-call>.zr-video>video,:root .ringscr,:root .ringbg,:root .ringbg * {border-radius:0!important}
 
 /* The Profile tab shares the public profile layout. Owner actions stay in the
    page so the primary bottom tabs never overlap an extra fixed action bar. */
@@ -4344,6 +4344,8 @@ html,body,.app,#top,#scroll-root,#screen {
 
 /* Existing legacy selectors must not add a second press scale or photo zoom. */
 :root[data-theme-id] :is(button,[role=button]):active {transform:none!important}
+/* Retry is centred with a transform, so a press must not move it out from under the finger. */
+:root[data-theme-id] .zc-photo-stage>.zc-photo-retry:active {transform:translate(-50%,-50%)!important}
 .zu-photo:hover>img,.zh-creator-card:hover>.zh-photo {transform:none!important}
 :is(.zp-dialog,.zc-dialog,.zu-dialog)::backdrop {background:#18181b66;backdrop-filter:none}
 @media(prefers-reduced-motion:no-preference) {
@@ -4363,12 +4365,34 @@ html,body,.app,#top,#scroll-root,#screen {
   .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(21px * var(--theme-font-scale,1))}
 }
 
-/* Back keeps a visible border and the same 10px corners as every other control. */
+/* Back keeps its visible 1px border; its circle comes from the round list below. */
 :root[data-theme-id] .zb-back {
   width:44px;height:44px;min-width:44px;min-height:44px;
   padding:0;border:1px solid var(--line);flex:none;
 }
 :root[data-theme-id] .zb-back.on-media {border-color:rgb(255 255 255 / .55)}
+
+/* Every element keeps the shared 10px corner except where a circle reads
+   better: Back and the close/more buttons beside it, every call action,
+   avatars with their badges and rings, and switches. Keep this list in step
+   with ROUND in scripts/flat-corners.cjs. */
+html:root :is(
+  .zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zr-round,
+  .zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline,
+  .hc-preview-tools>button,.zv-actions button,.zv-controls button,.zh-call-controls button,.incban button,.zc-thread-actions>button,.zc-voice-play,
+  .av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
+  .hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i,
+  .zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified,
+  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch
+) {border-radius:999px!important}
+html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
+html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::before,
+html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::after {border-radius:999px!important}
+.ringorb {display:grid}
+
+/* No divider lines under headers or between settings rows. */
+.zu-tabs {border-bottom:0}
+.acctrow+.acctrow {border-top:0}
 /* A photo card opens the profile; its video call button starts the call. Keep the
    featured card's complete surface keyboard-accessible too. */
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit{position:absolute;inset:0;z-index:3;width:100%;height:100%;min-height:44px;flex:none;padding:0;border:0;background:transparent}
@@ -9149,12 +9173,14 @@ function r(){
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
  if(window.ZimiHome)window.ZimiHome.theme();
- document.getElementById("top").innerHTML=topFor();
+ const top=document.getElementById("top"),header=topFor();
+ if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
- const html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
+ let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
- if(window.ZimiMedia)window.ZimiMedia.render(el,html);else el.innerHTML=html;
- if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))el.insertAdjacentHTML("afterbegin",`<div class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`);
+ if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
+ if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
+ else if(window.ZimiMedia)window.ZimiMedia.render(el,html);else el.innerHTML=html;
  el.style.overflowY=["call","voice","thread","setup","post","precall","dial","dialback","waiting","ring","hcall"].includes(S.v)?"hidden":"auto";
  nav();
  if(S.v==="call"){tick();paintFeed();
@@ -9378,9 +9404,9 @@ if (DEMO && roleParam === 'host' && new URLSearchParams(location.search).get('ap
 
 /* Content placeholders follow requests, never a timer or a first-visit cache. */
 const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked'];
-const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1}]));
+const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
-function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',...extra})}
+function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
 function skeletonLine(width='70%',height=12){return `<span class="zh-skeleton-shape" style="width:${width};height:${height}px"></span>`}
 function contentSkeleton(kind='rows',label='Loading content',count=4){
   let body='';
@@ -9398,7 +9424,7 @@ function contentSkeleton(kind='rows',label='Loading content',count=4){
 }
 function contentError(key){const message=ContentLoading[key]?.error;return message?`<div class="zh-error" role="alert">${esc(message)}<button onclick="contentRetry('${key}')">Retry</button></div>`:''}
 function contentSurface(key,kind='rows',label){return contentPending(key)?contentSkeleton(kind,label):ContentLoading[key]?.error?contentError(key):null}
-function contentBalance(value=S.bal){return contentPending('wallet')?'<span role="status" aria-label="Loading balance" aria-busy="true"><span aria-hidden="true">'+skeletonLine('55px',18)+'</span></span>':ContentLoading.wallet.error?'<span aria-label="Balance unavailable">—</span>':n(value)}
+function contentBalance(value=S.bal){return contentPending('wallet')&&!(S.v==='home'&&ContentLoading.wallet.loaded)?'<span role="status" aria-label="Loading balance" aria-busy="true"><span aria-hidden="true">'+skeletonLine('55px',18)+'</span></span>':ContentLoading.wallet.error?'<span aria-label="Balance unavailable">—</span>':n(value)}
 function contentRetry(key){
   if(key==='profileSettings')return zpLoad();
   if(key==='blocked')return zpBlockedLoad();
@@ -9430,7 +9456,7 @@ Native.on('data.loading',d=>{
   if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(d.resource==='search'&&d.q!==(S.sq||''))return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
-  if(d.resource==='home'){Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.loaded=true;Home.error=d.error||''}}
+  if(d.resource==='home'){ContentLoading.home.background=!!d.background&&Home.loaded&&Home.queryKey===homeFeedKey();Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.error=d.error||''}}
   if(d.resource==='search'){Home.searchLoading=d.loading;Home.searchMore=d.loading&&d.page>1;Home.searchError=d.error||''}
   contentRender(d.resource);
 });
@@ -9439,11 +9465,11 @@ for(const [event,key] of Object.entries({'data.home':'home','data.search':'searc
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;
-  Object.assign(ContentLoading[key],{loading:false,error:''});
+  Object.assign(ContentLoading[key],{loading:false,error:'',loaded:true});
   if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
 });
 Native.on('operation.error',d=>{const key={'home.reload':'home','hosts.search':'search','catalog.load':'catalog','notifications.load':'notifications','chat.open':'thread'}[d.action];if(key){Object.assign(ContentLoading[key],{loading:false,error:d.message||'Unable to load. Please try again.'});contentRender(key)}});
-function contentReset(){for(const key of resourceNames)Object.assign(ContentLoading[key],{loading:!DEMO,error:'',page:1})}
+function contentReset(){for(const key of resourceNames)Object.assign(ContentLoading[key],{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false})}
 Native.on('session.none',contentReset);Native.on('session.expired',contentReset);
 
 function contentImageReady(img){if(!img?.classList?.contains('zh-photo-pending'))return;img.classList.remove('zh-photo-pending');img.classList.toggle('zh-photo-failed',!img.naturalWidth)}
@@ -9530,10 +9556,77 @@ window.ZimiPullRefresh=(()=>{
   return {register,refresh};
 })();
 
+/* Patch Home in place: live updates must not detach decoded photos, focused
+   controls or playing previews. Other screens retain their own media lifecycle. */
+window.ZimiHomeRender = (() => {
+  let markup = new WeakMap(), roots = new WeakMap();
+  const key = node => node.nodeType === 1 ? node.id ? `id:${node.id}` : node.hasAttribute('data-host-id') ? `host:${node.dataset.hostId}` : node.hasAttribute('data-za-slot') ? `ad:${node.dataset.zaSlot}` : '' : '';
+  const signature = node => node.nodeType === 1 ? node.outerHTML : node.nodeValue;
+  function remember(node) {
+    markup.set(node, signature(node));
+    node.childNodes.forEach(remember);
+    return node;
+  }
+  function patch(node, next) {
+    const wanted = signature(next);
+    if (markup.get(node) === wanted) return;
+    if (node.nodeType !== 1) {
+      if (node.nodeValue !== next.nodeValue) node.nodeValue = next.nodeValue;
+    } else {
+      // Media controllers own these children and their playback classes.
+      const media = node.matches('.zh-card-video[data-video],[data-za-video]');
+      if (media && node.getAttribute('data-video') === next.getAttribute('data-video') && node.getAttribute('data-za-video') === next.getAttribute('data-za-video')) {
+        markup.set(node, wanted); return;
+      }
+      // A changed name/alt label must not restart an already decoded photo's
+      // loading shimmer when its URL is unchanged.
+      if (node.tagName === 'IMG' && node.getAttribute('src') === next.getAttribute('src') && node.complete && node.naturalWidth) next.classList.remove('zh-photo-pending');
+      for (const attribute of [...node.attributes]) if (!next.hasAttribute(attribute.name)) node.removeAttribute(attribute.name);
+      for (const attribute of next.attributes) if (node.getAttribute(attribute.name) !== attribute.value) node.setAttribute(attribute.name, attribute.value);
+      if (node.tagName === 'INPUT' && next.hasAttribute('value') && node.value !== next.getAttribute('value')) node.value = next.getAttribute('value');
+      children(node, next);
+    }
+    markup.set(node, wanted);
+  }
+  function children(parent, next) {
+    const previous = [...parent.childNodes], used = new Set();
+    const keyed = new Map(previous.filter(node => key(node)).map(node => [key(node), node]));
+    let cursor = parent.firstChild;
+    for (const child of [...next.childNodes]) {
+      const identity = key(child);
+      let node = identity ? keyed.get(identity) : previous.find(candidate => !used.has(candidate) && !key(candidate) && candidate.nodeType === child.nodeType && candidate.nodeName === child.nodeName);
+      if (node && node.nodeName !== child.nodeName) node = null;
+      if (!node) node = remember(child.cloneNode(true));
+      used.add(node);
+      if (node !== cursor) {
+        if (node.parentNode === parent && typeof parent.moveBefore === 'function') parent.moveBefore(node, cursor);
+        else parent.insertBefore(node, cursor);
+      }
+      patch(node, child);
+      cursor = node.nextSibling;
+    }
+    for (const node of previous) if (!used.has(node)) node.remove();
+  }
+  function render(container, html) {
+    const cached = roots.get(container);
+    if (cached?.html === html && cached.children.length === container.childNodes.length && cached.children.every((node, index) => node === container.childNodes[index])) return;
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    children(container, template.content);
+    roots.set(container, { html, children: [...container.childNodes] });
+  }
+  function reset() { markup = new WeakMap(); roots = new WeakMap(); }
+  // Leaving Home must release detached photo trees rather than retain their
+  // decoded buffers for the lifetime of the WebView.
+  document.addEventListener('aurora:navigate', () => { if (S.v !== 'home') reset(); });
+  for (const type of ['session.none', 'session.expired']) Native.on(type, reset);
+  return { render };
+})();
+
 /* Home surfaces use the same authenticated bridge as the rest of the app.
    Preview people, activity and balances exist only in the DEMO build. */
 const Home = {
-  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', page: 1, queryKey:'popular|',
+  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', page: 1, firstPageIds:[], queryKey:'popular|',
   searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
   hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
@@ -9584,14 +9677,15 @@ function homeLoad(more=false){
   const data={page,...homeFeedQuery()};Home.queryKey=homeFeedKey(data);
   Native.send('home.reload',data);r();
 }
-function homeContentPending(){return !DEMO&&(Home.loading||contentPending('home'))&&!Home.loadingMore}
-function homeContentError(){return !DEMO&&(Home.error||ContentLoading.home.error)}
+function homeContentPending(){return !DEMO&&(Home.loading||contentPending('home'))&&!Home.loadingMore&&!ContentLoading.home.background}
+function homeContentError(){return !DEMO&&!ContentLoading.home.background&&(Home.error||ContentLoading.home.error)}
+function homeRefreshNotice(){const error=ContentLoading.home.background&&ContentLoading.home.error;return error?`<div class="zh-error" role="status">${esc(error)}<button type="button" onclick="homeLoad()">Retry updates</button></div>`:''}
 
 function homeFilter(value){Home.filter=value;homeLoad()}
 function homeDashboardFilter(value){if(!['popular','following'].includes(value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;window.homeFeaturedReset?.();homeLoad()}
 function homeList(){return Home.hosts}
 function homeFeedTabKey(event){if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?'popular':event.key==='End'?'following':Home.dashboardFilter==='following'?'popular':'following';homeDashboardFilter(next);document.getElementById(next==='following'?'home-tab-following':'home-tab-all')?.focus()}
-function homeHeader(){const following=Home.dashboardFilter==='following';return `<header class="zh-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${[['popular','All'],['following','Following']].map(([key,label])=>`<button type="button" id="home-tab-${key==='popular'?'all':'following'}" role="tab" aria-selected="${following===(key==='following')}" aria-controls="home-feed-panel" tabindex="${following===(key==='following')?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`).join('')}</div><div class="zh-header-actions">${homeDashboardHostEntry()}<button type="button" class="zh-balance zh-wallet-icon" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',20)}<span class="zh-wallet-value">${contentBalance()}</span></button><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',22)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
+function homeHeader(){const following=Home.dashboardFilter==='following';return `<header class="zh-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${[['popular','All'],['following','Following']].map(([key,label])=>`<button type="button" id="home-tab-${key==='popular'?'all':'following'}" role="tab" aria-selected="${following===(key==='following')}" aria-controls="home-feed-panel" tabindex="${following===(key==='following')?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`).join('')}</div><div class="zh-header-actions">${homeDashboardHostEntry()}<button type="button" class="zh-balance zh-wallet-icon" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')&&!ContentLoading.wallet.loaded?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',20)}<span class="zh-wallet-value">${contentBalance()}</span></button><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',22)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
@@ -9599,7 +9693,8 @@ function homeNav(){
   if(!['home','chats','profile','settings'].includes(S.v))return false;
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
-  el.innerHTML=item('home','Home','house')+item('chats','Chat','chat')+item('profile','Profile','user')+item('settings','Settings','set');return true;
+  const html=item('home','Home','house')+item('chats','Chat','chat')+item('profile','Profile','user')+item('settings','Settings','set');
+  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);else el.innerHTML=html;return true;
 }
 function homeStage(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return '';const rows=Home.stage.slice(0,12),pending=homeContentPending(),error=homeContentError();return `<section class="zh-stage" aria-label="Live creators"><div class="zh-section-title"><h2><i></i>Stage &amp; Live Calls</h2><span>${pending?skeletonLine('94px',10):error?'':homeCompact(Home.broadcasterCount)+' BROADCASTERS'}</span></div><div class="zh-stories">${isApprovedHost()?`<button class="zh-story zh-story-create" onclick="homeGoLive()"><span class="zh-story-ring">${hi('plus',24)}<i>${hi('vid',10)}</i></span><span>Go Live</span></button>`:''}${pending?contentSkeleton('stories','Loading live creators',4):error?'':rows.map(h=>`<button class="zh-story" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}"><span class="zh-story-ring ${h.stream?'':'zh-story-call'}">${homeCover(h)}<b>${h.stream?'LIVE':hi('ph',9)+' 1:1'}</b></span><span>${esc(first(h.n))}</span></button>`).join('')}${!pending&&!error&&!rows.length?'<span class="zh-stage-empty">Your next favourite creator is on the way.</span>':''}</div></section>`}
 
@@ -9743,7 +9838,14 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   return title?`<header class="zh-subheader">${backButton("go('home')",{label:"Back to home"})}<h1>${title}</h1></header>`:null;
 },afterRender:()=>{contentImagesReady();homeShowCloseError();window.homeFeaturedAfterRender?.();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
-Native.on('data.home',d=>{Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';const list=(d.hosts||[]).map(homeRemember);Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:list;Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(['home','all-creators','chats','precall'].includes(S.v))r()});
+Native.on('data.home',d=>{
+  const retainPages=d.background&&Home.loaded&&Home.page>1,previousFirst=new Set(Home.firstPageIds);
+  Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';
+  const list=(d.hosts||[]).map(homeRemember),ids=new Set(list.map(h=>h.id));
+  Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:retainPages?[...list,...Home.hosts.filter(h=>!previousFirst.has(h.id)&&!ids.has(h.id))].slice(0,d.total||0):list;
+  if(!(d.page>1))Home.firstPageIds=[...ids];
+  Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=retainPages?Home.page:d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(['home','all-creators','chats','precall'].includes(S.v))r();
+});
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
 Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
@@ -9781,7 +9883,7 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','all-creators','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',page:1,queryKey:'popular|'});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',page:1,firstPageIds:[],queryKey:'popular|'});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','all-creators'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
@@ -9803,7 +9905,7 @@ if(DEMO){
 }
 
 /* Photo-led Home discovery; colors follow the selected theme. */
-const HomeFeatured = { id:'', start:'', paused:matchMedia('(prefers-reduced-motion: reduce)').matches, timer:null, due:0, backgrounded:false, offscreen:false };
+const HomeFeatured = { id:'', start:'', paused:matchMedia('(prefers-reduced-motion: reduce)').matches, timer:null, due:0, backgrounded:false, offscreen:false, observed:null, touching:false };
 const HOME_FEATURE_INTERVAL = 6000;
 function homeFeaturedStop(){clearTimeout(HomeFeatured.timer);HomeFeatured.timer=null;homeFeaturedProgress()}
 function homeFeaturedReset(){homeFeaturedStop();HomeFeatured.id=HomeFeatured.start=''}
@@ -9816,16 +9918,19 @@ function homeFeaturedPosition(all){const at=id=>Math.max(0,all.findIndex(h=>h.id
 // The bar mirrors the real timer, resuming mid-way after a redraw.
 function homeFeaturedProgress(){
   const bar=document.querySelector('.zh-featured-progress');if(!bar)return;
-  const fill=document.createElement('i');
+  if(bar.dataset.due===String(HomeFeatured.timer?HomeFeatured.due:0))return;
+  const fill=bar.firstElementChild||document.createElement('i');
   if(HomeFeatured.timer)Object.assign(fill.style,{animationDuration:`${HOME_FEATURE_INTERVAL}ms`,animationDelay:`${HomeFeatured.due-HOME_FEATURE_INTERVAL-Date.now()}ms`});
-  bar.dataset.running=String(!!HomeFeatured.timer);bar.replaceChildren(fill);
+  else{fill.style.animationDuration='';fill.style.animationDelay=''}
+  bar.dataset.running=String(!!HomeFeatured.timer);bar.dataset.due=String(HomeFeatured.timer?HomeFeatured.due:0);if(!fill.parentNode)bar.append(fill);
 }
 function homeFeaturedHeld(){
+  if(HomeFeatured.touching)return true;
   const carousel=document.querySelector('.zh-featured-carousel'),grid=document.getElementById('home-host-grid');
   if([carousel,grid].some(el=>el?.contains(document.activeElement)))return true;
   return matchMedia('(hover: hover)').matches&&[carousel,grid].some(el=>el?.matches(':hover'));
 }
-function homeFeaturedReady(){return S.v==='home'&&!document.hidden&&!HomeFeatured.backgrounded&&!HomeFeatured.offscreen&&!homeContentPending()&&!Home.loadingMore&&!homeContentError()&&!Home.giftTo&&!!document.getElementById('home-featured-card')&&homeDashboardHosts().all.length>1}
+function homeFeaturedReady(){return S.v==='home'&&!document.hidden&&!HomeFeatured.backgrounded&&!HomeFeatured.offscreen&&!homeContentPending()&&!Home.loading&&!Home.loadingMore&&!homeContentError()&&!Home.giftTo&&!!document.getElementById('home-featured-card')&&homeDashboardHosts().all.length>1}
 function homeFeaturedSchedule(){
   homeFeaturedStop();
   if(!homeFeaturedReady()||HomeFeatured.paused||homeFeaturedHeld())return;
@@ -9846,12 +9951,10 @@ function homeFeaturedNext(manual=true){
   const next=all[(Math.max(0,all.findIndex(h=>h.id===HomeFeatured.id))+1)%all.length];
   HomeFeatured.id=next.id;
   const hero=document.getElementById('home-featured-card'),grid=document.getElementById('home-host-grid');
-  if(hero){hero.innerHTML=homeDashboardCard(next,true);hero.firstElementChild?.classList.add('zh-featured-enter')}
+  if(hero)window.ZimiHomeRender.render(hero,homeDashboardCard(next,true));
   if(grid){
     // The sponsored card keeps its element, so rotation never reloads it or counts a second view.
-    const ad=grid.querySelector(':scope>[data-za-slot]');
-    grid.innerHTML=all.filter(h=>h.id!==next.id).map(h=>homeDashboardCard(h)).join('');
-    if(ad)grid.insertBefore(ad,grid.children[HOME_AD_AFTER]||null);
+    window.ZimiHomeRender.render(grid,homeGridWithAd(all.filter(h=>h.id!==next.id).map(h=>homeDashboardCard(h)),'home'));
   }
   const position=document.querySelector('[data-featured-position]');if(position)position.textContent=homeFeaturedPosition(all);
   contentImagesReady();window.ZimiCardVideo?.attach();homeFeaturedSchedule();
@@ -9863,17 +9966,20 @@ const homeFeaturedObserver=window.IntersectionObserver?new IntersectionObserver(
   HomeFeatured.offscreen=offscreen;homeFeaturedSchedule();
 },{threshold:.35}):null;
 function homeFeaturedAfterRender(){
-  homeFeaturedObserver?.disconnect();
   const carousel=document.querySelector('.zh-featured-carousel');
-  if(carousel)homeFeaturedObserver?.observe(carousel);else HomeFeatured.offscreen=false;
+  if(carousel!==HomeFeatured.observed){homeFeaturedObserver?.disconnect();HomeFeatured.observed=carousel;if(carousel)homeFeaturedObserver?.observe(carousel);else HomeFeatured.offscreen=false}
   // Redraws keep a running timer, so frequent updates cannot starve the rotation.
   if(HomeFeatured.timer&&homeFeaturedReady()&&!HomeFeatured.paused&&!homeFeaturedHeld())homeFeaturedProgress();else homeFeaturedSchedule();
 }
 const homeFeaturedInteraction='onpointerenter="if(event.pointerType===\'mouse\')homeFeaturedStop()" onpointerleave="homeFeaturedSchedule()" onfocusin="homeFeaturedStop()" onfocusout="setTimeout(homeFeaturedSchedule,0)"';
 document.addEventListener('visibilitychange',homeFeaturedSchedule);
 window.addEventListener('pagehide',homeFeaturedStop);
-document.addEventListener('aurora:navigate',()=>{if(S.v!=='home')homeFeaturedStop()});
-Native.on('app.background',()=>{HomeFeatured.backgrounded=true;homeFeaturedStop()});
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='home'){HomeFeatured.touching=false;homeFeaturedStop()}});
+document.addEventListener('pointerdown',event=>{if(S.v==='home'&&event.pointerType!=='mouse'&&event.target?.closest?.('.zh-featured-carousel,#home-host-grid')){HomeFeatured.touching=true;homeFeaturedStop()}},{passive:true});
+const homeFeaturedRelease=()=>{if(HomeFeatured.touching){HomeFeatured.touching=false;homeFeaturedSchedule()}};
+document.addEventListener('pointerup',homeFeaturedRelease,{passive:true});
+document.addEventListener('pointercancel',homeFeaturedRelease,{passive:true});
+Native.on('app.background',()=>{HomeFeatured.backgrounded=true;HomeFeatured.touching=false;homeFeaturedStop()});
 Native.on('app.foreground',()=>{HomeFeatured.backgrounded=false;homeFeaturedSchedule()});
 ['session.none','session.expired'].forEach(type=>Native.on(type,()=>{homeFeaturedReset();HomeFeatured.paused=matchMedia('(prefers-reduced-motion: reduce)').matches}));
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{if(event.matches&&!HomeFeatured.paused)homeFeaturedToggle()});
@@ -9979,7 +10085,7 @@ function homeDashboard(){
   const featured=pending?null:homeFeaturedPick(all),remaining=featured?all.filter(h=>h.id!==featured.id):[];
   const hero=pending?homeDashboardHeroSkeleton():!error&&featured?`<section class="zh-featured-carousel" aria-roledescription="carousel" aria-label="Featured creators" ${homeFeaturedInteraction}><div id="home-featured-card">${homeDashboardCard(featured,true)}</div>${homeFeaturedControls(all)}</section>`:'';
   const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div id="home-host-grid" class="zh-grid" ${homeFeaturedInteraction}>${homeGridWithAd(remaining.map(h=>homeDashboardCard(h)),'home')}</div>`:(!featured?homeDashboardEmpty():'')+(window.ZimiAds?.card('home')||'');
-  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${Home.dashboardFilter==='following'?'following':'all'}"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>${Home.dashboardFilter==='following'?'Following':'Connect 1:1'}</h2><div class="zh-live-tools"><button type="button" class="zh-see-all" onclick="go('all-creators')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${Home.dashboardFilter==='following'?'following':'all'}"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>${Home.dashboardFilter==='following'?'Following':'Instant Connect'}</h2><div class="zh-live-tools"><button type="button" class="zh-see-all" onclick="go('all-creators')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
 }
 
 /* All Creators reuses the authenticated popular feed and its server pagination.
@@ -9995,7 +10101,7 @@ function allCreatorsView(){
   const rows=homeList();
   const empty=`<div class="zac-empty">${hi('user',30)}<h2>No creators available</h2><p>New profiles will appear here when creators are available. Pull down to refresh.</p></div>`;
   const grid=rows.length?`<div class="zh-grid zac-grid" aria-label="Creator profiles">${homeGridWithAd(rows.map(homeTile),'explore')}</div>`:empty;
-  return `<section class="zh-home zac-page" aria-label="All Creators"><header class="zac-heading">${backButton("go('home')",{label:'Back to home'})}<h1>All Creators</h1></header><div class="zac-intro"><p>Choose a creator to view their profile.</p><span>${pending?skeletonLine('80px',12):error?'':`${n(Home.total)} creators`}</span></div>${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:pending?contentSkeleton('cards','Loading creators',6):grid}${more?contentSkeleton('cards','Loading more creators',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button type="button" onclick="homeLoad(true)">Retry loading more creators</button></div>`:!pending&&!error&&rows.length<Home.total?'<button type="button" class="zh-load-more zac-load-more" onclick="homeLoad(true)">Load more creators</button>':''}</section>`;
+  return `<section class="zh-home zac-page" aria-label="All Creators"><header class="zac-heading">${backButton("go('home')",{label:'Back to home'})}<h1>All Creators</h1></header><div class="zac-intro"><p>Choose a creator to view their profile.</p><span>${pending?skeletonLine('80px',12):error?'':`${n(Home.total)} creators`}</span></div>${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:pending?contentSkeleton('cards','Loading creators',6):grid}${homeRefreshNotice()}${more?contentSkeleton('cards','Loading more creators',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button type="button" onclick="homeLoad(true)">Retry loading more creators</button></div>`:!pending&&!error&&rows.length<Home.total?'<button type="button" class="zh-load-more zac-load-more" onclick="homeLoad(true)">Load more creators</button>':''}</section>`;
 }
 window.ZimiAllCreators={render:allCreatorsView};
 ZimiHome.views['all-creators']=allCreatorsView;

@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
+const { ROUND } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const shots = path.join(root, 'artifacts', 'professional');
 const navigate = (page, view) => page.evaluate(view => go(view), view);
@@ -26,14 +27,14 @@ async function backControl(page,label) {
   const control=controls[0];
   assert.equal(control.width,44,`${label}: 44px Back target width`);
   assert.equal(control.height,44,`${label}: 44px Back target height`);
-  assert.equal(control.radius,'10px',`${label}: Back shares the 10px control corners`);
+  assert.equal(control.radius,'999px',`${label}: Back is a circle`);
   assert.deepEqual(control.borders,['1px','1px','1px','1px'],`${label}: complete 1px border`);
   assert.equal(control.style,'solid',`${label}: visible solid border`);
   assert.ok(!['transparent','rgba(0, 0, 0, 0)'].includes(control.color),`${label}: border is not transparent`);
   assert.equal(control.iconCentered,true,`${label}: arrow is centered inside the circle`);
 }
 async function audit(page, label) {
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(round => {
     const app = document.querySelector('.app'), nav = document.getElementById('nav');
     const box = nav.getBoundingClientRect(), appBox = app.getBoundingClientRect();
     const active = nav.querySelector('[aria-current="page"]'), before = getComputedStyle(active, '::before');
@@ -45,14 +46,14 @@ async function audit(page, label) {
       filledActiveBubble:painted && parseFloat(before.height) > 4,
       wrong:[...document.querySelectorAll('body *')].filter(el => el.getClientRects().length).flatMap(el => {
         const c = getComputedStyle(el), name = el.id || el.className || el.tagName;
-        const radiusOK=c.borderRadius==='10px';
+        const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round);
         return [!radiusOK && `${name}: radius ${c.borderRadius}`, c.boxShadow !== 'none' && `${name}: box shadow`, c.textShadow !== 'none' && `${name}: text shadow`, c.filter.includes('drop-shadow') && `${name}: filter shadow`].filter(Boolean);
       })
     };
-  });
+  }, ROUND);
   assert.equal(result.overflow, false, `${label}: fits the viewport`);
   assert.equal(result.canvas, 'rgb(255, 255, 255)', `${label}: pure white canvas`);
-  assert.deepEqual(result.wrong, [], `${label}: flat styling with 10px corners on every control, including Back`);
+  assert.deepEqual(result.wrong, [], `${label}: flat styling with 10px corners except the round Back, call, avatar and switch controls`);
   assert.ok(Math.abs(result.height - 58) < .6, `${label}: compact shared tab height`);
   assert.ok(Math.abs(result.bottom - result.appBottom) < .6, `${label}: no gap below tabs`);
   assert.equal(result.filledActiveBubble, false, `${label}: no decorative filled tab bubble`);
@@ -116,6 +117,6 @@ async function audit(page, label) {
     await page.evaluate(()=>go('host','aanya'));
     await backControl(page,'Public profile');
     assert.deepEqual(errors, [], 'No browser errors during the visual review');
-    console.log('PASS professional UI: restrained typography, plain settings/icons, compact neutral profile, readable content, white/no-shadow/10px styling and gap-free 58px tabs at 320/390/768px');
+    console.log('PASS professional UI: restrained typography, plain settings/icons, compact neutral profile, readable content, white/no-shadow/10px styling with round Back and call controls and gap-free 58px tabs at 320/390/768px');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

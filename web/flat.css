@@ -149,9 +149,9 @@ html,body,.app,#top,#scroll-root,#screen {
 .zu-cover-art>i {display:none}
 .zu-page,.zu-content,.zu-panel {background:var(--canvas)}
 .zr-call .zr-video.zr-audio {background:var(--canvas)}
-/* The camera reaches every edge; controls retain the shared button geometry. */
-:root:has(.zr-call),:root:has(.zr-call) :is(body,.app,#scroll-root,#screen),
-:root .zr-call,:root .zr-call>.zr-video,:root .zr-call>.zr-video>video {border-radius:0!important}
+/* The camera and the ringing screens reach every edge; controls retain the shared button geometry. */
+:root:has(:is(.zr-call,.ringscr)),:root:has(:is(.zr-call,.ringscr)) :is(body,.app,#scroll-root,#screen),
+:root .zr-call,:root .zr-call>.zr-video,:root .zr-call>.zr-video>video,:root .ringscr,:root .ringbg,:root .ringbg * {border-radius:0!important}
 
 /* The Profile tab shares the public profile layout. Owner actions stay in the
    page so the primary bottom tabs never overlap an extra fixed action bar. */
@@ -304,6 +304,8 @@ html,body,.app,#top,#scroll-root,#screen {
 
 /* Existing legacy selectors must not add a second press scale or photo zoom. */
 :root[data-theme-id] :is(button,[role=button]):active {transform:none!important}
+/* Retry is centred with a transform, so a press must not move it out from under the finger. */
+:root[data-theme-id] .zc-photo-stage>.zc-photo-retry:active {transform:translate(-50%,-50%)!important}
 .zu-photo:hover>img,.zh-creator-card:hover>.zh-photo {transform:none!important}
 :is(.zp-dialog,.zc-dialog,.zu-dialog)::backdrop {background:#18181b66;backdrop-filter:none}
 @media(prefers-reduced-motion:no-preference) {
@@ -323,9 +325,31 @@ html,body,.app,#top,#scroll-root,#screen {
   .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(21px * var(--theme-font-scale,1))}
 }
 
-/* Back keeps a visible border and the same 10px corners as every other control. */
+/* Back keeps its visible 1px border; its circle comes from the round list below. */
 :root[data-theme-id] .zb-back {
   width:44px;height:44px;min-width:44px;min-height:44px;
   padding:0;border:1px solid var(--line);flex:none;
 }
 :root[data-theme-id] .zb-back.on-media {border-color:rgb(255 255 255 / .55)}
+
+/* Every element keeps the shared 10px corner except where a circle reads
+   better: Back and the close/more buttons beside it, every call action,
+   avatars with their badges and rings, and switches. Keep this list in step
+   with ROUND in scripts/flat-corners.cjs. */
+html:root :is(
+  .zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zr-round,
+  .zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline,
+  .hc-preview-tools>button,.zv-actions button,.zv-controls button,.zh-call-controls button,.incban button,.zc-thread-actions>button,.zc-voice-play,
+  .av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
+  .hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i,
+  .zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified,
+  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch
+) {border-radius:999px!important}
+html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
+html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::before,
+html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::after {border-radius:999px!important}
+.ringorb {display:grid}
+
+/* No divider lines under headers or between settings rows. */
+.zu-tabs {border-bottom:0}
+.acctrow+.acctrow {border-top:0}
