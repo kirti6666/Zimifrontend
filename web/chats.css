@@ -219,7 +219,7 @@
 .zc-quote>b{font-weight:650;color:var(--ink)}.zc-quote>span{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.zc-quote:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .zc-deleted{font-style:italic;opacity:.65}.zc-edited{font-size:11px;color:var(--muted)}
 .zc-flash .bub,.zc-flash .zc-photo{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent);transition:box-shadow .3s}
-.zc-message-menu{display:flex;flex-direction:column;gap:4px;padding:16px 16px max(16px,env(safe-area-inset-bottom))}
+.zc-message-menu{display:flex;flex-direction:column;gap:4px;padding:16px 16px max(16px,var(--safe-bottom))}
 .zc-menu-handle{width:36px;height:4px;border-radius:99px;background:var(--muted);opacity:.45;align-self:center;margin:0 0 12px}
 .zc-message-menu>button{display:flex;align-items:center;gap:14px;width:100%;min-height:48px;padding:14px;border-radius:12px;text-align:left;font-size:15px;font-weight:600;color:var(--ink)}.zc-message-menu>button:hover,.zc-message-menu>button:focus-visible{background:var(--raised);outline:none}
 .zc-message-menu>button.danger{color:var(--theme-danger,#ff6b81)}.zc-message-menu>.zc-menu-cancel{justify-content:center;text-align:center;color:var(--muted);border-top:1px solid var(--line);border-radius:0;margin-top:4px}

@@ -52,6 +52,7 @@
     "test:chats": "npm run build:web && node scripts/test-chats.cjs",
     "test:navigation": "npm run build:web && node scripts/test-navigation.cjs",
     "test:bottom-tabs": "npm run build:web && node scripts/test-bottom-tabs.cjs",
+    "test:safe-area": "npm run build:web && node scripts/test-safe-area.cjs",
     "test:professional-ui": "npm run build:web && node scripts/test-professional-ui.cjs && node scripts/test-motion.cjs",
     "test:flat-design": "npm run build:web && node scripts/test-flat-design.cjs",
     "test:simple-settings": "npm run build:web && node scripts/test-simple-settings.cjs",

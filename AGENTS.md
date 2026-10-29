@@ -106,6 +106,12 @@ keeps it identical to the original Next.js version.
   button targets and zero outer margins. Native `SafeAreaView` owns system
   insets; `data-native-safe-area` prevents a second web bottom inset. Standalone
   browsers add their bottom inset once. Do not add extra height in `flat.css`.
+- Safe-area insets everywhere: use `var(--safe-top)`, `var(--safe-right)`,
+  `var(--safe-bottom)` and `var(--safe-left)` (defined in `web/aurora.css`), never
+  `env(safe-area-inset-*)`. They are 0 inside the app, where the native
+  `SafeAreaView` already pads and newer Android WebViews still report the insets
+  (that doubled the space under bottom bars and above top bars); standalone
+  browsers get the device insets once. `scripts/test-safe-area.cjs` checks this.
 - The Profile tab uses the same `web/public-profile.js` layout and authenticated
   public-profile reads as other users' profiles, with Edit profile, avatar/cover
   upload and own-photo actions. Keep its bottom tabs and owner-only controls;
