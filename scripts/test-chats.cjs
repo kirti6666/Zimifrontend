@@ -37,11 +37,11 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     captureErrors(preview);
     await preview.route('https://**/*', route => route.abort());
     await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
-    await preview.getByRole('button', { name: 'Chats', exact: true }).click();
+    await preview.getByRole('button', { name: 'Chat', exact: true }).click();
     await preview.getByRole('heading', { name: 'Chats', exact: true }).waitFor();
     assert.equal(await preview.locator('.zh-header').count(), 0, 'Chats uses its own heading without the Home header');
     assert.equal(await preview.locator('#top').isVisible(), false, 'Chats does not reserve an unused header strip');
-    assert.equal(await preview.evaluate(() => document.documentElement.dataset.theme), 'dark');
+    assert.equal(await preview.evaluate(() => document.documentElement.dataset.theme), 'light', 'The white canvas is the default until Dark Mode is on');
     assert.ok(await preview.locator('button.zc-row').count() > 0, 'Demo conversations are immediately usable');
     assert.equal(await preview.locator('.zh-skeleton').count(), 0, 'Demo fixtures do not wait for an absent server');
     for (const width of [320, 373, 630, 1280]) {
@@ -57,7 +57,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
 
     await preview.evaluate(() => go('thread', 'aanya'));
     await preview.locator('.zc-thread').waitFor();
-    assert.equal(await preview.locator('.zc-thread-live').count(), 1, 'A live creator shows the live banner');
+    assert.equal(await preview.locator('.zc-thread-live').count(), 0, 'Live streaming is off, so threads show no live banner');
     assert.equal(await preview.locator('.zc-gift-card').count(), 1);
     assert.equal(await preview.locator('.zc-voice').count(), 1);
     for (const width of [320, 373, 630, 1280]) {
@@ -109,8 +109,8 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await settle('data.missed', { calls: [] }, 'missed');
     await loadChats(chatData());
     assert.equal(await rows().count(), 3);
-    assert.equal(await rows().filter({ hasText: 'Mira North' }).locator('.zc-automated').textContent(), 'Automated welcome');
-    assert.equal(await rows().filter({ hasText: 'Rohan Patel' }).locator('.zc-automated').count(), 0, 'Personal replies have no automation label');
+    assert.equal(await rows().filter({ hasText: 'Mira North' }).count(), 1, 'Automated welcomes appear in the inbox');
+    assert.doesNotMatch(await page.locator('.zc-chats').innerText(), /automated/i, 'Inbox rows carry no automation label');
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 844 });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'The welcome preview label fits narrow screens');
@@ -217,8 +217,8 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await filters.getByLabel('Sort conversations', { exact: true }).selectOption({ label: 'Most recent' });
     assert.match((await names())[0], /Rohan Patel/);
     await filters.getByLabel('Online only', { exact: true }).check();
-    assert.equal(await rows().count(), 1);
-    assert.match((await names())[0], /Mira North/);
+    assert.equal(await rows().count(), 2, 'Hosts always show online, so Online only keeps every host and drops members');
+    assert.doesNotMatch((await names()).join(' '), /Rohan Patel/);
     await filters.getByLabel('Sort conversations', { exact: true }).selectOption({ label: 'Name' });
     await filters.getByRole('button', { name: 'Reset filters', exact: true }).click();
     assert.equal(await rows().count(), 3);
@@ -255,26 +255,26 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.getByRole('status', { name: 'Loading messages', exact: true }).waitFor();
     await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00', automated: true }], readAt: new Date().toISOString() }, 'thread');
     assert.match(await page.locator('#tf').innerText(), /A real thread response/);
-    assert.equal(await page.locator('#tf .zc-automated').textContent(), 'Automated welcome', 'Initial history retains automated welcome labels');
+    assert.doesNotMatch(await page.locator('#tf').innerText(), /automated/i, 'Automated welcomes read like any other message');
     const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     await draft.fill('Keep this unsent draft');
     const openedBeforeIncoming = await sentCount('chat.open');
     await receive('chat.message', { from: mira.id, text: 'A new message in the active thread', id: id('31'), createdAt: new Date().toISOString(), automated: true });
-    assert.equal(await page.locator('#tf .zc-automated').count(), 2, 'Realtime messages carry the same automation label as history');
+    assert.match(await page.locator('#tf').innerText(), /A new message in the active thread/, 'Realtime automated messages stay visible');
+    assert.doesNotMatch(await page.locator('#tf').innerText(), /automated/i, 'Realtime automated messages carry no label');
     assert.equal(await sentCount('chat.open'), openedBeforeIncoming + 1, 'An incoming message in the active thread requests a server read acknowledgment');
     assert.equal((await lastSent('chat.open')).with, mira.id);
     assert.equal(await page.evaluate(() => window.ZimiChats.unread()), 2, 'Opening or receiving a message does not optimistically clear unread counts');
     await loading('thread', true);
     assert.equal(await draft.inputValue(), 'Keep this unsent draft');
     await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00', automated: true }, { mine: false, text: 'A new message in the active thread', time: '12:01', automated: true }], readAt: new Date().toISOString() }, 'thread');
-    assert.equal(await page.locator('#tf .zc-automated').count(), 2, 'Refreshing history preserves automation labels');
+    assert.equal((await page.locator('#tf').innerText()).match(/A real thread response|A new message in the active thread/g).length, 2, 'Refreshing history keeps automated messages visible');
     assert.equal(await draft.inputValue(), 'Keep this unsent draft', 'The authoritative thread response preserves an unsent draft');
     await receive('chat.message', { from: asha.id, text: 'Message in another conversation', id: id('32') });
     await receive('chat.message', { from: mira.id, text: 'An in-call message', inCall: true, id: id('33') });
     assert.equal(await sentCount('chat.open'), openedBeforeIncoming + 1, 'Other conversations and in-call events do not mark the active thread read');
     await settle('data.thread', { with: mira.id, messages: [{ mine: true, text: 'Seen already', createdAt: at(3), status: 'read' }, { mine: true, text: 'Not seen yet', createdAt: at(2), status: 'sent' }, { mine: false, text: 'Reply from Mira', createdAt: at(1) }], readAt: new Date().toISOString() }, 'thread');
     assert.deepEqual(await page.locator('#tf .zc-tick').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Read', 'Sent'], 'Read ticks follow the server read state of own messages');
-    assert.equal(await page.locator('#tf .zc-automated').count(), 0, 'Ordinary thread messages are not marked automated');
     assert.equal(await page.locator('.zc-thread-day').textContent(), 'Today');
     assert.equal(await page.locator('.zc-voice, .zc-gift-card, .zc-thread-live').count(), 0, 'Production threads show only server history, without preview content');
     assert.equal(await page.locator('.zc-thread-header small').textContent(), 'Online', 'An unknown call rate is never presented as a price');
@@ -333,7 +333,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await loading('chats', false, { page: 2 });
     assert.equal(await rows().count(), 3, 'The next page appends real conversations');
     assert.equal(await page.locator('.zc-list .zc-skeleton-row').count(), 0);
-    assert.equal(await page.getByRole('button', { name: 'Chats', exact: true }).locator('.zh-nav-dot').count(), 1, 'A page with zero local unread messages cannot hide the global unread badge');
+    assert.equal(await page.getByRole('button', { name: 'Chat', exact: true }).locator('.zh-nav-dot').count(), 1, 'A page with zero local unread messages cannot hide the global unread badge');
     await loading('chats', true);
     await page.getByRole('status', { name: 'Loading conversations', exact: true }).waitFor();
     assert.equal(await rows().count(), 0, 'Refresh conceals stale conversation cards');
@@ -346,7 +346,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await loadChats(chatData([]));
     assert.equal(await rows().count(), 0);
     assert.equal(await page.locator('.zc-list .zh-skeleton').count(), 0);
-    assert.equal(await page.getByRole('button', { name: 'Chats', exact: true }).locator('.zh-nav-dot').count(), 0, 'An authoritative zero unread count clears the navigation badge');
+    assert.equal(await page.getByRole('button', { name: 'Chat', exact: true }).locator('.zh-nav-dot').count(), 0, 'An authoritative zero unread count clears the navigation badge');
     const hostile = { ...mira, id: id('99'), name: '<img src=x onerror="window.__chatXss=1">' };
     await loadChats(chatData([{ ...conversations[1], user: hostile, last: '<svg onload="window.__chatXss=2">unsafe message</svg>' }]));
     assert.match(await rows().innerText(), /<img src=x/);

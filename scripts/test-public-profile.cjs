@@ -336,19 +336,23 @@ async function run() {
     await layout(page, 'Long untrusted names at 320px');
     console.log('PASS public profile: escaped remote text and safe media fallbacks');
 
-    // Your own profile, opened from Profile, shows what others see, with Edit in place of chat, follow or report.
+    // The Profile tab directly shares the public layout, with editing and
+    // uploads in place of social actions on yourself.
     await receive(page, 'session', creatorAccount);
     await receive(page, 'data.home', feed);
     await page.evaluate(() => go('profile'));
-    await button(page, 'View as others see it').click();
     const self = { ...creator, id: creatorAccount.user.id, name: 'Approved creator' };
-    assert.deepEqual(await page.evaluate(() => [S.v, zuId()]), ['host', self.id], 'Creators open their public creator profile');
+    assert.deepEqual(await page.evaluate(() => [S.v, zuId()]), ['profile', self.id], 'The Profile tab directly loads the authenticated public profile');
     await acceptProfile(page, self);
     await acceptPosts(page, self, [photo]);
     await page.getByRole('heading', { name: 'Approved creator', exact: true }).waitFor();
-    assert.match(await page.locator('.zu-self-bar').innerText(), /YOUR PUBLIC PROFILE[\s\S]*This is how others see you/);
+    assert.match(await page.locator('.zu-self-bar').innerText(), /Edit profile[\s\S]*Upload photos/);
+    assert.equal(await page.locator('#nav [aria-current="page"]').innerText(), 'Profile', 'The shared layout retains the selected primary tab');
     assert.equal(await page.locator('#zu-follow, #zu-message, #zu-call, .zu-gift').count(), 0, 'Nothing to follow, message, call or gift on your own profile');
-    assert.equal(await button(page, 'More profile options').isDisabled(), true, 'You cannot report or block yourself');
+    assert.equal(await button(page, 'More profile options').count(), 0, 'You cannot report or block yourself');
+    assert.equal(await button(page, 'Open settings').count(), 1, 'The owner has account settings in the toolbar');
+    assert.equal(await button(page, 'Change profile photo').count(), 1, 'The owner can change their avatar');
+    assert.equal(await button(page, 'Change cover photo').count(), 1, 'The owner can change their cover');
     assert.equal(await page.locator('.zu-gallery .zu-photo').count(), 1, 'Your posts show as they do for others');
     await page.locator('#zu-edit-self').click();
     assert.equal(await page.evaluate(() => S.v), 'editprofile');

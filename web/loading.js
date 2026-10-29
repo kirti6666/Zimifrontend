@@ -1,14 +1,14 @@
 /* Content placeholders follow requests, never a timer or a first-visit cache. */
 const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked'];
-const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1}]));
+const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
-function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',...extra})}
+function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
 function skeletonLine(width='70%',height=12){return `<span class="zh-skeleton-shape" style="width:${width};height:${height}px"></span>`}
 function contentSkeleton(kind='rows',label='Loading content',count=4){
   let body='';
-  if(kind==='cards')body=`<div class="zh-grid">${Array.from({length:count},()=>`<div class="zh-creator-card zh-creator-placeholder"><div class="zh-creator-top">${skeletonLine('56px',21)}${skeletonLine('40px',21)}</div><div class="zh-creator-bottom"><span class="zh-skeleton-shape zh-skeleton-round" style="width:32px;height:32px"></span><div class="zh-creator-text">${skeletonLine('80%',13)}${skeletonLine('58%',9)}</div><span class="zh-skeleton-shape zh-skeleton-round" style="width:40px;height:40px"></span></div></div>`).join('')}</div>`;
+  if(kind==='cards')body=`<div class="zh-grid">${Array.from({length:count},()=>`<div class="zh-creator-card zh-creator-placeholder"><div class="zh-creator-top">${skeletonLine('56px',21)}${skeletonLine('40px',21)}</div><div class="zh-creator-bottom"><span class="zh-skeleton-shape zh-skeleton-round" style="width:32px;height:32px"></span><div class="zh-creator-text">${skeletonLine('80%',13)}${skeletonLine('58%',9)}</div></div></div>`).join('')}</div>`;
   else if(kind==='stories')body=`<div class="zh-skeleton-story-list">${Array.from({length:count},()=>`<div class="zh-story"><span class="zh-story-ring zh-skeleton-shape"></span>${skeletonLine('76%',9)}</div>`).join('')}</div>`;
-  else if(kind==='featured')body=`<div class="zh-skeleton-hero"><div class="zh-skeleton-hero-top">${skeletonLine('52px',20)}${skeletonLine('46px',20)}</div><div class="zh-skeleton-hero-bottom">${skeletonLine('61%',24)}${skeletonLine('87%',12)}${skeletonLine('100%',27)}<div class="zh-skeleton-actions">${skeletonLine('64%',47)}${skeletonLine('34%',47)}</div></div></div>`;
+  else if(kind==='featured')body=`<div class="zh-skeleton-hero"><div class="zh-skeleton-hero-top">${skeletonLine('52px',20)}${skeletonLine('46px',20)}</div><div class="zh-skeleton-hero-bottom">${skeletonLine('61%',24)}${skeletonLine('87%',12)}${skeletonLine('100%',27)}</div></div>`;
   else if(kind==='match')body=`<div class="zh-skeleton-match-layout"><div>${skeletonLine('83%',19)}${skeletonLine('100%',12)}${skeletonLine('60%',12)}</div>${skeletonLine('88px',47)}</div>`;
   else if(kind==='packs'||kind==='gifts')body=`<div class="zh-${kind} zh-skeleton-catalog">${Array.from({length:count},()=>`<div>${skeletonLine('38px',38)}${skeletonLine('70%',18)}${skeletonLine('85%',10)}${skeletonLine('60%',12)}</div>`).join('')}</div>`;
   else if(kind==='balance')body=skeletonLine('105px',38);
@@ -20,7 +20,7 @@ function contentSkeleton(kind='rows',label='Loading content',count=4){
 }
 function contentError(key){const message=ContentLoading[key]?.error;return message?`<div class="zh-error" role="alert">${esc(message)}<button onclick="contentRetry('${key}')">Retry</button></div>`:''}
 function contentSurface(key,kind='rows',label){return contentPending(key)?contentSkeleton(kind,label):ContentLoading[key]?.error?contentError(key):null}
-function contentBalance(value=S.bal){return contentPending('wallet')?'<span role="status" aria-label="Loading balance" aria-busy="true"><span aria-hidden="true">'+skeletonLine('55px',18)+'</span></span>':ContentLoading.wallet.error?'<span aria-label="Balance unavailable">—</span>':n(value)}
+function contentBalance(value=S.bal){return contentPending('wallet')&&!(S.v==='home'&&ContentLoading.wallet.loaded)?'<span role="status" aria-label="Loading balance" aria-busy="true"><span aria-hidden="true">'+skeletonLine('55px',18)+'</span></span>':ContentLoading.wallet.error?'<span aria-label="Balance unavailable">—</span>':n(value)}
 function contentRetry(key){
   if(key==='profileSettings')return zpLoad();
   if(key==='blocked')return zpBlockedLoad();
@@ -43,7 +43,7 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
-  const views={profileSettings:['profile','settings'],blocked:[],home:['home','explore','chats'],catalog:['coins'],notifications:['notifications','home','explore','chats'],chats:['chats'],missed:['chats'],wallet:['home','explore','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile','editprofile'],thread:['thread']};
+  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls'],posts:['profile','editprofile'],thread:['thread']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
   if(views[key]?.includes(S.v)||(['catalog','wallet'].includes(key)&&(Home.giftTo||['call','voice','hcall'].includes(S.v))))r();
 }
@@ -52,7 +52,7 @@ Native.on('data.loading',d=>{
   if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(d.resource==='search'&&d.q!==(S.sq||''))return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
-  if(d.resource==='home'){Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.loaded=true;Home.error=d.error||''}}
+  if(d.resource==='home'){ContentLoading.home.background=!!d.background&&Home.loaded&&Home.queryKey===homeFeedKey();Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.error=d.error||''}}
   if(d.resource==='search'){Home.searchLoading=d.loading;Home.searchMore=d.loading&&d.page>1;Home.searchError=d.error||''}
   contentRender(d.resource);
 });
@@ -61,11 +61,11 @@ for(const [event,key] of Object.entries({'data.home':'home','data.search':'searc
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;
-  Object.assign(ContentLoading[key],{loading:false,error:''});
+  Object.assign(ContentLoading[key],{loading:false,error:'',loaded:true});
   if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
 });
 Native.on('operation.error',d=>{const key={'home.reload':'home','hosts.search':'search','catalog.load':'catalog','notifications.load':'notifications','chat.open':'thread'}[d.action];if(key){Object.assign(ContentLoading[key],{loading:false,error:d.message||'Unable to load. Please try again.'});contentRender(key)}});
-function contentReset(){for(const key of resourceNames)Object.assign(ContentLoading[key],{loading:!DEMO,error:'',page:1})}
+function contentReset(){for(const key of resourceNames)Object.assign(ContentLoading[key],{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false})}
 Native.on('session.none',contentReset);Native.on('session.expired',contentReset);
 
 function contentImageReady(img){if(!img?.classList?.contains('zh-photo-pending'))return;img.classList.remove('zh-photo-pending');img.classList.toggle('zh-photo-failed',!img.naturalWidth)}

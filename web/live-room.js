@@ -38,7 +38,7 @@ function zrIdentity(p,host,call){
   return `<header class="zr-header"><div class="zr-identity">${zrAvatar(p)}<div class="zr-person"><strong>${esc(p?.n||'Live creator')}</strong><span><i></i>${call?'PRIVATE CALL':'LIVE'}${host&&!call?' <b data-room-clock>00:00</b>':''}</span></div>${!host&&!call?`<button class="zr-follow ${S.following[p?.id]?'is-following':''}" onclick="toggleFollow('${domId(p?.id||'')}',event)" aria-label="${S.following[p?.id]?'Unfollow':'Follow'} ${esc(p?.n||'creator')}">${S.following[p?.id]?'Following':'+ Follow'}</button>`:''}</div><div class="zr-header-right">${call?`<span class="zr-pill zr-timer">${hi('lock',12)} <span id="ck">${clock(S.sec)}</span></span>`:host?`<button class="zr-pill zr-earnings" onclick="zrOpen('supporters')" aria-label="Session gifts">${hi('coin',13)} ${homeCompact(Room.received)}</button>`:''}${!call?`<button class="zr-pill zr-viewers" onclick="zrOpen('audience')" aria-label="Live viewers">${hi('eye',14)} <span data-room-viewers>${homeCompact(Home.stream.viewers)}</span></button>`:''}${zrRound('close',call?'End call':host?'End broadcast':'Leave live',"zrExit()",'zr-close')}</div></header>`;
 }
 function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p?homeCover(p,true):''}${voice?`<div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>Just you. Just a conversation.</span></div><audio data-zimi-remote autoplay></audio>`:`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO&&!zrIsCall()?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
-function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=homeGiftUrl(gift.mediaUrl);return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${gift.sent?'':'+'}${n(gift.coins)} coins ${gift.sent?'sent':'received'}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl);return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${gift.sent?'':'+'}${n(gift.coins)} coins ${gift.sent?'sent':'received'}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
 /* Keep the event's original clock across screen redraws. Negative animation delay
    resumes the celebration instead of replaying it when chat or controls change. */
 function zrGiftCelebration(){
@@ -46,8 +46,8 @@ function zrGiftCelebration(){
   if(!motion||!gift||motion.key!==Room.key)return '';
   const elapsed=Math.max(0,Date.now()-motion.at);
   if(elapsed>=motion.life)return '';
-  const media=homeGiftUrl(gift.mediaUrl),large=gift.coins>=19999;
-  return `<div class="zr-gift-celebration ${large?'is-large':''}" aria-hidden="true" style="--gift-age:-${elapsed}ms;--gift-life:${motion.life}ms">
+  const sticker=!!giftSticker(gift.giftName),media=giftMotionUrl(gift.giftName,gift.mediaUrl),large=!sticker&&gift.coins>=19999;
+  return `<div class="zr-gift-celebration ${large?'is-large':''} ${sticker?'is-sticker':''}" aria-hidden="true" style="--gift-age:-${elapsed}ms;--gift-life:${motion.life}ms">
     <div class="zr-gift-halo"></div><div class="zr-gift-wave"></div>
     <div class="zr-gift-sparks">${Array.from({length:large?14:8},(_,i)=>`<i style="--spark-angle:${i*(large?360/14:45)}deg;--spark-distance:${large?115:86}px"></i>`).join('')}</div>
     <div class="zr-gift-stage-art">${media?`<img src="${media}" alt="">`:`<span>${esc(gift.emoji||'🎁')}</span>`}</div>
@@ -60,7 +60,7 @@ function zrClearGiftMotion(){
 }
 function zrStartGiftMotion(){
   clearTimeout(Room.giftTimer);
-  const motion={key:Room.key,at:Date.now(),life:Room.gift.coins>=19999?3200:2400};
+  const motion={key:Room.key,at:Date.now(),life:giftSticker(Room.gift.giftName)?4800:Room.gift.coins>=19999?3200:2400};
   Room.giftMotion=motion;
   Room.giftTimer=setTimeout(()=>{if(Room.giftMotion===motion)zrClearGiftMotion()},motion.life);
 }
@@ -87,7 +87,7 @@ function zrCallGifts(host){
   const pending=!DEMO&&contentPending('catalog'),error=!DEMO&&ContentLoading.catalog.error;
   if(pending)return `<div class="zr-gift-rail zr-gifts-loading" role="status" aria-label="Loading call gifts" aria-busy="true">${Array.from({length:6},()=>`<div aria-hidden="true">${skeletonLine('32px',32)}${skeletonLine('38px',10)}</div>`).join('')}</div>`;
   if(error||!Home.gifts.length)return `<button class="zr-gifts-empty" onclick="homeGifts('${domId(zrPerson()?.id||'')}')">${hi('gift',17)} ${error?'Retry loading gifts':'Browse gifts'} ${hi('chev',13)}</button>`;
-  return `<div class="zr-gift-rail" role="group" aria-label="Call gifts" data-lenis-prevent>${Home.gifts.map(gift=>`<button onclick="zrChooseGift('${domId(gift.id)}')" aria-label="Choose ${esc(gift.name)}, ${n(gift.coins)} coins" ${Home.giftBusy?'disabled':''}><span class="zr-rail-art">${homeGiftUrl(gift.mediaUrl)?`<img src="${homeGiftUrl(gift.mediaUrl)}" alt="">`:esc(gift.emoji||'🎁')}</span><span class="zr-rail-price">${coinIcon(13)} ${n(gift.coins)}</span></button>`).join('')}</div>`;
+  return `<div class="zr-gift-rail" role="group" aria-label="Call gifts" data-lenis-prevent>${Home.gifts.map(gift=>`<button onclick="zrChooseGift('${domId(gift.id)}')" aria-label="Choose ${esc(gift.name)}, ${n(gift.coins)} coins" ${Home.giftBusy?'disabled':''}><span class="zr-rail-art">${giftStillUrl(gift.name,gift.mediaUrl)?`<img src="${giftStillUrl(gift.name,gift.mediaUrl)}" alt="">`:esc(gift.emoji||'🎁')}</span><span class="zr-rail-price">${coinIcon(13)} ${n(gift.coins)}</span></button>`).join('')}</div>`;
 }
 function zrChooseGift(id){if(!zrIsCall()||zrIsHost()||Home.giftBusy)return;homeGifts(zrPerson()?.id);homeSelectGift(id)}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}

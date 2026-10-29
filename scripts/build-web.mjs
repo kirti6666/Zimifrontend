@@ -20,8 +20,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
 const brandLogo = "data:image/webp;base64," + readFileSync(join(root, "web/binzolive-logo.webp")).toString("base64");
 const brandIcon = "data:image/png;base64," + readFileSync(join(root, "web/favicon/favicon-96x96.png")).toString("base64");
-const waterSticker =
-  "data:image/webp;base64," + readFileSync(join(root, "web/water-flowing.webp")).toString("base64");
+// __GIFT_STICKER_name__ in web/gift-stickers.js becomes web/stickers/name.webp.
+const giftSticker = (_, name) =>
+  "data:image/webp;base64," + readFileSync(join(root, `web/stickers/${name}.webp`)).toString("base64");
 // web/model-photos/model-N.(webp|jpg|png): licensed stock photos of models. A missing file leaves
 // its slot empty, and the welcome screen and preview fall back to web/onboarding-media/.
 const modelPhoto = (i) => {
@@ -122,6 +123,9 @@ const page = (demo, hosted = false) =>
   read("web/ads.css") +
   read("web/tactile.css") +
   read("web/card-video.css") +
+  read("web/flat.css") +
+  read("web/all-creators.css") +
+  read("web/wallet.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -134,11 +138,15 @@ const page = (demo, hosted = false) =>
     "data:image/webp;base64," + readFileSync(join(root, `web/onboarding-media/india-${i}.webp`)).toString("base64"))
     // The app shows only the three welcome photos; the preview also needs the sample hosts'.
     .replace(/__MODEL_PHOTO_([1-6])__/g, (_, i) => (demo || Number(i) <= 3 ? modelPhoto(i) : "")) +
-  read("web/aurora-runtime.js").replace("__WATER_FLOWING_STICKER__", waterSticker).replace("__BRAND_LOGO__", brandLogo) +
+  read("web/aurora-runtime.js").replace("__BRAND_LOGO__", brandLogo) +
+  "\n" + read("web/gift-stickers.js").replace(/__GIFT_STICKER_([a-z0-9-]+)__/g, giftSticker) +
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
+  "\n" + read("web/pull-refresh.js") +
+  "\n" + read("web/home-render.js") +
   "\n" + read("web/home.js") +
   "\n" + read("web/home-dashboard.js") +
+  "\n" + read("web/all-creators.js") +
   "\n" + read("web/coins.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +

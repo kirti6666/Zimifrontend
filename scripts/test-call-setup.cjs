@@ -31,9 +31,9 @@ async function assertLayout(page, label) {
       titleColor: title && getComputedStyle(title).color,
       backColor: back && getComputedStyle(back).color,
       canvasColor: getComputedStyle(el).backgroundColor,
-      expectedInk: color(theme.colors.text), expectedCanvas: color(theme.colors.background),
-      expectedPrimary: color(theme.colors.primary), expectedPrimaryInk: color(theme.colors.primaryContrast),
-      themeMode: theme.mode, themeCanvas: theme.colors.background,
+      expectedInk: color(ztDisplayColors(theme).text), expectedCanvas: color(ztDisplayColors(theme).background),
+      expectedPrimary: color(ztDisplayColors(theme).primary), expectedPrimaryInk: color(ztDisplayColors(theme).primaryContrast),
+      themeMode: window.ZimiThemes.dark() ? 'dark' : 'light', themeCanvas: ztDisplayColors(theme).background,
       nativeMode: document.documentElement.dataset.theme, nativeCanvas: document.documentElement.dataset.canvas,
       primaryDisabled: primary.disabled, primaryColor: getComputedStyle(primary).color,
       primaryBackground: getComputedStyle(primary).backgroundColor,
@@ -55,11 +55,11 @@ async function assertLayout(page, label) {
   assert.equal(layout.widthOverflow, false, `${label}: no horizontal overflow`);
   assert.equal(layout.fillsApp, true, `${label}: the setup fills the app instead of leaving a blank lower viewport`);
   assert.equal(layout.titleVisible && layout.backVisible, true, `${label}: identity and Back are present`);
-  assert.equal(layout.titleColor, layout.expectedInk, `${label}: title follows selected text color`);
-  assert.equal(layout.backColor, layout.expectedInk, `${label}: Back follows selected text color`);
-  assert.equal(layout.canvasColor, layout.expectedCanvas, `${label}: setup follows selected canvas color`);
-  assert.equal(layout.nativeMode, layout.themeMode, `${label}: native status-bar mode follows selected theme`);
-  assert.equal(layout.nativeCanvas, layout.themeCanvas, `${label}: native safe-area canvas follows selected theme`);
+  assert.equal(layout.titleColor, layout.expectedInk, `${label}: title uses the app text color`);
+  assert.equal(layout.backColor, layout.expectedInk, `${label}: Back uses the app text color`);
+  assert.equal(layout.canvasColor, layout.expectedCanvas, `${label}: setup uses the app canvas (white, or black in Dark Mode)`);
+  assert.equal(layout.nativeMode, layout.themeMode, `${label}: native status-bar mode follows Dark Mode`);
+  assert.equal(layout.nativeCanvas, layout.themeCanvas, `${label}: native safe-area canvas follows the app canvas`);
   assert.equal(layout.selectedBorder, layout.expectedPrimary, `${label}: selected call mode uses the theme accent`);
   if (!layout.primaryDisabled) {
     assert.equal(layout.primaryBackground, layout.expectedPrimary, `${label}: CTA follows selected primary color`);
@@ -138,6 +138,7 @@ async function assertLayout(page, label) {
         const base = mode === 'dark' ? ZThemeOriginal : ZThemeRose;
         const theme = mode === 'custom' ? { ...base, id: 'setup-custom-theme', colors: { ...base.colors, background: '#f3f2fc', surface: '#fffcff', surfaceElevated: '#e5def3', text: '#12132c', textMuted: '#615879', primary: '#6543b8', primaryContrast: '#f4ecff', secondary: '#4e2f94', border: '#c6b8de' }, typography: { fontFamily: 'mono', fontScale: 1.1, fontWeight: '500', headingWeight: '800' } } : base;
         Native.receive({ type: 'data.themes', data: { items: [theme], selectedThemeId: theme.id } });
+        window.ZimiThemes.setDark(mode === 'dark');
         r();
       }, theme);
       for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 693 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
@@ -242,7 +243,7 @@ async function assertLayout(page, label) {
     await receive(page, 'data.hosts', { hosts: [{ ...host, availableForCall: false }, other] });
     assert.equal(await button(page, 'Currently unavailable').isDisabled(), true);
     await button(page, 'Explore creators').click();
-    assert.equal(await page.evaluate(() => S.v), 'explore');
+    assert.equal(await page.evaluate(() => S.v), 'home', 'Explore is removed, so its route opens Home');
     assert.equal(await page.evaluate(() => __media.tracks.every(track => track.readyState === 'ended')), true);
     assert.deepEqual(errors, [], 'All setup states run without uncaught browser errors');
     console.log('PASS: full-height themed call setup, responsive identity/fallback, blocked live routing, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, creator changes, unavailable refresh and Explore.');

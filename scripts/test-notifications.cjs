@@ -20,6 +20,13 @@ const receive = (page, type, data = {}) => page.evaluate(message => Native.recei
 const sent = (page, type) => page.evaluate(value => __sent.filter(message => message.type === value).map(message => message.data), type);
 const last = async (page, type) => (await sent(page, type)).at(-1);
 const button = (page, name) => page.getByRole('button', { name, exact: true });
+// Pulls the page down from the top the way a finger does, then releases.
+const pullToRefresh = page => page.evaluate(() => {
+  window.zimiScrollTo(0);
+  const target = document.getElementById('screen'), touch = y => new Touch({ identifier: 1, target, clientX: 180, clientY: y });
+  const fire = (type, y) => { const active = type === 'touchend' ? [] : [touch(y)]; target.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: active, targetTouches: active, changedTouches: [touch(y)] })); };
+  fire('touchstart', 120); for (const y of [150, 190, 230, 270, 300]) fire('touchmove', y); fire('touchend', 300);
+});
 const search = page => page.getByLabel('Search notifications', { exact: true });
 const rows = page => page.locator('article.zh-notification[data-notification-id]');
 const row = (page, notice) => page.locator(`article.zh-notification[data-notification-id="${notice.id}"]`);
@@ -162,7 +169,7 @@ async function filters(page, initial) {
   await search(page).evaluate(node => node.setSelectionRange(1, 4));
   await result(page, focusedRequest, [notices[0]], { totalCount: 3, unreadCount: 2 });
   assert.deepEqual(await search(page).evaluate(node => ({ focused: document.activeElement === node, start: node.selectionStart, end: node.selectionEnd })), { focused: true, start: 1, end: 4 }, 'Native refresh preserves search focus and cursor selection');
-  const refresh = await loadAfter(page, () => button(page, 'Refresh notifications').click());
+  const refresh = await loadAfter(page, () => pullToRefresh(page));
   assert.equal(refresh.q, query, 'Explicit refresh retains the query');
   assert.equal(refresh.page, 1);
   assert.equal(await rows(page).count(), 0, 'A first-page refresh hides stale results until it settles');
@@ -173,7 +180,7 @@ async function filters(page, initial) {
 }
 
 async function pagination(page) {
-  let request = await loadAfter(page, () => button(page, 'Refresh notifications').click());
+  let request = await loadAfter(page, () => pullToRefresh(page));
   await result(page, request, notices, { total: 5, totalCount: 5 });
   request = await loadAfter(page, () => button(page, 'Load more notifications').click());
   assert.equal(request.page, 2);
@@ -192,14 +199,14 @@ async function pagination(page) {
   assert.equal(await rows(page).count(), 5);
   assert.equal(await button(page, 'Load more notifications').count(), 0, 'Pagination stops at the server total');
 
-  request = await loadAfter(page, () => button(page, 'Refresh notifications').click());
+  request = await loadAfter(page, () => pullToRefresh(page));
   await failLoad(page, request, 'Notifications are temporarily unavailable.');
   assert.equal(await rows(page).count(), 0, 'Failed first-page requests do not show stale notifications');
   const firstRetry = await loadAfter(page, () => button(page, 'Retry').click());
   assert.equal(firstRetry.page, 1);
   await result(page, firstRetry, []);
   await page.getByRole('heading', { name: "You're all caught up", exact: true }).waitFor();
-  request = await loadAfter(page, () => button(page, 'Refresh notifications').click());
+  request = await loadAfter(page, () => pullToRefresh(page));
   await result(page, request);
   console.log('PASS notifications: retained pagination, overlap deduplication, failed-page retry, initial failure/retry and true empty inbox');
 }
@@ -352,7 +359,7 @@ async function detailAndSafety(page) {
   assert.equal(await page.evaluate(() => S.v), 'notifications');
 
   const unsafe = { ...notices[0], title: '<img src=x onerror="window.__notificationXss=1">', body: '<script>window.__notificationXss=2</script> & "quoted" content', read: true };
-  let request = await loadAfter(page, () => button(page, 'Refresh notifications').click());
+  let request = await loadAfter(page, () => pullToRefresh(page));
   await result(page, request, [unsafe]);
   assert.equal(await rows(page).locator('h3').textContent(), unsafe.title, 'Notification titles are rendered as text');
   await button(page, `Open notification: ${unsafe.title}`).click();
@@ -382,7 +389,7 @@ async function accountIsolation(page) {
   const oldRequest = await loadAfter(page, () => search(page).fill('private previous account'));
   await result(page, oldRequest, [notices[0]]);
   await selectNotice(page, notices[0]);
-  const pendingOld = await loadAfter(page, () => button(page, 'Refresh notifications').click());
+  const pendingOld = await loadAfter(page, () => pullToRefresh(page));
   await receive(page, 'session.none');
   await receive(page, 'session', { ...account, user: { ...account.user, id: '507f1f77bcf86cd799439099', name: 'Another Member' } });
   const newRequest = await loadAfter(page, () => page.evaluate(() => homeNotifications()));
@@ -398,7 +405,7 @@ async function accountIsolation(page) {
 }
 
 async function realLogoutIsolation(page) {
-  let request = await loadAfter(page, () => button(page, 'Refresh notifications').click());
+  let request = await loadAfter(page, () => pullToRefresh(page));
   await result(page, request);
   request = await loadAfter(page, () => status(page, 'Unread').click());
   await result(page, request, notices.slice(0, 2), { totalCount: 3, unreadCount: 2 });
@@ -452,7 +459,8 @@ async function visualChecks(page) {
   for (const mode of ['dark', 'light']) {
     const themes = await page.evaluate(value => ({ items: [ZThemeOriginal, ZThemeRose], selectedThemeId: value === 'dark' ? ZThemeOriginal.id : ZThemeRose.id, premium: { active: false } }), mode);
     await receive(page, 'data.themes', themes);
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), mode);
+    await page.evaluate(dark => window.ZimiThemes.setDark(dark), mode === 'dark');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), mode, 'Dark Mode decides the canvas');
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: width === 1280 ? 1000 : 844 });
       await layout(page, `${mode} notifications at ${width}px`);
@@ -483,6 +491,7 @@ async function previewChecks(browser, errors) {
   for (const mode of ['dark', 'light']) {
     const themes = await page.evaluate(value => ({ items: [ZThemeOriginal, ZThemeRose], selectedThemeId: value === 'dark' ? ZThemeOriginal.id : ZThemeRose.id, premium: { active: false } }), mode);
     await receive(page, 'data.themes', themes);
+    await page.evaluate(dark => window.ZimiThemes.setDark(dark), mode === 'dark');
     await layout(page, `${mode} sample inbox at 390px`);
     await page.screenshot({ path: path.join(artifacts, `notifications-preview-mobile-${mode}.png`), fullPage: true });
   }

@@ -18,3 +18,9 @@
 
 /* Informational notices never block the action underneath them. */
 #app-notice{pointer-events:none}
+
+/* Pull to refresh: the ring fills with the pull and turns accent when releasing reloads. */
+#zimi-pull{position:fixed;left:50%;z-index:30;display:grid;place-items:center;width:36px;height:36px;margin-left:-18px;border:1px solid var(--line);background:var(--surface);color:var(--muted);transform:translateY(calc(var(--pull,0px) - 40px));opacity:calc(var(--pull-progress,0) * 1.6);pointer-events:none}
+#zimi-pull[hidden]{display:none}
+#zimi-pull circle{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:56.55;stroke-dashoffset:calc(56.55 * (1 - var(--pull-progress,0)));transform:rotate(-90deg);transform-origin:center}
+#zimi-pull.is-ready{color:var(--accent-ink);border-color:var(--accent-ink)}

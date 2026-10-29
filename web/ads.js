@@ -163,7 +163,7 @@ Native.on('data.ads',data=>{
   ZAds.adFree=data?.adFree===true;
   ZAds.items=ZAds.adFree||!Array.isArray(data?.items)?[]:data.items.filter(zaSafe);
   for(const [id,video] of ZAds.videos)if(!ZAds.items.some(ad=>ad.id===id&&ad.format==='video')){video.pause();ZAds.videos.delete(id)}
-  if(['home','explore','chats','summary'].includes(S.v))r();
+  if(['home','all-creators','chats','summary'].includes(S.v))r();
 });
 Native.on('ads.retired',data=>ZAds.retired.add(data.id));
 Native.on('ads.opened',data=>{if(ZAds.opening===data.id){ZAds.opening='';zaPaintCta()}});

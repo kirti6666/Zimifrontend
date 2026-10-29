@@ -41,6 +41,9 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
         const Native={handlers:{},send(type,data){window.sendNative(type,data)},on(type,fn){(this.handlers[type]||=[]).push(fn)},receive(type,data){(this.handlers[type]||[]).forEach(fn=>fn(data))}};
         const camOn=()=>S.cam, appNotice=message=>{window.lastNotice=message};
         window.captureCount=0; window.tracks=[];
+        window.mediaTimers=[];
+        const scheduleInterval=window.setInterval.bind(window);
+        window.setInterval=(...args)=>{const timer=scheduleInterval(...args);mediaTimers.push(timer);return timer};
         const PeerConnection=window.RTCPeerConnection;
         window.peerConnections=[];
         window.RTCPeerConnection=class extends PeerConnection {constructor(...args){super(...args);window.peerConnections.push(this)}};
@@ -152,16 +155,65 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     const healthyCallEnds=messages.filter(message=>message.type==='call.end').length;
     await receive(pages.host,'operation.error',{action:'rtc.signal',message:'Temporary signaling outage'});
     assert.equal(messages.filter(message=>message.type==='call.end').length,healthyCallEnds,'A signaling acknowledgment failure does not terminate healthy call media');
+    await pages.host.waitForFunction(() => peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').getParameters().encodings[0].maxBitrate===1800000);
     await pages.host.evaluate(() => {
-      const pc=peerConnections.at(-1);window.realStats=pc.getStats.bind(pc);window.weakNetwork=true;
-      pc.getStats=async()=>new Map([['inbound',{id:'inbound',type:'inbound-rtp',packetsReceived:100,packetsLost:0,jitter:weakNetwork ? .12 : 0}],['path',{id:'path',type:'candidate-pair',state:'succeeded',nominated:true,currentRoundTripTime:weakNetwork ? .9 : .03}]]);
+      // Drive quality samples explicitly so a timer cannot race a one-sample spike.
+      mediaTimers.forEach(clearInterval);
+      const pc=peerConnections.at(-1);window.realStats=pc.getStats.bind(pc);
+      window.statsFixture=[
+        {id:'transport',type:'transport',selectedCandidatePairId:'path'},
+        {id:'inbound',type:'inbound-rtp',packetsReceived:100,packetsLost:0,jitter:0},
+        {id:'remote',type:'remote-inbound-rtp',localId:'outbound',packetsLost:100,fractionLost:0,jitter:0},
+        {id:'outbound',type:'outbound-rtp',kind:'video',qualityLimitationReason:'bandwidth'},
+        {id:'path',type:'candidate-pair',state:'succeeded',nominated:true,currentRoundTripTime:.03,availableOutgoingBitrate:2000000},
+        {id:'old-path',type:'candidate-pair',state:'succeeded',nominated:true,currentRoundTripTime:1.5}
+      ];
+      pc.getStats=async()=>new Map(statsFixture.map(stat=>[stat.id,{...stat}]));
     });
-    await pages.host.waitForFunction(() => ZimiMedia.getState().connectionQuality==='poor');
-    assert.equal(await pages.host.locator('[data-zimi-network]').isVisible(),true,'Weak media quality displays the network signal warning');
-    await pages.host.waitForFunction(() => peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').getParameters().encodings[0].maxBitrate===350000);
-    await pages.host.evaluate(() => { window.weakNetwork=false; });
-    await pages.host.waitForFunction(() => ZimiMedia.getState().connectionQuality==='good',{timeout:10000});
+    const sample = async (count=1) => {for(let i=0;i<count;i++)await pages.host.evaluate(async()=>{Native.receive('app.foreground',{});await new Promise(resolve=>setTimeout(resolve,70))})};
+    const encoding = () => pages.host.evaluate(()=>{const {maxBitrate,maxFramerate,scaleResolutionDownBy}=peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').getParameters().encodings[0];return {maxBitrate,maxFramerate,scaleResolutionDownBy}});
+    const high={maxBitrate:1800000,maxFramerate:24,scaleResolutionDownBy:1};
+    const balanced={maxBitrate:900000,maxFramerate:24,scaleResolutionDownBy:1.5};
+    const low={maxBitrate:450000,maxFramerate:18,scaleResolutionDownBy:2};
+    await sample(3);
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','Normal bandwidth adaptation, old cumulative loss and an unused slow candidate do not report poor connection');
+    assert.deepEqual(await encoding(),high);
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='remote').packetsLost=200});
+    await sample(2);
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','Missing remote packet totals cannot turn cumulative loss into a false 100 percent loss rate');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').currentRoundTripTime=.9});
+    await sample();
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','One network spike does not flash the poor-connection warning');
+    assert.deepEqual(await encoding(),high,'One spike does not blur the outgoing video');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').currentRoundTripTime=.03;statsFixture.find(s=>s.id==='inbound').jitter=.12});
+    await sample(2);
+    assert.equal(await pages.host.locator('[data-zimi-network]').isVisible(),true,'Sustained bad incoming media displays the warning');
+    assert.deepEqual(await encoding(),high,'Bad incoming media does not reduce our outgoing video');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='inbound').jitter=0;statsFixture.find(s=>s.id==='path').currentRoundTripTime=.9});
+    await sample(2);
+    assert.deepEqual(await encoding(),balanced,'Sustained outgoing congestion first preserves 24 fps at a moderate resolution');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').currentRoundTripTime=.03;statsFixture.find(s=>s.id==='remote').fractionLost=.3});
+    await sample(2);
+    assert.deepEqual(await encoding(),low,'Severe receiver-reported loss reduces video even when packetsReceived is unavailable');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='remote').fractionLost=0});
+    await sample(3);
+    assert.deepEqual(await encoding(),balanced,'Recovery restores one video quality step at a time');
     assert.equal(await pages.host.locator('[data-zimi-network]').isVisible(),false,'Sustained recovery hides the signal warning');
+    await sample(3);
+    assert.deepEqual(await encoding(),high,'Stable recovery restores full camera resolution');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='outbound').qualityLimitationReason='cpu'});
+    await sample(2);
+    assert.deepEqual(await encoding(),balanced,'CPU pressure reduces encoder work');
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','CPU pressure is not reported as a poor network');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='outbound').qualityLimitationReason='bandwidth';statsFixture.find(s=>s.id==='path').availableOutgoingBitrate=400000});
+    await sample(3);
+    assert.deepEqual(await encoding(),high,'A low bandwidth estimate alone does not lock the encoder into a low quality ceiling');
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='remote').fractionLost=.12});
+    await sample(2);
+    assert.deepEqual(await encoding(),low,'Low available bandwidth with confirmed outgoing loss has a smooth low-bandwidth profile');
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').availableOutgoingBitrate=2000000;statsFixture.find(s=>s.id==='remote').fractionLost=0});
+    await sample(6);
     const offersBeforeRecovery=messages.filter(message=>message.id==='host'&&message.type==='rtc.signal'&&message.data.description?.type==='offer').length;
     await pages.host.evaluate(() => {
       const pc=peerConnections.at(-1);pc.getStats=realStats;

@@ -32,13 +32,13 @@ const root = path.resolve(__dirname, '..');
     await page.evaluate(() => go('home'));
     const bell = page.locator('.zh-bell>.zi-icon');
     await press(page.locator('.zh-bell'));
-    assert.deepEqual((({ name, tap }) => ({ name, tap }))(await motion(bell)), { name: 'zi-ring', tap: true }, 'A press plays the icon’s own animation');
+    assert.deepEqual((({ name, tap }) => ({ name, tap }))(await motion(bell)), { name: 'zi-press', tap: true }, 'A press uses the shared restrained acknowledgement');
     await page.waitForFunction(() => !document.querySelector('.zh-bell>.zi-icon').classList.contains('zi-tap'));
-    assert.equal((await motion(bell)).name, 'zi-idle-ring', 'Unread notifications return to the waiting bell loop');
+    assert.equal((await motion(bell)).name, 'none', 'Unread notifications keep a static unread indicator');
 
-    await page.getByRole('button', { name: 'Chats', exact: true }).click();
+    await page.getByRole('button', { name: 'Chat', exact: true }).click();
     const tab = await motion(page.locator('.zh-nav [data-tab=chats]>.zi-icon'));
-    assert.equal(tab.name, 'zi-bounce');
+    assert.equal(tab.name, 'zi-press');
     assert.equal(tab.tap, true, 'A press animation continues on the control after the screen redraws');
     assert.match(tab.delay, /^-\d+ms$/, 'The redrawn icon resumes from the elapsed time instead of restarting');
     assert.equal(await page.locator('#screen').evaluate(screen => screen.getAnimations().length > 0), true, 'The tab still runs its content transition');
@@ -46,7 +46,7 @@ const root = path.resolve(__dirname, '..');
     await page.evaluate(() => go('thread', 'aanya'));
     await page.locator('#ti').fill('Hello');
     await press(page.locator('.zc-composer-send'));
-    assert.equal((await motion(page.locator('.zc-composer-send>.zi-icon'))).name, 'zi-fly');
+    assert.equal((await motion(page.locator('.zc-composer-send>.zi-icon'))).name, 'zi-press');
     const typed = page.locator('.zc-composer-add>.zi-icon');
     await page.locator('#ti').press(' ');
     assert.equal((await motion(typed)).tap, false, 'Typing in a field never animates nearby icons');
@@ -60,8 +60,18 @@ const root = path.resolve(__dirname, '..');
     await page.waitForTimeout(150);
     const ringing = (await motion(hangUp)).transform.match(/-?[\d.]+/g).map(Number);
     assert.ok(ringing[0] < 0 && ringing[3] < 0, 'A hang-up press rings around the turned phone instead of undoing it');
+    for (const [view, selector] of [['settings', '.zp-account-summary>svg'], ['coins', '.zw-history>svg:last-child']]) {
+      await page.evaluate(view => go(view), view);
+      const arrow = page.locator(selector), original = (await motion(arrow)).transform;
+      assert.notEqual(original, 'none', `${view}: the chevron has its intended CSS orientation`);
+      await arrow.evaluate(icon => ZimiIcons.play(icon));
+      assert.equal((await motion(arrow)).transform, original, `${view}: press feedback preserves the CSS-rotated chevron`);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      assert.equal((await motion(arrow)).transform, original, `${view}: reduced motion preserves the CSS-rotated chevron`);
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+    }
     await page.close();
-    console.log('PASS icons: per-icon press animations, redraw continuity, loops, typing and hang-up orientation');
+    console.log('PASS icons: restrained press feedback, redraw continuity, incoming-call motion, typing and hang-up orientation');
 
     const reduced = await open({ reducedMotion: 'reduce' });
     await press(reduced.locator('.zh-bell'));

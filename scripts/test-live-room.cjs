@@ -160,7 +160,7 @@ async function previewChecks(browser, errors) {
   const balance = await viewer.evaluate(() => S.bal);
   await button(viewer, 'Send a gift').click();
   const gifts = viewer.getByRole('dialog', { name: 'Send a gift' });
-  await gifts.locator('.zh-gifts button').filter({ hasText: 'Rose' }).click();
+  await gifts.locator('.zh-gifts button').filter({ has: viewer.locator('b', { hasText: /^Rose$/ }) }).click();
   await button(gifts, 'Send gift').click();
   assert.equal(await viewer.evaluate(() => S.bal), balance - 99, 'The preview gift updates the preview balance');
   assert.equal(await gifts.count(), 0);

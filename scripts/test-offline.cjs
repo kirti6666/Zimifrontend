@@ -50,13 +50,13 @@ const chromeSize = page => page.evaluate(() => ['top', 'nav'].map(id => {
     await panel(preview).getByRole('heading', { name: "You're offline", exact: true }).waitFor();
     assert.equal(await preview.locator('#screen').count(), 1, 'The offline view retains the underlying screen');
     const dimensions = await chromeSize(preview);
-    for (const mode of ['light', 'dark']) {
+    for (const mode of ['original', 'rose']) {
       await preview.evaluate(mode => {
-        const theme = ZThemes.catalog.items.find(item => item.mode === mode && !item.isPremium);
+        const theme = ZThemes.catalog.items.filter(item => !item.isPremium)[mode === 'original' ? 0 : 1];
         if (!theme) throw new Error('Missing free preview theme: ' + mode);
         ztSelect(theme.id);
       }, mode);
-      assert.equal(await preview.evaluate(() => document.documentElement.dataset.theme), mode);
+      assert.equal(await preview.evaluate(() => document.documentElement.dataset.theme), 'light');
       for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
         await preview.setViewportSize(viewport);
         assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${mode} offline page fits ${viewport.width}px`);
@@ -77,29 +77,42 @@ const chromeSize = page => page.evaluate(() => ['top', 'nav'].map(id => {
     await panel(preview).getByRole('button', { name: 'Try again', exact: true }).click();
     await offlineHidden(preview);
     assert.equal(await preview.evaluate(() => S.v), 'home');
-    console.log('PASS offline preview: light/dark screenshots, responsive layouts, reduced motion, retry and stable chrome');
+    console.log('PASS offline preview: white-canvas accent screenshots, responsive layouts, reduced motion, retry and stable chrome');
 
     const scroll = preview.locator('#scroll-root');
     const homeScroll = await scroll.evaluate(el => { el.scrollTop = 220; return el.scrollTop; });
     assert.ok(homeScroll > 100, 'The preview home has enough content to verify saved scroll');
-    await preview.getByRole('button', { name: 'Explore', exact: true }).click();
-    const exploreScroll = await scroll.evaluate(el => { el.scrollTop = 410; return el.scrollTop; });
-    assert.ok(exploreScroll > 250, 'Explore has a distinct saved scroll position');
+    await preview.getByRole('button', { name: 'Profile', exact: true }).click();
+    const profileScroll = await scroll.evaluate(el => { el.scrollTop = 130; return el.scrollTop; });
+    assert.ok(profileScroll > 50, 'Profile has a distinct saved scroll position');
     await preview.getByRole('button', { name: 'Home', exact: true }).click();
     assert.ok(Math.abs(await scroll.evaluate(el => el.scrollTop) - homeScroll) < 2);
     await preview.context().setOffline(true);
     await panel(preview).waitFor({ state: 'visible' });
     assert.equal(await scroll.evaluate(el => el.scrollTop), 0, 'Entering offline mode starts at the top of the offline panel');
-    for (const tab of ['Explore', 'Home']) {
-      await preview.getByRole('button', { name: tab, exact: true }).click();
-      assert.equal(await scroll.evaluate(el => el.scrollTop), 0, `Offline ${tab} navigation keeps the panel at its top`);
-    }
+    await preview.getByRole('button', { name: 'Profile', exact: true }).click();
+    await banner(preview).waitFor({ state: 'visible' });
+    await panel(preview).waitFor({ state: 'hidden' });
+    assert.ok(Math.abs(await scroll.evaluate(el => el.scrollTop) - profileScroll) < 2, 'Offline Profile retains its own content position under the compact banner');
+    await preview.getByRole('button', { name: 'Home', exact: true }).click();
+    await panel(preview).waitFor({ state: 'visible' });
+    assert.equal(await scroll.evaluate(el => el.scrollTop), 0, 'Returning to offline Home starts at the panel top');
     await preview.context().setOffline(false);
     await offlineHidden(preview);
     assert.ok(Math.abs(await scroll.evaluate(el => el.scrollTop) - homeScroll) < 2, 'Recovery restores the home content position saved before it was covered');
-    await preview.getByRole('button', { name: 'Explore', exact: true }).click();
-    assert.ok(Math.abs(await scroll.evaluate(el => el.scrollTop) - exploreScroll) < 2, 'Offline tab navigation does not overwrite the other tab scroll position');
-    console.log('PASS offline navigation: panel starts at the top while each tab retains its content position');
+    await preview.getByRole('button', { name: 'Profile', exact: true }).click();
+    assert.ok(Math.abs(await scroll.evaluate(el => el.scrollTop) - profileScroll) < 2, 'Offline navigation does not overwrite the other primary tab scroll position');
+    await preview.evaluate(() => go('all-creators'));
+    assert.equal(await preview.locator('#nav').isVisible(), false, 'All Creators is a detail page without bottom tabs');
+    await preview.context().setOffline(true);
+    await panel(preview).waitFor({ state: 'visible' });
+    await banner(preview).waitFor({ state: 'hidden' });
+    await receive(preview, 'app.back');
+    assert.equal(await preview.evaluate(() => S.v), 'home', 'Android Back leaves the covered directory for Home');
+    assert.equal(await preview.locator('#nav').isVisible(), true, 'Back restores Home tabs during connectivity loss');
+    await preview.context().setOffline(false);
+    await offlineHidden(preview);
+    console.log('PASS offline navigation: covered Home, preserved Profile scroll and All Creators detail-page Back recovery');
 
     const production = await open({ preview: true, native: true, role: false });
     await offlineHidden(production);
@@ -218,7 +231,7 @@ const chromeSize = page => page.evaluate(() => ['top', 'nav'].map(id => {
     await panel(page).waitFor({ state: 'hidden' });
     assert.equal(await page.locator('.zr-call').isVisible(), true, 'An active call stays visible during connection loss');
     assert.equal(await page.evaluate(() => __call === document.querySelector('.zr-call')), true, 'An offline banner never remounts an active call');
-    const callControls = await page.locator('.zr-call-controls').boundingBox();
+    const callControls = await page.locator('.zr-call-dock').boundingBox();
     assert.ok(callControls && callControls.y >= 0 && callControls.y + callControls.height <= 844, 'The compact banner keeps call controls inside the viewport: ' + JSON.stringify(callControls));
     await receive(page, 'connection.status', { connected: true, checking: false });
     await offlineHidden(page);
