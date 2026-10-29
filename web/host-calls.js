@@ -36,7 +36,7 @@ function hcFeePending() { return !!S.callFee && !S.feeOk; }
 /* ---- Before going online ---- */
 function hcRateCard() {
   const st = HostCalls.status;
-  if (HostCalls.error) return `<div class="hc-card hc-status-error" role="alert"><span>${esc(HostCalls.error)}</span><button type="button" onclick="hcLoadStatus()">${hi('refresh', 14)} Retry call details</button></div>`;
+  if (HostCalls.error) return `<div class="hc-card hc-status-error" role="alert"><span>${esc(HostCalls.error)}</span><button type="button" onclick="hcLoadStatus()">Retry call details</button></div>`;
   if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}<div class="hc-tiers" aria-hidden="true">${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}</div></div>`;
   const tiers = st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
   return `<div class="hc-card">

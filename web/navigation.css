@@ -1,10 +1,14 @@
 /* Primary tabs share one geometry. Home owns the branded header; other screens
    provide their own headings and actions. */
-.zh-app .nav.zh-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;justify-items:center;gap:0;width:100%;max-width:none;height:74px;min-height:74px;flex-shrink:0;margin:0;padding:8px max(14px,calc((100vw - 640px)/2)) 11px;border:0;border-radius:0;background:#210f1c;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
-.zh-app .zh-nav>button{display:flex;position:relative;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;max-width:120px;height:49px;padding:0;color:#d8b8ca;font-size:10px;line-height:13px;font-weight:600;transition:color 180ms ease,background-color 180ms ease;isolation:isolate}
+:root{--tab-device-inset:env(safe-area-inset-bottom,0px);--tab-safe-bottom:var(--tab-device-inset)}
+/* The native SafeAreaView already reserves the gesture/navigation area. Only
+   standalone browsers need that inset inside the web tab bar. */
+:root[data-native-safe-area]{--tab-safe-bottom:0px}
+.zh-app .nav.zh-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;justify-items:center;gap:0;width:100%;max-width:none;height:calc(58px + var(--tab-safe-bottom));min-height:calc(58px + var(--tab-safe-bottom));flex-shrink:0;margin:0;padding:6px max(14px,calc((100vw - 640px)/2)) calc(7px + var(--tab-safe-bottom));border:0;border-radius:0;background:#210f1c;box-shadow:0 -8px 24px #1b0a191a;z-index:30}
+.zh-app .zh-nav>button{display:flex;position:relative;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;max-width:120px;height:44px;padding:0;color:#d8b8ca;font-size:10px;line-height:13px;font-weight:600;transition:color 180ms ease,background-color 180ms ease;isolation:isolate}
 .zh-app .zh-nav>button>svg{width:23px;height:23px;flex:none;transition:filter 180ms ease}
 .zh-app .zh-nav>button.on{color:#ffb6d5;font-weight:600}
-.zh-app .zh-nav>button.on>svg{filter:drop-shadow(0 1px 5px #ef17883b)}
+.zh-app .zh-nav>button.on>svg{filter:none}
 .zh-app .zh-nav>button[data-tab]::before{content:"";position:absolute;top:0;width:43px;height:30px;border-radius:17px;background:#fb27851a;opacity:0;transition:opacity 180ms ease;z-index:-1}
 .zh-app .zh-nav>button[data-tab].on::before{opacity:1}
 .zh-nav-dot{position:absolute;top:2px;right:calc(50% - 17px);width:6px;height:6px;border-radius:50%;background:#ef1187}

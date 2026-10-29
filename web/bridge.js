@@ -9,6 +9,9 @@
 
    Must stay top-level: the runtime and its inline handlers use these names. */
 const DEMO = window.ZIMI_DEMO !== false;
+// Native safe-area padding surrounds the WebView. Do not reserve it again in
+// the shared web tab bar; standalone browser previews handle their own inset.
+document.documentElement.toggleAttribute('data-native-safe-area',!!window.ReactNativeWebView);
 
 const Native = {
   handlers: {},

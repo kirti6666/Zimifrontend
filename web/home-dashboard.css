@@ -3,7 +3,7 @@
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* Home header: Explore/Following stand in for the app name. */
 .zh-feed-tabs{display:flex;align-self:stretch;gap:16px;flex:none}
-.zh-feed-tabs>[role="tab"]{position:relative;display:flex;align-items:center;min-width:44px;padding:0 1px;border:0;background:transparent;color:var(--muted);font-size:17px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.zh-feed-tabs>[role="tab"]{position:relative;display:flex;align-items:center;justify-content:center;min-width:44px;padding:0 1px;border:0;background:transparent;color:var(--muted);font-size:17px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
 .zh-feed-tabs>[aria-selected="true"]{color:var(--ink)}
 .zh-feed-tabs>[role="tab"]::after{content:"";position:absolute;left:50%;bottom:10px;width:18px;height:3px;border-radius:3px;background:var(--accent);transform:translateX(-50%) scaleX(0);transition:transform .2s ease}
 .zh-feed-tabs>[aria-selected="true"]::after{transform:translateX(-50%) scaleX(1)}
@@ -39,9 +39,6 @@
 .zh-heading-dot{width:8px;height:8px;flex:none;background:var(--accent);border-radius:50%}
 .zh-live-tools{display:flex;align-items:center;gap:7px;flex:none}
 .zh-live-tools>span{font-size:11px;color:var(--muted)}
-.zh-home.zh-dashboard .zh-home-refresh{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--muted)}
-.zh-home.zh-dashboard .zh-home-refresh[aria-busy="true"] svg{animation:zh-home-refresh .9s linear infinite}
-@keyframes zh-home-refresh{to{transform:rotate(360deg)}}
 .zh-home.zh-dashboard .zh-live-rail{display:flex;align-items:flex-start;gap:17px;overflow-x:auto;padding:2px 1px 8px;scrollbar-width:none;scroll-snap-type:x proximity}
 .zh-live-rail::-webkit-scrollbar{display:none}
 .zh-live-shortcut{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 66px;min-width:0;min-height:92px;padding:0;border:0;background:transparent;color:var(--ink);scroll-snap-align:start}
@@ -117,7 +114,6 @@
 .zh-empty-actions>button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:11px 14px;border:1px solid transparent;border-radius:13px;font-size:calc(12px * var(--theme-font-scale,1));font-weight:600;line-height:1.4}
 .zh-empty-actions svg{flex:none}
 .zh-empty-primary{background:var(--accent);color:var(--cta-ink);box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 18%,transparent)}
-.zh-empty-secondary{background:var(--raised);color:var(--ink)}
 .zh-empty-host{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;margin:10px auto -7px;padding:7px 0;border:0;background:transparent;color:var(--accent-ink);font-size:11px;font-weight:600}
 .zh-empty-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
 .zh-empty-links>button{position:relative;display:flex;align-items:flex-start;flex-direction:column;gap:5px;min-width:0;padding:15px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);text-align:left}
@@ -137,8 +133,8 @@
 .zh-home.zh-dashboard button{touch-action:manipulation;transition:background-color .15s ease,transform .15s ease,border-color .15s ease}
 .zh-home.zh-dashboard button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .zh-home.zh-dashboard .zh-person-media button:focus-visible{outline-color:#fff;outline-offset:-4px}
-.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-home-refresh):active:not(:disabled){transform:scale(.97)}
+.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut):active:not(:disabled){transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.zh-home.zh-dashboard .zh-person-action:hover:not(:disabled){filter:brightness(1.08)}.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}.zh-person-watch:hover .zh-watch-control{background:rgba(0,0,0,.65)}}
 @media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-featured-host{aspect-ratio:1.7;min-height:380px}.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding:25px;gap:18px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(34px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{width:350px;max-width:100%}.zh-home.zh-dashboard .zh-grid{gap:18px}.zh-home.zh-dashboard .zh-person-content{padding:15px}.zh-home.zh-dashboard .zh-person-action{font-size:12px}.zh-home.zh-dashboard .zh-person-profile p{font-size:12px}}
 @media(max-width:359px){.zh-home.zh-dashboard{padding-inline:14px}.zh-home.zh-dashboard .zh-grid{gap:10px}.zh-home.zh-dashboard .zh-person-action{gap:3px;padding-inline:3px;font-size:10px}.zh-home.zh-dashboard .zh-person-profile h3{font-size:13px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:25px}.zh-home.zh-dashboard .zh-featured-host .zh-person-status{font-size:9px;padding-inline:6px}.zh-featured-host .zh-watch-control{font-size:10px;padding:9px;gap:4px}}
-@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-home-refresh,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-home.zh-dashboard .zh-home-refresh[aria-busy="true"] svg{animation:none!important}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-progress>i,.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-progress>i,.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}

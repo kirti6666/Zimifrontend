@@ -1,0 +1,112 @@
+/* Compact wallet and explicit payment-method confirmation against the shipped
+   production page. Payment routes and all checkout responses stay local. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+const {chromium}=require('playwright');
+const root=path.resolve(__dirname,'..');
+const account={user:{id:'507f1f77bcf86cd799439001',name:'Wallet tester',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false,isPhoneVerified:true},verification:'none',requiresOnboarding:false};
+const packs=[{id:'pack-1',name:'Starter',coins:200,pricePaise:9899},{id:'pack-2',name:'Everyday',coins:625,pricePaise:24999},{id:'pack-3',name:'More to share',coins:1125,pricePaise:49999},{id:'pack-4',name:'Creator fan',coins:2500,pricePaise:98999},{id:'pack-5',name:'Big moments',coins:3750,pricePaise:149999},{id:'pack-6',name:'Celebration',coins:5000,pricePaise:199999}];
+const catalog={packs,gifts:[],paymentsAvailable:true};
+const receive=(page,type,data={})=>page.evaluate(message=>Native.receive(message),{type,data});
+const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type===type).map(message=>message.data),type);
+const last=async(page,type)=>(await sent(page,type)).at(-1);
+const dialog=page=>page.getByRole('dialog',{name:'Select payment method',exact:true});
+const getCoins=page=>page.getByRole('button',{name:'Get 200 coins',exact:true});
+const confirm=page=>dialog(page).getByRole('button',{name:'Continue to payment',exact:true});
+const routes=async(page,extra={})=>receive(page,'payments.routes',{...await last(page,'payments.routes.load'),mode:'ROTATION',routeChoice:false,routes:[],...extra});
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
+ const errors=[];
+ const open=async()=>{
+  const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});page.setDefaultTimeout(6000);
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.route('https://**/*',route=>route.abort());
+  await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
+  await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');
+  await receive(page,'session',account);await receive(page,'wallet.balance',{coins:52400,earningsPaise:0});
+  await page.evaluate(()=>go('coins'));await receive(page,'data.catalog',catalog);return page;
+ };
+ try{
+  const page=await open();
+  const shots=path.join(root,'artifacts','compact-coins');fs.mkdirSync(shots,{recursive:true});
+  for(const [width,height] of [[320,568],[320,640],[390,844],[768,900]]){
+   await page.setViewportSize({width,height});
+   const layout=await page.evaluate(()=>{
+    const scroll=document.getElementById('scroll-root'),view=scroll.getBoundingClientRect();
+    return {scroll:scroll.scrollHeight>scroll.clientHeight+1,overflow:document.documentElement.scrollWidth>innerWidth+1,boxes:[...document.querySelectorAll('.zw-wallet,.zw-packs>button,.zw-buy,.zw-note')].map(el=>({name:el.className,top:el.getBoundingClientRect().top,bottom:el.getBoundingClientRect().bottom})),viewport:{top:view.top,bottom:view.bottom},cards:document.querySelectorAll('.zw-packs>button').length};
+   });
+   assert.equal(await page.getByRole('heading',{name:'Your coins',exact:true}).count(),1);
+   assert.equal(await page.locator('.zw-wallet-main>div>span').innerText(),'Wallet');
+   assert.equal(layout.cards,6);
+   assert.equal(layout.scroll,false,`${width}x${height}: normal wallet and all six packs fit without scrolling`);
+   assert.equal(layout.overflow,false);
+   for(const box of layout.boxes)assert.ok(box.top>=layout.viewport.top-.5&&box.bottom<=layout.viewport.bottom+.5,`${width}x${height}: ${box.name} fits the usable screen`);
+   if(width===320||width===390)await page.screenshot({path:path.join(shots,`coins-${width}x${height}.png`)});
+  }
+  await page.setViewportSize({width:390,height:844});
+  await getCoins(page).click();await dialog(page).waitFor();
+  assert.equal((await sent(page,'wallet.checkout')).length,0,'Get coins opens selection without creating a payment');
+  assert.equal(await confirm(page).isDisabled(),true);
+  await page.getByRole('status',{name:'Loading payment methods',exact:true}).waitFor();
+  const failed=await last(page,'payments.routes.load');
+  await receive(page,'operation.error',{action:'payments.routes.load',requestId:failed.requestId,message:'Methods unavailable'});
+  assert.match(await dialog(page).getByRole('alert').innerText(),/could not be loaded/);
+  assert.equal(await confirm(page).isDisabled(),true,'Route errors cannot silently fall back to an unconfirmed order');
+  await dialog(page).getByRole('button',{name:'Retry payment methods',exact:true}).click();
+  await routes(page);
+  assert.equal(await confirm(page).isDisabled(),true,'Even Automatic requires an explicit choice');
+  assert.equal(await dialog(page).getByRole('radio').count(),1,'Disabled route choice presents only real secure checkout');
+  await dialog(page).getByRole('radio',{name:/^Secure checkout/}).check();
+  assert.equal(await confirm(page).isEnabled(),true);
+  await page.screenshot({path:path.join(shots,'payment-methods.png')});
+  await page.keyboard.press('Escape');
+  assert.equal(await dialog(page).count(),0);assert.equal((await sent(page,'wallet.checkout')).length,0,'Cancelling never creates an order');
+  await getCoins(page).click();await receive(page,'app.back');
+  assert.equal(await dialog(page).count(),0,'Android Back dismisses method selection first');
+  assert.equal(await page.evaluate(()=>S.v),'coins');
+  await getCoins(page).click();
+  await dialog(page).getByRole('radio',{name:/^Secure checkout/}).check();await confirm(page).click();
+  const automatic=await last(page,'wallet.checkout');
+  assert.ok(automatic.idempotencyKey);assert.equal(automatic.packId,packs[0].id);assert.equal(Object.hasOwn(automatic,'route'),false,'Secure checkout preserves server-selected routing');
+  assert.equal(await page.evaluate(()=>S.bal),52400,'Order creation does not credit coins');
+  await receive(page,'operation.error',{action:'wallet.checkout',idempotencyKey:automatic.idempotencyKey,status:502,message:'Response interrupted'});
+  await getCoins(page).click();assert.equal(await dialog(page).count(),0,'An uncertain retry keeps the confirmed payment method');
+  assert.deepEqual(await last(page,'wallet.checkout'),automatic,'Retry preserves pack, route and idempotency identity');
+  await page.close();
+
+  const selected=await open();await getCoins(selected).click();
+  await routes(selected,{routeChoice:true,routes:[{route:'provider_one',currency:'INR',takingPayments:true,upiIntent:true,pageStyle:'redirect'},{route:'provider_two',currency:'INR',takingPayments:true,upiIntent:false,pageStyle:'redirect'},{route:'not_available',currency:'INR',takingPayments:false},{route:'foreign',currency:'USD',takingPayments:true}]});
+  assert.equal(await dialog(selected).getByRole('radio').count(),3,'Only available INR routes plus secure Automatic are presented');
+  assert.equal(await dialog(selected).getByRole('radio',{name:/not.available|foreign/i}).count(),0);
+  await dialog(selected).getByRole('radio',{name:/^Provider Two/}).check();
+  assert.equal((await sent(selected,'wallet.checkout')).length,0,'Selecting a provider alone creates no order');
+  await selected.screenshot({path:path.join(shots,'payment-methods-routes.png')});
+  await confirm(selected).click();const chosen=await last(selected,'wallet.checkout');
+  assert.equal(chosen.route,'provider_two');
+  await receive(selected,'wallet.checkout',{kind:'coins',merchantOrderId:'selected-order',status:'PENDING',packId:chosen.packId,idempotencyKey:chosen.idempotencyKey,requestedRoute:chosen.route,coins:200,amountPaise:9899});
+  await selected.getByRole('button',{name:'Continue payment',exact:true}).click();
+  assert.deepEqual(await last(selected,'wallet.checkout'),chosen,'Pending continuation keeps its requested route and original order identity');
+  await selected.close();
+  const gifting=await open(),creator={id:'507f1f77bcf86cd799439011',name:'Gift recipient',role:'host',serverRole:'host',verified:true,online:true,availableForCall:true,ratePerMin:0};
+  await receive(gifting,'data.home',{hosts:[creator],stage:[],featured:creator,total:1,page:1,categories:[],unreadCount:0});
+  await gifting.evaluate(()=>go('home'));
+  await gifting.evaluate(id=>homeGifts(id),creator.id);
+  await receive(gifting,'data.catalog',{...catalog,gifts:[{id:'gift-1',name:'Rose',emoji:'*',coins:25}]});
+  await gifting.getByRole('dialog',{name:'Send a gift',exact:true}).getByRole('button',{name:/Rose/}).click();
+  await gifting.getByRole('dialog',{name:'Send a gift',exact:true}).getByRole('button',{name:'Add coins',exact:true}).click();
+  await gifting.getByRole('dialog',{name:'Add coins',exact:true}).getByRole('button',{name:'Get 200 coins',exact:true}).click();
+  await routes(gifting);await dialog(gifting).getByRole('radio',{name:/^Secure checkout/}).check();
+  await gifting.keyboard.press('Tab');
+  assert.equal(await dialog(gifting).evaluate(el=>el.contains(document.activeElement)),true,'Tab remains in payment selection above the gift sheet');
+  await gifting.keyboard.press('Escape');
+  assert.equal(await dialog(gifting).count(),0);
+  assert.deepEqual(await gifting.evaluate(()=>[Home.giftTo,CoinUI.topup,CoinUI.giftId]),[creator.id,true,'gift-1'],'Escape closes only payment selection and preserves gift top-up and draft');
+  assert.equal(await gifting.getByRole('dialog',{name:'Add coins',exact:true}).isVisible(),true);
+  assert.equal((await sent(gifting,'wallet.checkout')).length,0,'Dismissed gift top-up selection creates no purchase');
+  await gifting.close();
+  assert.deepEqual(errors,[],'No browser errors');
+  console.log('PASS compact Coins: Wallet + six packs + CTA fit 320x568/640 and390x844; explicit supported-method confirmation, loading/error/retry, cancellation/Back, server routing and idempotent continuation');
+ }finally{await browser.close()}
+})().catch(error=>{console.error(error);process.exitCode=1});

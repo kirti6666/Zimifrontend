@@ -3,7 +3,7 @@
 window.ZimiOffline = (() => {
   P.wifi = '<path d="M3 8.5a14 14 0 0 1 18 0M6.5 12a9 9 0 0 1 11 0M10 15.5a3.5 3.5 0 0 1 4 0" stroke-linecap="round"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/>';
   P.wifiOff = '<path d="m3 3 18 18M2.5 8.5a15 15 0 0 1 3.1-1.9M9.5 5.5a15 15 0 0 1 12 3M6 12a9.5 9.5 0 0 1 3-1.8M13.5 10a9.5 9.5 0 0 1 4.5 2M9.5 15.5a4 4 0 0 1 5 0" stroke-linecap="round"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/>';
-  const fullViews = new Set(['home', 'explore', 'search', 'notifications', 'welcome']);
+  const fullViews = new Set(['home', 'all-creators', 'search', 'notifications', 'welcome']);
   let browserOffline = navigator.onLine === false;
   let serverOffline = false;
   let preview = DEMO && previewMode === 'offline';
@@ -74,7 +74,7 @@ window.ZimiOffline = (() => {
     }
     if (offline && key !== renderedKey) {
       const label = checking ? 'Checking connection…' : 'Try again';
-      const retry = `<button class="zo-retry" onclick="ZimiOffline.retry()" ${checking ? 'disabled' : ''}>${icon('refresh', 19)}<span>${label}</span></button>`;
+      const retry = `<button class="zo-retry" onclick="ZimiOffline.retry()" ${checking ? 'disabled' : ''}><span>${label}</span></button>`;
       panel.innerHTML = `<div class="zo-content">
         <span class="zo-eyebrow"><i></i>${noInternet ? 'OFFLINE MODE' : 'CONNECTION PAUSED'}</span>
         ${illustration()}

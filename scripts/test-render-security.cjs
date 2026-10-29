@@ -14,7 +14,7 @@ const root = path.resolve(__dirname, '..');
     await page.route('**/*', route => route.abort());
     await page.setContent('<main><div id="top"></div><div id="screen"></div><div id="nav"></div></main>');
     await page.addScriptTag({ content: 'window.ZIMI_DEMO=false; window.ReactNativeWebView={postMessage(){}}; window.__xss=0;' });
-    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js']) {
+    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js', 'gift-stickers.js']) {
       await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
     }
     const result = await page.evaluate(() => {
@@ -63,7 +63,7 @@ const root = path.resolve(__dirname, '..');
       return { rendererResults, safeId, feedSafe, imageSafe, editSafe, gallerySafe, searchSafe, captionSafe, traySafe, executions: window.__xss };
     });
     // The conversation thread is rendered by the chats layer, which builds on the home layer.
-    for (const file of ['host-access.js', 'loading.js', 'coins.js', 'home.js', 'chats.js']) {
+    for (const file of ['host-access.js', 'loading.js', 'pull-refresh.js', 'coins.js', 'home.js', 'chats.js']) {
       await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
     }
     Object.assign(result, await page.evaluate(() => {

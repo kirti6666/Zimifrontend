@@ -549,6 +549,7 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   // The keyboard covers the navigation bar, which the SafeAreaView below still pads for.
   assert.equal(keyboard.props.keyboardVerticalOffset, -24, 'Keyboard padding leaves out the bottom inset, so no gap opens above the keyboard');
   assert.equal(safeArea.type, 'SafeAreaView');
+  assert.deepEqual(Array.from(safeArea.props.edges || []), ['top', 'right', 'bottom', 'left'], 'Native safe-area padding owns every edge, so the web tab bar must not reserve the bottom inset again');
   assert.ok(web, 'The actual WebView must be inside the resized content');
   for (const node of [keyboard, safeArea, web]) assert.equal(style(node).flex, 1, 'Allow keyboard padding to shrink the WebView');
   assert.equal(style(keyboard).backgroundColor, style(safeArea).backgroundColor);
@@ -1415,19 +1416,131 @@ test('completed checkout retries update only the server balance and retain attem
   h.bridge.close();
 });
 
-test('failed external payment launch preserves the checkout and supports manual verification', async () => {
+test('failed external coin launch releases its UI after verification while preserving eventual credit', async () => {
   const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'PENDING' });
   h.overrides.openURL = () => { assert.equal(h.find('wallet.checkout').length, 1, 'Order must reach UI before external launch'); throw new Error('No handler'); };
   h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
-  assert.equal(h.find('operation.error')[0].data.code, 'PAYMENT_OPEN_FAILED');
-  assert.equal(h.find('operation.error')[0].data.idempotencyKey, 'payment-attempt-1');
+  assert.deepEqual(plain(h.find('wallet.payment-returned')[0].data), { merchantOrderId: 'binzolive_order', status: 'PENDING', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' });
+  assert.equal(h.find('operation.error').filter(message => message.data.code === 'PAYMENT_OPEN_FAILED').length, 0, 'A generic launch error cannot overwrite the return notice');
+  assert.equal((await h.load('src/payment-cache.ts').readPendingPayments('alice')).length, 1, 'The authoritative pending order remains durable');
   h.overrides.verifyPurchase = () => { throw new h.ApiError('Check again shortly', 503, 'PAYIN_UNAVAILABLE'); };
   h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'binzolive_order' } }); await settle();
-  assert.equal(h.find('operation.error')[1].data.merchantOrderId, 'binzolive_order');
+  assert.equal(h.find('operation.error').at(-1).data.merchantOrderId, 'binzolive_order');
   h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'binzolive_order', status: 'SUCCESS' });
   h.activities.forEach(listener => listener('active')); await settle();
-  assert.equal(h.find('wallet.purchase')[0].data.status, 'SUCCESS'); assert.equal(h.find('wallet.purchase')[0].data.idempotencyKey, 'payment-attempt-1');
+  assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS'); assert.equal(h.find('wallet.purchase').at(-1).data.idempotencyKey, 'payment-attempt-1');
+  assert.equal(h.find('wallet.payment-returned').length, 1, 'Later tracking never repeats an abandoned-flow notice');
+  h.bridge.close();
+});
+
+test('coin payment return notices require an externally launched checkout that actually left the app', async () => {
+  const h = harness(), cache = h.load('src/payment-cache.ts');
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'return_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'return_order', status: 'PENDING' });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1', route: 'upi' } }); await settle();
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.find('wallet.payment-returned').length, 0, 'An ordinary foreground callback is not an abandoned checkout');
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  assert.deepEqual(plain(h.find('wallet.payment-returned')[0].data), { merchantOrderId: 'return_order', status: 'PENDING', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' });
+  assert.equal((await cache.readPendingPayments('alice'))[0].orderId, 'return_order', 'Dismissing UI never changes backend status or deletes its recovery reference');
+  assert.equal(h.count('checkout'), 1); assert.equal(h.opened.length, 1, 'Returning does not create or reopen a payment');
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.find('wallet.payment-returned').length, 1, 'The same external launch returns only once');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'return_order', status: 'SUCCESS' });
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS'); assert.equal((await cache.readPendingPayments('alice')).length, 0, 'Late successful credit remains reconcilable');
+  h.bridge.close();
+});
+
+test('returning coins wait for shared authoritative verification and never report a successful payment as failed', async () => {
+  const h = harness(), verification = deferred();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'successful_return', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.verifyPurchase = () => verification.promise;
+  h.overrides.wallet = () => ({ coins: 5750, earningsPaise: 0 });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'successful_return' } });
+  h.activities.forEach(listener => listener('inactive')); h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.count('verifyPurchase'), 1, 'Manual and return verification share their in-flight result');
+  assert.equal(h.find('wallet.payment-returned').length, 0, 'No UNKNOWN or failure is emitted before verification completes');
+  verification.resolve({ purchaseId: 'purchase', merchantOrderId: 'successful_return', status: 'SUCCESS' }); await settle();
+  assert.equal(h.find('wallet.payment-returned')[0].data.status, 'SUCCESS');
+  assert.equal(h.find('wallet.balance').at(-1).data.coins, 5750, 'Only the authenticated wallet provides credited coins');
+  h.bridge.close();
+});
+
+test('old coin returns retain order identity and cannot dismiss a replacement checkout or document', async () => {
+  const h = harness(), first = deferred();
+  h.overrides.checkout = packId => ({ purchaseId: packId, merchantOrderId: packId === 'pack-first' ? 'old_order' : 'new_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/' + packId });
+  h.overrides.verifyPurchase = orderId => orderId === 'old_order' ? first.promise : ({ purchaseId: 'new', merchantOrderId: orderId, status: 'PENDING' });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-first', idempotencyKey: 'payment-first-1' } }); await settle();
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-second', idempotencyKey: 'payment-second-2' } }); await settle();
+  first.resolve({ purchaseId: 'first', merchantOrderId: 'old_order', status: 'PENDING' }); await settle();
+  assert.deepEqual(plain(h.find('wallet.payment-returned').map(message => message.data)), [{ merchantOrderId: 'old_order', status: 'PENDING', idempotencyKey: 'payment-first-1', packId: 'pack-first' }]);
+  assert.equal(h.find('wallet.checkout').at(-1).data.merchantOrderId, 'new_order');
+  h.activities.forEach(listener => listener('background')); h.bridge.documentLoading(); h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.find('wallet.payment-returned').length, 1, 'A retired document cannot receive an old return notice');
+  h.bridge.close();
+});
+
+test('coin return verification failures release UI as unknown while logout suppresses late notices', async () => {
+  const h = harness();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'unknown_return', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.verifyPurchase = () => { throw new h.ApiError('Verification unavailable', 503); };
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.find('wallet.payment-returned')[0].data.status, 'UNKNOWN', 'Network uncertainty never fabricates a terminal backend failure');
+  const late = deferred(); h.overrides.verifyPurchase = () => late.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-2' } }); await settle();
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  late.resolve({ purchaseId: 'late', merchantOrderId: 'unknown_return', status: 'PENDING' }); await settle();
+  assert.equal(h.find('wallet.payment-returned').length, 1, 'Late results cannot cross logout');
+  h.bridge.close();
+});
+
+test('premium external-launch failures keep their existing recovery flow without coin return notices', async () => {
+  const h = harness();
+  h.overrides.checkoutPremium = () => ({ purchaseId: 'premium', merchantOrderId: 'premium_order', kind: 'premium', status: 'PENDING', paymentUrl: 'https://checkout.example.test/premium' });
+  h.overrides.openURL = () => { throw new Error('No handler'); };
+  h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-attempt-1' } }); await settle();
+  assert.equal(h.find('themes.error')[0].data.code, 'PAYMENT_OPEN_FAILED');
+  assert.equal(h.find('wallet.payment-returned').length, 0);
+  h.bridge.close();
+});
+
+test('restored pending coins release their UI after verification without changing premium recovery or native tracking', async () => {
+  const h = harness(), cache = h.load('src/payment-cache.ts');
+  await h.session.setSessionTokens(tokenPair());
+  await cache.rememberPendingPayment('alice', { orderId: 'restored_coins', kind: 'coins', packId: 'old-pack', idempotencyKey: 'restored-attempt-1' });
+  await cache.rememberPendingPayment('alice', { orderId: 'restored_premium', kind: 'premium', idempotencyKey: 'premium-attempt-1' });
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'coin-purchase', merchantOrderId: 'restored_coins', status: 'PENDING' });
+  h.overrides.verifyPremium = () => ({ purchaseId: 'premium-purchase', merchantOrderId: 'restored_premium', kind: 'premium', status: 'PENDING' });
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  assert.deepEqual(plain(h.find('wallet.payment-returned').map(message => message.data)), [{ merchantOrderId: 'restored_coins', status: 'PENDING', packId: 'old-pack', idempotencyKey: 'restored-attempt-1' }]);
+  assert.equal(h.find('themes.premium.purchase').at(-1).data.status, 'PENDING', 'Premium retains its original pending verification flow');
+  assert.equal((await cache.readPendingPayments('alice')).length, 2, 'Neither UI dismissal nor verification invents terminal payment status');
+  assert.equal(h.opened.length, 0); assert.equal(h.count('checkout'), 0, 'Restoration never launches or creates payment');
+  h.bridge.close();
+});
+
+test('a coin return already verifying cannot notify a replacement document', async () => {
+  const h = harness(), verification = deferred();
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'retired_document', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' });
+  h.overrides.verifyPurchase = () => verification.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'payment-attempt-1' } }); await settle();
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.count('verifyPurchase'), 1);
+  h.bridge.documentLoading(); verification.resolve({ purchaseId: 'purchase', merchantOrderId: 'retired_document', status: 'PENDING' }); await settle();
+  assert.equal(h.find('wallet.payment-returned').length, 0, 'Only the document that launched or restored the attempt owns its return notice');
   h.bridge.close();
 });
 
@@ -1447,6 +1560,7 @@ test('pending payments survive a native restart and are verified only for their 
   assert.equal(h.find('wallet.purchase')[0].data.status, 'PENDING', 'Restore the unconfirmed order before waiting for a provider response');
   assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS');
   assert.equal(h.find('wallet.purchase').at(-1).data.packId, 'pack-id'); assert.equal(h.find('wallet.purchase').at(-1).data.idempotencyKey, 'payment-attempt-1');
+  assert.equal(h.find('wallet.payment-returned').at(-1).data.status, 'SUCCESS', 'A restored success never produces a failure notice');
   assert.deepEqual(plain(await cache.readPendingPayments('alice')), []);
   restarted.close();
   await cache.rememberPendingPayment('alice', { orderId: 'private_order', kind: 'coins' });
@@ -1472,6 +1586,7 @@ test('failed payment verification after restart keeps its recovered order availa
   assert.equal(h.find('operation.error').at(-1).data.merchantOrderId, 'recover_order');
   assert.equal((await cache.readPendingPayments('alice')).length, 1);
   assert.equal(h.opened.length, 0, 'Restoring a reference never launches or creates a payment');
+  assert.deepEqual(plain(h.find('wallet.payment-returned')[0].data), { merchantOrderId: 'recover_order', status: 'UNKNOWN', packId: 'pack-id', idempotencyKey: 'payment-attempt-1' }, 'Restored coin UI can unlock while the pending reference remains tracked');
   h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase-id', merchantOrderId: 'recover_order', status: 'SUCCESS' });
   h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'recover_order' } }); await settle();
   assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS');
@@ -1506,6 +1621,60 @@ test('transaction history reloads independently and discards older ledger respon
   h.bridge.handle({ type: 'transactions.load', data: {} }); await settle();
   assert.equal(h.find('data.loading').at(-1).data.error, 'Ledger unavailable');
   assert.equal(h.find('operation.error').at(-1).data.action, 'transactions.load');
+  h.bridge.close();
+});
+
+test('Home coalesces live-update bursts, revalidates on reconnect and waits while backgrounded', async () => {
+  const h = harness(), pending = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const before = h.count('home');
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } }); await settle();
+  assert.equal(h.count('home'), before, 'The first socket connect shares the initial snapshot');
+  h.overrides.home = () => pending.promise;
+  for (let i = 0; i < 30; i++) h.live[0].onEvent({ type: 'home.updated', data: {} });
+  assert.equal(h.count('home'), before + 1, 'Only one live refresh runs at a time');
+  assert.equal(h.find('data.loading').filter(event => event.data.resource === 'home').at(-1).data.background, true);
+  h.overrides.home = () => ({ hosts: [], page: 1, total: 0 });
+  pending.resolve({ hosts: [], page: 1, total: 0 }); await settle();
+  assert.equal(h.count('home'), before + 1, 'A fast response does not trigger another immediate fetch during a burst');
+  await new Promise(resolve => setTimeout(resolve, 800)); await settle();
+  assert.equal(h.count('home'), before + 2, 'One trailing read covers changes during the active read');
+  assert.equal(h.find('data.home').at(-1).data.background, true);
+  h.live[0].onEvent({ type: 'realtime.status', data: { connected: true } });
+  await new Promise(resolve => setTimeout(resolve, 800)); await settle();
+  assert.equal(h.count('home'), before + 3, 'A later connection revalidates Home');
+  h.activities.forEach(listener => listener('background'));
+  for (let i = 0; i < 20; i++) h.live[0].onEvent({ type: 'home.updated', data: {} });
+  await settle(); assert.equal(h.count('home'), before + 3, 'A hidden app does not repeatedly fetch Home');
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(h.count('home'), before + 4, 'Foreground fetches the outstanding updates once');
+  h.bridge.close();
+});
+
+test('a live Home refresh cannot replace a newer filter or continue after logout', async () => {
+  const h = harness(), old = deferred(), retired = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.home = query => query.mode === 'following' ? { hosts: [{ id: 'followed' }], page: 1, total: 1 } : old.promise;
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  h.bridge.handle({ type: 'home.reload', data: { mode: 'following', page: 1 } }); await settle();
+  const delivered = h.find('data.home').length, reads = h.count('home');
+  old.resolve({ hosts: [{ id: 'outdated' }], page: 1, total: 1 }); await settle();
+  assert.equal(h.find('data.home').length, delivered);
+  assert.equal(h.count('home'), reads, 'An older query cannot queue another invalidation');
+  assert.equal(h.find('data.home').at(-1).data.hosts[0].id, 'followed');
+  h.overrides.home = () => retired.promise;
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  h.live[0].onEvent({ type: 'home.updated', data: {} });
+  const beforeLogout = h.count('home');
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  retired.resolve({ hosts: [{ id: 'retired-account' }], page: 1, total: 1 }); await settle();
+  assert.equal(h.count('home'), beforeLogout);
+  assert.equal(h.find('data.home').length, delivered);
   h.bridge.close();
 });
 

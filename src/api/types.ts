@@ -139,6 +139,23 @@ export interface NotificationsQuery { page?: number; limit?: number; q?: string;
 export interface NotificationsData { items: AppNotification[]; total: number; unreadCount: number; totalCount: number; page: number; limit: number; }
 export interface NotificationReadPatch { ids?: string[]; all?: true; read: boolean; }
 export interface NotificationReadResult { count: number; unreadCount: number; totalCount: number; }
+export const OFFICIAL_CHAT_ID = "bingo-live-official";
+export const OFFICIAL_CHAT_NAME = "Bingo Live Official";
+export interface OfficialChatData extends NotificationsData {
+  id: typeof OFFICIAL_CHAT_ID;
+  name: typeof OFFICIAL_CHAT_NAME;
+  official: true;
+  canSend: false;
+}
+export type OfficialReadPatch = { ids: string[]; all?: never } | { all: true; ids?: never };
+export interface OfficialChatSummary {
+  id: typeof OFFICIAL_CHAT_ID;
+  name: typeof OFFICIAL_CHAT_NAME;
+  official: true;
+  canSend: false;
+  lastMessage: Pick<AppNotification, "id" | "title" | "body" | "createdAt"> | null;
+  unread: number;
+}
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
 export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; gender?: Gender | null; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
@@ -225,6 +242,7 @@ export interface ChatSummary {
 
 export interface ChatsData {
   chats: ChatSummary[];
+  official?: OfficialChatSummary;
   total: number;
   page: number;
   limit: number;

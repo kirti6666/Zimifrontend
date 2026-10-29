@@ -46,10 +46,10 @@ async function mountedThemes(page, name, rules = [], shot = false) {
       overflow: document.documentElement.scrollWidth > innerWidth + 1,
     }));
     const label = `${name} / ${theme.name}`;
-    check(common.theme, theme.mode, `${label}: native theme mode`);
-    check(common.canvas, theme.colors.background, `${label}: native safe-area canvas`);
-    check(common.scheme, theme.mode, `${label}: color scheme`);
-    check(common.app, rgb(theme.colors.background), `${label}: app canvas`);
+    check(common.theme, 'light', `${label}: native theme mode`);
+    check(common.canvas, '#ffffff', `${label}: native safe-area canvas`);
+    check(common.scheme, 'light', `${label}: color scheme`);
+    check(common.app, 'rgb(255, 255, 255)', `${label}: app canvas`);
     check(common.sameScreen, true, `${label}: changing theme preserves screen DOM`);
     check(common.sameMedia, true, `${label}: changing theme preserves media DOM and streams`);
     check(common.captures, 0, `${label}: theme change does not capture camera or microphone`);
@@ -58,7 +58,8 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     check(common.font.includes({ system: 'Inter', rounded: 'Poppins', serif: 'Georgia' }[theme.typography.fontFamily]), true, `${label}: selected body font`);
     for (const [selector, property, token] of rules) {
       const actual = await page.locator(selector).first().evaluateAll((nodes, property) => nodes.length ? getComputedStyle(nodes[0])[property] : '<missing>', property);
-      check(actual, rgb(theme.colors[token]), `${label}: ${selector} ${property}`);
+      const expected = { ...theme.colors, background:'#ffffff', surface:'#ffffff', surfaceElevated:'#f8f8fa', text:'#18181b', textMuted:'#71717a', wallet:'#171717', primaryContrast:theme.id==='theme-ocean'?'#000000':'#ffffff' };
+      check(actual, rgb(expected[token]), `${label}: ${selector} ${property}`);
     }
     const wrongFonts = await page.locator('#screen button, #screen input, #screen h1, #screen h2').evaluateAll(nodes => nodes.filter(node => node.getBoundingClientRect().width && getComputedStyle(node).fontFamily !== getComputedStyle(document.body).fontFamily).map(node => node.className || node.tagName));
     check(wrongFonts.length, 0, `${label}: controls/headings inherit typeface (${wrongFonts.join(', ')})`);
@@ -102,10 +103,10 @@ async function mountedThemes(page, name, rules = [], shot = false) {
   }
   try {
     const page = await open(member);
-    for (const view of ['home', 'explore', 'chats', 'profile']) {
+    for (const view of ['home', 'all-creators', 'chats', 'profile', 'settings']) {
       await nav(page, view);
-      if (view === 'explore') await receive(page, 'data.home', home);
-      const rules = view === 'home' ? [bg('.zh-person-card', 'surface'), ink('.zh-section-title h2'), ...cta('.zh-person-call'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'explore' ? [...cta('.zh-creator-call:not(:disabled)')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : [bg('.zp-identity', 'surface'), ...cta('.zp-topup')];
+      if (view === 'all-creators') await receive(page, 'data.home', home);
+      const rules = view === 'home' ? [bg('.zh-person-card', 'surface'), ink('.zh-section-title h2'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'all-creators' ? [ink('.zac-heading h1')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : view === 'profile' ? [bg('.zu-own-page', 'surface')] : [bg('.zp-wallet', 'wallet'), ...cta('.zp-topup')];
       await mountedThemes(page, view, rules);
     }
     for (const view of ['themes', 'wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {

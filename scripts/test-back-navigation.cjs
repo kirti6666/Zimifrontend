@@ -62,7 +62,7 @@ async function openThread(page) {
 
 async function navigationChecks(page) {
   await seed(page);
-  for (const view of ['profile', 'settings', 'explore', 'chats']) {
+  for (const view of ['profile', 'settings', 'all-creators', 'chats']) {
     await navigate(page, view);
     await back(page);
     assert.equal(await current(page), 'home', `${view} returns Home instead of exiting`);

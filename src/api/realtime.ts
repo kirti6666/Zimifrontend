@@ -144,9 +144,9 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("wallet:updated", refreshWallet);
   socket.on("home:updated", () => emit("home.updated", {}));
   // The inbox and badge read their authenticated counts; socket content is only an invalidation.
-  socket.on("notification:new", () => { emit("notifications.changed", {}); emit("home.updated", {}); });
+  socket.on("notification:new", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); emit("home.updated", {}); });
   // Read receipts already have the server's home:updated signal for the badge.
-  socket.on("notifications:read", () => emit("notifications.changed", {}));
+  socket.on("notifications:read", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); });
   socket.on("account:updated", () => emit("account.updated", {}));
   // Socket payloads only invalidate; entitlement and tokens come from GET /themes.
   for (const event of ["themes:updated", "appearance:updated", "premium:updated"]) socket.on(event, () => {

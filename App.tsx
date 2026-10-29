@@ -59,9 +59,10 @@ export default function App() {
   const cache = useMemo(() => readThemeCache(), []);
   const cached = cache.account?.theme ?? cache.default;
   const page = useMemo(() => html && withThemeCache(html, cache), [cache]);
-  const [theme, setTheme] = useState<Theme>(cached?.mode ?? "dark");
-  const [canvasOverride, setCanvasOverride] = useState<string | null>(cached?.colors.background ?? "#210f1d");
-  const [palette, setPalette] = useState<NativePalette>(cached ? { ink: cached.colors.text, primary: cached.colors.primary, contrast: cached.colors.primaryContrast, surface: cached.colors.surface, raised: cached.colors.surfaceElevated } : {});
+  const webSource = useMemo(() => ({ html: page, baseUrl: "https://aurora.localhost/" }), [page]);
+  const [theme, setTheme] = useState<Theme>("light");
+  const [canvasOverride, setCanvasOverride] = useState<string | null>("#ffffff");
+  const [palette, setPalette] = useState<NativePalette>({ ink: "#18181b", primary: cached?.colors.primary ?? "#c71862", contrast: "#ffffff", surface: "#ffffff", raised: "#f8f8fa" });
   const [failure, setFailure] = useState<string | null>(null);
   const [launched, setLaunched] = useState(false);
   const [launchVisible, setLaunchVisible] = useState(true);
@@ -143,7 +144,8 @@ export default function App() {
       setCanvasOverride(typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : null);
       // Replace the palette, rather than merging it, so returning to login clears
       // the previous account's colors when the web theme attributes are removed.
-      setPalette({ ink: msg.data.ink, primary: msg.data.primary, contrast: msg.data.contrast, surface: msg.data.surface, raised: msg.data.raised });
+      const next: NativePalette = { ink: msg.data.ink, primary: msg.data.primary, contrast: msg.data.contrast, surface: msg.data.surface, raised: msg.data.raised };
+      setPalette(previous => Object.keys(next).every(key => previous[key as keyof NativePalette] === next[key as keyof NativePalette]) ? previous : next);
     } else if (msg.type === "ui.haptic") {
       // Guard against bursts of pointer events; OS settings still decide if
       // tactile feedback is available on this device.
@@ -186,7 +188,7 @@ export default function App() {
 
   const canvas = canvasOverride ?? CANVAS[theme];
   const ink = palette.ink ?? INK[theme];
-  const primary = palette.primary ?? "#ec0785";
+  const primary = palette.primary ?? "#c71862";
   const contrast = palette.contrast ?? "#ffffff";
 
   return (
@@ -195,8 +197,8 @@ export default function App() {
           resizing the WebView or its visual viewport. Resize its native container
           by the actual keyboard overlap, so every web composer stays visible. */}
       <KeyboardShell style={[styles.safe, { backgroundColor: canvas }]} accessibilityElementsHidden={launchVisible} importantForAccessibility={launchVisible ? "no-hide-descendants" : "auto"}>
-        <SafeAreaView style={[styles.safe, { backgroundColor: canvas }]}>
-          <StatusBar style={launchVisible || theme === "dark" ? "light" : "dark"} />
+        <SafeAreaView edges={["top", "right", "bottom", "left"]} style={[styles.safe, { backgroundColor: canvas }]}>
+          <StatusBar style={theme === "dark" ? "light" : "dark"} />
           {failure || !page ? (
             <View style={styles.center}>
               <Text style={[styles.failTitle, { color: ink }]}>BinzoLive could not start</Text>
@@ -212,7 +214,7 @@ export default function App() {
               ref={webRef}
               style={[styles.web, { backgroundColor: canvas }]}
               originWhitelist={["https://aurora.localhost", "about:blank"]}
-              source={{ html: page, baseUrl: "https://aurora.localhost/" }}
+              source={webSource}
               onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
               setSupportMultipleWindows={false}
               allowFileAccess={false}
@@ -264,6 +266,6 @@ const styles = StyleSheet.create({
   center: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", padding: 24 },
   failTitle: { fontSize: 17, fontWeight: "700", marginBottom: 8 },
   failBody: { fontSize: 13, opacity: 0.7, textAlign: "center", marginBottom: 20 },
-  retry: { borderRadius: 99, paddingHorizontal: 22, paddingVertical: 10 },
+  retry: { borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10 },
   retryText: { fontWeight: "700", fontSize: 14 },
 });

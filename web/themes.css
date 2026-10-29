@@ -6,11 +6,11 @@
 :root[data-theme-id] .app{background-image:radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 65%)}
 :root[data-theme-id] :is(.zh-header,.zp-dialog,.zp-detail,.zp-dialog details,.zc-contact){border-color:var(--line)}
 :root[data-theme-id] :is(.zh-balance,.zp-heading-actions>button,.zp-row-icon,.zp-wallet-actions>button,.zp-dialog-heading>button,.zp-secondary,.zp-account-id,.zp-earnings,.zp-field>input,.zp-field>select,.zp-languages label,.zp-blocked button,.zc-dialog-heading>button,.zc-search,.zc-sort select,.zc-compose-search,.zh-soft,.zh-broadcast input,.zh-broadcast select,.zh-packs>button){background:var(--raised);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zp-group-card,.zp-dialog,.zc-dialog,.zh-match,.zh-bonus,.zh-tile-caption,.zh-payment-status,.zh-wallet-card,.zh-gift-sheet,.zh-notification){background:var(--surface);color:var(--ink)}
+:root[data-theme-id] :is(.zp-identity,.zp-wallet,.zp-dialog,.zc-dialog,.zh-match,.zh-bonus,.zh-tile-caption,.zh-payment-status,.zh-wallet-card,.zh-gift-sheet,.zh-notification){background:var(--surface);color:var(--ink)}
 :root[data-theme-id] :is(.zp-identity,.zp-wallet,.zh-match,.zh-wallet-card){background-image:linear-gradient(120deg,transparent,color-mix(in srgb,var(--accent) 7%,transparent))}
 :root[data-theme-id] :is(.zp-stats>div,.zp-bio,.zh-filters button,.zc-filters button,.zc-tabs>button.selected){background:var(--raised);color:var(--ink)}
 :root[data-theme-id] :is(.zp-row,.zp-person h2,.zh-match h2,.zh-tile h3,.zc-empty h2,.zh-empty h3,.zc-name){color:var(--ink)}
-:root[data-theme-id] :is(.zp-heading p,.zp-group>h2,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-row-text>small,.zp-chevron,.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-dialog .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-section-heading h2,.zc-person>span:last-child,.zc-row-heading time,.zc-message,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
+:root[data-theme-id] :is(.zp-heading p,.zp-footer,.zp-footer small,.zp-footer>span,.zp-person-text>p,.zp-person-text .zp-id,.zp-chevron,.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p,.zp-dialog .zp-note,.zp-field,.zp-detail>span,.zp-detail>small,.zp-earnings>span,.zp-earnings>small,.zp-empty,.zc-heading-actions>button,.zc-section-heading h2,.zc-person>span:last-child,.zc-row-heading time,.zc-message,.zc-empty,.zc-sort,.zc-contact small,.zc-empty-contact,.zh-muted,.zh-empty,.zh-match p,.zh-tile p,.zh-section-title>span,.zh-available,.zh-bonus p,.zh-explore-heading>span,.zh-explore-heading p,.zh-stories>.zh-stage-empty,.zh-coins-note,.zh-packs span,.zh-broadcast>p){color:var(--muted)}
 :root[data-theme-id] :is(.zh-brand>svg,.zh-brand>span>span,.zh-balance svg,.zp-stats svg,.zp-row-icon,.zp-empty>svg,.zc-gift-message,.zc-unread .zc-gift-message,.zc-name .zh-verified svg,.zc-name>svg,.zc-section-heading>button,.zc-contact>svg,.zc-dialog-reset,.zc-search>button.active,.zh-section-title>button,.zh-match h2>svg,.zh-packs svg){color:var(--accent-ink)}
 :root[data-theme-id] .zc-unread .zc-message{color:var(--ink)}
 :root[data-theme-id] :is(.zc-unread .zc-row-heading time,.zc-heading-actions>.zc-compose-button){color:var(--accent-ink)}
@@ -39,14 +39,14 @@
 :root[data-theme-id] .zh-notification>span{color:var(--accent-ink)}
 :root[data-theme-id] .zh-wave i{background:var(--accent-ink)}
 :root[data-theme-id] .zh-skeleton-shape{background-image:linear-gradient(100deg,color-mix(in srgb,var(--ink) 5%,transparent) 20%,color-mix(in srgb,var(--ink) 12%,transparent) 45%,color-mix(in srgb,var(--ink) 5%,transparent) 70%)}
-:root[data-theme-id] :is(.zp-row-text>small,.zp-stats span,.zp-field,.zp-preference,.zp-dialog-body>p,.zp-dialog details p,.zh-match p,.zh-tile p,.zh-bonus p){font-size:calc(12px * var(--theme-font-scale))}
+:root[data-theme-id] :is(.zp-stats span,.zp-field,.zp-preference,.zp-dialog-body>p,.zp-dialog details p,.zh-match p,.zh-tile p,.zh-bonus p){font-size:calc(12px * var(--theme-font-scale))}
 :root[data-theme-id] :is(.zp-row-text>b,.zc-message,.zc-contact b){font-size:calc(13px * var(--theme-font-scale))}
 :root[data-theme-id] :is(.zp-heading h1,.zc-heading h1){font-size:calc(27px * var(--theme-font-scale))}
 /* Every authenticated screen uses the same palette, including secondary flows. */
 :root[data-theme-id] :is(.stab.on,.msum .big,.phero .nm,.btab,.hpname .nm,.ctitle,.celcard b,.cfm>b){font-family:var(--theme-font)}
 :root[data-theme-id] :is(.zc-thread,.ringscr,.conn){background:var(--canvas);color:var(--ink)}
 :root[data-theme-id] :is(.zh-sheet,.zh-tile,.zh-precall-details){background:var(--surface);color:var(--ink);border-color:var(--line)}
-:root[data-theme-id] :is(.zh-sheet-heading>button,.zh-gifts>button,.zh-search-header>div,.zh-load-more,.zh-featured-open,.zh-tile-rate,.zh-tile-action,.zh-offline,.zh-viewers,.zh-gift,.zh-live-note,.zc-avatar,.zp-switch){background:var(--raised);color:var(--ink);border-color:var(--line);box-shadow:none}
+:root[data-theme-id] :is(.zh-sheet-heading>button,.zh-gifts>button,.zh-search-header>div,.zh-load-more,.zh-featured-open,.zh-tile-rate,.zh-tile-action,.zh-offline,.zh-viewers,.zh-gift,.zh-live-note,.zc-avatar){background:var(--raised);color:var(--ink);border-color:var(--line);box-shadow:none}
 :root[data-theme-id] :is(.zh-sheet-heading p,.zh-empty-small,.zh-search-status,.zh-wallet-card>span,.zh-wallet-card p,.zh-preview-note,.zh-precall-details>span,.zc-search>button,.zc-message>svg,.ringscr p,.ringfee,.conn p,.connnote){color:var(--muted)}
 :root[data-theme-id] :is(.zh-gifts small,.zh-eyebrow,.zh-verified,.zh-error button,.zh-ready-illustration,.zh-broadcast>.zh-soft,.zc-empty>svg,.zc-gift-message>svg,.conneye){color:var(--accent-ink)}
 :root[data-theme-id] .zh-precall-details b{color:var(--ink)}
@@ -55,8 +55,6 @@
 :root[data-theme-id] .zh-live>i{background:var(--cta-ink)}
 :root[data-theme-id] .zc-presence{border-color:var(--canvas);box-shadow:none}
 :root[data-theme-id] :is(.zc-presence.online,.zh-online-dot,.ringeye i){background:var(--online)}
-:root[data-theme-id] .zp-switch>i{background:var(--ink)}
-:root[data-theme-id] .zp-switch.is-on>i{background:var(--cta-ink)}
 :root[data-theme-id] :is(.zh-camera-preview,.zh-ready-illustration>svg){background:radial-gradient(ellipse at center,var(--raised),var(--surface));color:var(--accent-ink);border-color:var(--line);box-shadow:0 0 55px color-mix(in srgb,var(--accent) 8%,transparent)}
 :root[data-theme-id] .zh-camera-preview>span{color:var(--muted)}
 :root[data-theme-id] :is(.zh-skeleton-tile,.zh-skeleton-hero,.zh-skeleton-catalog>div,.zh-loading-wallet,.zh-photo-failed){background:var(--surface);color:var(--muted);border-color:var(--line)}
@@ -86,7 +84,7 @@
 :root[data-theme-id][data-theme=dark]{color-scheme:dark}
 /* Animate only colors, and only during a theme change. Media and layout stay put. */
 :root.zt-transition{transition-property:--canvas,--deep,--surface,--raised,--line,--ink,--muted,--faint,--accent,--accent-ink,--accent-wash,--accent-line,--live,--live-wash,--online,--cta,--cta-ink,--btn,--btn-ink,--theme-danger;transition-duration:260ms;transition-timing-function:ease}
-:root.zt-transition:not([data-theme-interpolation]) :is(body,.app,#top,.zh-header,.nav.zh-nav,.zp-dialog,.zp-identity,.zp-wallet,.zp-group-card,.zp-row,.zp-row-icon,.zp-row-text>small,.zp-stats>div,.zp-bio,.zh-match,.zh-bonus,.zh-tile-caption,.zc-row,.zc-tabs>button){transition:background-color 260ms ease,color 260ms ease,border-color 260ms ease}
+:root.zt-transition:not([data-theme-interpolation]) :is(body,.app,#top,.zh-header,.nav.zh-nav,.zp-dialog,.zp-identity,.zp-wallet,.zp-row,.zp-row-icon,.zp-stats>div,.zp-bio,.zh-match,.zh-bonus,.zh-tile-caption,.zc-row,.zc-tabs>button){transition:background-color 260ms ease,color 260ms ease,border-color 260ms ease}
 .zt-page{max-width:960px;margin:0 auto;padding:12px 18px 32px;font-family:var(--theme-font);color:var(--ink)}
 .zt-page .zt-card,.zt-page .zt-premium{background:var(--surface)}
 .zt-page button{font-family:inherit;cursor:pointer}

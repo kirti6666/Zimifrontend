@@ -1,5 +1,5 @@
 /* The same gold BinzoLive mark remains recognizable in every app palette. */
-.zc-coin{flex-shrink:0;vertical-align:middle;overflow:visible;filter:drop-shadow(0 1px 1px #71450020)}
+.zc-coin{flex-shrink:0;vertical-align:middle;overflow:visible;filter:none}
 .zw-coins{max-width:620px;margin:0 auto;padding:18px 20px 30px;color:var(--ink)}
 .zw-wallet{padding:20px;border:1px solid var(--line);border-radius:24px;background:radial-gradient(ellipse at 100% 20%,#e8ac321c,transparent 65%),var(--surface)}
 .zw-wallet-top,.zw-wallet-main,.zw-gift-balance,.zw-gift-balance>span,.zw-topup-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -28,3 +28,36 @@
 @media(max-width:350px){.zw-coins{padding-left:14px;padding-right:14px}.zw-wallet{padding:16px}.zw-wallet-main>svg{width:62px;height:62px}.zw-wallet-main p{max-width:150px;line-height:1.6}.zw-gift-balance small{display:none}:root[data-theme-id] .zh-sheet.zw-sheet{padding-left:14px;padding-right:14px}.zw-embedded{padding-left:0;padding-right:0}.zw-buy{font-size:12px}.zw-buy>span{font-size:11px}}
 
 .zw-recovery{padding:14px;border:1px solid var(--line);border-radius:14px;margin:12px 0;background:var(--raised)}.zw-recovery p{font-size:12px;line-height:1.6;margin:0 0 10px;color:var(--muted)}.zw-recovery button{font-size:12px;min-height:40px}.zw-history>svg:last-child{transform:rotate(-90deg)}
+
+/* A normal wallet and six packs fit a phone screen. Payment recovery and error
+   messages keep their natural height and remain scrollable when present. */
+:root[data-theme-id] .zw-coins.zw-compact{padding:10px 20px;max-width:620px}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--surface);background-image:none}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main{display:block;margin:0;min-width:0}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main>div>span{display:block;font-size:12px;line-height:16px;letter-spacing:0;color:var(--muted)}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main h2{display:flex;align-items:center;gap:7px;margin:2px 0;font-size:27px;line-height:30px;letter-spacing:-.7px}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main p{margin:0;font-size:11px;line-height:14px;color:var(--muted)}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-actions{display:flex;align-items:center;gap:4px;flex:none}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-actions>button{display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--ink)}
+:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-actions .zw-history>svg{transform:var(--zi-base);--zi-base:translate(0);margin:0}
+:root[data-theme-id] .zw-coins.zw-compact .zw-section-heading{margin:12px 0 8px}
+:root[data-theme-id] .zw-coins.zw-compact .zw-section-heading h2{margin:0;font-size:calc(18px * var(--theme-font-scale,1));line-height:24px;font-weight:600}
+:root[data-theme-id] .zw-coins.zw-compact .zw-packs{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:104px;padding:10px 8px;border:1px solid var(--line);background:var(--surface);text-align:center}
+:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button.selected{padding:9px 7px;border:2px solid var(--accent-ink);background:var(--surface)}
+:root[data-theme-id] .zw-coins.zw-compact .zw-pack-amount{display:flex;align-items:center;justify-content:center;gap:4px;order:0;min-height:24px;font-size:inherit}
+:root[data-theme-id] .zw-coins.zw-compact .zw-pack-amount strong{order:0;margin:0;font-size:clamp(15px,4.8vw,20px);line-height:24px;letter-spacing:-.4px;font-weight:600;white-space:nowrap}
+:root[data-theme-id] .zw-coins.zw-compact .zw-pack-name{display:block;order:1;max-width:100%;min-height:14px;font-size:11px;line-height:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button>b{order:2;display:block;width:100%;padding:4px 0;margin:0;font-size:12px;line-height:18px;font-weight:600;background:var(--raised)}
+:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button.selected>b{background:var(--accent-wash);color:var(--accent-ink)}
+:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button>i{display:none}
+:root[data-theme-id] .zw-coins.zw-compact .zw-buy{min-height:44px;margin:0;padding:10px 12px;font-size:13px;line-height:20px}
+:root[data-theme-id] .zw-coins.zw-compact .zw-buy>span{font-size:13px}
+:root[data-theme-id] .zw-coins.zw-compact .zw-note{margin:8px 0 0;font-size:10px;line-height:14px}
+@media(max-height:700px){
+ :root[data-theme-id] .zw-coins.zw-compact .zw-packs>button{min-height:88px;padding:7px 5px;gap:3px}
+ :root[data-theme-id] .zw-coins.zw-compact .zw-packs>button.selected{padding:6px 4px}
+ :root[data-theme-id] .zw-coins.zw-compact .zw-packs>button>b{padding:3px 0}
+ :root[data-theme-id] .zw-coins.zw-compact .zw-pack-name{font-size:10px;line-height:13px;min-height:13px}
+}
+@media(max-width:350px){:root[data-theme-id] .zw-coins.zw-compact{padding-left:14px;padding-right:14px}:root[data-theme-id] .zw-coins.zw-compact .zw-wallet{padding-left:12px;padding-right:10px}}

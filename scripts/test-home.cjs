@@ -6,6 +6,12 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const artifacts = path.join(root, 'artifacts');
 
+// Pulls the page down from the top the way a finger does, then releases.
+const pullToRefresh=page=>page.evaluate(()=>{
+  const target=document.getElementById('screen'),touch=y=>new Touch({identifier:1,target,clientX:180,clientY:y});
+  const fire=(type,y)=>{const active=type==='touchend'?[]:[touch(y)];target.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches:active,targetTouches:active,changedTouches:[touch(y)]}))};
+  fire('touchstart',120);for(const y of [150,190,230,270,300])fire('touchmove',y);fire('touchend',300);
+});
 async function assertPhotoCardLayout(page, label) {
   const boxes=await page.locator('.zh-discover .zh-creator-card').evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {left:box.left,right:box.right,top:box.top,bottom:box.bottom};}));
   assert.ok(boxes.length>1,`${label} has multiple discovery cards to check`);
@@ -17,8 +23,17 @@ async function assertPhotoCardLayout(page, label) {
   const hero=await page.locator('.zh-featured-host').boundingBox();
   assert.ok(hero&&hero.width>(boxes[0].right-boxes[0].left)*1.5,`${label} gives the featured creator a wide photo`);
   assert.ok(hero.x>=0&&hero.x+hero.width<=page.viewportSize().width+1,`${label} keeps the entire featured card inside the viewport`);
-  const overlaps=await page.locator('.zh-person-footer').evaluateAll(footers=>footers.some(footer=>{const actions=[...footer.querySelectorAll('button')].map(button=>button.getBoundingClientRect());return actions.length===2&&actions[0].right>actions[1].left+1;}));
-  assert.equal(overlaps,false,`${label} keeps Chat and Call actions separate`);
+  const calls=await page.locator('.zh-discover article.zh-creator-card').evaluateAll(cards=>cards.map(card=>{const button=card.querySelector('button.zh-creator-call');return !!button&&!button.disabled&&/^Video call /.test(button.getAttribute('aria-label')||'')}));
+  assert.ok(calls.every(Boolean),`${label}: every host card has an always-active video call button`);
+  assert.equal(await page.locator('.zh-person-footer,.zh-person-chat').count(),0,`${label}: host cards carry no Chat controls`);
+}
+
+async function acceptCreatorProfile(page, creator) {
+  const request=await page.evaluate(()=>__sent.filter(message=>message.type==='profile.load').at(-1)?.data);
+  assert.equal(request?.id,creator.id,'The selected card requests its real creator profile');
+  await page.evaluate(({creator,requestId})=>Native.receive({type:'data.publicProfile',data:{id:creator.id,profile:{...creator,followers:12,followingCount:2,following:false,interests:['Music'],languages:['Hindi']},requestId}}),{creator,requestId:request.requestId});
+  const posts=await page.evaluate(()=>__sent.filter(message=>message.type==='profile.posts.load').at(-1)?.data);
+  if(posts?.id===creator.id)await page.evaluate(({id,requestId})=>Native.receive({type:'data.publicPosts',data:{id,posts:[],total:0,page:1,limit:20,requestId}}),posts);
 }
 
 async function testHomeVideoCalls(browser, errors, host, home) {
@@ -35,10 +50,15 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await receive('data.home',{...home,hosts:[creator],stage:[creator],featured:creator});
       await receive('wallet.balance',{coins:1000});
       await page.evaluate(()=>{window.__prepared=0;window.ZimiMedia.prepare=async()=>{window.__prepared++};window.ZimiMedia.openStream=()=>{};window.ZimiMedia.attach=()=>{};});
-      const call=page.getByRole('button',{name:'Video call '+creator.name,exact:true});
-      assert.equal(await page.locator('.zh-person-footer').getByText('View profile',{exact:true}).count(),0,'The card footer offers video calling, not a profile fallback');
+      assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Video call |^Chat with /}).count(),0,'The featured card opens the profile before chat or calls');
       assert.equal(await page.locator('.zh-person-cost').count(),0,'Home does not disclose call rates before the call action');
       assert.doesNotMatch(await page.locator('.zh-dashboard').innerText(),/\bfree\b|\bpremium\b|call rate|coins\s*\/\s*min/i,'Home discovery has no pricing labels');
+      await page.getByRole('button',{name:'View '+creator.name+' profile',exact:true}).click();
+      assert.equal(await page.evaluate(()=>S.v),'host','The card opens the selected creator profile');
+      assert.equal((await sent('call.start')).length,0,'Opening the profile never places a call');
+      assert.equal(await page.evaluate(()=>__prepared),0,'Opening the profile never activates capture');
+      await acceptCreatorProfile(page,creator);
+      const call=page.locator('#zu-call');
       await run({page,receive,sent,call});
     } finally {await page.close();}
   }
@@ -104,7 +124,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal((await sent('call.start')).length,0,'Unavailable creators cannot be called directly');
   },member,{...host,availableForCall:false});
   await scenario(async({page,sent,call})=>{
-    assert.equal(await call.isDisabled(),true);await page.evaluate(id=>homeDashboardCall(id),host.id);
+    assert.equal(await call.count(),0,'Creator accounts have no member-only call action');await page.evaluate(id=>homeDashboardCall(id),host.id);
     assert.equal((await sent('call.start')).length,0,'Creator accounts cannot initiate host-to-host calls');
   },{...member,user:{...member.user,id:'507f1f77bcf86cd799439017',role:'host',serverRole:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified'});
 
@@ -129,17 +149,16 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await page.getByRole('button',{name:'Search creators',exact:true}).count(),1,'Search appears only in the Home header');
     assert.equal(await page.locator('.zh-dashboard .zh-home-search,.zh-dashboard .zh-welcome,.zh-dashboard .zh-shortcuts,.zh-dashboard .zh-home-match,.zh-dashboard .zh-bonus').count(),0,'Home content focuses on discovering live and online hosts');
     assert.equal(await page.locator('.zh-dashboard-filters [data-dashboard-filter],.zh-dashboard .zh-filters').count(),0,'Home omits category and popularity filters');
-    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['Explore','Following'],'The Home header switches between Explore and Following');
+    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['All','Following'],'The Home header switches between All and Following');
     assert.equal(await page.locator('.zh-brand,.zh-logo').count(),0,'The discovery tabs replace the app-name header');
     assert.equal(await page.locator('.zh-header-actions').getByRole('button',{name:/^Wallet/}).count(),1,'The header retains the wallet action');
     assert.equal(await page.locator('.zh-host-status').count(),0,'Sender accounts do not show host availability');
     assert.equal(await page.getByRole('heading',{name:/^Live now/}).count(),0);
-    assert.equal(await page.getByRole('heading',{name:'Connect 1:1',exact:true}).count(),1);
-    assert.equal(await page.locator('.zh-person-footer').getByRole('button',{name:/^Chat with /}).count(),1,'The featured creator keeps Chat beside the call');
-    assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Video call /}).count(),5);
+    assert.equal(await page.getByRole('heading',{name:'Instant Connect',exact:true}).count(),1);
+    assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Discovery cards have no Chat buttons');
     const gridCard=page.locator('.zh-discover article.zh-creator-card').first();
     assert.equal(await gridCard.locator('.zh-creator-avatar').count(),1,'Grid cards show the host avatar beside the name');
-    assert.equal(await gridCard.getByRole('button').count(),2,'Grid cards offer only the profile and the video call');
+    assert.deepEqual(await gridCard.getByRole('button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label').split(' ').slice(0,2).join(' '))),['View '+(await gridCard.locator('h3').innerText()).split(' ')[0],'Video call'],'A grid card opens the profile and starts a video call');
     assert.match(await gridCard.locator('.zh-creator-price').innerText(),/^(Free|\d[\d,]*\/min)$/,'Grid cards show the call price over the photo');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     for(const theme of ['dark','light']){
@@ -159,6 +178,16 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await page.setViewportSize({width:390,height:844});
     }
 
+    await page.getByRole('button',{name:/^See all/}).click();
+    assert.equal(await page.evaluate(()=>S.v),'all-creators','See all opens the full creator profile directory');
+    assert.equal(await page.locator('.zac-page article[data-host-id]').count(),5,'All Creators includes every loaded creator once');
+    assert.equal(await page.locator('#nav').isVisible(),false,'All Creators uses a Back header without bottom tabs');
+    assert.equal(await page.locator('.zac-page').getByRole('button',{name:/^Chat with /}).count(),0,'The full directory has no Chat buttons');
+    assert.equal(await page.locator('.zac-page').getByRole('button',{name:/^Video call /}).count(),5,'Every creator in the full directory has a video call button');
+    await page.getByRole('button',{name:'Back to home',exact:true}).click();
+    await page.evaluate(()=>go('explore'));
+    assert.equal(await page.evaluate(()=>S.v),'home','Old Explore routes safely resolve to Home');
+
     const real=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
     real.on('pageerror',e=>errors.push(e.message));
     await real.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>window.__sent.push(JSON.parse(raw))};});
@@ -170,12 +199,11 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     const home={hosts:[host],stage:[host],featured:host,total:1,page:1,limit:20,categories:['Music','Talk'],broadcasterCount:1,availableCount:1,speedMatchEnabled:true,bonus:{id:missionId,title:'First broadcast',description:'Stream for one minute',target:1,progress:0,rewardCoins:200,claimed:false},unreadCount:1};
     const receive=(type,data)=>real.evaluate(({type,data})=>Native.receive({type,data}),{type,data});
     const lastSent=type=>real.evaluate(type=>window.__sent.filter(message=>message.type===type).at(-1)?.data,type);
-    const acceptProfile=async()=>{
-      const request=await lastSent('profile.load');
-      assert.equal(request.id,hostId,'Creator card opens the selected real profile');
-      await receive('data.publicProfile',{id:hostId,profile:{...host,followers:12,followingCount:2,following:false,interests:['Music'],languages:['Hindi']},requestId:request.requestId});
-      const posts=await lastSent('profile.posts.load');
-      await receive('data.publicPosts',{id:hostId,posts:[],total:0,page:1,limit:20,requestId:posts.requestId});
+    const acceptProfile=(creator=host)=>acceptCreatorProfile(real,creator);
+    const openProfile=async(creator=host)=>{
+      await real.getByRole('button',{name:'View '+creator.name+' profile',exact:true}).first().click();
+      assert.equal(await real.evaluate(()=>S.v),'host','Discovery opens the selected profile before any action');
+      await acceptProfile(creator);
     };
     await receive('session',{user:{id:'507f1f77bcf86cd799439001',name:'Member',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false},verification:'none',requiresOnboarding:false});
     await receive('data.home',home);await receive('wallet.balance',{coins:1000});
@@ -193,23 +221,29 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.locator('.zh-discover article[data-host-id]').count(),4,'Discovery lists every host, online or offline');
     assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'Offline hosts are listed and live hosts are not duplicated');
     assert.deepEqual(await real.locator('article[data-host-id] :is(.zh-person-status,.zh-creator-status)').allInnerTexts(),['Online','Online','Online','Online','Online'],'Members never see a host as offline');
-    assert.doesNotMatch(await real.getByRole('button',{name:'Video call '+offline.name,exact:true}).getAttribute('title')||'',/offline/i,'No call button explains itself as offline');
-    assert.equal(await real.getByRole('button',{name:'Video call '+busy.name,exact:true}).isDisabled(),true,'An online host who turned calls off stays unavailable');
+    assert.deepEqual(await real.locator('.zh-discover article.zh-creator-card .zh-creator-call').evaluateAll(nodes=>nodes.map(node=>node.disabled)),[false,false,false,false],'The video call button stays active for busy and offline hosts');
     assert.equal(await real.getByRole('button',{name:'View '+busy.name+' profile',exact:true}).isEnabled(),true,'Unavailable hosts still open their profile, where chat is offered');
-    assert.equal(await real.getByRole('button',{name:'Video call '+offline.name,exact:true}).isEnabled(),true,'An offline host can still be called; the server rings until the call is missed');
     assert.equal(await real.getByRole('button',{name:'View '+offline.name+' profile',exact:true}).isEnabled(),true,'Offline hosts still open their profile for messaging');
     assert.deepEqual(await real.locator('.zh-discover .zh-creator-price').allInnerTexts(),['Free','Free','Free','Free'],'Zero-rate hosts read Free on their card');
+    await openProfile(busy);
+    assert.equal(await real.locator('#zu-call').isDisabled(),true,'An online host who turned calls off stays unavailable in the profile');
+    await real.getByRole('button',{name:'Back',exact:true}).click();
+    await openProfile(offline);
+    assert.equal(await real.locator('#zu-call').isEnabled(),true,'An offline host can still be called from their profile; the server rings until missed');
+    assert.doesNotMatch(await real.locator('.zu-presence').innerText(),/offline/i,'The profile never presents a host as offline');
+    await real.getByRole('button',{name:'Back',exact:true}).click();
     await real.getByRole('tab',{name:'Following',exact:true}).click();
     assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'following'},'Following requests the authenticated followed-user feed');
     assert.equal(await real.getByRole('status',{name:'Loading featured creator',exact:true}).count(),1,'Filter changes wait for the server feed');
     await receive('data.home',{...home,hosts:[host,online],stage:[],total:2});
     assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id],'Following displays only the server-provided followed users');
     assert.equal(await real.getByRole('tab',{name:'Following',exact:true}).getAttribute('aria-selected'),'true');
-    await real.getByRole('tab',{name:'Explore',exact:true}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Explore restores the full host feed');
+    await real.getByRole('tab',{name:'All',exact:true}).click();
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'All restores the full host feed');
     await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
-    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'Explore restores every host without duplicates');
-    await real.getByRole('button',{name:'Chat with '+host.name,exact:true}).click();
+    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'All restores every host without duplicates');
+    await openProfile();
+    await real.getByRole('button',{name:'Message',exact:true}).click();
     assert.equal(await real.evaluate(()=>S.v),'thread','Chat opens the selected conversation');
     assert.deepEqual(await lastSent('chat.open'),{with:host.id});
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.join'||m.type==='call.start').length),0,'Chat does not start a broadcast or call');
@@ -227,10 +261,12 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await receive('data.home',{...home,hosts:[online,busy],stage:[host],total:3,page:2});
     assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id],'Paging deduplicates repeated hosts across featured and discovery cards');
     assert.equal(await real.getByRole('status',{name:'Loading more hosts',exact:true}).count(),0);
-    await real.getByRole('button',{name:'Refresh home',exact:true}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Home refresh requests every host from the server');
-    assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).getAttribute('aria-busy'),'true','Refresh feedback follows the active request');
-    assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).isDisabled(),true,'A refresh cannot be submitted twice while pending');
+    assert.equal(await real.locator('.zh-home-refresh,[aria-label="Refresh home"]').count(),0,'Home has no refresh button');
+    const reloads=await real.evaluate(()=>window.__sent.filter(message=>message.type==='home.reload').length);
+    await pullToRefresh(real);
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Pulling down refreshes every host from the server');
+    await pullToRefresh(real);
+    assert.equal(await real.evaluate(()=>window.__sent.filter(message=>message.type==='home.reload').length),reloads+1,'A pull cannot start a second refresh while one is pending');
     assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Refresh uses real request skeletons');
     assert.equal(await real.getByRole('status',{name:'Loading live creators',exact:true}).count(),0);
     assert.equal(await real.getByRole('status',{name:'Loading featured creator',exact:true}).count(),1);
@@ -241,8 +277,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     }
     await real.setViewportSize({width:390,height:844});
     await receive('data.home',home);
-    assert.equal(await real.getByRole('button',{name:'Refresh home',exact:true}).isEnabled(),true,'The authoritative response restores refresh');
-    await real.getByRole('button',{name:'Chats',exact:true}).click();
+    await real.getByRole('button',{name:'Chat',exact:true}).click();
     assert.equal(await real.evaluate(()=>S.v),'chats');
     await real.getByRole('button',{name:'Home',exact:true}).click();
     await real.getByRole('button',{name:'View '+host.name+' profile',exact:true}).first().click();
@@ -254,15 +289,17 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await receive('data.home',{...home,hosts:[paidHost],featured:paidHost,stage:[]});
     assert.equal(await real.locator('.zh-live-section').count(),0,'Online hosts without active broadcasts do not show Live now');
     assert.equal(await real.locator('.zh-person-cost').count(),0,'Paid creator cards keep the price inside call confirmation');
-    await real.getByRole('button',{name:'Video call '+host.name,exact:true}).click();
-    assert.equal(await real.evaluate(()=>S.v),'precall','The explicit call action opens confirmation');
+    await openProfile(paidHost);
+    await real.locator('#zu-call').click();
+    assert.equal(await real.evaluate(()=>S.v),'precall','The profile call action opens confirmation');
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='call.start').length),0,'Opening call setup never starts billing');
     assert.match(await real.locator('.zpc-details').innerText(),/25\s+coins\/min/,'The clicked paid creator shows their server rate before a call can start');
     await real.getByRole('button',{name:'Back',exact:true}).click();
     const freeHost={...host,stream:null};
     await receive('data.home',{...home,hosts:[freeHost],featured:freeHost,stage:[]});
     assert.equal(await real.locator('.zh-person-cost').count(),0,'Free creator cards also hide the pricing label until clicked');
-    await real.getByRole('button',{name:'Video call '+host.name,exact:true}).click();
+    await openProfile(freeHost);
+    await real.locator('#zu-call').click();
     assert.match(await real.locator('.zpc-details').innerText(),/\bFree\b/,'A selected zero-rate creator accurately shows Free in confirmation');
     await real.getByRole('button',{name:'Back',exact:true}).click();
     await receive('data.home',{...home,speedMatchEnabled:false});
@@ -300,7 +337,10 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await receive('session',{user:{id:'507f1f77bcf86cd799439017',name:'Host',role:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified',requiresOnboarding:false});
     assert.equal(await real.getByRole('button',{name:'Find a match',exact:true}).count(),0,'Creator accounts do not see member matching');
     assert.equal(await real.getByRole('button',{name:'Start a live broadcast',exact:true}).count(),0,'Home remains focused on live and online hosts for creator accounts');
-    assert.equal(await real.getByRole('button',{name:'Video call '+host.name,exact:true}).isDisabled(),true,'Host accounts cannot start member-only calls');
+    assert.equal(await real.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Creator accounts see no Chat buttons on cards');
+    assert.equal(await real.locator('.zh-dashboard .zh-creator-call').evaluateAll(nodes=>nodes.every(node=>!node.disabled)),true,'Any video call button stays active for creator accounts too');
+    await real.evaluate(id=>homeDashboardCall(id),hostId);
+    assert.equal(await real.evaluate(()=>S.v),'home','Host accounts cannot initiate member-only calls through the underlying guard');
     await real.evaluate(()=>homeClaim());
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='awards.claim').length),0);
     home.bonus.progress=1;await receive('data.home',home);
@@ -315,6 +355,16 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.getByRole('button',{name:/Wallet, /}).click();
     await receive('data.catalog',catalog);
     await real.getByRole('button',{name:'Get 200 coins',exact:true}).click();
+    const paymentMethods=real.getByRole('dialog',{name:'Select payment method',exact:true});
+    await paymentMethods.waitFor();
+    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='wallet.checkout').length),0,'Get coins waits for an explicit payment-method confirmation');
+    const routeRequest=await lastSent('payments.routes.load');
+    assert.equal(typeof routeRequest?.requestId,'number','Payment methods load from the authenticated bridge');
+    await receive('payments.routes',{requestId:routeRequest.requestId,mode:'ROTATION',routeChoice:false,routes:[]});
+    const secureCheckout=paymentMethods.getByRole('radio',{name:/^Secure checkout/});
+    assert.equal(await secureCheckout.isChecked(),false,'A payment method is never selected silently');
+    await secureCheckout.check();
+    await paymentMethods.getByRole('button',{name:'Continue to payment',exact:true}).click();
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='wallet.checkout').at(-1)?.data.packId),packId);
     assert.equal(await real.evaluate(()=>S.bal),901,'checkout must not credit before provider confirmation');
     await receive('wallet.checkout',{merchantOrderId:'test_order_123',purchaseId:'order',status:'PENDING',idempotencyKey:(await lastSent('wallet.checkout')).idempotencyKey});
@@ -346,14 +396,15 @@ async function testHomeVideoCalls(browser, errors, host, home) {
         await real.setViewportSize({width,height:900});
         assert.equal(await real.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`${theme} empty Home fits ${width}px`);
         const controls=await real.locator('.zh-empty-actions button,.zh-empty-links button').evaluateAll(nodes=>nodes.map(node=>{const b=node.getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,height:b.height,overflow:node.scrollWidth>node.clientWidth+1};}));
-        assert.ok(controls.length>=4&&controls.every(b=>b.height>=44&&!b.overflow&&b.left>=0&&b.right<=width+1),`${theme} empty actions fit and remain tappable at ${width}px`);
+        assert.ok(controls.length>=3&&controls.every(b=>b.height>=44&&!b.overflow&&b.left>=0&&b.right<=width+1),`${theme} empty actions fit and remain tappable at ${width}px`);
         assert.equal(controls.some((a,i)=>controls.slice(i+1).some(b=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)),false,`${theme} empty actions do not overlap at ${width}px`);
       }
       await real.setViewportSize({width:390,height:844});
       await real.screenshot({path:path.join(artifacts,`home-empty-mobile-${theme}.png`)});
     }
-    await real.locator('.zh-empty-actions').getByRole('button',{name:/^Check again/}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Empty-state refresh requests the real feed');
+    assert.equal(await real.locator('.zh-empty-actions').getByRole('button',{name:/^Check again/}).count(),0,'The empty state relies on pull to refresh');
+    await pullToRefresh(real);
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Pulling the empty state refreshes the real feed');
     assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Empty-state refresh waits on the request skeleton');
     assert.equal(await real.locator('.zh-live-section').count(),0,'Refreshing an empty feed does not invent a Live now section');
     assert.equal(await real.locator('.zh-home-empty-scene').count(),0,'Loading does not leave a stale empty state visible');
@@ -361,14 +412,16 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.getByRole('tab',{name:'Following',exact:true}).click();
     await receive('data.home',emptyHome);
     assert.match(await real.locator('.zh-host-empty h3').innerText(),/follow/i,'Following explains its own empty result');
-    await real.getByRole('tab',{name:'Explore',exact:true}).click();
+    await real.getByRole('tab',{name:'All',exact:true}).click();
     assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Leaving empty Following requests all hosts');
-    assert.equal(await real.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true');
+    assert.equal(await real.getByRole('tab',{name:'All',exact:true}).getAttribute('aria-selected'),'true');
     await receive('data.home',emptyHome);
-    await real.locator('.zh-empty-actions').getByRole('button',{name:/^Explore creators/}).click();
-    assert.equal(await real.evaluate(()=>S.v),'explore','Empty-state discovery opens Explore');
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Explore requests its real creator feed');
-    await real.getByRole('button',{name:'Home',exact:true}).click();
+    await real.locator('.zh-empty-actions').getByRole('button',{name:/^All creators/}).click();
+    assert.equal(await real.evaluate(()=>S.v),'all-creators','Empty-state discovery opens All Creators');
+    assert.equal(await real.getByRole('heading',{name:'All Creators',exact:true}).count(),1);
+    assert.equal(await real.locator('#nav').isVisible(),false,'All Creators has Back navigation instead of primary tabs');
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'All Creators uses the authenticated full creator feed');
+    await real.getByRole('button',{name:'Back to home',exact:true}).click();
     await receive('data.home',emptyHome);
     await real.locator('.zh-empty-links').getByRole('button',{name:/^Your chats/}).click();
     assert.equal(await real.evaluate(()=>S.v),'chats','The empty feed links to existing conversations');
@@ -390,6 +443,6 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.evaluate(()=>logout());
     assert.equal(await real.evaluate(()=>Home.hosts.length),0,'logout clears home and payment state');
     assert.deepEqual(errors,[]);
-    console.log('PASS: calls-only discovery, featured host and responsive two-column photo grid, header-only search, Chat/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, disabled stream entry points, server-only content, XSS escaping, gifts, rewards, checkout and logout.');
+    console.log('PASS: profile-first discovery, featured host and responsive two-column photo grid, All/Following and All Creators, profile Message/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, disabled stream entry points, server-only content, XSS escaping, gifts, rewards, checkout and logout.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

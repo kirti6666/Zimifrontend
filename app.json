@@ -5,7 +5,7 @@
     "scheme": "binzolive",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "icon": "./assets/brand/icon.png",
     "web": {
       "favicon": "./web/favicon/favicon-96x96.png"
@@ -44,7 +44,7 @@
       ["expo-media-library", { "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.", "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
       "./plugins/with-onboarding-camera",
       "./plugins/with-development-network",
-      ["expo-splash-screen", { "image": "./assets/brand/logo.png", "imageWidth": 170, "resizeMode": "contain", "backgroundColor": "#210F1D" }]
+      ["expo-splash-screen", { "image": "./assets/brand/logo.png", "imageWidth": 170, "resizeMode": "contain", "backgroundColor": "#FFFFFF" }]
     ]
   }
 }

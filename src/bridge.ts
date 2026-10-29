@@ -15,6 +15,7 @@ import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
 import { LIVE_STREAMING_ENABLED } from "./features";
+import type { OfficialChatData, OfficialReadPatch } from "./api/types";
 import { askForCallAlerts, clearDeliveredPush, onPushTokenChange, registerPush, startPush, trackCall, type PushMode, type PushStatus } from "./push";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
@@ -39,6 +40,8 @@ export type WebMessage =
   | { type: "notifications.read"; data: { ids: string[]; requestId?: number } }
   | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
   | { type: "notifications.readAll"; data: { requestId: number } }
+  | { type: "official.load"; data: { page?: number; requestId: number } }
+  | { type: "official.read"; data: OfficialReadPatch & { requestId: number } }
   | { type: "call.match"; data: { category?: string } }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string } }
@@ -123,18 +126,22 @@ export type AppMessage =
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } }
   | { type: "data.loaded"; data: Record<string, never> }
-  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string } }
+  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string; background?: boolean } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
   | { type: "keyboard"; data: { open: boolean } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
-  | { type: "data.home"; data: HomeData }
+  | { type: "data.home"; data: HomeData & { background?: boolean } }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
   | { type: "home.updated"; data: Record<string, never> }
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> & { requestId?: number } }
   | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
   | { type: "notifications.error"; data: { requestId: number; message: string } }
   | { type: "notifications.changed"; data: Record<string, never> }
+  | { type: "data.official"; data: OfficialChatData & { requestId: number } }
+  | { type: "official.saved"; data: OfficialReadPatch & NotificationReadResult & { read: true; requestId: number } }
+  | { type: "official.error"; data: { requestId: number; message: string; action: "load" | "read" } }
+  | { type: "official.changed"; data: Record<string, never> }
   | { type: "push.opened"; data: Record<string, never> }
   /** Answer on the incoming-call notification: accept this call once its ring screen is up. */
   | { type: "call.answer"; data: { callId: string } }
@@ -183,6 +190,7 @@ export type AppMessage =
   | { type: "call.matched"; data: { host: Host } }
   | { type: "call.created"; data: { callId: string; to: string; voice: boolean } }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
+  | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
   | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } }
@@ -234,6 +242,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let documentRevision = 0;
   let payoutReadRevision = 0;
   let paymentRoutesRevision = 0;
+  let officialLoadRevision = 0;
   const photoDownloads = new Map<string, Promise<void>>();
   let linkRevision = 0;
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
@@ -251,13 +260,20 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let publishingAt: number | undefined;
   // Home lists every host, online or offline, each with their status.
   let homeQuery: HomeQuery = { mode: "popular" };
+  let homeFlight: { key: string; epoch: number; session: number; document: number; background: boolean; work: Promise<void> } | undefined;
+  let homeInvalidated = false;
+  let homeRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastHomeRefresh = 0;
+  const resetHomeReads = () => { homeFlight = undefined; homeInvalidated = false; clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined; lastHomeRefresh = 0; };
   let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
   let activeStream: { id: string; hosting: boolean } | undefined;
   let streamRequestsRevision = 0;
   type PurchaseKind = "coins" | "premium";
   const pendingPurchases = new Map<string, PendingPayment & { epoch: number; sessionVersion: number }>();
-  const verifyingPurchases = new Set<string>();
+  const verifyingPurchases = new Map<string, Promise<Purchase | undefined>>();
+  type CoinReturn = { payment: PendingPayment; owner?: string; epoch: number; sessionVersion: number; document: number; departed: boolean; settling: boolean; terminal?: Purchase };
+  const externalCoinCheckouts = new Map<string, CoinReturn>();
   const operations = new Set<string>();
   const authWork = new Set<string>();
   const current = (version: number) => !closed && version === epoch;
@@ -410,7 +426,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     // require explicit permission because welcomes do not unlock manual replies.
     threadPermissions.set(peerId, { canSend: data.canSend ?? accountRole === "user", reason: data.sendDisabledReason });
   };
-  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number } = {}) => {
+  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number; background?: boolean } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
     const latest = () => current(version) && getSessionVersion() === sessionVersion && documentRevision === document && readRequests.get(resource) === requestId;
@@ -426,9 +442,39 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const refreshWallet = () => readResource("wallet", () => api.wallet(), data => emit({ type: "wallet.balance", data }));
-  const loadHome = (query = homeQuery) => {
+  const homeFlightCurrent = () => homeFlight && current(homeFlight.epoch) && homeFlight.session === getSessionVersion() && homeFlight.document === documentRevision;
+  const loadHome = (query = homeQuery, background = false): Promise<void> => {
+    query = { ...query };
+    const key = JSON.stringify([query.mode, query.category, query.q, query.page ?? 1]);
+    if (homeFlightCurrent() && homeFlight!.key === key && (background || !homeFlight!.background)) {
+      if (background) homeInvalidated = true;
+      return homeFlight!.work;
+    }
+    clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined;
     homeQuery = query;
-    return readResource("home", () => api.home(query), data => { rememberHomePeers(data); emit({ type: "data.home", data }); }, { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}) });
+    homeInvalidated = false;
+    const flight = { key, epoch, session: getSessionVersion(), document: documentRevision, background, work: Promise.resolve() };
+    homeFlight = flight;
+    flight.work = readResource("home", () => api.home(query), data => { rememberHomePeers(data); emit({ type: "data.home", data: { ...data, ...(background ? { background: true } : {}) } }); }, { page: query.page ?? 1, ...(query.q !== undefined ? { q: query.q } : {}), ...(background ? { background: true } : {}) }).finally(() => {
+      if (homeFlight !== flight) return;
+      homeFlight = undefined;
+      if (homeInvalidated && current(flight.epoch) && flight.session === getSessionVersion() && flight.document === documentRevision) invalidateHome();
+    });
+    return flight.work;
+  };
+  // A burst of presence/call events needs at most one in-flight read and one
+  // trailing read. A hidden app waits until foreground instead of redrawing.
+  const invalidateHome = () => {
+    homeInvalidated = true;
+    if (!appActive || homeFlightCurrent()) return;
+    const delay = 750 - (Date.now() - lastHomeRefresh);
+    if (delay > 0) {
+      if (!homeRefreshTimer) homeRefreshTimer = setTimeout(() => { homeRefreshTimer = undefined; invalidateHome(); }, delay);
+      return;
+    }
+    homeInvalidated = false;
+    lastHomeRefresh = Date.now();
+    void loadHome({ ...homeQuery, page: 1 }, true).catch(() => {});
   };
   const loadNotifications = (query?: NotificationsQuery, requestId?: number, ownQuery = false) => {
     if (notificationQueryOwner && (!current(notificationQueryOwner.epoch) || notificationQueryOwner.sessionVersion !== getSessionVersion() || notificationQueryOwner.document !== documentRevision)) notificationQueryOwner = undefined;
@@ -448,9 +494,34 @@ export function createBridge(post: (msg: AppMessage) => void) {
       const result = await api.updateNotificationRead(input);
       if (!applicable()) return;
       emit({ type: "notifications.saved", data: { ...input, ...result, requestId } });
-      quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+      quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
     } catch (error) {
       if (applicable()) emit({ type: "notifications.error", data: { requestId, message: errorMessage(error) } });
+    }
+  };
+  const loadOfficial = async (page: number, requestId: number) => {
+    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, revision = ++officialLoadRevision;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === officialLoadRevision;
+    try {
+      const data = await api.officialChat(page);
+      if (applicable()) emit({ type: "data.official", data: { ...data, requestId } });
+    } catch (error) {
+      if (applicable()) emit({ type: "official.error", data: { requestId, action: "load", message: errorMessage(error) } });
+    }
+  };
+  const readOfficial = async (input: OfficialReadPatch, requestId: number) => {
+    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
+    try {
+      const result = await api.readOfficialChat(input);
+      if (!applicable()) return;
+      // A pending history read may predate this committed receipt.
+      officialLoadRevision++;
+      emit({ type: "official.saved", data: { ...input, ...result, read: true, requestId } });
+      quietly(loadChats(), "chats.reload");
+      quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
+    } catch (error) {
+      if (applicable()) emit({ type: "official.error", data: { requestId, action: "read", message: errorMessage(error) } });
     }
   };
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
@@ -532,15 +603,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       emit({ type: "data.chats", data });
     }, { page });
-  const verifyPurchase = async (orderId: string, kind: PurchaseKind = "coins") => {
-    const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${kind}:${orderId}`;
-    if (verifyingPurchases.has(key)) return;
-    verifyingPurchases.add(key);
-    try {
+  const verifyPurchase = (orderId: string, kind: PurchaseKind = "coins"): Promise<Purchase | undefined> => {
+    const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${sessionVersion}:${kind}:${orderId}`;
+    const existing = verifyingPurchases.get(key);
+    if (existing) return existing;
+    const work = (async () => { try {
       const purchase = await (kind === "premium" ? api.verifyPremium(orderId) : api.verifyPurchase(orderId));
-      if (current(version) && getSessionVersion() === sessionVersion) {
+      if (current(version) && getSessionVersion() === sessionVersion && owner === accountId) {
         const resolvedKind = purchase.kind ?? kind;
         const pending = pendingPurchases.get(orderId);
+        const external = externalCoinCheckouts.get(orderId);
+        if (resolvedKind === "coins" && external && purchase.status !== "PENDING") external.terminal = purchase;
         emit({ type: resolvedKind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: { ...(pending?.packId ? { packId: pending.packId } : {}), ...(pending?.idempotencyKey ? { idempotencyKey: pending.idempotencyKey } : {}), ...(pending?.requestedRoute ? { requestedRoute: pending.requestedRoute } : {}), ...purchase, merchantOrderId: orderId } });
         if (purchase.status !== "PENDING") {
           pendingPurchases.delete(orderId);
@@ -548,10 +621,34 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         // Only a fresh authenticated catalog can grant or revoke theme access.
         if (resolvedKind === "premium") { quietly(loadThemes(), "themes.load"); void loadAds(); } else quietly(refreshWallet(), "wallet.load");
+        return purchase;
       }
     } catch (error) {
-      if (current(version) && getSessionVersion() === sessionVersion) operationError(error, kind === "premium" ? "themes.premium.verify" : "wallet.verify", { merchantOrderId: orderId });
-    } finally { verifyingPurchases.delete(key); }
+      if (current(version) && getSessionVersion() === sessionVersion && owner === accountId) operationError(error, kind === "premium" ? "themes.premium.verify" : "wallet.verify", { merchantOrderId: orderId });
+    } })().finally(() => verifyingPurchases.delete(key));
+    verifyingPurchases.set(key, work);
+    return work;
+  };
+  // Returning without completing a coin checkout releases its UI attempt. The
+  // order remains pending on the server and in secure storage until confirmed.
+  const coinPaymentReturned = async (entry: CoinReturn) => {
+    if (entry.settling) return;
+    entry.settling = true;
+    const applicable = () => current(entry.epoch) && entry.sessionVersion === getSessionVersion() && entry.owner === accountId && entry.document === documentRevision;
+    try {
+      if (!applicable()) return;
+      const purchase = entry.terminal ?? await verifyPurchase(entry.payment.orderId);
+      if (!applicable()) return;
+      const status = entry.terminal?.status ?? purchase?.status;
+      emit({ type: "wallet.payment-returned", data: {
+        merchantOrderId: entry.payment.orderId,
+        status: status === "SUCCESS" || status === "FAILED" || status === "REVERTED" || status === "PENDING" ? status : "UNKNOWN",
+        ...(entry.payment.idempotencyKey ? { idempotencyKey: entry.payment.idempotencyKey } : {}),
+        ...(entry.payment.packId ? { packId: entry.payment.packId } : {}),
+      } });
+    } finally {
+      if (externalCoinCheckouts.get(entry.payment.orderId) === entry) externalCoinCheckouts.delete(entry.payment.orderId);
+    }
   };
   const restorePendingPurchases = async () => {
     const owner = accountId, version = epoch, sessionVersion = getSessionVersion();
@@ -560,22 +657,28 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!current(version) || accountId !== owner || sessionVersion !== getSessionVersion()) return;
     for (const payment of payments) {
       pendingPurchases.set(payment.orderId, { ...payment, epoch: version, sessionVersion });
-      // Restore the unconfirmed order before contacting the provider. A failed
-      // verification must leave a retryable checkout in the UI, never make a
-      // second purchase look necessary. No balance or entitlement comes from disk.
+      // Restore order correlation before verification. Coin orders can release
+      // their abandoned UI while native tracking still reconciles late credit.
       emit({ type: payment.kind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: {
         purchaseId: "", merchantOrderId: payment.orderId, kind: payment.kind, status: "PENDING",
         ...(payment.packId ? { packId: payment.packId } : {}), ...(payment.idempotencyKey ? { idempotencyKey: payment.idempotencyKey } : {}),
         ...(payment.requestedRoute ? { requestedRoute: payment.requestedRoute } : {}),
       } });
-      void verifyPurchase(payment.orderId, payment.kind);
+      if (payment.kind === "coins") void coinPaymentReturned({ payment, owner, epoch: version, sessionVersion, document: documentRevision, departed: false, settling: false });
+      else void verifyPurchase(payment.orderId, payment.kind);
     }
   };
   const activity = AppState?.addEventListener("change", state => {
     if (closed) return;
     appActive = state === "active";
     stopLive.setActive?.(appActive && !liveOnboarding);
-    if (!appActive) return;
+    if (!appActive) {
+      clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined;
+      for (const external of externalCoinCheckouts.values()) if (!external.settling) external.departed = true;
+      return;
+    }
+    if (homeInvalidated && accountId && getCachedToken()) { lastHomeRefresh = 0; invalidateHome(); }
+    for (const external of externalCoinCheckouts.values()) if (external.departed) void coinPaymentReturned(external);
     for (const pending of pendingPurchases.values()) {
       if (pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
         quietly(verifyPurchase(pending.orderId, pending.kind), pending.kind === "premium" ? "themes.premium.verify" : "wallet.verify");
@@ -610,6 +713,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     liveOnboarding = onboarding;
     sessionAvailable = true;
     const version = epoch;
+    let connectedBefore = false;
     stopLive = connectRealtime(token, event => {
       if (!current(version)) return;
       if (!LIVE_STREAMING_ENABLED && event.type.startsWith("stream.") && event.type !== "stream.ended") {
@@ -697,10 +801,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
         activeHostCall = event.data?.initiator === false;
       }
       if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
-      if (event.type === "home.updated") quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+      if (event.type === "home.updated") invalidateHome();
       if (event.type === "realtime.status" && event.data?.connected === true && !liveOnboarding) {
+        const reconnecting = connectedBefore;
+        connectedBefore = true;
         if (activeStream) quietly(loadStreamRequests(activeStream.id), "stream.requests.load");
-        quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+        // loadLists already owns the initial snapshot. Reconnects revalidate it.
+        if (reconnecting) invalidateHome();
         quietly(loadChats(), "chats.reload");
         quietly(loadProfileSettings(), "profile.settings.load");
         quietly(loadThemes(), "themes.load");
@@ -714,7 +821,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const unsubscribe = onSessionExpired(() => {
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
-    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+    epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
     hostRevision++; hostChecking = false; hostAccount = undefined; hostStatus = undefined; activeHostCall = false;
     void forgetAccountTheme();
     emit({ type: "session.expired", data: { message: "Your session has ended. Please sign in again." } });
@@ -781,6 +888,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
         : updateNotifications({ ids: msg.data.ids, read: true }, msg.data.requestId);
       case "notifications.unread": return updateNotifications({ ids: msg.data.ids, read: false }, msg.data.requestId);
       case "notifications.readAll": return updateNotifications({ all: true, read: true }, msg.data.requestId);
+      case "official.load": return loadOfficial(msg.data.page ?? 1, msg.data.requestId);
+      case "official.read": {
+        const { requestId, ...input } = msg.data;
+        return readOfficial(input, requestId);
+      }
       case "catalog.load": return loadCatalog();
       case "themes.load": return loadThemes();
       case "themes.select": {
@@ -832,7 +944,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const messages = await api.streamMessages(stream.id).catch(() => []);
         if (current(version) && activeStream?.id === stream.id) emit({ type: "stream.opened", data: { stream, hosting, messages } });
         if (current(version) && activeStream?.id === stream.id) quietly(loadStreamRequests(stream.id), "stream.requests.load");
-        quietly(loadHome(), "home.reload");
+        quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
         return;
       }
       case "stream.share": {
@@ -848,7 +960,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (current(version)) {
           if (activeStream?.id === msg.data.streamId) activeStream = undefined;
           emit({ type: "stream.closed", data: { streamId: msg.data.streamId } });
-          quietly(loadHome(), "home.reload");
+          quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
         }
         return;
       }
@@ -915,8 +1027,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         // Payment pages stay outside the privileged application WebView.
         if (purchase.status === "PENDING" && purchase.paymentUrl) {
+          const external: CoinReturn | undefined = kind === "coins" ? { payment: { orderId: purchase.merchantOrderId, kind, packId: purchase.packId, idempotencyKey: purchase.idempotencyKey }, owner, epoch: version, sessionVersion, document: documentRevision, departed: !appActive, settling: false } : undefined;
+          if (external) externalCoinCheckouts.set(purchase.merchantOrderId, external);
           try { await Linking.openURL(purchase.paymentUrl); }
-          catch { throw new ApiError("Couldn't open the payment app. Continue this checkout or check its status.", 0, "PAYMENT_OPEN_FAILED"); }
+          catch {
+            if (external) await coinPaymentReturned(external);
+            else throw new ApiError("Couldn't open the payment app. Continue this checkout or check its status.", 0, "PAYMENT_OPEN_FAILED");
+          }
         }
         return;
       }
@@ -942,7 +1059,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; notificationQueryOwner = undefined; pendingPurchases.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
+          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
@@ -970,7 +1087,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
-        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; pendingPurchases.clear();
+        callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
         const token = getCachedToken();
         const clearing = clearToken();
         const clearedVersion = getSessionVersion();
@@ -1047,7 +1164,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "presence.set": {
         const approval = msg.data.online ? await requireApprovedHost() : hostRevision;
         const data = await api.setPresence(msg.data.online, msg.data.visible);
-        if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome(), "home.reload"); }
+        if (current(version) && (!msg.data.online || (approval === hostRevision && hasHostAccess()))) { emit({ type: "presence.saved", data }); quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload"); }
         return;
       }
       case "presence.duringCalls": {
@@ -1082,7 +1199,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (current(version) && sessionVersion === getSessionVersion()) {
             emit({ type: "privacy.saved", data: { privacy, requestId } });
             quietly(loadProfileSettings(), "profile.settings.load");
-            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "privacy.error", data: { message: errorMessage(error), requestId } });
@@ -1098,7 +1215,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
             quietly(loadBlocked(), "blocked.load");
             quietly(loadProfileSettings(), "profile.settings.load");
             quietly(loadChats(), "chats.reload");
-            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "block.error", data: { id, blocked, message: errorMessage(error), requestId } });
@@ -1113,7 +1230,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
             publicFollows.set(id, { on: result.following, revision: (publicFollows.get(id)?.revision ?? 0) + 1, sessionVersion });
             emit({ type: "follow.saved", data: { id, on: result.following, requestId } });
             quietly(loadProfileSettings(), "profile.settings.load");
-            quietly(loadHome({ ...homeQuery, page: 1 }), "home.reload");
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
           }
         } catch (error) {
           if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "follow.error", data: { id, on, message: errorMessage(error), requestId } });
@@ -1365,7 +1482,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "awards.claim": {
         const approval = await requireApprovedHost();
         const wallet = await api.claimAward(msg.data.task);
-        if (current(version) && approval === hostRevision && hasHostAccess()) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome(), "home.reload"); }
+        if (current(version) && approval === hostRevision && hasHostAccess()) { emit({ type: "wallet.balance", data: wallet }); emit({ type: "awards.claimed", data: { task: msg.data.task } }); quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload"); }
         return;
       }
       case "ads.load": return loadAds();
@@ -1406,7 +1523,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "popular" }; notificationQueryOwner = undefined; },
+    documentLoading: () => { webReady = false; documentRevision++; externalCoinCheckouts.clear(); homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
@@ -1428,6 +1545,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; callGeneration++; unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
+    close: () => { closed = true; epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }
