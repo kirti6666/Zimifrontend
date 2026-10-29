@@ -309,10 +309,40 @@ optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
+## Push messages (FCM, Android)
+
+`src/push.ts` registers the device's FCM token with `POST /notifications/devices
+{token}` after sign-in and on every token rotation. On logout it deletes the token
+on the device (`deleteToken`), so FCM answers the next send to it with
+`registration-token-not-registered`; the server deletes tokens that FCM reports
+that way. A user may have one token per device.
+
+The server sends **data-only** messages (no `notification` block), Android
+`priority: "high"` for calls and `"normal"` otherwise. Every value is a string.
+
+| `type` | Other fields | What the phone does |
+| --- | --- | --- |
+| `incoming_call` | `callId, callerId, callerName, callerAvatar?` (https URL), `kind?` (`audio`/`video`), `sentAt` (epoch ms); `android.ttl` 30s | Rings on the `incoming_calls` channel with Answer/Decline and a full-screen intent, until answered, declined, `call_cancelled`, or 30s after `sentAt`. Older than 30s: ignored. In the foreground the socket's ring screen is used instead |
+| `call_cancelled` | `callId, reason` (`missed`, `declined` or `answered`), `callerName` | Stops the ring. `missed` (no answer in 30s, or the caller hung up first) also shows "Missed call" |
+| anything else | `title, body` | Shown on the `general` channel while the app is in the background (gift received, coins credited, earnings, new follower…) |
+
+- Send `incoming_call` from the existing call-start flow, alongside the
+  `call:updated` ringing event, and `call_cancelled` wherever a ringing call
+  ends. Billing never depends on push delivery; it still starts when both
+  peers connect.
+- **Answer** opens the app and sends the screens `call.answer {callId}`; they
+  accept that call through the normal `call.accept` once its ring screen is up.
+  This relies on the server re-sending `call:updated` (status `ringing`) to the
+  callee when their socket connects while the call still rings.
+- **Decline** calls `POST /calls/:id/end` from the notification, even while the
+  app is closed.
+- While a call is connected (and was started in the foreground), the app keeps
+  an ongoing notification as a `phoneCall|microphone|camera` foreground service.
+
 ## Not covered yet
 
-- Incoming calls while the app is closed: needs push notifications and the
-  Android incoming-call screen in the React Native shell.
+- iOS push and incoming calls: need APNs, `GoogleService-Info.plist`, static
+  frameworks for Firebase and PushKit/CallKit for ringing a closed app.
 - Coin purchases use PayPlus checkout. Coins are credited only by the server,
   after `POST /coins/purchase/verify` or the signed PayPlus webhook. Google
   Play's payments policy may require Play Billing (or its alternative billing

@@ -24,9 +24,11 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
   // The FCM edge: OS permission, the device token and notification taps.
-  const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
+  const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, answer: undefined, tracked: [], tokenListener: undefined };
   const pushModule = {
-    startPush: onOpen => { push.open = onOpen; return () => { push.stopped++; }; },
+    startPush: (onOpen, onAnswer) => { push.open = onOpen; push.answer = onAnswer; return () => { push.stopped++; }; },
+    trackCall: message => { push.tracked.push(message.type); },
+    askForCallAlerts: () => {},
     registerPush: async (save, mode) => {
       push.modes.push(mode);
       if (push.status !== 'registered') return push.status;
@@ -2971,6 +2973,18 @@ test('denied permission is reported, retried silently in the foreground and can 
   h.bridge.handle({ type: 'profile.settings.save', data: { pushNotifications: true, requestId: 4 } }); await settle();
   const saved = h.find('profile.settings.saved').at(-1);
   assert.equal(saved?.data.settings.capabilities.nativePushStatus, 'registered', 'Saved settings keep the device status');
+  h.bridge.close();
+});
+
+test('Answer on a call notification reaches the screens once a signed-in screen can show it', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair());
+  h.push.answer('call-1'); await settle();
+  assert.equal(h.find('call.answer').length, 0, 'The app launched from Answer waits for its document');
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  assert.deepEqual(h.find('call.answer').map(post => post.data.callId), ['call-1']);
+  assert.ok(h.push.tracked.includes('call.answer'), 'Every message to the screens passes through trackCall');
   h.bridge.close();
 });
 
