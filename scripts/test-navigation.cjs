@@ -90,7 +90,7 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
           assert.equal(await layout.locator('.zh-header').count(), name === 'Home' ? 1 : 0, `${name} only shows the discovery-tab header on Home`);
           assert.equal(await layout.locator('.zh-brand,.zh-logo').count(), 0, `${name} has no app-name header`);
           if (name === 'Home') {
-            assert.deepEqual(await layout.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['All', 'Following']);
+            assert.deepEqual(await layout.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['All', 'Explore']);
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Search creators', exact: true }).count(), 1);
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 1);
             assert.equal(await layout.locator('.zh-host-status').count(), account === approved ? 1 : 0, 'Only a host account sees its availability control');
@@ -133,7 +133,7 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
     assert.equal(await layout.locator('.zh-nav > :not(button[data-tab])').count(), 0, 'The tab bar has no call or approval slot');
     await receive(layout, 'host.access', { approved: true, checking: false, role: 'host', hostStatus: 'approved', verified: true });
     sameNavigation(await metrics(layout), approvedChrome, 'Successful revalidation keeps the tabs in place');
-    console.log('PASS navigation: Home-only All/Following header, host-only availability, no category filters, page-specific headings and identical tab bounds at 320/390/630/1280px');
+    console.log('PASS navigation: Home-only All/Explore header, host-only availability, no category filters, page-specific headings and identical tab bounds at 320/390/630/1280px');
 
     const motion = await open('no-preference');
     await seed(motion, member);

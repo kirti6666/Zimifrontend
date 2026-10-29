@@ -1,0 +1,57 @@
+BinzoLive mobile app test report
+Date: 29 October 2026 (Asia/Calcutta)
+
+RESULT
+58 of 59 existing test scripts passed.
+TypeScript checking and the web build passed.
+The Android release APK installed and cold-launched successfully on the
+connected CPH2689 phone. The welcome screen rendered, and the app startup log
+contained no fatal app exceptions. Startup completed in about 1.2 seconds.
+The existing release APK was tested; a new native APK was not built.
+
+CONFIRMED UI DEFECT
+The private-video-call message input renders white text on a white background.
+Reproduction: open a private video call, open call chat, and type a message.
+The input contains the text but it is invisible. This occurs across all four
+palettes exercised by test-theme-consistency.cjs.
+web/live-room.css:18 gives the input color var(--room-ink), which becomes white
+in the video overlay; line 122 gives the composer background var(--surface),
+which is white in light mode.
+Evidence: private-call-message-contrast.png and theme-reproduction.log.
+
+TEST MAINTENANCE ISSUE
+package.json's test:payments command references scripts/test-payment-routes.cjs,
+but that file does not exist. The combined payment command cannot finish.
+The existing coin checkout, payment return, premium, wallet, API adapter and
+native payment bridge checks passed independently.
+
+REMAINING FAILURE
+test-theme-consistency.cjs reports 16 color assertion failures. Four expose the
+message-input defect above. The other assertions expect theme-colored text and
+white preview backgrounds where the current call layout deliberately uses light
+video-overlay text and a dark camera preview; reconcile those expectations with
+the passing test-call-layout.cjs coverage before changing those styles.
+
+ENVIRONMENT FINDING
+test-home-media.cjs timed out during local ICE connectivity inside the sandbox.
+The unchanged script passed outside the sandbox, covering real local browser
+WebRTC video, voice, handoff, reconnect, camera switching, mute and cleanup.
+The original failure is preserved in its log and in media-diagnostics.json;
+results.json records the successful rerun.
+
+SCOPE AND LIMITS
+The 59 scripts cover authentication/session handling, API/native bridge,
+onboarding, discovery, navigation, responsive layouts, safe areas, chats,
+photos/audio, calls, gifts, payments, profiles, settings, themes, notifications,
+offline behavior, rendering security and local browser media.
+Most browser/API tests use isolated fixtures and mocked server responses.
+No real OTP, paid checkout, authenticated production flow, two-phone call,
+backend integration suite or iOS device test was run.
+No product source files were changed.
+
+ARTIFACTS
+results.json: per-script results and final summary.
+test-*.log: individual logs from the batch (initial checks are marked separately).
+android-startup.png / android-startup.log: native startup evidence.
+private-call-message-contrast.png: confirmed message-input defect.
+screenshots/: updated tracked screenshots preserved from the test run.

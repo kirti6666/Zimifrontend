@@ -33,7 +33,7 @@ function ztApply(animate=false){
   const root=document.documentElement;
   const theme=ztCurrent(),c=ztDisplayColors(theme),t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
   const mode=ZThemes.dark?'dark':'light';
-  root.classList.toggle('zp-light',!ZThemes.dark);if(root.dataset.theme!==mode)root.dataset.theme=mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
+  root.classList.toggle('zp-light',mode==='light');if(root.dataset.theme!==mode)root.dataset.theme=mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
   for(const [key,value] of Object.entries({themeInk:c.text,themePrimary:c.primary,themeContrast:c.primaryContrast,themeSurface:c.surface,themeRaised:c.surfaceElevated}))if(root.dataset[key]!==value)root.dataset[key]=value;
   if(signature===ZThemes.signature)return;
   const motion=animate&&ZThemes.signature&&!matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -538,8 +538,20 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   for (const response of [{}, { count: 1, unreadCount: -1, totalCount: 5 }, { count: 1, unreadCount: 6, totalCount: 5 }]) assert.throws(() => adapters.notificationReadFrom(response), /notification status could not be confirmed/);
   const giftId = '0123456789abcdef01234567', packId = '1123456789abcdef01234567';
   expect('GET', '/gifts?limit=100', { items: [{ _id: giftId, name: 'Rose', emoji: 'rose', coins: 25 }] });
-  expect('GET', '/coins/packs', { items: [{ _id: packId, name: 'Starter', coins: 100, pricePaise: 9900 }], paymentsAvailable: true });
+  expect('GET', '/coins/packs', { items: [{ _id: packId, name: 'Starter', coins: 100, pricePaise: 9900, bonusPercent: 100, badge: 'hot' }], paymentsAvailable: true });
   const catalog = await api.catalog(); assert.equal(catalog.gifts[0].id, giftId); assert.equal(catalog.packs[0].pricePaise, 9900); assert.equal(catalog.paymentsAvailable, true);
+  assert.equal(catalog.packs[0].bonusPercent,100,'The catalog retains an authoritative purchase bonus');
+  assert.equal(catalog.packs[0].badge,'hot','The catalog retains a supported promotion badge');
+  for(const bonusPercent of [1,125,1000])assert.equal(adapters.catalogFrom({items:[]},{items:[{_id:packId,name:'Pack',coins:200,pricePaise:9899,bonusPercent}]}).packs[0].bonusPercent,bonusPercent,'Bounded positive integer bonus metadata is retained');
+  for(const badge of ['hot','popular'])assert.equal(adapters.catalogFrom({items:[]},{items:[{_id:packId,name:'Pack',coins:200,pricePaise:9899,badge}]}).packs[0].badge,badge);
+  for(const metadata of [{bonusPercent:0},{bonusPercent:-1},{bonusPercent:1001},{bonusPercent:12.5},{bonusPercent:'150'},{bonusPercent:null},{badge:'featured'},{badge:'<img src=x onerror=alert(1)>'},{badge:100}]){
+    const pack=adapters.catalogFrom({items:[]},{items:[{_id:packId,name:'Pack',coins:200,pricePaise:9899,...metadata}]}).packs[0];
+    assert.equal(pack.bonusPercent,undefined,'Invalid promotional percentages are omitted, not coerced into claims');
+    assert.equal(pack.badge,undefined,'Unsupported or injected badges are omitted');
+  }
+  const ordinaryPack=adapters.catalogFrom({items:[]},{items:[{_id:packId,name:'Starter',coins:200,pricePaise:9899}]}).packs[0];
+  assert.equal(ordinaryPack.bonusPercent,undefined,'An ordinary catalog pack receives no invented bonus');
+  assert.equal(ordinaryPack.badge,undefined,'An ordinary catalog pack receives no invented popularity badge');
   expect('POST', '/gifts/send', { _id: 'transfer-id', coins: 25 }, body => { assert.deepEqual(plain(body), { recipientId: 'creator-id', giftId, quantity: 1, streamId: 'stream-id', idempotencyKey: 'gift-attempt-1' }); assert.equal(body.coins, undefined, 'Price must come from the server catalog'); });
   assert.deepEqual(plain(await api.sendGift('creator-id', giftId, 1, undefined, 'stream-id', 'gift-attempt-1')), { id: 'transfer-id', coins: 25 }, 'A committed gift returns its server receipt without depending on a second network request');
   expect('POST', '/gifts/send', {});

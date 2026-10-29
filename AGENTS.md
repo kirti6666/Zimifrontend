@@ -24,6 +24,12 @@ keeps it identical to the original Next.js version.
   `scripts/flat-corners.cjs`. Headers sit on the page without a divider line,
   and settings rows have no dividers.
   Account themes customize accents and typography while keeping the white canvas.
+  The reference coin-package geometry is a scoped exception: `.zw-reference`
+  keeps the three-column cards, gold coin artwork and rounded pills. It follows
+  the active account theme and Dark Mode using shared color tokens, including
+  the purchase button. Never force a black canvas, pink palette or glow on Coins.
+  Back buttons always use the shared bordered 44px circle and the same icon;
+  do not add a coin-specific size, color or border override.
 - Posts: `web/post-create.js` is a separate New post page (`create-post`
   view) that keeps its draft for the session. Tapping a profile photo opens
   `web/post-view.js`, a vertical feed like other photo apps, starting at that
@@ -67,10 +73,10 @@ keeps it identical to the original Next.js version.
   `ZIMI_LIVE_STREAMING_ENABLED` and native `LIVE_STREAMING_ENABLED` off; retain
   private video/voice calling. Hide stream discovery, broadcasts, links and
   queues, and route creator availability through the 1:1 call setup.
-- The Home header has All/Following tabs in place of the app name, then
+- The Home header has All/Explore tabs in place of the app name, then
   (approved hosts only) the host's own Online/Offline status, the coin
-  balance, Search and Notifications. All lists every host; Following uses
-  the server's `mode: "following"` feed. No category chips on Home or All Creators
+  balance, Search and Notifications. All lists every host; Explore (the renamed
+  Following header tab) keeps the server's `mode: "following"` feed. No category chips on Home or All Creators
   for now. Home shows a featured photo card and a two-column host grid titled
   "Instant Connect" ("Following" on that tab). Cards
   open the creator profile; Chat belongs on that profile. Use
@@ -149,14 +155,29 @@ keeps it identical to the original Next.js version.
   pickers and receipts show the still cover; the animation plays only when a
   gift is sent or received (the cover under reduced motion). Read gift artwork
   through `giftStillUrl`/`giftMotionUrl`, not the raw `mediaUrl`.
-- Show the All/Following Home header only on Home. Chat, Profile and
+- Show the All/Explore Home header only on Home. Chat, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
   the same size across those main screens; All Creators, Notifications and Themes
   have their own Back headers and no bottom tabs. Themes opens as a page, not
   a settings modal. Animate only page content on tab changes and
   respect reduced-motion preferences.
-- Your Coins uses a compact Wallet summary and a 3-by-2 pack grid so the balance
-  and six packages fit a normal phone viewport. Get Coins opens payment-method
+- Add coins follows the supplied coin-package geometry: a compact balance pill
+  and static INR pill, a 3-by-2 pack grid with gold coin stacks, and a fixed
+  `.zw-checkout-footer`. All colors and native chrome follow the active account
+  theme and Dark Mode; entering or leaving Coins must not change those choices.
+  Its Back button is the same shared 44px bordered circle used elsewhere.
+  Embedded gift top-ups also follow the active theme and keep their footer
+  in normal flow so they do not cover an active call or the enclosing sheet.
+  Keep content, errors and recovery controls reachable above the fixed footer.
+  Display only server-supplied coin quantities and prices. Optional purchase
+  `bonusPercent` metadata must be an integer from 1 through 1000; `badge` accepts
+  only `hot` or `popular`. Without valid bonus metadata, use "Choose your coin
+  pack" and the server's pack names, with no invented promotion. "Welcome Bonus
+  for You!" belongs to actual purchase-bonus metadata or the demo catalog; do
+  not derive a purchase bonus from creator mission rewards or catalog pricing.
+  Demo-only fixtures contain the six reference packs and promotion labels.
+  Preserve the purchase action's `Get N coins` accessible name while its visible
+  label includes the selected quantity and price. Get Coins opens payment-method
   selection before creating a new checkout. Use only server-supported routes,
   retain uncertain-request route/idempotency recovery, and leave premium checkout
   separate. On return from an incomplete external coin payment, refresh the

@@ -84,9 +84,9 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
  --zf-top:color-mix(in srgb,var(--accent) 78%,var(--surface))}
 .zf-face .zf-skin{fill:var(--zf-skin)}.zf-face .zf-hair{fill:var(--zf-hair)}.zf-face .zf-top{fill:var(--zf-top)}
 .zh-profile{position:relative}.zp-avatar>.zf-face{border-radius:50%}
-/* One back button for the whole app: a 40px surface circle with a hairline border, as on call setup.
+/* One back button for the whole app: a 44px surface circle with a hairline border.
    :root lifts it above each screen's own button rules; those classes only position it. */
-:root .zb-back{display:grid;place-items:center;flex:none;width:40px;height:40px;min-width:40px;min-height:40px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);touch-action:manipulation;transition:transform .15s ease}
+:root .zb-back{display:grid;place-items:center;flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);touch-action:manipulation;transition:transform .15s ease}
 :root .zb-back:active:not(:disabled){transform:scale(.94)}
 :root .zb-back:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 :root .zb-back:disabled{opacity:.45;cursor:default}

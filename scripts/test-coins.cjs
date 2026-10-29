@@ -76,7 +76,7 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.ok(await page.locator('.zc-coin[data-icon="coin"]').count(), 'The wallet uses the shared BinzoLive coin mark');
     for (const mode of ['dark', 'light']) {
       await page.evaluate(value => Native.receive({ type: 'data.themes', data: { items: [ZThemeOriginal, ZThemeRose], selectedThemeId: value === 'dark' ? ZThemeOriginal.id : ZThemeRose.id, premium: { active: false } } }), mode);
-      assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light', 'Themes preserve the white app canvas');
+      assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light', 'Coin packages retain the active light mode across account themes');
       for (const width of [320, 390, 768, 1280]) {
         await page.setViewportSize({ width, height: 844 });
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `${mode} wallet fits ${width}px`);

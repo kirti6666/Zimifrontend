@@ -151,7 +151,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await page.getByRole('button',{name:'Search creators',exact:true}).count(),1,'Search appears only in the Home header');
     assert.equal(await page.locator('.zh-dashboard .zh-home-search,.zh-dashboard .zh-welcome,.zh-dashboard .zh-shortcuts,.zh-dashboard .zh-home-match,.zh-dashboard .zh-bonus').count(),0,'Home content focuses on discovering live and online hosts');
     assert.equal(await page.locator('.zh-dashboard-filters [data-dashboard-filter],.zh-dashboard .zh-filters').count(),0,'Home omits category and popularity filters');
-    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['All','Following'],'The Home header switches between All and Following');
+    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['All','Explore'],'The Home header switches between All and Explore');
     assert.equal(await page.locator('.zh-brand,.zh-logo').count(),0,'The discovery tabs replace the app-name header');
     assert.equal(await page.locator('.zh-header-actions').getByRole('button',{name:/^Wallet/}).count(),1,'The header retains the wallet action');
     assert.equal(await page.locator('.zh-host-status').count(),0,'Sender accounts do not show host availability');
@@ -236,12 +236,12 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.locator('#zu-call').isEnabled(),true,'An offline host can still be called from their profile; the server rings until missed');
     assert.doesNotMatch(await real.locator('.zu-presence').innerText(),/offline/i,'The profile never presents a host as offline');
     await real.getByRole('button',{name:'Back',exact:true}).click();
-    await real.getByRole('tab',{name:'Following',exact:true}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'following'},'Following requests the authenticated followed-user feed');
+    await real.getByRole('tab',{name:'Explore',exact:true}).click();
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'following'},'Explore requests the authenticated followed-user feed');
     assert.equal(await real.getByRole('status',{name:'Loading featured creator',exact:true}).count(),1,'Filter changes wait for the server feed');
     await receive('data.home',{...home,hosts:[host,online],stage:[],total:2});
-    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id],'Following displays only the server-provided followed users');
-    assert.equal(await real.getByRole('tab',{name:'Following',exact:true}).getAttribute('aria-selected'),'true');
+    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id],'Explore displays only the server-provided followed users');
+    assert.equal(await real.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true');
     await real.getByRole('tab',{name:'All',exact:true}).click();
     assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'All restores the full host feed');
     await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
@@ -413,11 +413,11 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.locator('.zh-live-section').count(),0,'Refreshing an empty feed does not invent a Live now section');
     assert.equal(await real.locator('.zh-home-empty-scene').count(),0,'Loading does not leave a stale empty state visible');
     await receive('data.home',emptyHome);
-    await real.getByRole('tab',{name:'Following',exact:true}).click();
+    await real.getByRole('tab',{name:'Explore',exact:true}).click();
     await receive('data.home',emptyHome);
-    assert.match(await real.locator('.zh-host-empty h3').innerText(),/follow/i,'Following explains its own empty result');
+    assert.match(await real.locator('.zh-host-empty h3').innerText(),/follow/i,'Explore explains its own empty result');
     await real.getByRole('tab',{name:'All',exact:true}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Leaving empty Following requests all hosts');
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Leaving empty Explore requests all hosts');
     assert.equal(await real.getByRole('tab',{name:'All',exact:true}).getAttribute('aria-selected'),'true');
     await receive('data.home',emptyHome);
     await real.locator('.zh-empty-actions').getByRole('button',{name:/^All creators/}).click();
@@ -447,6 +447,6 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.evaluate(()=>logout());
     assert.equal(await real.evaluate(()=>Home.hosts.length),0,'logout clears home and payment state');
     assert.deepEqual(errors,[]);
-    console.log('PASS: profile-first discovery, featured host and responsive two-column photo grid, All/Following and All Creators, profile Message/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, disabled stream entry points, server-only content, XSS escaping, gifts, rewards, checkout and logout.');
+    console.log('PASS: profile-first discovery, featured host and responsive two-column photo grid, All/Explore and All Creators, profile Message/Call routing, pagination/deduplication/retry, responsive skeletons, coin confirmation, wallet recovery, disabled stream entry points, server-only content, XSS escaping, gifts, rewards, checkout and logout.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

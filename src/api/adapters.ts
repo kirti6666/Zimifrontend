@@ -184,7 +184,7 @@ export function streamChatFrom(value: unknown): StreamChat {
 }
 export function catalogFrom(giftData: unknown, packData: unknown): Catalog {
   return { gifts: items(giftData).map(record).map(gift => ({ id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: gift.media && typeof gift.media === "object" ? string(record(gift.media).url) : "" })),
-    packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise) })), paymentsAvailable: record(packData).paymentsAvailable === true };
+    packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise), ...(Number.isSafeInteger(pack.bonusPercent) && Number(pack.bonusPercent) > 0 && Number(pack.bonusPercent) <= 1000 ? { bonusPercent: Number(pack.bonusPercent) } : {}), ...(["hot", "popular"].includes(String(pack.badge)) ? { badge: pack.badge as "hot" | "popular" } : {}) })), paymentsAvailable: record(packData).paymentsAvailable === true };
 }
 export const validPaymentRoute = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(value);
 export function paymentRoutesFrom(value: unknown): PaymentRoutes {

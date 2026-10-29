@@ -122,9 +122,9 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
  --zf-top:color-mix(in srgb,var(--accent) 78%,var(--surface))}
 .zf-face .zf-skin{fill:var(--zf-skin)}.zf-face .zf-hair{fill:var(--zf-hair)}.zf-face .zf-top{fill:var(--zf-top)}
 .zh-profile{position:relative}.zp-avatar>.zf-face{border-radius:50%}
-/* One back button for the whole app: a 40px surface circle with a hairline border, as on call setup.
+/* One back button for the whole app: a 44px surface circle with a hairline border.
    :root lifts it above each screen's own button rules; those classes only position it. */
-:root .zb-back{display:grid;place-items:center;flex:none;width:40px;height:40px;min-width:40px;min-height:40px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);touch-action:manipulation;transition:transform .15s ease}
+:root .zb-back{display:grid;place-items:center;flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);touch-action:manipulation;transition:transform .15s ease}
 :root .zb-back:active:not(:disabled){transform:scale(.94)}
 :root .zb-back:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 :root .zb-back:disabled{opacity:.45;cursor:default}
@@ -3955,39 +3955,6 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 @media(max-width:350px){.zw-coins{padding-left:14px;padding-right:14px}.zw-wallet{padding:16px}.zw-wallet-main>svg{width:62px;height:62px}.zw-wallet-main p{max-width:150px;line-height:1.6}.zw-gift-balance small{display:none}:root[data-theme-id] .zh-sheet.zw-sheet{padding-left:14px;padding-right:14px}.zw-embedded{padding-left:0;padding-right:0}.zw-buy{font-size:12px}.zw-buy>span{font-size:11px}}
 
 .zw-recovery{padding:14px;border:1px solid var(--line);border-radius:14px;margin:12px 0;background:var(--raised)}.zw-recovery p{font-size:12px;line-height:1.6;margin:0 0 10px;color:var(--muted)}.zw-recovery button{font-size:12px;min-height:40px}.zw-history>svg:last-child{transform:rotate(-90deg)}
-
-/* A normal wallet and six packs fit a phone screen. Payment recovery and error
-   messages keep their natural height and remain scrollable when present. */
-:root[data-theme-id] .zw-coins.zw-compact{padding:10px 20px;max-width:620px}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--surface);background-image:none}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main{display:block;margin:0;min-width:0}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main>div>span{display:block;font-size:12px;line-height:16px;letter-spacing:0;color:var(--muted)}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main h2{display:flex;align-items:center;gap:7px;margin:2px 0;font-size:27px;line-height:30px;letter-spacing:-.7px}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-main p{margin:0;font-size:11px;line-height:14px;color:var(--muted)}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-actions{display:flex;align-items:center;gap:4px;flex:none}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-actions>button{display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--ink)}
-:root[data-theme-id] .zw-coins.zw-compact .zw-wallet-actions .zw-history>svg{transform:var(--zi-base);--zi-base:translate(0);margin:0}
-:root[data-theme-id] .zw-coins.zw-compact .zw-section-heading{margin:12px 0 8px}
-:root[data-theme-id] .zw-coins.zw-compact .zw-section-heading h2{margin:0;font-size:calc(18px * var(--theme-font-scale,1));line-height:24px;font-weight:600}
-:root[data-theme-id] .zw-coins.zw-compact .zw-packs{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
-:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:104px;padding:10px 8px;border:1px solid var(--line);background:var(--surface);text-align:center}
-:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button.selected{padding:9px 7px;border:2px solid var(--accent-ink);background:var(--surface)}
-:root[data-theme-id] .zw-coins.zw-compact .zw-pack-amount{display:flex;align-items:center;justify-content:center;gap:4px;order:0;min-height:24px;font-size:inherit}
-:root[data-theme-id] .zw-coins.zw-compact .zw-pack-amount strong{order:0;margin:0;font-size:clamp(15px,4.8vw,20px);line-height:24px;letter-spacing:-.4px;font-weight:600;white-space:nowrap}
-:root[data-theme-id] .zw-coins.zw-compact .zw-pack-name{display:block;order:1;max-width:100%;min-height:14px;font-size:11px;line-height:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
-:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button>b{order:2;display:block;width:100%;padding:4px 0;margin:0;font-size:12px;line-height:18px;font-weight:600;background:var(--raised)}
-:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button.selected>b{background:var(--accent-wash);color:var(--accent-ink)}
-:root[data-theme-id] .zw-coins.zw-compact .zw-packs>button>i{display:none}
-:root[data-theme-id] .zw-coins.zw-compact .zw-buy{min-height:44px;margin:0;padding:10px 12px;font-size:13px;line-height:20px}
-:root[data-theme-id] .zw-coins.zw-compact .zw-buy>span{font-size:13px}
-:root[data-theme-id] .zw-coins.zw-compact .zw-note{margin:8px 0 0;font-size:10px;line-height:14px}
-@media(max-height:700px){
- :root[data-theme-id] .zw-coins.zw-compact .zw-packs>button{min-height:88px;padding:7px 5px;gap:3px}
- :root[data-theme-id] .zw-coins.zw-compact .zw-packs>button.selected{padding:6px 4px}
- :root[data-theme-id] .zw-coins.zw-compact .zw-packs>button>b{padding:3px 0}
- :root[data-theme-id] .zw-coins.zw-compact .zw-pack-name{font-size:10px;line-height:13px;min-height:13px}
-}
-@media(max-width:350px){:root[data-theme-id] .zw-coins.zw-compact{padding-left:14px;padding-right:14px}:root[data-theme-id] .zw-coins.zw-compact .zw-wallet{padding-left:12px;padding-right:10px}}
 /* A quiet inbox: compact date tabs and one readable list. Advanced controls
    are disclosed only when requested. All colors follow the account theme. */
 .zn-page{max-width:680px;margin:0 auto;padding:10px 18px 32px;color:var(--ink);font:13px/1.5 var(--theme-font,Inter,sans-serif);font-size:calc(13px * var(--theme-font-scale,1))}
@@ -4310,28 +4277,7 @@ html,body,.app,#top,#scroll-root,#screen {
   .zp-simple-row {gap:17px;font-size:17px}
 }
 
-/* Coin packs borrow the reference's clear amount / artwork / price hierarchy. */
-.zw-coins {padding:20px 20px 28px}
-.zw-wallet {background:var(--surface);padding:18px;border-color:var(--line)}
-.zw-wallet-main {margin:14px 0 18px}
-.zw-wallet-main h2 {font-size:35px;color:var(--accent-ink)}
-.zw-wallet-main>svg {width:61px;height:61px}
-.zw-coins .zw-packs {grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-:root[data-theme-id] .zw-coins .zw-packs>button {align-items:center;text-align:center;justify-content:space-between;min-height:161px;padding:17px 7px 8px;gap:9px;background:var(--surface);border:1px solid var(--line)}
-:root[data-theme-id] .zw-coins .zw-packs>button.selected {border:2px solid var(--accent-ink);padding:16px 6px 7px;background:var(--surface)}
-.zw-packs strong {order:-2;font-size:20px;margin:0;letter-spacing:-.6px;white-space:nowrap}
-.zw-packs strong small {display:none}
-.zw-packs>button>span {order:-1;font-size:10px;min-height:14px}
-.zw-packs>button>.zc-coin {width:40px;height:40px}
-.zw-packs b {display:block;width:100%;margin:3px 0 0;padding:9px 2px;background:var(--raised);font-size:12px;font-weight:700}
-.zw-packs .selected b {background:var(--accent-wash);color:var(--accent-ink)}
-.zw-packs i {width:14px;height:14px;top:6px;right:6px;font-size:9px}
-.zw-section-heading h2 {font-size:21px}
-.zw-buy {min-height:52px;font-size:14px;gap:7px;background:var(--accent);border:1px solid var(--accent)}
-.zw-buy>span {margin-left:0;font-size:14px;border-left:0;padding-left:0}
-.zw-buy>span::before {content:'·';margin-right:7px}
-.zw-buy>svg {width:20px;height:20px}
-.zw-embedded {padding:18px 0 0}
+/* Coin-store reference geometry lives in coin-packages.css after this layer. */
 .zu-cover-art {background:var(--accent-wash)}
 .zu-cover-art>i {display:none}
 .zu-page,.zu-content,.zu-panel {background:var(--canvas)}
@@ -4523,12 +4469,13 @@ html,body,.app,#top,#scroll-root,#screen {
   .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(21px * var(--theme-font-scale,1))}
 }
 
-/* Back keeps its visible 1px border; its circle comes from the round list below. */
-:root[data-theme-id] .zb-back {
+/* Every page uses the same Back geometry and glyph; screen classes only position it. */
+:root[data-theme-id] button.zb-back {
   width:44px;height:44px;min-width:44px;min-height:44px;
-  padding:0;border:1px solid var(--line);flex:none;
+  padding:0;border:1px solid var(--line);flex:none;background:var(--surface);color:var(--ink);
 }
-:root[data-theme-id] .zb-back.on-media {border-color:rgb(255 255 255 / .55)}
+:root[data-theme-id] button.zb-back>svg {width:21px;height:21px}
+:root[data-theme-id] button.zb-back.on-media {border-color:rgb(255 255 255 / .55);background:rgb(12 4 9 / .36);color:#fff}
 
 /* Every element keeps the shared 10px corner except where a circle reads
    better: Back and the close/more buttons beside it, every call action,
@@ -4621,6 +4568,49 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
 .zwallet-refresh {min-height:44px;padding:10px 0;margin-top:5px;font-size:12px;font-weight:500;color:var(--accent-ink);align-self:flex-start}
 .zwallet-page :is(button):focus-visible {outline:2px solid var(--accent-ink);outline-offset:3px}
 @media(max-width:350px){.zwallet-page{padding:16px 14px 26px}.zwallet-page .accthero{padding:16px;gap:12px}.zwallet-page .accthero .big{font-size:28px}.zwallet-page .accthero .cta{padding:11px;font-size:12px}.zwallet-page .accthero .sub{font-size:11px}.zwallet-page .acctrow{padding:14px 11px;gap:8px}.zwallet-page .acctrow .end{font-size:12px}}
+/* Keep the reference layout while inheriting the active account theme and
+   Dark Mode. Coin pages and gift top-ups use the shared palette and Back button. */
+:root.zw-app :is(.app,#top,#scroll-root,#screen){border-radius:0!important}
+:root .zw-page-header{display:flex;align-items:center;gap:10px;min-height:56px;padding:6px max(12px,var(--safe-right)) 6px max(12px,var(--safe-left));border:0;border-radius:0!important;background:var(--canvas)}
+:root .zw-page-header h1{font-size:24px;line-height:32px;font-weight:800;letter-spacing:-.8px}
+:root[data-theme-id] .zw-coins.zw-reference{max-width:620px;min-height:100%;margin:0 auto;padding:12px 12px calc(108px + var(--safe-bottom));color:var(--ink);background:var(--canvas);border-radius:0!important}
+:root[data-theme-id] .zw-reference .zw-wallet{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0;border:0;background:transparent}
+:root[data-theme-id] .zw-reference .zw-wallet-main{display:block;min-width:0;margin:0;padding:8px 12px;background:var(--raised);border:1px solid var(--line);border-radius:999px!important}
+:root[data-theme-id] .zw-reference .zw-wallet-main h2{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:750;line-height:18px;letter-spacing:0;color:var(--ink);font-variant-numeric:tabular-nums}
+:root[data-theme-id] .zw-reference .zw-currency{display:flex;align-items:center;justify-content:center;gap:9px;min-height:34px;padding:7px 12px;border:1px solid var(--line);border-radius:999px!important;background:var(--raised);color:var(--ink);font-size:12px;font-weight:650;white-space:nowrap}
+.zw-currency>span{width:5px;height:5px;border:solid var(--muted);border-width:0 1px 1px 0;transform:rotate(45deg);margin:-3px 1px 0 0}
+:root[data-theme-id] .zw-reference .zw-section-heading{margin:17px 0 14px}
+:root[data-theme-id] .zw-reference .zw-section-heading h2{margin:0;font-size:clamp(21px,5.6vw,27px);line-height:1.25;font-weight:800;letter-spacing:-.85px}
+:root[data-theme-id] .zw-reference .zw-packs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 6px;margin:0}
+:root[data-theme-id] .zw-reference .zw-packs>button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;min-width:0;min-height:clamp(137px,35vw,174px);padding:12px 6px 6px;border:1px solid var(--line);border-radius:15px!important;background:var(--surface);color:var(--ink);text-align:center;box-shadow:none!important}
+:root[data-theme-id] .zw-reference .zw-packs>button.selected{padding:12px 6px 6px;border:1px solid var(--accent-ink);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+:root[data-theme-id] .zw-reference .zw-packs>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+:root[data-theme-id] .zw-reference .zw-pack-amount{display:flex;order:0;align-items:center;justify-content:center;gap:3px;min-height:20px;font-size:inherit;color:var(--ink)}
+:root[data-theme-id] .zw-reference .zw-pack-amount strong{order:0;margin:0;font-size:clamp(16px,4.2vw,22px);line-height:22px;font-weight:800;letter-spacing:-.5px;white-space:nowrap}
+:root[data-theme-id] .zw-reference .zw-pack-name{display:block;order:1;max-width:100%;min-height:17px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;line-height:15px}
+:root[data-theme-id] .zw-reference .zw-packs>button .zw-pack-art{display:block;order:2;flex:none;width:clamp(49px,13vw,76px);height:clamp(45px,12vw,66px);margin:auto 0 2px;overflow:visible}
+:root[data-theme-id] .zw-reference .zw-packs>button>b{display:block;order:3;flex:none;width:100%;margin:0;padding:6px 1px;border-radius:8px!important;background:var(--raised);color:var(--ink);font-size:clamp(11px,2.9vw,14px);line-height:17px;font-weight:750;white-space:nowrap}
+:root[data-theme-id] .zw-reference .zw-pack-badge{position:absolute;z-index:1;top:-7px;left:50%;display:block;order:0;min-height:0;padding:2px 8px;border-radius:5px!important;background:var(--accent);color:var(--cta-ink);font-size:9px;line-height:14px;font-weight:750;white-space:nowrap;transform:translateX(-50%)}
+:root[data-theme-id] .zw-reference .zw-note{display:block;margin:13px 2px 0;color:var(--muted);text-align:center;font-size:10px;line-height:16px}
+:root .zw-reference .zw-checkout-footer{position:fixed;z-index:35;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:12px 15px calc(24px + var(--safe-bottom));border-top:1px solid var(--line);border-radius:0!important;background:var(--canvas)}
+:root[data-theme-id] .zw-coins.zw-reference .zw-buy{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:590px;min-height:46px;margin:0;padding:12px 14px;border:0;border-radius:999px!important;background:var(--accent)!important;color:var(--cta-ink)!important;box-shadow:none!important;font-size:14px;line-height:21px;font-weight:800}
+:root[data-theme-id] .zw-reference .zw-buy>span{margin:0;padding:0;border:0;font-size:inherit;line-height:inherit;white-space:nowrap}
+.zw-reference .zw-buy>span::before{content:'·';margin-right:6px}
+.zw-reference .zw-buy>.zc-coin{width:18px;height:18px}
+.zw-reference .zw-buy:disabled{opacity:.6}
+:root[data-theme-id] .zw-reference.zw-embedded{min-height:0;padding:16px 0 0;background:var(--canvas)}
+:root .zw-reference.zw-embedded .zw-checkout-footer{position:static;margin-top:18px;padding:14px 0 10px;border:0}
+.zw-reference .zw-payment,.zw-reference .zw-recovery{margin:14px 0}
+@media(max-height:700px){
+ :root[data-theme-id] .zw-coins.zw-reference{padding-top:10px;padding-bottom:calc(86px + var(--safe-bottom))}
+ :root[data-theme-id] .zw-reference .zw-section-heading{margin:13px 0 12px}
+ :root[data-theme-id] .zw-reference .zw-packs>button,:root[data-theme-id] .zw-reference .zw-packs>button.selected{min-height:112px;padding:9px 5px 5px}
+ :root[data-theme-id] .zw-reference .zw-packs>button .zw-pack-art{width:47px;height:41px}
+ :root[data-theme-id] .zw-reference .zw-packs>button>b{padding:4px 1px;line-height:16px}
+ :root .zw-reference .zw-checkout-footer{padding-top:10px;padding-bottom:calc(18px + var(--safe-bottom))}
+ :root[data-theme-id] .zw-reference .zw-note{margin-top:10px}
+}
+@media(min-width:620px){:root[data-theme-id] .zw-coins.zw-reference{padding-left:20px;padding-right:20px}.zw-page-header{max-width:620px;margin:0 auto}}
 </style>
 </head>
 <body>
@@ -9919,7 +9909,7 @@ function homeFilter(value){Home.filter=value;homeLoad()}
 function homeDashboardFilter(value){if(!['popular','following'].includes(value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;window.homeFeaturedReset?.();homeLoad()}
 function homeList(){return Home.hosts}
 function homeFeedTabKey(event){if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?'popular':event.key==='End'?'following':Home.dashboardFilter==='following'?'popular':'following';homeDashboardFilter(next);document.getElementById(next==='following'?'home-tab-following':'home-tab-all')?.focus()}
-function homeHeader(){const following=Home.dashboardFilter==='following';return `<header class="zh-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${[['popular','All'],['following','Following']].map(([key,label])=>`<button type="button" id="home-tab-${key==='popular'?'all':'following'}" role="tab" aria-selected="${following===(key==='following')}" aria-controls="home-feed-panel" tabindex="${following===(key==='following')?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`).join('')}</div><div class="zh-header-actions">${homeDashboardHostEntry()}<button type="button" class="zh-balance zh-wallet-icon" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')&&!ContentLoading.wallet.loaded?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',20)}<span class="zh-wallet-value">${contentBalance()}</span></button><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',22)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
+function homeHeader(){const following=Home.dashboardFilter==='following';return `<header class="zh-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${[['popular','All'],['following','Explore']].map(([key,label])=>`<button type="button" id="home-tab-${key==='popular'?'all':'following'}" role="tab" aria-selected="${following===(key==='following')}" aria-controls="home-feed-panel" tabindex="${following===(key==='following')?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`).join('')}</div><div class="zh-header-actions">${homeDashboardHostEntry()}<button type="button" class="zh-balance zh-wallet-icon" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')&&!ContentLoading.wallet.loaded?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',20)}<span class="zh-wallet-value">${contentBalance()}</span></button><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',22)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
@@ -10070,7 +10060,7 @@ function homePaintSearch(){const el=document.getElementById('home-search-results
 ZimiPullRefresh.register(['home','all-creators'],{refresh:()=>homeLoad(),busy:()=>Home.loading||contentPending('home')});
 ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>Home.searchLoading||contentPending('search')});
 function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>Find your next connection</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
-function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','chats','profile','settings'].includes(S.v));window.ZimiProfile?.theme()}
+function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');document.documentElement.classList.toggle('zw-app',S.v==='coins');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','chats','profile','settings'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
   if(S.v==='home')return homeHeader();
   // Main tabs already provide their title and relevant actions in the page.
@@ -10078,7 +10068,8 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='themes')return window.ZimiThemes.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
-  const title={notifications:'Notifications',broadcast:'Go Live',coins:'Your coins'}[S.v];
+  if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
+  const title={notifications:'Notifications',broadcast:'Go Live'}[S.v];
   return title?`<header class="zh-subheader">${backButton("go('home')",{label:"Back to home"})}<h1>${title}</h1></header>`:null;
 },afterRender:()=>{contentImagesReady();homeShowCloseError();window.homeFeaturedAfterRender?.();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
@@ -10145,7 +10136,7 @@ if(DEMO){
   Home.bonus={id:'demo-bonus',title:'Creator Bonus',description:'Connect in your first 1:1 call',rewardCoins:200,progress:0,target:1,claimed:false};
   Home.notifications=[{id:'demo-welcome',title:'Welcome to BinzoLive',body:'Find your people. Make your first connection.',createdAt:new Date().toISOString(),read:false}];Home.unreadCount=1;
   Home.gifts=[{id:'demo-rose',name:'Rose',emoji:'🌹',coins:99},{id:'demo-heart',name:'Love',emoji:'💗',coins:199},{id:'demo-party',name:'Party',emoji:'🎉',coins:499},{id:'demo-crown',name:'Crown',emoji:'👑',coins:999},{id:'demo-sticker-heart',name:'Heart',emoji:'💖',coins:999},{id:'demo-golden-rose',name:'Golden Rose',emoji:'🌹',coins:1999},{id:'demo-rose-waterfall',name:'Rose Waterfall',emoji:'🌹',coins:9999}];
-  Home.packs=[{id:'demo-small',name:'A little love',coins:200,pricePaise:9900},{id:'demo-medium',name:'Fan favourite',coins:625,pricePaise:24900},{id:'demo-large',name:'Make it special',coins:1250,pricePaise:49900}];Home.paymentsAvailable=true;
+  Home.packs=[{id:'demo-small',name:'Starter',coins:200,pricePaise:9799,bonusPercent:100},{id:'demo-medium',name:'Everyday',coins:625,pricePaise:24999,bonusPercent:150},{id:'demo-large',name:'More to share',coins:1125,pricePaise:49999,bonusPercent:125},{id:'demo-hot',name:'Creator fan',coins:2500,pricePaise:98999,bonusPercent:150,badge:'hot'},{id:'demo-extra',name:'Big moments',coins:3750,pricePaise:149999,bonusPercent:150},{id:'demo-popular',name:'Celebration',coins:5000,pricePaise:199999,bonusPercent:150,badge:'popular'}];Home.paymentsAvailable=true;
 }
 
 /* Photo-led Home discovery; colors follow the selected theme. */
@@ -10380,8 +10371,10 @@ function coinPaymentView(){
  const copy=status==='SUCCESS'?'Your balance updates from your confirmed wallet.':status==='FAILED'?'No coins were added for this payment. You can try again.':status==='REVERTED'?'This payment was reversed. Your wallet reflects the reversal.':'Continue your existing payment, then check its status here.';
  return `<section class="zw-payment ${pending?'is-pending':''}" role="status"><span class="zw-payment-icon">${hi(status==='SUCCESS'?'check':pending?'clock':'info',20)}</span><div><h3>${title}</h3><p>${copy}</p>${p.coins?`<strong>${n(p.coins)} coins${p.payableAmountPaise!=null?' · '+coinPrice(p.payableAmountPaise):''}</strong>`:''}${pending?`<div class="zw-payment-actions">${Home.checkoutAttempt?`<button class="zh-soft" onclick="homeCheckout(true)" ${Home.checkoutBusy||CoinUI.verifyBusy?'disabled':''}>${Home.checkoutBusy?'Opening payment…':'Continue payment'}</button>`:''}<button class="zh-soft" onclick="homeVerifyPayment()" ${CoinUI.verifyBusy||Home.checkoutBusy||!p.merchantOrderId?'disabled':''}>${CoinUI.verifyBusy?'Checking payment…':'Check payment status'}</button></div>`:''}</div></section>`;
 }
-function coinWalletView(embedded){return `<div class="zw-wallet"><div class="zw-wallet-main"><div><span>Wallet</span><h2>${coinIcon(24)} ${contentBalance()}</h2><p>Available balance</p></div></div><div class="zw-wallet-actions">${!embedded?`<button class="zw-history" aria-label="Transaction history" onclick="go('transactions')">${hi('clock',18)}</button>`:''}</div></div>`}
-function coinPackView(pack,selected,pending){return `<button class="${selected?.id===pack.id?'selected':''}" aria-pressed="${selected?.id===pack.id}" onclick="coinSelectPack('${domId(pack.id)}')" ${Home.checkoutBusy||pending||Home.checkoutAttempt?'disabled':''}><span class="zw-pack-amount">${coinIcon(18)}<strong>${n(pack.coins)}</strong></span><span class="zw-pack-name">${esc(pack.name||'Coin pack')}</span><b>${coinPrice(pack.pricePaise)}</b><i aria-hidden="true">${selected?.id===pack.id?'✓':''}</i></button>`}
+function coinWalletView(embedded){return `<div class="zw-wallet"><div class="zw-wallet-main" aria-label="Available coin balance"><h2>${coinIcon(19)} ${contentBalance()}</h2></div><span class="zw-currency" aria-label="Currency: Indian rupees">₹ INR<span aria-hidden="true"></span></span></div>`}
+function coinPackBonus(pack){return Number.isSafeInteger(pack.bonusPercent)&&pack.bonusPercent>0&&pack.bonusPercent<=1000?pack.bonusPercent:0}
+function coinPackArtwork(){return `<svg class="zw-pack-art" width="76" height="66" viewBox="0 0 88 76" fill="none" aria-hidden="true">${[[25,49,21],[63,49,21],[44,28,23]].map(([x,y,r])=>`<g transform="translate(${x} ${y})"><circle cy="2" r="${r}" fill="#c48700"/><circle r="${r}" fill="#f6ae00"/><circle r="${r-3}" fill="#ffdb31" stroke="#ffe867" stroke-width="1.5"/><path d="M${-r+6} -4a${r-7} ${r-7} 0 0 1 ${r-8} ${-r+11}" stroke="#fff29b" stroke-width="2.5" stroke-linecap="round"/><path d="m0-10 3 6.5 7 .9-5.2 4.9 1.4 7L0 6l-6.2 3.3 1.4-7L-10-2.6l7-.9z" fill="#fff6ac"/></g>`).join('')}</svg>`}
+function coinPackView(pack,selected,pending){const bonus=coinPackBonus(pack),badge=['hot','popular'].includes(pack.badge)?pack.badge:'',subtitle=bonus?bonus+'% More':pack.name||'Coin pack';return `<button class="${selected?.id===pack.id?'selected':''}" aria-label="${esc((pack.name||'Coin pack')+', '+n(pack.coins)+' coins, '+coinPrice(pack.pricePaise)+(bonus?', '+bonus+'% more':''))}" aria-pressed="${selected?.id===pack.id}" onclick="coinSelectPack('${domId(pack.id)}')" ${Home.checkoutBusy||pending||Home.checkoutAttempt?'disabled':''}>${badge?`<span class="zw-pack-badge">${badge==='hot'?'🔥 Hot':'★ Popular'}</span>`:''}<span class="zw-pack-amount">${coinIcon(17)}<strong>${n(pack.coins)}</strong></span><span class="zw-pack-name">${esc(subtitle)}</span>${coinPackArtwork()}<b>${coinPrice(pack.pricePaise)}</b></button>`}
 function coinCheckoutOwner(){return DEMO?'preview':S.user?.id||''}
 function coinCloseCheckoutPrompt(restore=true){
  const prompt=CoinUI.checkoutPrompt,dialog=document.getElementById('zw-checkout-dialog');CoinUI.checkoutPrompt=null;
@@ -10429,7 +10422,7 @@ function coinConfirmCheckout(){
 }
 function homeCoins(embedded=false){
  const selected=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs'),pending=coinHasPendingPayment();
- return `<section class="zw-coins zw-compact ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${coinWalletView(embedded)}${!DEMO&&ContentLoading.wallet.error?`<div class="zw-error" role="alert">Balance unavailable. Refresh to try again.</div>`:''}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>Add coins</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}${!surface&&selected&&!pending?`<button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${hi('lock',17)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button>`:''}<p class="zw-note">${hi('lock',14)} ${DEMO?'Design preview · sample coins only':'Coins are added only after payment is confirmed.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}</section>`;
+ return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${coinWalletView(embedded)}${!DEMO&&ContentLoading.wallet.error?`<div class="zw-error" role="alert">Balance unavailable. Refresh to try again.</div>`:''}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&!pending?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
 }
 function homeCheckout(resume=false){
  if(Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
@@ -13039,7 +13032,7 @@ function ztApply(animate=false){
   const root=document.documentElement;
   const theme=ztCurrent(),c=ztDisplayColors(theme),t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
   const mode=ZThemes.dark?'dark':'light';
-  root.classList.toggle('zp-light',!ZThemes.dark);if(root.dataset.theme!==mode)root.dataset.theme=mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
+  root.classList.toggle('zp-light',mode==='light');if(root.dataset.theme!==mode)root.dataset.theme=mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
   for(const [key,value] of Object.entries({themeInk:c.text,themePrimary:c.primary,themeContrast:c.primaryContrast,themeSurface:c.surface,themeRaised:c.surfaceElevated}))if(root.dataset[key]!==value)root.dataset[key]=value;
   if(signature===ZThemes.signature)return;
   const motion=animate&&ZThemes.signature&&!matchMedia('(prefers-reduced-motion: reduce)').matches;

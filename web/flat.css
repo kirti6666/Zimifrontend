@@ -123,28 +123,7 @@ html,body,.app,#top,#scroll-root,#screen {
   .zp-simple-row {gap:17px;font-size:17px}
 }
 
-/* Coin packs borrow the reference's clear amount / artwork / price hierarchy. */
-.zw-coins {padding:20px 20px 28px}
-.zw-wallet {background:var(--surface);padding:18px;border-color:var(--line)}
-.zw-wallet-main {margin:14px 0 18px}
-.zw-wallet-main h2 {font-size:35px;color:var(--accent-ink)}
-.zw-wallet-main>svg {width:61px;height:61px}
-.zw-coins .zw-packs {grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-:root[data-theme-id] .zw-coins .zw-packs>button {align-items:center;text-align:center;justify-content:space-between;min-height:161px;padding:17px 7px 8px;gap:9px;background:var(--surface);border:1px solid var(--line)}
-:root[data-theme-id] .zw-coins .zw-packs>button.selected {border:2px solid var(--accent-ink);padding:16px 6px 7px;background:var(--surface)}
-.zw-packs strong {order:-2;font-size:20px;margin:0;letter-spacing:-.6px;white-space:nowrap}
-.zw-packs strong small {display:none}
-.zw-packs>button>span {order:-1;font-size:10px;min-height:14px}
-.zw-packs>button>.zc-coin {width:40px;height:40px}
-.zw-packs b {display:block;width:100%;margin:3px 0 0;padding:9px 2px;background:var(--raised);font-size:12px;font-weight:700}
-.zw-packs .selected b {background:var(--accent-wash);color:var(--accent-ink)}
-.zw-packs i {width:14px;height:14px;top:6px;right:6px;font-size:9px}
-.zw-section-heading h2 {font-size:21px}
-.zw-buy {min-height:52px;font-size:14px;gap:7px;background:var(--accent);border:1px solid var(--accent)}
-.zw-buy>span {margin-left:0;font-size:14px;border-left:0;padding-left:0}
-.zw-buy>span::before {content:'·';margin-right:7px}
-.zw-buy>svg {width:20px;height:20px}
-.zw-embedded {padding:18px 0 0}
+/* Coin-store reference geometry lives in coin-packages.css after this layer. */
 .zu-cover-art {background:var(--accent-wash)}
 .zu-cover-art>i {display:none}
 .zu-page,.zu-content,.zu-panel {background:var(--canvas)}
@@ -336,12 +315,13 @@ html,body,.app,#top,#scroll-root,#screen {
   .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(21px * var(--theme-font-scale,1))}
 }
 
-/* Back keeps its visible 1px border; its circle comes from the round list below. */
-:root[data-theme-id] .zb-back {
+/* Every page uses the same Back geometry and glyph; screen classes only position it. */
+:root[data-theme-id] button.zb-back {
   width:44px;height:44px;min-width:44px;min-height:44px;
-  padding:0;border:1px solid var(--line);flex:none;
+  padding:0;border:1px solid var(--line);flex:none;background:var(--surface);color:var(--ink);
 }
-:root[data-theme-id] .zb-back.on-media {border-color:rgb(255 255 255 / .55)}
+:root[data-theme-id] button.zb-back>svg {width:21px;height:21px}
+:root[data-theme-id] button.zb-back.on-media {border-color:rgb(255 255 255 / .55);background:rgb(12 4 9 / .36);color:#fff}
 
 /* Every element keeps the shared 10px corner except where a circle reads
    better: Back and the close/more buttons beside it, every call action,

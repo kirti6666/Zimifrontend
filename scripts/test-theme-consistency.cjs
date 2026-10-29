@@ -44,12 +44,14 @@ async function mountedThemes(page, name, rules = [], shot = false) {
       sameMedia: __themeMounted.media.every(({ node, stream }) => node.isConnected && node.srcObject === stream) && __themeMounted.media.length === document.querySelectorAll('video,audio').length,
       captures: __captureCount - __themeMounted.captures, sameView: S.v === __themeMounted.view,
       overflow: document.documentElement.scrollWidth > innerWidth + 1,
+      purchaseGradient: document.documentElement.classList.contains('zw-app') ? getComputedStyle(document.querySelector('.zw-buy')).backgroundImage : '',
     }));
     const label = `${name} / ${theme.name}`;
     check(common.theme, 'light', `${label}: native theme mode`);
     check(common.canvas, '#ffffff', `${label}: native safe-area canvas`);
     check(common.scheme, 'light', `${label}: color scheme`);
     check(common.app, 'rgb(255, 255, 255)', `${label}: app canvas`);
+    if(name==='coins')check(common.purchaseGradient,'none',`${label}: purchase button retains the selected theme accent`);
     check(common.sameScreen, true, `${label}: changing theme preserves screen DOM`);
     check(common.sameMedia, true, `${label}: changing theme preserves media DOM and streams`);
     check(common.captures, 0, `${label}: theme change does not capture camera or microphone`);
@@ -116,7 +118,10 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await receive(page, 'data.search', { q: '', hosts: [creator], page: 1, total: 1 });
     await mountedThemes(page, 'search', [bg('.zh-search-header>div', 'surfaceElevated'), ink('#sq')]);
     await nav(page, 'coins'); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'coins', [bg('.zw-wallet', 'surface'), ink('.zw-wallet-main>div>span', 'textMuted'), ink('.zw-wallet p', 'textMuted'), ...cta('.zw-coins>.zh-primary')], true);
+    await mountedThemes(page, 'coins', [bg('.zw-coins', 'background'), bg('.zw-wallet-main', 'surfaceElevated'), bg('.zw-currency', 'surfaceElevated'), ink('.zw-wallet-main h2'), ink('.zw-note', 'textMuted'), ...cta('.zw-checkout-footer .zw-buy')], true);
+    await nav(page, 'home');
+    check(await page.evaluate(()=>document.documentElement.classList.contains('zw-app')),false,'Leaving coins clears the layout class');
+    check(await page.evaluate(()=>document.documentElement.dataset.canvas),'#ffffff','Leaving coins retains the account safe-area canvas');
     await nav(page, 'thread');
     await receive(page, 'data.thread', { with: creator.id, canSend: true, messages: [{ id: 'thread-theme', from: creator.id, text: 'Hello from the server fixture', createdAt: new Date().toISOString() }] });
     await page.getByRole('textbox', { name: /^Message / }).fill('A themed message draft');

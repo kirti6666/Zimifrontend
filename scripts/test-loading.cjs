@@ -101,8 +101,8 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' });
     console.log('PASS loading: initial feed, unknown balance, realtime refresh, shared creator directory feed, pagination, failure and retry');
 
-    // Home keeps its Following tab independently of the All Creators page.
-    await page.getByRole('tab', { name: 'Following', exact: true }).click();
+    // Home keeps its Explore tab independently of the All Creators page.
+    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
     await visible('Loading creators');
     assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' });
     await result('data.home', feed([second]), 'home', { page: 1 });
@@ -112,7 +112,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.home', feed(), 'home', { page: 1 });
     await navigate('home');
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' }, 'Home restores its Following tab');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'following' }, 'Home restores its Explore tab');
     await result('data.home', feed([second]), 'home', { page: 1 });
     const homeRequests = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
     await page.evaluate(() => { homeDashboardFilter('following'); homeDashboardFilter('instant'); homeDashboardFilter('Music'); });
@@ -122,7 +122,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await visible('Loading creators');
     assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'All restores the full feed');
     await result('data.home', feed(), 'home', { page: 1 });
-    console.log('PASS loading: Home keeps Following across All Creators, the directory stays unfiltered and retired filters send nothing');
+    console.log('PASS loading: Home keeps Explore across All Creators, the directory stays unfiltered and retired filters send nothing');
 
     // Search starts immediately on input, ignores responses for older queries and supports clearing.
     await page.getByRole('button', { name: 'Search creators', exact: true }).click();

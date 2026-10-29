@@ -40,7 +40,7 @@ async function assertUniqueProfiles(page, expected) {
   try {
     const page = await open();
     assert.equal(await page.evaluate(() => DEMO), false);
-    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['All', 'Following']);
+    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['All', 'Explore']);
     assert.equal(await page.locator('.zh-brand,.zh-logo,.zh-dashboard-filters,.zh-dashboard .zh-filters').count(), 0);
     assert.equal(await page.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 1);
     assert.equal(await page.locator('.zh-header-actions').getByRole('button', { name: 'Search creators', exact: true }).count(), 1);
@@ -150,14 +150,14 @@ async function assertUniqueProfiles(page, expected) {
     assert.equal(await reduced.locator('.zh-featured-controls').count(), 0, 'Reduced motion has no control row either; dots and swipes still work');
     assert.equal(await reduced.locator('.zh-featured-dots > button').count(), creators.length);
     assert.equal(await reduced.locator('.zh-host-status').count(), 1, 'Approved host accounts retain their availability control');
-    await reduced.getByRole('tab', { name: 'Following', exact: true }).click();
+    await reduced.getByRole('tab', { name: 'Explore', exact: true }).click();
     assert.deepEqual(await reduced.evaluate(() => __sent.filter(message => message.type === 'home.reload').at(-1).data), { page: 1, mode: 'following' });
     await receive(reduced, 'data.home', feed([creators[2]]));
-    assert.equal(await featuredId(reduced), creators[2].id, 'Following features only a server-confirmed followed creator');
+    assert.equal(await featuredId(reduced), creators[2].id, 'Explore features only a server-confirmed followed creator');
     await assertUniqueProfiles(reduced, [creators[2].id]);
     await reduced.getByRole('tab', { name: 'All', exact: true }).click();
     assert.deepEqual(await reduced.evaluate(() => __sent.filter(message => message.type === 'home.reload').at(-1).data), { page: 1, mode: 'popular' });
     assert.deepEqual(errors, [], 'No browser exceptions');
-    console.log('PASS Home discovery: All/Following header, host-only status, featured card without a control row (dots, swipe, call button), automatic and manual rotation, unique profiles, focus/hover/background/loading guards, ads after six hosts, and reduced motion');
+    console.log('PASS Home discovery: All/Explore header, host-only status, featured card without a control row (dots, swipe, call button), automatic and manual rotation, unique profiles, focus/hover/background/loading guards, ads after six hosts, and reduced motion');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

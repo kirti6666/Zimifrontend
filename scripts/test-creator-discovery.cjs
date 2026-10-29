@@ -68,7 +68,7 @@ async function assertProfileCards(page,scope,expected) {
     await receive(page,'wallet.balance',{coins:1000,earningsPaise:0});
     await acceptFeed(page,feed(hosts.slice(0,8)));
     await navigate(page,'home');
-    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['All','Following']);
+    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['All','Explore']);
     assert.deepEqual(await page.locator('#nav [data-tab]>span').allInnerTexts(),['Home','Chat','Profile','Settings']);
     await assertProfileCards(page,'.zh-dashboard',8);
     await page.evaluate(()=>{window.__prepared=0;window.ZimiMedia.prepare=async()=>{__prepared++};window.ZimiMedia.attach=()=>{}});
@@ -89,14 +89,14 @@ async function assertProfileCards(page,scope,expected) {
     assert.equal(await page.evaluate(()=>S.v),'thread','Chat begins from the creator profile');
     await navigate(page,'home');
 
-    await page.getByRole('tab',{name:'Following',exact:true}).click();
+    await page.getByRole('tab',{name:'Explore',exact:true}).click();
     assert.deepEqual(await last(page,'home.reload'),{page:1,mode:'following'});
     await acceptFeed(page,feed([hosts[2],hosts[5]],1,2));
     await button(page,'See all').click();
     assert.equal(await page.evaluate(()=>S.v),'all-creators');
     assert.deepEqual(await last(page,'home.reload'),{page:1,mode:'popular'},'All Creators uses the server popular feed');
     assert.equal(await page.locator('.zac-page').getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Changing feed modes shows a real loading state');
-    assert.equal(await page.locator('.zac-page [data-host-id]').count(),0,'Following results never masquerade as all creators');
+    assert.equal(await page.locator('.zac-page [data-host-id]').count(),0,'Explore results never masquerade as all creators');
     await acceptFeed(page,feed(hosts.slice(0,8)));
     await page.getByRole('heading',{name:'All Creators',exact:true}).waitFor();
     assert.equal(await page.locator('#nav').isVisible(),false,'All Creators is a Back page, not another primary tab');
@@ -141,7 +141,7 @@ async function assertProfileCards(page,scope,expected) {
     assert.equal(await page.evaluate(()=>S.v),'home');
     assert.deepEqual(await last(page,'home.reload'),{page:1,mode:'following'},'Back restores the selected Home feed on the server');
     await acceptFeed(page,feed([hosts[2],hosts[5]],1,2));
-    assert.equal(await page.getByRole('tab',{name:'Following',exact:true}).getAttribute('aria-selected'),'true');
+    assert.equal(await page.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true');
     await navigate(page,'explore');
     assert.equal(await page.evaluate(()=>S.v),'home','Legacy Explore links resolve to Home');
     assert.equal(await page.locator('.zh-explore').count(),0,'Explore has no separate page');

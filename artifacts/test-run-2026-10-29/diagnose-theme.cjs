@@ -1,0 +1,12 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const original = path.resolve(__dirname, '../../scripts/test-theme-consistency.cjs');
+let source = fs.readFileSync(original, 'utf8');
+const target = "await mountedThemes(page, 'private video',";
+if (!source.includes(target)) throw new Error('Diagnostic insertion point was not found');
+source = source.replace(target, "await page.evaluate(() => document.getElementById('app-notice')?.remove()); await page.locator('.zr-compose input').fill('This message should be readable'); console.log('MESSAGE CONTRAST', await page.locator('.zr-compose input').evaluate(input => ({ text: input.value, color: getComputedStyle(input).color, background: getComputedStyle(input.parentElement).backgroundColor }))); " + target);
+const testModule = new Module(original, module);
+testModule.filename = original;
+testModule.paths = Module._nodeModulePaths(path.dirname(original));
+testModule._compile(source, original);
