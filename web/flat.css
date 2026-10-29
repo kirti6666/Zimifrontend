@@ -149,6 +149,9 @@ html,body,.app,#top,#scroll-root,#screen {
 .zu-cover-art>i {display:none}
 .zu-page,.zu-content,.zu-panel {background:var(--canvas)}
 .zr-call .zr-video.zr-audio {background:var(--canvas)}
+/* The camera reaches every edge; controls retain the shared button geometry. */
+:root:has(.zr-call),:root:has(.zr-call) :is(body,.app,#scroll-root,#screen),
+:root .zr-call,:root .zr-call>.zr-video,:root .zr-call>.zr-video>video {border-radius:0!important}
 
 /* The Profile tab shares the public profile layout. Owner actions stay in the
    page so the primary bottom tabs never overlap an extra fixed action bar. */

@@ -45,13 +45,21 @@
 /* Profile light-mode media text must not override themed room controls. */
 :root[data-theme-id] .zr-room{color:var(--room-ink)}
 
-/* Private calls keep the app palette and give the conversation the full stage. */
-.zr-call{overflow:hidden}
+/* Call controls float over the whole camera frame in every app theme. */
+.zr-call{overflow:hidden;max-width:none;left:0;transform:none;border:0;--call-ink:#fff;--call-muted:rgb(255 255 255 / .76);--call-control:rgb(0 0 0 / .32);--call-line:rgb(255 255 255 / .35)}
 :root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
 .zr-call .zr-video{background:var(--media-canvas)}
-.zr-call .zr-video>video[data-zimi-shape=landscape]{object-fit:contain}
+.zr-call .zr-video>video,.zr-call .zr-pip>video{object-fit:contain;object-position:center}
 .zr-call .zr-shade{display:none}
-.zr-call .zr-top{background:var(--canvas);padding-bottom:8px}
+.zr-call .zr-top{background:transparent;padding-bottom:8px}
+.zr-call:not(.zr-voice-call)>:is(.zr-top,.zr-bottom,.zr-pip,.zr-video){--room-ink:var(--call-ink);--room-muted:var(--call-muted);--room-glass:var(--call-control);color:var(--room-ink)}
+.zr-call .hs-target-card{background:transparent;border-color:transparent}
+/* Panels may dim the camera, but never blur it or the controls behind them. */
+.zr-call,.zr-call *,.zr-call::before,.zr-call::after,.zr-call *::before,.zr-call *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.zr-call:not(.zr-voice-call) .zr-call-toolbar :is(.zr-call-back,.zr-round){background:var(--room-glass);color:var(--room-ink);border-color:var(--call-line)}
+.zr-call:not(.zr-voice-call) .zr-call-dock>.zr-round{background:var(--room-glass);color:var(--room-ink)}
+.zr-call:not(.zr-voice-call) .zr-call-dock>.zr-call-chat-toggle.is-active{background:var(--accent);color:var(--cta-ink)}
+.zr-call:not(.zr-voice-call) .zr-hangup>svg{color:var(--call-ink)}
 .zr-network{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin:0 0 7px;padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:var(--room-glass);color:var(--theme-danger);font-size:11px;font-weight:650}
 .zr-network[hidden]{display:none}
 .zr-network svg{flex:none}
@@ -68,7 +76,7 @@
 .zr-timer>i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 9px color-mix(in srgb,var(--accent) 35%,transparent)}
 .zr-call-private{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:10px;color:var(--room-muted)}
 .zr-call-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.zr-call-stat{display:flex;align-items:center;gap:9px;min-width:0;min-height:57px;padding:9px 10px;border-radius:14px;background:var(--room-glass)}
+.zr-call-stat{display:flex;align-items:center;gap:9px;min-width:0;min-height:57px;padding:9px 10px;border-radius:14px;background:transparent}
 .zr-stat-icon{color:var(--accent-ink);display:grid;place-items:center;flex:none}
 .zr-call-stat>div{flex:1;min-width:0}
 .zr-stat-label{display:flex;align-items:center;justify-content:space-between;gap:4px;color:var(--room-muted);font-size:9px;font-weight:var(--theme-heading-weight,700);letter-spacing:.3px;white-space:nowrap}
@@ -78,9 +86,9 @@
 .zr-stat-track{display:block;height:3px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:4px}
 .zr-stat-track>i{display:block;height:100%;width:22px;border-radius:inherit;background:var(--accent)}
 .zr-call-stat:nth-child(2) .zr-stat-track>i{width:12px;background:var(--accent-ink)}
-.zr-call .zr-pip{top:169px;right:10px;width:82px;height:116px;border:2px solid var(--line);border-radius:15px;box-shadow:0 5px 18px #0002;color:var(--room-muted)}
+.zr-call .zr-pip{top:169px;right:10px;width:82px;height:116px;border:2px solid var(--line);border-radius:15px;box-shadow:0 5px 18px #0002;background:var(--media-canvas);color:var(--room-muted)}
 .zr-call .zr-pip>span{bottom:4px;left:4px;padding:2px 3px;font-size:9px}
-.zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:var(--canvas);width:100%}
+.zr-call .zr-bottom{padding:12px 10px max(9px,env(safe-area-inset-bottom));background:transparent;width:100%}
 .zr-call .zr-status{background:none;padding:0;margin:0 0 3px;font-size:11px;line-height:1.4;border-radius:0;max-width:100%;text-align:left}
 .zr-call-cost{font-size:10px;color:var(--room-muted);margin-bottom:5px;line-height:1.5}
 .zr-call .zr-call-feed{max-height:min(18vh,155px);gap:6px;margin:0 0 10px;padding:3px 0;overscroll-behavior:contain}
@@ -184,8 +192,8 @@
 .zr-call-reference .zr-call-stats{display:block}
 .zr-call-reference .hc-fee{min-height:25px;margin-top:9px;padding:4px 10px;gap:5px;font-size:10px;line-height:1.5}
 .zr-call-reference .hc-fee b{color:var(--accent-ink)}
-.zr-call-reference .zr-pip{top:126px;right:12px;width:84px;height:116px;padding:0;border:2px solid color-mix(in srgb,var(--room-ink) 40%,transparent);border-radius:14px;background:var(--surface)}
-.zr-call-reference .zr-pip>video{object-fit:cover}
+.zr-call-reference .zr-pip{top:126px;right:12px;width:84px;height:116px;padding:0;border:2px solid color-mix(in srgb,var(--room-ink) 40%,transparent);border-radius:14px;background:var(--media-canvas)}
+.zr-call-reference .zr-pip>video{object-fit:contain}
 .zr-call-reference .zr-top>.zr-gift-alert{position:absolute;width:1px;height:1px;min-height:0;overflow:hidden;clip-path:inset(50%);padding:0;margin:0;border:0;white-space:nowrap}
 .zr-call-reference .zr-bottom{padding:12px 14px max(10px,env(safe-area-inset-bottom))}
 .zr-call-reference .zr-status{margin:0 0 7px;max-width:calc(100% - 16px);font-size:10px;line-height:1.4;color:var(--room-muted)}
