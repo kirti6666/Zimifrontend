@@ -10176,6 +10176,13 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   /* Last known frame shape per stream, so a redrawn video is laid out before its metadata loads. */
   const shapes = { local: '', remote: '' };
   let quality = 'good';
+  // Keep motion smooth before reducing resolution. WebRTC still controls the
+  // actual bitrate under these ceilings; a bandwidth-limited encoder is normal.
+  const VIDEO_PROFILES = [
+    { maxBitrate: 450000, maxFramerate: 18, scaleResolutionDownBy: 2 },
+    { maxBitrate: 900000, maxFramerate: 24, scaleResolutionDownBy: 1.5 },
+    { maxBitrate: 1800000, maxFramerate: 24, scaleResolutionDownBy: 1 }
+  ];
   const MEDIA_SELECTOR = 'video[data-zimi-local], video[data-zimi-remote], audio[data-zimi-remote]';
 
   // Connect the new layout before moving videos, so moveBefore can preserve their
@@ -10522,22 +10529,19 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     stop();
     status(message, true);
   }
-  async function tuneVideo(peer, poor) {
-    if (peer.tuning || peer.tuned === poor) return;
+  async function tuneVideo(peer, level) {
+    if (peer.tuning || peer.tuned === level) return;
     peer.tuning = true;
     try {
       for (const sender of peer.pc.getSenders()) {
         if (sender.track?.kind !== 'video' || !sender.getParameters || !sender.setParameters) continue;
         const params = sender.getParameters();
         if (!params.encodings?.length) continue;
-        params.encodings.forEach(encoding => {
-          encoding.maxBitrate = poor ? 350000 : 1200000;
-          encoding.maxFramerate = poor ? 15 : 24;
-          encoding.scaleResolutionDownBy = poor ? 2 : 1;
-        });
+        params.encodings.forEach(encoding => Object.assign(encoding, VIDEO_PROFILES[level]));
         await sender.setParameters(params);
       }
-      peer.tuned = poor;
+      peer.tuned = level;
+      peer.targetSamples = 0;
     } catch (_) { /* Older WebViews still use WebRTC's built-in congestion control. */ }
     finally { peer.tuning = false; }
   }
@@ -10547,29 +10551,58 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     try {
       const report = await peer.pc.getStats();
       if (active !== session || peers.get(id) !== peer) return;
-      let poor = navigator.onLine === false, cpuLimited = false;
+      let poor = navigator.onLine === false, outgoingPoor = poor, severe = false;
+      let cpuLimited = false, availableBitrate;
+      let selectedPair;
       report.forEach(stat => {
-        if (stat.type === 'candidate-pair' && stat.state === 'succeeded' && stat.nominated && stat.currentRoundTripTime > .6) poor = true;
+        if (stat.type === 'transport' && stat.selectedCandidatePairId) selectedPair = stat.selectedCandidatePairId;
+      });
+      report.forEach(stat => {
+        if (stat.type === 'candidate-pair' && (selectedPair ? stat.id === selectedPair : stat.state === 'succeeded' && stat.nominated)) {
+          if (stat.currentRoundTripTime > .6) poor = outgoingPoor = true;
+          if (stat.currentRoundTripTime > 1.2) severe = true;
+          if (stat.availableOutgoingBitrate > 0) availableBitrate = stat.availableOutgoingBitrate;
+        }
         if (['inbound-rtp', 'remote-inbound-rtp'].includes(stat.type)) {
           const before = peer.stats.get(stat.id);
-          if (stat.jitter > .08 || stat.roundTripTime > .6) poor = true;
+          let impaired = stat.jitter > .08 || stat.roundTripTime > .6;
+          // Remote receiver reports may omit packetsReceived. Their fractionLost
+          // describes the last RTCP interval, unlike cumulative packetsLost.
+          let loss = stat.type === 'remote-inbound-rtp' ? stat.fractionLost || 0 : 0;
           if (before) {
             const received = Math.max(0, (stat.packetsReceived || 0) - before.received);
             const lost = Math.max(0, (stat.packetsLost || 0) - before.lost);
-            if (received + lost >= 20 && lost / (received + lost) > .08) poor = true;
-            if (stat.freezeCount > before.freezes) poor = true;
+            if (typeof stat.packetsReceived === 'number' && received + lost >= 20) loss = Math.max(loss, lost / (received + lost));
+            if (stat.freezeCount > before.freezes) impaired = true;
+          }
+          if (loss > .08) impaired = true;
+          if (impaired) poor = true;
+          // Receiving bad video must not also blur the video we send back.
+          if (stat.type === 'remote-inbound-rtp' && impaired) {
+            outgoingPoor = true;
+            if (loss > .2 || stat.roundTripTime > 1.2) severe = true;
           }
           peer.stats.set(stat.id, { received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0 });
         }
-        if (stat.type === 'outbound-rtp' && stat.qualityLimitationReason === 'bandwidth') poor = true;
         if (stat.type === 'outbound-rtp' && stat.qualityLimitationReason === 'cpu') cpuLimited = true;
       });
       if (peer.pc.connectionState !== 'connected') return;
+      // A low bandwidth estimate alone is not a failure: reducing our ceiling
+      // again can prevent the estimator from probing upward after a brief dip.
+      // Use it to size a reduction only when loss, jitter or delay confirms one.
+      peer.poorSamples = poor ? peer.poorSamples + 1 : 0;
       peer.goodSamples = poor ? 0 : peer.goodSamples + 1;
-      if (poor || peer.goodSamples >= 3) {
+      if (peer.poorSamples >= 2 || peer.goodSamples >= 3) {
         setQuality(poor ? 'poor' : 'good');
-        void tuneVideo(peer, poor || cpuLimited);
       }
+      const target = outgoingPoor ? severe || availableBitrate < 600000 ? 0 : 1 : cpuLimited ? 1 : 2;
+      peer.targetSamples = peer.targetLevel === target ? peer.targetSamples + 1 : 1;
+      peer.targetLevel = target;
+      const current = peer.tuned ?? 2;
+      if (target < current && peer.targetSamples >= 2) await tuneVideo(peer, target);
+      // Restore one step at a time after sustained recovery, avoiding repeated
+      // jumps between a clear picture and the lowest quality on mobile data.
+      else if (target > current && peer.targetSamples >= 3) await tuneVideo(peer, current + 1);
     } catch (_) { /* A stats read may race call cleanup or be unsupported. */ }
     finally { peer.sampling = false; }
   }
@@ -10603,7 +10636,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
     const pc = new RTCPeerConnection(session.config);
-    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0 };
+    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0, poorSamples: 0, targetSamples: 0 };
     peers.set(id, peer);
     if ((session.kind === 'call' || session.hosting) && local) local.getTracks().forEach(track => pc.addTrack(track, local));
     pc.onicecandidate = event => {
@@ -10628,7 +10661,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
         clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
         setQuality('good');
         status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
-        if (session.kind === 'call') void tuneVideo(peer, false);
+        if (session.kind === 'call') void tuneVideo(peer, 2);
       }
       if (pc.connectionState === 'disconnected') {
         if (session.kind === 'call') recoverPeer(session, id, peer);
