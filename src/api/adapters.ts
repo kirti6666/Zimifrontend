@@ -1,6 +1,6 @@
 import { ApiError } from "./client";
 import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
-import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -393,6 +393,16 @@ export function transactionsFrom(value: unknown): { items: Transaction[] } {
   }) };
 }
 
+const referralCode = (value: unknown) => typeof value === "string" && /^[A-HJ-NP-Z2-9]{6}$/.test(value) ? value : "";
+export function referralFrom(value: unknown): ReferralSummary {
+  const data = record(value), code = referralCode(data.code);
+  if (!code) throw new ApiError("Your invite code could not be loaded. Please try again.", 502);
+  return {
+    code, shareUrl: safeHttps(data.shareUrl), rewardCoins: count(data.rewardCoins), friendBonusCoins: count(data.friendBonusCoins),
+    applyDays: count(data.applyDays), friendsJoined: count(data.friendsJoined), friendsRewarded: count(data.friendsRewarded),
+    coinsEarned: count(data.coinsEarned), appliedCode: referralCode(data.appliedCode) || null, canApplyCode: data.canApplyCode === true,
+  };
+}
 export function leaderboardFrom(value: unknown, period: LeaderboardPeriod): Leaderboard {
   const data = record(value);
   return {

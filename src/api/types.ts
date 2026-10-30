@@ -323,6 +323,19 @@ export interface CallRecord {
   status?: "ringing" | "accepted" | "ended" | "declined" | "missed";
 }
 
+/** Refer a Friend: the account's own code and what its invitations have earned. */
+export interface ReferralSummary {
+  code: string;
+  shareUrl: string;
+  rewardCoins: number;
+  friendBonusCoins: number;
+  applyDays: number;
+  friendsJoined: number;
+  friendsRewarded: number;
+  coinsEarned: number;
+  appliedCode: string | null;
+  canApplyCode: boolean;
+}
 export type LeaderboardPeriod = "daily" | "weekly" | "all";
 /** Creators ranked by the gift coins they received in the period. */
 export interface LeaderboardEntry { id: string; name: string; avatarUrl: string; coins: number; rank: number; }

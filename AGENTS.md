@@ -131,14 +131,26 @@ keeps it identical to the original Next.js version.
   upload and own-photo actions. Keep its bottom tabs and owner-only controls;
   public gallery publishing still requires current approved creator access.
 - Settings follows the simple reference layout: Back header, compact profile,
-  balance card and one compact list of plain icon/title rows, with the Dark Mode
-  switch after General. Account, Payments, Privacy & Terms and General open their
+  balance card and one compact list of plain icon/title rows, led by "Refer a
+  Friend & Earn 1,000 Coins", with the Dark Mode switch after General. Account, Payments, Privacy & Terms and General open their
   detailed options; Appearance & Theme lives under General. Call availability,
   Match & Speed Pulse and Notifications & Alerts are not settings items (hosts
   go online from Home; notification preferences open from the inbox). Anywhere
   in Settings, including the detail rows, keep only titles, icons and status
   controls: no search box, category chips, theme banners, section headings,
   helper subtitles, divider lines or decorative footer.
+- Refer a Friend & Earn (`web/referral.js`, view `refer`, server-owned rewards):
+  the Settings row opens a detail page (Back, no bottom tabs) with the member's
+  code, Copy, Share invite (native share sheet), how it works, counts and, while
+  the account may still use one, a friend's-code form whose refusals show beside
+  the field (`referral.error`). A friend gets 100 coins for using a code; the
+  inviter gets 1,000 when that friend's first coin purchase is confirmed. Two
+  promotions, both only after `data.referral` arrives from the server: a Home
+  pop-up for members (not approved hosts) at most once a day per account, and a
+  card under the call toolbar one minute into a member's video call, for eight
+  seconds, once per call, never over the camera preview or the call controls;
+  its Invite opens the share sheet over the running call. The design preview
+  shows the pop-up and card only with `?promo=refer`.
 - There are no refresh buttons or refresh icons. Screens reload with pull to
   refresh (`web/pull-refresh.js`): register a screen with
   `ZimiPullRefresh.register(view,{refresh,busy})`. The indicator is the

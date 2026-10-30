@@ -32,6 +32,7 @@
     "test:payments": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-payment-routes.cjs && node scripts/test-coins.cjs && node scripts/test-themes.cjs && node scripts/test-profile-premium.cjs",
     "test:home": "npm run build:web && node scripts/test-home.cjs && node scripts/test-home-media.cjs",
     "test:home-stability": "npm run build:web && node scripts/test-home-stability.cjs",
+    "test:referral": "npm run build:web && node scripts/test-referral.cjs",
     "test:creator-discovery": "npm run build:web && node scripts/test-creator-discovery.cjs",
     "test:live": "npm run build:web && node scripts/test-live-room.cjs && node scripts/test-home-media.cjs",
     "test:call-setup": "npm run build:web && node scripts/test-call-setup.cjs",

@@ -91,6 +91,7 @@ for it (login, call failed).
 | Show MVPs switch | `PUT /me/settings` | – |
 | Home header feeds | `GET /home?mode=following\|popular\|foryou\|new&page=1`, optional `country` (the India chip sends `country=India`) | Adapter returns `HomeData`. Following lists saved follows, Explore (`popular`) every host, For You the hosts not followed yet, New the latest hosts first; `country` matches the host's country (ignoring case) before pagination |
 | Other discovery filters | `GET /home?mode=online` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
+| Refer a Friend (Settings, Home pop-up, call card) | `GET /referrals/me`, `POST /referrals/apply` `{code}` | `referral.load` → `data.referral` `{code, shareUrl, rewardCoins, friendBonusCoins, applyDays, friendsJoined, friendsRewarded, coinsEarned, appliedCode, canApplyCode}`; `referral.apply {code, requestId}` → `referral.applied` (same summary + `requestId`, then a wallet refresh) or `referral.error {message, requestId, status}`; `referral.share` opens the native share sheet with the code and link |
 | Leaderboard (Home trophy) | `GET /leaderboard/creators?period=daily\|weekly\|all&limit=50` | `leaderboard.load` `{period}` → `data.leaderboard` `{period, items: {id, name, avatarUrl, coins, rank}[], total}`: approved creators ranked by gift coins received |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
 | Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |

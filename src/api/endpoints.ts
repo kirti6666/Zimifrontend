@@ -4,7 +4,7 @@ import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, calls
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
-import { leaderboardFrom, officialChatFrom } from "./adapters";
+import { leaderboardFrom, officialChatFrom, referralFrom } from "./adapters";
 import { relationshipsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
 import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
@@ -278,6 +278,8 @@ export const api = {
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
+  async referral() { return referralFrom(await request("GET", "/referrals/me")); },
+  async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },
   async leaderboard(period: LeaderboardPeriod) { return leaderboardFrom(await request("GET", `/leaderboard/creators?${queryString({ period, limit: 50 })}`), period); },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },

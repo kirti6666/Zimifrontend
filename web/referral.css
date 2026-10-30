@@ -1,0 +1,60 @@
+/* Refer a Friend & Earn: the page, the Home pop-up and the call card. Theme tokens only;
+   the call card sits on the video, so it uses the call's own glass surface. */
+.zrf-header{border-bottom:0}
+.zrf-page{width:100%;max-width:620px;margin:0 auto;padding:4px 20px 28px;color:var(--ink)}
+.zrf-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 8px 6px;text-align:center}
+.zrf-hero-icon{display:grid;place-items:center;flex:none;width:64px;height:64px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent-ink)}
+.zrf-hero h2{margin:4px 0 0;color:var(--ink);font-size:calc(22px * var(--theme-font-scale,1));font-weight:700;line-height:1.3;letter-spacing:-.4px;text-wrap:balance}
+.zrf-hero p{max-width:400px;margin:0;color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6;text-wrap:pretty}
+.zrf-code-card{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px;padding:14px 14px 14px 18px;border:1px dashed color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--surface)}
+.zrf-code-card>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.zrf-code-card span{color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1))}
+.zrf-code{color:var(--ink);font-size:calc(26px * var(--theme-font-scale,1));font-weight:700;letter-spacing:4px;font-variant-numeric:tabular-nums}
+.zrf-copy{display:inline-flex;align-items:center;gap:6px;flex:none;min-height:44px;padding:0 14px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font:inherit;font-size:calc(13px * var(--theme-font-scale,1));font-weight:600}
+.zrf-share{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:0 18px;border:0;background:var(--accent);color:var(--cta-ink);font:inherit;font-size:calc(15px * var(--theme-font-scale,1));font-weight:650}
+.zrf-steps{display:grid;gap:12px;margin:22px 0 0;padding:0;list-style:none;counter-reset:zrf-step}
+.zrf-steps>li{position:relative;display:flex;flex-direction:column;gap:2px;min-height:40px;padding-left:46px;counter-increment:zrf-step}
+.zrf-steps>li::before{content:counter(zrf-step);position:absolute;left:0;top:0;display:grid;place-items:center;width:32px;height:32px;background:var(--raised);color:var(--accent-ink);font-size:14px;font-weight:700}
+.zrf-steps b{color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;line-height:1.4}
+.zrf-steps span{color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.5}
+.zrf-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:22px 0 0}
+.zrf-stats>div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px;background:var(--raised);text-align:center}
+.zrf-stats b{display:inline-flex;align-items:center;gap:4px;color:var(--ink);font-size:calc(17px * var(--theme-font-scale,1));font-weight:700;font-variant-numeric:tabular-nums}
+.zrf-stats span{color:var(--muted);font-size:calc(11px * var(--theme-font-scale,1));line-height:1.35}
+.zrf-apply{display:flex;flex-direction:column;gap:8px;margin:22px 0 0;padding:16px;background:var(--surface);border:1px solid var(--line)}
+.zrf-apply label{color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600}
+.zrf-apply-row{display:flex;gap:8px}
+.zrf-apply input{flex:1;min-width:0;min-height:44px;padding:0 12px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);font:inherit;font-size:16px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
+.zrf-apply input::placeholder{letter-spacing:0;text-transform:none;font-weight:400}
+.zrf-apply-row>button{flex:none;min-height:44px;padding:0 18px;border:0;background:var(--accent);color:var(--cta-ink);font:inherit;font-weight:650}
+.zrf-apply-row>button:disabled{opacity:.6}
+.zrf-apply-error{margin:0;color:var(--theme-danger,#dc2626);font-size:calc(12px * var(--theme-font-scale,1))}
+.zrf-note,.zrf-terms{margin:0;color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.55}
+.zrf-joined{display:flex;align-items:center;gap:6px;margin:18px 0 0;color:var(--muted);font-size:calc(13px * var(--theme-font-scale,1))}
+.zrf-joined>svg{color:var(--online)}
+.zrf-terms{margin-top:20px;text-align:center}
+.zrf-copy-helper{position:fixed;left:-999px;top:0;opacity:0}
+.zrf-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+
+/* The Home pop-up. */
+.zrf-promo{margin:auto}
+.zrf-promo::backdrop{background:#18181b80}
+.zrf-promo-close{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;background:transparent;color:var(--muted)}
+.zrf-promo-body{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 22px 18px;text-align:center}
+.zrf-promo-body h2{margin:6px 0 0;color:var(--ink);font-size:calc(21px * var(--theme-font-scale,1));font-weight:700;line-height:1.3;letter-spacing:-.4px;text-wrap:balance}
+.zrf-promo-body p{margin:0 0 8px;color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6;text-wrap:pretty}
+.zrf-promo-link,.zrf-promo-later{min-height:44px;padding:0 12px;border:0;background:transparent;font:inherit;font-size:calc(13px * var(--theme-font-scale,1))}
+.zrf-promo-link{color:var(--accent-ink);font-weight:600}
+.zrf-promo-later{color:var(--muted)}
+@media(prefers-reduced-motion:no-preference){.zrf-promo[open]{animation:zrf-promo-in 180ms ease-out}@keyframes zrf-promo-in{from{opacity:0;translate:0 6px}}}
+
+/* The call card: right under the call toolbar, above the picture-in-picture camera. */
+.zrf-call-card{display:flex;align-items:center;gap:8px;min-width:0;margin:8px 0 6px;padding:7px 4px 7px 8px;background:var(--room-glass,rgba(0,0,0,.55));color:#fff}
+.zrf-call-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;background:var(--accent);color:var(--cta-ink)}
+.zrf-call-copy{display:flex;flex-direction:column;flex:1;min-width:0}
+.zrf-call-copy b{overflow:hidden;font-size:12px;font-weight:650;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.zrf-call-copy small{overflow:hidden;color:rgba(255,255,255,.75);font-size:10.5px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.zrf-call-invite{flex:none;min-height:32px;padding:0 10px;border:0;background:var(--accent);color:var(--cta-ink);font:inherit;font-size:12px;font-weight:650}
+.zrf-call-close{position:relative;display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:0;background:transparent;color:#fff}
+.zrf-call-close::after{content:"";position:absolute;inset:50% auto auto 50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+@media(prefers-reduced-motion:no-preference){.zrf-call-card{animation:zrf-call-in 180ms ease-out}@keyframes zrf-call-in{from{opacity:0;translate:0 -4px}}}

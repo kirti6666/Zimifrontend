@@ -3586,3 +3586,35 @@ test('retired document settings writes and identity reads cannot update a replac
   assert.equal(h.find('profile.account').length,before);
   h.bridge.close();
 });
+
+test('Home feeds, the leaderboard and Refer a Friend pass the message check and reach the server', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  // The feeds and the country filter the Home header sends.
+  for (const mode of ['following', 'popular', 'foryou', 'new']) assert.ok(parse({ type: 'home.reload', data: { page: 1, mode } }), mode);
+  assert.ok(parse({ type: 'home.reload', data: { page: 1, mode: 'new', country: 'India' } }));
+  for (const data of [{ mode: 'trending' }, { country: '' }, { country: 'x'.repeat(101) }, { country: 7 }]) assert.equal(parse({ type: 'home.reload', data }), null);
+  assert.ok(parse({ type: 'leaderboard.load', data: { period: 'weekly' } }));
+  for (const data of [{}, { period: 'monthly' }, { period: 'daily', page: 2 }]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
+  for (const type of ['referral.load', 'referral.share']) { assert.ok(parse({ type, data: {} })); assert.equal(parse({ type, data: { code: 'AB2CD3' } }), null); }
+  assert.ok(parse({ type: 'referral.apply', data: { code: 'ab2-cd3', requestId: 4 } }));
+  for (const data of [{ code: 'AB2CD3' }, { code: ' ', requestId: 1 }, { code: 'x'.repeat(21), requestId: 1 }, { code: 'AB2CD3', requestId: 1, extra: true }])
+    assert.equal(parse({ type: 'referral.apply', data }), null);
+
+  const summary = { code: 'AB2CD3', shareUrl: 'https://binzolive.com/?ref=AB2CD3', rewardCoins: 1000, friendBonusCoins: 100, applyDays: 7, friendsJoined: 0, friendsRewarded: 0, coinsEarned: 0, appliedCode: null, canApplyCode: true };
+  h.overrides.referral = () => summary;
+  h.overrides.applyReferral = code => ({ ...summary, appliedCode: code, canApplyCode: false });
+  h.bridge.handle({ type: 'referral.load', data: {} }); await settle();
+  assert.deepEqual(plain(h.find('data.referral').at(-1).data), summary);
+  const wallets = h.count('wallet');
+  h.bridge.handle({ type: 'referral.apply', data: { code: 'XY7ZK9', requestId: 3 } }); await settle();
+  assert.deepEqual(plain(h.find('referral.applied').at(-1).data), { ...summary, appliedCode: 'XY7ZK9', canApplyCode: false, requestId: 3 });
+  assert.equal(h.count('wallet'), wallets + 1, 'The friend bonus refreshes the balance');
+  h.overrides.applyReferral = () => { throw new h.ApiError("You have already used a friend's code.", 409); };
+  h.bridge.handle({ type: 'referral.apply', data: { code: 'XY7ZK9', requestId: 5 } }); await settle();
+  assert.deepEqual(plain(h.find('referral.error').at(-1).data), { message: "You have already used a friend's code.", requestId: 5, status: 409 }, 'A refused code is answered beside the field, not as a toast');
+  assert.equal(h.find('operation.error').filter(item => item.data.action === 'referral.apply').length, 0);
+  h.bridge.handle({ type: 'referral.share', data: {} }); await settle();
+  assert.equal(h.shares.length, 1);
+  assert.equal(h.shares[0].message, 'Join me on BinzoLive! Use my code AB2CD3 when you sign up and get 100 free coins. https://binzolive.com/?ref=AB2CD3');
+  h.bridge.close();
+});

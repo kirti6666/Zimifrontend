@@ -57,6 +57,9 @@ export type WebMessage =
   | { type: "wallet.load"; data: Record<string, never> }
   | { type: "transactions.load"; data: Record<string, never> }
   | { type: "leaderboard.load"; data: { period: LeaderboardPeriod } }
+  | { type: "referral.load"; data: Record<string, never> }
+  | { type: "referral.apply"; data: { code: string; requestId: number } }
+  | { type: "referral.share"; data: Record<string, never> }
   | { type: "wallet.verify"; data: { merchantOrderId: string } }
   | { type: "payments.checkout.closed"; data: { kind: "coins" | "premium"; merchantOrderId?: string; idempotencyKey?: string } }
   | { type: "themes.load"; data: Record<string, never> }
@@ -118,7 +121,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
@@ -227,6 +230,9 @@ export type AppMessage =
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
   | { type: "data.leaderboard"; data: Awaited<ReturnType<typeof api.leaderboard>> }
+  | { type: "data.referral"; data: Awaited<ReturnType<typeof api.referral>> }
+  | { type: "referral.applied"; data: Awaited<ReturnType<typeof api.referral>> & { requestId: number } }
+  | { type: "referral.error"; data: { message: string; requestId?: number; code?: string; status?: number } }
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "payout.loaded"; data: Payouts & { requestId: number; pending?: PendingPayout | null; recovered?: Payout | null } }
   | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
@@ -385,6 +391,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
   const operationError = (error: unknown, action?: string, context: { to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } = {}) => {
     if (action?.startsWith("themes.")) emit({ type: "themes.error", data: { message: errorMessage(error), action, ...(error instanceof ApiError ? { code: error.code } : {}) } });
+    // A refused friend code is explained beside the code field, not in a toast.
+    else if (action === "referral.apply") emit({ type: "referral.error", data: { message: errorMessage(error), requestId: context.requestId, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
     else emit({ type: "operation.error", data: { message: errorMessage(error), action, ...context, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
   };
   const quietly = (work: Promise<unknown>, action?: string) => {
@@ -1041,6 +1049,25 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "connection.check": await checkConnection(); return;
       case "wallet.load": return refreshWallet();
       case "transactions.load": return readResource("transactions", () => api.transactions(), data => emit({ type: "data.transactions", data }));
+      case "referral.load": return readResource("referral", () => api.referral(), data => emit({ type: "data.referral", data }));
+      case "referral.apply": {
+        const { code, requestId } = msg.data;
+        const data = await api.applyReferral(code);
+        if (!current(version)) return;
+        emit({ type: "referral.applied", data: { ...data, requestId } });
+        // The friend bonus is already in the wallet.
+        quietly(refreshWallet(), "wallet.load");
+        return;
+      }
+      // Opened from Settings, the Home pop-up or the in-call card: the call keeps running under the share sheet.
+      case "referral.share": {
+        const data = await api.referral();
+        if (!current(version)) return;
+        emit({ type: "data.referral", data });
+        const bonus = data.friendBonusCoins.toLocaleString("en-IN");
+        await Share.share({ title: "BinzoLive", message: `Join me on BinzoLive! Use my code ${data.code} when you sign up and get ${bonus} free coins.${data.shareUrl ? ` ${data.shareUrl}` : ""}` });
+        return;
+      }
       case "leaderboard.load": {
         const period = (["daily", "weekly", "all"] as const).find(value => value === msg.data?.period) ?? "daily";
         return readResource("leaderboard", () => api.leaderboard(period), data => emit({ type: "data.leaderboard", data }));
@@ -1875,7 +1902,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
           : msg.type === "chat.voice" ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId }
-          : msg.type === "ads.click" ? { id: msg.data.id } : {};
+          : msg.type === "ads.click" ? { id: msg.data.id }
+          : msg.type === "referral.apply" ? { requestId: msg.data.requestId } : {};
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));
     },

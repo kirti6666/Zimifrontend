@@ -1,5 +1,5 @@
 /* Content placeholders follow requests, never a timer or a first-visit cache. */
-const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked','leaderboard'];
+const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked','leaderboard','referral'];
 const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
 function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
@@ -27,6 +27,7 @@ function contentRetry(key){
   if(key==='home')return homeLoad();
   if(key==='search')return homeSearchRequest();
   if(key==='leaderboard')return window.ZimiLeaderboard.load();
+  if(key==='referral')return window.ZimiReferral.load();
   if(key==='notifications'&&window.ZimiNotifications)return window.ZimiNotifications.load();
   contentStart(key);contentRender(key);
   if(key==='wallet')Native.send('wallet.load');
@@ -44,7 +45,7 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
-  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls','chats'],posts:['profile','editprofile'],thread:['thread'],leaderboard:['board']};
+  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls','chats'],posts:['profile','editprofile'],thread:['thread'],leaderboard:['board'],referral:['refer']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
   if(views[key]?.includes(S.v)||(['catalog','wallet'].includes(key)&&(Home.giftTo||['call','voice','hcall'].includes(S.v))))r();
 }
@@ -60,7 +61,7 @@ Native.on('data.loading',d=>{
   contentRender(d.resource);
 });
 /* Results also settle placeholders when received from an older native shell. */
-for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.leaderboard':'leaderboard','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
+for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.leaderboard':'leaderboard','data.referral':'referral','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;

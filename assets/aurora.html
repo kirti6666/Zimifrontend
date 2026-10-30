@@ -4531,6 +4531,66 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
 .zlb-page .zh-error button{color:var(--accent-ink)}
 .zlb-page button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 @media(max-width:359px){.zlb-page{padding-inline:14px}.zlb-row{gap:9px}}
+/* Refer a Friend & Earn: the page, the Home pop-up and the call card. Theme tokens only;
+   the call card sits on the video, so it uses the call's own glass surface. */
+.zrf-header{border-bottom:0}
+.zrf-page{width:100%;max-width:620px;margin:0 auto;padding:4px 20px 28px;color:var(--ink)}
+.zrf-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 8px 6px;text-align:center}
+.zrf-hero-icon{display:grid;place-items:center;flex:none;width:64px;height:64px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent-ink)}
+.zrf-hero h2{margin:4px 0 0;color:var(--ink);font-size:calc(22px * var(--theme-font-scale,1));font-weight:700;line-height:1.3;letter-spacing:-.4px;text-wrap:balance}
+.zrf-hero p{max-width:400px;margin:0;color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6;text-wrap:pretty}
+.zrf-code-card{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px;padding:14px 14px 14px 18px;border:1px dashed color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--surface)}
+.zrf-code-card>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.zrf-code-card span{color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1))}
+.zrf-code{color:var(--ink);font-size:calc(26px * var(--theme-font-scale,1));font-weight:700;letter-spacing:4px;font-variant-numeric:tabular-nums}
+.zrf-copy{display:inline-flex;align-items:center;gap:6px;flex:none;min-height:44px;padding:0 14px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font:inherit;font-size:calc(13px * var(--theme-font-scale,1));font-weight:600}
+.zrf-share{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:0 18px;border:0;background:var(--accent);color:var(--cta-ink);font:inherit;font-size:calc(15px * var(--theme-font-scale,1));font-weight:650}
+.zrf-steps{display:grid;gap:12px;margin:22px 0 0;padding:0;list-style:none;counter-reset:zrf-step}
+.zrf-steps>li{position:relative;display:flex;flex-direction:column;gap:2px;min-height:40px;padding-left:46px;counter-increment:zrf-step}
+.zrf-steps>li::before{content:counter(zrf-step);position:absolute;left:0;top:0;display:grid;place-items:center;width:32px;height:32px;background:var(--raised);color:var(--accent-ink);font-size:14px;font-weight:700}
+.zrf-steps b{color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;line-height:1.4}
+.zrf-steps span{color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.5}
+.zrf-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:22px 0 0}
+.zrf-stats>div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px;background:var(--raised);text-align:center}
+.zrf-stats b{display:inline-flex;align-items:center;gap:4px;color:var(--ink);font-size:calc(17px * var(--theme-font-scale,1));font-weight:700;font-variant-numeric:tabular-nums}
+.zrf-stats span{color:var(--muted);font-size:calc(11px * var(--theme-font-scale,1));line-height:1.35}
+.zrf-apply{display:flex;flex-direction:column;gap:8px;margin:22px 0 0;padding:16px;background:var(--surface);border:1px solid var(--line)}
+.zrf-apply label{color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600}
+.zrf-apply-row{display:flex;gap:8px}
+.zrf-apply input{flex:1;min-width:0;min-height:44px;padding:0 12px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);font:inherit;font-size:16px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
+.zrf-apply input::placeholder{letter-spacing:0;text-transform:none;font-weight:400}
+.zrf-apply-row>button{flex:none;min-height:44px;padding:0 18px;border:0;background:var(--accent);color:var(--cta-ink);font:inherit;font-weight:650}
+.zrf-apply-row>button:disabled{opacity:.6}
+.zrf-apply-error{margin:0;color:var(--theme-danger,#dc2626);font-size:calc(12px * var(--theme-font-scale,1))}
+.zrf-note,.zrf-terms{margin:0;color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.55}
+.zrf-joined{display:flex;align-items:center;gap:6px;margin:18px 0 0;color:var(--muted);font-size:calc(13px * var(--theme-font-scale,1))}
+.zrf-joined>svg{color:var(--online)}
+.zrf-terms{margin-top:20px;text-align:center}
+.zrf-copy-helper{position:fixed;left:-999px;top:0;opacity:0}
+.zrf-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+
+/* The Home pop-up. */
+.zrf-promo{margin:auto}
+.zrf-promo::backdrop{background:#18181b80}
+.zrf-promo-close{position:absolute;top:10px;right:10px;display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;background:transparent;color:var(--muted)}
+.zrf-promo-body{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 22px 18px;text-align:center}
+.zrf-promo-body h2{margin:6px 0 0;color:var(--ink);font-size:calc(21px * var(--theme-font-scale,1));font-weight:700;line-height:1.3;letter-spacing:-.4px;text-wrap:balance}
+.zrf-promo-body p{margin:0 0 8px;color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6;text-wrap:pretty}
+.zrf-promo-link,.zrf-promo-later{min-height:44px;padding:0 12px;border:0;background:transparent;font:inherit;font-size:calc(13px * var(--theme-font-scale,1))}
+.zrf-promo-link{color:var(--accent-ink);font-weight:600}
+.zrf-promo-later{color:var(--muted)}
+@media(prefers-reduced-motion:no-preference){.zrf-promo[open]{animation:zrf-promo-in 180ms ease-out}@keyframes zrf-promo-in{from{opacity:0;translate:0 6px}}}
+
+/* The call card: right under the call toolbar, above the picture-in-picture camera. */
+.zrf-call-card{display:flex;align-items:center;gap:8px;min-width:0;margin:8px 0 6px;padding:7px 4px 7px 8px;background:var(--room-glass,rgba(0,0,0,.55));color:#fff}
+.zrf-call-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;background:var(--accent);color:var(--cta-ink)}
+.zrf-call-copy{display:flex;flex-direction:column;flex:1;min-width:0}
+.zrf-call-copy b{overflow:hidden;font-size:12px;font-weight:650;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.zrf-call-copy small{overflow:hidden;color:rgba(255,255,255,.75);font-size:10.5px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.zrf-call-invite{flex:none;min-height:32px;padding:0 10px;border:0;background:var(--accent);color:var(--cta-ink);font:inherit;font-size:12px;font-weight:650}
+.zrf-call-close{position:relative;display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:0;background:transparent;color:#fff}
+.zrf-call-close::after{content:"";position:absolute;inset:50% auto auto 50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+@media(prefers-reduced-motion:no-preference){.zrf-call-card{animation:zrf-call-in 180ms ease-out}@keyframes zrf-call-in{from{opacity:0;translate:0 -4px}}}
 /* The wallet keeps purchased coins separate from confirmed creator earnings. */
 .zwallet-page {max-width:620px;margin:0 auto;padding:20px 20px 30px}
 :root[data-theme-id] .zwallet-page .accthero {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
@@ -9632,7 +9692,7 @@ if (DEMO && roleParam === 'host' && new URLSearchParams(location.search).get('ap
 }
 
 /* Content placeholders follow requests, never a timer or a first-visit cache. */
-const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked','leaderboard'];
+const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked','leaderboard','referral'];
 const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
 function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
@@ -9660,6 +9720,7 @@ function contentRetry(key){
   if(key==='home')return homeLoad();
   if(key==='search')return homeSearchRequest();
   if(key==='leaderboard')return window.ZimiLeaderboard.load();
+  if(key==='referral')return window.ZimiReferral.load();
   if(key==='notifications'&&window.ZimiNotifications)return window.ZimiNotifications.load();
   contentStart(key);contentRender(key);
   if(key==='wallet')Native.send('wallet.load');
@@ -9677,7 +9738,7 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
-  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls','chats'],posts:['profile','editprofile'],thread:['thread'],leaderboard:['board']};
+  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls','chats'],posts:['profile','editprofile'],thread:['thread'],leaderboard:['board'],referral:['refer']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
   if(views[key]?.includes(S.v)||(['catalog','wallet'].includes(key)&&(Home.giftTo||['call','voice','hcall'].includes(S.v))))r();
 }
@@ -9693,7 +9754,7 @@ Native.on('data.loading',d=>{
   contentRender(d.resource);
 });
 /* Results also settle placeholders when received from an older native shell. */
-for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.leaderboard':'leaderboard','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
+for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.leaderboard':'leaderboard','data.referral':'referral','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;
@@ -9971,7 +10032,7 @@ function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="z
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
-  if(['notifications','themes','all-creators','board'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
+  if(['notifications','themes','all-creators','board','refer'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
   if(!['home','chats','profile','settings'].includes(S.v))return false;
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
@@ -10129,6 +10190,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(['all-creators','chats','profile','settings'].includes(S.v))return '';
   if(S.v==='themes')return window.ZimiThemes.header();
   if(S.v==='board')return window.ZimiLeaderboard.header();
+  if(S.v==='refer')return window.ZimiReferral.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
@@ -10351,6 +10413,134 @@ ZimiPullRefresh.register('board',{refresh:()=>lbLoad(),busy:()=>contentPending('
 ['session.none','session.expired'].forEach(type=>Native.on(type,()=>{Board.period='daily';Board.rows=[];Board.total=0}));
 window.ZimiLeaderboard={load:lbLoad,header:lbHeader,render:lbView};
 ZimiHome.views.board=lbView;
+
+/* Refer a Friend & Earn: the Settings page, a Home pop-up at most once a day and a small
+   card one minute into a video call. The server owns the code and the rewards: a friend
+   who joins with the code gets the friend bonus, and the inviter is paid when that friend's
+   first coin purchase is confirmed. The pop-up and the call card appear only once the
+   server's summary has arrived, so the app never advertises a program the server lacks. */
+const ZRefer={data:null,demo:null,from:'settings',applying:0,request:0,applyError:'',focusCode:false,promoTimer:null,callShown:new Set(),card:null,cardTimer:null,checkTimer:null,requested:false};
+Object.assign(homeIcons,{share:'<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>'});
+// The design preview shows the pop-up only when asked (?promo=refer), so automated screen checks stay undisturbed.
+const ZREFER_PREVIEW=DEMO&&new URLSearchParams(location.search).get('promo')==='refer';
+const ZREFER_DEMO={code:'BZ7K4Q',shareUrl:'https://binzolive.com/?ref=BZ7K4Q',rewardCoins:1000,friendBonusCoins:100,applyDays:7,friendsJoined:3,friendsRewarded:1,coinsEarned:1000,appliedCode:null,canApplyCode:true};
+// The preview keeps its sample apart from server data, so trying the code form never turns the pop-ups on.
+function zrfData(){return ZRefer.data||(DEMO?ZRefer.demo||ZREFER_DEMO:null)}
+function zrfCoins(value){return Number(value||0).toLocaleString('en-IN')}
+function zrfLoad(){if(DEMO){r();return}contentStart('referral');Native.send('referral.load');if(S.v==='refer')r()}
+function zrfOpen(from){ZRefer.from=['home','settings'].includes(from)?from:'settings';go('refer')}
+function zrfHeader(){const home=ZRefer.from==='home';return `<header class="zh-subheader zrf-header">${backButton(`go('${home?'home':'settings'}')`,{label:home?'Back to home':'Back to settings'})}<h1>Refer &amp; Earn</h1></header>`}
+
+function zrfView(){
+  const data=zrfData(),pending=!DEMO&&contentPending('referral')&&!data,error=!DEMO&&!data&&ContentLoading.referral.error;
+  if(pending)return `<section class="zrf-page">${contentSkeleton('rows','Loading your invite code',3)}</section>`;
+  if(error)return `<section class="zrf-page">${contentError('referral')}</section>`;
+  if(!data)return '<section class="zrf-page"></section>';
+  const reward=zrfCoins(data.rewardCoins),bonus=zrfCoins(data.friendBonusCoins),busy=!!ZRefer.applying;
+  const apply=data.canApplyCode?`<form class="zrf-apply" onsubmit="event.preventDefault();zrfApply()" novalidate><label for="zrf-code">Have a friend's code? Get ${bonus} coins</label><div class="zrf-apply-row"><input id="zrf-code" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter code" aria-describedby="zrf-apply-note" ${busy?'disabled':''}><button type="submit" ${busy?'disabled aria-busy="true"':''}>${busy?'Applying…':'Apply'}</button></div>${ZRefer.applyError?`<p class="zrf-apply-error" role="alert">${esc(ZRefer.applyError)}</p>`:''}<p id="zrf-apply-note" class="zrf-note">Works within ${zrfCoins(data.applyDays)} days of joining, before your first coin purchase.</p></form>`:'';
+  return `<section class="zrf-page" aria-labelledby="zrf-title">
+    <div class="zrf-hero"><span class="zrf-hero-icon" aria-hidden="true">${hi('gift',34)}</span><h2 id="zrf-title">Refer a Friend &amp; Earn ${reward} Coins</h2><p>Share your code. Your friend gets ${bonus} coins when they join with it, and you get ${reward} coins when they make their first coin purchase.</p></div>
+    <div class="zrf-code-card"><div><span>Your invite code</span><strong class="zrf-code" aria-label="Your invite code ${esc(data.code.split('').join(' '))}">${esc(data.code)}</strong></div><button type="button" class="zrf-copy" onclick="zrfCopy()" aria-label="Copy your invite code">${hi('copy',18)}<span>Copy</span></button></div>
+    <button type="button" class="zrf-share" onclick="zrfShare()">${hi('share',19)} Share invite</button>
+    <ol class="zrf-steps"><li><b>Share your code</b><span>Send your invite to friends on WhatsApp or anywhere else.</span></li><li><b>They join and get ${bonus} coins</b><span>Your friend enters your code after signing up.</span></li><li><b>You get ${reward} coins</b><span>When your friend buys coins for the first time.</span></li></ol>
+    <div class="zrf-stats" aria-label="Your invitations"><div><b>${zrfCoins(data.friendsJoined)}</b><span>Friends joined</span></div><div><b>${zrfCoins(data.friendsRewarded)}</b><span>First purchases</span></div><div><b>${coinIcon(16)}${zrfCoins(data.coinsEarned)}</b><span>Coins earned</span></div></div>
+    ${apply}${data.appliedCode?`<p class="zrf-joined">${hi('check',16)} You joined with code ${esc(data.appliedCode)}.</p>`:''}
+    <p class="zrf-terms">Rewards are added once your friend's first coin purchase is confirmed, and are taken back if that purchase is refunded. Each new account can use one friend's code.</p>
+  </section>`;
+}
+async function zrfCopy(){
+  const code=zrfData()?.code;if(!code)return;
+  try{
+    if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(code);
+    else{const field=document.createElement('textarea');field.value=code;field.className='zrf-copy-helper';document.body.append(field);field.select();const copied=document.execCommand('copy');field.remove();if(!copied)throw new Error('Copy unavailable')}
+    appNotice('Invite code copied.');
+  }catch{appNotice('Copy is unavailable. You can share the invite instead.')}
+}
+function zrfShare(){if(DEMO){appNotice('Design preview · this opens your phone’s share sheet.');return}Native.send('referral.share')}
+function zrfApply(){
+  const input=document.getElementById('zrf-code'),code=(input?.value||'').replace(/[\s-]/g,'').toUpperCase();
+  if(ZRefer.applying)return;
+  if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){ZRefer.applyError='Enter the 6-character code your friend shared.';r();document.getElementById('zrf-code')?.focus();return}
+  ZRefer.applyError='';
+  if(DEMO){ZRefer.demo={...ZREFER_DEMO,appliedCode:code,canApplyCode:false};appNotice(`Design preview · ${zrfCoins(ZREFER_DEMO.friendBonusCoins)} coins added.`);r();return}
+  ZRefer.applying=++ZRefer.request;Native.send('referral.apply',{code,requestId:ZRefer.applying});r();
+}
+
+/* The Home pop-up: members only, at most once a day per account, never over another dialog. */
+function zrfPromoKey(){return 'zimi.referPromo.'+(S.user?.id||'me')}
+function zrfToday(){const d=new Date();return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`}
+function zrfPromoDue(){
+  if(!(ZRefer.data||ZREFER_PREVIEW)||S.v!=='home'||!S.loggedIn||isHost()||document.querySelector('dialog[open]')||Home.giftTo)return false;
+  try{return localStorage.getItem(zrfPromoKey())!==zrfToday()}catch{return true}
+}
+// Home redraws often; a pending pop-up keeps its timer instead of starting over on every redraw.
+function zrfSchedulePromo(){
+  if(ZRefer.promoTimer||!zrfPromoDue()||homeContentPending())return;
+  ZRefer.promoTimer=setTimeout(()=>{ZRefer.promoTimer=null;if(zrfPromoDue()&&!homeContentPending())zrfShowPromo()},1500);
+}
+function zrfCancelPromo(){clearTimeout(ZRefer.promoTimer);ZRefer.promoTimer=null}
+function zrfClosePromo(){document.getElementById('zrf-promo')?.close()}
+function zrfShowPromo(){
+  const data=zrfData();if(!data)return;
+  try{localStorage.setItem(zrfPromoKey(),zrfToday())}catch{}
+  const reward=zrfCoins(data.rewardCoins),bonus=zrfCoins(data.friendBonusCoins);
+  const dialog=document.createElement('dialog');dialog.id='zrf-promo';dialog.className='zn-dialog zrf-promo';dialog.setAttribute('aria-labelledby','zrf-promo-title');
+  dialog.innerHTML=`<button type="button" class="zrf-promo-close" aria-label="Close" onclick="zrfClosePromo()">${hi('close',20)}</button>
+    <div class="zrf-promo-body"><span class="zrf-hero-icon" aria-hidden="true">${hi('gift',32)}</span><h2 id="zrf-promo-title">Refer a Friend &amp; Earn ${reward} Coins</h2>
+    <p>Invite friends with your code. They get ${bonus} coins for joining, and you get ${reward} coins when they make their first coin purchase.</p>
+    <button type="button" class="zrf-share" onclick="zrfClosePromo();zrfOpen('home')">${hi('share',19)} Invite friends</button>
+    ${data.canApplyCode?`<button type="button" class="zrf-promo-link" onclick="ZRefer.focusCode=true;zrfClosePromo();zrfOpen('home')">Have a friend's code? Get ${bonus} coins</button>`:''}
+    <button type="button" class="zrf-promo-later" onclick="zrfClosePromo()">Not now</button></div>`;
+  dialog.addEventListener('close',()=>dialog.remove());
+  dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
+  document.body.append(dialog);dialog.showModal();
+}
+
+/* The call card: one minute into a member's video call, once per call, for eight seconds,
+   at the top of the call so it never covers the call controls. Invite opens the share
+   sheet over the running call. */
+function zrfCallCard(){
+  const card=ZRefer.card;if(!card||card.callId!==zrfCallKey())return '';
+  return `<aside class="zrf-call-card" role="status"><span class="zrf-call-icon" aria-hidden="true">${hi('gift',18)}</span><span class="zrf-call-copy"><b>Refer a friend, earn ${zrfCoins(card.reward)} coins</b><small>When they make their first coin purchase</small></span><button type="button" class="zrf-call-invite" onclick="zrfCallInvite()">Invite</button><button type="button" class="zrf-call-close" aria-label="Close" onclick="zrfHideCallCard()">${hi('close',16)}</button></aside>`;
+}
+function zrfCallKey(){return String(S.callId||S.h||'call')}
+function zrfHideCallCard(){clearTimeout(ZRefer.cardTimer);if(!ZRefer.card)return;ZRefer.card=null;if(S.v==='call')r()}
+function zrfCallInvite(){zrfHideCallCard();zrfShare()}
+function zrfCallCheck(){
+  const data=ZRefer.data||(ZREFER_PREVIEW?ZREFER_DEMO:null),key=zrfCallKey();
+  if(S.v!=='call'||isHost()||!data||S.sec<60||ZRefer.callShown.has(key))return;
+  ZRefer.callShown.add(key);ZRefer.card={callId:key,reward:data.rewardCoins};r();
+  ZRefer.cardTimer=setTimeout(zrfHideCallCard,8000);
+}
+function zrfWatchCall(){
+  clearInterval(ZRefer.checkTimer);ZRefer.checkTimer=null;
+  if(S.v==='call'&&!isHost())ZRefer.checkTimer=setInterval(zrfCallCheck,1000);
+  else if(ZRefer.card){clearTimeout(ZRefer.cardTimer);ZRefer.card=null}
+}
+
+Native.on('data.referral',data=>{ZRefer.data=data;if(S.v==='refer')r();zrfSchedulePromo()});
+Native.on('referral.applied',data=>{
+  if(data.requestId!==ZRefer.applying)return;
+  const {requestId,...summary}=data;ZRefer.applying=0;ZRefer.applyError='';ZRefer.data=summary;
+  appNotice(`You got ${zrfCoins(summary.friendBonusCoins)} coins for joining with a friend's code.`);
+  if(S.v==='refer')r();
+});
+Native.on('referral.error',data=>{if(data.requestId!==ZRefer.applying)return;ZRefer.applying=0;ZRefer.applyError=data.message;if(S.v==='refer'){r();document.getElementById('zrf-code')?.focus()}});
+// The Home pop-up needs the server's summary; ask for it once per session on the first visit to Home.
+document.addEventListener('aurora:navigate',()=>{
+  zrfWatchCall();
+  if(S.v!=='home')zrfCancelPromo();
+  if(S.v==='refer'){ZRefer.requested=true;zrfLoad();if(ZRefer.focusCode){ZRefer.focusCode=false;setTimeout(()=>document.getElementById('zrf-code')?.focus(),0)}}
+  else if(S.v==='home'&&S.loggedIn&&!DEMO&&!ZRefer.requested){ZRefer.requested=true;Native.send('referral.load')}
+});
+// Once Home has its hosts on screen, a due pop-up follows.
+const zrfPreviousAfterRender=ZimiHome.afterRender;
+ZimiHome.afterRender=()=>{zrfPreviousAfterRender();if(S.v==='home')zrfSchedulePromo()};
+ZimiPullRefresh.register('refer',{refresh:()=>zrfLoad(),busy:()=>contentPending('referral')});
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{zrfCancelPromo();clearTimeout(ZRefer.cardTimer);clearInterval(ZRefer.checkTimer);zrfClosePromo();Object.assign(ZRefer,{data:null,demo:null,applying:0,applyError:'',card:null,checkTimer:null,requested:false});ZRefer.callShown.clear()}));
+window.ZimiReferral={open:zrfOpen,load:zrfLoad,header:zrfHeader,render:zrfView,schedulePromo:zrfSchedulePromo};
+window.zrfCallCard=zrfCallCard;
+ZimiHome.views.refer=zrfView;
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
 const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
@@ -11387,7 +11577,7 @@ function zrCall(host){
   if(!p)return '<div class="zh-empty">This call has ended.<button onclick="go(\'home\')">Back to Home</button></div>';
   if(host)return zrHostReferenceCall(p,voice);
   return `<section class="zh-room zr-room zr-call zr-sender-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}
-    <div class="zr-top"><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${zrCallStats()}${zrGiftBanner()}</div>
+    <div class="zr-top"><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${zrCallStats()}${zrGiftBanner()}</div>
     ${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}
     <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():''}
       <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button>
@@ -12910,7 +13100,8 @@ function zpAccountSummary(){
   return `<button type="button" class="zp-account-summary" onclick="zpGo('profile')" aria-label="Open your profile"><span class="zp-summary-avatar">${imageSrc(avatar)?`<img class="zh-photo-pending" src="${imageSrc(avatar)}" alt="" data-face="${faceKind(me)}">`:face(me)}</span><span class="zp-summary-copy"><b>${esc(name)}</b><span class="zp-summary-stats">${zpPending()?skeletonLine('115px',12):ZProfile.error?'Account details unavailable':[['gift','Gifts received',stats.giftsReceived],['people','Fans',stats.fans],['follow','Following',stats.following]].map(([icon,label,value])=>`<span aria-label="${label}: ${zpNumber(value)}">${zi(icon,14)} ${zpNumber(value)}</span>`).join('')}</span></span>${hi('chev',20)}</button>`;
 }
 function zpSettingsRows(){
-  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Creator application',"zpGo('kyc')")}${zpSimpleRow('help','Help & tips',"zpOpen('help')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
+  // Refer a Friend leads the list; its page explains the code and the rewards.
+  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Creator application',"zpGo('kyc')")}${zpSimpleRow('help','Help & tips',"zpOpen('help')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
