@@ -8,6 +8,7 @@ import { leaderboardFrom, officialChatFrom, referralFrom } from "./adapters";
 import { relationshipsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
 import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
+import type { HostAgencyStatus } from "./types";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -51,6 +52,22 @@ function boundedStrings(value: unknown, label: string, min: number, max: number)
   return [...new Set(value.map(item => (item as string).trim()))];
 }
 const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
+
+function agencyCodePayload(value: string) {
+  const agencyCode = value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{6,32}$/.test(agencyCode)) throw new ApiError("Enter the recruitment code shared by your agency.", 400);
+  return { agencyCode };
+}
+function hostAgencyFrom(value: unknown): HostAgencyStatus {
+  const data = record(value), agency = data.agency == null ? null : record(data.agency);
+  if (!["agency", "application", "review", "active"].includes(String(data.nextStep)) || typeof data.eligible !== "boolean" ||
+    !Array.isArray(data.requirements) || data.requirements.some(item => typeof item !== "string") ||
+    (agency && (typeof agency.name !== "string" || typeof agency.recruitmentCode !== "string" || !["ACTIVE", "SUSPENDED"].includes(String(agency.status)))))
+    throw new ApiError("Your agency details could not be confirmed. Please try again.", 502);
+  return { agency: agency ? { id: idOf(agency), name: agency.name as string, recruitmentCode: agency.recruitmentCode as string, status: agency.status as "ACTIVE" | "SUSPENDED" } : null,
+    hostStatus: typeof data.hostStatus === "string" ? data.hostStatus : "none", isVerifiedHost: data.isVerifiedHost === true,
+    eligible: data.eligible, requirements: data.requirements as string[], nextStep: data.nextStep as HostAgencyStatus["nextStep"] };
+}
 
 export const api = {
   async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number; otpLength: number }> {
@@ -187,12 +204,17 @@ export const api = {
   async postComments(id: string, page = 1) { return commentsFrom(await request("GET", `/posts/${encodeURIComponent(id)}/comments?page=${page}&limit=20`), id); },
   async addPostComment(id: string, text: string) { return commentFrom(await request("POST", `/posts/${encodeURIComponent(id)}/comments`, { text: text.trim() })); },
   deletePostComment: (id: string, commentId: string) => request("DELETE", `/posts/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}`),
+  async hostAgency(): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("GET", "/hosts/agency")); },
+  async verifyAgencyCode(code: string): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("POST", "/hosts/verify-agency-code", agencyCodePayload(code))); },
+  async joinAgency(code: string): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("POST", "/hosts/activate", agencyCodePayload(code))); },
   async submitVerification(details: Record<string, unknown>): Promise<{ status: Verification }> {
     const displayName = typeof details.name === "string" ? details.name.trim() : "";
     const bio = typeof details.bio === "string" ? details.bio.trim() : "";
     if (displayName.length < 2 || bio.length < 20) throw new ApiError("Add your display name and an introduction of at least 20 characters to apply as a creator.", 400);
     const languages = boundedStrings(details.languages ?? details.langs, "languages", 1, 10);
-    const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages });
+    const agency = await api.hostAgency();
+    if (!agency.agency) throw new ApiError("Join your agency with its recruitment code before submitting your host application.", 400);
+    const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages, agencyCode: agency.agency.recruitmentCode });
     return { status: verificationOf(application.status) };
   },
   async setPresence(online: boolean, visible: boolean) {

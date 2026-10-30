@@ -18,6 +18,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test:onboarding": "node scripts/test-onboarding.cjs",
+    "test:agency": "npm run build:web && node scripts/test-agency.cjs",
     "test:api-adapter": "node scripts/test-api-adapter.cjs",
     "test:app-updates": "node scripts/test-app-updates.cjs",
     "test:native-updater": "node scripts/test-native-apk-updater.cjs",

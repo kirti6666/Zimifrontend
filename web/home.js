@@ -247,6 +247,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='themes')return window.ZimiThemes.header();
   if(S.v==='board')return window.ZimiLeaderboard.header();
   if(S.v==='refer')return window.ZimiReferral.header();
+  if(S.v==='agency')return window.ZimiAgency.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;

@@ -8,6 +8,21 @@ export type Gender = "female" | "male" | "undisclosed";
 export type ServerRole = "user" | "host" | "admin";
 export type Verification = "none" | "pending" | "verified" | "rejected";
 
+export interface HostAgency {
+  id: string;
+  name: string;
+  recruitmentCode: string;
+  status: "ACTIVE" | "SUSPENDED";
+}
+export interface HostAgencyStatus {
+  agency: HostAgency | null;
+  hostStatus: string;
+  isVerifiedHost: boolean;
+  eligible: boolean;
+  requirements: string[];
+  nextStep: "agency" | "application" | "review" | "active";
+}
+
 export interface User {
   id: string;
   name: string;

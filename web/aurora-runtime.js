@@ -174,6 +174,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
@@ -244,7 +245,7 @@ function nav(){const el=document.getElementById("nav");
  if(S.v==='create-post'){el.style.display='none';el.replaceChildren();return}
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
- if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
+ if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","agency","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chat","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
@@ -1498,6 +1499,7 @@ function kycPhotos(e){readImgs(e,d=>{S.kerr=0;S.kf.photos=(S.kf.photos||[]).conc
 function dropPhoto(i){S.kf.photos.splice(i,1);r()}
 function submitKyc(){
  if(S.kycBusy)return;
+ if(window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(!isHost()&&!S.creatorSetup){
   if(!DEMO)return appNotice("Payout verification is not available in this version.");
   if(!String(S.kf.name||"").trim()||!String(S.kf.pan||"").trim()){S.kerr="Please fill in every field to continue.";return r()}
@@ -1599,7 +1601,7 @@ function topFor(){
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
   kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
- const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
+ const backTo={editprofile:S.editBack||'profile',kyc:window.ZimiAgency?.linked()?'agency':'settings',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
    ${backButton(`go('${backTo}')`)}
    <span class="disp title">${acctTitles[S.v]}</span>

@@ -28,6 +28,35 @@ Native.on("call.connected")      <--  postToWeb(...)
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
 
+## Agency host onboarding
+
+All new host applicants join an admin-created agency before applying. Settings
+and the owner's Profile open **Become a Host** (`agency`); approved hosts see
+**My agency**. Creator signup and every creator application entry point use the
+same gate. Existing approved host access continues to use `ZimiHostAccess`.
+
+| Screen message | Endpoint | Result message |
+| --- | --- | --- |
+| `agency.load {requestId}` | `GET /hosts/agency` | `agency.loaded` |
+| `agency.verify {agencyCode,requestId}` | `POST /hosts/verify-agency-code` | `agency.verified` |
+| `agency.join {agencyCode,requestId}` | `POST /hosts/activate` | `agency.joined` |
+
+Responses contain `agency` (null or `{id,name,recruitmentCode,status}`),
+`hostStatus`, `isVerifiedHost`, `eligible`, `requirements` and `nextStep`
+(`agency`, `application`, `review`, `active`). Result messages also carry
+`requestId`; stale responses are ignored. Failures use `agency.error`
+`{action,message,requestId}` and stay next to the form. Codes are normalized to
+uppercase, and verification and explicit confirmation happen before membership
+is saved. The authenticated backend identity determines who joins.
+
+Joining does not grant creator capability. The linked member completes
+`POST /hosts/application`, then staff identity/video verification and approval.
+The server validates age, account status, phone verification, agency activity,
+host capacity and one-agency membership. A referral reward code is separate.
+Agency commission is paid from the platform share without reducing host earnings.
+The app has no agency self-registration or agency login; administrators create,
+manage and settle agencies in the production admin dashboard.
+
 Phone OTP requests return `otpLength` (4–8) with `expiresIn` and `resendAfter`.
 The native bridge forwards this as `auth.otpSent`; onboarding uses it for the
 input count, SMS autofill, paste and validation. Six digits remain the fallback

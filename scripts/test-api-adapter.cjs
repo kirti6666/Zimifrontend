@@ -70,6 +70,21 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const adapters = load('src/api/adapters.ts');
+  const agencyStatus = { agency: { _id: 'agency-1', name: 'Dream Star', recruitmentCode: 'AGZIMI1001', status: 'ACTIVE' }, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  expect('GET', '/hosts/agency', { ...agencyStatus, agency: null, nextStep: 'agency' });
+  assert.equal((await api.hostAgency()).agency, null);
+  expect('POST', '/hosts/verify-agency-code', agencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'AGZIMI1001' }));
+  assert.equal((await api.verifyAgencyCode(' agzimi1001 ')).agency.id, 'agency-1');
+  expect('POST', '/hosts/activate', agencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'AGZIMI1001' }));
+  assert.equal((await api.joinAgency('AGZIMI1001')).isVerifiedHost, false, 'Agency membership cannot become creator approval');
+  await assert.rejects(api.verifyAgencyCode('!bad'), /recruitment code/);
+  expect('GET', '/hosts/agency', { ...agencyStatus, agency: null, nextStep: 'agency' });
+  await assert.rejects(api.submitVerification({ name: 'Riya', bio: 'I love music and meeting people.', langs: ['English'] }), /Join your agency/);
+  expect('GET', '/hosts/agency', agencyStatus);
+  expect('POST', '/hosts/application', { status: 'pending' }, body => assert.deepEqual(plain(body), { displayName: 'Riya', bio: 'I love music and meeting people.', languages: ['English'], agencyCode: 'AGZIMI1001' }));
+  assert.equal((await api.submitVerification({ name: 'Riya', bio: 'I love music and meeting people.', langs: ['English'] })).status, 'pending');
+  expect('GET', '/hosts/agency', { ...agencyStatus, requirements: 'untrusted' });
+  await assert.rejects(api.hostAgency(), /agency details/);
   const media = load('src/api/uploads.ts');
   const separateHostImages=adapters.hostFrom({_id:'image-host',coverUrl:'https://cdn.example.test/cover.jpg',creatorCardUrl:'https://cdn.example.test/card.jpg'});
   assert.equal(separateHostImages.coverUrl,'https://cdn.example.test/cover.jpg');

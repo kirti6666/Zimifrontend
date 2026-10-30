@@ -127,7 +127,7 @@ async function audit(page,label) {
     const version=await page.evaluate(()=>window.ZIMI_APP_VERSION);
     assert.ok((await page.getByRole('dialog').innerText()).includes(version),'About shows the shipped app version');
     await button(page,'Close settings').click();
-    assert.equal(await page.getByRole('button',{name:/^Creator application$/i}).count(),1,'Members retain their application entry');
+    assert.equal(await page.getByRole('button',{name:/^Become a Host$/i}).count(),1,'Members retain their application entry');
 
     await button(page,'Add coins').click();
     assert.equal(await page.evaluate(()=>S.v),'coins','Add coins opens the existing pack flow');

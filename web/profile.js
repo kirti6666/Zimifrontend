@@ -43,7 +43,7 @@ function zpAccountSummary(){
 }
 function zpSettingsRows(){
   // Refer a Friend leads the list; its page explains the code and the rewards.
-  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Creator application',"zpGo('kyc')")}${zpSimpleRow('help','Help & tips',"zpOpen('help')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
+  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & tips',"zpOpen('help')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
@@ -55,7 +55,7 @@ function zpMenuRows(kind){
     payments:()=>zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+zpRow('cash','Withdrawal history',"zpGo('payout-history')"),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
-    creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('cash','Earnings & Wallet',"zpOpen('earnings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
+    creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('cash','Earnings & Wallet',"zpOpen('earnings')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
   };
   return rows[kind]?`<div class="zp-settings-detail">${rows[kind]()}</div>`:'';
 }

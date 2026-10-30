@@ -143,6 +143,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "post.comment.add": valid = identifier(d.id) && text(d.text, 1000) && String(d.text).trim().length > 0 && Number.isSafeInteger(d.requestId) && Object.keys(d).every(key => ["id", "text", "requestId"].includes(key)); break;
     case "post.comment.delete": valid = identifier(d.id) && identifier(d.commentId) && Number.isSafeInteger(d.requestId) && Object.keys(d).every(key => ["id", "commentId", "requestId"].includes(key)); break;
     case "media.post.delete": valid = identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
+    case "agency.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
+    case "agency.verify": case "agency.join": valid = typeof d.agencyCode === "string" && /^[A-Z0-9]{6,32}$/.test(d.agencyCode) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["agencyCode", "requestId"].includes(key)); break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
     case "presence.duringCalls": valid = boolean(d.on); break;

@@ -1,5 +1,11 @@
 # BinzoLive admin console
 
+Agency creation, recruitment codes, linked hosts, commissions and settlements
+are managed in the production `admin-dashboard` project at
+https://admin.binzolive.com/. The legacy demo console links there. Agencies are
+created by administrators; hosts use the assigned code in the app's
+**Become a Host** page before applying and completing verification.
+
 ## How it fits with the React Native app
 
 The phone app and the admin console are two separate products that share one backend.

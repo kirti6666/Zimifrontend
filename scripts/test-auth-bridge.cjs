@@ -134,6 +134,38 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 
+test('agency messages validate identity-free payloads and retain request correlation without granting host access', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  const status = { agency: { id: 'agency-1', name: 'Dream Star', recruitmentCode: 'AGZIMI1001', status: 'ACTIVE' }, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  h.overrides.hostAgency = () => status; h.overrides.verifyAgencyCode = () => status; h.overrides.joinAgency = () => status;
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  for (const [action, result] of [['load', 'loaded'], ['verify', 'verified'], ['join', 'joined']]) {
+    const data = { requestId: 9, ...(action === 'load' ? {} : { agencyCode: 'AGZIMI1001' }) };
+    assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data })));
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data: { ...data, userId: 'someone-else' } })), null);
+    await h.bridge.handle({ type: `agency.${action}`, data }); await settle();
+    assert.deepEqual(plain(h.find(`agency.${result}`).at(-1).data), { ...status, requestId: 9 });
+  }
+  assert.equal(h.find('host.access').some(event => event.data.approved), false);
+  h.overrides.verifyAgencyCode = () => { throw new h.ApiError('Agency suspended', 403); };
+  await h.bridge.handle({ type: 'agency.verify', data: { agencyCode: 'AGZIMI1001', requestId: 10 } });
+  await settle();
+  assert.deepEqual(plain(h.find('agency.error').at(-1).data), { action: 'agency.verify', message: 'Agency suspended', requestId: 10 });
+  const oldDocument = deferred(); h.overrides.hostAgency = () => oldDocument.promise;
+  h.bridge.handle({ type: 'agency.load', data: { requestId: 12 } });
+  h.bridge.documentLoading(); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  oldDocument.resolve(status); await settle();
+  assert.equal(h.find('agency.loaded').some(event => event.data.requestId === 12), false, 'A replaced WebView cannot receive an old membership response with a reused request ID');
+  const pending = deferred(); h.overrides.hostAgency = () => pending.promise;
+  h.bridge.handle({ type: 'agency.load', data: { requestId: 11 } });
+  await h.bridge.handle({ type: 'auth.logout', data: {} });
+  pending.resolve(status); await settle();
+  assert.equal(h.find('agency.loaded').some(event => event.data.requestId === 11), false, 'A response from the retired account never reaches the page');
+  h.bridge.close();
+});
+
 test('the calls-only rollout blocks streaming commands and links while preserving cleanup, calls and gifts', async () => {
   const h = harness('active', 'binzolive://live/cold-room');
   assert.equal(h.load('src/features.ts').LIVE_STREAMING_ENABLED, false, 'The shipped native feature switch stays off');

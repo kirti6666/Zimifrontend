@@ -4591,6 +4591,19 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
 .zrf-call-close{position:relative;display:grid;place-items:center;flex:none;width:28px;height:28px;padding:0;border:0;background:transparent;color:#fff}
 .zrf-call-close::after{content:"";position:absolute;inset:50% auto auto 50%;width:44px;height:44px;transform:translate(-50%,-50%)}
 @media(prefers-reduced-motion:no-preference){.zrf-call-card{animation:zrf-call-in 180ms ease-out}@keyframes zrf-call-in{from{opacity:0;translate:0 -4px}}}
+.za-page{max-width:600px;margin:0 auto;padding:20px 20px calc(28px + var(--safe-bottom));color:var(--ink);font-size:14px;line-height:1.6}
+.za-intro{margin:6px 0 24px}.za-intro h2{font-size:24px;line-height:1.3;font-weight:600;margin:14px 0 10px}.za-intro p,.za-confirm>p{margin:0;color:var(--muted)}
+.za-mark{display:inline-flex;padding:14px;background:var(--surface);color:var(--accent-ink)}
+.za-steps{list-style:none;padding:0;margin:0 0 28px;display:grid;gap:14px}.za-steps li{display:flex;align-items:center;gap:12px}.za-steps b{display:grid;place-items:center;width:30px;height:30px;background:var(--surface);font-size:12px;font-weight:600}
+.za-form{display:grid;gap:10px}.za-form label{font-weight:600}.za-form input{width:100%;min-height:48px;padding:12px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);font:inherit;letter-spacing:.06em}.za-form input:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.za-primary,.za-secondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:12px 16px;font:inherit;font-weight:600;cursor:pointer}.za-primary{background:var(--cta);color:var(--cta-ink)}.za-secondary{border:1px solid var(--line);background:var(--surface);color:var(--ink)}.za-primary:disabled,.za-secondary:disabled{opacity:.55;cursor:default}
+.za-note{font-size:12px;color:var(--muted);margin:16px 0 0}.za-form .za-note{margin:0}.za-error{color:var(--theme-danger);font-size:13px;margin:0}.za-error:empty{display:none}
+.za-confirm{margin:24px 0;padding-top:20px;border-top:1px solid var(--line)}.za-confirm .za-primary{margin-top:18px}
+.za-agency{display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);margin:0 0 22px;min-width:0}.za-agency-icon{color:var(--accent-ink);display:flex}.za-agency>div{min-width:0;flex:1}.za-agency h2{font-size:18px;font-weight:600;line-height:1.4;overflow-wrap:anywhere;margin:2px 0}.za-agency p,.za-agency>div>span{font-size:12px;color:var(--muted);margin:0}.za-status{font-size:12px;color:var(--muted);align-self:flex-start}
+.za-requirements{padding-left:20px;color:var(--muted);margin:16px 0}.za-message{padding:20px 0}.za-message .za-secondary{margin-top:20px}
+
+.za-welcome-note{margin:0;color:var(--muted);font-size:12px;text-align:center;line-height:1.5}
+.zu-agency-link{display:flex;align-items:center;gap:9px;min-height:44px;margin:12px 0;padding:10px 12px;width:100%;text-align:left;color:var(--ink);background:var(--surface);font-size:14px}.zu-agency-link>svg:last-child{margin-left:auto}
 /* The wallet keeps purchased coins separate from confirmed creator earnings. */
 .zwallet-page {max-width:620px;margin:0 auto;padding:20px 20px 30px}
 :root[data-theme-id] .zwallet-page .accthero {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
@@ -7219,6 +7232,7 @@ function obAuthError(data) {
 function obPhotoUrl(value) { return typeof value === "string" && (/^https:\/\/[^\s"'<>]+$/.test(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)) ? value : ""; }
 function obApplyAccount(account, keepDraft = false) {
   const u = account.user || {}, editing = keepDraft && S.v === 'editprofile' && S.user?.id === u.id;
+  if(S.user?.id!==u.id)window.ZimiAgency?.reset();
   S.user = u;
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
@@ -7241,6 +7255,7 @@ function obResumeOnboarding(account, desiredCreator) {
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
+  window.ZimiAgency?.reset();
   window.ZimiHostAccess?.reset();
   if(window.ZimiHome)homeReset();
   window.ZimiThemes?.reset();
@@ -7348,6 +7363,7 @@ function obWelcome() {
         <button class="${host ? "" : "selected"}" aria-pressed="${!host}" onclick="obSelectRole('sender',this)">${I("heart", 17)} I'm here to connect</button>
         <button class="${host ? "selected" : ""}" aria-pressed="${host}" onclick="obSelectRole('host',this)">${I("vid", 17)} I'm a creator</button></div>
         <button id="ob-start" class="ob-primary" onclick="obStart('signup')">${host ? "Start creating" : "Find your people"}${obArrow()}</button>
+        <p class="za-welcome-note">Hosts join with an agency recruitment code, then complete verification.</p>
         <div class="ob-trust"><span>${I("lock", 13)} 18+ community</span>${OB_MODELS ? "<span>&middot; Photos posed by models</span>" : ""}</div></div>
     </div><p class="ob-desktop-note">A small hello. A world of possibilities.</p>
   </section>`;
@@ -7995,6 +8011,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
@@ -8065,7 +8082,7 @@ function nav(){const el=document.getElementById("nav");
  if(S.v==='create-post'){el.style.display='none';el.replaceChildren();return}
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
- if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
+ if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","agency","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chat","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
@@ -9319,6 +9336,7 @@ function kycPhotos(e){readImgs(e,d=>{S.kerr=0;S.kf.photos=(S.kf.photos||[]).conc
 function dropPhoto(i){S.kf.photos.splice(i,1);r()}
 function submitKyc(){
  if(S.kycBusy)return;
+ if(window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(!isHost()&&!S.creatorSetup){
   if(!DEMO)return appNotice("Payout verification is not available in this version.");
   if(!String(S.kf.name||"").trim()||!String(S.kf.pan||"").trim()){S.kerr="Please fill in every field to continue.";return r()}
@@ -9420,7 +9438,7 @@ function topFor(){
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
   kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
- const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
+ const backTo={editprofile:S.editBack||'profile',kyc:window.ZimiAgency?.linked()?'agency':'settings',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
    ${backButton(`go('${backTo}')`)}
    <span class="disp title">${acctTitles[S.v]}</span>
@@ -10191,6 +10209,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='themes')return window.ZimiThemes.header();
   if(S.v==='board')return window.ZimiLeaderboard.header();
   if(S.v==='refer')return window.ZimiReferral.header();
+  if(S.v==='agency')return window.ZimiAgency.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
@@ -10541,6 +10560,73 @@ ZimiPullRefresh.register('refer',{refresh:()=>zrfLoad(),busy:()=>contentPending(
 window.ZimiReferral={open:zrfOpen,load:zrfLoad,header:zrfHeader,render:zrfView,schedulePromo:zrfSchedulePromo};
 window.zrfCallCard=zrfCallCard;
 ZimiHome.views.refer=zrfView;
+
+/* Hosts join an admin-created agency before applying. Membership never grants
+   creator capability: identity, staff video verification and approval remain server-owned. */
+const ZAgency={data:null,preview:null,code:'',verified:null,loading:false,busy:'',error:'',request:0,pending:0,from:'settings'};
+function zagLinked(){return !!ZAgency.data?.agency}
+function zagPaint(){if(S.v==='agency'||S.v==='kyc')r()}
+function zagLoad(){
+  if(ZAgency.busy)return;
+  ZAgency.loading=true;ZAgency.error='';ZAgency.verified=null;ZAgency.pending=++ZAgency.request;
+  if(DEMO){ZAgency.data=ZAgency.preview||{agency:null,hostStatus:'none',isVerifiedHost:false,eligible:true,requirements:[],nextStep:'agency'};ZAgency.loading=false;zagPaint();return}
+  Native.send('agency.load',{requestId:ZAgency.pending});zagPaint();
+}
+function zagOpen(from){
+  if(!S.loggedIn)return obStart('signup');
+  ZAgency.from=['profile','settings','home'].includes(from)?from:['profile','settings','home'].includes(S.v)?S.v:'settings';
+  S.creatorSetup=true;
+  if(!S.kf.name)S.kf.name=S.user?.name||me.n||'';
+  if(!S.kf.bio)S.kf.bio=S.user?.about||me.about||'';
+  if(!S.kf.langs?.length)S.kf.langs=(S.user?.languages||[]).slice();
+  go('agency');
+}
+function zagHeader(){return `<header class="zh-subheader">${backButton(`go('${ZAgency.from}')`,{label:'Back to '+ZAgency.from})}<h1>${isApprovedHost()?'My agency':'Become a Host'}</h1></header>`}
+function zagCode(value){ZAgency.code=value.toUpperCase();ZAgency.verified=null;ZAgency.error='';const next=document.getElementById('za-confirm');if(next)next.hidden=true;const error=document.getElementById('za-error');if(error)error.textContent=''}
+function zagVerify(){
+  if(ZAgency.busy||ZAgency.loading)return;
+  const code=(document.getElementById('za-code')?.value||ZAgency.code).trim().toUpperCase();ZAgency.code=code;ZAgency.error='';
+  if(!/^[A-Z0-9]{6,32}$/.test(code)){ZAgency.error='Enter the recruitment code shared by your agency.';zagPaint();document.getElementById('za-code')?.focus();return}
+  ZAgency.verified=null;ZAgency.busy='verify';ZAgency.pending=++ZAgency.request;
+  if(DEMO){ZAgency.verified={agency:{id:'demo-agency',name:'Preview Agency',recruitmentCode:code,status:'ACTIVE'},hostStatus:'none',eligible:true,requirements:[],nextStep:'application'};ZAgency.busy='';zagPaint();return}
+  Native.send('agency.verify',{agencyCode:code,requestId:ZAgency.pending});zagPaint();
+}
+function zagJoin(){
+  const verified=ZAgency.verified;
+  if(ZAgency.busy||!verified?.agency||!verified.eligible||verified.agency.recruitmentCode!==ZAgency.code)return;
+  ZAgency.busy='join';ZAgency.error='';ZAgency.pending=++ZAgency.request;
+  if(DEMO){ZAgency.data=verified;ZAgency.preview=verified;ZAgency.verified=null;ZAgency.busy='';zagPaint();return}
+  Native.send('agency.join',{agencyCode:verified.agency.recruitmentCode,requestId:ZAgency.pending});zagPaint();
+}
+function zagCompleteProfile(){
+  if(ZAgency.busy)return;
+  ZAgency.code=(document.getElementById('za-code')?.value||ZAgency.code).trim().toUpperCase();
+  ZAgency.verified=null;
+  obResumeOnboarding({user:S.user||{},verification:A().kyc,requiresOnboarding:true},true);
+}
+function zagRequirements(data){return data?.requirements?.length?`<ul class="za-requirements">${data.requirements.map(value=>`<li>${esc(value)}</li>`).join('')}</ul>${data.requirements.some(value=>/18|profile/i.test(value))?'<button type="button" class="za-secondary" onclick="zagCompleteProfile()">Complete profile &amp; confirm age</button>':''}`:''}
+function zagCard(agency){return `<div class="za-agency"><span class="za-agency-icon">${zi('people',24)}</span><div><span>Your agency</span><h2>${esc(agency.name)}</h2><p>${esc(agency.recruitmentCode)}</p></div><span class="za-status">${agency.status==='ACTIVE'?'Active':'Suspended'}</span></div>`}
+function zagView(){
+  if(ZAgency.loading)return `<section class="za-page">${contentSkeleton('rows','Loading your agency',4)}</section>`;
+  if(!ZAgency.data&&ZAgency.error)return `<section class="za-page"><div class="za-message" role="alert"><p>${esc(ZAgency.error)}</p><button type="button" class="za-secondary" onclick="zagLoad()">Try again</button></div></section>`;
+  const data=ZAgency.data,agency=data?.agency,verified=ZAgency.verified,busy=!!ZAgency.busy;
+  if(agency){
+    const active=isApprovedHost(),review=data.nextStep==='review'||data.hostStatus==='pending',suspended=data.hostStatus==='suspended';
+    return `<section class="za-page" aria-label="Your host agency">${ZAgency.error?`<div class="za-message" role="alert"><p>${esc(ZAgency.error)}</p><button type="button" class="za-secondary" onclick="zagLoad()">Try again</button></div>`:''}${zagCard(agency)}<div class="za-intro"><h2>${active?'Your host account is active':suspended?'Hosting is suspended':review?'Your application is under review':'Your agency is connected'}</h2><p>${active?'Your agency supports your host journey. Manage your availability from Home.':suspended?'Contact the BinzoLive team about your host account.':review?'The BinzoLive team will review your details and contact you for a verification video call. Hosting starts after approval.':'Complete your creator application next. The team verifies your identity and eligibility before approving hosting.'}</p></div>${zagRequirements(data)}${agency.status==='SUSPENDED'?'<p class="za-note">This agency is suspended for new recruitment. Your current host approval is managed separately by the BinzoLive team.</p>':''}${!active&&!suspended?`<button type="button" class="za-primary" onclick="go('kyc')">${review?'View application status':'Continue host application'}</button>`:active?'<button type="button" class="za-primary" onclick="go(\'home\')">Go to Home</button>':''}<p class="za-note">Your account belongs to one agency. Contact the BinzoLive team if a change is needed. Agency commission comes from the platform share and does not reduce your host earnings.</p></section>`;
+  }
+  return `<section class="za-page" aria-labelledby="za-title"><div class="za-intro"><span class="za-mark">${zi('people',28)}</span><h2 id="za-title">Start your host journey</h2><p>Join through a BinzoLive agency. Enter the recruitment code your agency shared with you.</p></div><ol class="za-steps"><li><b>1</b><span>Connect your agency</span></li><li><b>2</b><span>Complete your application</span></li><li><b>3</b><span>Get verified and approved</span></li></ol>${!verified?zagRequirements(data):''}<form class="za-form" onsubmit="event.preventDefault();zagVerify()" novalidate><label for="za-code">Agency recruitment code</label><input id="za-code" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter agency code" value="${esc(ZAgency.code)}" oninput="zagCode(this.value)" aria-describedby="za-code-note za-error" ${busy?'disabled':''}><p id="za-code-note" class="za-note">Ask your agency for its code. A friend's referral code cannot be used here.</p><p id="za-error" class="za-error" role="alert">${esc(ZAgency.error)}</p><button type="submit" class="za-primary" ${busy?'disabled':''} ${ZAgency.busy==='verify'?'aria-busy="true"':''}>${ZAgency.busy==='verify'?'Verifying…':'Verify agency code'}</button></form>${verified?.agency?`<div id="za-confirm" class="za-confirm">${zagCard(verified.agency)}${zagRequirements(verified)}<p>Confirm this is your agency before joining. Only the BinzoLive team can change it later.</p><button type="button" class="za-primary" onclick="zagJoin()" ${busy||!verified.eligible?'disabled':''} ${ZAgency.busy==='join'?'aria-busy="true"':''}>${ZAgency.busy==='join'?'Joining agency…':'Join agency & continue'}</button></div>`:''}<p class="za-note">Hosts must be 18 or older and complete identity and platform checks. Joining an agency does not activate hosting until your application is approved.</p><p class="za-note">Agency onboarding is managed by the BinzoLive team. Agencies receive their recruitment code from an administrator.</p></section>`;
+}
+Native.on('agency.loaded',d=>{if(d.requestId!==ZAgency.pending)return;ZAgency.loading=false;ZAgency.data=d;ZAgency.error='';zagPaint()});
+Native.on('agency.verified',d=>{if(d.requestId!==ZAgency.pending||ZAgency.busy!=='verify')return;ZAgency.busy='';ZAgency.verified=d;ZAgency.error='';zagPaint()});
+Native.on('agency.joined',d=>{if(d.requestId!==ZAgency.pending||ZAgency.busy!=='join')return;ZAgency.busy='';ZAgency.data=d;ZAgency.verified=null;ZAgency.error='';zagPaint();obHaptic('success')});
+Native.on('agency.error',d=>{if(d.requestId!==ZAgency.pending)return;ZAgency.loading=false;ZAgency.busy='';ZAgency.error=d.message||'Your agency could not be confirmed. Please try again.';zagPaint()});
+document.addEventListener('aurora:navigate',()=>{if(S.v==='agency')zagLoad()});
+function zagReset(){ZAgency.pending=++ZAgency.request;Object.assign(ZAgency,{data:null,preview:null,code:'',verified:null,loading:false,busy:'',error:'',from:'settings'})}
+['session.none','session.expired'].forEach(type=>Native.on(type,zagReset));
+Native.on('verification.status',()=>{if(S.v==='agency')zagLoad()});
+ZimiPullRefresh.register('agency',{refresh:zagLoad,busy:()=>ZAgency.loading||!!ZAgency.busy});
+window.ZimiAgency={open:zagOpen,linked:zagLinked,header:zagHeader,render:zagView,reset:zagReset};
+ZimiHome.views.agency=zagView;
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
 const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
@@ -13101,7 +13187,7 @@ function zpAccountSummary(){
 }
 function zpSettingsRows(){
   // Refer a Friend leads the list; its page explains the code and the rewards.
-  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Creator application',"zpGo('kyc')")}${zpSimpleRow('help','Help & tips',"zpOpen('help')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
+  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & tips',"zpOpen('help')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
@@ -13113,7 +13199,7 @@ function zpMenuRows(kind){
     payments:()=>zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+zpRow('cash','Withdrawal history',"zpGo('payout-history')"),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
-    creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('cash','Earnings & Wallet',"zpOpen('earnings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
+    creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('cash','Earnings & Wallet',"zpOpen('earnings')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
   };
   return rows[kind]?`<div class="zp-settings-detail">${rows[kind]()}</div>`:'';
 }
@@ -14001,6 +14087,7 @@ function zuIdentity(p){
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
     <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${contentBalance()}</strong><span>Coins</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
     <p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>
+    ${owner?`<button type="button" class="zu-agency-link" onclick="ZimiAgency.open('profile')">${zi('people',18)} ${isApprovedHost()?'My agency':'Become a Host'} ${hi('arrow',16)}</button>`:''}
     ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
     ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
     </div>`}</aside>`;

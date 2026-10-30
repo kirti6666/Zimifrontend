@@ -85,6 +85,8 @@ export type WebMessage =
   | { type: "post.comment.add"; data: { id: string; text: string; requestId: number } }
   | { type: "post.comment.delete"; data: { id: string; commentId: string; requestId: number } }
   | { type: "verification.submit"; data: Record<string, unknown> }
+  | { type: "agency.load"; data: { requestId: number } }
+  | { type: "agency.verify" | "agency.join"; data: { agencyCode: string; requestId: number } }
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls"; data: { on: boolean } }
   | { type: "host.callStatus.load"; data: Record<string, never> }
@@ -244,6 +246,8 @@ export type AppMessage =
   | { type: "chat.updated"; data: { with: string; message: Message } }
   | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
+  | { type: "agency.loaded" | "agency.verified" | "agency.joined"; data: import("./api/types").HostAgencyStatus & { requestId: number } }
+  | { type: "agency.error"; data: { action: "agency.load" | "agency.verify" | "agency.join"; message: string; requestId: number } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
   | { type: "call.failed"; data: { message: string; callId?: string; code?: string } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
@@ -1500,6 +1504,19 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (current(version)) emit({ type: "post.deleted", data: msg.data });
         } catch (error) {
           if (current(version)) emit({ type: "post.delete.error", data: { ...msg.data, message: errorMessage(error) } });
+        }
+        return;
+      }
+      case "agency.load": case "agency.verify": case "agency.join": {
+        const requestId = msg.data.requestId;
+        const document = documentRevision, sessionVersion = getSessionVersion();
+        const relevant = () => current(version) && document === documentRevision && sessionVersion === getSessionVersion();
+        try {
+          const data = msg.type === "agency.load" ? await api.hostAgency() : msg.type === "agency.verify" ? await api.verifyAgencyCode(msg.data.agencyCode) : await api.joinAgency(msg.data.agencyCode);
+          if (relevant()) emit({ type: msg.type === "agency.load" ? "agency.loaded" : msg.type === "agency.verify" ? "agency.verified" : "agency.joined", data: { ...data, requestId } });
+          if (msg.type === "agency.join" && relevant()) void refreshHostAccount().catch(() => {});
+        } catch (error) {
+          if (relevant()) emit({ type: "agency.error", data: { action: msg.type, message: errorMessage(error), requestId } });
         }
         return;
       }

@@ -58,6 +58,7 @@ function obAuthError(data) {
 function obPhotoUrl(value) { return typeof value === "string" && (/^https:\/\/[^\s"'<>]+$/.test(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)) ? value : ""; }
 function obApplyAccount(account, keepDraft = false) {
   const u = account.user || {}, editing = keepDraft && S.v === 'editprofile' && S.user?.id === u.id;
+  if(S.user?.id!==u.id)window.ZimiAgency?.reset();
   S.user = u;
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
@@ -80,6 +81,7 @@ function obResumeOnboarding(account, desiredCreator) {
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
+  window.ZimiAgency?.reset();
   window.ZimiHostAccess?.reset();
   if(window.ZimiHome)homeReset();
   window.ZimiThemes?.reset();
@@ -187,6 +189,7 @@ function obWelcome() {
         <button class="${host ? "" : "selected"}" aria-pressed="${!host}" onclick="obSelectRole('sender',this)">${I("heart", 17)} I'm here to connect</button>
         <button class="${host ? "selected" : ""}" aria-pressed="${host}" onclick="obSelectRole('host',this)">${I("vid", 17)} I'm a creator</button></div>
         <button id="ob-start" class="ob-primary" onclick="obStart('signup')">${host ? "Start creating" : "Find your people"}${obArrow()}</button>
+        <p class="za-welcome-note">Hosts join with an agency recruitment code, then complete verification.</p>
         <div class="ob-trust"><span>${I("lock", 13)} 18+ community</span>${OB_MODELS ? "<span>&middot; Photos posed by models</span>" : ""}</div></div>
     </div><p class="ob-desktop-note">A small hello. A world of possibilities.</p>
   </section>`;
