@@ -10,9 +10,9 @@ methods are not WebView bridge commands.
 Before every release build, increment the actual Android version code:
 
 ```powershell
-npm run release:version -- 1.0.7
+npm run release:version -- 1.0.8
 # Or specify a larger unused code explicitly:
-npm run release:version -- 1.0.7 4
+npm run release:version -- 1.0.8 5
 npm run build:apk
 ```
 
@@ -21,7 +21,8 @@ together and rejects the current or a lower code. The admin version label is
 separate from the APK's real manifest version. The live pre-updater APK was
 inspected as versionName `1.0.0`, versionCode `1`, regardless of its admin label
 `1.0.4`. The initial updater was `1.0.5` / code `2`; the bootstrap with call and
-checkout deferral is versionName `1.0.6`, versionCode `3`.
+checkout deferral is versionName `1.0.6`, versionCode `3`. The launcher artwork
+correction is versionName `1.0.7`, versionCode `4`.
 
 `build:apk` explicitly supplies the production HTTPS API/socket addresses and
 forces the release JS bundle and package tasks to run. A plain Gradle build can

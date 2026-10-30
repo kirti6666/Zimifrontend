@@ -23,7 +23,7 @@ const root = path.resolve(__dirname, '..');
     for (const view of ['home', 'explore', 'chats', 'profile', 'settings', 'notifications', 'coins', 'wallet', 'host', 'precall', 'thread', 'help']) {
       await page.evaluate(value => go(value, 'aanya'), view);
       const untagged = await page.evaluate(() => [...document.querySelectorAll('svg')]
-        .filter(svg => !svg.parentElement.closest('svg') && !svg.classList.contains('art') && !svg.classList.contains('zi-icon'))
+        .filter(svg => !svg.parentElement.closest('svg') && !svg.classList.contains('art') && !svg.classList.contains('zw-pack-art') && !svg.classList.contains('zi-icon'))
         .map(svg => svg.parentElement.className || svg.parentElement.tagName));
       assert.deepEqual(untagged, [], `Every icon on ${view} comes from an icon helper and carries data-icon`);
     }
@@ -60,7 +60,8 @@ const root = path.resolve(__dirname, '..');
     await page.waitForTimeout(150);
     const ringing = (await motion(hangUp)).transform.match(/-?[\d.]+/g).map(Number);
     assert.ok(ringing[0] < 0 && ringing[3] < 0, 'A hang-up press rings around the turned phone instead of undoing it');
-    for (const [view, selector] of [['settings', '.zp-account-summary>svg'], ['coins', '.zw-history>svg:last-child']]) {
+    // Coins now uses the shared Back header; its former history row is gone.
+    for (const [view, selector] of [['settings', '.zp-account-summary>svg']]) {
       await page.evaluate(view => go(view), view);
       const arrow = page.locator(selector), original = (await motion(arrow)).transform;
       assert.notEqual(original, 'none', `${view}: the chevron has its intended CSS orientation`);
