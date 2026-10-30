@@ -111,6 +111,8 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
       if (id === './src/launch-screen') return { LaunchScreen: 'LaunchScreen' };
+      if (id === './src/app-update') return { useAppUpdates: () => ({ state: overrides.appUpdatesState ?? { status: 'allowed' }, check: () => {}, update: () => {} }) };
+      if (id === './src/app-update-screen') return { AppUpdateScreen: 'AppUpdateScreen' };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
       throw new Error(`Unexpected import ${id}`);
     };
@@ -532,9 +534,23 @@ test('closing the bridge removes session observers and prevents pending UI deliv
   assert.equal(h.count('sendOtp'), 1);
 });
 
+test('the native update gate mounts app content only after an allowed policy', () => {
+  const h = harness(), app = h.load('App.tsx');
+  for (const status of ['checking', 'required', 'error']) {
+    h.overrides.appUpdatesState = { status };
+    const tree = app.default();
+    assert.equal(tree.type, 'AppUpdateScreen', `${status} cannot mount the WebView or session bridge`);
+    assert.equal(tree.props.state.status, status);
+    assert.equal(h.effects.length, 0, 'Blocked builds do not start app-content effects');
+  }
+  h.overrides.appUpdatesState = { status: 'allowed' };
+  assert.equal(app.default().type, app.AppContent);
+  assert.equal(h.effects.length, 0, 'The wrapper leaves content mounting to React');
+});
+
 test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
   const h = harness();
-  const provider = h.load('App.tsx').default();
+  const provider = h.load('App.tsx').AppContent();
   const [shell] = [provider.props.children].flat();
   const keyboard = shell.type(shell.props);
   const safeArea = keyboard.props.children;
@@ -557,7 +573,7 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
 
 test('the animated logo covers the app at launch instead of a loading skeleton', () => {
   const h = harness();
-  const provider = h.load('App.tsx').default();
+  const provider = h.load('App.tsx').AppContent();
   const [keyboard, launch] = [provider.props.children].flat();
   const web = [keyboard.props.children.props.children].flat().find(node => node?.type === 'WebView');
   assert.equal(launch.type, 'LaunchScreen', 'The logo is drawn over the whole screen, outside the safe-area padding');
@@ -574,7 +590,7 @@ test('the animated logo covers the app at launch instead of a loading skeleton',
 
 test('native app inactivity explicitly notifies the WebView and removes its listener on unmount', () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -596,7 +612,7 @@ test('native app inactivity explicitly notifies the WebView and removes its list
 
 test('native App tells the page when the keyboard opens and closes', () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   const findWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findWeb).find(Boolean) || null;
   const web = findWeb(tree), received = [];
   web.props.ref.current = { injectJavaScript: script => vm.runInNewContext(script, { window: { zimiReceive: raw => received.push(JSON.parse(raw)) } }) };
@@ -609,7 +625,7 @@ test('native App tells the page when the keyboard opens and closes', () => {
 
 test('native App refuses external document navigation and messages before privileged dispatch', async () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -637,7 +653,7 @@ test('native App refuses external document navigation and messages before privil
 
 test('the app page alone turns screenshot protection on and off for private screens', async () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -659,7 +675,7 @@ test('the app page alone turns screenshot protection on and off for private scre
 
 test('Android origin-only WebView messages reach OTP and haptic handlers', async () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -817,7 +833,7 @@ test('retiring a document, account or bridge prevents photo saves and stale conf
 });
 
 function nativeAppHarness() {
-  const h = harness(), tree = h.load('App.tsx').default();
+  const h = harness(), tree = h.load('App.tsx').AppContent();
   const findWeb = node => {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -1786,6 +1802,51 @@ test('creator search uses its own latest request and preserves the home category
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'hosts.search', data })), null);
   }
   h.bridge.close();
+});
+
+test('prepareForUpdate ends an active billed call once, retires realtime and preserves login', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => ({ callId: 'active-update-call' });
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.equal(h.find('call.created').length, 1);
+  const messages = h.posts.length;
+  h.bridge.prepareForUpdate(); h.bridge.prepareForUpdate(); h.bridge.close(); await settle();
+  assert.equal(h.count('endCall'), 1);
+  assert.equal(h.calls.find(call => call.name === 'endCall').args[0], 'active-update-call');
+  assert.equal(await h.session.getToken(), tokenPair().accessToken, 'Updating cannot revoke the account session');
+  assert.equal(h.live[0].stopped, true);
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'active-update-call', initiator: true } }); await settle();
+  assert.equal(h.posts.length, messages, 'Retired media cannot reopen content under the mandatory gate');
+});
+
+test('prepareForUpdate retires an outgoing call and cleans up its late server response safely', async () => {
+  const h = harness(), started = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => started.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.equal(h.count('startCall'), 1);
+  h.bridge.prepareForUpdate(); h.bridge.close();
+  assert.equal(h.count('endCall'), 0, 'The call ID is not known before creation returns');
+  started.resolve({ callId: 'late-update-call' }); await settle();
+  assert.equal(h.count('endCall'), 1); assert.equal(h.calls.find(call => call.name === 'endCall').args[0], 'late-update-call');
+  assert.equal(h.find('call.created').length, 0); assert.equal(h.find('call.connected').length, 0); assert.equal(h.find('call.failed').length, 0);
+  assert.equal(await h.session.getToken(), tokenPair().accessToken);
+});
+
+test('prepareForUpdate never borrows replacement credentials for a late outgoing cleanup', async () => {
+  const h = harness(), started = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => started.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id' } }); await settle();
+  h.bridge.prepareForUpdate(); h.bridge.close();
+  await h.session.setSessionTokens(tokenPair('replacement'));
+  started.resolve({ callId: 'old-update-call' }); await settle();
+  assert.equal(h.count('endCall'), 0);
+  assert.equal(await h.session.getToken(), tokenPair('replacement').accessToken);
 });
 
 test('cancel before call creation returns ends the returned call without reopening the UI', async () => {

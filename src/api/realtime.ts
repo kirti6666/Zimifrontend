@@ -5,6 +5,7 @@ import { api } from "./endpoints";
 import { callerFrom, callPrice, coinCount, genderOf, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
+import { getAppUpdateAuth, notifyAppUpdate } from "../app-update-events";
 
 export interface ServerEvent { type: string; data?: Record<string, unknown> }
 /** What an ended call cost, and whether it ended because the caller's coins ran out. */
@@ -26,7 +27,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     autoConnect: false, forceNew: true, transports: ["websocket", "polling"], tryAllTransports: true,
     reconnection: true, reconnectionDelay: 1000, reconnectionDelayMax: 30000, timeout: 15000,
     auth: callback => {
-      void getToken().then(token => { if (!closed && token) callback({ token }); else socket.disconnect(); }).catch(() => socket.disconnect());
+      void getToken().then(token => { if (!closed && token) callback({ token, ...getAppUpdateAuth() }); else socket.disconnect(); }).catch(() => socket.disconnect());
     },
   });
   const emit = (type: string, data: Record<string, unknown>) => { if (!closed) onEvent({ type, data }); };
@@ -58,7 +59,11 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     // are retried by the Socket.IO manager; server disconnects need fresh auth.
     if (reason === "io server disconnect") void recover();
   });
-  socket.on("connect_error", () => {
+  socket.on("app:release-updated", () => notifyAppUpdate(true));
+  socket.on("connect_error", error => {
+    if (error?.data?.code === "APP_UPDATE_REQUIRED" || error?.data?.code === "APP_VERSION_REQUIRED") {
+      notifyAppUpdate(true); socket.disconnect(); return;
+    }
     emit("realtime.status", { connected: false, message: "Reconnecting to live updates…" });
     if (!socket.active) void recover();
   });

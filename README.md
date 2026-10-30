@@ -2,6 +2,11 @@
 
 A React Native (Expo) app with creator discovery, private 1:1 video and voice calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
 
+Android supports mandatory updates published from the admin APK release panel.
+Install the updater bootstrap build once, then future releases download and
+open Android's installer in the app. There is no skip action. See the
+[update workflow](docs/APP_UPDATES.md) and [native build/version instructions](docs/NATIVE_UPDATES.md).
+
 Live streaming is temporarily paused in this release. Its entry points, public
 rooms and call queues are disabled; approved creators go online for private
 calls instead. The release switches are `window.ZIMI_LIVE_STREAMING_ENABLED`

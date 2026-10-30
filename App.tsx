@@ -11,6 +11,8 @@ import { createBridge, postToWeb } from "./src/bridge";
 import { LaunchScreen } from "./src/launch-screen";
 import { readThemeCache, type ThemeCache } from "./src/theme-cache";
 import { isTrustedDocument, parseWebMessage } from "./src/web-message";
+import { useAppUpdates } from "./src/app-update";
+import { AppUpdateScreen } from "./src/app-update-screen";
 
 /* Matches --canvas in web/aurora.css for each theme. */
 const CANVAS = { light: "#ffffff", dark: "#000000" } as const;
@@ -56,6 +58,11 @@ const withThemeCache = (page: string, cache: ThemeCache) =>
   page.replace("<head>", `<head><script>window.__zimiThemeCache=${JSON.stringify(cache).replace(/</g, "\\u003c")}</script>`);
 
 export default function App() {
+  const updates = useAppUpdates();
+  return updates.state.status === "allowed" ? <AppContent /> : <AppUpdateScreen {...updates} />;
+}
+
+export function AppContent() {
   const cache = useMemo(() => readThemeCache(), []);
   const cached = cache.account?.theme ?? cache.default;
   const page = useMemo(() => html && withThemeCache(html, cache), [cache]);
@@ -78,7 +85,7 @@ export default function App() {
     exitConfirmation.current = null;
     bridge.documentLoading();
   }, [bridge]);
-  useEffect(() => bridge.close, [bridge]);
+  useEffect(() => () => { bridge.prepareForUpdate(); bridge.close(); }, [bridge]);
   useEffect(() => {
     if (launched) return;
     const timer = setTimeout(() => setLaunched(true), LAUNCH_LIMIT_MS);

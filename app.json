@@ -3,7 +3,7 @@
     "name": "BinzoLive",
     "slug": "aurora-live-app",
     "scheme": "binzolive",
-    "version": "1.0.0",
+    "version": "1.0.5",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/brand/icon.png",
@@ -27,6 +27,7 @@
     },
     "android": {
       "package": "com.aurora.liveapp",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/adaptive-icon.png",
         "backgroundImage": "./assets/brand/adaptive-icon-background.png",
@@ -43,6 +44,7 @@
       ["expo-media-library", { "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.", "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
       "./plugins/with-onboarding-camera",
       "./plugins/with-development-network",
+      "./plugins/with-apk-updater",
       ["expo-splash-screen", { "image": "./assets/brand/logo.png", "imageWidth": 170, "resizeMode": "contain", "backgroundColor": "#FFFFFF" }]
     ]
   }

@@ -11,6 +11,10 @@ keeps it identical to the original Next.js version.
   passing messages to `src/bridge.ts`.
 - `src/` — all server access: `api/endpoints.ts`, `api/types.ts`,
   `api/realtime.ts`, `bridge.ts`, `session.ts`, `config.ts`. See `docs/API.md`.
+- Mandatory Android updates gate the WebView in `src/app-update*`. Native build
+  identity, download verification and system installation stay outside the web
+  bridge. Preserve the updater plugin and signing key; bump the real Android
+  version code for each release. See `docs/APP_UPDATES.md` and `docs/NATIVE_UPDATES.md`.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
 - `web/flat.css` — the final shared design layer: a pure white canvas, no box,

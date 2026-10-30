@@ -1,4 +1,5 @@
 import { API_CONFIGURATION_ERROR, API_URL } from "../config";
+import { getAppUpdateHeaders, notifyAppUpdate } from "../app-update-events";
 import {
   expireSession, getSessionVersion, getSessionSnapshot, getToken,
   isSessionTokens, rotateSessionTokens, SessionStorageError,
@@ -111,6 +112,7 @@ function retryDelay(response: Response, body: unknown): number | undefined {
 
 function responseError(response: Response, body: unknown): ApiError {
   const code = object(body) && typeof body.code === "string" && /^[A-Z0-9_]{1,80}$/.test(body.code) ? body.code : undefined;
+  if (response.status === 426 && code === "APP_UPDATE_REQUIRED") notifyAppUpdate(true);
   const mediaMessage = code === "STORAGE_NOT_CONFIGURED" ? "Photo uploads are not available yet. Please try again later." :
     code === "UPLOAD_UNAVAILABLE" ? "Couldn't confirm your upload. Please try again." : undefined;
   const fallback = response.status === 429 ? "Too many attempts. Please wait before trying again." :
@@ -143,6 +145,7 @@ async function exchange<T>(method: Method, path: string, body?: unknown, token?:
           method,
           headers: {
             Accept: "application/json",
+            ...getAppUpdateHeaders(),
             ...(body === undefined ? {} : { "Content-Type": "application/json" }),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },

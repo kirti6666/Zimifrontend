@@ -1712,6 +1712,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));
     },
+    prepareForUpdate: () => {
+      // End server-owned billing before retiring media. Cleanup endpoints remain
+      // available to outdated clients; queued call creation also detects epoch changes.
+      const callId = activeCall, verification = verifyCall, stream = activeStream;
+      activeCall = undefined; verifyCall = undefined; activeStream = undefined; callGeneration++;
+      if (callId) void api.endCall(callId).catch(() => {});
+      if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
+      if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
+    },
     close: () => { closed = true; epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }
