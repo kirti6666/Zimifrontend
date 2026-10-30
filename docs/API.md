@@ -28,6 +28,78 @@ Native.on("call.connected")      <--  postToWeb(...)
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
 
+## Conversation ordering and engagement
+
+Message history and realtime delivery use the conversation's positive server
+`sequence`. Legacy messages sort first by `createdAt` then ID; sequenced messages
+follow in sequence order. The UI merges by server ID and the sender's `clientId`,
+so delayed welcomes, duplicate socket delivery and history fetched before a send
+response cannot replace or duplicate a newer human conversation. Send receipts
+carry server time and sequence. Pending messages retain distinct local UUIDs;
+text/photo acknowledgments and failures match that UUID. Photo retries reuse the
+original uploaded storage key for that account and send attempt.
+
+Background reads preserve the visible thread, composer, selection and scroll
+anchor. They include up to 200 known server message IDs in `knownIds`; the server
+returns conversation-scoped `hiddenIds` to reconcile delete-for-me events missed
+while offline. Reconnection and foregrounding re-read the active thread. Older
+pagination is retained, while explicit deletions and edit/read state are merged.
+
+`chat.activity {with,active}` reaches `POST /chats/activity`. Opening a thread
+activates its authenticated device-session lease before the history request;
+foreground reading, typing and voice drafts renew every 15 seconds. Leaving,
+backgrounding or replacing the WebView releases it. Native requests serialize
+and coalesce so an earlier close cannot override a newer open. Lease failures
+remain unobtrusive and the server expires an unrenewed lease after 45 seconds.
+The backend separately suppresses scheduled welcomes during engagement and
+permanently stops them for a pair once either participant sends a human message.
+
+Gift catalog `coins: 0` means **Free**; paid gifts retain positive server prices.
+The picker, quick gifts, receipts and host targets show Free. Sending still
+requires explicit confirmation and an idempotency key, but zero-priced gifts
+do not require wallet readiness or create spending, earnings or commission.
+Catalog pricing remains server-owned; client-supplied zero never discounts a
+paid gift. Historical receipts preserve the original zero cost after price edits.
+
+Direct gifts use persisted `Message.kind = "gift"` receipts. `Message.gift`
+contains the server's immutable `{giftId,transferId,name,emoji,mediaUrl,coins,quantity}`
+snapshot; its name and total coin cost do not depend on later catalog edits.
+History, incoming `chat.message` and sender `chat.updated` echoes carry the same
+message ID. `gift.sent.message` supplies that canonical receipt when the HTTP
+confirmation wins the socket race; replaying an idempotency key keeps its ID.
+Historical backfills may use `orderAfterSequence` to retain their original place.
+Gift artwork uses the uploaded animation directly in the chat quick row, full
+picker, persistent receipts, call feedback and host gift targets. Transparent
+GIF/WebP/SVG assets receive no added background, badge, glow, filter or effect.
+When a direct gift is confirmed in the open chat, its original animation also
+plays once at the center of the visible history. A separate non-interactive
+portal survives chat redraws without changing input, focus, scrolling or message
+order. Confirmed gifts queue by transfer identity and never overlap; history
+loads do not replay them. Leaving the chat, backgrounding or signing out clears
+pending playback. Timing starts after the artwork loads and uses the saved
+animation duration, with a finite fallback for older gifts without timing.
+Playback caches the original file bytes and uses a fresh, revoked-after-playback
+Blob URL for each transfer so a WebP already looping in the picker starts from
+its first frame. Public media GET CORS should allow the app's origin (or `*` with
+omitted credentials) to share that cache. Without CORS, unsigned public artwork
+uses a fresh image resource URL; existing signed query parameters stay intact.
+The admin uploader converts numbered WebP/PNG frame ZIPs into looping transparent
+WebP (30 FPS by default, configurable from 1 to 60). Matching a bundled gift name
+never replaces an uploaded file; bundled animations only fill missing media.
+
+Transient `gift.received` notifications remain animation events, and never create
+another receipt. Stream gifts return `message: null`. Paid transfers re-read
+authoritative wallet balances; free gifts need no wallet request.
+
+Gift animation timing is optional server metadata: catalog `media.durationMs`
+becomes `Gift.durationMs`; historical receipts retain `Message.gift.durationMs`.
+`gift.sent.giftDetails` carries the original transfer artwork and timing for both
+direct and stream gifts, while `gift.received.durationMs` preserves incoming
+notification timing. No duration is invented for older records, and invalid or
+fractional values are omitted. This is separate from a voice message's top-level
+`Message.durationMs`. Playback can show one complete animation cycle after the
+image loads, using the original transparent artwork without added effects.
+
 ## Agency host onboarding
 
 All new host applicants join an admin-created agency before applying. Settings

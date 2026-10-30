@@ -134,6 +134,47 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 
+test('conversation activity serializes old close/new open, renews and releases in background without interrupting chat', async () => {
+  const h=harness(),first=deferred();
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  let attempts=0;h.overrides.setChatActivity=()=>++attempts===1?first.promise:undefined;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'chat.activity',data:{with:'peer-a',active:true,userId:'forged'}})),null);
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-a',active:true}});await settle();
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-a',active:false}});
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-b',active:true}});
+  first.resolve();await settle();
+  const requests=()=>plain(h.calls.filter(call=>call.name==='setChatActivity').map(call=>call.args));
+  assert.deepEqual(requests(),[['peer-a',true],['peer-a',false],['peer-b',true]],'The old close completes before the new peer lease opens');
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-b',active:true}});await settle();
+  for(const listener of [...h.activities])listener('background');await settle();
+  assert.deepEqual(requests().at(-1),['peer-b',false]);
+  for(const listener of [...h.activities])listener('active');await settle();
+  assert.deepEqual(requests().at(-1),['peer-b',true]);
+  h.bridge.documentLoading();await settle();assert.deepEqual(requests().at(-1),['peer-b',false]);
+  h.overrides.setChatActivity=()=>{throw new h.ApiError('Network offline',503)};
+  h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-b',active:true}});await settle();
+  assert.equal(h.find('operation.error').length,0,'Best-effort engagement failures do not interrupt manual conversations');h.bridge.close();
+});
+
+test('chat acknowledgments preserve client identity and committed server ordering while background reads stay unobtrusive', async () => {
+  const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  const delivered={id:'server-message',text:'Delivered text',createdAt:'2026-10-30T10:00:00Z',sequence:8};
+  h.overrides.sendMessage=()=>delivered;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  const knownIds=['507f1f77bcf86cd799439099'];
+  h.bridge.handle({type:'chat.open',data:{with:'host',background:true,knownIds}});await settle();
+  assert.deepEqual(plain(h.calls.filter(call=>call.name==='thread').at(-1).args),['host',knownIds]);
+  assert.equal(h.find('data.loading').filter(event=>event.data.resource==='thread')[0].data.background,true);
+  h.bridge.handle({type:'chat.send',data:{to:'host',text:'Original text',clientId:'text-attempt-1'}});await settle();
+  assert.deepEqual(plain(h.find('chat.sent').at(-1).data),{to:'host',sent:'Original text',text:'Delivered text',id:'server-message',inCall:false,reply:null,clientId:'text-attempt-1',createdAt:delivered.createdAt,sequence:8});
+  assert.equal(h.calls.filter(call=>call.name==='sendMessage').at(-1).args[4],'text-attempt-1');
+  h.overrides.thread=()=>{throw new h.ApiError('History unavailable',503)};
+  h.bridge.handle({type:'chat.open',data:{with:'host',background:true}});await settle();
+  assert.equal(h.find('operation.error').length,0,'A failed background reconciliation retains visible messages and the active draft');h.bridge.close();
+});
+
 test('agency messages validate identity-free payloads and retain request correlation without granting host access', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
@@ -1240,6 +1281,42 @@ test('a confirmed gift stays successful when its independent wallet refresh fail
   assert.deepEqual(h.find('operation.error').map(item => item.data.action), ['wallet.load']);
   assert.equal(h.find('data.loading').at(-1).data.error, 'Something went wrong. Please try again.');
   h.bridge.close();
+});
+
+test('direct gift confirmations retain the canonical persisted receipt and transient animations never synthesize another chat message', async () => {
+  const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  const message={id:'persisted-gift',mine:true,text:'',time:'10:00',createdAt:'2026-10-30T10:00:00Z',sequence:9,kind:'gift',gift:{giftId:'catalog-gift',transferId:'gift-transfer',name:'Golden Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:75,quantity:3},automated:false,status:'sent'};
+  message.gift.durationMs=6400;
+  const giftDetails={id:'catalog-gift',transferId:'gift-transfer',quantity:3,name:'Golden Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:75,durationMs:6400};
+  h.overrides.sendGift=()=>({id:'gift-transfer',coins:75,message,giftDetails});
+  h.overrides.wallet=()=>({coins:425,earningsPaise:0});
+  h.bridge.handle({type:'gift.send',data:{to:'actual-recipient',gift:'catalog-gift',coins:99999,inCall:false,idempotencyKey:'direct-gift-receipt'}});await settle();
+  const receipt=h.find('gift.sent').at(-1).data;
+  assert.equal(receipt.to,'actual-recipient');assert.equal(receipt.coins,75);assert.deepEqual(plain(receipt.message),message);
+  assert.deepEqual(plain(receipt.giftDetails),giftDetails,'The web playback layer receives the original animation duration without consulting an edited catalog');
+  assert.equal(h.find('wallet.balance').at(-1).data.coins,425,'Balances are read from the server rather than inferred from the gift amount');
+  assert.equal(h.find('data.loading').some(event=>event.data.resource==='chats'&&event.data.background),true,'A committed receipt refreshes the real inbox');
+  const before=h.find('chat.updated').length;
+  h.live[0].onEvent({type:'gift.received',data:{id:'gift-transfer',gift:'Golden Rose',coins:75,from:'host',durationMs:6400}});await settle();
+  assert.equal(h.find('gift.received').at(-1).data.durationMs,6400);
+  assert.equal(h.find('chat.updated').length,before,'The animation notification never creates a second receipt');
+  h.live[0].onEvent({type:'chat.updated',data:{with:'actual-recipient',message}});await settle();
+  assert.equal(h.find('chat.updated').at(-1).data.message.id,'persisted-gift','Sender echoes retain the same canonical ID as the HTTP response');h.bridge.close();
+});
+
+test('free gifts pass native validation and preserve zero receipts without needing a wallet', async () => {
+  const h=harness(),send={type:'gift.send',data:{to:'host',gift:'catalog-gift',coins:0,inCall:false,idempotencyKey:'free-gift-attempt'}};
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify(send)));
+  for(const coins of [-1,1.5,'0',null,Infinity])assert.equal(h.webMessages.parseWebMessage(JSON.stringify({...send,data:{...send.data,coins}})),null);
+  const message={id:'free-message',mine:true,text:'',time:'10:00',kind:'gift',gift:{giftId:'catalog-gift',transferId:'free-transfer',name:'Free Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:0,quantity:1,durationMs:6400}};
+  h.overrides.sendGift=()=>({id:'free-transfer',coins:0,message,giftDetails:{id:'catalog-gift',transferId:'free-transfer',name:'Free Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:0,quantity:1,durationMs:6400}});
+  h.overrides.wallet=()=>{throw new Error('A free gift must not need a funded wallet')};
+  h.bridge.handle(send);await settle();
+  const delivered=h.find('gift.sent').at(-1).data;
+  assert.equal(delivered.coins,0);assert.equal(delivered.message.gift.coins,0);assert.equal(delivered.giftDetails.coins,0);assert.equal(delivered.giftDetails.durationMs,6400);
+  assert.equal(h.count('wallet'),0);assert.equal(h.find('wallet.balance').length,0);assert.equal(h.find('operation.error').length,0);
+  assert.equal(h.count('sendGift'),1,'The zero-priced gift still follows the server-controlled gift endpoint');h.bridge.close();
 });
 
 test('withdrawal messages reject legacy amounts, malformed requests and extra authority fields', async () => {

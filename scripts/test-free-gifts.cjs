@@ -1,0 +1,73 @@
+/* Zero-cost server gifts stay free through UI selection, retries and receipts.
+   Bridge fixtures only: no accounts, catalog writes, wallets or payments. */
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=path.resolve(__dirname,'..'),id=n=>n.toString(16).padStart(24,'0');
+const host={id:id(2),name:'Gift host',role:'host',serverRole:'host',hostStatus:'approved',verified:true,online:true};
+const free={id:id(100),name:'Free Rose',emoji:'Rose',coins:0,mediaUrl:'https://media.fixture.test/free.webp',durationMs:300};
+const paid={id:id(101),name:'Paid Rose',emoji:'Rose',coins:50,mediaUrl:'',durationMs:300};
+const catalog={gifts:[free,paid],packs:[],paymentsAvailable:false};
+const receive=(page,type,data={})=>page.evaluate(message=>Native.receive(message),{type,data});
+const sends=(page,type)=>page.evaluate(type=>__sent.filter(item=>item.type===type).map(item=>item.data),type);
+const dialog=page=>page.getByRole('dialog',{name:'Send a gift',exact:true});
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
+ const errors=[];
+ try{
+  const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.route(/^https?:\/\//,route=>route.request().url().startsWith('https://media.fixture.test/')?route.fulfill({status:200,headers:{'access-control-allow-origin':'*'},contentType:'image/gif',body:Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','base64')}):route.abort());
+  await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
+  await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href);
+  await receive(page,'session',{user:{id:id(1),name:'Free gift member',role:'sender',serverRole:'user',isPhoneVerified:true},verification:'none',requiresOnboarding:false});
+  await receive(page,'data.home',{hosts:[host],total:1,page:1});
+  await receive(page,'data.chats',{chats:[{id:id(3),user:host,last:'Hello',unread:0,canSend:true}],total:1,page:1});
+  await page.evaluate(peer=>zcOpen(peer),host.id);
+  await receive(page,'data.thread',{with:host.id,canSend:true,messages:[]});
+  await receive(page,'wallet.balance',{coins:0});
+  await receive(page,'data.catalog',catalog);
+  await page.locator('#ti').fill('Keep my conversation draft');
+  const quick=page.getByRole('group',{name:'Quick gifts',exact:true});
+  assert.match(await quick.getByRole('button',{name:'Free Rose, Free',exact:true}).innerText(),/Free/);
+  await quick.getByRole('button',{name:'Free Rose, Free',exact:true}).click();
+  await receive(page,'data.catalog',catalog);
+  const freeTile=dialog(page).getByRole('button',{name:'Free Rose, Free',exact:true});
+  assert.equal(await freeTile.locator('.zg-price').innerText(),'Free');
+  assert.equal(await freeTile.locator('.zg-price svg').count(),0,'Free has no coin price marker');
+  assert.equal((await sends(page,'gift.send')).length,0,'Choosing a free gift still needs explicit confirmation');
+  // A balance failure/loading state must not make a free server gift payable.
+  await page.evaluate(()=>{Object.assign(ContentLoading.wallet,{loading:true,error:'Wallet unavailable'});coinPaint()});
+  assert.equal(await dialog(page).getByRole('button',{name:'Send gift',exact:true}).isEnabled(),true);
+  assert.match(await dialog(page).locator('.zw-gift-footer').innerText(),/No coins needed/);
+  await dialog(page).getByRole('button',{name:'Send gift',exact:true}).click();
+  const request=(await sends(page,'gift.send')).at(-1);
+  assert.equal(request.coins,0);assert.equal(request.gift,free.id);
+  assert.equal(await page.locator('.zc-gift-card').count(),0,'Free receipt waits for server confirmation too');
+  await receive(page,'operation.error',{action:'gift.send',...request,status:500,message:'Retry delivery confirmation'});
+  // The catalog can become paid during an uncertain retry; retry identity wins.
+  await receive(page,'data.catalog',{...catalog,gifts:[{...free,coins:75},paid]});
+  await dialog(page).getByRole('button',{name:'Send gift',exact:true}).click();
+  const retry=(await sends(page,'gift.send')).at(-1);
+  assert.equal(retry.idempotencyKey,request.idempotencyKey);assert.equal(retry.coins,0);
+  const message={id:id(700),sequence:1,mine:true,kind:'gift',text:'',status:'sent',createdAt:new Date().toISOString(),gift:{giftId:free.id,transferId:id(701),name:free.name,emoji:free.emoji,mediaUrl:free.mediaUrl,durationMs:300,coins:0,quantity:1}};
+  const ack={to:host.id,gift:free.id,id:id(701),idempotencyKey:request.idempotencyKey,coins:0,message};
+  await receive(page,'gift.sent',ack);await receive(page,'gift.sent',ack);
+  assert.equal(await page.locator('.zc-gift-card').count(),1);
+  assert.equal(await page.locator('.zc-gift-value').innerText(),'Free','Historical server zero beats a later paid catalog price');
+  assert.equal(await page.evaluate(()=>S.bal),0,'No invented debit or credit');
+  assert.equal(await page.locator('#ti').inputValue(),'Keep my conversation draft');
+  await page.getByRole('button',{name:'Gift',exact:true}).click();await receive(page,'data.catalog',catalog);
+  await dialog(page).getByRole('button',{name:'Paid Rose, 50 coins',exact:true}).click();
+  assert.equal(await dialog(page).getByRole('button',{name:'Send gift',exact:true}).isDisabled(),true,'A paid gift keeps the normal balance guard');
+  await dialog(page).getByRole('button',{name:'Free Rose, Free',exact:true}).click();
+  assert.equal(await dialog(page).getByRole('button',{name:'Send gift',exact:true}).isEnabled(),true,'Only zero-priced gift bypasses wallet readiness');
+  await dialog(page).getByRole('button',{name:'Close gifts',exact:true}).click();
+  await receive(page,'data.thread',{with:host.id,canSend:true,messages:[message]});
+  assert.equal(await page.locator('.zc-gift-value').innerText(),'Free');
+  assert.equal((await sends(page,'wallet.checkout')).length,0);
+  assert.deepEqual(errors,[]);
+  console.log('PASS free gifts: explicit send with empty/unavailable wallet, Free labels, paid guard, zero receipt, preserved retry and draft, no checkout or invented balance.');
+ }finally{await browser.close()}
+})().catch(error=>{console.error(error);process.exitCode=1});

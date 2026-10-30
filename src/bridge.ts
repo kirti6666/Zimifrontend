@@ -99,11 +99,12 @@ export type WebMessage =
   | { type: "blocked.load"; data: { page?: number } }
   | { type: "block.set"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "follow.set"; data: { id: string; on: boolean; requestId?: number } }
-  | { type: "chat.open"; data: { with: string } }
+  | { type: "chat.open"; data: { with: string; background?: boolean; knownIds?: string[] } }
+  | { type: "chat.activity"; data: { with: string; active: boolean } }
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
-  | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string } }
-  | { type: "chat.photo"; data: { to: string; photo: string; replyTo?: string } }
+  | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string; clientId?: string } }
+  | { type: "chat.photo"; data: { to: string; photo: string; replyTo?: string; clientId?: string } }
   | { type: "chat.photoDownload"; data: { to: string; id: string; requestId: number } }
   | { type: "chat.photoViewer"; data: { open: boolean } }
   | { type: "chat.voice"; data: { to: string; audio: string; durationMs: number; clientId: string; replyTo?: string } }
@@ -204,7 +205,7 @@ export type AppMessage =
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "data.ads"; data: AdFeed }
   | { type: "ads.opened" | "ads.retired"; data: { id: string } }
-  | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number } }
+  | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number; message?: Message | null; giftDetails?: import("./api/types").Gift & { transferId: string; quantity: number } } }
   | { type: "rtc.config"; data: RtcConfig }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string; from: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string; from: string } }
@@ -227,7 +228,7 @@ export type AppMessage =
   | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
-  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } }
+  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; hiddenIds?: string[] } }
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
@@ -239,8 +240,8 @@ export type AppMessage =
   | { type: "payout.loaded"; data: Payouts & { requestId: number; pending?: PendingPayout | null; recovered?: Payout | null } }
   | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
   | { type: "payout.error"; data: { action: "payout.load" | "payout.request"; requestId: number; idempotencyKey?: string; message: string; code?: string; status?: number } }
-  | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null } }
-  | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null } }
+  | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null; clientId?: string; createdAt?: string; sequence?: number } }
+  | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null; clientId?: string; createdAt?: string; sequence?: number } }
   | { type: "chat.photoDownloaded"; data: { to: string; id: string; requestId: number } }
   | { type: "chat.voiceSent"; data: { to: string; clientId: string; message: Message } }
   | { type: "chat.updated"; data: { with: string; message: Message } }
@@ -255,8 +256,8 @@ export type AppMessage =
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
-  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string; senderGender?: Gender } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text" | "image" | "voice"; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
+  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; sequence?: number; orderAfterSequence?: number; clientId?: string; kind?: "text" | "image" | "voice" | "gift"; gift?: Message["gift"]; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -584,6 +585,37 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const refreshWallet = () => readResource("wallet", () => api.wallet(), data => emit({ type: "wallet.balance", data }));
+  // One serialized lease per authenticated device session. Coalesce renewals and
+  // close the previous peer before opening another; delayed closes never race a
+  // newer open. A network failure is best-effort and the server lease expires.
+  type ChatLease = { epoch: number; session: number; wanted?: string; applied?: string; revision: number; delivered: number; work?: Promise<void> };
+  let chatLease: ChatLease | undefined;
+  const flushChatActivity = () => {
+    const state = chatLease;
+    if (!state || state.work) return;
+    const applicable = () => !closed && chatLease === state && current(state.epoch) && state.session === getSessionVersion();
+    state.work = (async () => {
+      while (applicable() && state.delivered !== state.revision) {
+        const revision = state.revision, target = appActive ? state.wanted : undefined;
+        if (state.applied && state.applied !== target) {
+          const previous = state.applied; state.applied = undefined;
+          try { await api.setChatActivity(previous, false); } catch { /* TTL handles an unreachable close. */ }
+        }
+        if (!applicable()) return;
+        if (target && target === (appActive ? state.wanted : undefined)) {
+          state.applied = target;
+          try { await api.setChatActivity(target, true); } catch { /* Next heartbeat renews after recovery. */ }
+        }
+        state.delivered = revision;
+      }
+    })().finally(() => { state.work = undefined; if (applicable() && state.delivered !== state.revision) flushChatActivity(); });
+  };
+  const setChatActivity = (peer?: string, active = false) => {
+    if (!chatLease || chatLease.epoch !== epoch || chatLease.session !== getSessionVersion()) chatLease = { epoch, session: getSessionVersion(), revision: 0, delivered: 0 };
+    if (active && peer) chatLease.wanted = peer;
+    else if (!peer || chatLease.wanted === peer) chatLease.wanted = undefined;
+    chatLease.revision++; flushChatActivity();
+  };
   // A call that ends, is declined or goes unanswered belongs in Chats' Calls and Missed calls
   // tabs. A background read keeps the shown list until the new one arrives.
   const refreshCalls = () => Promise.allSettled([
@@ -745,14 +777,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
     emitProfileSettings(settings);
     emit({ type: "data.loading", data: { resource: "profileSettings", loading: false } });
   };
-  const loadChats = (page = 1) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
+  const loadChats = (page = 1, background = false) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
     ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => {
       for (const chat of data.chats) if (chat.user?.id) {
         chatPeers.set(chat.user.id, chat.user);
         if (threadPermissions.has(chat.user.id) && typeof chat.canSend === "boolean") rememberThreadPermission(chat.user.id, chat);
       }
       emit({ type: "data.chats", data });
-    }, { page });
+    }, { page, ...(background ? { background: true } : {}) });
   const verifyPurchase = (orderId: string, kind: PurchaseKind = "coins", protect = true): Promise<Purchase | undefined> => {
     const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${sessionVersion}:${kind}:${orderId}`;
     const existing = verifyingPurchases.get(key);
@@ -843,6 +875,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (closed) return;
     appActive = state === "active";
     stopLive.setActive?.(appActive && !liveOnboarding);
+    if (chatLease) { chatLease.revision++; flushChatActivity(); }
     if (!appActive) {
       clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined;
       for (const external of externalCoinCheckouts.values()) if (!external.settling) external.departed = true;
@@ -908,7 +941,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } else if (!hostChecking) invalidateHostAccess(true);
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
-      if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(), "chats.reload"); return; }
+      if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(1, true), "chats.reload"); return; }
       if (event.type === "account.updated" || event.type === "profile.updated") {
         profileRevision++;
         if (!liveOnboarding) { quietly(refreshProfileAccount(), "profile.refresh"); quietly(loadProfileSettings(), "profile.settings.load"); if (event.type === "account.updated") quietly(loadThemes(), "themes.load"); }
@@ -1619,11 +1652,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "chat.open": {
         const withId = msg.data.with;
+        setChatActivity(withId, true);
         threadPermissions.delete(withId);
-        return readResource("thread", async () => {
+        const read = readResource("thread", async () => {
           await requireChatPair(withId);
           if (!current(version)) throw new ApiError("Your sign-in changed. Please try again.", 409);
-          const revision = hostRevision, data = await api.thread(withId);
+          const revision = hostRevision, data = msg.data.knownIds?.length ? await api.thread(withId, msg.data.knownIds) : await api.thread(withId);
           if (revision !== hostRevision) throw new ApiError("Your account permissions changed. Open the conversation again.", 403);
           return data;
         }, data => {
@@ -1632,8 +1666,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
           // Only the messages returned by this page are marked read by the server.
           // Reload its counts instead of incorrectly clearing the entire conversation.
           quietly(loadChats(), "chats.reload");
-        });
+        }, msg.data.background ? { background: true } : {});
+        return msg.data.background ? read.catch(() => {}) : read;
       }
+      case "chat.activity": setChatActivity(msg.data.with, msg.data.active); return;
       case "chat.send": {
         const callId = msg.data.inCall ? activeCall : undefined;
         if (msg.data.inCall && !callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);
@@ -1645,16 +1681,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // The server verifies that this accepted call belongs to both users;
         // an in-call reply need not wait for a preexisting text conversation.
         // The screen learns the message's server ID (for reply, edit and delete) and the text as delivered.
-        const delivered = await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo);
+        const delivered = msg.data.clientId ? await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo, msg.data.clientId) : await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo);
         if (current(version) && typeof delivered?.text === "string")
-          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered.text, id: delivered.id, inCall: !!msg.data.inCall, reply: delivered.reply ?? null } });
+          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered.text, id: delivered.id, inCall: !!msg.data.inCall, reply: delivered.reply ?? null, ...(msg.data.clientId ? { clientId: msg.data.clientId } : {}), ...(delivered.createdAt ? { createdAt: delivered.createdAt } : {}), ...(delivered.sequence !== undefined ? { sequence: delivered.sequence } : {}) } });
         if (current(version)) quietly(loadChats(), "chats.reload");
         return;
       }
       case "chat.photo": {
         if (!(await requireThreadSend(msg.data.to, version))) return;
-        const sent = await api.sendPhotoMessage(msg.data.to, msg.data.photo, msg.data.replyTo);
-        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "", reply: sent?.reply ?? null } }); quietly(loadChats(), "chats.reload"); }
+        const sent = msg.data.clientId ? await api.sendPhotoMessage(msg.data.to, msg.data.photo, msg.data.replyTo, msg.data.clientId) : await api.sendPhotoMessage(msg.data.to, msg.data.photo, msg.data.replyTo);
+        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "", reply: sent?.reply ?? null, ...(msg.data.clientId ? { clientId: msg.data.clientId } : {}), ...(sent?.createdAt ? { createdAt: sent.createdAt } : {}), ...(sent?.sequence !== undefined ? { sequence: sent.sequence } : {}) } }); quietly(loadChats(), "chats.reload"); }
         return;
       }
       case "app.exit.request": return; // The native shell owns exit confirmation.
@@ -1705,8 +1741,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const sessionVersion = getSessionVersion();
         const receipt = await api.sendGift(msg.data.to, msg.data.gift, msg.data.coins, msg.data.inCall ? activeCall : undefined, msg.data.streamId, msg.data.idempotencyKey);
         if (current(version) && sessionVersion === getSessionVersion()) {
-          emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey, id: receipt.id, coins: receipt.coins } });
-          quietly(refreshWallet(), "wallet.load");
+          emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey, id: receipt.id, coins: receipt.coins, ...(receipt.message !== undefined ? { message: receipt.message } : {}), ...(receipt.giftDetails ? { giftDetails: receipt.giftDetails } : {}) } });
+          if (receipt.message) quietly(loadChats(1, true), "chats.reload");
+          if (receipt.coins > 0) quietly(refreshWallet(), "wallet.load");
         }
         return;
       }
@@ -1901,13 +1938,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "profile.cover.save" || msg.type === "creator.card.save" ? `:${documentRevision}` : ""}`;
+      const serialized = notificationWrite || ((msg.type === "chat.send" || msg.type === "chat.photo") && !!msg.data.clientId) || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "profile.cover.save" || msg.type === "creator.card.save" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {
@@ -1916,7 +1953,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // query. An unkeyed error could finish a newer debounced search.
         if (msg.type === "notifications.load" && msg.data.requestId !== undefined) return;
         const context = msg.type === "gift.send" ? { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey }
-          : msg.type === "chat.voice" ? { to: msg.data.to, clientId: msg.data.clientId }
+          : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId }
           : msg.type === "ads.click" ? { id: msg.data.id }

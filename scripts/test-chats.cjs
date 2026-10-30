@@ -289,7 +289,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.evaluate(() => S.v), 'thread');
     assert.equal((await lastSent('chat.open')).with, mira.id);
     await page.getByRole('status', { name: 'Loading messages', exact: true }).waitFor();
-    await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00', automated: true }], readAt: new Date().toISOString() }, 'thread');
+    await settle('data.thread', { with: mira.id, messages: [{ id:id('30'),mine: false, text: 'A real thread response', time: '12:00', automated: true }], readAt: new Date().toISOString() }, 'thread');
     assert.match(await page.locator('#tf').innerText(), /A real thread response/);
     assert.doesNotMatch(await page.locator('#tf').innerText(), /automated/i, 'Automated welcomes read like any other message');
     const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
@@ -303,7 +303,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.evaluate(() => window.ZimiChats.unread()), 2, 'Opening or receiving a message does not optimistically clear unread counts');
     await loading('thread', true);
     assert.equal(await draft.inputValue(), 'Keep this unsent draft');
-    await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00', automated: true }, { mine: false, text: 'A new message in the active thread', time: '12:01', automated: true }], readAt: new Date().toISOString() }, 'thread');
+    await settle('data.thread', { with: mira.id, messages: [{ id:id('30'),mine: false, text: 'A real thread response', time: '12:00', automated: true }, { id:id('31'),mine: false, text: 'A new message in the active thread', time: '12:01', automated: true }], readAt: new Date().toISOString() }, 'thread');
     assert.equal((await page.locator('#tf').innerText()).match(/A real thread response|A new message in the active thread/g).length, 2, 'Refreshing history keeps automated messages visible');
     assert.equal(await draft.inputValue(), 'Keep this unsent draft', 'The authoritative thread response preserves an unsent draft');
     await receive('chat.message', { from: asha.id, text: 'Message in another conversation', id: id('32') });
@@ -323,7 +323,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.getByRole('button', { name: 'Love it', exact: true }).click();
     assert.equal((await lastSent('chat.send')).text, 'Love it 🔥', 'Quick replies send real messages');
     const rose = { id: id('41'), name: 'Rose', emoji: '🌹', coins: 10 };
-    await page.getByRole('button', { name: 'Send a gift', exact: true }).click();
+    await page.getByRole('button', { name: 'Gift', exact: true }).click();
     await settle('data.catalog', { gifts: [rose], packs: [], paymentsAvailable: false }, 'catalog');
     await page.getByRole('dialog', { name: 'Send a gift', exact: true }).getByRole('button').filter({ hasText: 'Rose' }).click();
     await page.getByRole('button', { name: 'Send gift', exact: true }).click();

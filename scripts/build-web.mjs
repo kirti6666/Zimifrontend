@@ -133,6 +133,7 @@ const page = (demo, hosted = false) =>
   read("web/wallet.css") +
   read("web/coin-packages.css") +
   read("web/gift-picker.css") +
+  read("web/gift-art.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -141,6 +142,7 @@ const page = (demo, hosted = false) =>
   read("node_modules/qrcode-generator/dist/qrcode.js") +
   read("web/bridge.js") +
   read("web/phone-countries.js") +
+  "\n" + read("web/chat-order.js") +
   read("web/onboarding.js").replace(/__OB_MEDIA_([1-6])__/g, (_, i) =>
     "data:image/webp;base64," + readFileSync(join(root, `web/onboarding-media/india-${i}.webp`)).toString("base64"))
     // The app shows only the three welcome photos; the preview also needs the sample hosts'.
@@ -165,8 +167,10 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/host-studio.js") +
   "\n" + read("web/verification-call.js") +
   "\n" + read("web/chats.js") +
+  "\n" + read("web/chat-activity.js") +
   "\n" + read("web/chat-voice.js") +
   "\n" + read("web/chat-photo.js") +
+  "\n" + read("web/chat-gift-playback.js") +
   "\n" + read("web/profile.js") +
   "\n" + read("web/themes.js") +
   "\n" + read("web/notifications.js") +

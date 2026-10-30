@@ -63,6 +63,7 @@ const photos = () => [
       await receive('data.home', { hosts: [mira, asha], stage: [], featured: mira, total: 2, page: 1, categories: ['Music'], availableCount: 2 });
     };
     const openThread = async (peer = mira, messages = photos()) => {
+      await page.evaluate(()=>Chats.hidden.clear()); // Each case restores an independent server fixture.
       await page.evaluate(peerId => zcOpen(peerId), peer.id);
       await receive('data.thread', { with: peer.id, canSend: true, messages });
       await page.locator('#ti').waitFor();
@@ -222,7 +223,7 @@ const photos = () => [
       if (submitWithKeyboard) await page.keyboard.press('Enter');
       else await button('Send reply').click();
       await viewer.waitFor({ state: 'detached' });
-      assert.deepEqual(await lastRequest('chat.send'), { to: mira.id, text: 'A lovely view + 10-0', replyTo: messageId }, 'The inline reply targets the displayed photo');
+      assert.deepEqual(await (async()=>{const {clientId,...payload}=await lastRequest('chat.send');assert.ok(clientId);return payload})(), { to: mira.id, text: 'A lovely view + 10-0', replyTo: messageId }, 'The inline reply targets the displayed photo');
       const sentReply = await page.evaluate(() => S.msgs.at(-1));
       assert.equal(sentReply.reply?.id, messageId, 'The optimistic text reply keeps its photo quote');
       assert.equal(sentReply.reply?.image, true);
@@ -238,7 +239,7 @@ const photos = () => [
       await replyInput.fill('A separate photo reply');
       await button('Send reply').click();
       await viewer.waitFor({ state: 'detached' });
-      assert.deepEqual(await lastRequest('chat.send'), { to: mira.id, text: 'A separate photo reply', replyTo: photoIds.incoming });
+      assert.deepEqual(await (async()=>{const {clientId,...payload}=await lastRequest('chat.send');assert.ok(clientId);return payload})(), { to: mira.id, text: 'A separate photo reply', replyTo: photoIds.incoming });
       assert.equal(await page.locator('#ti').inputValue(), draft, `Inline sending preserves the existing ${context} draft`);
       assert.equal(await page.evaluate(value => value === 'reply' ? Chats.reply?.id : Chats.editing?.id, context), context === 'reply' ? photoIds.own : editableId, `Inline sending restores the previous ${context} target`);
       await page.evaluate(() => zcClearContext());
@@ -283,7 +284,7 @@ const photos = () => [
       if (context === 'edit') {
         assert.deepEqual(await lastRequest('chat.edit'), { to: mira.id, id: editableId, text: draft }, 'An unfinished edit still submits as an edit after the photo picker');
         assert.equal(await page.evaluate(() => __sent.filter(message => message.type === 'chat.send').length), sendCount, 'Submitting the preserved edit does not send a new text message');
-      } else assert.deepEqual(await lastRequest('chat.send'), { to: mira.id, text: draft, ...(priorReplyId ? { replyTo: priorReplyId } : {}) }, 'The preserved chat draft retains its original send context');
+      } else assert.deepEqual(await (async()=>{const {clientId,...payload}=await lastRequest('chat.send');assert.ok(clientId);return payload})(), { to: mira.id, text: draft, ...(priorReplyId ? { replyTo: priorReplyId } : {}) }, 'The preserved chat draft retains its original send context');
     }
     await openThread();
 

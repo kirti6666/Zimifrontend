@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { callerFrom, callPrice, coinCount, genderOf, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callerFrom, callPrice, coinCount, genderOf, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 import { getAppUpdateAuth, notifyAppUpdate } from "../app-update-events";
@@ -82,11 +82,15 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
       if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
       const normalized = messageFrom(message, userId);
       if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt),
+        ...(normalized.sequence !== undefined ? { sequence: normalized.sequence } : {}), ...(normalized.clientId ? { clientId: normalized.clientId } : {}),
+        ...(normalized.orderAfterSequence !== undefined ? { orderAfterSequence: normalized.orderAfterSequence } : {}),
         kind: normalized.kind, ...(normalized.imageUrl ? { imageUrl: normalized.imageUrl } : {}),
+        ...(normalized.gift ? { gift: normalized.gift } : {}),
         ...(normalized.audioUrl ? { audioUrl: normalized.audioUrl, durationMs: normalized.durationMs } : {}), automated: message.automated === true,
         ...(normalized.reply ? { reply: normalized.reply } : {}),
         ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
       });
+      else if (normalized.id) emit("chat.updated", { with: to, message: normalized });
       // Sender echoes also update the list, including messages sent on another device.
       emit("chats.updated", {});
     } catch { /* Ignore malformed events. */ }
@@ -113,14 +117,17 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("gift:received", payload => {
     try {
       const gift = record(payload);
+      const durationMs = giftDurationFrom(gift.durationMs);
       if (idOf(gift.recipientId) !== userId) return;
-      if (typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins > 0) emit("gift.received", {
+      if (typeof gift.coins !== "number" || !Number.isSafeInteger(gift.coins) || gift.coins < 0) return;
+      emit("gift.received", {
         gift: string(gift.giftName) || idOf(gift.giftId) || "Gift", coins: gift.coins, from: idOf(gift.senderId),
         id: idOf(gift), streamId: idOf(gift.streamId), giftId: idOf(gift.giftId), giftName: string(gift.giftName),
         senderName: string(gift.senderName), emoji: string(gift.emoji), mediaUrl: string(gift.mediaUrl), senderAvatarUrl: string(gift.senderAvatarUrl),
+        ...(durationMs !== undefined ? { durationMs } : {}),
         senderGender: genderOf(gift.senderGender).gender,
       });
-      refreshWallet();
+      if (gift.coins > 0) refreshWallet();
     } catch { /* Ignore malformed events. */ }
   });
   socket.on("host:reviewed", payload => {

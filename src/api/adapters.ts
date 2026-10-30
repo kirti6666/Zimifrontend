@@ -1,4 +1,6 @@
 import { ApiError } from "./client";
+import { compareChatMessages } from "./chat-order";
+import type { ChatGift } from "./types";
 import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
 import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
 
@@ -202,8 +204,14 @@ export function streamChatFrom(value: unknown): StreamChat {
   const message = record(value), user = message.userId && typeof message.userId === "object" ? record(message.userId) : {};
   return { id: idOf(message), streamId: idOf(message.streamId), userId: idOf(message.userId), name: string(user.name), text: string(message.text), createdAt: string(message.createdAt) };
 }
+export function giftDurationFrom(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
 export function catalogFrom(giftData: unknown, packData: unknown): Catalog {
-  return { gifts: items(giftData).map(record).map(gift => ({ id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: gift.media && typeof gift.media === "object" ? string(record(gift.media).url) : "" })),
+  return { gifts: items(giftData).map(record).filter(gift => typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins >= 0).map(gift => {
+    const media = gift.media && typeof gift.media === "object" ? record(gift.media) : {}, durationMs = giftDurationFrom(media.durationMs);
+    return { id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: string(media.url), ...(durationMs !== undefined ? { durationMs } : {}) };
+  }),
     packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise), ...(Number.isSafeInteger(pack.bonusPercent) && Number(pack.bonusPercent) > 0 && Number(pack.bonusPercent) <= 1000 ? { bonusPercent: Number(pack.bonusPercent) } : {}), ...(["hot", "popular"].includes(String(pack.badge)) ? { badge: pack.badge as "hot" | "popular" } : {}) })), paymentsAvailable: record(packData).paymentsAvailable === true };
 }
 export const validPaymentRoute = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(value);
@@ -273,18 +281,34 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
   const chats = items(data).map(record).map(chat => {
     const peer = (Array.isArray(chat.participants) ? chat.participants : []).find(person => idOf(person) !== userId);
     const last = chat.lastMessage && typeof chat.lastMessage === "object" ? record(chat.lastMessage) : {};
+    const gift = last.kind === "gift" ? chatGiftFrom(last.gift) : undefined;
     if (!peer || !idOf(peer)) throw new ApiError("A conversation could not be loaded. Try again.", 502);
     const lastAt = string(chat.lastMessageAt) || string(last.createdAt);
-    return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
+    return { id: idOf(chat), user: hostFrom(peer), last: gift?.name || string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
       ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
       ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
-      lastKind: last.kind === "voice" ? "voice" as const : last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastKind: last.kind === "gift" ? "gift" as const : last.kind === "voice" ? "voice" as const : last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
       lastAutomated: last.automated === true,
+      ...(idOf(last) ? { lastId: idOf(last) } : {}),
+      ...(Number.isSafeInteger(last.sequence) && Number(last.sequence) > 0 ? { lastSequence: Number(last.sequence) } : {}),
+      ...(last.kind === "gift" && Number.isSafeInteger(last.orderAfterSequence) && Number(last.orderAfterSequence) >= 0 ? { lastOrderAfterSequence: Number(last.orderAfterSequence) } : {}),
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
   return { chats, ...(data.official ? { official: officialChatSummaryFrom(data.official) } : {}), total: typeof data.total === "number" ? count(data.total) : chats.length, page: count(data.page) || 1, limit: count(data.limit) || 20,
     unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : chats.reduce((sum, chat) => sum + chat.unread, 0),
     unreadConversations: typeof data.unreadConversations === "number" ? count(data.unreadConversations) : chats.filter(chat => chat.unread > 0).length };
+}
+/** Never invent receipt names or amounts from the current catalog. Unsafe artwork
+ * is omitted while the server's historical name, quantity and price remain. */
+export function chatGiftFrom(value: unknown): ChatGift | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  const gift = record(value), giftId = idOf(gift.giftId), transferId = idOf(gift.transferId), name = string(gift.name);
+  if (!giftId || !transferId || !name.trim() || name.length > 80 || !Number.isSafeInteger(gift.coins) || Number(gift.coins) < 0 || !Number.isSafeInteger(gift.quantity) || Number(gift.quantity) <= 0) return;
+  const artwork = string(gift.mediaUrl);
+  let mediaUrl = "";
+  try { const url = new URL(artwork); if (/^https:\/\/[^\s"'<>\\]+$/.test(artwork) && !url.username && !url.password) mediaUrl = artwork; } catch { /* A name-only receipt still remains valid. */ }
+  const durationMs = giftDurationFrom(gift.durationMs);
+  return { giftId, transferId, name, emoji: string(gift.emoji).slice(0, 20), mediaUrl, coins: Number(gift.coins), quantity: Number(gift.quantity), ...(durationMs !== undefined ? { durationMs } : {}) };
 }
 /** One chat message as the screens show it, including its edit, delete and reply state. */
 export function messageFrom(value: unknown, userId: string): Message {
@@ -294,17 +318,22 @@ export function messageFrom(value: unknown, userId: string): Message {
   const audio = message.audio && typeof message.audio === "object" ? record(message.audio) : undefined;
   const audioUrl = string(audio?.url), durationMs = finite(audio?.durationMs);
   const reply = message.reply && typeof message.reply === "object" ? record(message.reply) : undefined;
+  const gift = message.kind === "gift" ? chatGiftFrom(message.gift) : undefined;
   return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
-    ...(audioUrl ? { kind: "voice" as const, audioUrl, ...(durationMs !== undefined ? { durationMs } : {}) } : imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
-    ...(message.editedAt ? { edited: true } : {}), ...(message.deletedAt ? { deleted: true } : {}),
+    ...(Number.isSafeInteger(message.sequence) && Number(message.sequence) > 0 ? { sequence: Number(message.sequence) } : {}),
+    ...(message.kind === "gift" && Number.isSafeInteger(message.orderAfterSequence) && Number(message.orderAfterSequence) >= 0 ? { orderAfterSequence: Number(message.orderAfterSequence) } : {}),
+    ...(typeof message.clientId === "string" && message.clientId ? { clientId: message.clientId } : {}),
+    ...(message.kind === "gift" ? { kind: "gift" as const, ...(gift ? { gift } : {}) } : audioUrl ? { kind: "voice" as const, audioUrl, ...(durationMs !== undefined ? { durationMs } : {}) } : imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
+    ...(message.editedAt ? { edited: true, editedAt: string(message.editedAt) } : {}), ...(message.deletedAt ? { deleted: true, deletedAt: string(message.deletedAt) } : {}),
     ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, ...(reply.voice === true ? { voice: true } : {}), deleted: reply.deleted === true } } : {}),
     ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
 }
-export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {
+export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; hiddenIds?: string[] } {
   const data = record(value);
   return { ...(typeof data.canSend === "boolean" ? { canSend: data.canSend } : {}),
     ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
-    messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)),
+    messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)).sort(compareChatMessages),
+    ...(Array.isArray(data.hiddenIds) ? { hiddenIds: data.hiddenIds.filter((id): id is string => typeof id === "string" && /^[a-f\d]{24}$/i.test(id)).slice(0, 200) } : {}),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
 const CALL_STATUSES = ["ringing", "accepted", "ended", "declined", "missed"] as const;

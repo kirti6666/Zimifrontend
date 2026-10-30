@@ -214,7 +214,7 @@ export interface StreamCallRequest { id: string; streamId: string; userId: strin
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
 export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string; gender?: Gender | null }; }
 export interface StreamReaction { id: string; streamId: string; userId: string; emoji: string; }
-export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
+export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; durationMs?: number; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; bonusPercent?: number; badge?: "hot" | "popular"; }
 export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
 export interface PaymentRoutes {
@@ -276,6 +276,9 @@ export interface Person {
 }
 
 export interface ChatSummary {
+  lastId?: string;
+  lastSequence?: number;
+  lastOrderAfterSequence?: number;
   canSend?: boolean;
   automatedOnly?: boolean;
   sendDisabledReason?: string;
@@ -284,7 +287,7 @@ export interface ChatSummary {
   last: string;
   time: string;
   unread: number;
-  lastKind: "text" | "image" | "voice";
+  lastKind: "text" | "image" | "voice" | "gift";
   lastDeleted?: boolean;
   lastMine: boolean;
   lastAutomated: boolean;
@@ -303,17 +306,35 @@ export interface ChatsData {
   unreadConversations: number;
 }
 
+/** Immutable catalog and transfer snapshot supplied with a persisted gift receipt. */
+export interface ChatGift {
+  giftId: string;
+  transferId: string;
+  name: string;
+  emoji: string;
+  mediaUrl: string;
+  coins: number;
+  quantity: number;
+  durationMs?: number;
+}
+
 export interface Message {
   id?: string;
+  sequence?: number;
+  orderAfterSequence?: number;
+  clientId?: string;
   mine: boolean;
   text: string;
   time: string;
   createdAt?: string;
-  kind?: "text" | "image" | "voice";
+  kind?: "text" | "image" | "voice" | "gift";
+  gift?: ChatGift;
   imageUrl?: string;
   audioUrl?: string;
   durationMs?: number;
   edited?: boolean;
+  editedAt?: string;
+  deletedAt?: string;
   deleted?: boolean; // deleted for everyone; only a placeholder remains
   reply?: { id: string; mine: boolean; text: string; image: boolean; voice?: boolean; deleted: boolean };
   automated?: boolean;

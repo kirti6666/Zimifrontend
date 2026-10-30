@@ -630,49 +630,16 @@ function sendGift(l,e,v,k){
  r(); playGift(l,e,v,k); hostReply();
 }
 
-/* Centre-stage gift animation. Cheap gifts get a quick rise; the top tiers
-   take over the frame with a flash, rotating rays and a spark burst. */
-function playGift(l,e,v,k,label){
- const f=document.getElementById("fl"); if(!f)return;
- const sticker=giftSticker(l),big=!!sticker||v>=19999,mid=!!sticker||v>=5999,life=sticker?5200:big?3000:2000;
- const frag=document.createElement("div");
- frag.style.cssText="position:absolute;inset:0";
- const add=(cls,style)=>{const d=document.createElement("div");d.className=cls;
-  if(style)d.style.cssText=style;frag.appendChild(d);return d};
-
- /* every gift gets a shockwave and a halo; they are what read as "shiny" */
- add("fxhalo");
- add("fxring");
- if(mid||big)add("fxring two");
- if(mid||big)add("fxflash");
- if(big){add("fxbeam");add("fxrays")}
-
- /* gold dust: more, smaller and twinkling for the top tier */
- const dust=big?22:mid?12:6;
- for(let i=0;i<dust;i++){
-  const sp=document.createElement("span"); sp.className="fxsp";
-  const a=Math.random()*Math.PI*2, d=(big?110:70)+Math.random()*(big?150:90);
-  const sz=(big?4:3)+Math.random()*5;
-  sp.style.width=sp.style.height=sz.toFixed(1)+"px";
-  sp.style.setProperty("--dx",(Math.cos(a)*d).toFixed(0)+"px");
-  sp.style.setProperty("--dy",(Math.sin(a)*d).toFixed(0)+"px");
-  sp.style.animationDelay=(Math.random()*0.5).toFixed(2)+"s";
-  frag.appendChild(sp);
- }
-
- const gl=document.createElement("div");
- gl.className="fxg"+(big?" big":"")+(sticker?" sticker":"");
- gl.innerHTML=sticker?`<img src="${giftMotionUrl(l)}" alt="">`:`<span class="em">${giftGlyph(e)}</span>`;
- frag.appendChild(gl);
-
- const tag=document.createElement("div");
- tag.className="fxtag";
- tag.textContent=String(label||(sticker?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} · ${n(v)}`)).replace(/&middot;/g,"·");
- if(big){tag.style.animationDuration="3s, 2.2s";tag.style.fontSize="13px"}
- frag.appendChild(tag);
-
- f.appendChild(frag);
- setTimeout(()=>frag.remove(),life+300);
+/* Render only the supplied transparent gift; its file owns the animation. */
+function playGift(l,e,v,k,label,mediaUrl){
+ const f=document.getElementById("fl");if(!f)return;
+ const media=giftMotionUrl(l,mediaUrl),frag=document.createElement("div");
+ frag.style.cssText="position:absolute;inset:0;pointer-events:none";
+ const art=document.createElement("div");art.className="fxg";
+ if(media){const img=document.createElement("img");img.src=media;img.alt=l;art.appendChild(img)}
+ else{const emoji=document.createElement("span");emoji.className="em";emoji.innerHTML=giftGlyph(e);art.appendChild(emoji)}
+ frag.appendChild(art);f.appendChild(frag);
+ setTimeout(()=>frag.remove(),media?8000:2400);
 }
 
 function tick(){if(!["call","voice"].includes(S.v))return;const h=g(S.h);
@@ -1789,9 +1756,11 @@ Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
    and unread previews while preserving real messages from either participant. */
 function ignoreAutomatedCallMessage(d){return d.automated===true&&(d.inCall===true||["dial","dialback","ring","incoming","call","hcall","voice"].includes(S.v)||!!S.connecting||!!S.memberRing||!!S.inc||!!S.queuedInc)}
 Native.on("chat.message",d=>{if(ignoreAutomatedCallMessage(d))return;const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
+ if(d.kind==="gift"&&["call","hcall","voice"].includes(S.v)){window.zcAdvanceSummary?.(String(d.from),d,false);return}
  if(["call","hcall","voice"].includes(S.v)&&String(d.from)===String(S.v==="hcall"?S.caller?.id:S.h)){S.rmsgs.push(["host",first(d.name||(S.v==="hcall"?S.caller?.n:g(S.h)?.n)||"Them"),d.text]);if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,kind:d.kind,imageUrl:d.imageUrl,audioUrl:d.audioUrl,durationMs:d.durationMs,reply:d.reply||null,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
- const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
+ const advance=window.zcAdvanceSummary?zcAdvanceSummary(String(d.from),d,false):true;
+ if(window.zcIncomingMessage&&zcIncomingMessage(d))return;
+ const c=CH.find(x=>x[0]===String(d.from));if(c&&advance){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");
 st.textContent="@keyframes up{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{transform:translateY(-180px);opacity:0}}";

@@ -1,6 +1,6 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -15,6 +15,13 @@ let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
 let pendingProfileWrite: Promise<unknown> | undefined;
 let voiceUploadVersion: number | undefined;
 const voiceUploads = new Map<string, { to: string; durationMs: number; replyTo?: string; audioKey: string }>();
+let photoUploadVersion: number | undefined;
+const photoUploads = new Map<string, { to: string; replyTo?: string; fingerprint: string; imageKey: string }>();
+function photoFingerprint(source: string) {
+  let left = 2166136261, right = 5381;
+  for (let index = 0; index < source.length; index++) { const value = source.charCodeAt(index); left = Math.imul(left ^ value, 16777619); right = Math.imul(right, 33) ^ value; }
+  return `${source.length}:${left >>> 0}:${right >>> 0}`;
+}
 const remember = (account: Account) => { identity = { id: account.user.id, version: getSessionVersion() }; return account; };
 async function queueProfileWrite<T>(version: number, save: () => Promise<T>): Promise<T> {
   const commit = () => { ensureSession(version); return save(); };
@@ -296,7 +303,7 @@ export const api = {
     if (!Number.isSafeInteger(data.updated) || Number(data.updated) < 0 || typeof data.readAt !== "string") throw new ApiError("The read status could not be confirmed. Refresh your conversations.", 502);
     return { updated: data.updated as number, readAt: data.readAt };
   },
-  async thread(withId: string) { const id = await selfId(); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}`), id); },
+  async thread(withId: string, knownIds?: string[]) { const id = await selfId(); const known = knownIds?.filter(id => /^[a-f\d]{24}$/i.test(id)).slice(-200); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}${known?.length ? `?knownIds=${encodeURIComponent(known.join(","))}` : ""}`), id); },
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
@@ -319,13 +326,21 @@ export const api = {
   acceptVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/accept`),
   endVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/end`),
   verificationSignal: (callId: string, signal: RtcPayload) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/signal`, signal),
-  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string) {
+  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<{ id: string; coins: number; message?: import("./types").Message | null; giftDetails?: import("./types").Gift & { transferId: string; quantity: number } }> {
     if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
     const receipt = record(await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey }));
-    if (!idOf(receipt) || typeof receipt.coins !== "number" || !Number.isSafeInteger(receipt.coins) || receipt.coins < 1) throw new ApiError("The gift confirmation could not be read. Retry to check this same gift.", 502);
+    if (!idOf(receipt) || typeof receipt.coins !== "number" || !Number.isSafeInteger(receipt.coins) || receipt.coins < 0) throw new ApiError("The gift confirmation could not be read. Retry to check this same gift.", 502);
+    let message: import("./types").Message | undefined;
+    if (receipt.message && typeof receipt.message === "object" && !Array.isArray(receipt.message)) {
+      const raw = record(receipt.message), normalized = messageFrom(raw, idOf(raw.senderId));
+      if (normalized.id && normalized.kind === "gift" && normalized.gift?.transferId === idOf(receipt) && normalized.gift.coins === receipt.coins && idOf(raw.recipientId) === to) message = normalized;
+    }
+    const rawSnapshot = receipt.giftSnapshot && typeof receipt.giftSnapshot === "object" && !Array.isArray(receipt.giftSnapshot) ? record(receipt.giftSnapshot) : undefined;
+    const snapshot = message?.gift ?? (rawSnapshot ? chatGiftFrom({ ...rawSnapshot, giftId: idOf(receipt.giftId) || gift, transferId: idOf(receipt), coins: receipt.coins, quantity: receipt.quantity ?? 1 }) : undefined);
+    const giftDetails = snapshot ? { id: snapshot.giftId, transferId: snapshot.transferId, name: snapshot.name, emoji: snapshot.emoji, mediaUrl: snapshot.mediaUrl, coins: snapshot.coins, quantity: snapshot.quantity, ...(snapshot.durationMs !== undefined ? { durationMs: snapshot.durationMs } : {}) } : undefined;
     // A confirmed transfer must not become a failed send if a subsequent wallet
     // read loses its connection. The bridge refreshes the balance independently.
-    return { id: idOf(receipt), coins: receipt.coins };
+    return { id: idOf(receipt), coins: receipt.coins, ...(message ? { message } : receipt.message === null ? { message: null } : {}), ...(giftDetails ? { giftDetails } : {}) };
   },
   async chatPhotoUrl(to: string, id: string): Promise<string> {
     const version = getSessionVersion();
@@ -339,13 +354,23 @@ export const api = {
     throw new ApiError("This photo does not have a secure download address.", 502);
   },
   /** Uploads a chat photo into the sender's own folder, then sends it. */
-  async sendPhotoMessage(to: string, photo: string, replyTo?: string) {
+  setChatActivity: (withId: string, active: boolean) => request("POST", "/chats/activity", { with: withId, active }),
+  async sendPhotoMessage(to: string, photo: string, replyTo?: string, clientId?: string) {
     const version = getSessionVersion();
     decodePhoto(photo);
-    const imageKey = await uploadMedia(photo, "chat", version);
+    if (photoUploadVersion !== version) { photoUploads.clear(); photoUploadVersion = version; }
+    const previous = clientId ? photoUploads.get(clientId) : undefined, fingerprint = clientId ? photoFingerprint(photo) : "";
+    if (previous && (previous.to !== to || previous.replyTo !== replyTo || previous.fingerprint !== fingerprint)) throw new ApiError("This photo belongs to an earlier send. Choose it again to send a new message.", 409);
+    const imageKey = previous?.imageKey ?? await uploadMedia(photo, "chat", version);
     ensureSession(version);
-    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey, ...(replyTo ? { replyTo } : {}) }));
-    return { id: idOf(message), reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
+    if (clientId && !previous) {
+      if (photoUploads.size >= 100) photoUploads.delete(photoUploads.keys().next().value!);
+      photoUploads.set(clientId, { to, replyTo, fingerprint, imageKey });
+    }
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey, ...(replyTo ? { replyTo } : {}), ...(clientId ? { clientId } : {}) }));
+    return { id: idOf(message), reply: messageFrom(message, idOf(message.senderId)).reply ?? null,
+      ...(typeof message.createdAt === "string" ? { createdAt: message.createdAt } : {}),
+      ...(Number.isSafeInteger(message.sequence) && Number(message.sequence) > 0 ? { sequence: Number(message.sequence) } : {}) };
   },
   async sendVoiceMessage(to: string, audio: string, durationMs: number, clientId: string, replyTo?: string) {
     const version = getSessionVersion();
@@ -376,11 +401,13 @@ export const api = {
   deleteMessage: async (to: string, id: string, everyone: boolean) =>
     record(await request("DELETE", `/chats/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}?for=${everyone ? "everyone" : "me"}`)),
   /** Returns the text as delivered: the server hides phone numbers and abusive words. */
-  async sendMessage(to: string, text: string, callId?: string, replyTo?: string) {
-    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}) }));
+  async sendMessage(to: string, text: string, callId?: string, replyTo?: string, clientId?: string) {
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}), ...(clientId ? { clientId } : {}) }));
     // A quoted message may have changed while this send was in flight. Carry
     // the server's current quote (or its absence) back to the optimistic UI.
-    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text, reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
+    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text, reply: messageFrom(message, idOf(message.senderId)).reply ?? null,
+      ...(typeof message.createdAt === "string" ? { createdAt: message.createdAt } : {}),
+      ...(Number.isSafeInteger(message.sequence) && Number(message.sequence) > 0 ? { sequence: Number(message.sequence) } : {}) };
   },
   async follow(id: string, on: boolean) {
     const data = record(await request("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }));

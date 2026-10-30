@@ -283,7 +283,7 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     await go(page, 'thread', creator.id);
     await receive(page, 'data.thread', { with: creator.id, messages: [], canSend: true });
     assert.equal(await page.locator('.zc-gift-card').count(), 2, 'Delivery acknowledged away from a thread remains available during this session');
-    assert.match(await page.locator('.zc-gift-card').last().innerText(), /30 Coins[\s\S]*Rose/, 'The receipt retains gift details and uses its authoritative price');
+    assert.match(await page.locator('.zc-gift-card').last().innerText(), /Rose[\s\S]*30\s+coins/, 'The receipt retains gift details and uses its authoritative price');
     await showGifts(page);
     await chooseGift(page);
     await page.evaluate(() => document.querySelector('.zw-sheet').querySelectorAll('button:not(:disabled)').item(document.querySelector('.zw-sheet').querySelectorAll('button:not(:disabled)').length - 1).focus());

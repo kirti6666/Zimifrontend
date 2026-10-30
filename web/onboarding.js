@@ -58,7 +58,7 @@ function obAuthError(data) {
 function obPhotoUrl(value) { return typeof value === "string" && (/^https:\/\/[^\s"'<>]+$/.test(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)) ? value : ""; }
 function obApplyAccount(account, keepDraft = false) {
   const u = account.user || {}, editing = keepDraft && S.v === 'editprofile' && S.user?.id === u.id;
-  if(S.user?.id!==u.id)window.ZimiAgency?.reset();
+  if(S.user?.id!==u.id){window.ZimiAgency?.reset();window.ZimiChats?.reset()}
   S.user = u;
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;

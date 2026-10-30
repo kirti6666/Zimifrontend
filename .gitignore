@@ -12,3 +12,4 @@ admin-site/dist/
 /home-production-state.png
 google-services.json
 GoogleService-Info.plist
+artifacts/*

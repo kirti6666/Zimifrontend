@@ -50,7 +50,7 @@ async function checkLayout(page,label){
   assert.equal(metrics.count,12);
   assert.equal(metrics.overflow,false,`${label}: no document overflow`);
   assert.ok(metrics.sheet.y>=0&&metrics.sheet.bottom<=metrics.viewport+1,`${label}: sheet stays within viewport`);
-  assert.ok(metrics.last.bottom<=metrics.viewport+1,`${label}: third gift row remains visible`);
+  assert.ok(metrics.last.bottom<=metrics.viewport+1,`${label}: third gift row remains visible: ${JSON.stringify(metrics)}`);
   assert.ok(parseFloat(metrics.radius)>=20,`${label}: reference sheet has rounded upper corners`);
   assert.ok(metrics.balance.x>metrics.title.x&&metrics.close.x>metrics.balance.x,`${label}: balance and close stay beside the heading`);
   assert.equal(metrics.cellBackground,'rgba(0, 0, 0, 0)',`${label}: gifts use an open grid`);
@@ -59,9 +59,10 @@ async function checkLayout(page,label){
   assert.ok(metrics.background.includes('gradient'),`${label}: dark sheet keeps the subtle reference glow`);
   assert.deepEqual(await sheet.locator('.zw-gifts>button>b').allInnerTexts(),entries.map(row=>row[0]),'Only real catalog records are ordered into the reference grid');
   assert.match(await giftButton(page,'Rose').locator('small').innerText(),/123/,'The displayed price comes from the catalog, not the visual reference');
-  assert.equal(await giftButton(page,'Rose Waterfall').locator('.zg-tier').innerText(),'RARE');
+  assert.equal(await sheet.locator('.zg-tier').count(),0,'No extra badge or layer is added to gift artwork');
   const still=await giftButton(page,'Rose Waterfall').locator('.zg-art img').getAttribute('src');
-  assert.equal(still,await page.evaluate(()=>giftStillUrl('Rose Waterfall')),'Picker artwork uses the still cover');
+  assert.equal(still,await page.evaluate(()=>giftMotionUrl('Rose Waterfall')),'Picker artwork stays animated');
+  assert.equal(await giftButton(page,'Rose Waterfall').locator('.zg-art').evaluate(node=>getComputedStyle(node,'::before').content),'none','No glow behind transparent artwork');
   assert.equal(await sheet.locator('.zw-gift-footer').count(),0,'An unselected gift sheet has no extra footer');
 }
 
