@@ -139,8 +139,9 @@ html:root[data-theme="dark"] .zc-thread{
 }
 .zc-thread-header{background:var(--canvas)}
 .zc-thread-scroll{background:transparent}
-:root .zc-thread :is(.zc-chips,.zc-chips>button,.zc-gift-strip,.zc-composer,.zc-composer-field,.zc-composer-field:focus-within,.zc-gift-button){background:transparent}
-.zc-thread .zc-chips{border-top:0}
+:root .zc-thread :is(.zc-gift-strip,.zc-composer,.zc-gift-button){background:transparent}
+:root .zc-thread .zc-composer-field{background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,var(--line))}
+:root .zc-thread .zc-composer-field:focus-within{background:color-mix(in srgb,var(--accent) 16%,var(--surface));border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
 .zc-thread-scroll :is(.zc-meta,.zc-edited,.zc-thread-note){color:var(--zc-wallpaper-muted)}
 
 .zc-thread-scroll>.zh-error{margin:0}
@@ -194,10 +195,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-voice.playing .zc-wave>i{animation:zc-wave .9s ease-in-out infinite alternate;animation-delay:calc(var(--zc-i) * -70ms)}
 .zc-voice-body>time{flex:none;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
 
-.zc-chips{flex:none;display:flex;gap:8px;padding:10px var(--zc-gutter) 4px;overflow-x:auto;scrollbar-width:none;border-top:1px solid color-mix(in srgb,var(--line) 45%,transparent)}
-.zc-chips::-webkit-scrollbar,.zc-emoji::-webkit-scrollbar{display:none}
-.zc-chips>button{flex:none;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:99px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;white-space:nowrap}
-.zc-chips>button:active{background:var(--raised)}
+.zc-emoji::-webkit-scrollbar{display:none}
 .zc-emoji{flex:none;display:flex;gap:4px;padding:8px var(--zc-gutter) 0;overflow-x:auto;scrollbar-width:none}
 .zc-emoji[hidden]{display:none}
 .zc-emoji>button{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--surface);font-size:22px}
@@ -214,7 +212,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-composer-send:active,.zc-thread-video:active{transform:scale(.95)}
 @keyframes zc-live{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
 @keyframes zc-wave{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
-@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}.zc-chips>button{padding:0 13px;font-size:12.5px}.zc-composer{gap:4px}.zc-composer-send{width:46px;height:46px}}
+@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}.zc-composer{gap:4px}.zc-composer-send{width:46px;height:46px}}
 /* With the keyboard open the history needs the room; the banner returns when typing stops. */
 @media(max-height:600px){.zc-thread:has(.zc-composer-field:focus-within) .zc-thread-live{display:none}}
 @media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer-send:active,.zc-thread-video:active{transform:none}}

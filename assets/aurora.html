@@ -2579,8 +2579,9 @@ html:root[data-theme="dark"] .zc-thread{
 }
 .zc-thread-header{background:var(--canvas)}
 .zc-thread-scroll{background:transparent}
-:root .zc-thread :is(.zc-chips,.zc-chips>button,.zc-gift-strip,.zc-composer,.zc-composer-field,.zc-composer-field:focus-within,.zc-gift-button){background:transparent}
-.zc-thread .zc-chips{border-top:0}
+:root .zc-thread :is(.zc-gift-strip,.zc-composer,.zc-gift-button){background:transparent}
+:root .zc-thread .zc-composer-field{background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,var(--line))}
+:root .zc-thread .zc-composer-field:focus-within{background:color-mix(in srgb,var(--accent) 16%,var(--surface));border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
 .zc-thread-scroll :is(.zc-meta,.zc-edited,.zc-thread-note){color:var(--zc-wallpaper-muted)}
 
 .zc-thread-scroll>.zh-error{margin:0}
@@ -2634,10 +2635,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-voice.playing .zc-wave>i{animation:zc-wave .9s ease-in-out infinite alternate;animation-delay:calc(var(--zc-i) * -70ms)}
 .zc-voice-body>time{flex:none;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
 
-.zc-chips{flex:none;display:flex;gap:8px;padding:10px var(--zc-gutter) 4px;overflow-x:auto;scrollbar-width:none;border-top:1px solid color-mix(in srgb,var(--line) 45%,transparent)}
-.zc-chips::-webkit-scrollbar,.zc-emoji::-webkit-scrollbar{display:none}
-.zc-chips>button{flex:none;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:99px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;white-space:nowrap}
-.zc-chips>button:active{background:var(--raised)}
+.zc-emoji::-webkit-scrollbar{display:none}
 .zc-emoji{flex:none;display:flex;gap:4px;padding:8px var(--zc-gutter) 0;overflow-x:auto;scrollbar-width:none}
 .zc-emoji[hidden]{display:none}
 .zc-emoji>button{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--surface);font-size:22px}
@@ -2654,7 +2652,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-composer-send:active,.zc-thread-video:active{transform:scale(.95)}
 @keyframes zc-live{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
 @keyframes zc-wave{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
-@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}.zc-chips>button{padding:0 13px;font-size:12.5px}.zc-composer{gap:4px}.zc-composer-send{width:46px;height:46px}}
+@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}.zc-composer{gap:4px}.zc-composer-send{width:46px;height:46px}}
 /* With the keyboard open the history needs the room; the banner returns when typing stops. */
 @media(max-height:600px){.zc-thread:has(.zc-composer-field:focus-within) .zc-thread-live{display:none}}
 @media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer-send:active,.zc-thread-video:active{transform:none}}
@@ -2723,7 +2721,6 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-composer-field>button:disabled{opacity:.4}
 .zc-composer-field>button:focus-visible,.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
 #zc-recording{flex:none;min-width:0}
-.zc-thread.zc-is-recording .zc-chips{display:none}
 .zc-recorder{margin:10px var(--zc-gutter) 12px;padding:14px 12px 10px;border:1px solid var(--line);border-radius:22px;background:var(--surface)}
 .zc-recording-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 5px 8px;color:var(--ink)}
 .zc-recording-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650}
@@ -12585,7 +12582,6 @@ function zcBubble(m,h){
  return `<div class="zc-msg ${m.mine?'mine':'theirs'} zc-msg-${m.kind||'text'}" id="zc-m-${domId(m.id)}">${m.mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack"${actionable?` data-message-id="${domId(m.id)}"`:''}>${actionable?`<span class="zc-swipe-cue" aria-hidden="true">${ci('reply',18)}</span>`:''}${!m.deleted?zcQuote(m.reply,h,m.mine):''}${body}${meta}</div></div>`
 }
 function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;if(!S.msgs.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return S.msgs.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+zcBubble(m,h)}).join('')}
-function zcThreadChips(){const chips=[['🔥','Love it',"zcThreadSend('Love it 🔥')"],['💖','Thank you',"zcThreadSend('Thank you! 💖')"]];return `<div class="zc-chips" role="group" aria-label="Quick replies">${chips.map(([emoji,label,action])=>`<button ${action.startsWith("zcThreadSend")?"data-chat-send":""} ${action.startsWith("zcThreadSend")&&zcThreadBlocked()?"disabled":""} onclick="${action}"><span aria-hidden="true">${emoji}</span>${label}</button>`).join('')}</div>`}
 /* The gift catalog, one tap from the composer. A tap opens the gift sheet with that gift chosen,
    so coins are only spent from its Send button. Members only, as with the composer's gift button. */
 function zcCanGift(h){return (DEMO?!isHost():zcSelfRole()==='user')&&!Chats.rows.find(c=>c.user.id===h.id)?.bot}
@@ -12608,10 +12604,10 @@ function zcThreadComposer(h){
 function zcComposerInput(){window.ZimiChatActivity?.sync();const input=document.getElementById('ti');if(input)Chats.drafts[S.h]=input.value;zcUpdateComposer()}
 function zcUpdateComposer(){const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
 function zcComposerAction(){if(document.getElementById('ti')?.value.trim()||Chats.editing)zcThreadSend();else window.ZimiChatVoice?.start()}
-function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadChips()}${zcThreadGifts(h)}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
+function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadGifts(h)}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
 function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send],.zc-gift-button,.zc-gift-strip>button").forEach(button=>{button.disabled=!!reason;button.title=reason});zcUpdateComposer();const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
 function zcPaintThread(scrollToEnd=false){zcUpdateSendControls();const f=document.getElementById('tf');if(!f)return;const nearBottom=f.scrollHeight-f.scrollTop-f.clientHeight<80,scroll=f.scrollTop,height=f.scrollHeight,top=f.getBoundingClientRect().top,anchor=nearBottom?null:[...f.querySelectorAll('.zc-msg')].find(el=>el.getBoundingClientRect().bottom>top),offset=anchor?.getBoundingClientRect().top,id=anchor?.id;f.innerHTML=zcThreadList(zcThreadPerson());if(scrollToEnd||nearBottom)f.scrollTop=f.scrollHeight;else{f.scrollTop=scroll;const kept=id&&document.getElementById(id);if(kept&&offset!==undefined)f.scrollTop+=kept.getBoundingClientRect().top-offset;else f.scrollTop=scroll+f.scrollHeight-height}contentImagesReady();window.ZimiChatVoice?.paintPlayback();window.ZimiChatPhoto?.sync()}
-/* Quick replies pass their text; the composer sends and clears its draft. */
+/* Send explicit text or the current composer draft, then clear that draft. */
 function zcThreadSend(text){const input=document.getElementById('ti'),value=String(text??input?.value??'').trim().slice(0,2000);if(!value||!S.h)return;const reason=zcThreadBlocked();if(reason){appNotice(reason);return}
  if(Chats.reply&&!zcCanReply(zcFind(Chats.reply.id))){zcClearContext();appNotice('That message is no longer available to reply to.');return}
  const editing=text===undefined&&Chats.editing;

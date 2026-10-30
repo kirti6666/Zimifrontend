@@ -320,8 +320,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await draft.inputValue(), '', 'Sending clears the draft');
     await receive('operation.error', { action: 'chat.send', message: 'Message could not be sent.' });
     await page.locator('#tf .zc-meta').filter({ hasText: 'Not sent' }).waitFor();
-    await page.getByRole('button', { name: 'Love it', exact: true }).click();
-    assert.equal((await lastSent('chat.send')).text, 'Love it 🔥', 'Quick replies send real messages');
+    assert.equal(await page.getByRole('group', { name: 'Quick replies', exact: true }).count(), 0, 'Suggested messages are removed from the thread');
     const rose = { id: id('41'), name: 'Rose', emoji: '🌹', coins: 10 };
     await page.getByRole('button', { name: 'Gift', exact: true }).click();
     await settle('data.catalog', { gifts: [rose], packs: [], paymentsAvailable: false }, 'catalog');
@@ -336,7 +335,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.locator('.zc-gift-card').count(), 1, 'A confirmed gift stays in the thread across history refreshes');
     assert.equal(await page.locator('#app-notice').textContent(), 'Gift sent!');
     await page.evaluate(() => document.getElementById('app-notice')?.remove()); // the toast would cover later steps for 7s
-    console.log('PASS chats: thread read ticks, quick replies, failed sends and confirmed gift cards');
+    console.log('PASS chats: thread read ticks, no suggested messages, failed sends and confirmed gift cards');
     await navigate('chats');
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
     const picker = page.getByRole('dialog', { name: 'New conversation', exact: true });
@@ -394,24 +393,24 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.evaluate(value => go('thread', value), mira.id);
     const guardedDraft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     const sendButton = page.getByRole('button', { name: 'Send message', exact: true });
-    const quickReply = page.getByRole('button', { name: 'Love it', exact: true });
+    const giftButton = page.getByRole('button', { name: 'Gift', exact: true });
     const sendsBeforeGuard = await sentCount('chat.send');
     await page.getByRole('status', { name: 'Loading messages', exact: true }).waitFor();
     await guardedDraft.fill('Keep my draft through failed thread loads');
     assert.equal(await sendButton.isDisabled(), true, 'Thread loading cannot send before server permissions arrive');
-    assert.equal(await quickReply.isDisabled(), true, 'Quick replies wait for the same thread authorization');
+    assert.equal(await giftButton.isDisabled(), true, 'Gift action waits for the same thread authorization');
     await guardedDraft.press('Enter');
-    await page.evaluate(() => zcThreadSend('A quick reply attempted while loading'));
+    await page.evaluate(() => zcThreadSend('A direct send attempted while loading'));
     assert.equal(await sentCount('chat.send'), sendsBeforeGuard);
     assert.equal(await guardedDraft.inputValue(), 'Keep my draft through failed thread loads');
 
     await loading('thread', false, { error: 'Connections are allowed only between a member and an approved host' });
     await page.getByRole('alert').filter({ hasText: 'Connections are allowed only between' }).waitFor();
     assert.equal(await sendButton.isDisabled(), true, 'A forbidden thread cannot keep a working send control');
-    assert.equal(await quickReply.isDisabled(), true);
+    assert.equal(await giftButton.isDisabled(), true);
     await guardedDraft.press('Enter');
-    await page.evaluate(() => zcThreadSend('A quick reply attempted after a thread error'));
-    assert.equal(await sentCount('chat.send'), sendsBeforeGuard, 'Error states cannot bypass disabled buttons through Enter or quick-reply handlers');
+    await page.evaluate(() => zcThreadSend('A direct send attempted after a thread error'));
+    assert.equal(await sentCount('chat.send'), sendsBeforeGuard, 'Error states cannot bypass disabled buttons through Enter or direct send handlers');
     assert.equal(await guardedDraft.inputValue(), 'Keep my draft through failed thread loads');
 
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
@@ -426,7 +425,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await guardedDraft.fill('Keep my draft while this conversation is read-only');
     await settle('data.thread', { with: mira.id, messages: [], canSend: false, sendDisabledReason: 'The member must reply before the host can send messages.' }, 'thread');
     assert.equal(await sendButton.isDisabled(), true, 'Authoritative canSend:false takes precedence over local account and peer roles');
-    assert.equal(await quickReply.isDisabled(), true);
+    assert.equal(await giftButton.isDisabled(), true);
     await guardedDraft.press('Enter');
     await page.evaluate(() => zcThreadSend('Cannot bypass canSend:false'));
     assert.equal(await sentCount('chat.send'), sendsBeforeGuard + 1);
