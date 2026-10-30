@@ -17,9 +17,13 @@ and the installed app after changing release switches.
 ## App icon and browser icons
 
 `assets/brand/app_icon.png` is the supplied BinzoLive app icon. Run
-`npm run build:icons` after replacing it to refresh the opaque launcher icon,
-Android adaptive icon layers, and web app icon. Then run `npm run build:web`
-and rebuild the native app to see the updated launcher icon on a device.
+`npm run build:icons` after replacing it to refresh launcher assets, existing
+Android launcher resources, and the web app icon. The original is preserved:
+no extra border, colored backing or visible padding is added. The adaptive
+artwork fills Android's 72dp visible viewport, with only the platform's invisible
+overscan outside it; the launcher applies its normal circle/squircle mask.
+Run `npm run test:launcher-icons`, then `npm run build:web` and rebuild the native
+app. Launcher regeneration leaves the updater and other native setup intact.
 
 Browser favicon files live in `web/favicon/`. Both `npm run build:web` and
 `npm run build:admin` copy them to the deployment root and include the BinzoLive

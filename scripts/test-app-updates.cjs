@@ -39,10 +39,10 @@ function modules(overrides = {}, globals = {}) {
   return { load, context };
 }
 
-function controllerHarness(overrides = {}) {
-  const frames = [], calls = { checks: [], configured: [], saved: [], downloads: [], installs: [], cancels: [] }, receipts = new Map();
+function controllerHarness(overrides = {}, globals = {}) {
+  const frames = [], calls = { checks: [], configured: [], saved: [], downloads: [], installs: [], cancels: [], graces: [] }, receipts = new Map();
   const controls = { policy: policy(), ...overrides };
-  const { AppUpdateController } = modules().load('src/app-update-controller.ts');
+  const { AppUpdateController } = modules({}, globals).load('src/app-update-controller.ts');
   const deps = {
     installed: () => controls.installed ? controls.installed() : Promise.resolve(installed()),
     configure: identity => calls.configured.push(plain(identity)),
@@ -58,9 +58,24 @@ function controllerHarness(overrides = {}) {
     receipt: id => controls.receipt ? controls.receipt(id) : Promise.resolve(receipts.get(id) ?? null),
     install: id => { calls.installs.push(id); return controls.install ? controls.install(id) : Promise.resolve({ status: 'installer_opened' }); },
     cancel: (id, discard) => { calls.cancels.push({ id, discard }); return Promise.resolve(); },
+    ...(Object.hasOwn(controls, 'grace') ? { grace: (identity, candidate) => { calls.graces.push({ identity: plain(identity), release: plain(candidate) }); return controls.grace(identity, candidate); } } : {}),
   };
   const controller = new AppUpdateController(deps, state => frames.push(plain(state)));
   return { controller, controls, calls, frames, receipts };
+}
+
+function clock() {
+  let now = Date.parse('2026-10-30T00:00:00Z');
+  const timers = new Set();
+  return {
+    now: () => now,
+    globals: {
+      Date: { now: () => now, parse: Date.parse },
+      setTimeout: (callback, ms) => { const timer = { callback, due: now + ms }; timers.add(timer); return timer; },
+      clearTimeout: timer => timers.delete(timer),
+    },
+    advance(ms) { now += ms; for (const timer of [...timers]) if (timer.due <= now) { timers.delete(timer); timer.callback(); } },
+  };
 }
 
 test('native build identity headers/auth are independent of account credentials and observers are isolated', () => {
@@ -165,7 +180,7 @@ test('forced release invalidation locks an already-allowed build until another c
   h.controller.close();
 });
 
-test('a mandatory update cannot be deferred and opening the system installer never grants app access', async () => {
+test('an idle mandatory update has no dismiss action and opening the system installer never grants app access', async () => {
   const h = controllerHarness(); await h.controller.start();
   assert.equal(h.controller.state.status, 'required');
   for (const method of ['skip', 'defer', 'continue', 'dismiss']) assert.equal(typeof h.controller[method], 'undefined');
@@ -176,6 +191,125 @@ test('a mandatory update cannot be deferred and opening the system installer nev
   await h.controller.check();
   assert.equal(h.controller.state.status, 'required', 'Returning after cancelling the installer cannot open the old build');
   h.controller.close();
+});
+
+test('a verified running call defers mandatory checks and installation until its activity finishes', async () => {
+  const h = controllerHarness({ policy: policy(release(6)) }); await h.controller.start();
+  h.controller.setBusy(true); h.controls.policy = policy(release(7));
+  const firstFrame = h.frames.length; await h.controller.check(true);
+  assert.equal(h.controller.state.status, 'allowed'); assert.equal(h.controller.state.deferred, true);
+  assert.equal(h.controller.state.release.versionCode, 7);
+  assert.ok(h.frames.slice(firstFrame).every(frame => frame.status === 'allowed'), 'The WebView/media owner stays mounted through a known publication');
+  await h.controller.update(); assert.equal(h.calls.downloads.length, 0); assert.equal(h.calls.installs.length, 0);
+  h.controller.setBusy(false);
+  assert.equal(h.controller.state.status, 'required'); assert.equal(h.controller.state.deferred, false);
+  h.controller.close();
+});
+
+test('nested call and purchase leases release independently and lock only after the last one ends', async () => {
+  const activity = modules().load('src/app-update-activity.ts');
+  const h = controllerHarness({ policy: policy(release(6)) }); await h.controller.start();
+  const changes = [], stop = activity.onUpdateActivityChanged(busy => { changes.push(busy); h.controller.setBusy(busy); });
+  const endCall = activity.beginUpdateActivity('call', 'call-1');
+  const endPurchase = activity.beginUpdateActivity('purchase', 'order-1');
+  const endSamePurchase = activity.beginUpdateActivity('purchase', 'order-1');
+  h.controls.policy = policy(); await h.controller.check(true);
+  assert.equal(h.controller.state.status, 'allowed'); assert.equal(h.controller.state.deferred, true);
+  endCall(); endCall(); endPurchase();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.controller.state.status, 'allowed');
+  endSamePurchase();
+  assert.equal(activity.isUpdateActivityBusy(), false); assert.equal(h.controller.state.status, 'required');
+  assert.deepEqual(changes, [true, false], 'Repeated release cannot finish another owner’s lease');
+  stop(); h.controller.close();
+});
+
+test('an invalidation with a slow policy response waits for the running payment, then blocks while checking', async () => {
+  const h = controllerHarness({ policy: policy(release(6)) }); await h.controller.start();
+  h.controller.setBusy(true); const gate = deferred(); h.controls.check = () => gate.promise;
+  const checking = h.controller.check(true);
+  assert.equal(h.controller.state.status, 'allowed'); assert.equal(h.controller.state.deferred, true);
+  h.controller.setBusy(false);
+  assert.equal(h.controller.state.status, 'checking');
+  gate.resolve(policy()); await checking;
+  assert.equal(h.controller.state.status, 'required'); h.controller.close();
+});
+
+test('offline policy errors do not interrupt a running payment but cannot keep the app open after it finishes', async () => {
+  for (const knowRelease of [false, true]) {
+    const h = controllerHarness({ policy: policy(release(6)) }); await h.controller.start();
+    h.controller.setBusy(true);
+    if (knowRelease) { h.controls.policy = policy(); await h.controller.check(true); }
+    h.controls.check = async () => { throw new Error('Offline'); }; await h.controller.check(true);
+    assert.equal(h.controller.state.status, 'allowed'); assert.equal(h.controller.state.deferred, true);
+    h.controller.setBusy(false);
+    assert.equal(h.controller.state.status, knowRelease ? 'required' : 'error');
+    h.controller.close();
+  }
+});
+
+test('the newest release is remembered during activity and becomes mandatory immediately after completion', async () => {
+  const h = controllerHarness({ policy: policy(release(6)) }); await h.controller.start();
+  h.controller.setBusy(true); h.controls.policy = policy(); await h.controller.check(true);
+  h.controls.policy = policy(release(8)); await h.controller.check(true);
+  assert.equal(h.controller.state.status, 'allowed'); assert.equal(h.controller.state.release.versionCode, 8);
+  assert.ok(h.calls.cancels.some(call => call.id === release()._id && call.discard === true));
+  h.controller.setBusy(false);
+  assert.equal(h.controller.state.status, 'required'); assert.equal(h.controller.state.release.versionCode, 8);
+  h.controller.close();
+});
+
+test('a local activity flag cannot reopen a cold, already locked or offline-starting build', async () => {
+  for (const offline of [false, true]) {
+    const h = controllerHarness(offline ? { check: async () => { throw new Error('Offline'); } } : {});
+    h.controller.setBusy(true); await h.controller.start();
+    assert.equal(h.controller.state.status, offline ? 'error' : 'required');
+    assert.ok(!h.frames.some(frame => frame.status === 'allowed'));
+    h.controller.setBusy(false); h.controller.setBusy(true);
+    assert.notEqual(h.controller.state.status, 'allowed'); h.controller.close();
+  }
+});
+
+test('fresh authenticated server grace can restore a cold payment and hands its lifetime to the real activity', async () => {
+  const time = clock(), h = controllerHarness({ grace: async () => ({ deferUntil: new Date(time.now() + 60000).toISOString(), activities: ['purchase'] }) }, time.globals);
+  await h.controller.start();
+  assert.equal(h.controller.state.status, 'allowed'); assert.equal(h.controller.state.deferred, true);
+  assert.equal(h.calls.graces.length, 1); assert.equal(h.calls.graces[0].identity.versionCode, 6);
+  await h.controller.update(); assert.equal(h.calls.installs.length, 0); assert.equal(h.calls.downloads.length, 0);
+  h.controller.setBusy(true); time.advance(60001);
+  assert.equal(h.controller.state.status, 'allowed', 'The actual restored activity owns completion once it attaches');
+  h.controller.setBusy(false);
+  assert.equal(h.controller.state.status, 'required'); assert.equal(h.controller.state.deferred, false);
+  h.controller.close();
+});
+
+test('server grace expires and locks a cold recovery even when no bridge activity ever attaches', async () => {
+  const time = clock(), h = controllerHarness({ grace: async () => ({ deferUntil: new Date(time.now() + 1000).toISOString(), activities: ['call'] }) }, time.globals);
+  await h.controller.start(); assert.equal(h.controller.state.status, 'allowed');
+  time.advance(1001);
+  assert.equal(h.controller.state.status, 'required'); assert.equal(h.controller.state.deferred, false);
+  h.controller.close();
+});
+
+test('expired, malformed or missing server grace never admits a cold outdated app', async () => {
+  const time = clock(), future = new Date(time.now() + 60000).toISOString();
+  const invalid = [
+    null, {}, { deferUntil: null, activities: [] }, { deferUntil: 'invalid', activities: ['purchase'] },
+    { deferUntil: new Date(time.now() - 1).toISOString(), activities: ['call'] },
+    { deferUntil: new Date(time.now() + 25 * 3600000).toISOString(), activities: ['call'] },
+    { deferUntil: future, activities: [] }, { deferUntil: future, activities: 'call' }, { deferUntil: future, activities: ['other'] },
+    { deferUntil: [future], activities: ['purchase'] },
+  ];
+  for (const grace of invalid) {
+    const h = controllerHarness({ grace: async () => grace }, time.globals); await h.controller.start();
+    assert.equal(h.controller.state.status, 'required', JSON.stringify(grace)); h.controller.close();
+  }
+});
+
+test('cached mandatory policy and a local busy flag cannot reuse server grace during offline startup', async () => {
+  const h = controllerHarness({ load: async () => policy(), check: async () => { throw new Error('Offline'); }, grace: async () => ({ deferUntil: new Date(Date.now() + 60000).toISOString(), activities: ['purchase'] }) });
+  h.controller.setBusy(true); await h.controller.start();
+  assert.equal(h.controller.state.status, 'required'); assert.equal(h.calls.graces.length, 0);
+  assert.ok(!h.frames.some(frame => frame.status === 'allowed')); h.controller.close();
 });
 
 test('installation permission is recoverable without redownloading a verified APK', async () => {
@@ -221,6 +355,18 @@ test('download progress is correlated, bounded and cannot complete an obsolete r
   h.controller.progress({ releaseId: release()._id, downloadedBytes: 1024, totalBytes: 1024, phase: 'ready' });
   assert.equal(h.calls.installs.length, 0, 'Only a verified native receipt can reach the installer');
   pending.resolve(receipt(release())); await updating; h.controller.close();
+});
+
+test('a call or payment beginning during download defers installation until it finishes', async () => {
+  const pending = deferred(), h = controllerHarness({ download: () => pending.promise });
+  await h.controller.start(); const updating = h.controller.update(); await settle();
+  assert.equal(h.calls.downloads.length, 1);
+  h.controller.setBusy(true);
+  pending.resolve(receipt(release())); await updating;
+  assert.equal(h.calls.installs.length, 0, 'A late verified download must not open the installer over a new critical activity');
+  h.controller.setBusy(false); await h.controller.update();
+  assert.equal(h.calls.downloads.length, 1, 'The completed verified APK is reused after the activity finishes');
+  assert.equal(h.calls.installs.length, 1); h.controller.close();
 });
 
 test('a newer published release cancels an old download and ignores its late completion', async () => {
@@ -333,6 +479,8 @@ test('foreground and realtime events check policy while background polling stays
     'react-native': { Platform: { OS: 'android' }, AppState: { currentState: 'active', addEventListener: (_name, callback) => { activities.push(callback); return { remove() { activityStopped = true; } }; } } },
     'expo-secure-store': { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 7, getItemAsync: async () => null, setItemAsync: async () => {} },
     './config': { API_URL: 'https://api.binzolive.com/api/v1' },
+    './session': { getToken: async () => null },
+    './api/client': { request: async () => { throw new Error('Signed-out policy checks do not need authenticated recovery'); } },
     './app-update-policy': { fetchUpdatePolicy: async () => { checks++; return noRelease(); } },
     './native-apk-updater': { getInstalledApp: async () => installed(), addDownloadProgressListener: () => () => { progressStopped = true; }, getVerifiedRelease: async () => null, cancelDownload: async () => {} },
   }, { setInterval: (callback, ms) => { const entry = { callback, ms }; intervals.push(entry); return entry; }, clearInterval: entry => { entry.stopped = true; } });
@@ -343,4 +491,38 @@ test('foreground and realtime events check policy while background polling stays
   intervals[0].callback(); await settle(); assert.equal(checks, 3);
   activities[0]('background'); h.load('src/app-update-events.ts').notifyAppUpdate(true); await settle(); assert.equal(checks, 4, 'A required-version event locks/checks even in background');
   cleanup(); assert.equal(progressStopped, true); assert.equal(activityStopped, true); assert.equal(intervals[0].stopped, true);
+});
+
+test('cold payment recovery requests fresh authenticated grace while the public policy check remains account-free', async () => {
+  for (const token of [null, 'restored-native-account-token']) {
+    const time = clock(), proof = deferred(), effects = [], frames = [], publicChecks = [], authenticatedChecks = [], saved = [];
+    const h = modules({
+      react: { useState: initial => [initial, state => frames.push(plain(state))], useMemo: work => work(), useEffect: work => effects.push(work) },
+      'react-native': { Platform: { OS: 'android' }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
+      'expo-secure-store': { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 7, getItemAsync: async () => null, setItemAsync: async (_key, value) => saved.push(JSON.parse(value)) },
+      './config': { API_URL: 'https://api.binzolive.com/api/v1' },
+      './app-update-policy': { fetchUpdatePolicy: async (...args) => { publicChecks.push(plain(args)); return policy(); } },
+      './session': { getToken: async () => token },
+      './api/client': { request: (...args) => { authenticatedChecks.push(plain(args)); return proof.promise; } },
+      './native-apk-updater': { getInstalledApp: async () => installed(), addDownloadProgressListener: () => () => {}, getVerifiedRelease: async () => null, cancelDownload: async () => {} },
+    }, { ...time.globals, setInterval: () => 1, clearInterval: () => {} });
+    h.load('src/app-update.ts').useAppUpdates(); const cleanup = effects[0]();
+    try {
+      await settle();
+      assert.equal(publicChecks.length, 1);
+      assert.deepEqual(publicChecks[0], ['https://api.binzolive.com/api/v1', installed()]);
+      assert.ok(!frames.some(frame => frame.status === 'allowed'), 'A stored token or pending response alone cannot bypass the cold gate');
+      if (!token) {
+        assert.equal(authenticatedChecks.length, 0); assert.equal(frames.at(-1).status, 'required');
+      } else {
+        assert.deepEqual(authenticatedChecks, [['GET', '/app/update-session']]);
+        proof.resolve({ deferUntil: new Date(time.now() + 60000).toISOString(), activities: ['purchase'] }); await settle();
+        assert.equal(frames.at(-1).status, 'allowed'); assert.equal(frames.at(-1).deferred, true);
+        assert.ok(saved.every(value => !Object.hasOwn(value, 'deferUntil') && !Object.hasOwn(value, 'activities')), 'Server recovery grace is never stored as an offline admission token');
+        const releasePayment = h.load('src/app-update-activity.ts').beginUpdateActivity('purchase', 'restored-order');
+        releasePayment();
+        assert.equal(frames.at(-1).status, 'required', 'Completing the restored purchase applies the mandatory gate immediately');
+      }
+    } finally { cleanup(); }
+  }
 });

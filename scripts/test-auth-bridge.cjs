@@ -1804,17 +1804,22 @@ test('creator search uses its own latest request and preserves the home category
   h.bridge.close();
 });
 
-test('prepareForUpdate ends an active billed call once, retires realtime and preserves login', async () => {
+test('prepareForUpdate preserves an active billed call until its normal terminal event', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
   h.overrides.startCall = () => ({ callId: 'active-update-call' });
   h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
   assert.equal(h.find('call.created').length, 1);
-  const messages = h.posts.length;
-  h.bridge.prepareForUpdate(); h.bridge.prepareForUpdate(); h.bridge.close(); await settle();
-  assert.equal(h.count('endCall'), 1);
-  assert.equal(h.calls.find(call => call.name === 'endCall').args[0], 'active-update-call');
+  const activity = h.load('src/app-update-activity.ts');
+  h.load('src/app-update-events.ts').notifyAppUpdate(true);
+  h.bridge.prepareForUpdate(); h.bridge.prepareForUpdate(); await settle();
+  assert.equal(h.count('endCall'), 0, 'A new release must never hang up an ongoing call');
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  assert.equal(h.live[0].stopped, false);
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'active-update-call' } }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false);
+  const messages = h.posts.length; h.bridge.prepareForUpdate(); h.bridge.close();
   assert.equal(await h.session.getToken(), tokenPair().accessToken, 'Updating cannot revoke the account session');
   assert.equal(h.live[0].stopped, true);
   h.live[0].onEvent({ type: 'call.connected', data: { callId: 'active-update-call', initiator: true } }); await settle();
@@ -1847,6 +1852,175 @@ test('prepareForUpdate never borrows replacement credentials for a late outgoing
   started.resolve({ callId: 'old-update-call' }); await settle();
   assert.equal(h.count('endCall'), 0);
   assert.equal(await h.session.getToken(), tokenPair('replacement').accessToken);
+});
+
+test('update activity hands a pending outgoing call to its server ID without an idle gap', async () => {
+  const h = harness(), started = deferred(), activity = h.load('src/app-update-activity.ts'), changes = [];
+  activity.onUpdateActivityChanged(busy => changes.push(busy));
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => started.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: true } });
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Protect before the asynchronous POST can receive a release event');
+  h.load('src/app-update-events.ts').notifyAppUpdate(true); h.bridge.prepareForUpdate();
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'early-call', initiator: true } });
+  started.resolve({ callId: 'early-call' }); await settle();
+  assert.deepEqual(changes, [true], 'Socket-before-POST and POST completion share one continuous lease');
+  assert.equal(h.count('endCall'), 0);
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'early-call' } });
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'early-call' } }); await settle();
+  assert.deepEqual(changes, [true, false], 'A duplicate terminal event releases only once'); h.bridge.close();
+});
+
+test('cancelled pending call remains protected through its late cleanup and errors release matching', async () => {
+  const h = harness(), started = deferred(), ended = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.startCall = () => started.promise; h.overrides.endCall = () => ended.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id' } });
+  h.bridge.handle({ type: 'call.end', data: { reason: 'cancelled' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  started.resolve({ callId: 'late-cancelled' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Do not mount a gate while the late created call is being ended');
+  ended.resolve(); await settle(); assert.equal(activity.isUpdateActivityBusy(), false);
+  assert.equal(h.find('call.created').length, 0);
+  const matching = deferred(); h.overrides.matchHost = () => matching.promise;
+  h.bridge.handle({ type: 'call.match', data: {} }); assert.equal(activity.isUpdateActivityBusy(), true);
+  matching.reject(new h.ApiError('No available host', 404)); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('incoming rings and acceptance stay protected until peer hangup or completed decline', async () => {
+  const h = harness(), accepted = deferred(), declined = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.me = () => approvedAccount(); await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'incoming-update', from: { id: 'member' } } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.overrides.acceptCall = () => accepted.promise;
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming-update' } }); await settle();
+  h.load('src/app-update-events.ts').notifyAppUpdate(true); h.bridge.prepareForUpdate();
+  accepted.resolve({ peerId: 'member', voice: false }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.count('endCall'), 0);
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'incoming-update' } });
+  assert.equal(activity.isUpdateActivityBusy(), false);
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'decline-update', from: { id: 'member' } } });
+  h.overrides.declineCall = () => declined.promise;
+  h.bridge.handle({ type: 'call.decline', data: { callId: 'decline-update' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); declined.resolve(); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('staff verification acceptance and end protect their complete asynchronous lifetimes', async () => {
+  const h = harness(), accepted = deferred(), ended = deferred(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'verify.updated', data: { callId: 'verify-update', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => accepted.promise; h.overrides.endVerificationCall = () => ended.promise;
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-update' } });
+  h.bridge.prepareForUpdate(); assert.equal(h.count('endVerificationCall'), 0);
+  accepted.resolve(); await settle(); assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'verify.end', data: { callId: 'verify-update' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); ended.resolve(); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('coin checkout stays protected through external return verification and preserves unresolved credit tracking', async () => {
+  const h = harness(), checkout = deferred(), verified = deferred(), activity = h.load('src/app-update-activity.ts'), changes = [];
+  activity.onUpdateActivityChanged(busy => changes.push(busy));
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false }); await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.checkout = () => checkout.promise; h.overrides.verifyPurchase = () => verified.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'deferral-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); h.load('src/app-update-events.ts').notifyAppUpdate(true);
+  checkout.resolve({ purchaseId: 'purchase', merchantOrderId: 'deferral_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' }); await settle();
+  assert.deepEqual(changes, [true], 'Order handoff cannot expose an idle gap');
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.count('verifyPurchase'), 1);
+  verified.reject(new h.ApiError('Provider unavailable', 503)); await settle();
+  assert.deepEqual(changes, [true, false]); assert.equal(h.find('wallet.payment-returned').at(-1).data.status, 'UNKNOWN');
+  const cache = h.load('src/payment-cache.ts'); assert.equal((await cache.readPendingPayments('alice'))[0].orderId, 'deferral_order');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'deferral_order', status: 'SUCCESS' });
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false, 'Background reconciliation never recreates an abandoned checkout lease');
+  assert.equal((await cache.readPendingPayments('alice')).length, 0); h.bridge.close();
+});
+
+test('closing a correlated checkout waits for its pending POST and never opens a late provider URL', async () => {
+  const h = harness(), checkout = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.checkout = () => checkout.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'closing-attempt-1' } });
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'premium', idempotencyKey: 'closing-attempt-1' } });
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', idempotencyKey: 'another-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', idempotencyKey: 'closing-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Closing the view cannot retire an unresolved create request');
+  checkout.resolve({ purchaseId: 'purchase', merchantOrderId: 'closed_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); assert.equal(h.opened.length, 0); assert.equal(h.find('wallet.checkout').length, 0);
+  h.bridge.close();
+});
+
+test('overlapping call and premium purchase defer until both finish and pending UI close retains verification', async () => {
+  const h = harness(), verified = deferred(), activity = h.load('src/app-update-activity.ts'), changes = [];
+  activity.onUpdateActivityChanged(busy => changes.push(busy));
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => ({ callId: 'overlap-call' });
+  h.overrides.checkoutPremium = () => ({ purchaseId: 'premium', merchantOrderId: 'overlap_order', kind: 'premium', status: 'PENDING' });
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: true } });
+  h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-overlap-1' } }); await settle();
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'overlap-call' } }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.deepEqual(changes, [true]);
+  h.overrides.verifyPremium = () => verified.promise;
+  h.bridge.handle({ type: 'themes.premium.verify', data: { merchantOrderId: 'overlap_order' } });
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'premium', merchantOrderId: 'overlap_order', idempotencyKey: 'wrong-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'premium', merchantOrderId: 'overlap_order' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  verified.resolve({ purchaseId: 'premium', merchantOrderId: 'overlap_order', kind: 'premium', status: 'PENDING' }); await settle();
+  assert.deepEqual(changes, [true, false]); h.bridge.close();
+});
+
+test('checkout leases end at trusted expiry and account reset cannot release a replacement activity', async () => {
+  const h = harness(), activity = h.load('src/app-update-activity.ts'), oldCheckout = deferred();
+  h.overrides.checkoutPremium = () => ({ purchaseId: 'premium', merchantOrderId: 'expired_order', status: 'PENDING', expiresAt: new Date(Date.now()-1000).toISOString() });
+  h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'expired-attempt-1' } }); await settle();
+  await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(activity.isUpdateActivityBusy(), false);
+  h.overrides.checkout = () => oldCheckout.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'old-pack', idempotencyKey: 'old-owner-attempt' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); assert.equal(activity.isUpdateActivityBusy(), false);
+  h.overrides.startCall = () => ({ callId: 'replacement-call' });
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id' } }); await settle();
+  oldCheckout.resolve({ purchaseId: 'old', merchantOrderId: 'old_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/old' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Stale completion cannot release the new session call');
+  assert.equal(h.opened.length, 0); h.bridge.close(); assert.equal(activity.isUpdateActivityBusy(), false);
+  for (const data of [{}, {kind:'coins'}, {kind:['coins'],merchantOrderId:'order'}, {kind:'other',merchantOrderId:'order'}, {kind:'coins',idempotencyKey:'short'}, {kind:'coins',merchantOrderId:'order',busy:false}])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'payments.checkout.closed',data})), null);
+});
+
+test('manual payment checks protect an already-running background verification until it settles', async () => {
+  const h = harness(), verified = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'background_order', status: 'PENDING' });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'background-attempt' } }); await settle();
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', merchantOrderId: 'background_order' } });
+  h.overrides.verifyPurchase = () => verified.promise;
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false, 'Background order reconciliation alone cannot defer a gate');
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'background_order' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.count('verifyPurchase'), 1);
+  verified.resolve({ purchaseId: 'purchase', merchantOrderId: 'background_order', status: 'PENDING' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('an older provider return cannot retire a concurrently resumed checkout for the same order', async () => {
+  const h = harness(), verified = deferred(), resumed = deferred(), activity = h.load('src/app-update-activity.ts');
+  const request = { type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'resumed-attempt-1' } };
+  const pending = { purchaseId: 'purchase', merchantOrderId: 'resumed_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' };
+  h.overrides.checkout = () => pending; h.overrides.verifyPurchase = () => verified.promise;
+  h.bridge.handle(request); await settle();
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  h.overrides.checkout = () => resumed.promise; h.bridge.handle(request); await settle();
+  verified.resolve({ ...pending, paymentUrl: undefined }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.find('wallet.payment-returned').length, 0);
+  resumed.resolve(pending); await settle(); assert.equal(h.opened.length, 2, 'The newest explicit resume owns the provider launch');
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', merchantOrderId: 'resumed_order' } });
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
 });
 
 test('cancel before call creation returns ends the returned call without reopening the UI', async () => {
@@ -3092,6 +3266,7 @@ test('members answer a verified host\'s call, and a refused answer keeps the cal
   assert.deepEqual([refused.callId, refused.code], ['from-host', 'INSUFFICIENT_COINS']);
   assert.match(refused.message, /60 coins/);
   assert.equal(h.find('call.ended').length, 0, 'A refused answer does not end the ringing call');
+  assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), true, 'Recharge recovery still belongs to the same protected ringing call');
 
   h.overrides.acceptCall = () => ({ peerId: 'host-1', voice: true, rate: 60 });
   h.bridge.handle({ type: 'call.accept', data: { callId: 'from-host' } }); await settle();

@@ -4714,7 +4714,7 @@ html:root .zg-reference .zw-send{min-height:42px;background:linear-gradient(135d
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.0.0";
+window.ZIMI_APP_VERSION = "1.0.6";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -10498,6 +10498,12 @@ function homeCheckout(resume=false){
  Home.checkoutBusy=true;CoinUI.paymentError='';Native.send('wallet.checkout',{...Home.checkoutAttempt});coinPaint();
 }
 function homeVerifyPayment(){if(!Home.checkout?.merchantOrderId||CoinUI.verifyBusy||Home.checkoutBusy||window.ZimiOffline?.isOffline())return;CoinUI.verifyBusy=true;CoinUI.paymentError='';Native.send('wallet.verify',{merchantOrderId:Home.checkout.merchantOrderId});coinPaint()}
+function coinClosePurchase(){
+ if(DEMO)return;
+ if(Home.checkoutAttempt?.idempotencyKey)Native.send('payments.checkout.closed',{kind:'coins',idempotencyKey:Home.checkoutAttempt.idempotencyKey});
+ for(const payment of [Home.checkout,...CoinUI.orders.values()])if(payment?.status==='PENDING'&&payment.merchantOrderId)Native.send('payments.checkout.closed',{kind:'coins',merchantOrderId:payment.merchantOrderId});
+}
+function coinLeaveTopup(){coinClosePurchase();CoinUI.topup=false;coinPaint()}
 function coinPaymentReturned(d){
  if(!S.loggedIn||!d.merchantOrderId||CoinUI.returnedOrders.has(d.merchantOrderId))return;
  const known=CoinUI.orders.get(d.merchantOrderId);
@@ -10556,12 +10562,12 @@ function homeGiftTile(gift){
 }
 function homeGiftSheet(){
  if(!Home.giftTo)return '';
- if(CoinUI.topup)return `<div class="zh-sheet-backdrop zw-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zw-topup" role="dialog" aria-modal="true" aria-label="Add coins"><div class="zw-topup-heading">${backButton('CoinUI.topup=false;coinPaint()',{label:'Back to gifts'})}<h2>Add coins</h2><button class="zw-icon-button" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',20)}</button></div>${homeCoins(true)}</section></div>`;
+ if(CoinUI.topup)return `<div class="zh-sheet-backdrop zw-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zw-topup" role="dialog" aria-modal="true" aria-label="Add coins"><div class="zw-topup-heading">${backButton('coinLeaveTopup()',{label:'Back to gifts'})}<h2>Add coins</h2><button class="zw-icon-button" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',20)}</button></div>${homeCoins(true)}</section></div>`;
  const recover=Home.giftAttempt?.to===Home.giftTo&&Home.giftAttempt?.gift===CoinUI.giftId,gift=Home.gifts.find(x=>x.id===CoinUI.giftId)||(recover?CoinUI.receipts.get(Home.giftAttempt.idempotencyKey):null),ready=coinWalletReady(),surface=DEMO?null:contentPending('catalog')?contentSkeleton('gifts','Loading gifts',12):ContentLoading.catalog.error?contentError('catalog'):null,short=gift&&ready?Math.max(0,gift.coins-S.bal):0;
  const footer=gift||Home.giftBusy||Home.giftAttempt?`<div class="zw-gift-footer"><p aria-live="polite">${Home.giftBusy?'Confirming your gift…':short?`You need ${n(short)} more coins for this gift.`:gift&&ready?`${n(S.bal-gift.coins)} coins remaining after sending`:gift?'Waiting for your balance…':'Select a gift to see the total.'}</p><button type="button" class="zh-primary zw-send" aria-label="Send gift" onclick="homeSendGift()" ${Home.giftBusy||(!recover&&(!gift||!ready||surface||short||Home.giftAttempt))?'disabled':''}>${hi('gift',19)} ${Home.giftBusy?'Sending…':gift?`Send ${esc(gift.name)} · ${n(gift.coins)} coins`:'Choose a gift'}</button></div>`:'';
  return `<div class="zh-sheet-backdrop zw-backdrop zg-reference-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zg-reference" role="dialog" aria-modal="true" aria-label="Send a gift"><header class="zg-heading"><div class="zg-heading-copy"><h2>Send a gift</h2><p>Coins go straight to the host</p></div><button type="button" class="zg-balance" aria-label="Add coins" onclick="homeGiftTopup()">${coinIcon(17)}<span>${contentBalance()}</span>${hi('plus',13)}</button><button type="button" class="zg-close" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',19)}</button></header><div class="zg-catalog">${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${homeGiftDisplayOrder().map(homeGiftTile).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${!ready&&!contentPending('wallet')?`<p class="zw-error" role="alert">Refresh your balance before sending. <button onclick="coinRefresh()">Retry</button></p>`:''}</div>${footer}</section></div>`;
 }
-function homeCloseGifts(e){if(e&&e.target!==e.currentTarget)return;Home.giftTo=null;S.tray=0;if(S.sh==='gift')S.sh=0;CoinUI.topup=false;r();const saved=CoinUI.focus;if(saved){const target=saved.id?document.getElementById(saved.id):Array.from(document.querySelectorAll('button[aria-label]')).find(x=>x.getAttribute('aria-label')===saved.label);target?.focus({preventScroll:true})}}
+function homeCloseGifts(e){if(e&&e.target!==e.currentTarget)return;if(CoinUI.topup)coinClosePurchase();Home.giftTo=null;S.tray=0;if(S.sh==='gift')S.sh=0;CoinUI.topup=false;r();const saved=CoinUI.focus;if(saved){const target=saved.id?document.getElementById(saved.id):Array.from(document.querySelectorAll('button[aria-label]')).find(x=>x.getAttribute('aria-label')===saved.label);target?.focus({preventScroll:true})}}
 function homeSendGift(id=CoinUI.giftId){
  if(Home.giftAttempt&&Home.giftAttempt.to===Home.giftTo&&Home.giftAttempt.gift===id)return homeRetryGift();
  if(!Home.giftTo||Home.giftBusy||!coinWalletReady()||window.ZimiOffline?.isOffline()||(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error)))return;
@@ -10598,7 +10604,7 @@ Native.on('operation.error',d=>{
  if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint();if(routeRejected)paymentRoutesLoad()}
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });
-document.addEventListener('aurora:navigate',()=>{if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup))coinClosePurchase();if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
 document.addEventListener('keydown',e=>{if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
 window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
 
@@ -13152,10 +13158,13 @@ function ztBeforeNavigate(view){
 }
 function ztOpen(){go('themes')}
 function ztBack(){
+  ztClosePurchase();
   const target=ZThemes.returnTo==='settings'?'settings':'profile',top=ZThemes.returnScroll,focus=ZThemes.returnFocus;
   go(target);ztRestoreScroll(top);
   if(focus)[...document.querySelectorAll('.zp-page [aria-label]')].find(el=>el.getAttribute('aria-label')===focus)?.focus({preventScroll:true});
 }
+function ztClosePurchase(){if(DEMO)return;const order=ZThemes.checkout?.merchantOrderId,attempt=ZThemes.attempt;if(order||attempt)Native.send('payments.checkout.closed',{kind:'premium',...(order?{merchantOrderId:order}:{idempotencyKey:attempt})})}
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='themes')ztClosePurchase()});
 function ztHeader(){return `<header class="zh-subheader zt-header">${backButton('ztBack()',{label:ZThemes.returnTo==='settings'?'Back to settings':'Back to profile'})}<h1>Appearance &amp; Theme</h1></header>`}
 function ztPage(){ZThemes.renderView=document.getElementById('zt-page')?ztViewState():null;return `<section class="zt-page" id="zt-page" aria-label="Theme gallery"><div id="zt-content">${ztContent()}</div></section>`}
 function ztSkeleton(){return `<div class="zt-grid" role="status" aria-label="Loading themes">${Array.from({length:ZThemes.catalog?.items.length||4},()=>`<div class="zt-card zt-placeholder"><span class="zh-skeleton-shape zt-preview"></span>${skeletonLine('65%',14)}${skeletonLine('85%',10)}${skeletonLine('45%',11)}</div>`).join('')}</div>`}

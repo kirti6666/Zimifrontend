@@ -376,6 +376,45 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.deepEqual(await summary.evaluate(() => ({ coins: S.sum.giftV, count: S.sum.gifts })), { coins: 35, count: 1 }, 'Repeated receipt cannot double-count the call summary');
     await summary.close();
     console.log('PASS gifts: private-call feedback uses confirmed spend once and isolates late receipts from subsequent calls');
+
+    const closing = await open();
+    await go(closing, 'coins'); await settleCatalog(closing);
+    await purchase(closing, 'Get 200 coins');
+    const closingAttempt = await last(closing, 'wallet.checkout');
+    await go(closing, 'home');
+    assert.ok((await sent(closing, 'payments.checkout.closed')).some(message => message.kind === 'coins' && message.idempotencyKey === closingAttempt.idempotencyKey), 'Leaving Coins closes its correlated pending POST without claiming a payment outcome');
+    await go(closing, 'coins'); await settleCatalog(closing);
+    await receive(closing, 'wallet.checkout', { ...payment('closed-ui-order'), idempotencyKey: closingAttempt.idempotencyKey, packId: small.id });
+    await go(closing, 'home');
+    assert.ok((await sent(closing, 'payments.checkout.closed')).some(message => message.kind === 'coins' && message.merchantOrderId === 'closed-ui-order'), 'Leaving a pending order releases the UI lifetime by order ID');
+    await closing.close();
+
+    const closingGift = await open();
+    await closingGift.evaluate(target => { S.callId = 'close-topup-call'; go('call', target); }, creator.id);
+    await showGifts(closingGift); await button(giftDialog(closingGift), 'Add coins').click(); await settleCatalog(closingGift);
+    await purchase(closingGift, 'Get 200 coins');
+    const topupAttempt = await last(closingGift, 'wallet.checkout');
+    await button(closingGift, 'Back to gifts').click();
+    assert.ok((await sent(closingGift, 'payments.checkout.closed')).some(message => message.idempotencyKey === topupAttempt.idempotencyKey));
+    assert.equal(await closingGift.evaluate(() => S.callId), 'close-topup-call', 'Closing checkout deferral leaves the ongoing call alone');
+    await button(giftDialog(closingGift), 'Add coins').click(); await settleCatalog(closingGift);
+    const beforeClose = (await sent(closingGift, 'payments.checkout.closed')).length;
+    await button(closingGift, 'Close gifts').click();
+    assert.ok((await sent(closingGift, 'payments.checkout.closed')).length > beforeClose, 'Closing an embedded top-up also retires its pending checkout UI');
+    assert.equal(await closingGift.evaluate(() => S.callId), 'close-topup-call'); await closingGift.close();
+
+    const closingPremium = await open(); await go(closingPremium, 'themes');
+    await closingPremium.evaluate(() => Native.receive({ type: 'data.themes', data: { items: [ZThemeOriginal], selectedThemeId: ZThemeOriginal.id, premium: { active: false, pricePaise: 29900, paymentsAvailable: true, purchaseType: 'lifetime' } } }));
+    await closingPremium.getByRole('button', { name: /^Unlock premium/ }).click();
+    const premiumAttempt = await last(closingPremium, 'themes.premium.checkout');
+    await button(closingPremium, 'Back to profile').click();
+    assert.ok((await sent(closingPremium, 'payments.checkout.closed')).some(message => message.kind === 'premium' && message.idempotencyKey === premiumAttempt.idempotencyKey));
+    await go(closingPremium, 'themes');
+    await receive(closingPremium, 'themes.premium.checkout', { purchaseId: 'premium-purchase', merchantOrderId: 'closed-premium-order', kind: 'premium', status: 'PENDING', idempotencyKey: premiumAttempt.idempotencyKey });
+    await button(closingPremium, 'Back to profile').click();
+    assert.ok((await sent(closingPremium, 'payments.checkout.closed')).some(message => message.kind === 'premium' && message.merchantOrderId === 'closed-premium-order')); await closingPremium.close();
+    console.log('PASS update deferral: coin navigation, gift top-up Back/Close and premium Back signal correlated checkout completion without ending calls');
+
     await go(page, 'home');
     await receive(page, 'session.none');
     assert.equal(await page.evaluate(() => Home.checkout), null);

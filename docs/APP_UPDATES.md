@@ -1,6 +1,6 @@
 # Mandatory Android app updates
 
-Install the updater bootstrap APK (version 1.0.5, Android build 2) once on
+Install the updater bootstrap APK (version 1.0.6, Android build 3) once on
 pre-updater devices. Their existing APK cannot acquire native installer code
 remotely. Its signing certificate matches the current live build, so this is an
 upgrade that preserves app data. Backend deployment alone does not activate an
@@ -27,7 +27,23 @@ by HTTP 426. Legacy clients still need their one-time bootstrap installation;
 they cannot show the new native update screen from their old code. Current
 devices check before mounting the app, every 30 seconds while active, on resume,
 on a release socket event, and after a 426. An unavailable or invalid version
-check blocks entry with retry. A known mandatory release stays locked offline.
+check blocks entry with retry. A known mandatory release stays locked offline,
+except that a call or checkout already in progress remains visible until its
+own terminal or cancellation boundary. The pending update is applied afterward.
+
+The activity registry in `src/app-update-activity.ts` tracks native-owned call
+and purchase leases before asynchronous work starts. Publication, HTTP 426,
+foreground checks, and transient check errors cannot replace the WebView while
+such a lease is active. Overlapping call and purchase leases must both finish.
+Once an update is required, the server rejects new calls and new checkout
+attempts; deferral preserves existing work rather than starting another cycle.
+
+For process death during an external payment, the coordinator can request
+authenticated `GET /api/v1/app/update-session`. Its `{deferUntil,activities}`
+response is proved from the account's pre-publication call/payment rows and
+bounded expiry. A fresh valid recovery lease allows the bridge to restore and
+verify that existing operation. It is never cached as permission to bypass a
+cold-start update check. Public version checks still carry no account tokens.
 
 The native update screen has no skip or dismiss action. It downloads the stable
 release URL, displays progress, verifies the APK, and opens Android's installer.
@@ -38,10 +54,10 @@ treated as a completed update. Account credentials are retained.
 
 The coordinator lives in `src/app-update-controller.ts`; metadata and public
 checks live in `src/app-update-policy.ts`. `App.tsx` mounts the WebView only when
-the coordinator allows access. When it is retired, the bridge ends tracked
-calls before releasing media. The backend also settles outdated participants'
-active calls before disconnecting their sockets, with durable retry if cleanup
-fails. Public update/download and terminal cleanup routes stay available.
+the coordinator allows access. Mandatory publication does not end an ongoing
+call or interrupt a payment. The backend keeps their continuation endpoints
+and socket recovery available until they finish or expire, then enforces the
+update. Public update/download and terminal cleanup routes stay available.
 
 Requests carry native `X-App-Platform`, `X-App-Version-Code`, and
 `X-App-Update-Capable` headers. Socket authentication carries the equivalent

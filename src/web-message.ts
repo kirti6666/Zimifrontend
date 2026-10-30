@@ -107,6 +107,11 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.request.cancel": case "stream.request.decline": case "stream.request.accept": valid = identifier(d.streamId) && identifier(d.id); break;
     case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey) && paymentRoute(d.route) && Object.keys(d).every(key => ["packId", "idempotencyKey", "route"].includes(key)); break;
     case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
+    case "payments.checkout.closed": valid = (d.kind === "coins" || d.kind === "premium") &&
+      (d.merchantOrderId !== undefined || d.idempotencyKey !== undefined) &&
+      (d.merchantOrderId === undefined || identifier(d.merchantOrderId)) &&
+      (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)) &&
+      Object.keys(d).every(key => ["kind", "merchantOrderId", "idempotencyKey"].includes(key)); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === "" || optionalColor(d.canvas)) && ["ink", "primary", "contrast", "surface", "raised"].every(key => optionalColor(d[key])); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "screen.secure": valid = boolean(d.on); break;

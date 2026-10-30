@@ -6,6 +6,9 @@ import { configureAppUpdates, onAppUpdate } from "./app-update-events";
 import { fetchUpdatePolicy, parseUpdatePolicy } from "./app-update-policy";
 import { AppUpdateController, INITIAL_UPDATE_STATE, type UpdateState } from "./app-update-controller";
 import * as updater from "./native-apk-updater";
+import { isUpdateActivityBusy, onUpdateActivityChanged } from "./app-update-activity";
+import { getToken } from "./session";
+import { request } from "./api/client";
 
 const POLICY_KEY = "binzo.app.update-policy.v1";
 const ANDROID = Platform?.OS === "android";
@@ -26,10 +29,16 @@ export function useAppUpdates() {
     url: release => new URL(release.downloadPath, API_URL).href,
     download: updater.downloadRelease, receipt: updater.getVerifiedRelease,
     install: updater.installRelease, cancel: updater.cancelDownload,
+    grace: async () => {
+      if (!await getToken()) return { deferUntil: null, activities: [] };
+      return request("GET", "/app/update-session");
+    },
   }, setState) : undefined, []);
   useEffect(() => {
     if (!controller) return;
     let active = AppState.currentState === "active";
+    controller.setBusy(isUpdateActivityBusy());
+    const stopActivity = onUpdateActivityChanged(busy => controller.setBusy(busy));
     const stopProgress = updater.addDownloadProgressListener(event => controller.progress(event));
     const stopUpdates = onAppUpdate(required => { if (active || required) void controller.check(required); });
     const activity = AppState.addEventListener("change", next => {
@@ -39,7 +48,7 @@ export function useAppUpdates() {
     // Poll also covers signed-out users and devices whose socket is unavailable.
     const timer = setInterval(() => { if (active) void controller.check(); }, 30000);
     void controller.start();
-    return () => { clearInterval(timer); stopProgress(); stopUpdates(); activity.remove(); controller.close(); };
+    return () => { clearInterval(timer); stopProgress(); stopUpdates(); stopActivity(); activity.remove(); controller.close(); };
   }, [controller]);
   return { state, check: () => { void controller?.check(true); }, update: () => { void controller?.update(); } };
 }

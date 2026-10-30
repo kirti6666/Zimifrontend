@@ -10,9 +10,9 @@ methods are not WebView bridge commands.
 Before every release build, increment the actual Android version code:
 
 ```powershell
-npm run release:version -- 1.0.6
+npm run release:version -- 1.0.7
 # Or specify a larger unused code explicitly:
-npm run release:version -- 1.0.6 3
+npm run release:version -- 1.0.7 4
 npm run build:apk
 ```
 
@@ -20,7 +20,8 @@ The command updates Expo `app.json` and an existing native Gradle project
 together and rejects the current or a lower code. The admin version label is
 separate from the APK's real manifest version. The live pre-updater APK was
 inspected as versionName `1.0.0`, versionCode `1`, regardless of its admin label
-`1.0.4`. The updater bootstrap is versionName `1.0.5`, versionCode `2`.
+`1.0.4`. The initial updater was `1.0.5` / code `2`; the bootstrap with call and
+checkout deferral is versionName `1.0.6`, versionCode `3`.
 
 `build:apk` explicitly supplies the production HTTPS API/socket addresses and
 forces the release JS bundle and package tasks to run. A plain Gradle build can
@@ -64,6 +65,14 @@ returns `permission_required`; a persisted verified receipt survives the
 activity roundtrip. The app must re-check its installed version on resume and
 remain blocked if permission or installation is cancelled. It never silently
 installs an APK or opens a browser to download one.
+
+An update announced during a call or purchase waits for that activity to finish.
+Native bridge leases cover pending call requests, ringing, accepted calls,
+checkout creation, external payment and verification without a handoff gap.
+Closing the correlated checkout UI releases its deferral after pending requests
+settle; server-owned order tracking remains intact for late confirmation. A
+trusted checkout expiry also ends that UI lifetime. These local signals do not
+grant backend access or authorize new calls or purchases after an update is due.
 
 Device validation should cover permission denied/granted, installer cancelled,
 successful same-key upgrade, an interrupted download, low storage and a corrupt

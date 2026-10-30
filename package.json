@@ -70,7 +70,8 @@
     "test:cover": "npm run build:web && node scripts/test-cover-photo.cjs",
     "test:gift-modal": "npm run build:web && node scripts/test-gift-modal.cjs",
     "test:posts": "npm run build:web && node scripts/test-post-ui.cjs",
-    "test:icons": "npm run build:web && node scripts/test-icons.cjs",
+    "test:launcher-icons": "node scripts/test-launcher-icons.cjs",
+    "test:icons": "npm run build:web && node scripts/test-launcher-icons.cjs && node scripts/test-icons.cjs",
     "test:ads": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-ads.cjs",
     "build:admin": "node scripts/build-admin.mjs"
   },
