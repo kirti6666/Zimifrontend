@@ -49,11 +49,12 @@ const notificationQuery = (data: Record<string, unknown>) => Object.keys(data).e
   (data.since === undefined || data.before === undefined || Date.parse(data.since as string) < Date.parse(data.before as string));
 const settingsPatch = (data: Record<string, unknown>) => {
   const keys = Object.keys(data).filter(key => key !== "requestId");
-  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city"].includes(key)) &&
+  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city", "country"].includes(key)) &&
     (data.pushNotifications === undefined || boolean(data.pushNotifications)) &&
     (data.matchCategory === undefined || data.matchCategory === null || category(data.matchCategory)) &&
     (data.appearance === undefined || ["dark", "light", "system"].includes(String(data.appearance))) &&
     (data.city === undefined || (typeof data.city === "string" && data.city.length <= 100)) &&
+    (data.country === undefined || (typeof data.country === "string" && data.country.length <= 100)) &&
     (data.languages === undefined || (Array.isArray(data.languages) && data.languages.length <= 8 && data.languages.every(value => typeof value === "string" && value.trim().length > 0 && value.length <= 50 && /^[\p{L}\p{M}\p{N} _&+-]+$/u.test(value)) && new Set(data.languages.map(value => String(value).trim().toLowerCase())).size === data.languages.length));
 };
 const privacyPatch = (data: Record<string, unknown>) => {
@@ -125,7 +126,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&
         (d.avatar === undefined || photoData(d.avatar)) && (d.cover === undefined || d.cover === null || photoData(d.cover)) &&
-        (d.city === undefined || (typeof d.city === "string" && d.city.length <= 100)) && (d.about === undefined || (typeof d.about === "string" && d.about.length <= 500)) &&
+        (d.city === undefined || (typeof d.city === "string" && d.city.length <= 100)) && (d.country === undefined || (typeof d.country === "string" && d.country.length <= 100)) && (d.about === undefined || (typeof d.about === "string" && d.about.length <= 500)) &&
         (d.photos === undefined || (Array.isArray(d.photos) && d.photos.length <= 6 && d.photos.every(photo =>
           typeof photo === "string" && photo.length <= 2 * 1024 * 1024 && (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(photo) || /^https:\/\/[^\s"'<>]+$/.test(photo))))) &&
         (d.langs === undefined || strings(d.langs, 20)) && (d.interests === undefined || strings(d.interests, 20)) &&

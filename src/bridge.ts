@@ -129,6 +129,7 @@ export type AppMessage =
   | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; otpLength: number; requestId?: number } }
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
+  | { type: "profile.account"; data: Account }
   | { type: "profile.progress"; data: { done: number; total: number; requestId?: number } }
   | { type: "profile.error"; data: { onboarding: boolean; message: string; code?: string; requestId?: number } }
   /* Without `available`, the check failed; `status` 400 means the address itself is invalid. */
@@ -296,6 +297,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const resetHomeReads = () => { homeFlight = undefined; homeInvalidated = false; clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined; lastHomeRefresh = 0; };
   let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
+  let profileRevision = 0, profileReadSequence = 0, profileWrites = 0;
+  let pendingProfileRefresh: { epoch: number; sessionVersion: number; document: number } | undefined;
+  const beginProfileWrite = () => {
+    profileRevision++; profileWrites++;
+    return () => {
+      profileRevision++; profileWrites--;
+      if (!profileWrites && pendingProfileRefresh) {
+        const pending = pendingProfileRefresh; pendingProfileRefresh = undefined;
+        if (current(pending.epoch) && pending.sessionVersion === getSessionVersion() && pending.document === documentRevision) quietly(refreshProfileAccount(), "profile.refresh");
+      }
+    };
+  };
   let activeStream: { id: string; hosting: boolean } | undefined;
   let streamRequestsRevision = 0;
   type PurchaseKind = "coins" | "premium";
@@ -463,9 +476,23 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const refreshHostAccount = async () => {
     const version = epoch, sessionVersion = getSessionVersion(), revision = hostRevision;
+    const profileVersion = profileRevision;
     const account = await api.me(true);
     if (!current(version) || sessionVersion !== getSessionVersion() || revision !== hostRevision) return;
     applyHostAccount(account);
+    if (profileVersion === profileRevision && !profileWrites) emit({ type: "profile.account", data: account });
+  };
+  const refreshProfileAccount = async () => {
+    if (profileWrites) { pendingProfileRefresh = { epoch, sessionVersion: getSessionVersion(), document: documentRevision }; return; }
+    const version = epoch, sessionVersion = getSessionVersion(), revision = profileRevision;
+    const requestId = ++profileReadSequence, authority = hostRevision, document = documentRevision;
+    const account = await api.me(true);
+    if (!current(version) || sessionVersion !== getSessionVersion() || revision !== profileRevision || requestId !== profileReadSequence || authority !== hostRevision || document !== documentRevision || account.user.id !== accountId) return;
+    const authorityChanged = hostChecking || hasHostAccess() !== approvedHost(account) || hostStatus !== account.user.hostStatus ||
+      accountRole !== (account.user.serverRole ?? (account.user.role === "host" ? "host" : "user"));
+    applyHostAccount(account, false);
+    if (authorityChanged) publishHostAccess();
+    emit({ type: "profile.account", data: account });
   };
   const requireApprovedHost = async (allowMemberPhotos = false) => {
     const version = epoch, sessionVersion = getSessionVersion(), revision = hostRevision;
@@ -868,8 +895,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
       if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(), "chats.reload"); return; }
-      if (event.type === "account.updated") {
-        if (!liveOnboarding) { quietly(loadProfileSettings(), "profile.settings.load"); quietly(loadThemes(), "themes.load"); }
+      if (event.type === "account.updated" || event.type === "profile.updated") {
+        profileRevision++;
+        if (!liveOnboarding) { quietly(refreshProfileAccount(), "profile.refresh"); quietly(loadProfileSettings(), "profile.settings.load"); if (event.type === "account.updated") quietly(loadThemes(), "themes.load"); }
         return;
       }
       if (event.type === "themes.updated") { if (!liveOnboarding) quietly(loadThemes(), "themes.load"); return; }
@@ -1291,6 +1319,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           quietly(loadProfileSettings(), "profile.settings.load");
         };
         let revision = hostRevision;
+        const finishProfileWrite = beginProfileWrite();
         retireProfileReads();
         try {
           let account = await api.saveCoverPhoto(msg.data.photo);
@@ -1313,6 +1342,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
           retireProfileReads();
           emit({ type: "profile.cover.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
           recoverProfileReads();
+        } finally {
+          finishProfileWrite();
         }
         return;
       }
@@ -1334,17 +1365,20 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const { onboarding, requestId, ...profile } = msg.data;
         const id = typeof requestId === "number" ? requestId : undefined;
         const sessionVersion = getSessionVersion();
+        const document = documentRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
         let revision = hostRevision;
+        const finishProfileWrite = beginProfileWrite();
         // A summary fetched before this edit must not repaint old profile fields.
         readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
         try {
           let account = await api.saveProfile(profile, (done, total) => {
-            if (current(version)) emit({ type: "profile.progress", data: { done, total, requestId: id } });
+            if (applicable()) emit({ type: "profile.progress", data: { done, total, requestId: id } });
           });
-          while (current(version) && sessionVersion === getSessionVersion() && revision !== hostRevision) {
+          while (applicable() && revision !== hostRevision) {
             revision = hostRevision; account = await api.me(true);
           }
-          if (current(version) && sessionVersion === getSessionVersion()) {
+          if (applicable()) {
             // Also retire summary reads started while the profile write was pending.
             readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
             applyHostAccount(account, false);
@@ -1358,11 +1392,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
             else quietly(loadProfileSettings(), "profile.settings.load");
           }
         } catch (error) {
-          if (current(version) && sessionVersion === getSessionVersion()) {
+          if (applicable()) {
             emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
             // The retired read cannot settle its skeleton; recover current data.
             quietly(loadProfileSettings(), "profile.settings.load");
           }
+        } finally {
+          finishProfileWrite();
         }
         return;
       }
@@ -1454,14 +1490,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "profile.settings.save": case "settings.set": {
         const { requestId, ...patch } = msg.data;
         const sessionVersion = getSessionVersion();
+        const document = documentRevision;
+        const finishProfileWrite = beginProfileWrite();
         try {
           const settings = await api.saveProfileSettings(patch);
-          if (current(version) && sessionVersion === getSessionVersion()) {
+          if (current(version) && sessionVersion === getSessionVersion() && document === documentRevision) {
             deliverProfileSettings(settings);
             emit({ type: "profile.settings.saved", data: { settings: withPushStatus(settings), requestId } });
           }
         } catch (error) {
-          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "profile.settings.error", data: { message: errorMessage(error), requestId } });
+          if (current(version) && sessionVersion === getSessionVersion() && document === documentRevision) emit({ type: "profile.settings.error", data: { message: errorMessage(error), requestId } });
+        } finally {
+          finishProfileWrite();
         }
         return;
       }

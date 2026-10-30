@@ -153,6 +153,8 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   // Read receipts already have the server's home:updated signal for the badge.
   socket.on("notifications:read", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); });
   socket.on("account:updated", () => emit("account.updated", {}));
+  // Owner identity is fetched over the authenticated API, never trusted from a socket payload.
+  socket.on("profile:updated", () => emit("profile.updated", {}));
   // Socket payloads only invalidate; entitlement and tokens come from GET /themes.
   for (const event of ["themes:updated", "appearance:updated", "premium:updated"]) socket.on(event, () => {
     // Premium also removes ads, so it refreshes which ads this member may see.

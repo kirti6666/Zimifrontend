@@ -137,6 +137,7 @@
 .zh-home.zh-dashboard .zh-featured-host .zh-person-content{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
 .zh-featured-eyebrow{display:inline-flex;align-items:center;gap:5px;margin-bottom:6px;color:rgba(255,255,255,.88);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600;letter-spacing:.3px;line-height:1.4}
 .zh-featured-eyebrow>svg{width:12px;height:12px;flex:none}
+.zh-home.zh-dashboard .zh-featured-host .zh-person-country{display:block;max-width:100%;margin-top:4px;overflow:hidden;color:rgba(255,255,255,.88);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.4;text-overflow:ellipsis;white-space:nowrap}
 .zh-home.zh-dashboard .zh-featured-host .zh-featured-call{z-index:4;width:52px;height:52px;pointer-events:auto}
 /* The photo fills the card behind the text, so its spacer never pushes the text out of view. */
 .zh-home.zh-dashboard .zh-featured-host .zh-person-media{min-height:0}

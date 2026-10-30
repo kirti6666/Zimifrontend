@@ -47,7 +47,7 @@ function zuPeer(){
 function zuOwnPeer(){
   const user=S.user||{},demo=DEMO?ZProfile.data:null,profile=demo?.profile||{};
   return {id:zuSelfId(),name:user.name||profile.name||me.n,avatarUrl:S.avatarData||user.avatarUrl||(DEMO?OB_MEDIA[0]:''),coverUrl:S.coverData||user.coverUrl||'',
-    gender:user.gender||me.gender,city:user.city||profile.city||me.c,about:user.about??profile.bio??me.about,
+    gender:user.gender||me.gender,city:user.city??profile.city??me.c,country:user.country??profile.country??me.country??'',about:user.about??profile.bio??me.about,
     role:user.role||S.role,serverRole:isApprovedHost()?'host':'user',verified:isApprovedHost(),languages:user.languages||profile.languages||[],
     online:!!S.online,availableForCall:!!ZProfile.data?.privacy?.allowRequests,followers:demo?.stats?.fans,followingCount:demo?.stats?.following,joined:user.createdAt};
 }
@@ -408,6 +408,13 @@ Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
   Zu.profile=zuShownPresence(d.profile);Zu.loading=false;Zu.error='';zuRemember(d.profile);
   if(zuGalleryAllowed(d.profile)&&!Zu.page&&!Zu.postsLoading)zuLoadPosts();
+  zuPaint();
+});
+Native.on('profile.account',d=>{
+  if(d.user?.id!==zuSelfId()||Zu.id!==zuSelfId()||!Zu.profile)return;
+  const u=d.user;
+  Object.assign(Zu.profile,{name:u.name,avatarUrl:u.avatarUrl,coverUrl:u.coverUrl,city:u.city,country:u.country||'',about:u.about,gender:u.gender,languages:u.languages||[]});
+  Zu.requestId=++Zu.sequence;Zu.loading=false;Zu.error='';
   zuPaint();
 });
 Native.on('data.publicPosts',d=>{

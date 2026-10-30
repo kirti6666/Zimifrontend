@@ -100,6 +100,8 @@
 .zh-creator-text{flex:1;min-width:0;text-shadow:0 1px 6px rgba(0,0,0,.4)}
 .zh-creator-text h3{margin:0;overflow:hidden;color:#fff;font-size:13px;font-weight:700;line-height:1.25;letter-spacing:-.2px;text-overflow:ellipsis;white-space:nowrap}
 .zh-creator-text p{margin:2px 0 0;overflow:hidden;color:rgba(255,255,255,.86);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.zh-creator-bottom:has(.zh-creator-country){flex-wrap:wrap;row-gap:3px}
+.zh-creator-country{display:block;flex:0 0 100%;min-width:0;overflow:hidden;color:rgba(255,255,255,.86);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
 .zh-creator-call{position:relative;display:grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:var(--accent);color:var(--cta-ink);box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent);pointer-events:auto}
 .zh-creator-call:focus-visible,.zh-creator-hit:focus-visible{outline:2px solid #fff;outline-offset:-3px}
 .zh-creator-call::before{content:"";position:absolute;inset:-4px;border-radius:50%}

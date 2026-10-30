@@ -210,6 +210,27 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(uploads.length, 0, 'Removing a cover does not issue an upload'); finished();
 
   reset();
+  const committedProfile = { ...updatedUser, role: 'user', onboardingStatus: 'completed', name: 'Saved Name', bio: '', city: '', country: 'India', gender: 'undisclosed' };
+  expect('PATCH', '/profile', committedProfile, body => assert.deepEqual(plain(body), { name: 'Saved Name', bio: '', city: '', country: 'India', gender: 'undisclosed' }));
+  const committed = await api.saveProfile({ name: 'Saved Name', about: '', city: '', country: ' India ', gender: 'undisclosed' });
+  assert.equal(committed.user.name, 'Saved Name'); assert.equal(committed.user.about, ''); assert.equal(committed.user.city, ''); assert.equal(committed.user.country, 'India');
+  assert.equal(requests.length, 1, 'A committed profile remains a successful save without a second network request'); finished();
+  reset();
+  await assert.rejects(api.saveProfile({ name: 'Asha', country: 'x'.repeat(101) }), /country/);
+  assert.equal(requests.length, 0);
+
+  reset();
+  let releaseProfileWrite;
+  expect('PATCH', '/profile', new Promise(resolve => { releaseProfileWrite = resolve; }), body => assert.equal(body.name, 'Earlier Choice'));
+  expect('PATCH', '/profile', { ...committedProfile, name: 'Latest Choice' }, body => assert.equal(body.name, 'Latest Choice'));
+  const earlierProfile = api.saveProfile({ name: 'Earlier Choice' }), latestProfile = api.saveProfile({ name: 'Latest Choice' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests.length, 1, 'A later edit cannot race ahead of an earlier pending profile upload/write');
+  releaseProfileWrite({ ...committedProfile, name: 'Earlier Choice' });
+  await earlierProfile;
+  assert.equal((await latestProfile).user.name, 'Latest Choice'); finished();
+
+  reset();
   expect('GET', '/auth/me', { user: { ...user, role:'host', hostStatus:'pending', isVerifiedHost:false } });
   await assert.rejects(api.createPost(png, 'Hello'), /Verify your account/);
   assert.equal(uploads.length, 0, 'A pending host cannot bypass publishing access'); finished();
@@ -719,6 +740,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const giftCount=events.filter(event=>event.type==='gift.received').length;
   socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
+  socket.emitServer('profile:updated', { name: 'Untrusted socket name' }); assert.deepEqual(plain(events.at(-1)), { type: 'profile.updated', data: {} }, 'Profile sockets invalidate identity without accepting private account fields');
   for (const event of ['notification:new', 'notifications:read']) {
     const beforeNotification = events.length;
     socket.emitServer(event, { userId: 'member-id', title: 'Socket data does not populate the inbox', unreadCount: 900 });

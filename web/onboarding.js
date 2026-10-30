@@ -56,19 +56,23 @@ function obAuthError(data) {
   r(); obTrackRate(); obHaptic("error");
 }
 function obPhotoUrl(value) { return typeof value === "string" && (/^https:\/\/[^\s"'<>]+$/.test(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)) ? value : ""; }
-function obApplyAccount(account) {
-  const u = account.user || {}; S.user = u;
+function obApplyAccount(account, keepDraft = false) {
+  const u = account.user || {}, editing = keepDraft && S.v === 'editprofile' && S.user?.id === u.id;
+  S.user = u;
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
-  me.n = u.name || ""; S.editName = me.n; me.c = u.city || ""; me.about = u.about || "";
-  S.editCity = me.c; S.editAbout = me.about; me.gender = u.gender || ""; S.editGender = me.gender;
-  S.avatarData = obPhotoUrl(u.avatarUrl || "");
-  S.coverData = obPhotoUrl(u.coverUrl || ""); S.mediaDirty = {};
+  me.n = u.name || ""; me.c = u.city || ""; me.country = u.country || ""; me.about = u.about || ""; me.gender = u.gender || "";
+  if (!editing) obResetProfileDraft();
   S.creatorSetup = u.onboardingPreference === "creator" || ["pending", "rejected", "suspended"].includes(u.hostStatus);
   if (account.balance != null) S.bal = account.balance;
   if (account.earned != null) A().earn = account.earned;
   if (account.verification) A().kyc = account.verification;
   window.ZimiHostAccess?.apply(account);
+}
+function obResetProfileDraft() {
+  S.editName = me.n; S.editCity = me.c; S.editCountry = me.country || ''; S.editAbout = me.about; S.editGender = me.gender || '';
+  if (!DEMO) { S.avatarData = obPhotoUrl(S.user?.avatarUrl || ''); S.coverData = obPhotoUrl(S.user?.coverUrl || ''); }
+  S.mediaDirty = {}; S.mediaPreparing = false; S.mediaError = '';
 }
 function obResumeOnboarding(account, desiredCreator) {
   const u = account.user || {};
@@ -86,7 +90,7 @@ function obResetSession(message = "") {
   S.mediaDirty = {}; S.mediaPreparing = false; S.mediaError = ""; S.profileRequestId = null; S.profileProgress = ""; S.postDraftData = ""; S.postCaption = ""; S.postPublishing = false; S.postRequestId = null; S.postError = "";
   const notice = document.getElementById("app-notice"); if (notice) notice.remove();
   S.dataError = ""; S.realtimeError = ""; S.kycBusy = false; S.kerr = ""; S.profileSaving = false; S.following = {}; S.blocked = []; S.bal = 0; me.n = ""; me.about = ""; me.c = ""; me.gender = ""; S.editGender = "";
-  S.editName = ""; S.editAbout = ""; S.editCity = ""; S.acct.sender.earn = 0; S.acct.host.earn = 0;
+  S.editName = ""; S.editAbout = ""; S.editCity = ""; S.editCountry = ""; me.country = ""; S.acct.sender.earn = 0; S.acct.host.earn = 0;
   S.acct.sender.kyc = "none"; S.acct.host.kyc = "none";
   if (!DEMO) { H.length = 0; EXTRA.length = 0; CH.length = 0; TXNS.length = 0; CALLS.length = 0; Object.keys(PEOPLE).forEach(key => delete PEOPLE[key]); S.missed = { sender: [], host: [] }; }
   S.role = "sender"; go("welcome");

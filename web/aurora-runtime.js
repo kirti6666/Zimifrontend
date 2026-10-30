@@ -211,7 +211,9 @@ function go(v,id){
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
- if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';S.editName=me.n;S.editCity=me.c;S.editAbout=me.about}
+ if(S.v==='editprofile'&&v!=='editprofile'){mediaSequence++;obResetProfileDraft()}
+ if(S.v!==v&&S.mediaPreparing){mediaSequence++;S.mediaPreparing=false}
+ if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';obResetProfileDraft()}
  window.ZimiThemes?.beforeNavigate(v);
  window.ZimiAds?.beforeNavigate(v);
  const navigationChange=window.ZimiNavigation?.before(v);
@@ -917,16 +919,18 @@ let mediaSequence=0;
 async function pickMedia(e,k){
  const files=Array.from(e.target.files||[]);e.target.value="";
  if(!files.length||S.profileSaving||S.mediaPreparing||S.postPublishing||!["avatar","cover","posts"].includes(k))return;
- const owner=S.user;S.mediaPreparing=true;S.mediaError="";r();
+ const owner=S.user?.id,view=S.v,selection=++mediaSequence;
+ const current=()=>S.user?.id===owner&&S.v===view&&mediaSequence===selection;
+ S.mediaPreparing=true;S.mediaError="";r();
  try{
   const image=await obReadPhoto(files[0]);
-  if(S.user!==owner)return;
+  if(!current())return;
   if(image.length>2*1024*1024)throw new Error("This photo is still too large. Choose a smaller image.");
   if(k==="posts"){S.postDraftData=image;S.postError=""}
   else{S[k+"Data"]=image;S.mediaDirty={...(S.mediaDirty||{}),[k]:true}}
   obHaptic("selection");
- }catch(error){if(S.user===owner){S.mediaError=error.message||"This image could not be prepared. Please choose another photo.";obHaptic("error")}}
- finally{if(S.user===owner){S.mediaPreparing=false;r()}}
+ }catch(error){if(current()){S.mediaError=error.message||"This image could not be prepared. Please choose another photo.";obHaptic("error")}}
+ finally{if(S.user?.id===owner&&mediaSequence===selection){S.mediaPreparing=false;r()}}
 }
 function publishPost(){
  if(S.postPublishing||S.profileSaving||S.mediaPreparing||!S.postDraftData)return;
@@ -936,9 +940,9 @@ function publishPost(){
 }
 function saveProfile(){
  if(S.profileSaving||S.mediaPreparing||S.postPublishing)return;
- const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim(),...(S.editGender?{gender:S.editGender}:{})};
+ const profile={name:(S.editName??me.n).trim(),city:(S.editCity||"").trim(),country:(S.editCountry||"").trim(),about:(S.editAbout||"").trim(),...(S.editGender?{gender:S.editGender}:{})};
  if(profile.name.length<2)return appNotice("Use at least two characters for your name.");
- if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;me.gender=S.editGender||me.gender;return go(S.editBack||"profile")}
+ if(DEMO){me.n=profile.name;me.c=profile.city;me.country=profile.country;me.about=profile.about;me.gender=S.editGender||me.gender;return go(S.editBack||"profile")}
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
@@ -951,6 +955,7 @@ function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPubl
  <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
  <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
+ <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
  <button type="button" class="zpost-editor-link" onclick="ZimiPostCreate.open()" ${disabled}>${I('plus',18)} Create a post ${I('chev',16)}</button></div>`}
@@ -1690,6 +1695,7 @@ function hostShownOnline(p){return isHostPayload(p)||!!p.online}
 function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&p.online!==true&&!isHost()}
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
+  ...(Object.prototype.hasOwnProperty.call(p,'country')?{country:typeof p.country==='string'&&p.country.trim().length<=100&&!/[\u0000-\u001f\u007f]/.test(p.country)?p.country.trim():''}:{}),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:hostShownOnline(p)?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
@@ -1727,11 +1733,12 @@ Native.on("auth.ok",d=>{
  S.auth.mode="login";S.auth.creatorIntent=creator;signedIn();
 });
 Native.on("auth.error",obAuthError);
+Native.on("profile.account",d=>{if(d.user?.id!==S.user?.id)return;obApplyAccount(d,true);if(S.v!=='editprofile')refresh()});
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
 Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set")refresh()});
-Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);go(S.editBack||"profile");appNotice("Profile saved.");obHaptic("success")});
+Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);if(S.v==='editprofile')go(S.editBack||"profile");else refresh();appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
 Native.on("data.posts",d=>{S.postData=(d.posts||[]).filter(p=>p.kind==="photo").map(p=>obPhotoUrl(p.mediaUrl)).filter(Boolean);refresh()});

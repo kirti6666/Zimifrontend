@@ -128,7 +128,7 @@ function homeDashboardCard(h,featured=false){
   const id=domId(h.id),live=homeDashboardIsLive(h),status=live?'is-live':h.on?'is-online':'is-offline';
   return `<article class="zh-tile zh-person-card zh-featured-host ${status}" data-host-id="${esc(h.id)}">
     <div class="zh-person-media">${homeCover(h,true)}${homeCardVideo(h)}<div class="zh-photo-shade"></div><span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)} watching`:h.on?'Online':'Offline'}</span>${live?'':`<span class="zh-creator-price zh-featured-price ${h.rate>0?'':'is-free'}">${h.rate>0?`${hi('rings',13)}${n(h.rate)}/min`:'Free'}</span>`}</div>
-    <div class="zh-person-content"><div class="zh-person-profile"><span class="zh-featured-eyebrow">${hi('star',12)}Featured creator</span><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><button type="button" class="zh-creator-call zh-featured-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',22)}</button></div>
+    <div class="zh-person-content"><div class="zh-person-profile"><span class="zh-featured-eyebrow">${hi('star',12)}Featured creator</span><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3>${homeCountryLabel(h,'zh-person-country')}<p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><button type="button" class="zh-creator-call zh-featured-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',22)}</button></div>
     <button type="button" class="zh-person-photo-link zh-featured-profile-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button>
   </article>`;
 }

@@ -14,6 +14,8 @@ export interface User {
   role: Role;
   serverRole?: ServerRole;
   city?: string;
+  /** Explicit public country, separate from the private phone dialing prefix. */
+  country?: string;
   about?: string;
   email?: string;
   avatarUrl?: string;
@@ -78,6 +80,7 @@ export interface Host {
   role?: Role;
   serverRole?: ServerRole;
   city?: string;
+  country?: string;
   category?: string;
   tag?: string;
   languages?: string[];
@@ -220,7 +223,7 @@ export interface ThemeCatalog {
 export type Appearance = "dark" | "light" | "system";
 export interface PrivacySettings { discoverable: boolean; showActivity: boolean; allowRequests: boolean; }
 export interface ProfileSettings {
-  profile: { id: string; name: string; bio: string; city: string; languages: string[]; maskedPhone: string; countryCode: string; isPhoneVerified: boolean; createdAt: string };
+  profile: { id: string; name: string; bio: string; city: string; country?: string; languages: string[]; maskedPhone: string; countryCode: string; isPhoneVerified: boolean; createdAt: string };
   stats: { fans: number; following: number; giftsSent: number; giftsReceived: number; coinsSent: number; coinsReceived: number };
   /** level 0 means the server did not report one. */
   standing: { level: number; crown: boolean };
@@ -229,7 +232,7 @@ export interface ProfileSettings {
   categories: string[];
   capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; nativePushStatus: "registered" | "denied" | "unavailable"; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
 }
-export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
+export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; country?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
 export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; requestedRoute?: string; route?: string; pageStyle?: string; currency?: "INR"; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
 export interface RtcPayload {

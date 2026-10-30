@@ -8,6 +8,11 @@ export function record(value: unknown): RecordValue {
   return value as RecordValue;
 }
 export const string = (value: unknown): string => typeof value === "string" ? value : "";
+const countryField = (value: RecordValue): { country?: string } => {
+  if (!Object.hasOwn(value, "country")) return {};
+  const country = typeof value.country === "string" ? value.country.trim() : "";
+  return { country: country.length <= 100 && !/[\u0000-\u001f\u007f]/.test(country) ? country : "" };
+};
 const stringList = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 const finite = (value: unknown): number | undefined => typeof value === "number" && Number.isFinite(value) ? value : undefined;
 export function idOf(value: unknown): string {
@@ -33,7 +38,7 @@ export function accountFrom(value: unknown): Account {
     user: {
       id, name: string(user.name), role: user.role === "host" && user.hostStatus === "approved" && user.isVerifiedHost === true ? "host" : "sender",
       ...(user.role === "user" || user.role === "host" || user.role === "admin" ? { serverRole: user.role } : {}),
-      city: string(user.city), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), photos,
+      city: string(user.city), ...countryField(user), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), photos,
       languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), ...genderOf(user.gender), adultConfirmed: user.adultConfirmed === true,
       ...(user.onboardingPreference === "creator" || user.onboardingPreference === "member" ? { onboardingPreference: user.onboardingPreference } : {}),
       hostStatus: string(user.hostStatus),
@@ -66,7 +71,7 @@ export function hostFrom(value: unknown): Host {
   const host = typeof value === "string" ? { _id: value } : record(value);
   const avatar = host.avatar && typeof host.avatar === "object" ? record(host.avatar) : {};
   return {
-    id: idOf(host), name: string(host.name), city: string(host.city), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
+    id: idOf(host), name: string(host.name), city: string(host.city), ...countryField(host), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
     languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.callEntryFeeCoins ?? host.entryFee), followers: finite(host.followers),
     about: string(host.bio), verified: host.isVerifiedHost === true, ...genderOf(host.gender),
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
@@ -176,7 +181,7 @@ export function profileSettingsFrom(value: unknown): ProfileSettings {
     typeof preferences.pushNotifications !== "boolean" || (preferences.matchCategory !== null && typeof preferences.matchCategory !== "string") ||
     !["dark", "light", "system"].includes(String(preferences.appearance))) throw new ApiError("Your account settings could not be loaded. Try again.", 502);
   return {
-    profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
+    profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), ...countryField(profile), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
     stats: { fans: stats.fans as number, following: stats.following as number, giftsSent: stats.giftsSent as number, giftsReceived: stats.giftsReceived as number, coinsSent: stats.coinsSent as number, coinsReceived: stats.coinsReceived as number },
     standing: { level: count(record(data.standing ?? {}).level), crown: record(data.standing ?? {}).crown === true },
     preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },

@@ -11,10 +11,28 @@ import type { OfficialReadPatch } from "./types";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
-let pendingCoverWrite: Promise<Account> | undefined;
+let pendingProfileWrite: Promise<unknown> | undefined;
 let voiceUploadVersion: number | undefined;
 const voiceUploads = new Map<string, { to: string; durationMs: number; replyTo?: string; audioKey: string }>();
 const remember = (account: Account) => { identity = { id: account.user.id, version: getSessionVersion() }; return account; };
+async function queueProfileWrite<T>(version: number, save: () => Promise<T>): Promise<T> {
+  const commit = () => { ensureSession(version); return save(); };
+  const write = pendingProfileWrite ? pendingProfileWrite.catch(() => {}).then(commit) : commit();
+  pendingProfileWrite = write;
+  try { return await write; }
+  finally { if (pendingProfileWrite === write) pendingProfileWrite = undefined; }
+}
+async function savedProfileAccount(response: unknown, version: number): Promise<Account> {
+  ensureSession(version);
+  pendingProfile = undefined;
+  const user = record(response);
+  // New servers return the committed owner profile. A successful write must
+  // not become a failed save merely because a second network read goes offline.
+  if (["user", "host", "admin"].includes(String(user.role)) && typeof user.onboardingStatus === "string")
+    return remember(accountFrom({ user }));
+  // Older servers return only selected fields, without account authority.
+  return api.me(true);
+}
 async function selfId(): Promise<string> {
   return identity?.version === getSessionVersion() ? identity.id : (await api.me()).user.id;
 }
@@ -74,15 +92,10 @@ export const api = {
       ensureSession(version);
       const mediaKey = await uploadMedia(photo, "cover", version);
       ensureSession(version);
-      await request("PATCH", "/profile", { coverKey: mediaKey });
-      ensureSession(version);
-      pendingProfile = undefined;
-      return api.me(true);
+      const response = await request("PATCH", "/profile", { coverKey: mediaKey });
+      return savedProfileAccount(response, version);
     };
-    const write = pendingCoverWrite ? pendingCoverWrite.catch(() => {}).then(save) : save();
-    pendingCoverWrite = write;
-    try { return await write; }
-    finally { if (pendingCoverWrite === write) pendingCoverWrite = undefined; }
+    return queueProfileWrite(version, save);
   },
   saveCreatorCard: (photo: string): Promise<Account> => api.saveCoverPhoto(photo),
   async me(fresh = false): Promise<Account> {
@@ -94,6 +107,7 @@ export const api = {
   },
   async saveProfile(profile: Record<string, unknown>, onProgress?: (done: number, total: number) => void): Promise<Account> {
     const version = getSessionVersion();
+    return queueProfileWrite(version, async () => {
     if (typeof profile.name !== "string" || profile.name.trim().length < 2 || profile.name.trim().length > 100) throw new ApiError("Your name must be between 2 and 100 characters.", 400);
     if (profile.photos !== undefined && (!Array.isArray(profile.photos) || profile.photos.some(photo => typeof photo !== "string"))) throw new ApiError("Choose valid photos to continue.", 400);
     if (Array.isArray(profile.photos)) {
@@ -121,6 +135,7 @@ export const api = {
     if (profile.avatar !== undefined) decodePhoto(profile.avatar as string);
     if (profile.cover !== undefined && profile.cover !== null) decodePhoto(profile.cover as string);
     if (profile.city !== undefined && (typeof profile.city !== "string" || profile.city.length > 100)) throw new ApiError("Keep your location under 100 characters.", 400);
+    if (profile.country !== undefined && (typeof profile.country !== "string" || profile.country.length > 100)) throw new ApiError("Keep your country under 100 characters.", 400);
     if (profile.about !== undefined && (typeof profile.about !== "string" || profile.about.length > 500)) throw new ApiError("Keep your introduction under 500 characters.", 400);
     const media: { avatarKey?: string; coverKey?: string | null } = {};
     const total = Number(profile.avatar !== undefined) + Number(profile.cover !== undefined && profile.cover !== null);
@@ -130,11 +145,9 @@ export const api = {
     if (profile.cover === null) media.coverKey = null;
     else if (profile.cover !== undefined) { media.coverKey = await uploadMedia(profile.cover as string, "cover", version); onProgress?.(++done, total); }
     ensureSession(version);
-    await request("PATCH", "/profile", { name: profile.name.trim(), ...(typeof profile.city === "string" ? { city: profile.city.trim() } : {}), ...(typeof profile.about === "string" ? { bio: profile.about.trim() } : {}), ...genderOf(profile.gender), ...media });
-    ensureSession(version);
-    // A /me read started before this mutation must not hide the saved media.
-    pendingProfile = undefined;
-    return api.me();
+    const response = await request("PATCH", "/profile", { name: profile.name.trim(), ...(typeof profile.city === "string" ? { city: profile.city.trim() } : {}), ...(typeof profile.country === "string" ? { country: profile.country.trim() } : {}), ...(typeof profile.about === "string" ? { bio: profile.about.trim() } : {}), ...genderOf(profile.gender), ...media });
+    return savedProfileAccount(response, version);
+    });
   },
   async myPosts() {
     const version = getSessionVersion(), id = await selfId();
@@ -186,7 +199,9 @@ export const api = {
     return profile;
   },
   async publicPosts(id: string, page = 1) { return publicPostsFrom(await request("GET", `/users/${encodeURIComponent(id)}/posts?page=${page}&limit=12`)); },
-  async saveProfileSettings(input: ProfileSettingsPatch) { return profileSettingsFrom(await request("PATCH", "/account/settings", input)); },
+  async saveProfileSettings(input: ProfileSettingsPatch) {
+    return queueProfileWrite(getSessionVersion(), async () => profileSettingsFrom(await request("PATCH", "/account/settings", input)));
+  },
   async savePrivacy(input: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">>) { return privacyFrom(await request("PATCH", "/safety", input)); },
   async blockedUsers(page = 1) { return blockedUsersFrom(await request("GET", `/users/blocked?page=${page}&limit=20`)); },
   setBlocked: (id: string, blocked: boolean) => request<void>(blocked ? "POST" : "DELETE", `/users/${encodeURIComponent(id)}/block`, blocked ? {} : undefined),

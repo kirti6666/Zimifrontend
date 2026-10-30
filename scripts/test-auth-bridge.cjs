@@ -3468,3 +3468,81 @@ test('post likes and comments go through the server and report failures', async 
   assert.deepEqual(json(h.find('post.comment.deleted').at(-1).data), { id: 'post-1', commentId: 'comment-1', requestId: 8 });
   h.bridge.close();
 });
+
+test('profile invalidations refresh the authenticated owner and ignore earlier identity reads', async () => {
+  const h=harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const old=deferred(),latest=deferred();let reads=0;
+  h.overrides.me=()=>++reads===1?old.promise:latest.promise;
+  h.live[0].onEvent({type:'profile.updated',data:{user:{id:'forged',name:'Untrusted socket name'}}});
+  h.live[0].onEvent({type:'profile.updated',data:{}});
+  const updated={...account(),user:{...account().user,name:'Saved remotely',country:'India',gender:'undisclosed'},requiresOnboarding:false};
+  latest.resolve(updated);await settle();
+  assert.equal(h.find('profile.account').at(-1).data.user.name,'Saved remotely');
+  assert.equal(h.find('profile.account').at(-1).data.user.country,'India');
+  const delivered=h.find('profile.account').length;
+  old.resolve(account());await settle();
+  assert.equal(h.find('profile.account').length,delivered,'An earlier identity read cannot undo a later profile update');
+  h.bridge.close();
+});
+
+test('a local profile save invalidates earlier background identity reads',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const old=deferred(),save=deferred();
+  h.overrides.me=()=>old.promise;h.overrides.saveProfile=()=>save.promise;
+  h.live[0].onEvent({type:'profile.updated',data:{}});
+  const before=h.find('profile.account').length;
+  h.bridge.handle({type:'profile.save',data:{name:'Latest saved name',country:'India',requestId:901}});
+  save.resolve({...account(),user:{...account().user,name:'Latest saved name',country:'India'}});await settle();
+  assert.equal(h.find('profile.saved').at(-1).data.account.user.name,'Latest saved name');
+  old.resolve(account());await settle();
+  assert.equal(h.find('profile.account').length,before,'A pre-save account read cannot repaint previous personal details');
+  h.bridge.close();
+});
+
+test('a profile save from a retired WebView cannot complete a new editor with a reused request ID',async()=>{
+  const h=harness(),save=deferred();h.overrides.saveProfile=()=>save.promise;
+  h.bridge.handle({type:'profile.save',data:{name:'Older edit',requestId:1}});
+  h.bridge.documentLoading();
+  save.resolve({...account(),user:{...account().user,name:'Older edit'}});await settle();
+  assert.equal(h.find('profile.saved').length,0);
+  assert.equal(h.find('profile.error').length,0);
+  h.bridge.close();
+});
+
+test('profile invalidations received during a settings write are replayed after it settles',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const save=deferred();h.overrides.saveProfileSettings=()=>save.promise;
+  const initialReads=h.count('me');
+  h.bridge.handle({type:'profile.settings.save',data:{languages:['English'],requestId:903}});
+  const remote={...account(),user:{...account().user,avatarUrl:'https://media.example.test/new-avatar.jpg',country:'India'},requiresOnboarding:false};
+  h.overrides.me=()=>remote;
+  h.live[0].onEvent({type:'profile.updated',data:{}});await settle();
+  assert.equal(h.count('me'),initialReads,'Identity refresh waits for pending owner writes');
+  save.resolve(profileSettings());await settle();
+  assert.equal(h.count('me'),initialReads+1,'An invalidation is not lost behind an owner write');
+  assert.equal(h.find('profile.account').at(-1).data.user.avatarUrl,remote.user.avatarUrl);
+  h.bridge.close();
+});
+
+test('retired document settings writes and identity reads cannot update a replacement screen',async()=>{
+  const h=harness(),save=deferred();h.overrides.saveProfileSettings=()=>save.promise;
+  h.bridge.handle({type:'profile.settings.save',data:{city:'Older choice',requestId:1}});
+  h.bridge.documentLoading();save.resolve(profileSettings());await settle();
+  assert.equal(h.find('profile.settings.saved').length,0);
+  assert.equal(h.find('data.profileSettings').length,0);
+  await h.session.setSessionTokens(tokenPair());h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const read=deferred();h.overrides.me=()=>read.promise;
+  const before=h.find('profile.account').length;
+  h.live[0].onEvent({type:'profile.updated',data:{}});
+  h.bridge.documentLoading();read.resolve(account());await settle();
+  assert.equal(h.find('profile.account').length,before);
+  h.bridge.close();
+});
