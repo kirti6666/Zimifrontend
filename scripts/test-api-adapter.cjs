@@ -7,7 +7,7 @@ const ts = require('typescript');
 
 const root = path.resolve(__dirname, '..');
 let version = 1, token = 'native-access-token', requests = [], uploads = [], expected = [], uploadError, tokenListeners = [];
-class ApiError extends Error { constructor(message, status) { super(message); this.status = status; } }
+class ApiError extends Error { constructor(message, status, code) { super(message); Object.assign(this, { status, code }); } }
 const session = {
   getSessionVersion: () => version,
   isSessionTokens: value => value && typeof value.accessToken === 'string' && typeof value.refreshToken === 'string' && value.expiresIn > 0 && value.refreshExpiresIn > 0,
@@ -100,6 +100,43 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     await assert.rejects(api.hostAgency(), /agency details/);
   }
   const media = load('src/api/uploads.ts');
+  const invitation = { id: 'invite-1', source: 'automatic', label: 'Automatic call invitation', host: { id: 'real-host', name: 'Asha', city: 'Pune' }, kind: 'video', coinsPerMinute: 60, entryFeeCoins: 10, requiredCoins: 70, affordable: false, expiresAt: new Date(Date.now() + 600000).toISOString(), status: 'pending' };
+  expect('POST', '/calls/automatic-invitation', invitation, body => assert.deepEqual(plain(body), {}));
+  assert.deepEqual(plain(await api.automaticCallInvitation()), invitation);
+  expect('GET', '/calls/automatic-invitation/active', null, body => assert.equal(body, undefined));
+  assert.equal(await api.automaticCallInvitation(true), null, 'Disabled or unavailable suggestions are a valid quiet result');
+  for (const invalid of [{ source: 'host' }, { label: 'Host is calling' }, { requiredCoins: 60 }, { coinsPerMinute: -1 }, { coinsPerMinute: 1000001 }, { affordable: 'true' }]) {
+    expect('POST', '/calls/automatic-invitation', { ...invitation, ...invalid });
+    await assert.rejects(api.automaticCallInvitation(), /could not be verified/);
+  }
+  const invitationCall = { _id: 'call-invite', calleeId: 'real-host', source: 'automatic', automaticInvitationId: 'invite-1', status: 'ringing', coinsPerMinute: 60, entryFeeCoins: 10 };
+  expect('POST', '/calls/automatic-invitation/invite-1/connect', invitationCall, body => assert.deepEqual(plain(body), { expectedCoinsPerMinute: 60, expectedEntryFeeCoins: 10 }, 'Only the explicitly displayed quote reaches the dedicated endpoint'));
+  const connectedInvitation = await api.connectAutomaticInvitation('invite-1', 60, 10);
+  assert.equal(connectedInvitation.callId, 'call-invite'); assert.equal(connectedInvitation.connected, false); assert.equal(connectedInvitation.source, 'automatic');
+  expect('POST', '/calls/automatic-invitation/invite-1/connect', { ...invitationCall, status: 'accepted' });
+  assert.equal((await api.connectAutomaticInvitation('invite-1', 60, 10)).connected, true, 'A durable accepted replay resumes the same real call');
+  expect('POST', '/calls/automatic-invitation/invite-1/connect', { ...invitationCall, status: 'ended' });
+  await assert.rejects(api.connectAutomaticInvitation('invite-1', 60, 10), error => error.code === 'INVITATION_CALL_ENDED', 'A terminal replay must never start another call');
+  expect('POST', '/calls/automatic-invitation/invite-1/connect', { ...invitationCall, entryFeeCoins: 11 });
+  await assert.rejects(api.connectAutomaticInvitation('invite-1', 60, 10), error => error.code === 'CALL_PRICE_CHANGED');
+  for (const bad of [{ automaticInvitationId: 'other' }, { source: 'manual' }, { hostInitiated: true }]) {
+    expect('POST', '/calls/automatic-invitation/invite-1/connect', { ...invitationCall, ...bad });
+    await assert.rejects(api.connectAutomaticInvitation('invite-1', 60, 10), /connected safely/);
+  }
+  await assert.rejects(api.connectAutomaticInvitation('invite-1', 1000001, 0), /current call price/);
+  expect('POST', '/calls/automatic-invitation/invite-1/dismiss', { ...invitation, status: 'dismissed' }, body => assert.deepEqual(plain(body), {}));
+  assert.equal((await api.dismissAutomaticInvitation('invite-1')).status, 'dismissed');
+  const held = { _id: 'real-incoming', status: 'ringing', hostInitiated: true, waitingForTopup: true, topupHoldStartedAt: new Date().toISOString(), topupHoldUntil: new Date(Date.now() + 300000).toISOString() };
+  expect('POST', '/calls/real-incoming/topup-hold', held, body => assert.deepEqual(plain(body), {}));
+  assert.deepEqual(plain(await api.holdIncomingForTopup('real-incoming')), { callId: 'real-incoming', until: held.topupHoldUntil });
+  for (const bad of [{ _id: 'other' }, { status: 'ended' }, { hostInitiated: false }, { waitingForTopup: false }, { topupHoldUntil: new Date(Date.now() + 301000).toISOString() }]) {
+    expect('POST', '/calls/real-incoming/topup-hold', { ...held, ...bad });
+    await assert.rejects(api.holdIncomingForTopup('real-incoming'), /cannot be held/);
+  }
+  expect('GET', '/calls/real-incoming', { ...held, expiresAt: held.topupHoldUntil, coinsPerMinute: 60 });
+  assert.equal((await api.reviewIncomingTopup('real-incoming')).ringing, true);
+  expect('GET', '/calls/real-incoming', { ...held, status: 'ended', expiresAt: held.topupHoldUntil });
+  assert.equal((await api.reviewIncomingTopup('real-incoming')).ringing, false, 'Payment return review checks the real call instead of accepting it');
   const separateHostImages=adapters.hostFrom({_id:'image-host',coverUrl:'https://cdn.example.test/cover.jpg',creatorCardUrl:'https://cdn.example.test/card.jpg'});
   assert.equal(separateHostImages.coverUrl,'https://cdn.example.test/cover.jpg');
   assert.equal(separateHostImages.creatorCardUrl,'https://cdn.example.test/card.jpg','Discovery keeps the card separate from the profile cover');
@@ -841,6 +878,12 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   assert.equal(events[1].data.automated, true, 'Realtime delivery retains the automated label');
+  const heldUntil = new Date(Date.now() + 300000).toISOString();
+  socket.emitServer('call:updated', { _id: 'held-host-outgoing', callerId: 'member-id', calleeId: 'peer-member', status: 'ringing', waitingForTopup: true, topupHoldUntil: heldUntil });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.topup.waiting', data: { callId: 'held-host-outgoing', until: heldUntil } }, 'The caller receives a waiting update without a new incoming ring');
+  const beforeUnrelatedHold = events.length;
+  socket.emitServer('call:updated', { _id: 'unrelated-hold', callerId: 'stranger-a', calleeId: 'stranger-b', status: 'ringing', waitingForTopup: true, topupHoldUntil: heldUntil });
+  assert.equal(events.length, beforeUnrelatedHold, 'Unrelated top-up metadata never reaches this account');
   socket.emitServer('chat:message',{_id:'other-device-human',senderId:'member-id',recipientId:'host-id',text:'My other device',clientId:'text-client-2',sequence:14,createdAt:chatAt});
   const senderEcho=events.filter(event=>event.type==='chat.updated').at(-1);assert.equal(senderEcho.data.message.mine,true);assert.equal(senderEcho.data.message.sequence,14);assert.equal(senderEcho.data.message.clientId,'text-client-2');
   socket.emitServer('chat:message', { _id: 'incoming-photo-reply', senderId: 'host-id', recipientId: 'member-id', text: '', image: { url: 'https://cdn.example.test/reply.png' }, reply: { id: 'own-question', senderId: 'member-id', text: 'Your question', image: false, deleted: false } });

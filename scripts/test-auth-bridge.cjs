@@ -3360,6 +3360,81 @@ test('a tapped notification opens the inbox once a signed-in, onboarded screen c
   h.bridge.close();
 });
 
+test('automatic invitations use a strict quoted endpoint and never start or accept on wallet refresh', async () => {
+  const h = harness(), created = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  h.overrides.automaticCallInvitation = active => ({ id: 'invite', active });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.bridge.handle({ type: 'call.invitation.load', data: { requestId: 1 } }); await settle();
+  assert.deepEqual(plain(h.find('call.invitation.loaded').at(-1).data), { invitation: { id: 'invite', active: false }, requestId: 1 });
+  const message = { type: 'call.invitation.connect', data: { id: 'invite', requestId: 2, expectedCoinsPerMinute: 60, expectedEntryFeeCoins: 10 } };
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify(message)));
+  for (const bad of [{ to: 'forged-host' }, { source: 'manual' }, { expectedCoinsPerMinute: -1 }, { expectedEntryFeeCoins: '10' }, { expectedCoinsPerMinute: 1000001 }]) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ ...message, data: { ...message.data, ...bad } })), null);
+  }
+  h.live[0].onEvent({ type: 'wallet.refresh', data: {} }); await settle();
+  assert.equal(h.count('startCall') + h.count('connectAutomaticInvitation') + h.count('acceptCall'), 0);
+  h.overrides.connectAutomaticInvitation = () => created.promise;
+  h.bridge.handle(message); h.bridge.handle(message); await settle();
+  assert.equal(h.count('connectAutomaticInvitation'), 1, 'Concurrent taps share one native write');
+  assert.deepEqual(plain(h.calls.find(call => call.name === 'connectAutomaticInvitation').args), ['invite', 60, 10]);
+  assert.equal(h.count('startCall'), 0, 'Automatic Connect cannot fall back to the normal busy-host queue endpoint');
+  created.resolve({ callId: 'real-call', to: 'real-host', voice: false, connected: false, source: 'automatic', automaticInvitationId: 'invite' }); await settle();
+  assert.equal(h.find('call.created').at(-1).data.invitationId, 'invite'); assert.equal(h.find('call.connected').length, 0);
+  h.bridge.close();
+});
+
+test('automatic invitation callbacks retire with their document and terminal call replay never reconnects', async () => {
+  const h = harness(), loaded = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.overrides.automaticCallInvitation = () => loaded.promise;
+  h.bridge.handle({ type: 'call.invitation.load', data: { requestId: 3 } }); await settle();
+  h.bridge.documentLoading(); loaded.resolve({ id: 'stale-invite' }); await settle();
+  assert.equal(h.find('call.invitation.loaded').length, 0);
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.overrides.connectAutomaticInvitation = () => { throw new h.ApiError('The original call ended.', 409, 'INVITATION_CALL_ENDED'); };
+  h.bridge.handle({ type: 'call.invitation.connect', data: { id: 'invite', requestId: 4, expectedCoinsPerMinute: 60, expectedEntryFeeCoins: 10 } }); await settle();
+  assert.equal(h.find('call.failed').at(-1).data.code, 'INVITATION_CALL_ENDED');
+  assert.equal(h.find('call.created').length + h.find('call.connected').length + h.count('startCall'), 0);
+  for (const listener of [...h.activities]) listener('background');
+  h.bridge.handle({ type: 'call.invitation.load', data: { requestId: 5 } }); await settle();
+  assert.equal(h.count('automaticCallInvitation'), 1, 'Background discovery cannot contact the invitation endpoint');
+  assert.equal(h.find('call.invitation.loaded').at(-1).data.invitation, null); h.bridge.close();
+});
+
+test('genuine incoming top-up waits for a bounded server hold and explicit review, preserving cancellation', async () => {
+  const h = harness(), held = deferred(), until = new Date(Date.now() + 300000).toISOString();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'real-incoming', from: { id: 'real-host', host: true }, fromHost: true, rate: 60 } });
+  h.overrides.holdIncomingForTopup = () => held.promise;
+  h.bridge.handle({ type: 'call.topup.hold', data: { callId: 'real-incoming', requestId: 10 } }); await settle();
+  assert.equal(h.find('call.topup.held').length, 0, 'The UI receives no checkout permission before server acknowledgement');
+  assert.equal(h.count('declineCall') + h.count('endCall') + h.count('acceptCall'), 0);
+  held.resolve({ callId: 'real-incoming', until }); await settle();
+  assert.deepEqual(plain(h.find('call.topup.held').at(-1).data), { callId: 'real-incoming', until, requestId: 10 });
+  h.overrides.reviewIncomingTopup = () => ({ callId: 'real-incoming', ringing: false, rate: 60 });
+  const walletBefore = h.count('wallet');
+  h.bridge.handle({ type: 'call.topup.review', data: { callId: 'real-incoming', requestId: 11 } }); await settle();
+  assert.equal(h.count('wallet'), walletBefore + 1); assert.equal(h.find('call.topup.reviewed').at(-1).data.ringing, false);
+  assert.equal(h.count('acceptCall') + h.count('connectAutomaticInvitation'), 0, 'Even a funded verified return only reviews the real call');
+  h.overrides.holdIncomingForTopup = () => { throw new h.ApiError('Your balance is already sufficient. Return and choose Accept.', 409, 'TOPUP_NOT_REQUIRED'); };
+  const fundedWalletBefore = h.count('wallet'), holdsBefore = h.find('call.topup.held').length;
+  h.overrides.wallet = () => ({ coins: 100, earningsPaise: 0 });
+  h.bridge.handle({ type: 'call.topup.hold', data: { callId: 'real-incoming', requestId: 13 } }); await settle();
+  assert.equal(h.count('wallet'), fundedWalletBefore + 1, 'A server-funded refusal corrects a stale displayed balance');
+  assert.equal(h.find('wallet.balance').at(-1).data.coins, 100);
+  assert.equal(h.find('call.topup.held').length, holdsBefore, 'Already funded calls receive no checkout permission');
+  assert.equal(h.count('acceptCall') + h.count('declineCall'), 0, 'The corrected balance still needs explicit Accept');
+  assert.equal(h.find('call.topup.error').at(-1).data.requestId, 13);
+  const late = deferred(); h.overrides.holdIncomingForTopup = () => late.promise;
+  h.bridge.handle({ type: 'call.topup.hold', data: { callId: 'real-incoming', requestId: 12 } }); await settle();
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  late.resolve({ callId: 'real-incoming', until }); await settle();
+  assert.equal(h.find('call.topup.held').length, 1, 'An old account cannot receive a late checkout intent'); h.bridge.close();
+});
+
 test('members answer a verified host\'s call, and a refused answer keeps the call ringing', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });

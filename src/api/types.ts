@@ -8,6 +8,14 @@ export type Gender = "female" | "male" | "undisclosed";
 export type ServerRole = "user" | "host" | "admin";
 export type Verification = "none" | "pending" | "verified" | "rejected";
 
+export interface AutomaticCallInvitation {
+  id: string; source: "automatic"; label: "Automatic call invitation";
+  host: { id: string; name: string; avatarUrl?: string; city?: string };
+  kind: "video"; coinsPerMinute: number; entryFeeCoins: number; requiredCoins: number;
+  affordable: boolean; expiresAt: string; status: "pending" | "connected" | "dismissed" | "expired";
+  callId?: string | null;
+}
+
 export interface HostAgency {
   id: string;
   name: string;

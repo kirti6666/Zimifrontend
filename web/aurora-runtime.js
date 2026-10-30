@@ -191,7 +191,7 @@ function go(v,id){
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
  if(v==="kyc"){S.kerr=0;S.creatorSetup=true}
- if(v==="precall"){S.scam=0;S.nextCallVoice=false}
+ if(v==="precall"){S.scam=0;S.nextCallVoice=false;if(S.automaticCall?.hostId!==(id||S.h))S.automaticCall=null}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -214,7 +214,7 @@ function go(v,id){
   S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else if(S.callInvitationIntent?.hostId===S.h){const invitation=S.callInvitationIntent;S.callInvitationIntent=null;Native.send("call.invitation.connect",{id:invitation.id,requestId:invitation.requestId,expectedCoinsPerMinute:invitation.expectedCoinsPerMinute,expectedEntryFeeCoins:invitation.expectedEntryFeeCoins})}else{S.automaticCall=null;Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}}
  if(v==="dialback"){S.caller.voice=!!S.nextCallVoice;if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id,voice:!!S.nextCallVoice})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
@@ -1126,6 +1126,7 @@ function vRing(){const c=S.caller;
 
 /* ---- Member: a host they follow back, or allowed to video call, is calling ---- */
 function memberIncoming(d){
+ if(window.ZimiCallInvitations?.receiveIncoming(d))return;
  /* S.callId outlives a finished call, so only the screen tells whether the member is busy. */
  const busy=["dial","call","voice","incoming"].includes(S.v)||window.Home?.preparingCall;
  if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
@@ -1134,14 +1135,14 @@ function memberIncoming(d){
  S.acceptingCall=false;if(S.v!=="incoming")S.ringBack={view:S.v,id:S.v==="thread"||S.v==="host"?S.h:undefined};go("incoming")}
 function ringReturn(){const back=S.ringBack||{};S.ringBack=null;go(back.view&&back.view!=="incoming"?back.view:"home",back.id)}
 function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
- const name=first(h.n),short=m.rate>0&&S.bal<m.rate;
+ const name=first(h.n),short=!!m.topupRequired||m.rate>0&&S.bal<m.rate;
  return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${m.voice?'voice':'video'} call from ${esc(h.n)}">
   <div class="ringbg" aria-hidden="true"></div>
   <span class="ringeye"><i></i>Incoming ${m.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${hcIdentityAvatar(h,112)}</div>
   <h2>${esc(h.n)}</h2><p>Verified creator</p>
   <span class="ringearn">${m.rate>0?`${gem}${n(m.rate)} coins/min · charged once you answer`:'Free call &middot; gifts are optional'}</span>
-  ${short?`<span class="ringfee">You need ${n(m.rate)} coins to answer. Add coins, then call ${esc(name)} back.</span><button type="button" class="ring-add-coins" onclick="memberRingAddCoins()">Add coins</button>`:''}
+  ${short?`<span class="ringfee">You need ${n(m.rate)} coins to answer. Add coins while the caller waits, then return and choose Accept.</span><button type="button" class="ring-add-coins" onclick="memberRingAddCoins()">Add coins</button>`:''}
   ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
@@ -1155,7 +1156,7 @@ async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)re
   Native.send("call.accept",{callId:m.callId});
  }catch(error){S.acceptingCall=false;m.error=error?.message||"Your camera or microphone could not be started. Try again.";r()}}
 function declineMemberRing(){const m=S.memberRing;if(!m)return;S.memberRing=null;S.acceptingCall=false;window.ZimiMedia?.stop();Native.send("call.decline",{callId:m.callId});ringReturn()}
-function memberRingAddCoins(){declineMemberRing();go("coins")}
+function memberRingAddCoins(){if(window.ZimiCallInvitations)return ZimiCallInvitations.topupIncoming();appNotice("Coin purchases for this call are unavailable right now.")}
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;

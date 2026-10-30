@@ -4769,6 +4769,11 @@ html:root #zc-gift-playback{position:fixed;z-index:40;display:flex;align-items:c
 html:root #zc-gift-playback[hidden]{display:none}
 html:root #zc-gift-playback::before,html:root #zc-gift-playback::after{content:none!important;display:none!important}
 html:root #zc-gift-playback>.zc-gift-playback-art{display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:360px;max-height:640px;object-fit:contain;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
+.zci-dialog{position:fixed;inset:0;margin:auto;width:min(390px,calc(100% - 32px));max-height:calc(100dvh - 40px);overflow:auto;border:1px solid var(--line);background:var(--canvas);color:var(--ink);padding:20px;font-size:14px;line-height:1.6}
+.zci-dialog::backdrop{background:rgba(0,0,0,.4)}.zci-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.zci-label{font-size:12px;font-weight:600;color:var(--accent-ink)}.zci-dialog header button{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);background:var(--surface);color:var(--ink);flex:none}
+.zci-person{display:flex;align-items:center;gap:15px;margin-bottom:20px;min-width:0}.zci-person>div{min-width:0}.zci-person h2{font-size:22px;line-height:1.35;font-weight:600;margin:4px 0;overflow-wrap:anywhere}.zci-person p,.zci-person>div>span{font-size:12px;color:var(--muted)}.zci-dialog>p{color:var(--muted);font-size:13px;margin-bottom:16px}.zci-terms{display:grid;gap:10px;padding:15px;background:var(--surface);margin-bottom:16px;font-size:12px}.zci-terms>span{display:flex;align-items:center;justify-content:space-between;gap:12px}.zci-terms strong{font-weight:600}.zci-note{font-size:12px!important}
+.zci-primary,.zci-secondary{display:block;width:100%;min-height:46px;padding:11px 14px;font:inherit;font-weight:600;margin-top:10px}.zci-primary{background:var(--cta);color:var(--cta-ink)}.zci-secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line)}.zci-mute{display:block;width:100%;min-height:40px;font-size:11px;color:var(--muted);background:none;margin-top:8px}.zci-dialog button:disabled{opacity:.55}.zci-error{color:var(--theme-danger)!important}
+.zci-checkout-context{padding:16px;background:var(--surface);border:1px solid var(--line);margin:0 0 20px;font-size:12px;line-height:1.6;color:var(--ink)}.zci-checkout-context>strong{font-size:14px;font-weight:600}.zci-checkout-context p{color:var(--muted);margin:8px 0}.zci-checkout-context button{min-height:42px;padding:10px 12px;border:1px solid var(--line);color:var(--accent-ink);font-weight:600}.zci-checkout-context button:disabled{opacity:.55}.zci-source{font-size:11px;color:var(--muted);padding:10px 14px;text-align:center}.zci-host-waiting{font-size:12px;line-height:1.6;color:var(--muted);padding:14px 20px;text-align:center}
 </style>
 </head>
 <body>
@@ -7312,7 +7317,7 @@ function obAuthError(data) {
 function obPhotoUrl(value) { return typeof value === "string" && (/^https:\/\/[^\s"'<>]+$/.test(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)) ? value : ""; }
 function obApplyAccount(account, keepDraft = false) {
   const u = account.user || {}, editing = keepDraft && S.v === 'editprofile' && S.user?.id === u.id;
-  if(S.user?.id!==u.id){window.ZimiAgency?.reset();window.ZimiChats?.reset()}
+  if(S.user?.id!==u.id){window.ZimiAgency?.reset();window.ZimiChats?.reset();window.ZimiCallInvitations?.reset()}
   S.user = u;
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
@@ -8108,7 +8113,7 @@ function go(v,id){
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
  if(v==="kyc"){S.kerr=0;S.creatorSetup=true}
- if(v==="precall"){S.scam=0;S.nextCallVoice=false}
+ if(v==="precall"){S.scam=0;S.nextCallVoice=false;if(S.automaticCall?.hostId!==(id||S.h))S.automaticCall=null}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -8131,7 +8136,7 @@ function go(v,id){
   S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else if(S.callInvitationIntent?.hostId===S.h){const invitation=S.callInvitationIntent;S.callInvitationIntent=null;Native.send("call.invitation.connect",{id:invitation.id,requestId:invitation.requestId,expectedCoinsPerMinute:invitation.expectedCoinsPerMinute,expectedEntryFeeCoins:invitation.expectedEntryFeeCoins})}else{S.automaticCall=null;Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}}
  if(v==="dialback"){S.caller.voice=!!S.nextCallVoice;if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id,voice:!!S.nextCallVoice})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
@@ -9043,6 +9048,7 @@ function vRing(){const c=S.caller;
 
 /* ---- Member: a host they follow back, or allowed to video call, is calling ---- */
 function memberIncoming(d){
+ if(window.ZimiCallInvitations?.receiveIncoming(d))return;
  /* S.callId outlives a finished call, so only the screen tells whether the member is busy. */
  const busy=["dial","call","voice","incoming"].includes(S.v)||window.Home?.preparingCall;
  if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
@@ -9051,14 +9057,14 @@ function memberIncoming(d){
  S.acceptingCall=false;if(S.v!=="incoming")S.ringBack={view:S.v,id:S.v==="thread"||S.v==="host"?S.h:undefined};go("incoming")}
 function ringReturn(){const back=S.ringBack||{};S.ringBack=null;go(back.view&&back.view!=="incoming"?back.view:"home",back.id)}
 function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
- const name=first(h.n),short=m.rate>0&&S.bal<m.rate;
+ const name=first(h.n),short=!!m.topupRequired||m.rate>0&&S.bal<m.rate;
  return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${m.voice?'voice':'video'} call from ${esc(h.n)}">
   <div class="ringbg" aria-hidden="true"></div>
   <span class="ringeye"><i></i>Incoming ${m.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${hcIdentityAvatar(h,112)}</div>
   <h2>${esc(h.n)}</h2><p>Verified creator</p>
   <span class="ringearn">${m.rate>0?`${gem}${n(m.rate)} coins/min · charged once you answer`:'Free call &middot; gifts are optional'}</span>
-  ${short?`<span class="ringfee">You need ${n(m.rate)} coins to answer. Add coins, then call ${esc(name)} back.</span><button type="button" class="ring-add-coins" onclick="memberRingAddCoins()">Add coins</button>`:''}
+  ${short?`<span class="ringfee">You need ${n(m.rate)} coins to answer. Add coins while the caller waits, then return and choose Accept.</span><button type="button" class="ring-add-coins" onclick="memberRingAddCoins()">Add coins</button>`:''}
   ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
@@ -9072,7 +9078,7 @@ async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)re
   Native.send("call.accept",{callId:m.callId});
  }catch(error){S.acceptingCall=false;m.error=error?.message||"Your camera or microphone could not be started. Try again.";r()}}
 function declineMemberRing(){const m=S.memberRing;if(!m)return;S.memberRing=null;S.acceptingCall=false;window.ZimiMedia?.stop();Native.send("call.decline",{callId:m.callId});ringReturn()}
-function memberRingAddCoins(){declineMemberRing();go("coins")}
+function memberRingAddCoins(){if(window.ZimiCallInvitations)return ZimiCallInvitations.topupIncoming();appNotice("Coin purchases for this call are unavailable right now.")}
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
@@ -10177,6 +10183,7 @@ function homeCallFundsReady(h){
 }
 function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
+  if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
   if(isHost()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
   const setup=Home.dashboardSetup,h=g(S.h);
@@ -10750,7 +10757,7 @@ function coinConfirmCheckout(){
 }
 function homeCoins(embedded=false){
  const selected=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs'),pending=coinHasPendingPayment();
- return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${coinWalletView(embedded)}${!DEMO&&ContentLoading.wallet.error?`<div class="zw-error" role="alert">Balance unavailable. Refresh to try again.</div>`:''}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&!pending?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
+ return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${!embedded?window.ZimiCallInvitations?.coinsContext()||'':''}${coinWalletView(embedded)}${!DEMO&&ContentLoading.wallet.error?`<div class="zw-error" role="alert">Balance unavailable. Refresh to try again.</div>`:''}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&!pending?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
 }
 function homeCheckout(resume=false){
  if(Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
@@ -11872,6 +11879,7 @@ function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`
 function zpcScreen(){
   const h=g(S.h);if(!h)return `<section class="zpc-setup"><div class="zpc-missing">${hi('user',40)}<h1>Creator unavailable</h1><p>This profile could not be loaded.</p><button class="zpc-primary" onclick="go('home')">Back to Home</button></div></section>`;
   if(CallSetup.peerId!==h.id){CallSetup.peerId=h.id;CallSetup.mode='video'}
+  const automatic=S.automaticCall?.hostId===h.id;
   const live=window.ZIMI_LIVE_STREAMING_ENABLED&&!!Home.dashboardSetup?.streamId&&Home.dashboardSetup.hostId===h.id;
   if(live)CallSetup.mode='video';
   const busy=!!Home.preparingCall,voice=!live&&(busy?!!Home.preparingVoice:CallSetup.mode==='voice');
@@ -11890,14 +11898,14 @@ function zpcScreen(){
       <p class="zpc-category">${esc(h.cat||h.tag||'Creator')}${h.c?`<span>·</span>${esc(h.c)}`:''}</p>
       <span class="zpc-presence ${busy?'is-busy':available?'is-online':'is-offline'}"><i></i>${busy?'Getting your call ready':available?'Online · Ready to connect':'Currently unavailable'}</span>
     </div>
-    <div class="zpc-content">
+    <div class="zpc-content">${window.ZimiCallInvitations?.sourceBadge()||''}
       <div class="zpc-section-title"><h2>${live?'Review your video call':'How would you like to connect?'}</h2><span>JUST THE TWO OF YOU</span></div>
       <div class="zpc-modes ${live?'zpc-video-only':''}" role="group" aria-label="Choose your call type">${modes.map(([mode,icon,title,detail])=>`<button type="button" class="zpc-mode ${CallSetup.mode===mode?'selected':''}" data-call-mode="${mode}" aria-label="${title}" aria-pressed="${CallSetup.mode===mode}" onclick="zpcMode('${mode}')" ${busy?'disabled':''}><span class="zpc-mode-icon">${hi(icon,23)}</span><span class="zpc-mode-copy"><strong>${title}</strong><small>${detail}</small></span><i class="zpc-mode-check" aria-hidden="true">${CallSetup.mode===mode?hi('check',11):''}</i></button>`).join('')}</div>
       <div class="zpc-details" aria-label="Call pricing and wallet"><div><span>${hi('rings',14)} Call rate</span><strong class="${h.rate?'':'zpc-free'}">${h.rate?`${n(h.rate)} <small>coins/min</small>`:'Free'}${h.fee?`<small>+ ${n(h.fee)} coin entry fee</small>`:''}</strong></div><i></i><div><span>Your balance</span><strong>${contentBalance()} <small>coins</small></strong></div></div>
       ${need>0&&!short?`<p class="zpc-cost-note">At least ${n(need)} coins to start${h.rate?' &middot; billed by the second':''}${h.fee?` &middot; the entry fee is charged when ${esc(first(h.n))} picks up and isn’t refunded`:''}</p>`:''}
       ${busy?`<div class="zpc-preparing" role="status" aria-live="polite" aria-label="Preparing ${voice?'voice':'video'} call" aria-busy="true"><div class="zpc-preparing-icon" aria-hidden="true">${hi(voice?'mic':'vid',22)}</div><div><strong>Allow ${permission}</strong><p>Check your device's permission prompt to continue.</p><span class="zpc-progress-skeleton" aria-hidden="true"><i class="zh-skeleton-shape"></i></span></div></div>`:S.pcerr?`<div class="zpc-error" role="alert">${hi('info',19)}<div><strong>Let's try that again</strong><p>${esc(S.pcerr)}</p></div></div>`:!available?`<div class="zpc-unavailable-note">${hi('clock',19)}<p>This creator isn't taking calls right now.<br><span>Explore creators who are ready to connect.</span></p></div>`:walletPending?`<div class="zpc-unavailable-note" role="status">${hi(walletError?'info':'coins',19)}<p>${walletError?'Your balance could not be loaded.':'Checking your coin balance...'}<br><span>${walletError?'Retry to confirm you have enough coins.':'Your call will be ready to confirm once it loads.'}</span></p></div>`:short?`<div class="zpc-unavailable-note" role="status">${hi('info',19)}<p>You need at least ${n(need)} coins ${h.fee?`for the ${n(h.fee)}-coin entry fee and one minute`:'for a one-minute call'}.<br><span>${h.rate?'Calls are billed by the second while you talk.':'The entry fee is charged when the creator picks up.'}</span></p></div>`:live?`<div class="zpc-permission-note">${hi('shield',20)}<p>Send a private video call request. <span>Your camera and microphone activate when the host accepts.</span></p></div>`:`<div class="zpc-permission-note">${hi('shield',20)}<p>${voice?'Your microphone activates':'Your camera and microphone activate'} when you start. <span>You can turn ${voice?'it':'them'} off at any time.</span></p></div>`}
     </div>
-    <footer class="zpc-actions">${short?`<button class="zpc-primary" onclick="go('coins')">${hi('coins',21)} <span>Buy coins to call</span>${hi('arrow',18)}</button>`:`<button class="zpc-primary" onclick="${live?'homeDashboardConfirmCall()':`homeStartCall(${voice})`}" ${busy||!available||walletPending?'disabled':''}>${hi(voice?'ph':'vid',21)} <span>${busy?voice?'Preparing microphone...':'Preparing camera...':!available?'Currently unavailable':live?'Request video call':voice?'Start voice call':'Start video call'}</span>${!busy&&available&&!walletPending?hi('arrow',18):''}</button>`}${walletError&&available?`<button class="zpc-secondary" onclick="contentRetry('wallet')">Retry balance</button>`:''}${busy?'<button class="zpc-cancel" onclick="homeCancelPrepare()">Cancel preparation</button>':!available?'<button class="zpc-secondary" onclick="go(\'explore\')">Explore creators '+hi('arrow',16)+'</button>':`<p class="zpc-footer-note">${hi('lock',11)} ${live?'The host accepts before your call starts.':'Your time. Your conversation.'}</p>`}${DEMO?'<span class="zpc-demo">Interactive preview &middot; no real call is placed</span>':''}</footer>
+    <footer class="zpc-actions">${short?`<button class="zpc-primary" onclick="${automatic?'window.ZimiCallInvitations.review()':"go('coins')"}">${hi('coins',21)} <span>Buy coins to call</span>${hi('arrow',18)}</button>`:`<button class="zpc-primary" onclick="${live?'homeDashboardConfirmCall()':`homeStartCall(${voice})`}" ${busy||!available||walletPending?'disabled':''}>${hi(voice?'ph':'vid',21)} <span>${busy?voice?'Preparing microphone...':'Preparing camera...':!available?'Currently unavailable':automatic?'Review automatic invitation':live?'Request video call':voice?'Start voice call':'Start video call'}</span>${!busy&&available&&!walletPending?hi('arrow',18):''}</button>`}${walletError&&available?`<button class="zpc-secondary" onclick="contentRetry('wallet')">Retry balance</button>`:''}${busy?'<button class="zpc-cancel" onclick="homeCancelPrepare()">Cancel preparation</button>':!available?'<button class="zpc-secondary" onclick="go(\'explore\')">Explore creators '+hi('arrow',16)+'</button>':`<p class="zpc-footer-note">${hi('lock',11)} ${live?'The host accepts before your call starts.':'Your time. Your conversation.'}</p>`}${DEMO?'<span class="zpc-demo">Interactive preview &middot; no real call is placed</span>':''}</footer>
   </section>`;
 }
 function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open}
@@ -15457,6 +15465,129 @@ window.ZimiCardVideo = (() => {
   }));
   return { attach };
 })();
+
+/* Suggestions are disclosed as automatic. No ring, media capture, call record or
+   charge exists until the member explicitly chooses Connect. */
+const CallInvitations={owner:'',invitation:null,requested:false,request:0,pending:0,busy:'',error:'',foreground:true,realtimeReady:false,readyAt:0,nullRetried:false,retryTimer:null,topup:null,ended:new Set(),timer:null};
+function zciOwner(){return S.loggedIn?S.user?.id||'':''}
+function zciMuted(){try{return localStorage.getItem('binzo.automaticCalls.muted.'+zciOwner())==='1'}catch{return false}}
+function zciIdle(ownDialog=false){return !!zciOwner()&&!isHost()&&S.v==='home'&&CallInvitations.foreground&&!document.hidden&&!homeContentPending()&&!Home.preparingCall&&!Home.matching&&!Home.checkoutBusy&&!Home.checkoutAttempt&&!CoinUI.checkoutPrompt&&!coinHasPendingPayment()&&!Home.giftTo&&!S.memberRing&&!S.inc&&!S.queuedInc&&!S.connecting&&!S.acceptingCall&&!ZVerify.state&&!window.ZimiChatVoice?.active()&&!document.querySelector(ownDialog?'dialog[open]:not(#zci-invitation)':'dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable=true]')}
+function zciValid(invitation=CallInvitations.invitation){return !!invitation&&invitation.source==='automatic'&&invitation.label==='Automatic call invitation'&&invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()}
+function zciClose(){const dialog=document.getElementById('zci-invitation');if(dialog){dialog.close();dialog.remove()}}
+function zciWatchDeadline(){
+  clearTimeout(CallInvitations.timer);CallInvitations.timer=null;
+  const value=CallInvitations.topup?.until||CallInvitations.invitation?.expiresAt,until=Date.parse(value),owner=zciOwner();
+  if(!Number.isFinite(until)||!CallInvitations.foreground)return;
+  CallInvitations.timer=setTimeout(()=>{
+    CallInvitations.timer=null;if(owner!==zciOwner())return;
+    if(CallInvitations.topup){CallInvitations.topup.ended=true;if(S.v==='coins')r()}
+    if(CallInvitations.invitation&&Date.parse(CallInvitations.invitation.expiresAt)<=Date.now()){CallInvitations.invitation=null;zciClose();if(S.v==='home')appNotice('This automatic call invitation has expired. You can explore available hosts.')}
+  },Math.min(2147483647,Math.max(0,until-Date.now())));
+}
+function zciReset(){zciClose();clearTimeout(CallInvitations.timer);clearTimeout(CallInvitations.retryTimer);Object.assign(CallInvitations,{owner:zciOwner(),invitation:null,requested:false,pending:++CallInvitations.request,busy:'',error:'',topup:null,timer:null,retryTimer:null,realtimeReady:false,nullRetried:false,readyAt:0});CallInvitations.ended.clear();S.callInvitationIntent=null;S.automaticCall=null;S.hostTopupWaiting=null}
+function zciRequest(active=false){
+  if(CallInvitations.owner!==zciOwner())zciReset();
+  if(!zciOwner()||isHost()||!CallInvitations.realtimeReady||CallInvitations.busy||(!active&&(!zciIdle(true)||CallInvitations.requested||zciMuted())))return;
+  if(active&&(!CallInvitations.foreground||document.hidden))return;
+  CallInvitations.requested=true;CallInvitations.busy=active?'review':'load';CallInvitations.error='';CallInvitations.pending=++CallInvitations.request;
+  Native.send('call.invitation.load',{requestId:CallInvitations.pending,...(active?{active:true}:{})});zciPaint();
+}
+function zciPaint(){
+  if(!zciIdle(true)||!zciValid()||CallInvitations.topup?.kind==='incoming'){zciClose();return}
+  const invitation=CallInvitations.invitation,host=invitation.host,ready=coinWalletReady(),short=ready&&S.bal<invitation.requiredCoins;
+  let dialog=document.getElementById('zci-invitation');const creating=!dialog;
+  if(!dialog){dialog=document.createElement('dialog');dialog.id='zci-invitation';dialog.className='zci-dialog';dialog.setAttribute('aria-labelledby','zci-title');dialog.addEventListener('cancel',event=>{event.preventDefault();if(!CallInvitations.busy)zciDismiss()});document.body.append(dialog)}
+  dialog.innerHTML=`<header><span class="zci-label">Automatic call invitation</span><button type="button" aria-label="Close automatic invitation" onclick="zciDismiss()" ${CallInvitations.busy?'disabled':''}>${hi('close',20)}</button></header><div class="zci-person">${hcIdentityAvatar({id:host.id,n:host.name,avatarUrl:host.avatarUrl},76)}<div><span>Suggested host</span><h2 id="zci-title">${esc(host.name)}</h2>${host.city?`<p>${esc(host.city)}</p>`:''}</div></div><p>BinzoLive suggested this available host. This is an automatic invitation, not an incoming call from the host.</p><div class="zci-terms"><span>Video call <strong>${n(invitation.coinsPerMinute)} coins/min</strong></span>${invitation.entryFeeCoins?`<span>Entry fee <strong>${n(invitation.entryFeeCoins)} coins</strong></span>`:''}<span>Your balance <strong>${contentBalance()} coins</strong></span></div><p class="zci-note">${ready?short?`You need at least ${n(invitation.requiredCoins)} coins. Buying coins does not start a call.`:'Connect rings the real host. Charges begin only if the host answers.':'Checking your verified coin balance before connecting.'}</p>${CallInvitations.error?`<p class="zci-error" role="alert">${esc(CallInvitations.error)}</p>`:''}<button type="button" class="zci-primary" onclick="${short?'zciTopup()':'zciConnect()'}" ${CallInvitations.busy||!ready?'disabled':''}>${CallInvitations.busy==='connect'?'Preparing connection…':short?'Add coins':'Connect'}</button><button type="button" class="zci-secondary" onclick="zciDismiss()" ${CallInvitations.busy?'disabled':''}>Not now</button><button type="button" class="zci-mute" onclick="zciDismiss(true)" ${CallInvitations.busy?'disabled':''}>Don't show automatic invitations</button>`;
+  if(creating)dialog.showModal();
+}
+function zciDismiss(mute=false){
+  if(CallInvitations.busy==='connect')return;
+  const invitation=CallInvitations.invitation;
+  if(mute)try{localStorage.setItem('binzo.automaticCalls.muted.'+zciOwner(),'1')}catch{}
+  zciClose();clearTimeout(CallInvitations.timer);CallInvitations.timer=null;CallInvitations.invitation=null;CallInvitations.topup=null;CallInvitations.busy='';CallInvitations.error='';CallInvitations.pending=++CallInvitations.request;
+  if(invitation)Native.send('call.invitation.dismiss',{id:invitation.id,requestId:CallInvitations.pending});
+}
+async function zciConnect(){
+  const invitation=CallInvitations.invitation,owner=zciOwner();if(!zciIdle(true)||!zciValid(invitation)||CallInvitations.busy||!coinWalletReady())return;
+  if(S.bal<invitation.requiredCoins)return zciTopup();
+  CallInvitations.busy='connect';CallInvitations.error='';const requestId=CallInvitations.pending=++CallInvitations.request;zciPaint();
+  try{
+    await window.ZimiMedia.prepare(true);
+    if(owner!==zciOwner()||CallInvitations.pending!==requestId)return;
+    if(!zciIdle(true)||!zciValid(invitation)){window.ZimiMedia.stop();CallInvitations.busy='';return zciPaint()}
+    const host=knowHost({id:invitation.host.id,name:invitation.host.name,avatarUrl:invitation.host.avatarUrl,city:invitation.host.city,ratePerMin:invitation.coinsPerMinute,entryFee:invitation.entryFeeCoins,online:true,availableForCall:true,verified:true,role:'host'});
+    S.automaticCall={invitationId:invitation.id,hostId:host.id};S.callInvitationIntent={id:invitation.id,hostId:host.id,requestId,expectedCoinsPerMinute:invitation.coinsPerMinute,expectedEntryFeeCoins:invitation.entryFeeCoins};S.nextCallVoice=false;S.callId=null;
+    zciClose();S.allowPreparedCall=true;try{go('dial',host.id)}finally{S.allowPreparedCall=false}
+  }catch(error){if(owner!==zciOwner()||CallInvitations.pending!==requestId)return;CallInvitations.busy='';CallInvitations.error=error?.message||'Camera and microphone access could not be prepared.';zciPaint()}
+}
+function zciTopup(){if(!zciValid()||CallInvitations.busy)return;const invitation=CallInvitations.invitation;CallInvitations.topup={kind:'automatic',id:invitation.id,owner:zciOwner(),until:invitation.expiresAt};zciClose();go('coins')}
+function zciReturnFromCoins(){const context=CallInvitations.topup;if(!context||context.owner!==zciOwner()||CallInvitations.busy)return;if(context.kind==='incoming')return zciReturnToIncoming();CallInvitations.topup=null;go('home');zciRequest(true)}
+function zciReview(){if(CallInvitations.busy)return;go('home');zciRequest(true)}
+function zciTopupIncoming(){
+  const member=S.memberRing;if(!member||S.acceptingCall||CallInvitations.busy||CallInvitations.ended.has(member.callId))return;
+  CallInvitations.busy='hold';CallInvitations.pending=++CallInvitations.request;member.error='';r();Native.send('call.topup.hold',{callId:member.callId,requestId:CallInvitations.pending});
+}
+function zciReturnToIncoming(){
+  const context=CallInvitations.topup;if(!context||context.kind!=='incoming'||context.owner!==zciOwner()||CallInvitations.busy)return;
+  if(context.ended||Date.parse(context.until)<=Date.now()||CallInvitations.ended.has(context.callId)){S.memberRing=null;CallInvitations.topup=null;go('home');return}
+  CallInvitations.busy='incoming-review';CallInvitations.pending=++CallInvitations.request;Native.send('call.topup.review',{callId:context.callId,requestId:CallInvitations.pending});r();
+}
+function zciCoinsContext(){
+  const context=CallInvitations.topup;if(!context||context.owner!==zciOwner())return '';
+  const incoming=context.kind==='incoming',ended=context.ended||Date.parse(context.until)<=Date.now();
+  return `<aside class="zci-checkout-context" role="region" aria-label="${incoming?'Incoming call coin purchase':'Automatic call invitation coin purchase'}"><strong>${incoming?'Your incoming call':'Automatic call invitation'}</strong><p>${ended?incoming?'The caller ended the call or the waiting period expired. A purchase will not reconnect it.':'This invitation has expired. A purchase will not start a call.':incoming?`The real caller is waiting until ${esc(new Date(context.until).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}. Return and choose Accept yourself after adding coins.`:'Your invitation is saved. After adding coins, review the host and choose Connect yourself.'}</p>${CallInvitations.error?`<p role="alert">${esc(CallInvitations.error)}</p>`:''}<button type="button" onclick="zciReturnFromCoins()" ${CallInvitations.busy?'disabled':''}>${CallInvitations.busy?'Checking call…':ended?'Back to Home':incoming?'Return to incoming call':'Review invitation'}</button></aside>`;
+}
+function zciSourceBadge(){return S.automaticCall?'<p class="zci-source">Automatic call invitation</p>':''}
+function zciAfter(){
+  if(CallInvitations.owner!==zciOwner())zciReset();
+  if(S.v!=='home')zciClose();
+  if(S.v==='home'){if(!CallInvitations.requested)zciRequest();else zciPaint()}
+  const waiting=S.hostTopupWaiting;
+  if(waiting&&['dial','dialback'].includes(S.v)&&waiting.callId===S.callId&&Date.parse(waiting.until)>Date.now()){
+    const root=document.querySelector('.dialscr,.dial,.ringscr');if(root&&!root.querySelector('.zci-host-waiting'))root.insertAdjacentHTML('beforeend',`<p class="zci-host-waiting" role="status">The member is adding coins. Waiting until ${esc(new Date(waiting.until).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}. You can end the call at any time.</p>`);
+  }
+  if(S.automaticCall&&['dial','dialback','ring','call','voice','hcall'].includes(S.v)&&!document.querySelector('.zci-source')){
+    const root=document.querySelector('.ringscr,.dialscr,.dial,.zr-room,.zh-call-room');if(root)root.insertAdjacentHTML('afterbegin',zciSourceBadge());
+  }
+}
+Native.on('call.invitation.loaded',data=>{if(data.requestId!==CallInvitations.pending||CallInvitations.owner!==zciOwner())return;const reviewing=CallInvitations.busy==='review';CallInvitations.busy='';CallInvitations.error='';CallInvitations.invitation=data.invitation;if(!zciValid()){CallInvitations.invitation=null;if(!CallInvitations.nullRetried&&Date.now()-CallInvitations.readyAt<2500){CallInvitations.nullRetried=true;const owner=zciOwner();CallInvitations.retryTimer=setTimeout(()=>{CallInvitations.retryTimer=null;if(owner===zciOwner()&&zciIdle(true)){CallInvitations.requested=false;zciRequest(reviewing)}},1500);return}if(reviewing&&S.v==='home')appNotice('This invitation is no longer available. You can explore other hosts.');return}zciWatchDeadline();zciPaint()});
+Native.on('call.invitation.error',data=>{if(data.requestId!==CallInvitations.pending)return;CallInvitations.busy='';CallInvitations.error=data.message||'This invitation could not be checked.';if(S.v==='home')zciPaint();else if(S.v==='coins')r()});
+Native.on('call.incoming',data=>{
+  // Optional discovery can never occupy the real call's controls. Do not retire
+  // an actual hold/review when its ringing update is replayed during checkout.
+  clearTimeout(CallInvitations.retryTimer);CallInvitations.retryTimer=null;
+  if(['load','review'].includes(CallInvitations.busy)||CallInvitations.busy==='connect'&&S.v==='incoming'){CallInvitations.pending=++CallInvitations.request;CallInvitations.busy='';CallInvitations.error='';CallInvitations.requested=true}
+  if(CallInvitations.topup?.kind!=='incoming'){CallInvitations.invitation=null;CallInvitations.topup=null;clearTimeout(CallInvitations.timer);CallInvitations.timer=null}
+  zciClose();
+  if(data.source==='automatic'&&data.automaticInvitationId){S.automaticCall={invitationId:data.automaticInvitationId,hostId:data.from?.id,callId:data.callId};r()}
+});
+Native.on('call.created',data=>{if(data.invitationId&&data.requestId===CallInvitations.pending){CallInvitations.busy='';CallInvitations.topup=null;CallInvitations.invitation=null;clearTimeout(CallInvitations.timer);CallInvitations.timer=null;S.automaticCall={invitationId:data.invitationId,hostId:data.to,callId:data.callId}}zciAfter()});
+Native.on('call.connected',data=>{if(data.source==='automatic'&&data.automaticInvitationId)S.automaticCall={invitationId:data.automaticInvitationId,hostId:data.peerId,callId:data.callId};else if(S.automaticCall?.callId&&S.automaticCall.callId!==data.callId)S.automaticCall=null;zciAfter()});
+Native.on('call.failed',data=>{
+  if(data.invitationId&&data.requestId===CallInvitations.pending){CallInvitations.busy='';CallInvitations.error=data.message||'The host could not be connected.';if(data.code==='CALL_PRICE_CHANGED')zciRequest(true);else if(data.code==='INVITATION_CALL_ENDED')CallInvitations.invitation=null;}
+  if(data.callId&&S.memberRing?.callId===data.callId&&data.code==='INSUFFICIENT_COINS'){S.memberRing.topupRequired=true;r()}
+});
+Native.on('call.topup.held',data=>{
+  if(data.requestId!==CallInvitations.pending||CallInvitations.busy!=='hold'||S.memberRing?.callId!==data.callId||CallInvitations.ended.has(data.callId))return;
+  CallInvitations.busy='';S.memberRing.topupUntil=data.until;CallInvitations.topup={kind:'incoming',callId:data.callId,owner:zciOwner(),until:data.until};zciWatchDeadline();window.ZimiMedia?.stop();go('coins');
+});
+Native.on('call.topup.error',data=>{if(data.requestId!==CallInvitations.pending)return;CallInvitations.busy='';CallInvitations.error=data.message||'The call could not be checked.';if(S.memberRing?.callId===data.callId)S.memberRing.error=CallInvitations.error;if(['incoming','coins'].includes(S.v))r()});
+Native.on('call.topup.reviewed',data=>{
+  const context=CallInvitations.topup;if(data.requestId!==CallInvitations.pending||context?.kind!=='incoming'||context.callId!==data.callId)return;CallInvitations.busy='';
+  if(!data.ringing||CallInvitations.ended.has(data.callId)||!S.memberRing){context.ended=true;S.memberRing=null;r();return}
+  if(data.rate!==undefined)S.memberRing.rate=data.rate;S.memberRing.topupRequired=S.bal<S.memberRing.rate;S.memberRing.error='';CallInvitations.topup=null;go('incoming');
+});
+Native.on('call.topup.waiting',data=>{if(CallInvitations.ended.has(data.callId))return;if(S.memberRing?.callId===data.callId)S.memberRing.topupUntil=data.until;S.hostTopupWaiting={callId:data.callId,until:data.until};if(['incoming','dial','dialback'].includes(S.v))r()});
+Native.on('call.ended',data=>{CallInvitations.ended.add(data.callId);if(CallInvitations.ended.size>100)CallInvitations.ended.delete(CallInvitations.ended.values().next().value);if(CallInvitations.topup?.kind==='incoming'&&CallInvitations.topup.callId===data.callId){CallInvitations.topup.ended=true;CallInvitations.busy='';CallInvitations.pending=++CallInvitations.request;if(S.memberRing?.callId===data.callId)S.memberRing=null;if(S.v==='coins')r()}if(S.automaticCall&&data.callId===S.callId)S.automaticCall=null;});
+Native.on('realtime.status',data=>{CallInvitations.realtimeReady=data.connected===true;if(data.connected){CallInvitations.readyAt=Date.now();CallInvitations.nullRetried=false;zciAfter()}else zciClose()});
+Native.on('app.background',()=>{CallInvitations.foreground=false;clearTimeout(CallInvitations.timer);clearTimeout(CallInvitations.retryTimer);CallInvitations.timer=null;CallInvitations.retryTimer=null;zciClose()});
+Native.on('app.foreground',()=>{CallInvitations.foreground=true;CallInvitations.readyAt=Date.now();CallInvitations.nullRetried=false;if(!CallInvitations.topup&&!CallInvitations.invitation){CallInvitations.requested=false}zciWatchDeadline();zciAfter();if(S.v==='coins'&&CallInvitations.topup)r()});
+Native.on('wallet.balance',data=>{if(S.memberRing&&typeof data.coins==='number'&&data.coins>=S.memberRing.rate)S.memberRing.topupRequired=false;zciPaint();if(S.v==='incoming'||S.v==='coins'&&CallInvitations.topup)r()});
+['session.none','session.expired'].forEach(type=>Native.on(type,zciReset));
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='home')zciClose();queueMicrotask(zciAfter)});
+const zciPreviousAfter=ZimiHome.afterRender;ZimiHome.afterRender=()=>{zciPreviousAfter();zciAfter()};
+window.ZimiCallInvitations={request:zciRequest,connect:zciConnect,dismiss:zciDismiss,topup:zciTopup,review:zciReview,returnFromCoins:zciReturnFromCoins,topupIncoming:zciTopupIncoming,returnToIncoming:zciReturnToIncoming,coinsContext:zciCoinsContext,sourceBadge:zciSourceBadge,reset:zciReset,
+  receiveIncoming(data){if(CallInvitations.topup?.kind==='incoming'&&CallInvitations.topup.callId===data.callId&&S.memberRing?.callId===data.callId){if(data.rate!==undefined)S.memberRing.rate=data.rate;return true}return false}};
 
 r();
 Native.send('ready',{demo:DEMO});

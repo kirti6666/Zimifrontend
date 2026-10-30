@@ -162,6 +162,7 @@ function homeCallFundsReady(h){
 }
 function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
+  if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
   if(isHost()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
   const setup=Home.dashboardSetup,h=g(S.h);

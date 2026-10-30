@@ -163,6 +163,14 @@ The phone app is built from the same screens with that turned off.
 
 ## Coins and gifts
 
+Automatic call invitations are disclosed suggestions from real available hosts.
+They appear only while an authenticated member is idle on Home and require an
+explicit Connect. Coin purchases return to invitation review without starting a
+call. Genuine incoming host calls can use a server-confirmed five-minute top-up
+hold; after checkout the member reviews the live call and explicitly accepts.
+Run `npm run test:call-invitations` for the mocked disclosure, checkout, cancellation,
+account isolation, expiry and mobile layout regressions. No real payment is made.
+
 `web/coins.js` and `web/coins.css` provide the shared gold BinzoLive coin, wallet,
 coin packs, payment recovery, and gift selection. Selecting a gift does not
 spend coins; the separate Send action confirms it. Adding coins from a gift

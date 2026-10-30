@@ -381,6 +381,7 @@ export function payoutsFrom(value: unknown): Payouts {
 export const coinCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
 /** Coins per minute locked onto a paid call, and its entry fee and hold; free calls carry none. */
 export const callPrice = (call: Record<string, unknown>) => ({
+  ...(call.source === "automatic" && idOf(call.automaticInvitationId) ? { source: "automatic" as const, automaticInvitationId: idOf(call.automaticInvitationId) } : {}),
   ...(coinCount(call.coinsPerMinute) ? { rate: coinCount(call.coinsPerMinute) } : {}),
   ...(coinCount(call.entryFeeCoins) ? { entryFee: coinCount(call.entryFeeCoins), feeHoldSeconds: coinCount(call.entryFeeHoldSeconds) } : {}),
 });

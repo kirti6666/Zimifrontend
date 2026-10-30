@@ -57,6 +57,7 @@ const notice = page => page.locator('#app-notice').innerText();
     for (const name of ['Accept', 'Decline']) assert.equal(await m.page.getByRole('button', { name, exact: true }).evaluate(el => getComputedStyle(el).borderRadius), '999px', `${name} is round`);
     await m.receive('call.failed', { callId: 'host-call', message: 'You need at least 60 coins to answer this call (one minute). Recharge to answer.', code: 'INSUFFICIENT_COINS' });
     assert.match(await ring.innerText(), /You need at least 60 coins to answer this call/, 'A refused answer is explained on the ring screen');
+    await m.receive('wallet.balance', { coins: 500, earningsPaise: 0 });
     await accept.click();
     await m.page.waitForFunction(() => __sent.some(message => message.type === 'call.accept' && message.data.callId === 'host-call'));
     await m.receive('call.connected', { callId: 'host-call', initiator: false, peerId: hostId, voice: true, rate: 60 });

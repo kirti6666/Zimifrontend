@@ -71,6 +71,8 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const call = record(payload), callId = idOf(call);
       if (!callId || !userId) return;
+      if (call.status === "ringing" && (idOf(call.callerId) === userId || idOf(call.calleeId) === userId) && call.waitingForTopup === true && typeof call.topupHoldUntil === "string" && Number.isFinite(Date.parse(call.topupHoldUntil)))
+        emit("call.topup.waiting", { callId, until: call.topupHoldUntil });
       if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: callerFrom(call), kind: call.kind, voice: call.kind === "audio", ...(call.hostInitiated === true ? { fromHost: true } : {}), ...callPrice(call) });
       else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call) });
       else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId, ...callCharge(call) });

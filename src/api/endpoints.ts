@@ -9,6 +9,7 @@ import { relationshipsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
 import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
 import type { HostAgencyStatus } from "./types";
+import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -318,6 +319,26 @@ export const api = {
   async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },
   async leaderboard(period: LeaderboardPeriod) { return leaderboardFrom(await request("GET", `/leaderboard/creators?${queryString({ period, limit: 50 })}`), period); },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
+  async automaticCallInvitation(active = false) { return automaticInvitationFrom(await request(active ? "GET" : "POST", active ? "/calls/automatic-invitation/active" : "/calls/automatic-invitation", active ? undefined : {})); },
+  async dismissAutomaticInvitation(id: string) { return automaticInvitationFrom(await request("POST", `/calls/automatic-invitation/${encodeURIComponent(id)}/dismiss`, {})); },
+  async connectAutomaticInvitation(id: string, expectedCoinsPerMinute: number, expectedEntryFeeCoins: number) {
+    if (![expectedCoinsPerMinute, expectedEntryFeeCoins].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000))
+      throw new ApiError("Review this invitation's current call price before connecting.", 400);
+    const call = record(await request("POST", `/calls/automatic-invitation/${encodeURIComponent(id)}/connect`, { expectedCoinsPerMinute, expectedEntryFeeCoins }));
+    if (!idOf(call) || !idOf(call.calleeId) || call.source !== "automatic" || idOf(call.automaticInvitationId) !== id || call.hostInitiated === true)
+      throw new ApiError("The automatic invitation could not be connected safely. Please check your call history.", 502);
+    if (!["ringing", "accepted"].includes(String(call.status))) throw new ApiError("This invitation's call has ended. Choose another host when you are ready.", 409, "INVITATION_CALL_ENDED");
+    if (Number(call.coinsPerMinute || 0) !== expectedCoinsPerMinute || Number(call.entryFeeCoins || 0) !== expectedEntryFeeCoins)
+      throw new ApiError("This invitation's call price changed. Review the current price before connecting.", 409, "CALL_PRICE_CHANGED");
+    return { callId: idOf(call), to: idOf(call.calleeId), voice: false, invitationId: id, connected: call.status === "accepted", ...callPrice(call) };
+  },
+  async holdIncomingForTopup(callId: string) { return topupHoldFrom(await request("POST", `/calls/${encodeURIComponent(callId)}/topup-hold`, {}), callId); },
+  async reviewIncomingTopup(callId: string) {
+    const data = record(await request("GET", `/calls/${encodeURIComponent(callId)}`));
+    if (idOf(data) !== callId || data.hostInitiated !== true) throw new ApiError("This incoming call could not be verified.", 409);
+    return { callId, ringing: data.status === "ringing" && typeof data.expiresAt === "string" && Date.parse(data.expiresAt) > Date.now(),
+      ...(typeof data.topupHoldUntil === "string" ? { until: data.topupHoldUntil } : {}), ...callPrice(data) };
+  },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
   async acceptCall(callId: string) {
     const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)), early = record(call.earlyEnds);

@@ -168,6 +168,40 @@ media preparation.
 
 ## Call charges
 
+Automatic call suggestions are separate from incoming calls. Once an onboarded
+member is foreground, connected and idle on Home, `call.invitation.load
+{requestId}` requests `POST /calls/automatic-invitation {}`. It returns a pending
+invitation or `null`; the latter is quiet. Suggestions name a real online,
+available admin-created host and display **Automatic call invitation**. They
+never ring, capture media, create a Call or charge coins before explicit Connect.
+Leaving Home, an actual incoming call, backgrounding or account changes retires
+the optional display. Dismiss uses `POST /calls/automatic-invitation/:id/dismiss`;
+the per-account mute preference stores only a boolean on this device.
+
+`call.invitation.connect {id,requestId,expectedCoinsPerMinute,expectedEntryFeeCoins}`
+uses `POST /calls/automatic-invitation/:id/connect` with the exact displayed quote,
+each component an integer from 0 through 1,000,000. It never falls back to ordinary
+`POST /calls`. The server rechecks presence, availability, permissions and price;
+`CALL_PRICE_CHANGED` requires a fresh `GET /calls/automatic-invitation/active`
+review and another explicit Connect. Replays use the same real Call; an ended
+replay cannot reopen media. Immutable `source: "automatic"` and
+`automaticInvitationId` remain visible through ringing and the connected call.
+
+An insufficient balance opens the existing coin checkout with invitation context.
+Verified payment or wallet updates never connect or accept a call. The member
+returns to review current host availability, quote and balance, then chooses
+Connect themselves.
+
+For a genuine host-initiated incoming call, `call.topup.hold {callId,requestId}`
+requests `POST /calls/:id/topup-hold {}` before opening Coins. A valid server
+acknowledgement provides one non-extending hold of at most five minutes.
+`call.topup.waiting {callId,until}` tells the real caller that the member is adding
+coins; duplicate ringing updates preserve checkout. A `TOPUP_NOT_REQUIRED`
+refusal refreshes a stale wallet and leaves the member to choose Accept.
+`call.topup.review` fetches `GET /calls/:id` and the wallet before returning to the
+incoming screen. Host cancellation or expiry wins over late callbacks, and the
+member must still explicitly Accept. No hold failure declines or answers a call.
+
 Staff set the price in coins per minute in the admin dashboard (0 keeps calls free).
 A call keeps the price it was placed at. The server bills whole seconds once the host
 answers, `ceil(seconds × price / 60)` coins, charging every 10 seconds while the call

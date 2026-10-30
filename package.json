@@ -77,7 +77,8 @@
     "test:launcher-icons": "node scripts/test-launcher-icons.cjs",
     "test:icons": "npm run build:web && node scripts/test-launcher-icons.cjs && node scripts/test-icons.cjs",
     "test:ads": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-ads.cjs",
-    "build:admin": "node scripts/build-admin.mjs"
+    "build:admin": "node scripts/build-admin.mjs",
+    "test:call-invitations": "npm run build:web && node scripts/test-call-invitations.cjs"
   },
   "dependencies": {
     "expo": "~57.0.24",
