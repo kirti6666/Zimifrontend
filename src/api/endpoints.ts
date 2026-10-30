@@ -11,6 +11,7 @@ import type { OfficialReadPatch } from "./types";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
+let pendingCoverWrite: Promise<Account> | undefined;
 let voiceUploadVersion: number | undefined;
 const voiceUploads = new Map<string, { to: string; durationMs: number; replyTo?: string; audioKey: string }>();
 const remember = (account: Account) => { identity = { id: account.user.id, version: getSessionVersion() }; return account; };
@@ -64,16 +65,26 @@ export const api = {
     ensureSession(version);
     return relationshipsFrom(result, kind);
   },
-  async saveCreatorCard(photo: string) {
+  async saveCoverPhoto(photo: string): Promise<Account> {
     const version = getSessionVersion();
     decodePhoto(photo);
-    const mediaKey = await uploadMedia(photo, "cover", version);
-    ensureSession(version);
-    await request("PATCH", "/profile", { coverKey: mediaKey });
-    ensureSession(version);
-    pendingProfile = undefined;
-    return api.me(true);
+    // A new document can choose another cover while an older upload finishes.
+    // Keep these writes in selection order so the last choice stays saved.
+    const save = async () => {
+      ensureSession(version);
+      const mediaKey = await uploadMedia(photo, "cover", version);
+      ensureSession(version);
+      await request("PATCH", "/profile", { coverKey: mediaKey });
+      ensureSession(version);
+      pendingProfile = undefined;
+      return api.me(true);
+    };
+    const write = pendingCoverWrite ? pendingCoverWrite.catch(() => {}).then(save) : save();
+    pendingCoverWrite = write;
+    try { return await write; }
+    finally { if (pendingCoverWrite === write) pendingCoverWrite = undefined; }
   },
+  saveCreatorCard: (photo: string): Promise<Account> => api.saveCoverPhoto(photo),
   async me(fresh = false): Promise<Account> {
     const version = getSessionVersion();
     if (!fresh && pendingProfile?.version === version) return pendingProfile.promise;

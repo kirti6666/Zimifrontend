@@ -3102,6 +3102,101 @@ test('deactivation waits for a confirmed API result, deduplicates requests and p
   assert.equal(h.find('account.deactivated').length,1);h.bridge.close();
 });
 
+test('inline cover changes support members, correlate retry errors and deduplicate pending saves without generic profile events',async()=>{
+  const h=harness(),saved=deferred();
+  const member={...account(),requiresOnboarding:false,user:{...account().user,serverRole:'user'}};
+  h.overrides.me=()=>member;await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  h.overrides.saveCoverPhoto=()=>{throw new h.ApiError('Cover storage unavailable',503)};
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:11}});await settle();
+  assert.deepEqual(plain(h.find('profile.cover.error').at(-1).data),{message:'Cover storage unavailable',requestId:11});
+  h.overrides.saveCoverPhoto=()=>saved.promise;
+  const retry={type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:12}};
+  h.bridge.handle(retry);h.bridge.handle(retry);await settle();
+  assert.equal(h.count('saveCoverPhoto'),2,'One failed attempt plus one pending retry; duplicate taps do not upload twice');
+  const covered={...member,user:{...member.user,coverUrl:'https://media.example.test/cover.jpg'}};
+  saved.resolve(covered);await settle();
+  assert.deepEqual(plain(h.find('profile.cover.saved').at(-1).data),{account:covered,requestId:12});
+  assert.equal(h.find('profile.saved').length,0,'Inline cover acknowledgements cannot navigate the generic editor');
+  assert.equal(h.find('profile.error').length,0);
+  assert.equal(h.find('session').length,1,'A cover save does not emit a session that would clear unrelated edit drafts');
+  for(const data of [{photo:'https://media.example.test/x.jpg',requestId:1},{photo:'data:image/png;base64,AAAA',requestId:0},{photo:'data:image/png;base64,AAAA',requestId:1,userId:'someone-else'}])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'profile.cover.save',data})),null);
+  h.bridge.close();
+});
+
+test('inline cover saves ignore late successes and errors after a session change or document reload',async()=>{
+  for(const change of ['session','document'])for(const fail of [false,true]){
+    const h=harness(),saved=deferred();
+    const member={...account(),requiresOnboarding:false};
+    h.overrides.me=()=>member;await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({type:'session.resume',data:{}});await settle();
+    h.overrides.saveCoverPhoto=()=>saved.promise;
+    h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:21}});await settle();
+    if(change==='session')await h.session.setSessionTokens(tokenPair('bob'));else h.bridge.documentLoading();
+    if(fail)saved.reject(new h.ApiError('Old upload failed',503));else saved.resolve(member);
+    await settle();
+    assert.equal(h.find('profile.cover.saved').length,0,`${change}: old success cannot repaint a newer account/document`);
+    assert.equal(h.find('profile.cover.error').length,0,`${change}: old failure cannot replace a newer draft`);
+    h.bridge.close();
+  }
+});
+
+test('inline cover saves retire stale summaries while keeping another profile read independent',async()=>{
+  const h=harness(),before=deferred(),during=deferred(),fresh=deferred(),peer=deferred(),saved=deferred();
+  const member={...account(),requiresOnboarding:false};
+  h.overrides.me=()=>member;await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const summariesBefore=h.find('data.profileSettings').length;let reads=0;
+  h.overrides.profileSettings=()=>[before,during,fresh][reads++].promise;
+  h.overrides.saveCoverPhoto=()=>saved.promise;h.overrides.publicProfile=()=>peer.promise;
+  h.bridge.handle({type:'profile.settings.load',data:{}});
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:31}});
+  before.resolve(profileSettings());await settle();
+  assert.equal(h.find('data.profileSettings').length,summariesBefore,'Pre-save summaries cannot restore old cover-related data');
+  h.bridge.handle({type:'profile.settings.load',data:{}});
+  h.bridge.handle({type:'profile.load',data:{id:'other-profile',requestId:44}});
+  saved.resolve({...member,user:{...member.user,coverUrl:'https://media.example.test/new.jpg'}});await settle();
+  during.resolve(profileSettings());await settle();
+  assert.equal(h.find('data.profileSettings').length,summariesBefore,'Summaries begun during the mutation are retired too');
+  peer.resolve({id:'other-profile',name:'Other person'});await settle();
+  assert.equal(h.find('data.publicProfile').at(-1).data.id,'other-profile','Another open profile settles without interference from the cover save');
+  fresh.resolve({...profileSettings(),profile:{...profileSettings().profile,city:'Saved city'}});await settle();
+  assert.equal(h.find('data.profileSettings').at(-1).data.profile.city,'Saved city');
+  h.bridge.close();
+});
+
+test('inline cover saves re-read account authority after an admin review without granting host access',async()=>{
+  const h=harness(),saved=deferred();
+  h.overrides.me=()=>approvedAccount();await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  h.overrides.saveCoverPhoto=()=>saved.promise;
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:51}});
+  const latest={...account(),requiresOnboarding:false,user:{...account().user,serverRole:'host',hostStatus:'suspended',isVerifiedHost:false,coverUrl:'https://media.example.test/saved-cover.jpg'}};
+  h.overrides.me=()=>latest;
+  h.live[0].onEvent({type:'verification.status',data:{status:'rejected',hostStatus:'suspended'}});await settle();
+  const reads=h.count('me');saved.resolve(approvedAccount());await settle();
+  const delivered=h.find('profile.cover.saved').at(-1).data;
+  assert.equal(delivered.account.user.hostStatus,'suspended');
+  assert.equal(delivered.account.user.isVerifiedHost,false);
+  assert.equal(delivered.account.user.coverUrl,latest.user.coverUrl);
+  assert.equal(h.count('me'),reads+1,'A response crossing a review uses fresh account authority');
+  h.bridge.close();
+});
+
+test('inline cover responses publish changed host authority without resetting media drafts through a session event',async()=>{
+  const h=harness();h.overrides.me=()=>approvedAccount();await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const sessions=h.find('session').length;
+  h.overrides.saveCoverPhoto=()=>({...account(),requiresOnboarding:false,user:{...account().user,serverRole:'host',hostStatus:'suspended',isVerifiedHost:false,coverUrl:'https://media.example.test/new-cover.jpg'}});
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:61}});await settle();
+  assert.equal(h.find('profile.cover.saved').at(-1).data.requestId,61);
+  assert.equal(h.find('host.access').at(-1).data.approved,false);
+  assert.equal(h.find('host.access').at(-1).data.hostStatus,'suspended');
+  assert.equal(h.find('session').length,sessions,'Authority refresh cannot clear unrelated editor drafts');
+  h.bridge.close();
+});
+
 test('creator card saves require current approved access and their bridge messages reject forged payloads',async()=>{
   const h=harness();await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:1}});await settle();

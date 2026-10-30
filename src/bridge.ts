@@ -70,6 +70,7 @@ export type WebMessage =
   | { type: "auth.logout"; data: Record<string, never> }
   | { type: "account.deactivate"; data: { confirmed: true; requestId: number } }
   | { type: "creator.card.save"; data: { photo: string; requestId: number } }
+  | { type: "profile.cover.save"; data: { photo: string; requestId: number } }
   | { type: "profile.save"; data: Record<string, unknown> }
   | { type: "media.post.create"; data: { photo: string; caption: string; requestId?: number } }
   | { type: "media.post.delete"; data: { id: string; requestId: number } }
@@ -136,6 +137,8 @@ export type AppMessage =
   | { type: "post.delete.error"; data: { id: string; requestId: number; message: string } }
   | { type: "creator.card.saved"; data: { account: Account; requestId: number } }
   | { type: "creator.card.error"; data: { message: string; requestId: number } }
+  | { type: "profile.cover.saved"; data: { account: Account; requestId: number } }
+  | { type: "profile.cover.error"; data: { message: string; requestId: number } }
   | { type: "account.deactivated"; data: { requestId: number } }
   | { type: "account.deactivate.error"; data: { message: string; requestId: number } }
   | { type: "data.posts"; data: { posts: UserPost[] } }
@@ -1169,6 +1172,42 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       }
+      case "profile.cover.save": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && owner === accountId;
+        if (!owner) { emit({ type: "profile.cover.error", data: { message: "Sign in before changing your cover photo.", requestId: msg.data.requestId } }); return; }
+        const retireProfileReads = () => {
+          readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
+        };
+        const recoverProfileReads = () => {
+          quietly(loadProfileSettings(), "profile.settings.load");
+        };
+        let revision = hostRevision;
+        retireProfileReads();
+        try {
+          let account = await api.saveCoverPhoto(msg.data.photo);
+          while (applicable() && revision !== hostRevision) {
+            revision = hostRevision; account = await api.me(true);
+          }
+          if (!applicable()) return;
+          if (account.user.id !== owner) throw new ApiError("Your sign-in changed. Please try again.", 409);
+          retireProfileReads();
+          const authorityChanged = hostChecking || hasHostAccess() !== approvedHost(account) ||
+            hostStatus !== account.user.hostStatus || accountRole !== (account.user.serverRole ?? (account.user.role === "host" ? "host" : "user"));
+          applyHostAccount(account, false);
+          if (authorityChanged) publishHostAccess();
+          emit({ type: "profile.cover.saved", data: { account, requestId: msg.data.requestId } });
+          recoverProfileReads();
+          if (account.user.serverRole === "host" || account.user.role === "host")
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
+        } catch (error) {
+          if (!applicable()) return;
+          retireProfileReads();
+          emit({ type: "profile.cover.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+          recoverProfileReads();
+        }
+        return;
+      }
       case "creator.card.save": {
         try {
           const approval = await requireApprovedHost();
@@ -1656,8 +1695,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["account.deactivate", "creator.card.save", "media.post.delete", "call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
+      const serialized = notificationWrite || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "profile.cover.save" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

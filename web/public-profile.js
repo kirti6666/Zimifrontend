@@ -6,6 +6,7 @@ const Zu = { id:'', profile:null, loading:false, error:'', requestId:0, sequence
   back:{view:'home'}, dialog:'', dialogFocus:null, gallery:0 };
 const zuPendingFollows=new Map(),zuPendingBlocks=new Map();
 const ZuRelationships={owner:'',kind:'followers',users:[],total:0,page:0,limit:20,loading:false,error:'',requestId:0,requestedPage:1};
+const ZuCover={owner:'',photo:'',preparing:false,saving:false,error:'',run:0,requestId:0};
 const zuActive = () => ['host','user','profile'].includes(S.v);
 const zuSelfId = () => S.user?.id || (DEMO?ZProfile.data?.profile?.id:'');
 const zuId = () => S.v === 'profile' ? zuSelfId() : S.v === 'user' ? S.u : S.h;
@@ -92,6 +93,7 @@ function zuLoadPosts(more=false){
 }
 function zuBack(){if(S.v==='profile'){go('home');return}const back=Zu.back;go(back.view||'home',back.id)}
 function zuEditMedia(kind){
+  if(kind==='cover')return zuChooseCover();
   if(!zuSelf()||zuOffline())return;
   if(kind==='photos')return window.ZimiPostCreate.open();
   const target=kind;
@@ -201,11 +203,13 @@ function zuActions(p){
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
   return `<section class="zu-page ${S.v==='profile'?'zu-own-page':''}" aria-label="${owner?'Your profile':'User profile'}"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:'<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i></div>'}<div class="zu-cover-shade"></div>
-    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span>${owner?`<button class="zu-toolbar-more" aria-label="Open settings" onclick="go('settings')">${hi('set',21)}</button>`:`<button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button>`}</header>${owner?`<button class="zu-cover-upload" aria-label="Change cover photo" onclick="zuEditMedia('cover')" ${zuOffline()?'disabled':''}>${zi('camera',16)} Change cover</button>`:''}${p?zuStatus(p):''}</div>
+    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span>${owner?`<button class="zu-toolbar-more" aria-label="Open settings" onclick="go('settings')">${hi('set',21)}</button>`:`<button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button>`}</header>${owner?`<input id="zu-cover-input" type="file" accept="image/*" aria-label="Choose cover photo" onchange="zuPickCover(event)" hidden><button type="button" class="zu-cover-upload" aria-label="Change cover photo" onclick="zuEditMedia('cover')" ${zuOffline()||ZuCover.preparing||ZuCover.saving||Zu.loading||!Zu.profile?'disabled':''}>${zi('camera',16)} ${ZuCover.preparing?'Preparing…':ZuCover.saving?'Saving…':'Change cover'}</button>`:''}${p?zuStatus(p):''}</div>
     <div class="zu-layout">${zuIdentity(p||{})}${zuContent(p)}</div>${zuActions(p)}${homeGiftSheet()}</section>`;
 }
 
-function zuCloseDialog(){
+function zuCloseDialog(force=false){
+  if(Zu.dialog==='cover'&&ZuCover.saving&&!force)return;
+  if(Zu.dialog==='cover'&&!ZuCover.saving){ZuCover.run++;Object.assign(ZuCover,{photo:'',error:'',preparing:false})}
   if(Zu.dialog==='relationships'){ZuRelationships.requestId=++Zu.sequence;ZuRelationships.loading=false}
   const dialog=document.getElementById('zu-dialog');
   if(dialog){dialog.querySelector('video')?.pause();dialog.close();dialog.remove()}
@@ -217,13 +221,74 @@ function zuDialog(title,body,kind){
   const dialog=document.createElement('dialog');dialog.id='zu-dialog';dialog.className='zu-dialog'+(kind==='photo'?' zu-photo-dialog':'');dialog.setAttribute('aria-labelledby','zu-dialog-title');
   dialog.innerHTML=`<header><h2 id="zu-dialog-title">${title}</h2><button class="zu-icon-button" aria-label="Close" onclick="zuCloseDialog()">${hi('close',20)}</button></header>${body}`;
   dialog.addEventListener('close',()=>{dialog.querySelector('video')?.pause();dialog.remove();if(document.getElementById('zu-dialog'))return;Zu.dialog='';if(originFocus?.isConnected)originFocus.focus({preventScroll:true})});
-  dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close()});
+  dialog.addEventListener('cancel',event=>{if(kind==='cover'){event.preventDefault();if(!ZuCover.saving)zuCloseDialog()}});
+  dialog.addEventListener('click',event=>{if(event.target!==dialog||kind==='cover'&&ZuCover.saving)return;const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)zuCloseDialog()});
   document.body.append(dialog);dialog.showModal();return dialog;
 }
 function zuOpenOptions(){
   const p=zuPeer();if(!p||Zu.error)return;
   zuDialog('Profile options',`<p class="zu-dialog-intro">${esc(p.name||'BinzoLive member')}</p><label class="zu-id-field">Account ID<input id="zu-copy-field" readonly value="${esc(p.id)}" aria-label="Account ID"></label><button class="zu-option" onclick="zuCopyId()">${hi('copy',18)} Copy account ID</button><button class="zu-option zu-danger-text" onclick="zuConfirmBlock()">${zi('shield',18)} Block user</button><p class="zu-dialog-status" role="status"></p>`,'options');
 }
+
+function zuChooseCover(){
+  if(!zuSelf()||!Zu.profile||Zu.loading||Zu.error||zuOffline()||ZuCover.preparing||ZuCover.saving||S.mediaPreparing||S.profileSaving)return;
+  (document.getElementById('zu-cover-dialog-input')||document.getElementById('zu-cover-input'))?.click();
+}
+async function zuPickCover(event){
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file||!zuSelf()||ZuCover.preparing||ZuCover.saving||zuOffline())return;
+  const owner=zuSelfId(),run=++ZuCover.run;
+  Object.assign(ZuCover,{owner,preparing:true,error:''});zuPaint();zuPaintCover();
+  const current=()=>run===ZuCover.run&&owner===zuSelfId()&&zuSelf()&&Zu.id===owner;
+  try{
+    const photo=await obReadPhoto(file);
+    if(!current())return;
+    if(photo.length>2*1024*1024)throw new Error('This photo is still too large. Choose a smaller image.');
+    ZuCover.photo=photo;
+  }catch(error){if(current())ZuCover.error=error.message||'This image could not be prepared. Choose another photo.'}
+  finally{
+    if(current()){
+      ZuCover.preparing=false;zuPaint();
+      if(Zu.dialog!=='cover')zuDialog('Change cover','<div id="zu-cover-editor"></div>','cover');
+      zuPaintCover();
+    }
+  }
+}
+function zuPaintCover(){
+  const target=document.getElementById('zu-cover-editor');if(!target||Zu.dialog!=='cover')return;
+  const busy=ZuCover.saving||ZuCover.preparing;
+  const preview=imageSrc(ZuCover.photo||Zu.profile?.coverUrl);
+  target.setAttribute('aria-busy',String(busy));
+  target.innerHTML=`${preview?`<img class="zu-cover-preview" src="${preview}" alt="New cover preview">`:''}<input id="zu-cover-dialog-input" type="file" accept="image/*" onchange="zuPickCover(event)" hidden><button type="button" class="zu-text-button" onclick="zuChooseCover()" ${busy||zuOffline()?'disabled':''}>Choose another photo</button>${busy?`<p class="zu-cover-progress" role="status">${ZuCover.preparing?'Preparing photo…':'Saving cover…'}</p>`:''}${ZuCover.error?`<p class="zu-dialog-status" role="alert">${esc(ZuCover.error)}</p>`:''}<div class="zu-dialog-actions"><button type="button" class="zu-secondary" onclick="zuCloseDialog()" ${ZuCover.saving?'disabled':''}>Cancel</button><button type="button" class="zu-cover-save" onclick="zuSaveCover()" ${busy||!ZuCover.photo||zuOffline()?'disabled':''}>${ZuCover.saving?'Saving…':'Save cover'}</button></div>`;
+  const close=document.querySelector('#zu-dialog header button');if(close)close.disabled=ZuCover.saving;
+}
+function zuSaveCover(){
+  if(!zuSelf()||ZuCover.owner!==zuSelfId()||!ZuCover.photo||ZuCover.preparing||ZuCover.saving||zuOffline())return;
+  ZuCover.saving=true;ZuCover.error='';ZuCover.requestId=++Zu.sequence;zuPaintCover();zuPaint();
+  if(DEMO){zuCoverSaved({requestId:ZuCover.requestId,account:{user:{...S.user,id:zuSelfId(),coverUrl:ZuCover.photo}}});return}
+  Native.send('profile.cover.save',{photo:ZuCover.photo,requestId:ZuCover.requestId});
+}
+function zuCoverSaved(data){
+  if(!ZuCover.saving||data.requestId!==ZuCover.requestId||ZuCover.owner!==zuSelfId()||data.account?.user?.id!==zuSelfId())return;
+  const user=data.account.user;S.coverData=user.coverUrl||'';
+  S.user={...S.user,coverUrl:user.coverUrl,coverKey:user.coverKey};
+  if(S.mediaDirty)delete S.mediaDirty.cover;
+  if(Zu.id===zuSelfId()&&Zu.profile){Zu.profile.coverUrl=S.coverData;Zu.loading=false;Zu.error='';Zu.requestId=++Zu.sequence}
+  ZuCover.saving=false;
+  if(Zu.dialog==='cover')zuCloseDialog();
+  Object.assign(ZuCover,{photo:'',error:'',preparing:false});zuPaint();appNotice('Cover photo updated.');obHaptic('success');
+}
+Native.on('profile.cover.saved',zuCoverSaved);
+Native.on('profile.cover.error',data=>{
+  if(!ZuCover.saving||data.requestId!==ZuCover.requestId||ZuCover.owner!==zuSelfId())return;
+  ZuCover.saving=false;ZuCover.error=data.message||'Could not save your cover. Please try again.';
+  if(Zu.dialog==='cover')zuPaintCover();else Object.assign(ZuCover,{photo:'',error:''});zuPaint();
+});
+for(const type of ['session','auth.ok'])Native.on(type,data=>{
+  if(!ZuCover.owner||ZuCover.owner===data.user?.id)return;
+  if(Zu.dialog==='cover')zuCloseDialog(true);
+  Object.assign(ZuCover,{owner:'',photo:'',preparing:false,saving:false,error:'',run:ZuCover.run+1,requestId:++Zu.sequence});
+});
 
 function zuOpenRelationships(kind){
   if(!zuSelf()||!Zu.profile||Zu.loading||!['followers','following'].includes(kind))return;
@@ -386,11 +451,12 @@ Native.on('gift.sent',()=>{if(zuActive())zuPaint()});
 Native.on('operation.error',d=>{if(zuActive()&&d.action==='gift.send')zuPaint()});
 Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.checking&&(Zu.error||Zu.postsError))zuRetry();else zuPaint()});
 for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
-for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog(true);Object.assign(ZuCover,{owner:'',photo:'',preparing:false,saving:false,error:'',run:ZuCover.run+1,requestId:++Zu.sequence});Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
 window.ZimiPublicProfile={
   render:zuScreen,
   beforeNavigate(view,id){
-    zuCloseDialog();
+    if(ZuCover.preparing){ZuCover.run++;Object.assign(ZuCover,{photo:'',error:'',preparing:false})}
+    zuCloseDialog(true);
     if(['host','user'].includes(view)&&!(zuActive()&&id===zuId()))Zu.back={view:S.v,id:S.v==='user'?S.u:S.v==='host'?S.h:undefined};
   },
   afterNavigate(view){if(['host','user','profile'].includes(view))zuLoad()},

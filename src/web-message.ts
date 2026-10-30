@@ -116,7 +116,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "auth.emailCheck": valid = text(d.email, 254) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(d.email)) && d.requestId !== undefined && Object.keys(d).every(key => ["email", "requestId"].includes(key)); break;
     case "account.deactivate": valid = d.confirmed === true && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["confirmed", "requestId"].includes(key)); break;
     case "relationships.load": valid = ["followers", "following"].includes(String(d.kind)) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["kind", "page", "requestId"].includes(key)); break;
-    case "creator.card.save": valid = photoData(d.photo) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["photo", "requestId"].includes(key)); break;
+    case "creator.card.save": case "profile.cover.save": valid = photoData(d.photo) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["photo", "requestId"].includes(key)); break;
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&
         (d.avatar === undefined || photoData(d.avatar)) && (d.cover === undefined || d.cover === null || photoData(d.cover)) &&

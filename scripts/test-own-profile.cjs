@@ -129,7 +129,7 @@ async function audit(page,label) {
     assert.equal(await page.locator('.zu-identity h1').innerText(),'Asha Updated');
     assert.equal(await page.locator('.zu-avatar img').getAttribute('src'),updated.user.avatarUrl);
     assert.equal(await page.locator('.zu-cover-photo').getAttribute('src'),updated.user.coverUrl);
-    for(const name of ['Change profile photo','Change cover photo']) {
+    for(const name of ['Change profile photo']) {
       await button(page,name).click();
       assert.equal(await page.evaluate(()=>S.v),'editprofile',`${name} opens the real media editor`);
       await navigate(page,'profile');await settleProfile(page,publicProfile(updated));
