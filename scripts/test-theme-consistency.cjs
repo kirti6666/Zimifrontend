@@ -135,7 +135,8 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await nav(page, 'thread');
     await receive(page, 'data.thread', { with: creator.id, canSend: true, messages: [{ id: 'thread-theme', from: creator.id, text: 'Hello from the server fixture', createdAt: new Date().toISOString() }] });
     await page.getByRole('textbox', { name: /^Message / }).fill('A themed message draft');
-    await mountedThemes(page, 'thread', [bg('.zc-thread', 'background'), ink('.zc-thread'), bg('.zc-composer-field', 'surface'), ...cta('.zc-composer-send')], true);
+    await mountedThemes(page, 'thread', [bg('.zc-thread-header', 'background'), ink('.zc-thread'), ink('#ti'), ...cta('.zc-composer-send')], true);
+    check(await page.locator('.zc-composer-field').evaluate(node=>getComputedStyle(node).backgroundColor),'rgba(0, 0, 0, 0)','Chat composer reveals the continuous wallpaper');
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
     await mountedThemes(page, 'thread gifts');
     await nav(page, 'precall');
