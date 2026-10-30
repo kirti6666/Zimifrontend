@@ -178,20 +178,22 @@ test('chat acknowledgments preserve client identity and committed server orderin
 test('agency messages validate identity-free payloads and retain request correlation without granting host access', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
-  const status = { agency: { id: 'agency-1', name: 'Dream Star', recruitmentCode: 'AGZIMI1001', status: 'ACTIVE' }, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  const status = { agency: { id: 'agency-1', name: 'Dream Star', recruitmentCode: 'BINZO7K9Q2M', status: 'ACTIVE' }, joiningCode: 'BINZO7K9Q2M8X4R', codeType: 'host-invite', canJoin: true, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
   h.overrides.hostAgency = () => status; h.overrides.verifyAgencyCode = () => status; h.overrides.joinAgency = () => status;
   await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
   for (const [action, result] of [['load', 'loaded'], ['verify', 'verified'], ['join', 'joined']]) {
-    const data = { requestId: 9, ...(action === 'load' ? {} : { agencyCode: 'AGZIMI1001' }) };
+    const data = { requestId: 9, ...(action === 'load' ? {} : { agencyCode: 'BINZO7K9Q2M8X4R' }) };
     assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data })));
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data: { ...data, userId: 'someone-else' } })), null);
     await h.bridge.handle({ type: `agency.${action}`, data }); await settle();
     assert.deepEqual(plain(h.find(`agency.${result}`).at(-1).data), { ...status, requestId: 9 });
   }
   assert.equal(h.find('host.access').some(event => event.data.approved), false);
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.join', data: { agencyCode: 'BINZO7K9Q2M', requestId: 10 } })), null, 'A common agency ID never reaches activation through the web bridge');
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.verify', data: { agencyCode: 'BINZO7K9Q2M', requestId: 10 } })), 'A common code can only be checked for agency identity');
   h.overrides.verifyAgencyCode = () => { throw new h.ApiError('Agency suspended', 403); };
-  await h.bridge.handle({ type: 'agency.verify', data: { agencyCode: 'AGZIMI1001', requestId: 10 } });
+  await h.bridge.handle({ type: 'agency.verify', data: { agencyCode: 'BINZO7K9Q2M8X4R', requestId: 10 } });
   await settle();
   assert.deepEqual(plain(h.find('agency.error').at(-1).data), { action: 'agency.verify', message: 'Agency suspended', requestId: 10 });
   const oldDocument = deferred(); h.overrides.hostAgency = () => oldDocument.promise;

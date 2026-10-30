@@ -426,11 +426,11 @@ async function hostFlow() {
 
 async function joinHostAgency(page, native = false) {
   await page.waitForFunction(() => S.v === 'agency');
-  const status = { agency: { id: 'agency-1', name: 'Dream Star Agency', recruitmentCode: 'AGZIMI1001', status: 'ACTIVE' }, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  const status = { agency: { id: 'agency-1', name: 'Dream Star Agency', recruitmentCode: 'BINZO7K9Q2M', status: 'ACTIVE' }, joiningCode: 'BINZO7K9Q2M8X4R', codeType: 'host-invite', canJoin: true, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
   const latest = type => page.evaluate(value => window.__messages.filter(message => message.type === value).at(-1).data, type);
   if (native) await receive(page, 'agency.loaded', { ...status, agency: null, nextStep: 'agency', requestId: (await latest('agency.load')).requestId });
-  await page.getByLabel('Agency recruitment code').fill('AGZIMI1001');
-  await page.getByRole('button', { name: 'Verify agency code', exact: true }).click();
+  await page.getByLabel('Host joining code').fill('BINZO7K9Q2M8X4R');
+  await page.getByRole('button', { name: 'Verify joining code', exact: true }).click();
   if (native) await receive(page, 'agency.verified', { ...status, requestId: (await latest('agency.verify')).requestId });
   await page.getByRole('button', { name: 'Join agency & continue', exact: true }).click();
   if (native) await receive(page, 'agency.joined', { ...status, requestId: (await latest('agency.join')).requestId });

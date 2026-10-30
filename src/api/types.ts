@@ -21,6 +21,10 @@ export interface HostAgencyStatus {
   eligible: boolean;
   requirements: string[];
   nextStep: "agency" | "application" | "review" | "active";
+  /** Personal single-use host invitation; separate from the agency's public ID. */
+  joiningCode?: string | null;
+  codeType?: "host-invite" | "agency";
+  canJoin?: boolean;
 }
 
 export interface User {

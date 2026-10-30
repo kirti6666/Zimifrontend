@@ -8,6 +8,7 @@
 .za-confirm{margin:24px 0;padding-top:20px;border-top:1px solid var(--line)}.za-confirm .za-primary{margin-top:18px}
 .za-agency{display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);margin:0 0 22px;min-width:0}.za-agency-icon{color:var(--accent-ink);display:flex}.za-agency>div{min-width:0;flex:1}.za-agency h2{font-size:18px;font-weight:600;line-height:1.4;overflow-wrap:anywhere;margin:2px 0}.za-agency p,.za-agency>div>span{font-size:12px;color:var(--muted);margin:0}.za-status{font-size:12px;color:var(--muted);align-self:flex-start}
 .za-requirements{padding-left:20px;color:var(--muted);margin:16px 0}.za-message{padding:20px 0}.za-message .za-secondary{margin-top:20px}
+.za-joined-code{margin:-10px 0 22px;overflow-wrap:anywhere}.za-joined-code strong{color:var(--ink);font-weight:600}
 
 .za-welcome-note{margin:0;color:var(--muted);font-size:12px;text-align:center;line-height:1.5}
 .zu-agency-link{display:flex;align-items:center;gap:9px;min-height:44px;margin:12px 0;padding:10px 12px;width:100%;text-align:left;color:var(--ink);background:var(--surface);font-size:14px}.zu-agency-link>svg:last-child{margin-left:auto}

@@ -102,7 +102,11 @@ image loads, using the original transparent artwork without added effects.
 
 ## Agency host onboarding
 
-All new host applicants join an admin-created agency before applying. Settings
+All new host applicants join an admin-created agency with their own one-time
+host joining code before applying. The short agency ID (`BINZO` + six characters)
+identifies an agency; the personal joining code (`BINZO` + ten characters) is
+issued by that agency for one host. Common agency IDs and referral codes cannot
+create membership. Settings
 and the owner's Profile open **Become a Host** (`agency`); approved hosts see
 **My agency**. Creator signup and every creator application entry point use the
 same gate. Existing approved host access continues to use `ZimiHostAccess`.
@@ -115,14 +119,25 @@ same gate. Existing approved host access continues to use `ZimiHostAccess`.
 
 Responses contain `agency` (null or `{id,name,recruitmentCode,status}`),
 `hostStatus`, `isVerifiedHost`, `eligible`, `requirements` and `nextStep`
-(`agency`, `application`, `review`, `active`). Result messages also carry
+(`agency`, `application`, `review`, `active`). Optional `joiningCode` is the
+personal invitation code (null for legacy membership); it is displayed separately
+from `agency.recruitmentCode`, the public short agency ID. Verification also
+returns `codeType` (`host-invite` or `agency`) and `canJoin`. The app enables
+confirmation only for an eligible `host-invite` with `canJoin: true` whose
+`joiningCode` matches the exact code that was verified. Result messages also carry
 `requestId`; stale responses are ignored. Failures use `agency.error`
 `{action,message,requestId}` and stay next to the form. Codes are normalized to
-uppercase, and verification and explicit confirmation happen before membership
-is saved. The authenticated backend identity determines who joins.
+uppercase. Verification previews identity without consuming an invitation. The
+explicit join atomically claims it for the authenticated backend identity;
+repeating that same claim for the same member is safe. A code already claimed
+by another member or revoked by the agency cannot be used. Editing a previewed
+code invalidates confirmation. The wire field remains `agencyCode` for both
+requests, and always carries the entered invitation, never a substituted public ID.
 
 Joining does not grant creator capability. The linked member completes
-`POST /hosts/application`, then staff identity/video verification and approval.
+`POST /hosts/application` using established membership and no code, then staff
+identity/video verification and approval. Existing joined and approved hosts do
+not need a fresh invitation to continue their application or use host capabilities.
 The server validates age, account status, phone verification, agency activity,
 host capacity and one-agency membership. A referral reward code is separate.
 Agency commission is paid from the platform share without reducing host earnings.

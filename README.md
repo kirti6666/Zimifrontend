@@ -14,6 +14,13 @@ in `web/aurora-runtime.js` and `LIVE_STREAMING_ENABLED` in `src/features.ts`.
 Both are off. The existing themes remain unchanged. Rebuild the WebView bundle
 and the installed app after changing release switches.
 
+New hosts enter through an agency-issued one-time **host joining code** in
+Settings/Profile → Become a Host. The app previews the agency before an explicit
+join claims the code. Each host needs a unique invitation; the shorter public
+agency ID cannot create membership. Joined hosts continue their application
+without another code, and hosting still requires staff verification and approval.
+See [the agency bridge/API contract](docs/API.md#agency-host-onboarding).
+
 ## App icon and browser icons
 
 `assets/brand/app_icon.png` is the supplied BinzoLive app icon. Run

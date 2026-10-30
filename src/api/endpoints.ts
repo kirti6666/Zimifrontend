@@ -60,20 +60,27 @@ function boundedStrings(value: unknown, label: string, min: number, max: number)
 }
 const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
 
-function agencyCodePayload(value: string) {
+function agencyCodePayload(value: string, joining = false) {
   const agencyCode = value.trim().toUpperCase();
-  if (!/^[A-Z0-9]{6,32}$/.test(agencyCode)) throw new ApiError("Enter the recruitment code shared by your agency.", 400);
+  if (!(joining ? /^BINZO[A-Z0-9]{10}$/ : /^[A-Z0-9]{6,32}$/).test(agencyCode))
+    throw new ApiError("Ask your agency for your one-time host joining code. Its public agency ID cannot be used to join.", 400);
   return { agencyCode };
 }
 function hostAgencyFrom(value: unknown): HostAgencyStatus {
   const data = record(value), agency = data.agency == null ? null : record(data.agency);
   if (!["agency", "application", "review", "active"].includes(String(data.nextStep)) || typeof data.eligible !== "boolean" ||
     !Array.isArray(data.requirements) || data.requirements.some(item => typeof item !== "string") ||
-    (agency && (typeof agency.name !== "string" || typeof agency.recruitmentCode !== "string" || !["ACTIVE", "SUSPENDED"].includes(String(agency.status)))))
+    (agency && (typeof agency.name !== "string" || typeof agency.recruitmentCode !== "string" || !["ACTIVE", "SUSPENDED"].includes(String(agency.status)))) ||
+    (data.joiningCode !== undefined && data.joiningCode !== null && (typeof data.joiningCode !== "string" || !/^BINZO[A-Z0-9]{10}$/.test(data.joiningCode))) ||
+    (data.codeType !== undefined && (typeof data.codeType !== "string" || !["host-invite", "agency"].includes(data.codeType))) ||
+    (data.canJoin !== undefined && typeof data.canJoin !== "boolean"))
     throw new ApiError("Your agency details could not be confirmed. Please try again.", 502);
   return { agency: agency ? { id: idOf(agency), name: agency.name as string, recruitmentCode: agency.recruitmentCode as string, status: agency.status as "ACTIVE" | "SUSPENDED" } : null,
     hostStatus: typeof data.hostStatus === "string" ? data.hostStatus : "none", isVerifiedHost: data.isVerifiedHost === true,
-    eligible: data.eligible, requirements: data.requirements as string[], nextStep: data.nextStep as HostAgencyStatus["nextStep"] };
+    eligible: data.eligible, requirements: data.requirements as string[], nextStep: data.nextStep as HostAgencyStatus["nextStep"],
+    ...(data.joiningCode === undefined ? {} : { joiningCode: data.joiningCode as string | null }),
+    ...(data.codeType === undefined ? {} : { codeType: data.codeType as HostAgencyStatus["codeType"] }),
+    ...(data.canJoin === undefined ? {} : { canJoin: data.canJoin as boolean }) };
 }
 
 export const api = {
@@ -213,15 +220,15 @@ export const api = {
   deletePostComment: (id: string, commentId: string) => request("DELETE", `/posts/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}`),
   async hostAgency(): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("GET", "/hosts/agency")); },
   async verifyAgencyCode(code: string): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("POST", "/hosts/verify-agency-code", agencyCodePayload(code))); },
-  async joinAgency(code: string): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("POST", "/hosts/activate", agencyCodePayload(code))); },
+  async joinAgency(code: string): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("POST", "/hosts/activate", agencyCodePayload(code, true))); },
   async submitVerification(details: Record<string, unknown>): Promise<{ status: Verification }> {
     const displayName = typeof details.name === "string" ? details.name.trim() : "";
     const bio = typeof details.bio === "string" ? details.bio.trim() : "";
     if (displayName.length < 2 || bio.length < 20) throw new ApiError("Add your display name and an introduction of at least 20 characters to apply as a creator.", 400);
     const languages = boundedStrings(details.languages ?? details.langs, "languages", 1, 10);
     const agency = await api.hostAgency();
-    if (!agency.agency) throw new ApiError("Join your agency with its recruitment code before submitting your host application.", 400);
-    const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages, agencyCode: agency.agency.recruitmentCode });
+    if (!agency.agency) throw new ApiError("Join your agency with your one-time host joining code before submitting your host application.", 400);
+    const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages });
     return { status: verificationOf(application.status) };
   },
   async setPresence(online: boolean, visible: boolean) {
