@@ -21,7 +21,7 @@ const noRelease = () => ({ updateRequired: false, minimumVersionCode: null, rele
 const receipt = candidate => ({ receiptId: '12345678-1234-1234-1234-123456789abc', releaseId: candidate._id, versionCode: candidate.versionCode, sha256: candidate.sha256, sizeBytes: candidate.sizeBytes });
 
 function modules(overrides = {}, globals = {}) {
-  const cache = new Map(), context = vm.createContext({ console, URL, AbortController, Headers, Error, setTimeout, clearTimeout, setInterval, clearInterval, ...globals });
+  const cache = new Map(), context = vm.createContext({ console, URL, AbortController, Headers, Error, process: { env: {} }, setTimeout, clearTimeout, setInterval, clearInterval, ...globals });
   const load = file => {
     const filename = path.resolve(ROOT, file);
     if (cache.has(filename)) return cache.get(filename).exports;
@@ -116,6 +116,47 @@ test('untrusted release metadata and contradictory update decisions cannot open 
     { downloadPath: 'https://evil.example/app.apk' }, { downloadPath: '//evil.example/app.apk' }, { downloadPath: '/api/v1/app/download' },
     { downloadPath: `/api/v1/app/releases/${release(8)._id}/download` }, { downloadPath: `${release().downloadPath}?redirect=elsewhere` },
   ]) assert.throws(() => parseUpdatePolicy(policy({ ...release(), ...patch }), installed()), /verify/, JSON.stringify(patch));
+});
+
+test('local update checks use HTTP only for private addresses in development', async () => {
+  const localAddresses = ['http://127.0.0.1:5000/api/v1', 'http://localhost:5000/api/v1', 'http://192.168.1.5:5000/api/v1', 'http://10.0.2.2:5000/api/v1'];
+  for (const dev of [true, false]) {
+    const calls = [];
+    const h = modules({}, { __DEV__: dev, fetch: async (...args) => {
+      calls.push(args); return { ok: true, json: async () => ({ success: true, data: noRelease() }) };
+    } });
+    const { fetchUpdatePolicy } = h.load('src/app-update-policy.ts');
+    for (const address of localAddresses) {
+      if (dev) assert.deepEqual(plain(await fetchUpdatePolicy(address, installed())), noRelease());
+      else await assert.rejects(fetchUpdatePolicy(address, installed()), /verify/);
+    }
+    assert.equal(calls.length, dev ? localAddresses.length : 0);
+    for (const address of ['http://api.binzolive.com/api/v1', 'http://user:secret@127.0.0.1:5000/api/v1', 'https://api.binzolive.com/api/v1?redirect=elsewhere', 'https://api.binzolive.com/api/v1#fragment'])
+      await assert.rejects(fetchUpdatePolicy(address, installed()), /verify/);
+    assert.equal(calls.length, dev ? localAddresses.length : 0, 'Invalid origins never reach the network');
+  }
+});
+
+test('the update gate reveals checking, mandatory and error screens after layout', async () => {
+  let hidden = 0;
+  const jsx = (type, props) => ({ type, props });
+  const h = modules({
+    react: { useEffect() {} },
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'react-native': { StyleSheet: { create: styles => styles } },
+    'react-native-safe-area-context': { SafeAreaProvider: 'provider', SafeAreaView: 'safe-area' },
+    'expo-status-bar': {},
+    'expo-splash-screen': { hideAsync: async () => { hidden++; } },
+  });
+  const { AppUpdateScreen } = h.load('src/app-update-screen.tsx');
+  for (const status of ['checking', 'required', 'error']) {
+    const tree = AppUpdateScreen({ state: { status, phase: 'idle', checking: status === 'checking', progress: 0 }, update() {}, check() {} });
+    const layout = tree.props.children.props.onLayout;
+    assert.equal(typeof layout, 'function');
+    const before = hidden;
+    layout(); await settle();
+    assert.equal(hidden, before + 1, `${status} must be visible above the native splash`);
+  }
 });
 
 test('public update checks omit account credentials, reject bad envelopes and bound a stalled response body', async () => {

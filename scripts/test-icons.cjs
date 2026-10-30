@@ -20,7 +20,7 @@ const root = path.resolve(__dirname, '..');
   const motion = locator => locator.evaluate(icon => ({ name: getComputedStyle(icon).animationName, tap: icon.classList.contains('zi-tap'), delay: icon.style.animationDelay, transform: getComputedStyle(icon).transform }));
   try {
     const page = await open();
-    for (const view of ['home', 'explore', 'chats', 'profile', 'settings', 'notifications', 'coins', 'wallet', 'host', 'precall', 'thread', 'help']) {
+    for (const view of ['home', 'explore', 'board', 'chats', 'profile', 'settings', 'notifications', 'coins', 'wallet', 'host', 'precall', 'thread', 'help']) {
       await page.evaluate(value => go(value, 'aanya'), view);
       const untagged = await page.evaluate(() => [...document.querySelectorAll('svg')]
         .filter(svg => !svg.parentElement.closest('svg') && !svg.classList.contains('art') && !svg.classList.contains('zw-pack-art') && !svg.classList.contains('zi-icon'))
@@ -30,11 +30,12 @@ const root = path.resolve(__dirname, '..');
     console.log('PASS icons: every icon on the main screens is tagged for motion');
 
     await page.evaluate(() => go('home'));
-    const bell = page.locator('.zh-bell>.zi-icon');
-    await press(page.locator('.zh-bell'));
-    assert.deepEqual((({ name, tap }) => ({ name, tap }))(await motion(bell)), { name: 'zi-press', tap: true }, 'A press uses the shared restrained acknowledgement');
-    await page.waitForFunction(() => !document.querySelector('.zh-bell>.zi-icon').classList.contains('zi-tap'));
-    assert.equal((await motion(bell)).name, 'none', 'Unread notifications keep a static unread indicator');
+    const trophy = page.locator('.zh-trophy>.zi-icon');
+    assert.equal(await trophy.getAttribute('data-icon'), 'trophy', 'The leaderboard trophy comes from the icon helper');
+    await press(page.locator('.zh-trophy'));
+    assert.deepEqual((({ name, tap }) => ({ name, tap }))(await motion(trophy)), { name: 'zi-press', tap: true }, 'A press uses the shared restrained acknowledgement');
+    await page.waitForFunction(() => !document.querySelector('.zh-trophy>.zi-icon').classList.contains('zi-tap'));
+    assert.equal((await motion(trophy)).name, 'none', 'Header icons stay still after the press');
 
     await page.getByRole('button', { name: 'Chat', exact: true }).click();
     const tab = await motion(page.locator('.zh-nav [data-tab=chats]>.zi-icon'));
@@ -75,8 +76,8 @@ const root = path.resolve(__dirname, '..');
     console.log('PASS icons: restrained press feedback, redraw continuity, incoming-call motion, typing and hang-up orientation');
 
     const reduced = await open({ reducedMotion: 'reduce' });
-    await press(reduced.locator('.zh-bell'));
-    const still = await motion(reduced.locator('.zh-bell>.zi-icon'));
+    await press(reduced.locator('.zh-trophy'));
+    const still = await motion(reduced.locator('.zh-trophy>.zi-icon'));
     assert.equal(still.name, 'none');
     assert.equal(still.tap, false, 'Reduced motion turns press animations off');
     await reduced.evaluate(() => go('thread', 'aanya'));

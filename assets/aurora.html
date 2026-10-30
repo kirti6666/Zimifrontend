@@ -2339,42 +2339,36 @@ button.gpill[onclick]{cursor:pointer}
 .zh-wave{height:20px;display:flex;align-items:flex-end;gap:3px}.zh-wave i{width:4px;border-radius:4px;background:#ffc3dc;height:9px}.zh-wave i:nth-child(2){height:15px;background:#f34ca2}.zh-wave i:nth-child(3){height:20px;background:#ff82c0}.zh-wave i:nth-child(4){height:14px;background:#ef4c9c}.zh-wave i:nth-child(5){height:10px}
 .zh-trending{margin-top:21px}.zh-trending .zh-section-title{margin-bottom:8px}
 .zh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 8px}
-/* Creator photo card shared by Home, Explore and Search. Text sits on the photo, so it stays
-   white over a dark shade; the call action, price and status dots use theme tokens. */
-.zh-creator-card{position:relative;min-width:0;aspect-ratio:1/1.06;border-radius:16px;overflow:hidden;background:var(--raised);color:#fff;isolation:isolate;box-shadow:0 6px 16px rgba(0,0,0,.16)}
-.zh-creator-card>.zh-photo,.zh-creator-card>.zh-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 26%;z-index:-2}
+/* Creator photo card shared by Home, All Creators and Search, after the reference: a square
+   photo with a status tag, then the name and country flag over a dark shade and the round,
+   always-active video call button in the theme accent. */
+.zh-creator-card{position:relative;min-width:0;aspect-ratio:1/1;overflow:hidden;background:var(--raised);color:#fff;isolation:isolate}
+.zh-creator-card>.zh-photo,.zh-creator-card>.zh-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 24%;z-index:-2}
 .zh-creator-card>.zh-fallback>span{font-size:56px}
 .zh-creator-card>.zh-card-video{z-index:-2}
-.zh-creator-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,0) 27%,rgba(0,0,0,0) 50%,rgba(0,0,0,.8))}
-.zh-creator-hit{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:inherit;background:transparent}
-.zh-creator-top{position:absolute;top:9px;left:9px;right:9px;display:flex;align-items:center;justify-content:space-between;gap:6px;pointer-events:none}
-.zh-creator-status,.zh-creator-price{display:inline-flex;align-items:center;gap:5px;min-width:0;padding:4px 9px;border-radius:999px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;font-weight:650;line-height:1.35;white-space:nowrap;backdrop-filter:blur(6px)}
-.zh-creator-status>i{width:7px;height:7px;flex:none;border-radius:50%;background:var(--online)}
+.zh-creator-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,0) 26%,rgba(0,0,0,0) 58%,rgba(0,0,0,.72))}
+.zh-creator-hit{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:transparent}
+.zh-creator-status{position:absolute;top:7px;left:7px;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 14px);padding:3px 8px;background:rgba(0,0,0,.42);color:#fff;font-size:12px;font-weight:500;line-height:1.4;white-space:nowrap;pointer-events:none}
+.zh-creator-status>i{width:6px;height:6px;flex:none;border-radius:50%;background:var(--online)}
 .zh-creator-status.is-live>i{background:var(--live)}
-.zh-creator-price{font-variant-numeric:tabular-nums}
-.zh-creator-price>svg,.zh-creator-price>span:first-child{flex:none;margin-right:1px}
-.zh-creator-price.is-free{background:color-mix(in srgb,var(--online) 74%,#000);font-weight:700}
-.zh-creator-bottom{position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;pointer-events:none}
-.zh-creator-avatar{position:relative;flex:none;width:28px;height:28px}
-.zh-creator-face{position:absolute;inset:0;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;overflow:hidden;background:var(--accent);color:var(--cta-ink);font-size:13px;font-weight:700}
-.zh-creator-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%}
-.zh-creator-card .zh-creator-bottom .zh-creator-avatar>.zh-verified{position:absolute;right:-4px;bottom:-3px;display:flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#fff;color:var(--accent)}
-.zh-creator-avatar>.zh-verified svg{width:11px;height:11px}
-.zh-creator-text{flex:1;min-width:0;text-shadow:0 1px 6px rgba(0,0,0,.4)}
-.zh-creator-text h3{margin:0;overflow:hidden;color:#fff;font-size:13px;font-weight:700;line-height:1.25;letter-spacing:-.2px;text-overflow:ellipsis;white-space:nowrap}
-.zh-creator-text p{margin:2px 0 0;overflow:hidden;color:rgba(255,255,255,.86);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
-.zh-creator-bottom:has(.zh-creator-country){flex-wrap:wrap;row-gap:3px}
-.zh-creator-country{display:block;flex:0 0 100%;min-width:0;overflow:hidden;color:rgba(255,255,255,.86);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
-.zh-creator-call{position:relative;display:grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:var(--accent);color:var(--cta-ink);box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent);pointer-events:auto}
+.zh-creator-bottom{position:absolute;left:10px;right:7px;bottom:7px;display:flex;align-items:center;gap:6px;pointer-events:none}
+.zh-creator-name{display:flex;align-items:center;gap:6px;flex:1;min-width:0;margin:0;color:#fff;font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;line-height:1.3;letter-spacing:-.1px}
+.zh-creator-name>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zh-creator-country{display:inline-flex;align-items:center;flex:0 1 auto;min-width:0;overflow:hidden;color:rgba(255,255,255,.86);font-size:11px;font-weight:500;text-overflow:ellipsis;white-space:nowrap}
+/* The shared corner radius would clip the flag's square corners. */
+.zh-creator-country.has-flag{flex:none;overflow:visible}
+.zh-creator-call{position:relative;display:grid;place-items:center;flex:none;width:34px;height:34px;padding:0;border:0;border-radius:50%;background:var(--accent);color:var(--cta-ink);pointer-events:auto}
 .zh-creator-call:focus-visible,.zh-creator-hit:focus-visible{outline:2px solid #fff;outline-offset:-3px}
-.zh-creator-call::before{content:"";position:absolute;inset:-4px;border-radius:50%}
-.zh-creator-call:active{transform:scale(.94)}
-.zh-creator-placeholder{background:var(--raised);box-shadow:none}
-.zh-creator-placeholder .zh-creator-text{display:flex;flex-direction:column;gap:6px;text-shadow:none}
-@media(hover:hover) and (pointer:fine){.zh-creator-card>.zh-photo{transition:transform .35s}.zh-creator-card:hover>.zh-photo{transform:scale(1.035)}}
-@media(min-width:600px){.zh-creator-card{border-radius:18px}.zh-creator-top{top:12px;left:12px;right:12px}.zh-creator-bottom{left:12px;right:12px;bottom:12px;gap:10px}.zh-creator-avatar{width:40px;height:40px}.zh-creator-text h3{font-size:16px}.zh-creator-text p{font-size:12px}.zh-creator-call{width:48px;height:48px}.zh-creator-status,.zh-creator-price{font-size:12px;padding:5px 11px}}
-@media(max-width:359px){.zh-creator-top{top:7px;left:7px;right:7px}.zh-creator-bottom{left:7px;right:7px;bottom:7px;gap:5px}.zh-creator-avatar{width:26px;height:26px}.zh-creator-face{font-size:11px}.zh-creator-call{width:34px;height:34px}.zh-creator-text h3{font-size:12.5px}.zh-creator-text p{font-size:10px}.zh-creator-status,.zh-creator-price{font-size:10px;padding:3px 7px;gap:4px}}
-@media(prefers-reduced-motion:reduce){.zh-creator-card>.zh-photo{transition:none!important;transform:none!important}.zh-creator-call:active{transform:none}}
+.zh-creator-call::before{content:"";position:absolute;inset:-5px;border-radius:50%}
+.zh-creator-placeholder{background:var(--raised)}
+.zh-creator-placeholder .zh-creator-status{background:transparent;padding:0}
+/* India's flag is drawn in CSS so it looks the same on every device: a plain 3:2 rectangle
+   with square corners (in the flat straight list), in its own colors in every theme. */
+.zh-flag{display:inline-block;flex:none;width:18px;height:12px;background:radial-gradient(circle at 50% 50%,#06038d 0 1.5px,transparent 1.9px),linear-gradient(#ff9933 0 33.4%,#fff 33.4% 66.6%,#138808 66.6%)}
+.zh-flag.zh-flag-chip{width:21px;height:14px;background:radial-gradient(circle at 50% 50%,#06038d 0 1.8px,transparent 2.2px),linear-gradient(#ff9933 0 33.4%,#fff 33.4% 66.6%,#138808 66.6%)}
+@media(min-width:600px){.zh-creator-status{top:10px;left:10px;font-size:13px;padding:4px 10px}.zh-creator-bottom{left:12px;right:10px;bottom:10px;gap:8px}.zh-creator-name{font-size:17px}.zh-creator-call{width:44px;height:44px}}
+@media(max-width:359px){.zh-creator-status{font-size:11px;padding:2px 7px}.zh-creator-bottom{left:8px;right:6px;bottom:6px;gap:4px}.zh-creator-name{font-size:13px;gap:4px}.zh-creator-call{width:30px;height:30px}}
+@media(prefers-reduced-motion:reduce){.zh-creator-card>.zh-photo{transition:none!important;transform:none!important}}
 .zh-bonus{display:flex;align-items:center;gap:10px;background:#331c2b;border-radius:14px;padding:12px;margin:24px 0 0}
 .zh-bonus-icon{display:grid;place-items:center;width:31px;height:31px;border-radius:50%;background:#594051;color:#ffc2de;flex:none}
 .zh-bonus>div{min-width:0;flex:1}.zh-bonus h3{font-size:11px;line-height:16px;font-weight:650}.zh-bonus p{font-size:10px;line-height:15px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -3812,30 +3806,30 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-/* Home header: Explore/Following stand in for the app name. */
-.zh-feed-tabs{display:flex;align-self:stretch;gap:16px;flex:none}
-.zh-feed-tabs>[role="tab"]{position:relative;display:flex;align-items:center;justify-content:center;min-width:44px;padding:0 1px;border:0;background:transparent;color:var(--muted);font-size:17px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
-.zh-feed-tabs>[aria-selected="true"]{color:var(--ink)}
-.zh-feed-tabs>[role="tab"]::after{content:"";position:absolute;left:50%;bottom:10px;width:18px;height:3px;border-radius:3px;background:var(--accent);transform:translateX(-50%) scaleX(0);transition:transform .2s ease}
-.zh-feed-tabs>[aria-selected="true"]::after{transform:translateX(-50%) scaleX(1)}
-.zh-feed-tabs>[role="tab"]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-6px;border-radius:10px}
-.zh-header .zh-header-actions{gap:6px}
-.zh-header .zh-wallet-icon{flex:none;min-height:34px;gap:5px;padding:6px 10px 6px 7px;border:0;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
-.zh-header .zh-icon{width:34px}
-.zh-host-status{position:relative;display:inline-flex;align-items:center;flex:none;gap:6px;min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:650;white-space:nowrap}
-.zh-host-status>i{width:7px;height:7px;flex:none;border-radius:50%;background:var(--muted)}
-.zh-host-status.is-online{color:var(--ink)}
-.zh-host-status.is-online>i{background:var(--online);box-shadow:0 0 0 3px color-mix(in srgb,var(--online) 22%,transparent)}
-.zh-host-status:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
-/* A host's availability outranks the balance on phone widths; the wallet keeps its label. */
-@media(max-width:440px){.zh-header:has(.zh-host-status) .zh-wallet-value{display:none}.zh-header:has(.zh-host-status) .zh-wallet-icon{width:34px;padding:0;justify-content:center}}
-@media(max-width:370px){.zh-feed-tabs{gap:12px}.zh-feed-tabs>[role="tab"]{font-size:15px}.zh-header .zh-header-actions{gap:3px}}
-@media(max-width:350px){.zh-header .zh-host-status{width:34px;padding:0;justify-content:center}.zh-header .zh-host-status>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
-/* Featured creator rotation */
-.zh-featured-enter .zh-person-media>:is(.zh-photo:not(.zh-photo-pending),.zh-fallback){animation:zh-featured-photo .6s ease both}
-.zh-featured-enter .zh-person-content{animation:zh-featured-copy .45s ease .05s both}
-@keyframes zh-featured-photo{from{opacity:0;transform:scale(1.04)}}
-@keyframes zh-featured-copy{from{opacity:0;transform:translateY(8px)}}
+/* Home header, after the reference: Following, Explore, For You and New in place of the app
+   name, the selected feed larger and bolder; then Search and the gold leaderboard trophy. */
+.zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}
+.zh-feed-tabs{display:flex;align-items:center;align-self:stretch;gap:12px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.zh-feed-tabs::-webkit-scrollbar{display:none}
+.zh-feed-tabs>[role="tab"]{display:flex;align-items:center;justify-content:center;flex:none;min-width:30px;min-height:44px;padding:0 1px;border:0;background:transparent;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:500;letter-spacing:-.2px;white-space:nowrap;transition:color .18s ease,font-size .18s ease}
+.zh-feed-tabs>[aria-selected="true"]{color:var(--ink);font-size:calc(21px * var(--theme-font-scale,1));font-weight:700;letter-spacing:-.5px}
+.zh-feed-tabs>[role="tab"]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-6px}
+.zh-home-header .zh-header-actions{flex:none;gap:2px}
+.zh-home-header .zh-icon{width:38px;height:44px;color:var(--ink)}
+.zh-home-header .zh-trophy{color:var(--gold)}
+@media(max-width:380px){.zh-header.zh-home-header{padding-left:12px}.zh-feed-tabs{gap:10px}.zh-feed-tabs>[role="tab"]{font-size:calc(14px * var(--theme-font-scale,1))}.zh-feed-tabs>[aria-selected="true"]{font-size:calc(19px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:34px}}
+@media(max-width:340px){.zh-feed-tabs{gap:8px}.zh-feed-tabs>[role="tab"]{font-size:calc(13px * var(--theme-font-scale,1))}.zh-feed-tabs>[aria-selected="true"]{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:32px}}
+@media(prefers-reduced-motion:reduce){.zh-feed-tabs>[role="tab"]{transition:none}}
+/* Country chips under the header: Popular, then India (the only country for now). */
+.zh-region-chips{display:flex;gap:8px;margin:0 0 12px;overflow-x:auto;scrollbar-width:none}
+.zh-region-chips::-webkit-scrollbar{display:none}
+.zh-region-chips>button{display:inline-flex;align-items:center;gap:7px;flex:none;min-height:36px;padding:0 16px;border:0;background:var(--raised);color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
+.zh-region-chips>button:has(.zh-flag){padding-left:9px}
+.zh-region-chips>button[aria-pressed="true"]{background:var(--accent);color:var(--cta-ink);font-weight:600}
+/* An approved host's availability floats over Home where the reference places its LIVE button. */
+.zh-host-status{position:sticky;z-index:6;bottom:14px;display:flex;align-items:center;gap:7px;width:max-content;min-height:46px;margin:16px 0 0 auto;padding:0 18px 0 15px;border:0;background:var(--accent);color:var(--cta-ink);font-size:calc(15px * var(--theme-font-scale,1));font-weight:700;white-space:nowrap}
+.zh-host-status>i{width:8px;height:8px;flex:none;border-radius:50%;background:var(--online);outline:2px solid var(--cta-ink)}
+.zh-host-status:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .zh-home.zh-dashboard .zh-live-section{margin:0}
 .zh-home.zh-dashboard .zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin:0 0 12px}
 .zh-home.zh-dashboard .zh-section-title h2{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--ink);font-size:calc(19px * var(--theme-font-scale,1));line-height:1.35;letter-spacing:-.4px;font-weight:700}
@@ -3851,52 +3845,8 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zh-live-ring>.zh-fallback>span{font-size:30px}
 .zh-live-create .zh-live-ring{border-color:var(--line);border-style:dashed;background:var(--raised);color:var(--accent-ink)}
 .zh-story-loading .zh-live-ring{border-color:transparent}
-.zh-home.zh-dashboard .zh-person-card{position:relative;display:flex;flex-direction:column;min-width:0;margin:0;border:1px solid var(--line);border-radius:19px;background:var(--surface);color:var(--ink);overflow:hidden}
-.zh-home.zh-dashboard .zh-person-media{position:relative;aspect-ratio:4/5;min-width:0;background:var(--raised);isolation:isolate}
-.zh-home.zh-dashboard .zh-person-media>.zh-photo,.zh-home.zh-dashboard .zh-person-media>.zh-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;overflow:hidden}
-.zh-home.zh-dashboard .zh-person-media>.zh-fallback>span{font-size:64px}
-.zh-photo-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.22),transparent 34%,rgba(0,0,0,.1) 52%,rgba(0,0,0,.84));pointer-events:none}
-.zh-home.zh-dashboard .zh-person-status{position:absolute;z-index:2;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 20px);padding:5px 8px;border-radius:20px;background:rgba(0,0,0,.56);color:#fff;font-size:9px;line-height:1.4;font-weight:650;letter-spacing:.15px;pointer-events:none}
-.zh-person-status>i{width:6px;height:6px;border-radius:50%;flex:none;background:var(--accent)}
-.zh-person-status.is-online>i{background:var(--online)}
-.zh-person-status.is-offline>i{background:rgba(255,255,255,.5)}
-.zh-person-status>b{font-size:9px;opacity:.7}
-.zh-home.zh-dashboard .zh-person-watch,.zh-home.zh-dashboard .zh-person-photo-link{position:absolute;inset:0;display:block;width:100%;min-height:44px;border:0;padding:0;background:transparent;color:#fff;z-index:1}
-.zh-watch-control{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px;min-width:44px;min-height:44px;padding:11px;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(0,0,0,.45);color:#fff}
-.zh-watch-control>svg{width:17px;height:17px;flex:none}
-.zh-home.zh-dashboard .zh-person-content{position:relative;display:flex;flex-direction:column;gap:10px;min-width:0;padding:12px}
-.zh-home.zh-dashboard .zh-person-profile{display:block;min-width:0;width:100%;min-height:44px;margin:0;padding:0;border:0;background:transparent;color:var(--ink);text-align:left}
-.zh-home.zh-dashboard .zh-person-profile h3{display:flex;align-items:center;gap:4px;margin:0;color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));line-height:1.45;font-weight:650;letter-spacing:-.2px}
-.zh-person-profile h3>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.zh-home.zh-dashboard .zh-verified{display:inline-flex;flex:none;color:var(--accent-ink)}
-.zh-home.zh-dashboard .zh-person-profile h3 svg{width:13px;height:13px}
-.zh-home.zh-dashboard .zh-person-profile p{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin:4px 0 0;color:var(--muted);font-size:calc(11px * var(--theme-font-scale,1));line-height:1.5}
-.zh-home.zh-dashboard .zh-person-footer{display:flex;align-items:stretch;gap:7px;margin:0;padding:0}
-.zh-home.zh-dashboard .zh-person-action{display:flex;align-items:center;justify-content:center;gap:5px;flex:1 1 0;min-width:0;min-height:44px;padding:9px 6px;border:1px solid transparent;border-radius:11px;background:var(--accent);color:var(--cta-ink);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600;line-height:1.4}
-.zh-home.zh-dashboard .zh-person-action svg{flex:none;width:14px;height:14px}
-.zh-home.zh-dashboard .zh-person-chat{background:var(--raised);color:var(--ink)}
-.zh-home.zh-dashboard .zh-person-action:disabled{background:var(--raised);color:var(--muted);opacity:.5;cursor:default}
-.zh-home.zh-dashboard .zh-featured-host{width:100%;aspect-ratio:1.12;min-height:320px;border-radius:21px;isolation:isolate}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-media{display:flex;flex:1;position:static;aspect-ratio:auto;min-height:160px;background:transparent;isolation:auto}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-media>.zh-photo,.zh-home.zh-dashboard .zh-featured-host .zh-person-media>.zh-fallback{z-index:-2}
-.zh-home.zh-dashboard .zh-featured-host .zh-photo-shade{z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,0) 28%,rgba(0,0,0,.42) 61%,rgba(0,0,0,.92))}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-watch,.zh-home.zh-dashboard .zh-featured-host .zh-person-photo-link{position:relative;inset:auto;flex:1;min-height:160px}
-.zh-featured-host .zh-watch-control{top:14px;right:14px;bottom:auto;border-radius:24px;font-size:11px;font-weight:600}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-status{top:14px;left:14px;font-size:10px;max-width:calc(100% - 150px)}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-content{gap:15px;padding:18px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile{color:#fff}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{color:#fff;font-size:calc(27px * var(--theme-font-scale,1));line-height:1.2;letter-spacing:-.8px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 svg{width:17px;height:17px}
-.zh-home.zh-dashboard .zh-featured-host .zh-verified{color:#fff}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile p{font-size:calc(12px * var(--theme-font-scale,1));color:rgba(255,255,255,.85);margin-top:7px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-action{min-height:46px;font-size:13px;border-radius:13px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-chat{flex:.7;background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.2);color:#fff}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-action:disabled{background:rgba(255,255,255,.16);color:rgba(255,255,255,.8);opacity:.5}
-.zh-home.zh-dashboard .zh-discover{margin-top:20px}
-.zh-home.zh-dashboard .zh-see-all{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-height:44px;padding:0;border:0;background:transparent;color:var(--accent-ink);font-size:12px;white-space:nowrap}
-.zh-home.zh-dashboard .zh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.zh-home.zh-dashboard .zh-hero-placeholder .zh-person-content{margin-top:auto}
-.zh-home.zh-dashboard .zh-hero-placeholder .zh-person-footer>.zh-skeleton-shape{border-radius:12px}
+.zh-home.zh-dashboard .zh-discover{margin-top:0}
+.zh-home.zh-dashboard .zh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .zh-home.zh-dashboard .zh-host-empty{position:relative;isolation:isolate;padding:18px 18px 22px;border:1px solid var(--line);border-radius:23px;background:radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 70%),var(--surface);text-align:center}
 .zh-home-empty-scene{position:relative;width:218px;max-width:100%;height:112px;margin:0 auto 10px;color:var(--accent-ink)}
 .zh-empty-orbit{position:absolute;inset:6px 24px;border:1px dashed color-mix(in srgb,var(--accent) 25%,transparent);border-radius:50%;transform:rotate(-17deg)}
@@ -3916,49 +3866,27 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zh-empty-actions>button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:11px 14px;border:1px solid transparent;border-radius:13px;font-size:calc(12px * var(--theme-font-scale,1));font-weight:600;line-height:1.4}
 .zh-empty-actions svg{flex:none}
 .zh-empty-primary{background:var(--accent);color:var(--cta-ink);box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 18%,transparent)}
-.zh-empty-host{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;margin:10px auto -7px;padding:7px 0;border:0;background:transparent;color:var(--accent-ink);font-size:11px;font-weight:600}
 .zh-empty-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
 .zh-empty-links>button{position:relative;display:flex;align-items:flex-start;flex-direction:column;gap:5px;min-width:0;padding:15px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);text-align:left}
 .zh-empty-link-icon{display:grid;place-items:center;width:37px;height:37px;border-radius:12px;margin-bottom:4px;background:var(--raised);color:var(--accent-ink)}
 .zh-empty-links strong{font-size:calc(13px * var(--theme-font-scale,1));font-weight:650;line-height:1.5}
 .zh-empty-links>button>span:not(.zh-empty-link-icon){color:var(--muted);font-size:calc(11px * var(--theme-font-scale,1));line-height:1.5;text-wrap:pretty}
 .zh-empty-links>button>.zi-icon{position:absolute;top:25px;right:14px;color:var(--accent-ink)}
-.zh-home.zh-dashboard :is(.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host):active{transform:scale(.97)}
+.zh-home.zh-dashboard :is(.zh-empty-actions>button,.zh-empty-links>button):active{transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.zh-empty-links>button:hover{border-color:var(--accent-ink);background:var(--raised)}.zh-empty-actions>button:hover{filter:brightness(1.07)}}
 @media(prefers-reduced-motion:no-preference){.zh-empty-stage{animation:zh-empty-float 4.5s ease-in-out infinite}.zh-empty-satellite>.zi-icon{animation:zi-float 3.6s ease-in-out infinite}.zh-empty-music>.zi-icon{animation-delay:-1.2s}.zh-empty-spark>.zi-icon{animation-delay:-2.4s}}
 @keyframes zh-empty-float{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-5px) rotate(-4deg)}}
-@media(min-width:360px) and (max-width:599px){.zh-home.zh-dashboard .zh-featured-host .zh-person-content{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px;padding:16px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(23px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile p{font-size:calc(11px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{gap:6px}.zh-home.zh-dashboard .zh-featured-host .zh-person-action{flex:none;min-height:44px;padding:10px;font-size:11px}.zh-home.zh-dashboard .zh-featured-host .zh-person-chat{width:44px;padding:10px}.zh-featured-host .zh-person-chat>span{display:none}.zh-home.zh-dashboard .zh-hero-placeholder .zh-person-content{display:flex}}
 @media(max-height:760px) and (max-width:599px){.zh-home.zh-dashboard:has(.zh-host-empty){padding-top:4px}.zh-dashboard:has(.zh-host-empty) .zh-live-section .zh-section-title{margin-bottom:6px}.zh-home.zh-dashboard .zh-discover:has(.zh-host-empty){margin-top:14px}.zh-home.zh-dashboard .zh-host-empty{padding-top:12px;padding-bottom:16px}.zh-host-empty .zh-home-empty-scene{height:96px}.zh-host-empty .zh-empty-stage{top:8px}.zh-host-empty .zh-empty-chat{top:43px}.zh-host-empty .zh-empty-music{top:4px}.zh-host-empty .zh-empty-actions{margin-top:12px}}
 .zh-home.zh-dashboard .zh-error{margin:0 0 18px;border-color:var(--line);background:var(--surface);color:var(--muted)}
 .zh-home.zh-dashboard .zh-error button{color:var(--accent-ink)}
 .zh-home.zh-dashboard>.zh-skeleton:last-of-type{margin-top:18px}
 .zh-home.zh-dashboard button{touch-action:manipulation;transition:background-color .15s ease,transform .15s ease,border-color .15s ease}
 .zh-home.zh-dashboard button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
-.zh-home.zh-dashboard .zh-person-media button:focus-visible{outline-color:#fff;outline-offset:-4px}
-.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut):active:not(:disabled){transform:scale(.97)}
-@media(hover:hover) and (pointer:fine){.zh-home.zh-dashboard .zh-person-action:hover:not(:disabled){filter:brightness(1.08)}.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}.zh-person-watch:hover .zh-watch-control{background:rgba(0,0,0,.65)}}
-@media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-featured-host{aspect-ratio:1.7;min-height:380px}.zh-home.zh-dashboard .zh-featured-host .zh-person-content{padding:25px;gap:18px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:calc(34px * var(--theme-font-scale,1))}.zh-home.zh-dashboard .zh-featured-host .zh-person-footer{width:350px;max-width:100%}.zh-home.zh-dashboard .zh-grid{gap:18px}.zh-home.zh-dashboard .zh-person-content{padding:15px}.zh-home.zh-dashboard .zh-person-action{font-size:12px}.zh-home.zh-dashboard .zh-person-profile p{font-size:12px}}
-@media(max-width:359px){.zh-home.zh-dashboard{padding-inline:14px}.zh-home.zh-dashboard .zh-grid{gap:10px}.zh-home.zh-dashboard .zh-person-action{gap:3px;padding-inline:3px;font-size:10px}.zh-home.zh-dashboard .zh-person-profile h3{font-size:13px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3{font-size:25px}.zh-home.zh-dashboard .zh-featured-host .zh-person-status{font-size:9px;padding-inline:6px}.zh-featured-host .zh-watch-control{font-size:10px;padding:9px;gap:4px}}
-@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-person-action,.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button,.zh-empty-host,.zh-host-entry>button):active{transform:none}.zh-feed-tabs>[role="tab"]::after{transition:none}.zh-featured-enter .zh-person-media>*,.zh-featured-enter .zh-person-content{animation:none!important}}
-/* The spotlight card: Online and price pills, a Featured label, the always-active
-   video call and position dots. A sideways swipe changes creator, so vertical
-   scrolling stays with the page. */
-.zh-featured-carousel{position:relative;touch-action:pan-y}
-.zh-home.zh-dashboard .zh-featured-host .zh-featured-price{position:absolute;z-index:2;top:14px;right:14px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-content{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
-.zh-featured-eyebrow{display:inline-flex;align-items:center;gap:5px;margin-bottom:6px;color:rgba(255,255,255,.88);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600;letter-spacing:.3px;line-height:1.4}
-.zh-featured-eyebrow>svg{width:12px;height:12px;flex:none}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-country{display:block;max-width:100%;margin-top:4px;overflow:hidden;color:rgba(255,255,255,.88);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.4;text-overflow:ellipsis;white-space:nowrap}
-.zh-home.zh-dashboard .zh-featured-host .zh-featured-call{z-index:4;width:52px;height:52px;pointer-events:auto}
-/* The photo fills the card behind the text, so its spacer never pushes the text out of view. */
-.zh-home.zh-dashboard .zh-featured-host .zh-person-media{min-height:0}
-.zh-home.zh-dashboard .zh-featured-carousel.has-dots .zh-featured-host .zh-person-content{padding-bottom:34px}
-.zh-featured-dots{position:absolute;z-index:5;left:0;right:0;bottom:7px;display:flex;justify-content:center;gap:2px;pointer-events:none}
-.zh-featured-dots>button{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:transparent;pointer-events:auto}
-.zh-featured-dots>button>i{display:block;width:6px;height:6px;background:rgba(255,255,255,.5);transition:width .18s ease,background-color .18s ease}
-.zh-featured-dots>button[aria-current="true"]>i{width:18px;background:#fff}
-.zh-featured-dots>button:focus-visible{outline:2px solid #fff;outline-offset:-2px}
-@media(prefers-reduced-motion:reduce){.zh-featured-dots>button>i{transition:none}}
+.zh-home.zh-dashboard .zh-live-shortcut:active{transform:scale(.97)}
+@media(hover:hover) and (pointer:fine){.zh-live-shortcut:hover .zh-live-ring{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}}
+@media(min-width:600px){.zh-home.zh-dashboard{padding:20px 24px 40px}.zh-home.zh-dashboard .zh-grid{gap:12px}}
+@media(max-width:359px){.zh-home.zh-dashboard{padding-inline:10px}.zh-home.zh-dashboard .zh-grid{gap:6px}.zh-home.zh-dashboard .zh-section-title h2{font-size:17px}}
+@media(prefers-reduced-motion:reduce){.zh-home.zh-dashboard button{transition:none}.zh-home.zh-dashboard :is(.zh-live-shortcut,.zh-empty-actions>button,.zh-empty-links>button):active{transform:none}}
 /* The same gold BinzoLive mark remains recognizable in every app palette. */
 .zc-coin{flex-shrink:0;vertical-align:middle;overflow:visible;filter:none}
 .zw-coins{max-width:620px;margin:0 auto;padding:18px 20px 30px;color:var(--ink)}
@@ -4157,7 +4085,25 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .za-banner .za-cta{min-height:40px;max-width:38%;padding:8px 12px;border-radius:10px;font-size:calc(11.5px * var(--theme-font-scale,1))}
 .za-info-icon{width:32px;height:32px;padding:0;justify-content:center;border:0}
 
+/* Campaign banners: a wide picture (11:3) that rotates with others, position dots inside
+   the picture and a small Ad label, after the reference. */
+.za-campaigns{position:relative;min-width:0;aspect-ratio:11/3;overflow:hidden;background:var(--raised);isolation:isolate}
+.za-campaign-track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.za-campaign-track::-webkit-scrollbar{display:none}
+.za-campaign-slide{flex:0 0 100%;width:100%;height:100%;padding:0;border:0;background:transparent;scroll-snap-align:center;scroll-snap-stop:always;cursor:pointer}
+.za-campaign-slide>img{display:block;width:100%;height:100%;object-fit:cover}
+.za-campaign-slide:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+.za-campaign-ad{position:absolute;z-index:1;top:6px;right:6px;padding:1px 6px;border:0;background:rgba(0,0,0,.45);color:#fff;font:inherit;font-size:10px;font-weight:600;line-height:1.5;letter-spacing:.3px}
+.za-campaign-ad::after{content:"";position:absolute;inset:50% auto auto 50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.za-campaign-ad:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.za-campaign-dots{position:absolute;z-index:1;left:0;right:0;bottom:6px;display:flex;justify-content:center;gap:4px;pointer-events:none}
+.za-campaign-dots>i{display:block;width:5px;height:5px;background:rgba(255,255,255,.55);transition:width .2s ease,background-color .2s ease}
+.za-campaign-dots>i.on{width:12px;background:#fff}
+@media(prefers-reduced-motion:reduce){.za-campaign-dots>i{transition:none}}
+
 /* Placements. */
+.zh-grid>.za-campaigns{grid-column:1/-1}
+.zh-discover>.za-campaigns{margin-top:18px}
 .zh-grid>.za-card{grid-column:1/-1;margin:4px 0}
 .zh-discover>.za-card{margin-top:18px}
 .zh-trending>.za-card{margin-top:14px}
@@ -4357,7 +4303,10 @@ html,body,.app,#top,#scroll-root,#screen {
 :root[data-theme-id] body {line-height:1.5}
 :root[data-theme-id] :is(.zc-heading h1,.zu-identity h1,.zh-subheader h1,.zp-dialog-heading h2,.zu-dialog h2) {font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;line-height:1.25;letter-spacing:-.5px}
 :root[data-theme-id] :is(.zp-dialog-heading h2,.zu-dialog h2) {font-size:calc(20px * var(--theme-font-scale,1));letter-spacing:-.3px}
-:root[data-theme-id] :is(.zh-feed-tabs>[role=tab],.zh-section-title h2) {font-weight:600}
+:root[data-theme-id] .zh-section-title h2 {font-weight:600}
+/* Like the reference, the selected Home feed is bold and the others medium. */
+:root[data-theme-id] .zh-feed-tabs>[role=tab] {font-weight:500}
+:root[data-theme-id] .zh-feed-tabs>[aria-selected=true] {font-weight:700}
 :root[data-theme-id].zh-app .zh-nav>button {font-size:calc(11px * var(--theme-font-scale,1));font-weight:400;color:var(--muted)}
 :root[data-theme-id].zh-app .zh-nav>button.on {color:var(--ink);font-weight:600}
 :root[data-theme-id].zh-app .zh-nav>button[data-tab]::before {display:none!important}
@@ -4366,19 +4315,12 @@ html,body,.app,#top,#scroll-root,#screen {
 .zf-face {filter:grayscale(1)}
 
 /* Photo-led discovery keeps names and actions easy to read. */
-.zh-home.zh-dashboard {padding:16px 20px 28px}
+.zh-home.zh-dashboard {padding:4px 14px 28px}
 :root[data-theme-id] .zh-home.zh-dashboard .zh-section-title h2 {font-size:calc(18px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.25px}
 .zh-heading-dot {display:none}
 .zh-home.zh-dashboard .zh-section-title {margin-bottom:12px}
-.zh-home.zh-dashboard .zh-featured-host {aspect-ratio:1.22;min-height:288px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.45px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile p {font-size:calc(12px * var(--theme-font-scale,1));font-weight:400;line-height:1.5}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-status {font-weight:500;letter-spacing:0}
-.zh-home.zh-dashboard .zh-person-action {min-height:44px;font-weight:600}
-.zh-home.zh-dashboard .zh-grid {gap:12px}
-.zh-creator-text h3 {font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;line-height:1.35;letter-spacing:-.15px}
-.zh-creator-text p {font-size:calc(11px * var(--theme-font-scale,1));line-height:1.45}
-.zh-creator-status,.zh-creator-price {font-weight:500;letter-spacing:0}
+.zh-home.zh-dashboard .zh-grid {gap:8px}
+.zh-creator-status {font-weight:500;letter-spacing:0}
 .zh-home.zh-dashboard .zh-host-empty {padding:28px 20px;background:var(--surface);background-image:none}
 .zh-home-empty-scene {width:56px;height:56px;margin:0 auto 20px;color:var(--ink)}
 .zh-empty-stage {position:static;width:56px;height:56px;transform:none!important;animation:none!important;border:1px solid var(--line);background:var(--raised)}
@@ -4488,9 +4430,7 @@ html,body,.app,#top,#scroll-root,#screen {
 :is(.zp-dialog,.zc-dialog,.zu-dialog)::backdrop {background:#18181b66;backdrop-filter:none}
 @media(prefers-reduced-motion:no-preference) {
   :is(.zp-dialog,.zc-dialog,.zu-dialog)[open] {animation:binzo-dialog-in 180ms cubic-bezier(.2,.7,.2,1)}
-  .zh-featured-enter .zh-person-media>:is(.zh-photo:not(.zh-photo-pending),.zh-fallback),.zh-featured-enter .zh-person-content {animation:binzo-photo-in 180ms ease-out both}
   @keyframes binzo-dialog-in {from{opacity:0;translate:0 4px}to{opacity:1;translate:0 0}}
-  @keyframes binzo-photo-in {from{opacity:0}to{opacity:1}}
 }
 @media(min-width:760px) {
   .zu-cover {height:220px}
@@ -4498,9 +4438,8 @@ html,body,.app,#top,#scroll-root,#screen {
   .zh-home.zh-dashboard {padding:20px 24px 32px}
 }
 @media(max-width:359px) {
-  .zh-home.zh-dashboard,.zc-chats {padding-left:20px;padding-right:20px}
-  .zh-home.zh-dashboard .zh-featured-host {min-height:270px}
-  .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(21px * var(--theme-font-scale,1))}
+  .zc-chats {padding-left:20px;padding-right:20px}
+  .zh-home.zh-dashboard {padding-left:10px;padding-right:10px}
 }
 
 /* Every page uses the same Back geometry and glyph; screen classes only position it. */
@@ -4522,7 +4461,7 @@ html:root :is(
   .av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
   .hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i,
   .zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified,
-  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,.zc-call-badge,.zc-call-back
+  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,.zc-call-badge,.zc-call-back,.zlb-avatar
 ) {border-radius:999px!important}
 html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
 html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::before,
@@ -4535,9 +4474,10 @@ html:root #zimi-pull {border-radius:999px!important}
 .zu-tabs {border-bottom:0}
 .acctrow+.acctrow {border-top:0}
 
-/* Straight page edges and single-line separators never inherit a card's corners. */
+/* Straight page edges and single-line separators never inherit a card's corners, and a
+   country flag keeps a flag's square corners. */
 html:root{border-radius:0!important}
-html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i){border-radius:0!important}
+html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
 /* A photo card opens the profile; its video call button starts the call. Keep the
@@ -4566,6 +4506,31 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
 @media(min-width:680px){.zac-page{padding-top:20px}.zac-page .zh-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}}
 @media(min-width:1000px){.zac-page .zh-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:350px){.zac-intro{display:block}.zac-intro>span{display:block;margin-top:6px}}
+/* Creator leaderboard, opened from the Home trophy. Theme tokens only; the gold token
+   marks the top three ranks like the trophy. */
+.zlb-header{border-bottom:0}
+.zlb-page{width:100%;max-width:720px;margin:0 auto;padding:4px 20px 28px;color:var(--ink)}
+.zlb-periods{display:flex;gap:8px;margin:0 0 14px}
+.zlb-periods>button{flex:1 1 0;min-height:40px;padding:0 12px;border:0;background:var(--raised);color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
+.zlb-periods>button[aria-selected="true"]{background:var(--accent);color:var(--cta-ink);font-weight:600}
+.zlb-note{margin:0 0 6px;color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.5}
+.zlb-list{margin:0;padding:0;list-style:none}
+.zlb-row{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:8px 4px;border:0;background:transparent;color:var(--ink);text-align:left}
+.zlb-row:active{background:var(--raised)}
+.zlb-rank{flex:0 0 26px;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;text-align:center;font-variant-numeric:tabular-nums}
+.zlb-row.is-top .zlb-rank{color:var(--gold);font-size:calc(18px * var(--theme-font-scale,1));font-weight:700}
+.zlb-avatar{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;overflow:hidden;background:var(--accent);color:var(--cta-ink);font-size:17px;font-weight:600}
+.zlb-avatar>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%}
+.zlb-name{flex:1;min-width:0;overflow:hidden;font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.zlb-coins{display:inline-flex;align-items:center;gap:5px;flex:none;color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;font-variant-numeric:tabular-nums}
+.zlb-empty{padding:46px 16px;text-align:center;color:var(--muted)}
+.zlb-empty>svg{color:var(--gold)}
+.zlb-empty h2{margin:14px 0 8px;color:var(--ink);font-size:calc(18px * var(--theme-font-scale,1));font-weight:600}
+.zlb-empty p{margin:0;font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6}
+.zlb-page .zh-error{margin:16px 0;border-color:var(--line);background:var(--surface);color:var(--muted)}
+.zlb-page .zh-error button{color:var(--accent-ink)}
+.zlb-page button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+@media(max-width:359px){.zlb-page{padding-inline:14px}.zlb-row{gap:9px}}
 /* The wallet keeps purchased coins separate from confirmed creator earnings. */
 .zwallet-page {max-width:620px;margin:0 auto;padding:20px 20px 30px}
 :root[data-theme-id] .zwallet-page .accthero {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
@@ -7846,17 +7811,6 @@ const SENDERS=["Rohit S.","Arnav M.","Kunal T.","Faisal R.","Devika N.","Yash P.
 const CAPS=["late night set","practice run, be kind","new routine, day one","getting ready for my next call",
  "thank you for last night","testing a new sound","rehearsal cut","this one took a while",
  "same song, slower","one take, no edits","sunday morning","from the last stream"];
-const PERIODS=[["daily","Daily",1],["weekly","Weekly",6.4],["all","All time",41]];
-
-/* Deterministic totals so the ordering is stable between renders. */
-function boardRows(){
- const mult=PERIODS.find(x=>x[0]===S.per)[2];
- return H.concat(EXTRA)
-  .map(h=>({id:h.id,n:h.n,seed:h.seed,live:!!h.live,
-   c:Math.round((((h.seed*613)%780+120)*1000)*mult)}))
-  .sort((a,b)=>b.c-a.c);
-}
-
 const previewMode=new URLSearchParams(location.search).get("preview");
 const callPreview=previewMode==="call"||previewMode==="gifts";
 const roleParam=new URLSearchParams(location.search).get("role");
@@ -8581,17 +8535,6 @@ function focusField(id){const i=document.getElementById(id);
  if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}
 /* The conversation thread lives in chats.js; loading and server events repaint it through here. */
 function paint(){zcPaintThread()}
-
-function vBoard(){
- const rows=boardRows();
- return `  ${S.bt==="family"
-   ? `<div class="empty">Family boards start once you join or create one.</div>`
-   : `<div class="blist">${rows.map((x,i)=>`<button class="brow ${i<3?"top":""}" onclick="go('host','${domId(x.id)}')">
-      <span class="brank">${i+1}</span>
-      <span class="bav">${window.ZIMI_LIVE_STREAMING_ENABLED&&x.live?`<span class="blive">LIVE</span>`:""}${av(x,42,"none")}<span class="flag">&#127470;&#127475;</span></span>
-      <span class="bname">${esc(x.n)}</span>
-      <span class="bcoin">${gem}${n(x.c)}</span></button>`).join("")}</div>`}
-  <div style="height:10px"></div>`}
 
 function vSearch(){ return `<div class="clist" id="sres"></div><div style="height:16px"></div>`}
 
@@ -9425,13 +9368,6 @@ function topFor(){
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
    <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
- if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
-   ${backButton("go('home')")}
-   ${[["creators","Creators"],["family","Family"]].map(([k,l])=>
-     `<button class="btab ${S.bt===k?"on":""}" onclick="S.bt='${k}';r()">${l}</button>`).join("")}</div>
-  <div class="bctl">
-   <span class="seg3">${PERIODS.map(([k,l])=>
-     `<button class="${S.per===k?"on":""}" onclick="S.per='${k}';r()">${l}</button>`).join("")}</span></div></div>`;
  return ""}
 
 let appNoticeTimer;
@@ -9456,7 +9392,7 @@ function r(){
  const top=document.getElementById("top"),header=topFor();
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
- let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,'create-post':()=>ZimiPostCreate.render(),
+ let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,'create-post':()=>ZimiPostCreate.render(),
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,incoming:vMemberRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
@@ -9494,6 +9430,7 @@ function hostFrom(p){const id=String(p.id);
   ...(Object.prototype.hasOwnProperty.call(p,'country')?{country:typeof p.country==='string'&&p.country.trim().length<=100&&!/[\u0000-\u001f\u007f]/.test(p.country)?p.country.trim():''}:{}),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
+  ...(Object.prototype.hasOwnProperty.call(p,'creatorCardUrl')?{creatorCardUrl:obPhotoUrl(p.creatorCardUrl||'')}:{}),
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:hostShownOnline(p)?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
@@ -9695,14 +9632,14 @@ if (DEMO && roleParam === 'host' && new URLSearchParams(location.search).get('ap
 }
 
 /* Content placeholders follow requests, never a timer or a first-visit cache. */
-const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked'];
+const resourceNames=['home','search','catalog','notifications','chats','wallet','transactions','calls','posts','thread','missed','profileSettings','blocked','leaderboard'];
 const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
 function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
 function skeletonLine(width='70%',height=12){return `<span class="zh-skeleton-shape" style="width:${width};height:${height}px"></span>`}
 function contentSkeleton(kind='rows',label='Loading content',count=4){
   let body='';
-  if(kind==='cards')body=`<div class="zh-grid">${Array.from({length:count},()=>`<div class="zh-creator-card zh-creator-placeholder"><div class="zh-creator-top">${skeletonLine('56px',21)}${skeletonLine('40px',21)}</div><div class="zh-creator-bottom"><span class="zh-skeleton-shape zh-skeleton-round" style="width:32px;height:32px"></span><div class="zh-creator-text">${skeletonLine('80%',13)}${skeletonLine('58%',9)}</div></div></div>`).join('')}</div>`;
+  if(kind==='cards')body=`<div class="zh-grid">${Array.from({length:count},()=>`<div class="zh-creator-card zh-creator-placeholder"><span class="zh-creator-status">${skeletonLine('58px',20)}</span><div class="zh-creator-bottom"><span class="zh-creator-name">${skeletonLine('70%',15)}</span><span class="zh-skeleton-shape zh-skeleton-round" style="width:34px;height:34px"></span></div></div>`).join('')}</div>`;
   else if(kind==='stories')body=`<div class="zh-skeleton-story-list">${Array.from({length:count},()=>`<div class="zh-story"><span class="zh-story-ring zh-skeleton-shape"></span>${skeletonLine('76%',9)}</div>`).join('')}</div>`;
   else if(kind==='featured')body=`<div class="zh-skeleton-hero"><div class="zh-skeleton-hero-top">${skeletonLine('52px',20)}${skeletonLine('46px',20)}</div><div class="zh-skeleton-hero-bottom">${skeletonLine('61%',24)}${skeletonLine('87%',12)}${skeletonLine('100%',27)}</div></div>`;
   else if(kind==='match')body=`<div class="zh-skeleton-match-layout"><div>${skeletonLine('83%',19)}${skeletonLine('100%',12)}${skeletonLine('60%',12)}</div>${skeletonLine('88px',47)}</div>`;
@@ -9722,6 +9659,7 @@ function contentRetry(key){
   if(key==='blocked')return zpBlockedLoad();
   if(key==='home')return homeLoad();
   if(key==='search')return homeSearchRequest();
+  if(key==='leaderboard')return window.ZimiLeaderboard.load();
   if(key==='notifications'&&window.ZimiNotifications)return window.ZimiNotifications.load();
   contentStart(key);contentRender(key);
   if(key==='wallet')Native.send('wallet.load');
@@ -9739,7 +9677,7 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
-  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls','chats'],posts:['profile','editprofile'],thread:['thread']};
+  const views={profileSettings:['profile','settings'],blocked:[],home:['home','all-creators','chats'],catalog:['coins'],notifications:['notifications','home','all-creators','chats'],chats:['chats'],missed:['chats'],wallet:['home','all-creators','wallet','coins','profile','settings','chats','precall'],transactions:['transactions','wallet'],calls:['calls','chats'],posts:['profile','editprofile'],thread:['thread'],leaderboard:['board']};
   if(key==='search'){if(S.v==='search')homePaintSearch();return}
   if(views[key]?.includes(S.v)||(['catalog','wallet'].includes(key)&&(Home.giftTo||['call','voice','hcall'].includes(S.v))))r();
 }
@@ -9755,7 +9693,7 @@ Native.on('data.loading',d=>{
   contentRender(d.resource);
 });
 /* Results also settle placeholders when received from an older native shell. */
-for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
+for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.leaderboard':'leaderboard','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||''))return;
   if(key==='thread'&&d.with!==S.h)return;
@@ -9946,7 +9884,7 @@ window.ZimiHomeRender = (() => {
 /* Home surfaces use the same authenticated bridge as the rest of the app.
    Preview people, activity and balances exist only in the DEMO build. */
 const Home = {
-  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', page: 1, firstPageIds:[], queryKey:'popular|',
+  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', region: '', page: 1, firstPageIds:[], queryKey:'popular||',
   searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
   hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
@@ -9973,23 +9911,36 @@ const homeIcons = {
   rings:'<circle cx="14" cy="12" r="7"/><path d="M6 5a8 8 0 0 0 0 14"/>',
   gift:'<path d="M3 9h18v5H3zM5 14v7h14v-7M12 9v12M12 9C3 9 5 1 9 4l3 5Zm0 0c9 0 7-8 3-5z"/>',
   pulse:'<circle cx="12" cy="12" r="9"/><path d="M16 17a6 6 0 1 1 2-5c0 4-5 4-5 1V9m0 0a3 3 0 1 0 0 5"/>',
-  broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>'
+  broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>',
+  trophy:'<path fill="currentColor" d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.5V7a3 3 0 0 0 3 3M17 5.5h2.5V7a3 3 0 0 1-3 3M12 14v4.5M8.5 20.5h7"/>'
 };
 function hi(name,size=20){if(['coin','rings'].includes(name))return coinIcon(size);return `<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${homeIcons[name]||P[name]||P.star}</svg>`}
 function homeCompact(value){const x=Math.max(0,Number(value)||0);return x>=1000?(x/1000).toFixed(x>=10000?0:1).replace(/\.0$/,'')+'k':n(x)}
 function homeCreator(p){const h=hostFrom(p);return {...h,...('previewVideoUrl' in p?{video:videoSrc(p.previewVideoUrl)}:{}),verified:!!p.verified,about:p.about||'',stream:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream||null:null,viewers:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream?.viewers||0:0}}
 function homeRemember(p){const h=homeCreator(p),old=H.find(x=>x.id===h.id);if(old)Object.assign(old,h);else H.push(h);return h}
 function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl);return src?`<img class="zh-photo zh-photo-pending" src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}" data-face-wrap="zh-fallback" loading="${priority?'eager':'lazy'}" decoding="async">`:`<div class="zh-fallback">${face(h)}</div>`}
+function homeCardCover(h){return homeCover({...h,coverUrl:h.creatorCardUrl||h.avatarUrl})}
 /* A slot over the photo; card-video.js fills it with the host's video once the card is in view. */
 function homeCardVideo(h){return h.video?`<span class="zh-card-video" data-video="${h.video}" aria-hidden="true"></span>`:''}
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeCountry(h){const country=typeof h.country==='string'?h.country.trim():'';return country.length<=100&&!/[\u0000-\u001f\u007f]/.test(country)?country:''}
-function homeCountryLabel(h,className='zh-creator-country'){const country=homeCountry(h);return country?`<span class="${className}" data-creator-country title="${esc(country)}">${esc(country)}</span>`:''}
+// India is the only flag for now (drawn in CSS, so it looks the same on every device); other countries show their name.
+function homeFlag(country,className='',decorative=false){return /^india$/i.test(country)?`<span class="zh-flag zh-flag-in ${className}" ${decorative?'aria-hidden="true"':'role="img" aria-label="India"'}></span>`:''}
+function homeCountryLabel(h){const country=homeCountry(h),flag=homeFlag(country);return country?`<span class="zh-creator-country ${flag?'has-flag':''}" data-creator-country title="${esc(country)}">${flag||esc(country)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
 function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:h.on?'<span class="zh-badge zh-offline zh-online"><i></i> Online</span>':'<span class="zh-badge zh-offline">Offline</span>'}
-/* Discovery stays uncategorized; Following is filtered by saved relationships on the server. */
-function homeFeedQuery(){return {mode:S.v==='home'&&Home.dashboardFilter==='following'?'following':'popular'}}
-function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')}
+/* The Home header feeds, filtered and ordered on the server before pagination: Following
+   lists saved follows, For You the creators not followed yet and New the latest creators. */
+const HOME_FEEDS=[['following','Following'],['popular','Explore'],['foryou','For You'],['new','New']];
+// The country chips. India is the only country for now; Popular shows every creator.
+const HOME_REGIONS=[['','Popular'],['India','India']];
+function homeRegionShown(){return Home.dashboardFilter!=='following'}
+function homeFeedQuery(){
+  if(S.v!=='home')return {mode:'popular'};
+  const mode=HOME_FEEDS.some(([key])=>key===Home.dashboardFilter)?Home.dashboardFilter:'popular';
+  return {mode,...(Home.region&&homeRegionShown()?{country:Home.region}:{})};
+}
+function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')+'|'+(query.country||'')}
 function homeLoad(more=false){
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
   Home.error='';Home.loadingMore=more;Home.loading=!DEMO;
@@ -10004,14 +9955,23 @@ function homeContentError(){return !DEMO&&!ContentLoading.home.background&&(Home
 function homeRefreshNotice(){const error=ContentLoading.home.background&&ContentLoading.home.error;return error?`<div class="zh-error" role="status">${esc(error)}<button type="button" onclick="homeLoad()">Retry updates</button></div>`:''}
 
 function homeFilter(value){Home.filter=value;homeLoad()}
-function homeDashboardFilter(value){if(!['popular','following'].includes(value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;window.homeFeaturedReset?.();homeLoad()}
+function homeDashboardFilter(value){if(!HOME_FEEDS.some(([key])=>key===value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;homeLoad()}
+function homeRegion(value){if(!HOME_REGIONS.some(([key])=>key===value)||value===Home.region)return;Home.region=value;homeLoad()}
 function homeList(){return Home.hosts}
-function homeFeedTabKey(event){if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?'popular':event.key==='End'?'following':Home.dashboardFilter==='following'?'popular':'following';homeDashboardFilter(next);document.getElementById(next==='following'?'home-tab-following':'home-tab-all')?.focus()}
-function homeHeader(){const following=Home.dashboardFilter==='following';return `<header class="zh-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${[['popular','All'],['following','Explore']].map(([key,label])=>`<button type="button" id="home-tab-${key==='popular'?'all':'following'}" role="tab" aria-selected="${following===(key==='following')}" aria-controls="home-feed-panel" tabindex="${following===(key==='following')?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`).join('')}</div><div class="zh-header-actions">${homeDashboardHostEntry()}<button type="button" class="zh-balance zh-wallet-icon" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')&&!ContentLoading.wallet.loaded?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',20)}<span class="zh-wallet-value">${contentBalance()}</span></button><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',22)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
+function homeFeedTabKey(event){
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const keys=HOME_FEEDS.map(([key])=>key),at=keys.indexOf(Home.dashboardFilter);
+  const next=event.key==='Home'?keys[0]:event.key==='End'?keys.at(-1):keys[(at+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length];
+  homeDashboardFilter(next);document.getElementById('home-tab-'+next)?.focus();
+}
+// Like the reference: the feed tabs, then Search and the creator leaderboard.
+function homeHeader(){return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
+function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="zh-region-chips" role="group" aria-label="Country">${HOME_REGIONS.map(([key,label])=>`<button type="button" aria-pressed="${Home.region===key}" onclick="homeRegion('${key}')">${key?homeFlag(key,'zh-flag-chip',true):''}<span>${label}</span></button>`).join('')}</div>`}
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
-  if(['notifications','themes','all-creators'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
+  if(['notifications','themes','all-creators','board'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
   if(!['home','chats','profile','settings'].includes(S.v))return false;
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
@@ -10021,20 +9981,24 @@ function homeNav(){
 function homeStage(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return '';const rows=Home.stage.slice(0,12),pending=homeContentPending(),error=homeContentError();return `<section class="zh-stage" aria-label="Live creators"><div class="zh-section-title"><h2><i></i>Stage &amp; Live Calls</h2><span>${pending?skeletonLine('94px',10):error?'':homeCompact(Home.broadcasterCount)+' BROADCASTERS'}</span></div><div class="zh-stories">${isApprovedHost()?`<button class="zh-story zh-story-create" onclick="homeGoLive()"><span class="zh-story-ring">${hi('plus',24)}<i>${hi('vid',10)}</i></span><span>Go Live</span></button>`:''}${pending?contentSkeleton('stories','Loading live creators',4):error?'':rows.map(h=>`<button class="zh-story" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}"><span class="zh-story-ring ${h.stream?'':'zh-story-call'}">${homeCover(h)}<b>${h.stream?'LIVE':hi('ph',9)+' 1:1'}</b></span><span>${esc(first(h.n))}</span></button>`).join('')}${!pending&&!error&&!rows.length?'<span class="zh-stage-empty">Your next favourite creator is on the way.</span>':''}</div></section>`}
 
 function homeFilters(){return ''}
-function homeFeatured(){if(homeContentPending())return homeDashboardHeroSkeleton();if(homeContentError())return '';const h=Home.featured||homeList()[0];return h?homeDashboardCard(h,true):''}
 function homeMatch(){if(homeContentPending())return `<div class="zh-match">${contentSkeleton('match','Loading video matches')}</div>`;if(homeContentError())return '';if(!Home.speedMatchEnabled)return '';return `<section class="zh-match"><div><h2>${hi('pulse',20)} Speed Video Pulse</h2><p>Find your next conversation.</p><div class="zh-available"><span class="zh-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>${homeCompact(Home.availableCount)} Available</div></div><button class="zh-primary" onclick="homeMatchNow()" ${Home.matching||!Home.availableCount?'disabled':''}>${hi('bolt',19)} ${Home.matching?'Finding…':'Match'}</button></section>`}
-/* One profile-first photo card for Home, All Creators and Search. Discovery never
-   places a call or opens chat; those actions belong to the creator profile. */
-// The verified mark rides on the avatar so the name keeps the bottom row's width.
-function homeAvatar(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return `<span class="zh-creator-avatar"><span class="zh-creator-face" aria-hidden="true">${esc((first(h.n||'')||'?').charAt(0).toUpperCase())}${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>${homeVerified(h)}</span>`}
+/* One square photo card for Home, All Creators and Search, like the reference: the status
+   tag over the photo, then name and country flag, with the round video call button that is
+   always active. Tapping the photo opens the profile; chat belongs on the profile. */
 function homeTile(h){
   const id=domId(h.id),live=!!h.stream;
-  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><div class="zh-creator-top"><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><span class="zh-creator-price ${live||h.rate>0?'':'is-free'}">${live?`${hi('eye',11)} ${homeCompact(h.viewers)}`:h.rate>0?`${hi('rings',13)}${n(h.rate)}/min`:'Free'}</span></div><div class="zh-creator-bottom">${homeAvatar(h)}<div class="zh-creator-text"><h3>${esc(h.n)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',18)}</button>${homeCountryLabel(h)}</div></article>`;
+  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
 }
 function homeBonus(){if(!isApprovedHost())return '';if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
-// Sponsored cards sit inside a host grid after its first rows (or below a short grid), never above the hosts.
-const HOME_AD_AFTER=6;
-function homeGridWithAd(cards,placement){const ad=window.ZimiAds?.card(placement)||'';return ad?[...cards.slice(0,HOME_AD_AFTER),ad,...cards.slice(HOME_AD_AFTER)].join(''):cards.join('')}
+// Like the reference, campaign banners rotate after the first two rows of hosts; a sponsored
+// card sits further down, after ten hosts. A short grid keeps both below its hosts, never above.
+const HOME_CAMPAIGN_AFTER=4,HOME_AD_AFTER=10;
+function homeGridWithAd(cards,placement){
+  const rows=[...cards],ad=window.ZimiAds?.card(placement)||'',campaigns=window.ZimiAds?.campaigns(placement)||'';
+  if(ad)rows.splice(Math.min(HOME_AD_AFTER,cards.length),0,ad);
+  if(campaigns)rows.splice(Math.min(HOME_CAMPAIGN_AFTER,cards.length),0,campaigns);
+  return rows.join('');
+}
 function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A little quiet right now</h3><p>${Home.filter==='instant'?'No creators are available for a call right now. Pull down to refresh.':'Try another category or come back for a conversation.'}</p></div>`}
 
 function homeScreen(){return homeDashboard()}
@@ -10164,12 +10128,13 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   // Main tabs already provide their title and relevant actions in the page.
   if(['all-creators','chats','profile','settings'].includes(S.v))return '';
   if(S.v==='themes')return window.ZimiThemes.header();
+  if(S.v==='board')return window.ZimiLeaderboard.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
   const title={notifications:'Notifications',broadcast:'Go Live'}[S.v];
   return title?`<header class="zh-subheader">${backButton("go('home')",{label:"Back to home"})}<h1>${title}</h1></header>`:null;
-},afterRender:()=>{contentImagesReady();homeShowCloseError();window.homeFeaturedAfterRender?.();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
+},afterRender:()=>{contentImagesReady();homeShowCloseError();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{
   const retainPages=d.background&&Home.loaded&&Home.page>1,previousFirst=new Set(Home.firstPageIds);
@@ -10216,18 +10181,18 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','all-creators','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',page:1,firstPageIds:[],queryKey:'popular|'});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','all-creators'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
 
 if(DEMO){
   const demo=[
-    {id:'aanya',name:'Ananya Iyer',category:'Music',tag:'Ghazals, guitar and late-night chai',avatarUrl:PREVIEW_HOSTS[0],coverUrl:PREVIEW_HOSTS[0],ratePerMin:50,entryFee:0,online:true,live:true,verified:true,availableForCall:true,stream:{id:'demo-ananya',title:'Ghazals, guitar and late-night chai',kind:'video',viewers:3400}},
-    {id:'meher',name:'Meher Kaur',category:'Music',tag:'Sufi songs and slow evenings',avatarUrl:PREVIEW_HOSTS[1],coverUrl:PREVIEW_HOSTS[1],ratePerMin:40,online:true,verified:true,availableForCall:true},
-    {id:'ishaan',name:'Ishita Rao',category:'Gaming',tag:'BGMI ranked and friendly banter',avatarUrl:PREVIEW_HOSTS[2],coverUrl:PREVIEW_HOSTS[2],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-ishaan',title:'BGMI ranked and friendly banter',kind:'video',viewers:890}},
-    {id:'noor',name:'Noor Siddiqui',category:'Talk',tag:'Deep talks over chai',avatarUrl:PREVIEW_HOSTS[3],coverUrl:PREVIEW_HOSTS[3],ratePerMin:60,online:true,verified:false,availableForCall:true},
-    {id:'kabir',name:'Kavya Malhotra',category:'Music',tag:'Bollywood, unplugged',avatarUrl:PREVIEW_HOSTS[4],coverUrl:PREVIEW_HOSTS[4],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-kabir',title:'Bollywood, unplugged',kind:'video',viewers:2100}}
+    {id:'aanya',country:'India',name:'Ananya Iyer',category:'Music',tag:'Ghazals, guitar and late-night chai',avatarUrl:PREVIEW_HOSTS[0],coverUrl:PREVIEW_HOSTS[0],ratePerMin:50,entryFee:0,online:true,live:true,verified:true,availableForCall:true,stream:{id:'demo-ananya',title:'Ghazals, guitar and late-night chai',kind:'video',viewers:3400}},
+    {id:'meher',country:'India',name:'Meher Kaur',category:'Music',tag:'Sufi songs and slow evenings',avatarUrl:PREVIEW_HOSTS[1],coverUrl:PREVIEW_HOSTS[1],ratePerMin:40,online:true,verified:true,availableForCall:true},
+    {id:'ishaan',country:'India',name:'Ishita Rao',category:'Gaming',tag:'BGMI ranked and friendly banter',avatarUrl:PREVIEW_HOSTS[2],coverUrl:PREVIEW_HOSTS[2],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-ishaan',title:'BGMI ranked and friendly banter',kind:'video',viewers:890}},
+    {id:'noor',country:'India',name:'Noor Siddiqui',category:'Talk',tag:'Deep talks over chai',avatarUrl:PREVIEW_HOSTS[3],coverUrl:PREVIEW_HOSTS[3],ratePerMin:60,online:true,verified:false,availableForCall:true},
+    {id:'kabir',country:'India',name:'Kavya Malhotra',category:'Music',tag:'Bollywood, unplugged',avatarUrl:PREVIEW_HOSTS[4],coverUrl:PREVIEW_HOSTS[4],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-kabir',title:'Bollywood, unplugged',kind:'video',viewers:2100}}
   ];
   Home.hosts=demo.map(homeRemember);Home.featured=Home.hosts[0];Home.stage=[Home.hosts[0],Home.hosts[2],Home.hosts[1],Home.hosts[4]];Home.hosts=[Home.hosts[1],Home.hosts[2],Home.hosts[3],Home.hosts[4],Home.hosts[0]];
   Home.total=5;Home.broadcasterCount=1400;Home.availableCount=1420;S.bal=1250;
@@ -10238,96 +10203,6 @@ if(DEMO){
 }
 
 /* Photo-led Home discovery; colors follow the selected theme. */
-const HomeFeatured = { id:'', start:'', paused:matchMedia('(prefers-reduced-motion: reduce)').matches, timer:null, due:0, backgrounded:false, offscreen:false, observed:null, touching:false };
-const HOME_FEATURE_INTERVAL = 6000;
-// The spotlight rotates through the first few creators, so its dots stay readable.
-const HOME_FEATURE_MAX = 5;
-function homeFeaturedStop(){clearTimeout(HomeFeatured.timer);HomeFeatured.timer=null}
-function homeFeaturedReset(){homeFeaturedStop();HomeFeatured.id=HomeFeatured.start=''}
-// The server's featured creator leads the spotlight, followed by the next creators in the feed.
-function homeFeaturedPool(all){
-  const pinned=all.find(h=>h.id===Home.featured?.id);
-  return (pinned?[pinned,...all.filter(h=>h!==pinned)]:all).slice(0,HOME_FEATURE_MAX);
-}
-function homeFeaturedPick(all){
-  const pool=homeFeaturedPool(all);
-  if(!pool.some(h=>h.id===HomeFeatured.id))HomeFeatured.id=HomeFeatured.start=(pool.find(h=>h.id===Home.featured?.id)||pool[0])?.id||'';
-  return pool.find(h=>h.id===HomeFeatured.id)||null;
-}
-function homeFeaturedHeld(){
-  if(HomeFeatured.touching)return true;
-  const carousel=document.querySelector('.zh-featured-carousel'),grid=document.getElementById('home-host-grid');
-  if([carousel,grid].some(el=>el?.contains(document.activeElement)))return true;
-  return matchMedia('(hover: hover)').matches&&[carousel,grid].some(el=>el?.matches(':hover'));
-}
-function homeFeaturedReady(){return S.v==='home'&&!document.hidden&&!HomeFeatured.backgrounded&&!HomeFeatured.offscreen&&!homeContentPending()&&!Home.loading&&!Home.loadingMore&&!homeContentError()&&!Home.giftTo&&!!document.getElementById('home-featured-card')&&homeDashboardHosts().all.length>1}
-function homeFeaturedSchedule(){
-  homeFeaturedStop();
-  if(!homeFeaturedReady()||HomeFeatured.paused||homeFeaturedHeld())return;
-  HomeFeatured.due=Date.now()+HOME_FEATURE_INTERVAL;
-  HomeFeatured.timer=setTimeout(()=>{HomeFeatured.timer=null;if(homeFeaturedReady()&&!homeFeaturedHeld())homeFeaturedNext(false);else homeFeaturedSchedule()},HOME_FEATURE_INTERVAL);
-}
-// Dots show where the spotlight is; each one also jumps to its creator.
-function homeFeaturedDots(pool){
-  if(pool.length<2)return '';
-  return `<div class="zh-featured-dots" role="group" aria-label="Featured creators">${pool.map((h,index)=>`<button type="button" aria-label="Show ${esc(h.n)}, ${index+1} of ${pool.length}" ${h.id===HomeFeatured.id?'aria-current="true"':''} onclick="homeFeaturedShow('${domId(h.id)}')"><i></i></button>`).join('')}</div>`;
-}
-function homeFeaturedShow(id,manual=true){
-  const all=homeDashboardHosts().all,pool=homeFeaturedPool(all),next=pool.find(h=>h.id===id);
-  if(!next||!homeFeaturedReady()||!manual&&(HomeFeatured.paused||homeFeaturedHeld()))return;
-  HomeFeatured.id=next.id;
-  const hero=document.getElementById('home-featured-card'),grid=document.getElementById('home-host-grid');
-  if(hero)window.ZimiHomeRender.render(hero,homeDashboardCard(next,true));
-  if(grid){
-    // The sponsored card keeps its element, so rotation never reloads it or counts a second view.
-    window.ZimiHomeRender.render(grid,homeGridWithAd(all.filter(h=>h.id!==next.id).map(h=>homeDashboardCard(h)),'home'));
-  }
-  document.querySelectorAll('.zh-featured-dots>button').forEach((dot,index)=>{if(pool[index]?.id===next.id)dot.setAttribute('aria-current','true');else dot.removeAttribute('aria-current')});
-  contentImagesReady();window.ZimiCardVideo?.attach();homeFeaturedSchedule();
-}
-function homeFeaturedStep(delta,manual=true){
-  const pool=homeFeaturedPool(homeDashboardHosts().all);
-  if(pool.length<2)return;
-  const at=Math.max(0,pool.findIndex(h=>h.id===HomeFeatured.id));
-  homeFeaturedShow(pool[(at+delta+pool.length)%pool.length].id,manual);
-}
-function homeFeaturedNext(manual=true){homeFeaturedStep(1,manual)}
-// A sideways swipe on the card moves the spotlight; it never also opens the profile below the finger.
-// Only the click that ends the same gesture is swallowed; a new touch clears the guard.
-const HomeSwipe={pointer:null,x:0,y:0,swipedAt:0};
-function homeFeaturedSwipeStart(event){if(event.pointerType==='mouse'&&event.button!==0)return;Object.assign(HomeSwipe,{pointer:event.pointerId,x:event.clientX,y:event.clientY,swipedAt:0})}
-function homeFeaturedSwipeEnd(event){
-  if(HomeSwipe.pointer!==event.pointerId)return;
-  HomeSwipe.pointer=null;
-  const dx=event.clientX-HomeSwipe.x,dy=event.clientY-HomeSwipe.y;
-  if(Math.abs(dx)<48||Math.abs(dx)<Math.abs(dy)*1.5)return;
-  HomeSwipe.swipedAt=Date.now();homeFeaturedStep(dx<0?1:-1);
-}
-document.addEventListener('click',event=>{if(HomeSwipe.swipedAt&&Date.now()-HomeSwipe.swipedAt<600&&event.target?.closest?.('.zh-featured-carousel')){HomeSwipe.swipedAt=0;event.preventDefault();event.stopPropagation()}},true);
-// Rotation waits while the card is scrolled away, so the grid never changes under the reader.
-const homeFeaturedObserver=window.IntersectionObserver?new IntersectionObserver(entries=>{
-  const offscreen=!entries[entries.length-1].isIntersecting;
-  if(offscreen===HomeFeatured.offscreen)return;
-  HomeFeatured.offscreen=offscreen;homeFeaturedSchedule();
-},{threshold:.35}):null;
-function homeFeaturedAfterRender(){
-  const carousel=document.querySelector('.zh-featured-carousel');
-  if(carousel!==HomeFeatured.observed){homeFeaturedObserver?.disconnect();HomeFeatured.observed=carousel;if(carousel)homeFeaturedObserver?.observe(carousel);else HomeFeatured.offscreen=false}
-  // Redraws keep a running timer, so frequent updates cannot starve the rotation.
-  if(!(HomeFeatured.timer&&homeFeaturedReady()&&!HomeFeatured.paused&&!homeFeaturedHeld()))homeFeaturedSchedule();
-}
-const homeFeaturedInteraction='onpointerenter="if(event.pointerType===\'mouse\')homeFeaturedStop()" onpointerleave="homeFeaturedSchedule()" onfocusin="homeFeaturedStop()" onfocusout="setTimeout(homeFeaturedSchedule,0)"';
-document.addEventListener('visibilitychange',homeFeaturedSchedule);
-window.addEventListener('pagehide',homeFeaturedStop);
-document.addEventListener('aurora:navigate',()=>{if(S.v!=='home'){HomeFeatured.touching=false;homeFeaturedStop()}});
-document.addEventListener('pointerdown',event=>{if(S.v==='home'&&event.pointerType!=='mouse'&&event.target?.closest?.('.zh-featured-carousel,#home-host-grid')){HomeFeatured.touching=true;homeFeaturedStop()}},{passive:true});
-const homeFeaturedRelease=()=>{if(HomeFeatured.touching){HomeFeatured.touching=false;homeFeaturedSchedule()}};
-document.addEventListener('pointerup',homeFeaturedRelease,{passive:true});
-document.addEventListener('pointercancel',homeFeaturedRelease,{passive:true});
-Native.on('app.background',()=>{HomeFeatured.backgrounded=true;HomeFeatured.touching=false;homeFeaturedStop()});
-Native.on('app.foreground',()=>{HomeFeatured.backgrounded=false;homeFeaturedSchedule()});
-['session.none','session.expired'].forEach(type=>Native.on(type,()=>{homeFeaturedReset();HomeFeatured.paused=matchMedia('(prefers-reduced-motion: reduce)').matches}));
-matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change',event=>{HomeFeatured.paused=event.matches;homeFeaturedSchedule()});
 function homeDashboardIsLive(h){return window.ZIMI_LIVE_STREAMING_ENABLED&&!!h.stream&&(!h.stream.status||h.stream.status==='live')}
 function homeDashboardCanCall(h){return !!h.available&&(h.on||homeDashboardIsLive(h))}
 function homeDashboardHosts(){
@@ -10347,11 +10222,12 @@ function homeDashboardHostOpen(){
   if(!window.ZimiHostAccess.guard())return;
   go(S.online?'waiting':'setup');
 }
-// Only an approved host account sees its own availability, in the Home header.
+// Only an approved host account sees its own availability: a floating button over Home,
+// where the reference places its LIVE button. It opens the 1:1 call setup.
 function homeDashboardHostEntry(){
   if(!isApprovedHost()&&!(window.ZimiHostAccess?.checking()&&S.role==='host'))return '';
   const online=!!S.online;
-  return `<button type="button" class="zh-host-status ${online?'is-online':''}" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}" title="${online?'You are online for calls':'You are offline'}"><i aria-hidden="true"></i><span>${online?'Online':'Offline'}</span></button>`;
+  return `<button type="button" class="zh-host-status ${online?'is-online':''}" onclick="homeDashboardHostOpen()" aria-label="${online?'Manage your call availability':'Get ready to go online'}">${hi('vid',20)}<span>${online?'Online':'Go online'}</span>${online?'<i aria-hidden="true"></i>':''}</button>`;
 }
 function homeDashboardStories(hosts,pending,error,more){
   if(!window.ZIMI_LIVE_STREAMING_ENABLED)return '';
@@ -10361,15 +10237,6 @@ function homeDashboardStories(hosts,pending,error,more){
   const loading=`<div class="zh-skeleton zh-story-loading" role="status" aria-label="Loading live creators" aria-busy="true"><div class="zh-live-rail" aria-hidden="true">${Array.from({length:4},()=>`<span class="zh-live-shortcut"><span class="zh-live-ring zh-skeleton-shape"></span>${skeletonLine('38px',10)}</span>`).join('')}</div></div>`;
   const rail=rows.map(h=>`<button type="button" class="zh-live-shortcut" aria-label="Join ${esc(h.n)} live" onclick="homeOpen('${domId(h.id)}')"><span class="zh-live-ring">${homeCover(h)}</span><span>${esc(first(h.n))}</span></button>`).join('');
   return `<section class="zh-live-section" aria-label="Live hosts"><div class="zh-section-title"><h2><i class="zh-heading-dot"></i>Live now</h2><div class="zh-live-tools">${!pending?`<span>${n(rows.length)} live</span>`:''}</div></div>${pending?loading:`<div class="zh-live-rail">${create}${rail}</div>`}</section>`;
-}
-function homeDashboardCard(h,featured=false){
-  if(!featured)return homeTile(h);
-  const id=domId(h.id),live=homeDashboardIsLive(h),status=live?'is-live':h.on?'is-online':'is-offline';
-  return `<article class="zh-tile zh-person-card zh-featured-host ${status}" data-host-id="${esc(h.id)}">
-    <div class="zh-person-media">${homeCover(h,true)}${homeCardVideo(h)}<div class="zh-photo-shade"></div><span class="zh-person-status ${status}"><i></i>${live?`LIVE <b>&middot;</b> ${homeCompact(h.viewers)} watching`:h.on?'Online':'Offline'}</span>${live?'':`<span class="zh-creator-price zh-featured-price ${h.rate>0?'':'is-free'}">${h.rate>0?`${hi('rings',13)}${n(h.rate)}/min`:'Free'}</span>`}</div>
-    <div class="zh-person-content"><div class="zh-person-profile"><span class="zh-featured-eyebrow">${hi('star',12)}Featured creator</span><h3><span>${esc(h.n)}</span>${homeVerified(h)}</h3>${homeCountryLabel(h,'zh-person-country')}<p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><button type="button" class="zh-creator-call zh-featured-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',22)}</button></div>
-    <button type="button" class="zh-person-photo-link zh-featured-profile-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button>
-  </article>`;
 }
 function homeDashboardCall(id){
   const h=g(id);
@@ -10410,27 +10277,24 @@ document.addEventListener('aurora:navigate',()=>{
   if(pending&&(S.v!=='live'||Home.stream?.id!==pending.streamId||S.h!==pending.hostId))Home.dashboardCall=null;
 });
 function homeDashboardSkeleton(label='Loading creators',count=4){return contentSkeleton('cards',label,count)}
-function homeDashboardHeroSkeleton(){return `<div class="zh-skeleton" role="status" aria-label="Loading featured creator" aria-busy="true"><div class="zh-person-card zh-featured-host zh-hero-placeholder zh-skeleton-shape" aria-hidden="true"><div class="zh-person-content">${skeletonLine('55%',25)}${skeletonLine('80%',12)}</div></div></div>`}
 function homeDashboardEmpty(){
-  const following=Home.dashboardFilter==='following';
-  const title=following?'No followed creators yet':'No hosts to show right now';
-  const description=following?'Follow a creator from Home to see them here.':'Pull down to refresh or browse all creator profiles.';
-  const primary=following?`<button type="button" class="zh-empty-primary" onclick="homeDashboardFilter('popular')">${hi('explore',18)} All creators</button>`:`<button type="button" class="zh-empty-primary" onclick="go('all-creators')">${hi('explore',18)} All creators</button>`;
+  const following=Home.dashboardFilter==='following',region=homeRegionShown()&&Home.region;
+  const title=following?'No followed creators yet':region?`No creators from ${esc(region)} right now`:'No hosts to show right now';
+  const description=following?'Follow a creator from Explore to see them here.':region?'Pull down to refresh, or see creators from every country.':'Pull down to refresh or browse all creator profiles.';
+  const primary=following?`<button type="button" class="zh-empty-primary" onclick="homeDashboardFilter('popular')">${hi('explore',18)} Explore creators</button>`:region?`<button type="button" class="zh-empty-primary" onclick="homeRegion('')">${hi('explore',18)} Show Popular</button>`:`<button type="button" class="zh-empty-primary" onclick="go('all-creators')">${hi('explore',18)} All creators</button>`;
   return `<div class="zh-host-empty">
     <div class="zh-home-empty-scene" aria-hidden="true"><span class="zh-empty-orbit"></span><span class="zh-empty-stage zh-empty-photo"><img src="${OB_MEDIA[1]}" alt="" decoding="async"></span><span class="zh-empty-satellite zh-empty-chat">${hi('chat',21)}</span><span class="zh-empty-satellite zh-empty-music">${hi('music',20)}</span><span class="zh-empty-satellite zh-empty-spark">${hi('star',15)}</span><i class="zh-empty-dot"></i><i class="zh-empty-dot"></i></div>
     <span class="zh-empty-eyebrow">Good company is worth the wait</span><h3>${title}</h3><p>${description}</p>
     <div class="zh-empty-actions">${primary}</div>
-    ${isApprovedHost()?`<button type="button" class="zh-empty-host" onclick="homeDashboardHostOpen()">${hi('ph',16)} ${S.online?'Manage your call availability':'Go online for 1:1 calls'} ${hi('arrow',15)}</button>`:''}
   </div><div class="zh-empty-links" aria-label="More ways to connect"><button type="button" onclick="go('chats')"><span class="zh-empty-link-icon">${hi('chat',22)}</span><strong>Your chats</strong><span>Keep the conversation going</span>${hi('arrow',16)}</button><button type="button" aria-label="Find a creator" onclick="go('search')"><span class="zh-empty-link-icon">${hi('srch',22)}</span><strong>Find your people</strong><span>Search for a creator you love</span>${hi('arrow',16)}</button></div>`;
 }
+// Like the reference: the country chips, then one square-card grid. Hosts keep loading with "Load more".
 function homeDashboard(){
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
-  const hosts=homeDashboardHosts(),all=hosts.all;
-  const featured=pending?null:homeFeaturedPick(all),remaining=featured?all.filter(h=>h.id!==featured.id):[],pool=homeFeaturedPool(all);
-  const hero=pending?homeDashboardHeroSkeleton():!error&&featured?`<section class="zh-featured-carousel ${pool.length>1?'has-dots':''}" aria-roledescription="carousel" aria-label="Featured creators" ${homeFeaturedInteraction} onpointerdown="homeFeaturedSwipeStart(event)" onpointerup="homeFeaturedSwipeEnd(event)"><div id="home-featured-card">${homeDashboardCard(featured,true)}</div>${homeFeaturedDots(pool)}</section>`:'';
-  const grid=pending?homeDashboardSkeleton():error?'':remaining.length?`<div id="home-host-grid" class="zh-grid" ${homeFeaturedInteraction}>${homeGridWithAd(remaining.map(h=>homeDashboardCard(h)),'home')}</div>`:(!featured?homeDashboardEmpty():'')+(window.ZimiAds?.card('home')||'');
-  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${Home.dashboardFilter==='following'?'following':'all'}"><h1 class="zh-home-title">Meet your next conversation</h1>${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}${hero}<section class="zh-discover" aria-label="Meet your next conversation"><div class="zh-section-title"><h2>${Home.dashboardFilter==='following'?'Following':'Instant Connect'}</h2><div class="zh-live-tools"><button type="button" class="zh-see-all" onclick="go('all-creators')">See all ${hi('arrow',15)}</button></div></div>${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}</div>${homeGiftSheet()}`;
+  const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
+  const grid=pending?homeDashboardSkeleton('Loading creators',6):error?'':all.length?`<div id="home-host-grid" class="zh-grid">${homeGridWithAd(all.map(homeTile),'home')}</div>`:homeDashboardEmpty()+(window.ZimiAds?.campaigns('home')||'')+(window.ZimiAds?.card('home')||'');
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
 }
 
 /* All Creators reuses the authenticated popular feed and its server pagination.
@@ -10450,6 +10314,43 @@ function allCreatorsView(){
 }
 window.ZimiAllCreators={render:allCreatorsView};
 ZimiHome.views['all-creators']=allCreatorsView;
+
+/* The Home trophy opens the creator leaderboard: creators ranked by the gift coins they
+   received today, this week or ever, read from the server. Sample rankings exist only in DEMO. */
+const Board = { period:'daily', rows:[], total:0 };
+const BOARD_PERIODS = [['daily','Daily'],['weekly','Weekly'],['all','All time']];
+function lbLoad(){
+  if(DEMO){
+    const scale={daily:1,weekly:6,all:38}[Board.period];
+    Board.rows=Home.hosts.map((h,index)=>({id:h.id,name:h.n,avatarUrl:h.avatarUrl,coins:(9-index)*1450*scale})).sort((a,b)=>b.coins-a.coins).map((row,index)=>({...row,rank:index+1}));
+    Board.total=Board.rows.length;r();return;
+  }
+  contentStart('leaderboard');Native.send('leaderboard.load',{period:Board.period});r();
+}
+function lbPeriod(value){if(!BOARD_PERIODS.some(([key])=>key===value)||value===Board.period)return;Board.period=value;Board.rows=[];Board.total=0;lbLoad()}
+function lbPeriodKey(event){
+  if(!['ArrowLeft','ArrowRight'].includes(event.key))return;
+  event.preventDefault();
+  const keys=BOARD_PERIODS.map(([key])=>key),next=keys[(keys.indexOf(Board.period)+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length];
+  lbPeriod(next);document.getElementById('board-period-'+next)?.focus();
+}
+function lbHeader(){return `<header class="zh-subheader zlb-header">${backButton("go('home')",{label:"Back to home"})}<h1>Leaderboard</h1></header>`}
+function lbAvatar(row){const src=imageSrc(row.avatarUrl);return `<span class="av zlb-avatar" aria-hidden="true">${esc((first(row.name||'')||'?').charAt(0).toUpperCase())}${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>`}
+// A row opens the creator's profile; the creator is remembered so the profile has a name at once.
+function lbOpen(id){const row=Board.rows.find(x=>x.id===id);if(!row)return;if(!g(id))homeRemember({id:row.id,name:row.name,avatarUrl:row.avatarUrl,role:'host'});go('host',domId(id))}
+function lbView(){
+  const pending=!DEMO&&contentPending('leaderboard'),error=!pending&&!DEMO&&ContentLoading.leaderboard.error;
+  const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
+  const list=Board.rows.length?`<ol class="zlb-list">${Board.rows.map(row=>`<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="Rank ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${n(row.coins)}</span></button></li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here once they receive gifts${Board.period==='daily'?' today':Board.period==='weekly'?' this week':''}.</p></div>`;
+  const body=pending?contentSkeleton('rows','Loading leaderboard',6):error?contentError('leaderboard'):list;
+  return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}"><p class="zlb-note">Creators ranked by gift coins received</p>${body}</div></section>`;
+}
+Native.on('data.leaderboard',d=>{if(d.period!==Board.period)return;Board.rows=d.items||[];Board.total=d.total||0;if(S.v==='board')r()});
+document.addEventListener('aurora:navigate',()=>{if(S.v==='board')lbLoad()});
+ZimiPullRefresh.register('board',{refresh:()=>lbLoad(),busy:()=>contentPending('leaderboard')});
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{Board.period='daily';Board.rows=[];Board.total=0}));
+window.ZimiLeaderboard={load:lbLoad,header:lbHeader,render:lbView};
+ZimiHome.views.board=lbView;
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
 const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
@@ -11996,8 +11897,8 @@ function hsSheet() {
     const gift = hsTargetGift();
     body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${coinIcon(10)} ${n(item.coins)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${n((gift?.coins || 0) * HostStudio.giftCount)} coins</span></div><p class="hs-sheet-note">A personal target for gifts you receive during this session.</p>`;
   } else if (kind === 'card-image') {
-    title = 'Creator card image'; subtitle = 'Shown on your creator card and profile cover';
-    const src=imageSrc(HostStudio.cardDraft||S.coverData||S.user?.coverUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
+    title = 'Creator card image'; subtitle = 'Shown on your creator card';
+    const src=imageSrc(HostStudio.cardDraft||S.user?.creatorCardUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
     body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:hi('user',48)}</div><label class="hs-card-choose">${zi('camera',18)} Choose image<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label>${HostStudio.cardPreparing?'<p role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}<button type="button" class="hc-primary" onclick="hsSaveCard()" ${!HostStudio.cardDraft||busy?'disabled':''}>${HostStudio.cardSaving?'Saving…':'Save card image'}</button>`;
   } else {
     title = 'Beauty & filters'; subtitle = 'Choose the look of your camera preview';
@@ -12008,25 +11909,29 @@ function hsSheet() {
   return `<div class="hs-sheet-backdrop" onclick="if(event.target===this)hsCloseSheet()"><section class="hs-sheet hs-sheet-${kind}" style="--hs-enter-age:-${age}ms" role="dialog" aria-modal="true" aria-labelledby="hs-title" data-lenis-prevent><header><div><h2 id="hs-title">${title}</h2><p>${subtitle}</p></div><button type="button" class="hs-sheet-close" aria-label="Close ${title}" data-hs-focus="close" onclick="hsCloseSheet()">${hi('close', 18)}</button></header><div class="hs-sheet-body">${body}</div></section></div>`;
 }
 function hsCardButton(){
-  const src=imageSrc(S.coverData||S.user?.coverUrl);
+  const src=imageSrc(S.user?.creatorCardUrl);
   return `<button type="button" class="hc-card-image" aria-label="Set creator card image" onclick="hsOpenSheet('card-image')">${src?`<img src="${src}" alt="">`:zi('camera',22)}<span>Creator card image</span>${hi('chev',16)}</button>`;
 }
 async function hsPickCard(event){
   const file=event.target.files?.[0];event.target.value='';if(!file||!hsAllowed()||HostStudio.cardSaving||HostStudio.cardPreparing)return;
-  const owner=S.user;HostStudio.cardPreparing=true;HostStudio.cardError='';hsPaintSheet();
-  try{const photo=await obReadPhoto(file);if(S.user===owner){if(photo.length>2*1024*1024)throw new Error('Choose a smaller image.');HostStudio.cardDraft=photo}}
-  catch(error){if(S.user===owner)HostStudio.cardError=error.message||'Could not prepare this image.'}
-  finally{if(S.user===owner){HostStudio.cardPreparing=false;if(hsAllowed())hsPaintSheet()}}
+  const owner=S.user?.id,run=++mediaSequence;HostStudio.cardPrepareId=run;HostStudio.cardPreparing=true;HostStudio.cardError='';hsPaintSheet();
+  const current=()=>owner===S.user?.id&&run===HostStudio.cardPrepareId;
+  try{const photo=await obReadPhoto(file);if(current()){if(photo.length>2*1024*1024)throw new Error('Choose a smaller image.');HostStudio.cardDraft=photo}}
+  catch(error){if(current())HostStudio.cardError=error.message||'Could not prepare this image.'}
+  finally{if(current()){HostStudio.cardPreparing=false;if(hsAllowed())hsPaintSheet()}}
 }
 function hsSaveCard(){
   if(!hsAllowed()||!HostStudio.cardDraft||HostStudio.cardSaving||HostStudio.cardPreparing)return;
   HostStudio.cardSaving=true;HostStudio.cardError='';HostStudio.cardRequestId=++mediaSequence;
-  if(DEMO){S.coverData=HostStudio.cardDraft;HostStudio.cardDraft='';HostStudio.cardSaving=false;hsCloseSheet();return}
+  if(DEMO){S.user={...S.user,creatorCardUrl:HostStudio.cardDraft};HostStudio.cardDraft='';HostStudio.cardSaving=false;hsCloseSheet();return}
   Native.send('creator.card.save',{photo:HostStudio.cardDraft,requestId:HostStudio.cardRequestId});hsPaintSheet();
 }
 Native.on('creator.card.saved',d=>{
-  if(d.requestId!==HostStudio.cardRequestId)return;
-  obApplyAccount(d.account);HostStudio.cardDraft='';HostStudio.cardSaving=false;
+  if(d.requestId!==HostStudio.cardRequestId||!d.account?.user||d.account.user.id!==S.user?.id)return;
+  const user=d.account.user;
+  S.user={...S.user,creatorCardUrl:obPhotoUrl(user.creatorCardUrl||''),creatorCardKey:user.creatorCardKey};
+  window.ZimiHostAccess?.apply(d.account);
+  HostStudio.cardDraft='';HostStudio.cardSaving=false;
   if(HostStudio.sheet==='card-image')hsCloseSheet();else if(hsAllowed())r();
   appNotice('Creator card image saved.');
 });
@@ -12063,7 +11968,7 @@ function hsResetProgress() {
   HostStudio.receivedCoins = 0; HostStudio.received = Object.create(null); HostStudio.giftNames = Object.create(null); HostStudio.receipts = new Set();
 }
 function hsReset() {
-  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardError:'',cardRequestId:null });
+  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardPrepareId:null,cardError:'',cardRequestId:null });
   delete document.documentElement.dataset.hostPreviewEffect;
 }
 function hsAfter() {
@@ -14576,7 +14481,7 @@ for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.us
    rotate them per screen visit, report a view once a card has been at least
    half on screen for a second (two for video), and send taps through the app,
    which counts the click before it opens the link. Sample ads exist only in DEMO. */
-const ZAds={items:[],adFree:false,picks:{},turn:{},retired:new Set(),counted:new Set(),visible:new Set(),timers:new Map(),videos:new Map(),paused:new Set(),opening:'',observer:null};
+const ZAds={items:[],adFree:false,picks:{},turn:{},retired:new Set(),counted:new Set(),visible:new Set(),timers:new Map(),videos:new Map(),paused:new Set(),opening:'',observer:null,campaignAt:{},campaignHeld:0,campaignTimer:null};
 const zaReduced=matchMedia('(prefers-reduced-motion: reduce)');
 Object.assign(homeIcons,{
   volOff:'<path d="M5 10h3l4-3.5v11L8 14H5z" stroke-linejoin="round"/><path d="m16 9.5 5 5m0-5-5 5" stroke-linecap="round"/>',
@@ -14584,12 +14489,13 @@ Object.assign(homeIcons,{
   playFill:'<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
   crown:'<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z"/>'
 });
-function zaSafe(ad){return !!ad&&/^[a-f\d]{24}$/i.test(ad.id||'')&&['banner','video'].includes(ad.format)&&/^https:\/\/[^\s"'<>\\]+$/.test(ad.mediaUrl||'')&&Array.isArray(ad.placements)&&[ad.headline,ad.advertiser,ad.ctaLabel].every(value=>typeof value==='string'&&value.trim())}
+function zaSafe(ad){return !!ad&&/^[a-f\d]{24}$/i.test(ad.id||'')&&['banner','video','campaign'].includes(ad.format)&&/^https:\/\/[^\s"'<>\\]+$/.test(ad.mediaUrl||'')&&Array.isArray(ad.placements)&&[ad.headline,ad.advertiser,ad.ctaLabel].every(value=>typeof value==='string'&&value.trim())}
 /* Premium removes ads the moment it is confirmed, before the next ad list arrives. */
 function zaAdFree(){return ZAds.adFree||ZThemes.catalog?.premium?.active===true}
 function zaPick(placement){
   if(zaAdFree())return null;
-  const fits=ad=>ad.placements.includes(placement),pinned=ZAds.picks[placement];
+  // Campaign banners rotate in their own carousel (zaCampaigns), never as a card.
+  const fits=ad=>ad.format!=='campaign'&&ad.placements.includes(placement),pinned=ZAds.picks[placement];
   // Keep the card chosen for this visit through redraws, even if it just reached its cap.
   const current=pinned&&ZAds.items.find(ad=>ad.id===pinned&&fits(ad));
   if(current)return current;
@@ -14629,6 +14535,58 @@ function zaBanner(placement){
     <span class="za-banner-copy" onclick="zaOpen('${id}','${placement}')"><b>${esc(ad.headline)}</b><small>${esc(ad.advertiser)} · Sponsored</small></span>
     ${zaCta(ad,placement)}<button type="button" class="za-info za-info-icon" onclick="zaAbout('${id}')" aria-label="About this ad">${hi('info',16)}</button>
   </aside>`;
+}
+
+/* Campaign banners, after the reference: wide pictures that rotate inside the Home and All
+   Creators grids, with position dots and a small Ad label. Each slide is its own ad slot, so a
+   view counts once the slide itself has been on screen for a second, and a tap goes through
+   the same counted click as the cards. The picture carries the campaign's text; the headline
+   is its accessible name. Slides scroll natively, so a swipe moves them; they also advance by
+   themselves unless the member is touching, focusing or hovering them, the banner is off
+   screen, the app is hidden or motion is reduced. */
+const ZA_CAMPAIGN_PLACEMENTS=['home','explore'],ZA_CAMPAIGN_MS=4500;
+function zaCampaignList(placement){
+  if(zaAdFree()||!ZA_CAMPAIGN_PLACEMENTS.includes(placement))return [];
+  return ZAds.items.filter(ad=>ad.format==='campaign'&&ad.placements.includes(placement)&&!ZAds.retired.has(ad.id));
+}
+function zaCampaigns(placement){
+  const list=zaCampaignList(placement);if(!list.length)return '';
+  const at=Math.min(ZAds.campaignAt[placement]||0,list.length-1),many=list.length>1;
+  const slides=list.map((ad,index)=>{const id=esc(ad.id);return `<button type="button" class="za-campaign-slide" data-za-slot="${placement}" data-za-id="${id}" aria-label="${esc(`${ad.headline}, ${ad.advertiser}, sponsored`)}${many?`, ${index+1} of ${list.length}`:''}" onclick="zaOpen('${id}','${placement}')"><img src="${imageSrc(ad.mediaUrl)}" alt="" loading="${index?'lazy':'eager'}" decoding="async"></button>`}).join('');
+  const dots=many?`<span class="za-campaign-dots" aria-hidden="true">${list.map((_,index)=>`<i class="${index===at?'on':''}"></i>`).join('')}</span>`:'';
+  return `<section class="za-campaigns" data-za-campaigns="${placement}" aria-label="Sponsored campaigns" ${many?'aria-roledescription="carousel"':''} onpointerdown="zaCampaignHold()" onfocusin="zaCampaignHold()"><div class="za-campaign-track" onscroll="zaCampaignScrolled(this)">${slides}</div><button type="button" class="za-campaign-ad" onclick="zaCampaignAbout(this)" aria-label="About this ad">Ad</button>${dots}</section>`;
+}
+function zaCampaignIndex(track){return track.clientWidth?Math.round(track.scrollLeft/track.clientWidth):0}
+function zaCampaignScrolled(track){
+  const box=track.closest('[data-za-campaigns]'),at=zaCampaignIndex(track);if(!box)return;
+  ZAds.campaignAt[box.dataset.zaCampaigns]=at;
+  box.querySelectorAll('.za-campaign-dots>i').forEach((dot,index)=>dot.classList.toggle('on',index===at));
+}
+function zaCampaignAbout(button){
+  const track=button.closest('[data-za-campaigns]')?.querySelector('.za-campaign-track'),slide=track?.children[zaCampaignIndex(track)];
+  if(slide)zaAbout(slide.dataset.zaId);
+}
+// A touch or keyboard focus holds the rotation for a while, so a slide never moves under the finger.
+function zaCampaignHold(){ZAds.campaignHeld=Date.now()+8000}
+function zaCampaignTick(){
+  if(document.visibilityState==='hidden'||zaReduced.matches||Date.now()<ZAds.campaignHeld)return;
+  document.querySelectorAll('[data-za-campaigns]').forEach(box=>{
+    const track=box.querySelector('.za-campaign-track'),count=track?.children.length||0;
+    if(count<2||box.contains(document.activeElement)||matchMedia('(hover: hover)').matches&&box.matches(':hover'))return;
+    const rect=box.getBoundingClientRect(),shown=Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0);
+    if(!rect.height||shown<rect.height/2)return;
+    track.scrollTo({left:(zaCampaignIndex(track)+1)%count*track.clientWidth,behavior:'smooth'});
+  });
+}
+// After a redraw, each carousel shows the slide the member was on.
+function zaCampaignAttach(){
+  const boxes=document.querySelectorAll('[data-za-campaigns]');
+  boxes.forEach(box=>{
+    const track=box.querySelector('.za-campaign-track'),at=Math.min(ZAds.campaignAt[box.dataset.zaCampaigns]||0,track.children.length-1);
+    if(track.clientWidth&&zaCampaignIndex(track)!==at)track.scrollLeft=at*track.clientWidth;
+  });
+  if(boxes.length&&!ZAds.campaignTimer)ZAds.campaignTimer=setInterval(zaCampaignTick,ZA_CAMPAIGN_MS);
+  else if(!boxes.length&&ZAds.campaignTimer){clearInterval(ZAds.campaignTimer);ZAds.campaignTimer=null}
 }
 
 /* Screens are redrawn with innerHTML. Each video element is kept and moved into
@@ -14725,11 +14683,11 @@ function zaAbout(id){
 function zaGoPremium(){zaCloseAbout();window.ZimiThemes?.open()}
 
 /* Each screen visit shows the next campaign in rotation and counts its own view. */
-function zaBeforeNavigate(){ZAds.picks={};ZAds.counted.clear();zaStopTimers();zaCloseAbout()}
+function zaBeforeNavigate(){ZAds.picks={};ZAds.campaignAt={};ZAds.counted.clear();zaStopTimers();zaCloseAbout()}
 function zaReset(){
-  zaStopTimers();zaCloseAbout();ZAds.observer?.disconnect();
+  zaStopTimers();zaCloseAbout();ZAds.observer?.disconnect();clearInterval(ZAds.campaignTimer);
   for(const video of ZAds.videos.values()){video.pause();video.removeAttribute('src');video.load()}
-  Object.assign(ZAds,{items:[],adFree:false,picks:{},turn:{},opening:''});
+  Object.assign(ZAds,{items:[],adFree:false,picks:{},turn:{},opening:'',campaignAt:{},campaignHeld:0,campaignTimer:null});
   ZAds.videos.clear();ZAds.retired.clear();ZAds.counted.clear();ZAds.paused.clear();
 }
 Native.on('data.ads',data=>{
@@ -14746,9 +14704,9 @@ Native.on('app.background',()=>{zaPauseAll();zaStopTimers()});
 Native.on('session.none',zaReset);Native.on('session.expired',zaReset);
 zaReduced.addEventListener?.('change',()=>{if(zaReduced.matches)zaPauseAll();document.querySelectorAll('[data-za-controls]').forEach(el=>zaPaintControls(el.dataset.zaControls))});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')zaPauseAll()});
-window.ZimiAds={card:zaCard,banner:zaBanner,beforeNavigate:zaBeforeNavigate,reset:zaReset};
+window.ZimiAds={card:zaCard,banner:zaBanner,campaigns:zaCampaigns,beforeNavigate:zaBeforeNavigate,reset:zaReset};
 const zaPreviousAfterRender=ZimiHome.afterRender;
-ZimiHome.afterRender=()=>{zaPreviousAfterRender();zaAttach();zaObserve()};
+ZimiHome.afterRender=()=>{zaPreviousAfterRender();zaAttach();zaCampaignAttach();zaObserve()};
 
 if(DEMO){
   /* A drawn sample creative, so the preview needs no network or bundled image. */
@@ -14760,6 +14718,28 @@ if(DEMO){
     c.fillStyle='#fff';c.font='700 34px Inter, sans-serif';c.fillText('NEW ON ANDROID',80,230);c.font='800 92px Inter, sans-serif';c.fillText('Binzo Studio',80,340);c.font='500 42px Inter, sans-serif';c.fillText('Edit reels in seconds',80,410);
     ZAds.items=[{id:'00000000000000000000d001',format:'banner',advertiser:'Binzo Studio',headline:'Edit reels in seconds',body:'Templates, music and auto captions. Free on Android.',ctaLabel:'Install now',domain:'play.google.com',mediaUrl:art.toDataURL('image/png'),mediaType:'image/png',logoUrl:'',placements:['home','explore','chats','call_summary']}];
   }
+  /* Drawn sample campaign banners (11:3), like an event banner made by the design team. */
+  const campaign=(dates,title,lines,from,to,accent)=>{
+    const art=document.createElement('canvas');art.width=1100;art.height=300;const c=art.getContext('2d');if(!c)return '';
+    const fill=c.createLinearGradient(0,0,1100,300);fill.addColorStop(0,from);fill.addColorStop(1,to);c.fillStyle=fill;c.fillRect(0,0,1100,300);
+    c.fillStyle='rgba(255,255,255,.1)';c.beginPath();c.arc(930,150,190,0,Math.PI*2);c.fill();
+    // A simple trophy: cup, handles, stem and base.
+    c.fillStyle=accent;c.strokeStyle=accent;c.lineWidth=13;
+    c.beginPath();c.moveTo(872,62);c.lineTo(988,62);c.quadraticCurveTo(990,176,930,182);c.quadraticCurveTo(870,176,872,62);c.fill();
+    c.beginPath();c.arc(872,104,30,Math.PI*.5,Math.PI*1.5);c.stroke();c.beginPath();c.arc(988,104,30,-Math.PI*.5,Math.PI*.5);c.stroke();
+    c.fillRect(918,178,24,42);c.beginPath();c.roundRect?.(878,214,104,24,8);c.fill();
+    c.fillStyle='rgba(0,0,0,.22)';c.font='700 58px Inter, sans-serif';c.textAlign='center';c.fillText('★',930,140);c.textAlign='left';
+    c.fillStyle='#fff';c.font='600 30px Inter, sans-serif';c.fillText(dates,70,78);
+    let size=70;do{c.font=`800 ${size}px Inter, sans-serif`;size-=2}while(c.measureText(title).width>740&&size>36);
+    c.fillStyle=accent;c.fillText(title,66,156);
+    c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.roundRect?.(70,186,520,86,24);c.fill();
+    c.fillStyle='#fff';c.font='600 27px Inter, sans-serif';lines.forEach((line,index)=>c.fillText(line,98,222+index*36));
+    return art.toDataURL('image/png');
+  };
+  [['00000000000000000000d002','29/10 – 05/11','Diwali Gift Festival',['Daily Top 1  ·  20,000 coins','5-Day Top 1  ·  60,000 coins'],'#3a0d4f','#8f1a62','#ffc23d'],
+   ['00000000000000000000d003','Every Sat & Sun','Weekend Call Marathon',['Most call minutes wins','A Home spotlight for a week'],'#082f4f','#0f6f8f','#7ff0ff'],
+   ['00000000000000000000d004','Limited time','Invite & Earn',['100 coins for every friend','who joins and makes a call'],'#4f1a06','#b8401a','#ffd6a0']]
+    .forEach(([id,dates,title,lines,from,to,accent])=>{const mediaUrl=campaign(dates,title,lines,from,to,accent);if(mediaUrl)ZAds.items.push({id,format:'campaign',advertiser:'BinzoLive',headline:title,body:'',ctaLabel:'Open',domain:'binzolive.com',mediaUrl,mediaType:'image/png',logoUrl:'',placements:['home','explore']})});
 }
 
 /* Quiet touch feedback. Controls acknowledge a press without moving the layout,

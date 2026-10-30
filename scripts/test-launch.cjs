@@ -54,12 +54,12 @@ const feed = { hosts: [host], stage: [host], featured: host, total: 1, page: 1, 
     assert.equal(await launched(signedIn), 0, 'Home skeletons stay behind the logo');
     await receive(signedIn, 'data.home', feed);
     await receive(signedIn, 'data.loading', { resource: 'home', loading: false, page: 1 });
-    assert.equal(await launched(signedIn), 0, 'The header balance is still loading');
+    assert.equal(await launched(signedIn), 1, 'Home is ready once its creator feed has settled');
+    assert.equal(await skeletons(signedIn), 0);
     await receive(signedIn, 'wallet.balance', { coins: 1234, earningsPaise: 0 });
     await receive(signedIn, 'data.loading', { resource: 'wallet', loading: false });
-    assert.equal(await launched(signedIn), 1, 'Home with its creators and balance is ready');
+    assert.equal(await launched(signedIn), 1, 'A background wallet response does not send another launch event');
     assert.equal(await skeletons(signedIn), 0);
-    assert.equal(await signedIn.locator('.zh-balance').innerText(), '1,234');
     console.log('PASS signed in: the logo stays until Home has content');
 
     const failed = await open();

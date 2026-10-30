@@ -31,7 +31,7 @@ async function choose(page,button='Change cover photo',file={name:'cover.png',mi
       await page.route('https://**/*',route=>route.fulfill({status:200,contentType:'image/png',body:photo}));
       await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
       await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href);
-      const account={user:{id:ownerId,name:'Asha',role,serverRole:role==='host'?'host':'user',hostStatus:role==='host'?'approved':'none',isVerifiedHost:role==='host',avatarUrl:'https://media.fixture.test/avatar.jpg',coverUrl:'https://media.fixture.test/cover.jpg'},verification:role==='host'?'verified':'none',requiresOnboarding:false};
+      const account={user:{id:ownerId,name:'Asha',role,serverRole:role==='host'?'host':'user',hostStatus:role==='host'?'approved':'none',isVerifiedHost:role==='host',avatarUrl:'https://media.fixture.test/avatar.jpg',coverUrl:'https://media.fixture.test/cover.jpg',...(role==='host'?{creatorCardUrl:'https://media.fixture.test/card.jpg',creatorCardKey:'creator-cards/owner/card.jpg'}:{})},verification:role==='host'?'verified':'none',requiresOnboarding:false};
       await receive(page,'session',account);await receive(page,'data.home',{hosts:[],stage:[],total:0,page:1,categories:[]});
       await loadProfile(page,account);
       await choose(page);
@@ -75,6 +75,10 @@ async function choose(page,button='Change cover photo',file={name:'cover.png',mi
       await receive(page,'profile.cover.saved',{requestId:retry.requestId,account:updated});
       assert.equal(await page.locator('#zu-dialog').count(),0);
       assert.equal(await page.evaluate(()=>S.v),'profile');assert.equal(await page.locator('.zu-cover-photo').getAttribute('src'),savedCover);
+      if(role==='host'){
+        assert.equal(await page.evaluate(()=>S.user.creatorCardUrl),account.user.creatorCardUrl,'Saving the cover preserves the separately saved creator card');
+        assert.equal(await page.evaluate(()=>S.user.creatorCardKey),account.user.creatorCardKey);
+      }
       assert.equal(await page.evaluate(()=>S.mediaDirty.avatar),true);assert.equal(await page.evaluate(()=>S.avatarData),'data:image/png;base64,AAAA');assert.equal(await page.evaluate(()=>S.editName),'Unsaved draft name');
       await choose(page);await page.getByRole('button',{name:'Save cover',exact:true}).click();
       const retired=await last(page,'profile.cover.save');
@@ -84,6 +88,26 @@ async function choose(page,button='Change cover photo',file={name:'cover.png',mi
       assert.equal(await page.evaluate(()=>ZuCover.photo),'');assert.equal(await page.evaluate(()=>ZuCover.saving),false);assert.equal(await page.locator('#zu-dialog').count(),0);
       await page.close();
     }
+    const discovery=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+    discovery.on('pageerror',error=>errors.push(error.message));
+    await discovery.route('https://**/*',route=>route.fulfill({status:200,contentType:'image/png',body:photo}));
+    await discovery.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
+    await discovery.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href);
+    await receive(discovery,'session',{user:{id:ownerId,name:'Member',role:'sender',serverRole:'user'},verification:'none',requiresOnboarding:false});
+    const cardHost={id:'507f1f77bcf86cd799439011',name:'Card host',role:'host',serverRole:'host',verified:true,online:true,availableForCall:true,avatarUrl:'https://media.fixture.test/host-avatar.jpg',coverUrl:'https://media.fixture.test/profile-cover.jpg',creatorCardUrl:'https://media.fixture.test/discovery-card.jpg'};
+    const avatarHost={...cardHost,id:'507f1f77bcf86cd799439012',name:'Avatar host',creatorCardUrl:null};
+    await receive(discovery,'data.home',{hosts:[cardHost,avatarHost],stage:[],total:2,page:1,categories:[]});
+    const cardTile=discovery.locator(`.zh-creator-card[data-host-id="${cardHost.id}"] .zh-photo`);
+    assert.equal(await cardTile.getAttribute('src'),cardHost.creatorCardUrl,'Discovery renders the saved card when its profile cover differs');
+    assert.equal(await discovery.locator(`.zh-creator-card[data-host-id="${avatarHost.id}"] .zh-photo`).getAttribute('src'),avatarHost.avatarUrl,'A creator without a card uses the avatar, never the profile cover');
+    await discovery.evaluate(id=>go('host',id),cardHost.id);
+    const profileRequest=await last(discovery,'profile.load');
+    const {creatorCardUrl:omittedCard,...publicProfile}=cardHost;
+    await receive(discovery,'data.publicProfile',{...profileRequest,profile:{...publicProfile,followers:0,followingCount:0,following:false,languages:[],interests:[]}});
+    assert.equal(await discovery.locator('.zu-cover-photo').getAttribute('src'),cardHost.coverUrl,'The public profile renders its cover independently of discovery');
+    await discovery.evaluate(()=>go('home'));
+    assert.equal(await cardTile.getAttribute('src'),cardHost.creatorCardUrl,'Returning from a public profile without card metadata preserves the known creator card');
+    await discovery.close();
     assert.deepEqual(errors,[]);console.log('PASS inline cover photo: direct picker, preview/cancel, confirmed cover-only save, retry, stale isolation and preserved drafts for members and hosts');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

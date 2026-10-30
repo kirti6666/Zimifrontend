@@ -38,7 +38,7 @@ async function assertProfileCards(page,scope,expected) {
   assert.equal(await area.locator('.zh-person-call,.zh-person-chat,.zh-person-footer').count(),0,'Discovery has no Chat controls');
   const ids = await area.locator('[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId));
   assert.equal(ids.length,expected,'Every creator is represented once');
-  assert.equal(new Set(ids).size,expected,'Featured creators are not duplicated in the grid');
+  assert.equal(new Set(ids).size,expected,'Creators are not duplicated in the grid');
   for(const card of await area.locator('[data-host-id]').all()){
     const labels=await card.getByRole('button').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('aria-label')||''));
     assert.equal(labels.filter(label=>/^View .+ profile$/.test(label)).length,1,'Each discovery card has one profile action');
@@ -68,12 +68,12 @@ async function assertProfileCards(page,scope,expected) {
     await receive(page,'wallet.balance',{coins:1000,earningsPaise:0});
     await acceptFeed(page,feed(hosts.slice(0,8)));
     await navigate(page,'home');
-    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['All','Explore']);
+    assert.deepEqual(await page.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(),['Following','Explore','For You','New']);
     assert.deepEqual(await page.locator('#nav [data-tab]>span').allInnerTexts(),['Home','Chat','Profile','Settings']);
     await assertProfileCards(page,'.zh-dashboard',8);
     await page.evaluate(()=>{window.__prepared=0;window.ZimiMedia.prepare=async()=>{__prepared++};window.ZimiMedia.attach=()=>{}});
-    await page.locator('.zh-featured-profile-hit').click();
-    assert.equal(await page.evaluate(()=>S.v),'host','The complete featured card opens the profile');
+    await page.locator('.zh-creator-card .zh-creator-hit').first().click();
+    assert.equal(await page.evaluate(()=>S.v),'host','The card photo opens the profile');
     await acceptProfile(page,hosts[0]);
     assert.equal(await page.locator('#zu-message').isVisible(),true,'Chat is available on the creator profile');
     assert.equal(await page.locator('#zu-call').isVisible(),true,'Video call is available on the creator profile');
@@ -83,20 +83,20 @@ async function assertProfileCards(page,scope,expected) {
     assert.equal(await page.evaluate(()=>S.v),'precall','Calling begins from the profile and still requires confirmation');
     assert.equal((await sent(page,'call.start')).length,0);
     await navigate(page,'home');
-    await page.locator('.zh-creator-card .zh-creator-hit').first().click();
+    await page.locator('.zh-creator-card .zh-creator-hit').nth(1).click();
     await acceptProfile(page,hosts[1]);
     await page.locator('#zu-message').click();
     assert.equal(await page.evaluate(()=>S.v),'thread','Chat begins from the creator profile');
     await navigate(page,'home');
 
-    await page.getByRole('tab',{name:'Explore',exact:true}).click();
+    await page.getByRole('tab',{name:'Following',exact:true}).click();
     assert.deepEqual(await last(page,'home.reload'),{page:1,mode:'following'});
     await acceptFeed(page,feed([hosts[2],hosts[5]],1,2));
-    await button(page,'See all').click();
+    await navigate(page,'all-creators');
     assert.equal(await page.evaluate(()=>S.v),'all-creators');
     assert.deepEqual(await last(page,'home.reload'),{page:1,mode:'popular'},'All Creators uses the server popular feed');
     assert.equal(await page.locator('.zac-page').getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Changing feed modes shows a real loading state');
-    assert.equal(await page.locator('.zac-page [data-host-id]').count(),0,'Explore results never masquerade as all creators');
+    assert.equal(await page.locator('.zac-page [data-host-id]').count(),0,'Following results never masquerade as all creators');
     await acceptFeed(page,feed(hosts.slice(0,8)));
     await page.getByRole('heading',{name:'All Creators',exact:true}).waitFor();
     assert.equal(await page.locator('#nav').isVisible(),false,'All Creators is a Back page, not another primary tab');
@@ -141,14 +141,14 @@ async function assertProfileCards(page,scope,expected) {
     assert.equal(await page.evaluate(()=>S.v),'home');
     assert.deepEqual(await last(page,'home.reload'),{page:1,mode:'following'},'Back restores the selected Home feed on the server');
     await acceptFeed(page,feed([hosts[2],hosts[5]],1,2));
-    assert.equal(await page.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true');
+    assert.equal(await page.getByRole('tab',{name:'Following',exact:true}).getAttribute('aria-selected'),'true');
     await navigate(page,'explore');
     assert.equal(await page.evaluate(()=>S.v),'home','Legacy Explore links resolve to Home');
     assert.equal(await page.locator('.zh-explore').count(),0,'Explore has no separate page');
-    await page.getByRole('tab',{name:'All',exact:true}).click();
+    await page.getByRole('tab',{name:'Explore',exact:true}).click();
     await acceptFeed(page,feed(hosts.slice(0,8)));
     await page.screenshot({path:path.join(shots,'home.png')});
     assert.deepEqual(errors,[],'The discovery flow has no browser errors');
-    console.log('PASS creator discovery: profile-first featured/grid cards with always-active video call buttons, pull to refresh, Home all/following server feeds, separate All Creators pagination/error/retry, mode restoration, legacy Explore redirect and responsive layout');
+    console.log('PASS creator discovery: profile-first square cards with always-active video call buttons, pull to refresh, Home Explore/Following server feeds, separate All Creators pagination/error/retry, mode restoration, legacy Explore redirect and responsive layout');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

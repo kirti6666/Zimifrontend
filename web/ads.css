@@ -35,7 +35,25 @@
 .za-banner .za-cta{min-height:40px;max-width:38%;padding:8px 12px;border-radius:10px;font-size:calc(11.5px * var(--theme-font-scale,1))}
 .za-info-icon{width:32px;height:32px;padding:0;justify-content:center;border:0}
 
+/* Campaign banners: a wide picture (11:3) that rotates with others, position dots inside
+   the picture and a small Ad label, after the reference. */
+.za-campaigns{position:relative;min-width:0;aspect-ratio:11/3;overflow:hidden;background:var(--raised);isolation:isolate}
+.za-campaign-track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.za-campaign-track::-webkit-scrollbar{display:none}
+.za-campaign-slide{flex:0 0 100%;width:100%;height:100%;padding:0;border:0;background:transparent;scroll-snap-align:center;scroll-snap-stop:always;cursor:pointer}
+.za-campaign-slide>img{display:block;width:100%;height:100%;object-fit:cover}
+.za-campaign-slide:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+.za-campaign-ad{position:absolute;z-index:1;top:6px;right:6px;padding:1px 6px;border:0;background:rgba(0,0,0,.45);color:#fff;font:inherit;font-size:10px;font-weight:600;line-height:1.5;letter-spacing:.3px}
+.za-campaign-ad::after{content:"";position:absolute;inset:50% auto auto 50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.za-campaign-ad:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.za-campaign-dots{position:absolute;z-index:1;left:0;right:0;bottom:6px;display:flex;justify-content:center;gap:4px;pointer-events:none}
+.za-campaign-dots>i{display:block;width:5px;height:5px;background:rgba(255,255,255,.55);transition:width .2s ease,background-color .2s ease}
+.za-campaign-dots>i.on{width:12px;background:#fff}
+@media(prefers-reduced-motion:reduce){.za-campaign-dots>i{transition:none}}
+
 /* Placements. */
+.zh-grid>.za-campaigns{grid-column:1/-1}
+.zh-discover>.za-campaigns{margin-top:18px}
 .zh-grid>.za-card{grid-column:1/-1;margin:4px 0}
 .zh-discover>.za-card{margin-top:18px}
 .zh-trending>.za-card{margin-top:14px}

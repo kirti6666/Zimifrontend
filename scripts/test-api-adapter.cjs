@@ -71,6 +71,10 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const adapters = load('src/api/adapters.ts');
   const media = load('src/api/uploads.ts');
+  const separateHostImages=adapters.hostFrom({_id:'image-host',coverUrl:'https://cdn.example.test/cover.jpg',creatorCardUrl:'https://cdn.example.test/card.jpg'});
+  assert.equal(separateHostImages.coverUrl,'https://cdn.example.test/cover.jpg');
+  assert.equal(separateHostImages.creatorCardUrl,'https://cdn.example.test/card.jpg','Discovery keeps the card separate from the profile cover');
+  assert.equal('creatorCardUrl' in adapters.hostFrom({_id:'partial-host',coverUrl:'https://cdn.example.test/cover.jpg'}),false,'Partial profile updates cannot clear a known discovery card');
   const reacted = adapters.postFrom({ _id: 'p1', mediaUrl: 'https://media.example.test/p.jpg', kind: 'photo', caption: 'Hi', likes: 3.7, comments: -2, liked: true });
   assert.deepEqual([reacted.likes, reacted.comments, reacted.liked], [3, 0, true], 'Post reactions are whole, non-negative counts');
   assert.equal('likes' in adapters.postFrom({ _id: 'p2', mediaUrl: 'https://media.example.test/p.jpg', kind: 'photo' }), false, 'Posts without reactions stay without them');
@@ -250,10 +254,34 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const following=await api.relationships('following');assert.equal(following.users[0].name,'BinzoLive member');assert.equal(following.users[0].canViewProfile,false);finished();
   for(const invalid of [{...connections,total:-1},{...connections,page:0},{...connections,limit:0},{...connections,items:[{user:{name:'Missing ID'}}]}])assert.throws(()=>adapters.relationshipsFrom(invalid,'followers'),/connections could not be loaded/);
   reset();
-  expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/card',key:'covers/member-id/card.png'},body=>assert.equal(body.purpose,'cover'));
-  expect('PATCH','/profile',{},body=>assert.deepEqual(plain(body),{coverKey:'covers/member-id/card.png'}));
-  expect('GET','/auth/me',{user:{...user,coverUrl:'https://cdn.example.test/card.png'}});
-  assert.equal((await api.saveCreatorCard(png)).user.coverUrl,'https://cdn.example.test/card.png');finished();
+  const imageOwner={...user,role:'host',hostStatus:'approved',isVerifiedHost:true,onboardingStatus:'completed',coverKey:'covers/member-id/profile.png',coverUrl:'https://cdn.example.test/profile-cover.png'};
+  let independentImages=imageOwner;
+  for(const file of ['card','updated-card']){
+    reset();
+    const key=`creator-cards/member-id/${file}.png`,url=`https://cdn.example.test/${file}.png`;
+    independentImages={...independentImages,creatorCardKey:key,creatorCardUrl:url};
+    expect('POST','/media/upload-url',{uploadUrl:`https://storage.example.test/${file}`,key},body=>assert.equal(body.purpose,'creator-card'));
+    expect('PATCH','/profile',independentImages,body=>assert.deepEqual(plain(body),{creatorCardKey:key}));
+    const card=await api.saveCreatorCard(png);
+    assert.equal(card.user.creatorCardUrl,url);
+    assert.equal(card.user.creatorCardKey,key);
+    assert.equal(card.user.coverUrl,imageOwner.coverUrl,'Adding or replacing a card preserves the profile cover');
+    assert.equal(card.user.coverKey,imageOwner.coverKey);
+    assert.equal(uploads.length,1);finished();
+  }
+  reset();
+  const newCoverKey='covers/member-id/independent.png',newCoverUrl='https://cdn.example.test/independent-cover.png';
+  independentImages={...independentImages,coverKey:newCoverKey,coverUrl:newCoverUrl};
+  expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/independent-cover',key:newCoverKey},body=>assert.equal(body.purpose,'cover'));
+  expect('PATCH','/profile',independentImages,body=>assert.deepEqual(plain(body),{coverKey:newCoverKey}));
+  const independentlyCovered=await api.saveCoverPhoto(png);
+  assert.equal(independentlyCovered.user.coverUrl,newCoverUrl);
+  assert.equal(independentlyCovered.user.creatorCardUrl,independentImages.creatorCardUrl,'Changing the profile cover preserves the creator card');
+  assert.equal(independentlyCovered.user.creatorCardKey,independentImages.creatorCardKey);finished();
+  expect('GET','/auth/me',{user:independentImages});
+  const reloadedImages=(await api.me(true)).user;
+  assert.equal(reloadedImages.coverUrl,newCoverUrl,'The profile cover survives an account reload');
+  assert.equal(reloadedImages.creatorCardUrl,independentImages.creatorCardUrl,'The separate card survives an account reload');finished();
   reset();
   expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/member-cover',key:'covers/member-id/new.png'},body=>assert.equal(body.purpose,'cover'));
   expect('PATCH','/profile',{},body=>assert.deepEqual(plain(body),{coverKey:'covers/member-id/new.png'}));
@@ -795,11 +823,16 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('GET', '/ads', { adFree: false, items: [creative, 'junk', { ...creative },
     { ...creative, _id: '6a0000000000000000000002', media: { url: 'http://insecure.example/a.png', contentType: 'image/png' } },
     { ...creative, _id: '6a0000000000000000000003', format: 'video', media: { url: 'https://media.example.test/a.png', contentType: 'image/png' } },
-    { ...creative, _id: '6a0000000000000000000004', placements: ['feed'] }] });
+    { ...creative, _id: '6a0000000000000000000004', placements: ['feed'] },
+    { ...creative, _id: '6a0000000000000000000005', format: 'campaign', placements: ['chats', 'explore', 'home'] },
+    { ...creative, _id: '6a0000000000000000000006', format: 'campaign', placements: ['chats', 'call_summary'] },
+    { ...creative, _id: '6a0000000000000000000007', format: 'campaign', media: { url: 'https://media.example.test/a.mp4', contentType: 'video/mp4' } }] });
   const adFeed = await api.ads();
   assert.deepEqual(plain(adFeed), { adFree: false, items: [{ id: adId, format: 'banner', advertiser: 'BinzoLive Studio', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now',
-    domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/a.png', mediaType: 'image/png', logoUrl: '', placements: ['home'] }] },
-    'Unsafe, mismatched, malformed, untargeted and repeated campaigns are dropped');
+    domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/a.png', mediaType: 'image/png', logoUrl: '', placements: ['home'] },
+    { id: '6a0000000000000000000005', format: 'campaign', advertiser: 'BinzoLive Studio', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now',
+    domain: 'play.google.com', mediaUrl: 'https://media.example.test/ads/a.png', mediaType: 'image/png', logoUrl: '', placements: ['explore', 'home'] }] },
+    'Unsafe, mismatched, malformed, untargeted and repeated campaigns are dropped; campaign banners keep only the host-grid placements');
   expect('GET', '/ads', { adFree: true, items: [creative] });
   assert.deepEqual(plain(await api.ads()), { adFree: true, items: [] }, 'An ad-free member gets no ads even if some are sent');
   expect('GET', '/ads', { items: [] });

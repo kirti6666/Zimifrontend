@@ -127,6 +127,7 @@ const page = (demo, hosted = false) =>
   read("web/card-video.css") +
   read("web/flat.css") +
   read("web/all-creators.css") +
+  read("web/leaderboard.css") +
   read("web/wallet.css") +
   read("web/coin-packages.css") +
   read("web/gift-picker.css") +
@@ -151,6 +152,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/home.js") +
   "\n" + read("web/home-dashboard.js") +
   "\n" + read("web/all-creators.js") +
+  "\n" + read("web/leaderboard.js") +
   "\n" + read("web/coins.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +

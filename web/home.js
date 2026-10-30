@@ -1,7 +1,7 @@
 /* Home surfaces use the same authenticated bridge as the rest of the app.
    Preview people, activity and balances exist only in the DEMO build. */
 const Home = {
-  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', page: 1, firstPageIds:[], queryKey:'popular|',
+  loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', region: '', page: 1, firstPageIds:[], queryKey:'popular||',
   searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
   hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
@@ -28,23 +28,36 @@ const homeIcons = {
   rings:'<circle cx="14" cy="12" r="7"/><path d="M6 5a8 8 0 0 0 0 14"/>',
   gift:'<path d="M3 9h18v5H3zM5 14v7h14v-7M12 9v12M12 9C3 9 5 1 9 4l3 5Zm0 0c9 0 7-8 3-5z"/>',
   pulse:'<circle cx="12" cy="12" r="9"/><path d="M16 17a6 6 0 1 1 2-5c0 4-5 4-5 1V9m0 0a3 3 0 1 0 0 5"/>',
-  broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>'
+  broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>',
+  trophy:'<path fill="currentColor" d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.5V7a3 3 0 0 0 3 3M17 5.5h2.5V7a3 3 0 0 1-3 3M12 14v4.5M8.5 20.5h7"/>'
 };
 function hi(name,size=20){if(['coin','rings'].includes(name))return coinIcon(size);return `<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${homeIcons[name]||P[name]||P.star}</svg>`}
 function homeCompact(value){const x=Math.max(0,Number(value)||0);return x>=1000?(x/1000).toFixed(x>=10000?0:1).replace(/\.0$/,'')+'k':n(x)}
 function homeCreator(p){const h=hostFrom(p);return {...h,...('previewVideoUrl' in p?{video:videoSrc(p.previewVideoUrl)}:{}),verified:!!p.verified,about:p.about||'',stream:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream||null:null,viewers:window.ZIMI_LIVE_STREAMING_ENABLED?p.stream?.viewers||0:0}}
 function homeRemember(p){const h=homeCreator(p),old=H.find(x=>x.id===h.id);if(old)Object.assign(old,h);else H.push(h);return h}
 function homeCover(h,priority=false){const src=imageSrc(h.coverUrl||h.avatarUrl);return src?`<img class="zh-photo zh-photo-pending" src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}" data-face-wrap="zh-fallback" loading="${priority?'eager':'lazy'}" decoding="async">`:`<div class="zh-fallback">${face(h)}</div>`}
+function homeCardCover(h){return homeCover({...h,coverUrl:h.creatorCardUrl||h.avatarUrl})}
 /* A slot over the photo; card-video.js fills it with the host's video once the card is in view. */
 function homeCardVideo(h){return h.video?`<span class="zh-card-video" data-video="${h.video}" aria-hidden="true"></span>`:''}
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeCountry(h){const country=typeof h.country==='string'?h.country.trim():'';return country.length<=100&&!/[\u0000-\u001f\u007f]/.test(country)?country:''}
-function homeCountryLabel(h,className='zh-creator-country'){const country=homeCountry(h);return country?`<span class="${className}" data-creator-country title="${esc(country)}">${esc(country)}</span>`:''}
+// India is the only flag for now (drawn in CSS, so it looks the same on every device); other countries show their name.
+function homeFlag(country,className='',decorative=false){return /^india$/i.test(country)?`<span class="zh-flag zh-flag-in ${className}" ${decorative?'aria-hidden="true"':'role="img" aria-label="India"'}></span>`:''}
+function homeCountryLabel(h){const country=homeCountry(h),flag=homeFlag(country);return country?`<span class="zh-creator-country ${flag?'has-flag':''}" data-creator-country title="${esc(country)}">${flag||esc(country)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
 function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:h.on?'<span class="zh-badge zh-offline zh-online"><i></i> Online</span>':'<span class="zh-badge zh-offline">Offline</span>'}
-/* Discovery stays uncategorized; Following is filtered by saved relationships on the server. */
-function homeFeedQuery(){return {mode:S.v==='home'&&Home.dashboardFilter==='following'?'following':'popular'}}
-function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')}
+/* The Home header feeds, filtered and ordered on the server before pagination: Following
+   lists saved follows, For You the creators not followed yet and New the latest creators. */
+const HOME_FEEDS=[['following','Following'],['popular','Explore'],['foryou','For You'],['new','New']];
+// The country chips. India is the only country for now; Popular shows every creator.
+const HOME_REGIONS=[['','Popular'],['India','India']];
+function homeRegionShown(){return Home.dashboardFilter!=='following'}
+function homeFeedQuery(){
+  if(S.v!=='home')return {mode:'popular'};
+  const mode=HOME_FEEDS.some(([key])=>key===Home.dashboardFilter)?Home.dashboardFilter:'popular';
+  return {mode,...(Home.region&&homeRegionShown()?{country:Home.region}:{})};
+}
+function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')+'|'+(query.country||'')}
 function homeLoad(more=false){
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
   Home.error='';Home.loadingMore=more;Home.loading=!DEMO;
@@ -59,14 +72,23 @@ function homeContentError(){return !DEMO&&!ContentLoading.home.background&&(Home
 function homeRefreshNotice(){const error=ContentLoading.home.background&&ContentLoading.home.error;return error?`<div class="zh-error" role="status">${esc(error)}<button type="button" onclick="homeLoad()">Retry updates</button></div>`:''}
 
 function homeFilter(value){Home.filter=value;homeLoad()}
-function homeDashboardFilter(value){if(!['popular','following'].includes(value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;window.homeFeaturedReset?.();homeLoad()}
+function homeDashboardFilter(value){if(!HOME_FEEDS.some(([key])=>key===value)||value===Home.dashboardFilter)return;Home.dashboardFilter=value;homeLoad()}
+function homeRegion(value){if(!HOME_REGIONS.some(([key])=>key===value)||value===Home.region)return;Home.region=value;homeLoad()}
 function homeList(){return Home.hosts}
-function homeFeedTabKey(event){if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?'popular':event.key==='End'?'following':Home.dashboardFilter==='following'?'popular':'following';homeDashboardFilter(next);document.getElementById(next==='following'?'home-tab-following':'home-tab-all')?.focus()}
-function homeHeader(){const following=Home.dashboardFilter==='following';return `<header class="zh-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${[['popular','All'],['following','Explore']].map(([key,label])=>`<button type="button" id="home-tab-${key==='popular'?'all':'following'}" role="tab" aria-selected="${following===(key==='following')}" aria-controls="home-feed-panel" tabindex="${following===(key==='following')?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`).join('')}</div><div class="zh-header-actions">${homeDashboardHostEntry()}<button type="button" class="zh-balance zh-wallet-icon" onclick="go('coins')" aria-label="${!DEMO&&contentPending('wallet')&&!ContentLoading.wallet.loaded?'Wallet balance loading':!DEMO&&ContentLoading.wallet.error?'Wallet unavailable':'Wallet, '+n(S.bal)+' coins'}">${hi('rings',20)}<span class="zh-wallet-value">${contentBalance()}</span></button><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',22)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications${Home.unreadCount?', '+Home.unreadCount+' unread':''}">${hi('bell',21)}${Home.unreadCount?'<i></i>':''}</button></div></header>`}
+function homeFeedTabKey(event){
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const keys=HOME_FEEDS.map(([key])=>key),at=keys.indexOf(Home.dashboardFilter);
+  const next=event.key==='Home'?keys[0]:event.key==='End'?keys.at(-1):keys[(at+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length];
+  homeDashboardFilter(next);document.getElementById('home-tab-'+next)?.focus();
+}
+// Like the reference: the feed tabs, then Search and the creator leaderboard.
+function homeHeader(){return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
+function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="zh-region-chips" role="group" aria-label="Country">${HOME_REGIONS.map(([key,label])=>`<button type="button" aria-pressed="${Home.region===key}" onclick="homeRegion('${key}')">${key?homeFlag(key,'zh-flag-chip',true):''}<span>${label}</span></button>`).join('')}</div>`}
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
-  if(['notifications','themes','all-creators'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
+  if(['notifications','themes','all-creators','board'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
   if(!['home','chats','profile','settings'].includes(S.v))return false;
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
@@ -76,20 +98,24 @@ function homeNav(){
 function homeStage(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return '';const rows=Home.stage.slice(0,12),pending=homeContentPending(),error=homeContentError();return `<section class="zh-stage" aria-label="Live creators"><div class="zh-section-title"><h2><i></i>Stage &amp; Live Calls</h2><span>${pending?skeletonLine('94px',10):error?'':homeCompact(Home.broadcasterCount)+' BROADCASTERS'}</span></div><div class="zh-stories">${isApprovedHost()?`<button class="zh-story zh-story-create" onclick="homeGoLive()"><span class="zh-story-ring">${hi('plus',24)}<i>${hi('vid',10)}</i></span><span>Go Live</span></button>`:''}${pending?contentSkeleton('stories','Loading live creators',4):error?'':rows.map(h=>`<button class="zh-story" onclick="homeOpen('${domId(h.id)}')" aria-label="${h.stream?'Watch':'Call'} ${esc(h.n)}"><span class="zh-story-ring ${h.stream?'':'zh-story-call'}">${homeCover(h)}<b>${h.stream?'LIVE':hi('ph',9)+' 1:1'}</b></span><span>${esc(first(h.n))}</span></button>`).join('')}${!pending&&!error&&!rows.length?'<span class="zh-stage-empty">Your next favourite creator is on the way.</span>':''}</div></section>`}
 
 function homeFilters(){return ''}
-function homeFeatured(){if(homeContentPending())return homeDashboardHeroSkeleton();if(homeContentError())return '';const h=Home.featured||homeList()[0];return h?homeDashboardCard(h,true):''}
 function homeMatch(){if(homeContentPending())return `<div class="zh-match">${contentSkeleton('match','Loading video matches')}</div>`;if(homeContentError())return '';if(!Home.speedMatchEnabled)return '';return `<section class="zh-match"><div><h2>${hi('pulse',20)} Speed Video Pulse</h2><p>Find your next conversation.</p><div class="zh-available"><span class="zh-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>${homeCompact(Home.availableCount)} Available</div></div><button class="zh-primary" onclick="homeMatchNow()" ${Home.matching||!Home.availableCount?'disabled':''}>${hi('bolt',19)} ${Home.matching?'Finding…':'Match'}</button></section>`}
-/* One profile-first photo card for Home, All Creators and Search. Discovery never
-   places a call or opens chat; those actions belong to the creator profile. */
-// The verified mark rides on the avatar so the name keeps the bottom row's width.
-function homeAvatar(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return `<span class="zh-creator-avatar"><span class="zh-creator-face" aria-hidden="true">${esc((first(h.n||'')||'?').charAt(0).toUpperCase())}${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>${homeVerified(h)}</span>`}
+/* One square photo card for Home, All Creators and Search, like the reference: the status
+   tag over the photo, then name and country flag, with the round video call button that is
+   always active. Tapping the photo opens the profile; chat belongs on the profile. */
 function homeTile(h){
   const id=domId(h.id),live=!!h.stream;
-  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><div class="zh-creator-top"><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><span class="zh-creator-price ${live||h.rate>0?'':'is-free'}">${live?`${hi('eye',11)} ${homeCompact(h.viewers)}`:h.rate>0?`${hi('rings',13)}${n(h.rate)}/min`:'Free'}</span></div><div class="zh-creator-bottom">${homeAvatar(h)}<div class="zh-creator-text"><h3>${esc(h.n)}</h3><p>${esc(h.stream?.title||h.tag||h.cat||'Creator')}</p></div><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',18)}</button>${homeCountryLabel(h)}</div></article>`;
+  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
 }
 function homeBonus(){if(!isApprovedHost())return '';if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
-// Sponsored cards sit inside a host grid after its first rows (or below a short grid), never above the hosts.
-const HOME_AD_AFTER=6;
-function homeGridWithAd(cards,placement){const ad=window.ZimiAds?.card(placement)||'';return ad?[...cards.slice(0,HOME_AD_AFTER),ad,...cards.slice(HOME_AD_AFTER)].join(''):cards.join('')}
+// Like the reference, campaign banners rotate after the first two rows of hosts; a sponsored
+// card sits further down, after ten hosts. A short grid keeps both below its hosts, never above.
+const HOME_CAMPAIGN_AFTER=4,HOME_AD_AFTER=10;
+function homeGridWithAd(cards,placement){
+  const rows=[...cards],ad=window.ZimiAds?.card(placement)||'',campaigns=window.ZimiAds?.campaigns(placement)||'';
+  if(ad)rows.splice(Math.min(HOME_AD_AFTER,cards.length),0,ad);
+  if(campaigns)rows.splice(Math.min(HOME_CAMPAIGN_AFTER,cards.length),0,campaigns);
+  return rows.join('');
+}
 function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A little quiet right now</h3><p>${Home.filter==='instant'?'No creators are available for a call right now. Pull down to refresh.':'Try another category or come back for a conversation.'}</p></div>`}
 
 function homeScreen(){return homeDashboard()}
@@ -219,12 +245,13 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   // Main tabs already provide their title and relevant actions in the page.
   if(['all-creators','chats','profile','settings'].includes(S.v))return '';
   if(S.v==='themes')return window.ZimiThemes.header();
+  if(S.v==='board')return window.ZimiLeaderboard.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
   const title={notifications:'Notifications',broadcast:'Go Live'}[S.v];
   return title?`<header class="zh-subheader">${backButton("go('home')",{label:"Back to home"})}<h1>${title}</h1></header>`:null;
-},afterRender:()=>{contentImagesReady();homeShowCloseError();window.homeFeaturedAfterRender?.();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
+},afterRender:()=>{contentImagesReady();homeShowCloseError();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{
   const retainPages=d.background&&Home.loaded&&Home.page>1,previousFirst=new Set(Home.firstPageIds);
@@ -271,18 +298,18 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','all-creators','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',page:1,firstPageIds:[],queryKey:'popular|'});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','all-creators'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
 
 if(DEMO){
   const demo=[
-    {id:'aanya',name:'Ananya Iyer',category:'Music',tag:'Ghazals, guitar and late-night chai',avatarUrl:PREVIEW_HOSTS[0],coverUrl:PREVIEW_HOSTS[0],ratePerMin:50,entryFee:0,online:true,live:true,verified:true,availableForCall:true,stream:{id:'demo-ananya',title:'Ghazals, guitar and late-night chai',kind:'video',viewers:3400}},
-    {id:'meher',name:'Meher Kaur',category:'Music',tag:'Sufi songs and slow evenings',avatarUrl:PREVIEW_HOSTS[1],coverUrl:PREVIEW_HOSTS[1],ratePerMin:40,online:true,verified:true,availableForCall:true},
-    {id:'ishaan',name:'Ishita Rao',category:'Gaming',tag:'BGMI ranked and friendly banter',avatarUrl:PREVIEW_HOSTS[2],coverUrl:PREVIEW_HOSTS[2],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-ishaan',title:'BGMI ranked and friendly banter',kind:'video',viewers:890}},
-    {id:'noor',name:'Noor Siddiqui',category:'Talk',tag:'Deep talks over chai',avatarUrl:PREVIEW_HOSTS[3],coverUrl:PREVIEW_HOSTS[3],ratePerMin:60,online:true,verified:false,availableForCall:true},
-    {id:'kabir',name:'Kavya Malhotra',category:'Music',tag:'Bollywood, unplugged',avatarUrl:PREVIEW_HOSTS[4],coverUrl:PREVIEW_HOSTS[4],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-kabir',title:'Bollywood, unplugged',kind:'video',viewers:2100}}
+    {id:'aanya',country:'India',name:'Ananya Iyer',category:'Music',tag:'Ghazals, guitar and late-night chai',avatarUrl:PREVIEW_HOSTS[0],coverUrl:PREVIEW_HOSTS[0],ratePerMin:50,entryFee:0,online:true,live:true,verified:true,availableForCall:true,stream:{id:'demo-ananya',title:'Ghazals, guitar and late-night chai',kind:'video',viewers:3400}},
+    {id:'meher',country:'India',name:'Meher Kaur',category:'Music',tag:'Sufi songs and slow evenings',avatarUrl:PREVIEW_HOSTS[1],coverUrl:PREVIEW_HOSTS[1],ratePerMin:40,online:true,verified:true,availableForCall:true},
+    {id:'ishaan',country:'India',name:'Ishita Rao',category:'Gaming',tag:'BGMI ranked and friendly banter',avatarUrl:PREVIEW_HOSTS[2],coverUrl:PREVIEW_HOSTS[2],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-ishaan',title:'BGMI ranked and friendly banter',kind:'video',viewers:890}},
+    {id:'noor',country:'India',name:'Noor Siddiqui',category:'Talk',tag:'Deep talks over chai',avatarUrl:PREVIEW_HOSTS[3],coverUrl:PREVIEW_HOSTS[3],ratePerMin:60,online:true,verified:false,availableForCall:true},
+    {id:'kabir',country:'India',name:'Kavya Malhotra',category:'Music',tag:'Bollywood, unplugged',avatarUrl:PREVIEW_HOSTS[4],coverUrl:PREVIEW_HOSTS[4],online:true,live:true,verified:true,availableForCall:false,stream:{id:'demo-kabir',title:'Bollywood, unplugged',kind:'video',viewers:2100}}
   ];
   Home.hosts=demo.map(homeRemember);Home.featured=Home.hosts[0];Home.stage=[Home.hosts[0],Home.hosts[2],Home.hosts[1],Home.hosts[4]];Home.hosts=[Home.hosts[1],Home.hosts[2],Home.hosts[3],Home.hosts[4],Home.hosts[0]];
   Home.total=5;Home.broadcasterCount=1400;Home.availableCount=1420;S.bal=1250;

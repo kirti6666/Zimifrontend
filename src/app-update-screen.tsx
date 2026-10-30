@@ -2,7 +2,13 @@ import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text
 import { useEffect } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 import type { UpdateState } from "./app-update-controller";
+
+function onUpdateLayout() {
+  // AppContent and its launch logo are not mounted while the update gate owns the screen.
+  void SplashScreen.hideAsync().catch(() => {});
+}
 
 export function AppUpdateScreen({ state, update, check }: { state: UpdateState; update(): void; check(): void }) {
   useEffect(() => {
@@ -13,7 +19,7 @@ export function AppUpdateScreen({ state, update, check }: { state: UpdateState; 
   const required = state.status === "required";
   const progress = Math.round(state.progress * 100);
   const label = state.phase === "permission" ? "Continue update" : state.phase === "installer" || state.phase === "ready" ? "Install update" : state.error && required ? "Retry update" : "Update now";
-  return <SafeAreaProvider><SafeAreaView style={styles.safe}>
+  return <SafeAreaProvider><SafeAreaView style={styles.safe} onLayout={onUpdateLayout}>
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.card} accessibilityViewIsModal>

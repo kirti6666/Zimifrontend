@@ -118,7 +118,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     for (const view of ['home', 'all-creators', 'chats', 'profile', 'settings']) {
       await nav(page, view);
       if (view === 'all-creators') await receive(page, 'data.home', home);
-      const rules = view === 'home' ? [bg('.zh-person-card', 'surface'), ink('.zh-section-title h2'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'all-creators' ? [ink('.zac-heading h1')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : view === 'profile' ? [bg('.zu-own-page', 'surface')] : [bg('.zp-wallet', 'wallet'), ...cta('.zp-topup')];
+      const rules = view === 'home' ? [bg('.zh-region-chips [aria-pressed="false"]', 'surfaceElevated'), ink('.zh-region-chips [aria-pressed="false"]', 'textMuted'), bg('.zh-region-chips [aria-pressed="true"]', 'primary'), ink('.zh-region-chips [aria-pressed="true"]', 'primaryContrast'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'all-creators' ? [ink('.zac-heading h1')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : view === 'profile' ? [bg('.zu-own-page', 'surface')] : [bg('.zp-wallet', 'wallet'), ...cta('.zp-topup')];
       await mountedThemes(page, view, rules);
     }
     for (const view of ['themes', 'wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {

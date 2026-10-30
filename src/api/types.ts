@@ -22,6 +22,8 @@ export interface User {
   avatarKey?: string;
   coverUrl?: string;
   coverKey?: string;
+  creatorCardUrl?: string;
+  creatorCardKey?: string;
   photos?: { key: string; url: string }[];
   languages?: string[];
   interests?: string[];
@@ -87,6 +89,8 @@ export interface Host {
   age?: number;
   avatarUrl?: string;
   coverUrl?: string;
+  /** Independent artwork for discovery cards, separate from the profile cover. */
+  creatorCardUrl?: string;
   /** The host's newest video post, played muted on discovery cards; null when they have none. */
   previewVideoUrl?: string | null;
   gender?: Gender;
@@ -152,7 +156,8 @@ export interface Mission {
   claimed: boolean;
   endsAt: string;
 }
-export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant" | "online" | "following"; page?: number; }
+// For You leaves out followed hosts; New lists the latest hosts first. `country` filters on the server.
+export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant" | "online" | "following" | "foryou" | "new"; country?: string; page?: number; }
 export interface HomeData {
   hosts: Host[];
   stage: Host[];
@@ -318,6 +323,10 @@ export interface CallRecord {
   status?: "ringing" | "accepted" | "ended" | "declined" | "missed";
 }
 
+export type LeaderboardPeriod = "daily" | "weekly" | "all";
+/** Creators ranked by the gift coins they received in the period. */
+export interface LeaderboardEntry { id: string; name: string; avatarUrl: string; coins: number; rank: number; }
+export interface Leaderboard { period: LeaderboardPeriod; items: LeaderboardEntry[]; total: number; }
 export interface Transaction {
   title: string;
   time: string;
@@ -356,10 +365,11 @@ export interface Payouts {
 
 export type AdPlacement = "home" | "explore" | "chats" | "call_summary";
 
-/** A sponsored card for a member on the free plan. The destination stays on the server until a counted tap. */
+/** A sponsored card for a member on the free plan. The destination stays on the server until a counted tap.
+ *  A `campaign` is a wide image banner that rotates with others inside the Home and All Creators grids. */
 export interface AdCreative {
   id: string;
-  format: "banner" | "video";
+  format: "banner" | "video" | "campaign";
   advertiser: string;
   headline: string;
   body: string;

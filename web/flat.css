@@ -169,7 +169,10 @@ html,body,.app,#top,#scroll-root,#screen {
 :root[data-theme-id] body {line-height:1.5}
 :root[data-theme-id] :is(.zc-heading h1,.zu-identity h1,.zh-subheader h1,.zp-dialog-heading h2,.zu-dialog h2) {font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;line-height:1.25;letter-spacing:-.5px}
 :root[data-theme-id] :is(.zp-dialog-heading h2,.zu-dialog h2) {font-size:calc(20px * var(--theme-font-scale,1));letter-spacing:-.3px}
-:root[data-theme-id] :is(.zh-feed-tabs>[role=tab],.zh-section-title h2) {font-weight:600}
+:root[data-theme-id] .zh-section-title h2 {font-weight:600}
+/* Like the reference, the selected Home feed is bold and the others medium. */
+:root[data-theme-id] .zh-feed-tabs>[role=tab] {font-weight:500}
+:root[data-theme-id] .zh-feed-tabs>[aria-selected=true] {font-weight:700}
 :root[data-theme-id].zh-app .zh-nav>button {font-size:calc(11px * var(--theme-font-scale,1));font-weight:400;color:var(--muted)}
 :root[data-theme-id].zh-app .zh-nav>button.on {color:var(--ink);font-weight:600}
 :root[data-theme-id].zh-app .zh-nav>button[data-tab]::before {display:none!important}
@@ -178,19 +181,12 @@ html,body,.app,#top,#scroll-root,#screen {
 .zf-face {filter:grayscale(1)}
 
 /* Photo-led discovery keeps names and actions easy to read. */
-.zh-home.zh-dashboard {padding:16px 20px 28px}
+.zh-home.zh-dashboard {padding:4px 14px 28px}
 :root[data-theme-id] .zh-home.zh-dashboard .zh-section-title h2 {font-size:calc(18px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.25px}
 .zh-heading-dot {display:none}
 .zh-home.zh-dashboard .zh-section-title {margin-bottom:12px}
-.zh-home.zh-dashboard .zh-featured-host {aspect-ratio:1.22;min-height:288px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;letter-spacing:-.45px}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-profile p {font-size:calc(12px * var(--theme-font-scale,1));font-weight:400;line-height:1.5}
-.zh-home.zh-dashboard .zh-featured-host .zh-person-status {font-weight:500;letter-spacing:0}
-.zh-home.zh-dashboard .zh-person-action {min-height:44px;font-weight:600}
-.zh-home.zh-dashboard .zh-grid {gap:12px}
-.zh-creator-text h3 {font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;line-height:1.35;letter-spacing:-.15px}
-.zh-creator-text p {font-size:calc(11px * var(--theme-font-scale,1));line-height:1.45}
-.zh-creator-status,.zh-creator-price {font-weight:500;letter-spacing:0}
+.zh-home.zh-dashboard .zh-grid {gap:8px}
+.zh-creator-status {font-weight:500;letter-spacing:0}
 .zh-home.zh-dashboard .zh-host-empty {padding:28px 20px;background:var(--surface);background-image:none}
 .zh-home-empty-scene {width:56px;height:56px;margin:0 auto 20px;color:var(--ink)}
 .zh-empty-stage {position:static;width:56px;height:56px;transform:none!important;animation:none!important;border:1px solid var(--line);background:var(--raised)}
@@ -300,9 +296,7 @@ html,body,.app,#top,#scroll-root,#screen {
 :is(.zp-dialog,.zc-dialog,.zu-dialog)::backdrop {background:#18181b66;backdrop-filter:none}
 @media(prefers-reduced-motion:no-preference) {
   :is(.zp-dialog,.zc-dialog,.zu-dialog)[open] {animation:binzo-dialog-in 180ms cubic-bezier(.2,.7,.2,1)}
-  .zh-featured-enter .zh-person-media>:is(.zh-photo:not(.zh-photo-pending),.zh-fallback),.zh-featured-enter .zh-person-content {animation:binzo-photo-in 180ms ease-out both}
   @keyframes binzo-dialog-in {from{opacity:0;translate:0 4px}to{opacity:1;translate:0 0}}
-  @keyframes binzo-photo-in {from{opacity:0}to{opacity:1}}
 }
 @media(min-width:760px) {
   .zu-cover {height:220px}
@@ -310,9 +304,8 @@ html,body,.app,#top,#scroll-root,#screen {
   .zh-home.zh-dashboard {padding:20px 24px 32px}
 }
 @media(max-width:359px) {
-  .zh-home.zh-dashboard,.zc-chats {padding-left:20px;padding-right:20px}
-  .zh-home.zh-dashboard .zh-featured-host {min-height:270px}
-  .zh-home.zh-dashboard .zh-featured-host .zh-person-profile h3 {font-size:calc(21px * var(--theme-font-scale,1))}
+  .zc-chats {padding-left:20px;padding-right:20px}
+  .zh-home.zh-dashboard {padding-left:10px;padding-right:10px}
 }
 
 /* Every page uses the same Back geometry and glyph; screen classes only position it. */
@@ -334,7 +327,7 @@ html:root :is(
   .av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
   .hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i,
   .zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified,
-  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,.zc-call-badge,.zc-call-back
+  .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,.zc-call-badge,.zc-call-back,.zlb-avatar
 ) {border-radius:999px!important}
 html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
 html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::before,
@@ -347,8 +340,9 @@ html:root #zimi-pull {border-radius:999px!important}
 .zu-tabs {border-bottom:0}
 .acctrow+.acctrow {border-top:0}
 
-/* Straight page edges and single-line separators never inherit a card's corners. */
+/* Straight page edges and single-line separators never inherit a card's corners, and a
+   country flag keeps a flag's square corners. */
 html:root{border-radius:0!important}
-html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i){border-radius:0!important}
+html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}

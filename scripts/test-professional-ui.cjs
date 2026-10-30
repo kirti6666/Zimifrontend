@@ -76,10 +76,13 @@ async function audit(page, label) {
         await navigate(page, view);
         await audit(page, `${view} ${width}px`);
         if (view === 'home') {
-          const heading = await style(page, '.zh-section-title h2');
-          assert.equal(heading.fontSize, '18px', 'Home uses a clear section hierarchy');
-          assert.equal(heading.weight, '600', 'Home headings use restrained semibold type');
-          if (width < 760) assert.equal((await style(page, '.zh-dashboard')).paddingLeft, '20px', 'Mobile content uses a consistent gutter');
+          // Like the reference: the selected feed is the bold, larger heading of Home.
+          const [selected, other] = await Promise.all([style(page, '.zh-feed-tabs>[aria-selected="true"]'), style(page, '.zh-feed-tabs>[aria-selected="false"]')]);
+          assert.equal(selected.weight, '700', 'The selected Home feed is bold');
+          assert.equal(other.weight, '500', 'The other Home feeds are medium');
+          assert.ok(parseFloat(selected.fontSize) > parseFloat(other.fontSize), 'The selected Home feed is larger');
+          assert.equal(await page.locator('.zh-dashboard .zh-section-title').count(), 0, 'Home has no section titles over the grid');
+          if (width < 760) assert.equal((await style(page, '.zh-dashboard')).paddingLeft, width < 360 ? '10px' : '14px', 'Home uses the narrow gutter of the reference');
         } else if (view === 'chats') {
           const heading = await style(page, '.zc-heading h1');
           assert.equal(heading.fontSize, '24px', 'Chats has a readable page heading');

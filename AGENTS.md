@@ -23,8 +23,8 @@ keeps it identical to the original Next.js version.
   every call button, avatars and switches are always circles. Keep that list in
   step with `ROUND` in `scripts/flat-corners.cjs`. Lines never get rounded
   ends: dividers, single-side borders, tab and navigation underlines and
-  edge-to-edge surfaces (the post feed, page shells) keep square corners via the
-  straight list in `web/flat.css`, mirrored by `STRAIGHT` in
+  edge-to-edge surfaces (the post feed, page shells) and country flags keep square
+  corners via the straight list in `web/flat.css`, mirrored by `STRAIGHT` in
   `scripts/flat-corners.cjs`. Headers sit on the page without a divider line,
   and settings rows have no dividers.
   Account themes customize accents and typography while keeping the white canvas.
@@ -77,39 +77,43 @@ keeps it identical to the original Next.js version.
   `ZIMI_LIVE_STREAMING_ENABLED` and native `LIVE_STREAMING_ENABLED` off; retain
   private video/voice calling. Hide stream discovery, broadcasts, links and
   queues, and route creator availability through the 1:1 call setup.
-- The Home header has All/Explore tabs in place of the app name, then
-  (approved hosts only) the host's own Online/Offline status, the coin
-  balance, Search and Notifications. All lists every host; Explore (the renamed
-  Following header tab) keeps the server's `mode: "following"` feed. No category chips on Home or All Creators
-  for now. Home shows a featured photo card and a two-column host grid titled
-  "Instant Connect" ("Following" on that tab). Cards
-  open the creator profile; Chat belongs on that profile. Use
-  the selected theme's colors. Filter hosts on the
-  server before pagination; feature a host once across hero/grid.
-- Every host list (Home grid, All Creators, Search) uses the photo card `homeTile`
-  in `web/home.js`, matching the user's reference: Online and price pills over
-  the photo, then avatar, name, tagline and a round video call button that is always
-  active (never disabled, whatever the host's status; `homeCall` explains when a
-  call can't start). Do not add Chat buttons to discovery cards.
-  Sponsored cards go inside the grid after six hosts (`HOME_AD_AFTER`), or
-  below a shorter grid; never above the hosts.
-- The featured card (`HomeFeatured` in `web/home-dashboard.js`) spotlights
-  the server's featured creator and the next four, rotating every 6s. It has
-  no control row under it (no position text, progress bar, Pause or Next):
-  dots inside the card show the position and jump to a creator, a sideways
-  swipe moves it, a tap opens the profile, and the card carries the Online and
-  price pills plus a round, always-active video call button like the grid
-  cards. It holds while touched, hovered, focused or scrolled away, while the
-  app is backgrounded or Home is loading, and never rotates by itself for
-  reduced motion.
+- The Home header follows the user's reference: Following, Explore, For You
+  and New tabs in place of the app name (the selected one larger and bold),
+  then Search and a gold trophy that opens the creator leaderboard (`board`,
+  `web/leaderboard.js`, real `GET /leaderboard/creators` data). No wallet or
+  notification bell on Home. The feeds map to the server's `mode`: Following
+  = `following`, Explore = `popular` (default), For You = `foryou` (hosts not
+  followed yet), New = `new` (latest hosts first). Under the header, country
+  chips: Popular and India only for now (`country=India`), hidden on
+  Following. Then one square-card two-column grid with "Load more"; there is
+  no featured card, section title or category chips. An approved host's
+  availability is a floating "Go online"/"Online" button at the bottom right of
+  Home, where the reference has its LIVE button. Use the selected theme's
+  colors. Filter hosts on the server before pagination.
+- Every host list (Home grid, All Creators, Search) uses the square photo card
+  `homeTile` in `web/home.js`, matching the user's reference: an Online tag over
+  the photo, then the name with the country (India as a rectangular CSS flag, never a circle; other
+  countries as text) and a round video call button that is always active
+  (never disabled, whatever the host's status; `homeCall` explains when a call
+  can't start). No price, tagline or avatar on the card, and no Chat buttons.
+  Ads sit inside the host grids (Home and All Creators), never above the hosts.
+  Campaign banners (ad format `campaign`, from the user's reference) rotate
+  after the first two rows (`HOME_CAMPAIGN_AFTER` = 4 hosts): a full-width 11:3
+  picture with its text drawn in, position dots, a small "Ad" label that opens
+  About this ad, native swipe, auto-advance every 4.5s (held while touched,
+  focused, hovered, off screen or hidden; never with reduced motion), a counted
+  view per slide and a counted tap (`zaCampaigns` in `web/ads.js`). Sponsored
+  cards (banner/video) follow ten hosts (`HOME_AD_AFTER`). A shorter grid keeps
+  both below its hosts.
 - Never show a host as offline. `hostFrom` in `web/aurora-runtime.js` marks
   every host online and lets members call an offline host (the server rings
   until the call is missed); only an online host's own call settings make
   calls unavailable. New screens must read `h.on`/`h.available`, never the
   raw `online` field.
 - The bottom tabs are Home, Chat, Profile and Settings (the chat route remains
-  `chats`). Explore is removed; old Explore routes resolve to Home. "See All"
-  opens `all-creators`, a paginated detail page with Back and no bottom tabs.
+  `chats`). Explore is removed; old Explore routes resolve to Home. `all-creators`
+  (from the Home empty state) and the `board` leaderboard are detail pages
+  with Back and no bottom tabs.
   Profile and Settings are separate screens;
   Settings owns the total coin balance card and Add coins action.
 - Shared tab geometry lives in `web/navigation.css`: 58px content bar, 44px
@@ -166,9 +170,9 @@ keeps it identical to the original Next.js version.
   themes and embedded coin checkout unchanged. Reference gift names appear first
   when present, with all remaining real catalog gifts below. Selection reveals
   the explicit Send action; never invent gifts, prices or wallet balances.
-- Show the All/Explore Home header only on Home. Chat, Profile and
+- Show the Following/Explore/For You/New Home header only on Home. Chat, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
-  the same size across those main screens; All Creators, Notifications and Themes
+  the same size across those main screens; All Creators, Leaderboard, Notifications and Themes
   have their own Back headers and no bottom tabs. Themes opens as a page, not
   a settings modal. Animate only page content on tab changes and
   respect reduced-motion preferences.

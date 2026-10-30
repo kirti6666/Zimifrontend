@@ -5,7 +5,7 @@ import { AppState, Linking, Share } from "react-native";
 import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
-import type { RelationshipKind, Relationships } from "./api/types";
+import type { LeaderboardPeriod, RelationshipKind, Relationships } from "./api/types";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
 import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet, PostComment, PostComments } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
@@ -56,6 +56,7 @@ export type WebMessage =
   | { type: "payments.routes.load"; data: { requestId: number } }
   | { type: "wallet.load"; data: Record<string, never> }
   | { type: "transactions.load"; data: Record<string, never> }
+  | { type: "leaderboard.load"; data: { period: LeaderboardPeriod } }
   | { type: "wallet.verify"; data: { merchantOrderId: string } }
   | { type: "payments.checkout.closed"; data: { kind: "coins" | "premium"; merchantOrderId?: string; idempotencyKey?: string } }
   | { type: "themes.load"; data: Record<string, never> }
@@ -117,7 +118,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard";
 export type AppMessage =
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
@@ -225,6 +226,7 @@ export type AppMessage =
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
+  | { type: "data.leaderboard"; data: Awaited<ReturnType<typeof api.leaderboard>> }
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "payout.loaded"; data: Payouts & { requestId: number; pending?: PendingPayout | null; recovered?: Payout | null } }
   | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
@@ -579,7 +581,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const homeFlightCurrent = () => homeFlight && current(homeFlight.epoch) && homeFlight.session === getSessionVersion() && homeFlight.document === documentRevision;
   const loadHome = (query = homeQuery, background = false): Promise<void> => {
     query = { ...query };
-    const key = JSON.stringify([query.mode, query.category, query.q, query.page ?? 1]);
+    const key = JSON.stringify([query.mode, query.category, query.country, query.q, query.page ?? 1]);
     if (homeFlightCurrent() && homeFlight!.key === key && (background || !homeFlight!.background)) {
       if (background) homeInvalidated = true;
       return homeFlight!.work;
@@ -1039,6 +1041,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "connection.check": await checkConnection(); return;
       case "wallet.load": return refreshWallet();
       case "transactions.load": return readResource("transactions", () => api.transactions(), data => emit({ type: "data.transactions", data }));
+      case "leaderboard.load": {
+        const period = (["daily", "weekly", "all"] as const).find(value => value === msg.data?.period) ?? "daily";
+        return readResource("leaderboard", () => api.leaderboard(period), data => emit({ type: "data.leaderboard", data }));
+      }
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "push.enable": if (sessionAvailable && pushSession === getSessionVersion()) await syncPush("settings"); return;
@@ -1348,16 +1354,23 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "creator.card.save": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && owner === accountId;
+        const finishProfileWrite = beginProfileWrite();
         try {
           const approval = await requireApprovedHost();
+          if (!applicable()) return;
           const account = await api.saveCreatorCard(msg.data.photo);
-          if (current(version) && approval === hostRevision && hasHostAccess()) {
+          if (applicable() && approval === hostRevision && hasHostAccess()) {
+            if (account.user.id !== owner) throw new ApiError("Your sign-in changed. Please try again.", 409);
             applyHostAccount(account, false);
             emit({ type: "creator.card.saved", data: { account, requestId: msg.data.requestId } });
             quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
           }
         } catch (error) {
-          if (current(version)) emit({ type: "creator.card.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+          if (applicable()) emit({ type: "creator.card.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+        } finally {
+          finishProfileWrite();
         }
         return;
       }
@@ -1850,7 +1863,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
       const serialized = notificationWrite || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "profile.cover.save" ? `:${documentRevision}` : ""}`;
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "profile.cover.save" || msg.type === "creator.card.save" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

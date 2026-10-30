@@ -1,6 +1,6 @@
 import { ApiError } from "./client";
 import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
-import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -38,7 +38,7 @@ export function accountFrom(value: unknown): Account {
     user: {
       id, name: string(user.name), role: user.role === "host" && user.hostStatus === "approved" && user.isVerifiedHost === true ? "host" : "sender",
       ...(user.role === "user" || user.role === "host" || user.role === "admin" ? { serverRole: user.role } : {}),
-      city: string(user.city), ...countryField(user), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), photos,
+      city: string(user.city), ...countryField(user), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), creatorCardUrl: string(user.creatorCardUrl), creatorCardKey: string(user.creatorCardKey), photos,
       languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), ...genderOf(user.gender), adultConfirmed: user.adultConfirmed === true,
       ...(user.onboardingPreference === "creator" || user.onboardingPreference === "member" ? { onboardingPreference: user.onboardingPreference } : {}),
       hostStatus: string(user.hostStatus),
@@ -72,6 +72,7 @@ export function hostFrom(value: unknown): Host {
   const avatar = host.avatar && typeof host.avatar === "object" ? record(host.avatar) : {};
   return {
     id: idOf(host), name: string(host.name), city: string(host.city), ...countryField(host), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
+    ...(Object.hasOwn(host, "creatorCardUrl") ? { creatorCardUrl: string(host.creatorCardUrl) } : {}),
     languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.callEntryFeeCoins ?? host.entryFee), followers: finite(host.followers),
     about: string(host.bio), verified: host.isVerifiedHost === true, ...genderOf(host.gender),
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
@@ -392,6 +393,17 @@ export function transactionsFrom(value: unknown): { items: Transaction[] } {
   }) };
 }
 
+export function leaderboardFrom(value: unknown, period: LeaderboardPeriod): Leaderboard {
+  const data = record(value);
+  return {
+    period, total: finite(data.total) ?? 0,
+    items: items(value).map(record).map((row, index) => {
+      const avatar = row.avatar && typeof row.avatar === "object" ? record(row.avatar) : {};
+      return { id: idOf(row), name: string(row.name) || "Creator", avatarUrl: string(avatar.url), coins: finite(row.coins) ?? 0, rank: finite(row.rank) ?? index + 1 };
+    }).filter(row => row.id),
+  };
+}
+
 export const AD_PLACEMENTS: readonly AdPlacement[] = ["home", "explore", "chats", "call_summary"];
 export const isAdPlacement = (value: unknown): value is AdPlacement => AD_PLACEMENTS.includes(value as AdPlacement);
 /** Campaign media is shown in the app and its link opens outside it: plain public HTTPS only. */
@@ -402,8 +414,10 @@ export function safeHttps(value: unknown): string {
 const adText = (value: unknown, max: number) => string(value).trim().slice(0, max);
 function adFrom(value: unknown): AdCreative | null {
   const ad = record(value), id = idOf(ad), media = ad.media && typeof ad.media === "object" ? record(ad.media) : {};
-  const format = ad.format === "video" || ad.format === "banner" ? ad.format : null;
-  const mediaUrl = safeHttps(media.url), mediaType = string(media.contentType), placements = stringList(ad.placements).filter(isAdPlacement);
+  const format = ad.format === "video" || ad.format === "banner" || ad.format === "campaign" ? ad.format : null;
+  // Campaign banners belong to the host grids only.
+  const mediaUrl = safeHttps(media.url), mediaType = string(media.contentType), placements = stringList(ad.placements).filter(isAdPlacement)
+    .filter(placement => format !== "campaign" || placement === "home" || placement === "explore");
   const headline = adText(ad.headline, 60), advertiser = adText(ad.advertiser, 40), ctaLabel = adText(ad.ctaLabel, 20);
   if (!/^[a-f\d]{24}$/i.test(id) || !format || !mediaUrl || !headline || !advertiser || !ctaLabel || !placements.length ||
     (format === "video" ? mediaType !== "video/mp4" : !/^image\/(jpeg|png|webp|gif)$/.test(mediaType))) return null;

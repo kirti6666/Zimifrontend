@@ -4,10 +4,10 @@ import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, calls
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
-import { officialChatFrom } from "./adapters";
+import { leaderboardFrom, officialChatFrom } from "./adapters";
 import { relationshipsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
-import type { OfficialReadPatch } from "./types";
+import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -97,7 +97,16 @@ export const api = {
     };
     return queueProfileWrite(version, save);
   },
-  saveCreatorCard: (photo: string): Promise<Account> => api.saveCoverPhoto(photo),
+  async saveCreatorCard(photo: string): Promise<Account> {
+    const version = getSessionVersion();
+    decodePhoto(photo);
+    return queueProfileWrite(version, async () => {
+      const mediaKey = await uploadMedia(photo, "creator-card", version);
+      ensureSession(version);
+      const response = await request("PATCH", "/profile", { creatorCardKey: mediaKey });
+      return savedProfileAccount(response, version);
+    });
+  },
   async me(fresh = false): Promise<Account> {
     const version = getSessionVersion();
     if (!fresh && pendingProfile?.version === version) return pendingProfile.promise;
@@ -269,6 +278,7 @@ export const api = {
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
+  async leaderboard(period: LeaderboardPeriod) { return leaderboardFrom(await request("GET", `/leaderboard/creators?${queryString({ period, limit: 50 })}`), period); },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
   async acceptCall(callId: string) {

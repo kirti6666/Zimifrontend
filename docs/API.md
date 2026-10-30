@@ -82,15 +82,16 @@ for it (login, call failed).
 | Your followers / following | `GET /users/:selfId/followers?page=1&limit=20` or `/following` | Paginated relationships with a public `user`, `total`, `page`, `limit`. Inactive, deleted and blocked peers are excluded before pagination. Only `canViewProfile` peers open a profile; list membership grants no extra access. |
 | Share a profile photo post | `POST /media/upload-url` `{purpose: "post", contentType, contentLength}`, PUT to storage, then `POST /posts` `{mediaKey, kind: "photo", caption}` | A confirmed post; available to verified members and approved hosts. Video posts still require approved host access. |
 | Delete your post | `DELETE /posts/:id` | The deleted post. Only its owner may delete it; repeated deletion is safe. |
-| Set creator card image in call setup | Upload with `purpose: "cover"`, then `PATCH /profile` `{coverKey}` | Saved profile cover, also used on creator cards. The setup stays open. |
+| Set creator card image in call setup | Upload with `purpose: "creator-card"`, then `PATCH /profile` `{creatorCardKey}` | Saved separately as `creatorCardUrl` for discovery cards. Profile `coverUrl` and cover drafts stay unchanged; the setup stays open. |
 | Change cover on your Profile | `profile.cover.save` uploads with `purpose: "cover"`, then `PATCH /profile` `{coverKey}` and fresh `GET /auth/me` | Members and hosts preview and confirm the change without opening Edit Profile. Dedicated success/error events preserve other profile drafts and keep failed uploads available for retry. |
 | App opens with a saved login | `GET /me` | `Account` |
 | Finish sign-up, edit profile | `PUT /me/profile` | – |
 | Submit verification | `POST /me/verification` | `{status}` |
 | Go online or offline | `PATCH /safety` `{onlineForCalls, allowRequests, showActivity, discoverable}` | Saved safety flags; `onlineForCalls` persists through backgrounding and socket loss |
 | Show MVPs switch | `PUT /me/settings` | – |
-| Home | `GET /home?mode=online&page=1` | Adapter returns `HomeData` with active hosts, live stage and pagination |
-| Explore | `GET /home?mode=popular` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
+| Home header feeds | `GET /home?mode=following\|popular\|foryou\|new&page=1`, optional `country` (the India chip sends `country=India`) | Adapter returns `HomeData`. Following lists saved follows, Explore (`popular`) every host, For You the hosts not followed yet, New the latest hosts first; `country` matches the host's country (ignoring case) before pagination |
+| Other discovery filters | `GET /home?mode=online` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
+| Leaderboard (Home trophy) | `GET /leaderboard/creators?period=daily\|weekly\|all&limit=50` | `leaderboard.load` `{period}` → `data.leaderboard` `{period, items: {id, name, avatarUrl, coins, rank}[], total}`: approved creators ranked by gift coins received |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
 | Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
@@ -290,20 +291,28 @@ databases; they never create live payments.
 
 ## Sponsored ads
 
-Staff run campaigns that promote our other apps from the admin dashboard
-(**Engagement → Ad campaigns**): a banner image or MP4 video, copy, a link,
-placements, audience, schedule, rotation weight, a daily cap per member and
-optional impression or click budgets.
+Staff run campaigns that promote our events and other apps from the admin
+dashboard (**Engagement → Ad campaigns**): a wide campaign banner, a banner image
+or an MP4 video, copy, a link, placements, audience, schedule, rotation weight, a
+daily cap per member and optional impression or click budgets.
 
 - Only members on the free plan see ads. Premium (`Purchase.kind = "premium"`)
   removes them everywhere: the server returns `adFree: true`, never counts their
   events, and the screens also hide ads as soon as `data.themes` reports premium.
-- Placements: `home` (between the featured host and trending hosts, once the
-  feed has loaded), `explore` (above the creator grid), `chats` (a compact banner
-  above conversations) and `call_summary` (below the summary actions). Never in a
-  call, live room or conversation.
-- Each screen visit shows the next eligible campaign for that placement; redraws
-  keep the same card, and a video keeps playing because its element is moved
+- Formats: `campaign` is a wide 11:3 image (about 1100 × 300) with the campaign's
+  text drawn in; it is shown on its own, with a small "Ad" label and position dots,
+  and rotates with the other live campaign banners (up to 8 per placement, on top
+  of the 3 cards). It may use only the `home` and `explore` placements, and the
+  server refuses a video or any other placement. `banner` (16:9 image) and `video`
+  (MP4) are sponsored cards with copy and a button.
+- Placements: `home` (inside the Home host grid: campaign banners after the
+  first four hosts, cards after ten, both below a shorter grid), `explore` (the
+  All Creators grid, placed the same way), `chats` (a compact banner above
+  conversations) and `call_summary` (below the summary actions). Never in a call,
+  live room or conversation.
+- Each screen visit shows the next eligible card for that placement and starts the
+  campaign banners at the first slide; every banner slide counts its own view once
+  it has been half visible for a second. Redraws keep the same card and slide, and a video keeps playing because its element is moved
   rather than recreated. Video is muted, loops, always offers pause and sound
   controls, plays only while half visible, and never autoplays with reduced motion.
 - The feed never contains destinations. A tap sends `ads.click`; native calls

@@ -3437,11 +3437,51 @@ test('creator card saves require current approved access and their bridge messag
   const h=harness();await h.session.setSessionTokens(tokenPair());
   h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:1}});await settle();
   assert.equal(h.count('saveCreatorCard'),0);
-  h.overrides.me=()=>approvedAccount();h.overrides.saveCreatorCard=()=>({...approvedAccount(),user:{...approvedAccount().user,coverUrl:'https://media.example.test/card.jpg'}});
+  h.overrides.me=()=>approvedAccount();h.overrides.saveCreatorCard=()=>({...approvedAccount(),user:{...approvedAccount().user,creatorCardUrl:'https://media.example.test/card.jpg'}});
   h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:2}});await settle();
   assert.equal(h.find('creator.card.saved').at(-1).data.requestId,2);
   for(const message of [{type:'account.deactivate',data:{confirmed:false,requestId:1}},{type:'media.post.delete',data:{id:'post',requestId:1,userId:'someone-else'}},{type:'creator.card.save',data:{photo:'https://untrusted.example/image.jpg',requestId:1}}])assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)),null);
   h.bridge.close();
+});
+
+test('card and cover saves use distinct methods and return independently persisted images without resetting the session',async()=>{
+  const h=harness();
+  const original={...approvedAccount(),user:{...approvedAccount().user,coverUrl:'https://media.example.test/original-cover.jpg',creatorCardUrl:'https://media.example.test/original-card.jpg'}};
+  h.overrides.me=()=>original;await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const sessionCount=h.find('session').length;
+  const cardSaved={...original,user:{...original.user,creatorCardUrl:'https://media.example.test/new-card.jpg',creatorCardKey:'creator-cards/alice/new.jpg'}};
+  h.overrides.saveCreatorCard=()=>cardSaved;
+  h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:71}});await settle();
+  assert.equal(h.count('saveCreatorCard'),1);assert.equal(h.count('saveCoverPhoto'),0);
+  assert.deepEqual(plain(h.find('creator.card.saved').at(-1).data),{account:cardSaved,requestId:71});
+  assert.equal(h.find('creator.card.saved').at(-1).data.account.user.coverUrl,original.user.coverUrl);
+  const coverSaved={...cardSaved,user:{...cardSaved.user,coverUrl:'https://media.example.test/new-cover.jpg',coverKey:'covers/alice/new.jpg'}};
+  h.overrides.saveCoverPhoto=()=>coverSaved;
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,BBBB',requestId:72}});await settle();
+  assert.equal(h.count('saveCreatorCard'),1);assert.equal(h.count('saveCoverPhoto'),1);
+  assert.deepEqual(plain(h.find('profile.cover.saved').at(-1).data),{account:coverSaved,requestId:72});
+  assert.equal(h.find('profile.cover.saved').at(-1).data.account.user.creatorCardUrl,cardSaved.user.creatorCardUrl);
+  assert.equal(h.find('session').length,sessionCount,'Image-specific saves cannot reset unrelated profile drafts');
+  h.bridge.close();
+});
+
+test('creator card acknowledgements cannot replace images after the document or account changes',async()=>{
+  for(const change of ['session','document'])for(const fail of [false,true]){
+    const h=harness(),pending=deferred();
+    h.overrides.me=()=>approvedAccount();await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({type:'session.resume',data:{}});await settle();
+    h.overrides.saveCreatorCard=()=>pending.promise;
+    h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:81}});await settle();
+    assert.equal(h.count('saveCreatorCard'),1);
+    if(change==='session')await h.session.setSessionTokens(tokenPair('bob'));else h.bridge.documentLoading();
+    if(fail)pending.reject(new h.ApiError('Retired image upload failed',503));
+    else pending.resolve({...approvedAccount(),user:{...approvedAccount().user,creatorCardUrl:'https://media.example.test/retired-card.jpg'}});
+    await settle();
+    assert.equal(h.find('creator.card.saved').length,0,`${change}: an old image cannot replace the current card`);
+    assert.equal(h.find('creator.card.error').length,0,`${change}: an old error cannot interrupt the current selection`);
+    h.bridge.close();
+  }
 });
 
 test('post likes and comments go through the server and report failures', async () => {

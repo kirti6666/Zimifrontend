@@ -9,7 +9,8 @@ const root = path.resolve(__dirname, '..');
 const account = { user: { id: '507f1f77bcf86cd799439019', name: 'Member', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, balance: 500, verification: 'none', requiresOnboarding: false };
 const id = n => `507f1f77bcf86cd7994390${10 + n}`;
 const host = (n, video = true) => ({ id: id(n), name: `Host ${n}`, role: 'host', serverRole: 'host', category: 'Talk', online: true, verified: true, availableForCall: true, ratePerMin: 10, entryFee: 0, previewVideoUrl: video ? `https://media.example.test/video-${n}.webm` : null });
-// Enough rows below host 3 that scrolling can bring it to the middle of the screen.
+// Enough rows below host 2 that scrolling can bring its row to the middle of the screen.
+// Two cards of a row tie on visibility, so the first one (host 2, beside host 3) plays.
 const hosts = [host(0), host(1, false), host(2), host(3), host(4), host(5), host(6)];
 const feed = { hosts, stage: [], featured: hosts[0], total: hosts.length, page: 1, limit: 20, categories: ['Talk'], broadcasterCount: 0, availableCount: hosts.length, speedMatchEnabled: false, bonus: null, unreadCount: 0 };
 
@@ -33,8 +34,8 @@ async function recordClip(browser) {
 }
 
 async function open(browser, clip, { reducedMotion = 'no-preference', saveData = false } = {}) {
-  // A short phone screen keeps the host grid below the fold, so only the featured card is in view.
-  const page = await browser.newPage({ viewport: { width: 390, height: 568 }, reducedMotion });
+  // A short phone screen keeps the second row of cards mostly below the fold, so only the first row is in view.
+  const page = await browser.newPage({ viewport: { width: 390, height: 420 }, reducedMotion });
   const requests = [];
   await page.route('https://**/*', route => {
     const url = route.request().url();
@@ -59,20 +60,20 @@ const playing = page => page.evaluate(() => [...document.querySelectorAll('.zh-c
     const clip = await recordClip(browser);
     const { page, requests } = await open(browser, clip);
     const errors = []; page.on('pageerror', error => errors.push(error.message));
-    await page.locator('.zh-featured-host .zh-card-video.is-playing').waitFor({ timeout: 8000 });
+    await page.locator(`[data-host-id="${id(0)}"] .zh-card-video.is-playing`).waitFor({ timeout: 8000 });
     assert.deepEqual(await playing(page), ['https://media.example.test/video-0.webm'], 'Only the card most in view plays');
     assert.ok(requests.every(url => url.endsWith('/video-0.webm')), 'Cards below the fold download nothing');
     assert.equal(await page.locator(`[data-host-id="${id(1)}"] .zh-card-video`).count(), 0, 'A host without a video keeps only the photo');
-    assert.equal(await page.evaluate(() => [...document.querySelectorAll('.zh-grid .zh-card-video video')].filter(video => video.getAttribute('src')).length), 0);
+    assert.equal(await page.evaluate(first => [...document.querySelectorAll('.zh-grid .zh-card-video video')].filter(video => video.getAttribute('src') && !video.closest(`[data-host-id="${first}"]`)).length, id(0)), 0, 'Only the card in view has a video source');
     assert.deepEqual(await page.evaluate(() => { const video = document.querySelector('.zh-card-video video'); return [video.muted, video.loop, video.playsInline]; }), [true, true, true]);
 
-    await page.evaluate(() => { window.__video = document.querySelector('.zh-featured-host .zh-card-video video'); r(); });
-    assert.equal(await page.evaluate(() => document.querySelector('.zh-featured-host .zh-card-video video') === window.__video && !window.__video.paused), true, 'A redraw keeps the same playing video');
+    await page.evaluate(first => { window.__video = document.querySelector(`[data-host-id="${first}"] .zh-card-video video`); r(); }, id(0));
+    assert.equal(await page.evaluate(first => document.querySelector(`[data-host-id="${first}"] .zh-card-video video`) === window.__video && !window.__video.paused, id(0)), true, 'A redraw keeps the same playing video');
     const loads = requests.length;
 
-    await page.evaluate(id => document.querySelector(`[data-host-id="${id}"]`).scrollIntoView({ block: 'center' }), id(3));
-    await page.locator(`[data-host-id="${id(3)}"] .zh-card-video.is-playing`).waitFor({ timeout: 8000 });
-    assert.deepEqual(await playing(page), ['https://media.example.test/video-3.webm'], 'Scrolling hands playback to the next card');
+    await page.evaluate(id => document.querySelector(`[data-host-id="${id}"]`).scrollIntoView({ block: 'center' }), id(2));
+    await page.locator(`[data-host-id="${id(2)}"] .zh-card-video.is-playing`).waitFor({ timeout: 8000 });
+    assert.deepEqual(await playing(page), ['https://media.example.test/video-2.webm'], 'Scrolling hands playback to the next card');
     assert.equal(await page.evaluate(() => window.__video.paused), true);
     assert.ok(requests.length > loads, 'The next card loads only once it is in view');
 

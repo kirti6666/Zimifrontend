@@ -1,0 +1,25 @@
+/* Creator leaderboard, opened from the Home trophy. Theme tokens only; the gold token
+   marks the top three ranks like the trophy. */
+.zlb-header{border-bottom:0}
+.zlb-page{width:100%;max-width:720px;margin:0 auto;padding:4px 20px 28px;color:var(--ink)}
+.zlb-periods{display:flex;gap:8px;margin:0 0 14px}
+.zlb-periods>button{flex:1 1 0;min-height:40px;padding:0 12px;border:0;background:var(--raised);color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
+.zlb-periods>button[aria-selected="true"]{background:var(--accent);color:var(--cta-ink);font-weight:600}
+.zlb-note{margin:0 0 6px;color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.5}
+.zlb-list{margin:0;padding:0;list-style:none}
+.zlb-row{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:8px 4px;border:0;background:transparent;color:var(--ink);text-align:left}
+.zlb-row:active{background:var(--raised)}
+.zlb-rank{flex:0 0 26px;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;text-align:center;font-variant-numeric:tabular-nums}
+.zlb-row.is-top .zlb-rank{color:var(--gold);font-size:calc(18px * var(--theme-font-scale,1));font-weight:700}
+.zlb-avatar{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;overflow:hidden;background:var(--accent);color:var(--cta-ink);font-size:17px;font-weight:600}
+.zlb-avatar>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%}
+.zlb-name{flex:1;min-width:0;overflow:hidden;font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.zlb-coins{display:inline-flex;align-items:center;gap:5px;flex:none;color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;font-variant-numeric:tabular-nums}
+.zlb-empty{padding:46px 16px;text-align:center;color:var(--muted)}
+.zlb-empty>svg{color:var(--gold)}
+.zlb-empty h2{margin:14px 0 8px;color:var(--ink);font-size:calc(18px * var(--theme-font-scale,1));font-weight:600}
+.zlb-empty p{margin:0;font-size:calc(14px * var(--theme-font-scale,1));line-height:1.6}
+.zlb-page .zh-error{margin:16px 0;border-color:var(--line);background:var(--surface);color:var(--muted)}
+.zlb-page .zh-error button{color:var(--accent-ink)}
+.zlb-page button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+@media(max-width:359px){.zlb-page{padding-inline:14px}.zlb-row{gap:9px}}

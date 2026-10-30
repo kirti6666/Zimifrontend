@@ -29,10 +29,10 @@ const feed = (rows, extra = {}) => ({ hosts: rows, stage: [], featured: rows[0],
     await receive('data.home', feed(hosts.slice(0, 8)));
     await receive('wallet.balance', { coins: 500 });
     await page.waitForFunction(() => [...document.querySelectorAll('.zh-dashboard img')].every(img => img.complete && img.naturalWidth));
-    await page.evaluate(() => { HomeFeatured.paused = true; homeFeaturedStop(); r(); });
+    await page.evaluate(() => r());
     await page.evaluate(() => {
       window.__stable = {
-        panel: document.getElementById('home-feed-panel'), hero: document.getElementById('home-featured-card'),
+        panel: document.getElementById('home-feed-panel'), chips: document.querySelector('.zh-region-chips'),
         grid: document.getElementById('home-host-grid'), header: document.querySelector('.zh-header'),
         nav: document.querySelector('[data-tab="home"]'), images: [...document.querySelectorAll('.zh-dashboard img')],
         cards: [...document.querySelectorAll('article[data-host-id]')], removedImages: 0
@@ -50,10 +50,10 @@ const feed = (rows, extra = {}) => ({ hosts: rows, stage: [], featured: rows[0],
     for (let i = 0; i < 12; i++) {
       await receive('data.loading', { resource: 'home', loading: true, page: 1, background: true });
       assert.equal(await page.locator('.zh-dashboard .zh-skeleton').count(), 0, 'Background revalidation keeps the real cards on screen');
-      await receive('data.home', { ...feed(hosts.slice(0, 8).map((host, at) => at === 3 ? { ...host, tag: `Updated ${i}` } : host)), background: true });
+      await receive('data.home', { ...feed(hosts.slice(0, 8).map((host, at) => at === 3 ? { ...host, name: `Updated ${i}` } : host)), background: true });
       await receive('data.loading', { resource: 'home', loading: false, page: 1, background: true });
       await receive('data.loading', { resource: 'wallet', loading: true });
-      assert.equal(await page.getByRole('status', { name: 'Loading balance', exact: true }).count(), 0, 'An established Home balance does not blink into a skeleton');
+      assert.equal(await page.getByRole('status', { name: 'Loading balance', exact: true }).count(), 0, 'A wallet refresh never puts a balance skeleton on Home');
       await receive('wallet.balance', { coins: 500 + i });
       await receive('data.loading', { resource: 'wallet', loading: false });
       await receive('presence.saved', { online: true, visible: true });
@@ -62,7 +62,7 @@ const feed = (rows, extra = {}) => ({ hosts: rows, stage: [], featured: rows[0],
     }
     const stable = await page.evaluate(() => ({
       panel: __stable.panel === document.getElementById('home-feed-panel'),
-      hero: __stable.hero === document.getElementById('home-featured-card'),
+      chips: __stable.chips === document.querySelector('.zh-region-chips'),
       grid: __stable.grid === document.getElementById('home-host-grid'),
       header: __stable.header === document.querySelector('.zh-header'),
       nav: __stable.nav === document.querySelector('[data-tab="home"]'),
@@ -72,8 +72,8 @@ const feed = (rows, extra = {}) => ({ hosts: rows, stage: [], featured: rows[0],
       scroll: document.getElementById('scroll-root').scrollTop === __stable.scroll,
       removedImages: __stable.removedImages
     }));
-    assert.deepEqual(stable, { panel: true, hero: true, grid: true, header: true, nav: true, cards: true, photos: true, focus: true, scroll: true, removedImages: 0 });
-    assert.equal(await page.locator('.zh-wallet-value').innerText(), '511', 'Live values still update');
+    assert.deepEqual(stable, { panel: true, chips: true, grid: true, header: true, nav: true, cards: true, photos: true, focus: true, scroll: true, removedImages: 0 });
+    assert.equal(await page.evaluate(() => S.bal), 511, 'Live values still update');
     assert.match(await page.locator(`[data-host-id="${hosts[3].id}"]`).innerText(), /Updated 11/);
     await receive('data.home', { ...feed(hosts.slice(0, 8).map((host, at) => at === 3 ? { ...host, name: 'Renamed creator' } : host)), background: true });
     assert.equal(await page.evaluate(() => __stable.images.every(img => img.isConnected && !img.classList.contains('zh-photo-pending'))), true, 'Renaming a creator keeps the already decoded photo');
@@ -82,21 +82,7 @@ const feed = (rows, extra = {}) => ({ hosts: rows, stage: [], featured: rows[0],
     await page.getByRole('button', { name: 'Retry updates', exact: true }).waitFor();
     await receive('data.home', { ...feed(hosts.slice(0, 8)), background: true });
     await receive('data.loading', { resource: 'home', loading: false, background: true });
-    await page.evaluate(() => {
-      __stable.observer.disconnect(); document.activeElement.blur();
-      document.getElementById('scroll-root').scrollTop = 0; HomeFeatured.offscreen = false;
-      HomeFeatured.paused = false; homeFeaturedSchedule();
-      document.getElementById('home-host-grid').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
-    });
-    assert.equal(await page.evaluate(() => HomeFeatured.touching && !HomeFeatured.timer), true, 'Touching or scrolling the feed holds automatic profile rotation');
-    await page.evaluate(() => {
-      document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch' }));
-      HomeFeatured.paused = true; homeFeaturedStop();
-      window.__rotationCards = [...document.querySelectorAll('#home-host-grid article[data-host-id]')].slice(1);
-      homeFeaturedNext();
-    });
-    assert.equal(await page.evaluate(() => __rotationCards.every(card => card.isConnected)), true, 'Featured rotation does not rebuild the unaffected grid cards');
-    assert.equal(await page.locator('article[data-host-id]').count(), 8, 'Featured rotation never duplicates a creator');
+    await page.evaluate(() => { __stable.observer.disconnect(); document.activeElement.blur(); document.getElementById('scroll-root').scrollTop = 0; });
 
     await receive('data.home', feed(hosts.slice(0, 4), { total: 12 }));
     await receive('data.home', feed(hosts.slice(4, 8), { page: 2, total: 12 }));
@@ -122,6 +108,6 @@ const feed = (rows, extra = {}) => ({ hosts: rows, stage: [], featured: rows[0],
     assert.deepEqual(await page.locator('article[data-host-id]').evaluateAll(nodes => nodes.map(node => node.dataset.hostId)), [hosts[11].id]);
     assert.equal(navigations, 1, 'All updates use the current document without a WebView reload');
     assert.deepEqual(errors, []);
-    console.log('PASS Home stability: 12 update bursts, decoded photos and cards retained, focus/scroll preserved, quiet wallet refresh, error recovery, stable featured rotation, retained pagination, navigation/filter isolation and no document reload');
+    console.log('PASS Home stability: 12 update bursts, decoded photos and cards retained, focus/scroll preserved, quiet wallet refresh, error recovery, retained pagination, navigation/filter isolation and no document reload');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

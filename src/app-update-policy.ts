@@ -1,4 +1,5 @@
 import type { UpdateIdentity } from "./app-update-events";
+import { configurationError } from "./config";
 export interface AppRelease {
   _id: string; version: string; versionName: string; versionCode: number; packageName: string;
   releaseNotes: string; fileName: string; sizeBytes: number; sha256: string; publishedAt: string; downloadPath: string;
@@ -33,8 +34,8 @@ export function parseUpdatePolicy(value: unknown, installed: UpdateIdentity): Up
   return { updateRequired: required, minimumVersionCode: r.versionCode, release };
 }
 export async function fetchUpdatePolicy(apiUrl: string, installed: UpdateIdentity): Promise<UpdatePolicy> {
-  const address = new URL(apiUrl);
-  if (address.protocol !== "https:" || address.username || address.password) throw invalid("api-origin");
+  // Use the API's Debug-only local HTTP policy for version checks as well.
+  if (configurationError(apiUrl)) throw invalid("api-origin");
   const abort = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {

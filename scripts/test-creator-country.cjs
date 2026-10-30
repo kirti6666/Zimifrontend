@@ -37,12 +37,15 @@ const receive = (page, type, data = {}) => page.evaluate(message => Native.recei
 const acceptFeed = async page => { await receive(page, 'data.home', feed); await receive(page, 'data.loading', { resource: 'home', loading: false, page: 1 }); };
 const card = (page, n) => page.locator(`article[data-host-id="${id(n)}"]`);
 async function assertCountries(page) {
-  for (const [n, country] of [[1, 'India'], [2, 'United Arab Emirates'], [3, 'Côte d’Ivoire']]) assert.equal(await card(page, n).locator('[data-creator-country]').innerText(), country);
+  // India shows as a round flag named India; other countries show their name.
+  assert.equal(await card(page, 1).locator('[data-creator-country] [role="img"]').getAttribute('aria-label'), 'India');
+  assert.equal(await card(page, 1).locator('[data-creator-country]').getAttribute('title'), 'India');
+  for (const [n, country] of [[2, 'United Arab Emirates'], [3, 'Côte d’Ivoire']]) assert.equal(await card(page, n).locator('[data-creator-country]').innerText(), country);
   for (const n of [4, 5, 6]) assert.equal(await card(page, n).locator('[data-creator-country]').count(), 0, 'Missing/empty/malformed country has no city or phone-prefix fallback');
   for (const n of [1, 2, 3, 4, 5, 6]) {
     assert.equal(await card(page, n).getByRole('button', { name: 'Video call ' + creators[n-1].name, exact: true }).isEnabled(), true);
     assert.match(await card(page, n).innerText(), /Online/);
-    assert.match(await card(page, n).locator('.zh-creator-price').innerText(), /60\/min/);
+    assert.equal(await card(page, n).locator('.zh-creator-price').count(), 0, 'Like the reference, cards show no price');
   }
 }
 (async () => {
@@ -85,7 +88,7 @@ async function assertCountries(page) {
         if (width === 390) await page.screenshot({ path: path.join(root, 'artifacts', `creator-country-${dark?'dark':'light'}-mobile.png`) });
       }
     }
-    await page.getByRole('tab', { name: 'Explore', exact: true }).click(); await acceptFeed(page); await assertCountries(page);
+    await page.getByRole('tab', { name: 'Following', exact: true }).click(); await acceptFeed(page); await assertCountries(page);
     assert.equal(await page.evaluate(() => __sent.filter(message => message.type === 'home.reload').at(-1).data.mode), 'following');
     await page.evaluate(() => go('all-creators')); await acceptFeed(page); await assertCountries(page);
     await page.evaluate(() => { go('search'); S.sq = 'country'; });
@@ -103,6 +106,6 @@ async function assertCountries(page) {
     const escaped = await page.evaluate(() => { const node = document.createElement('div'); node.innerHTML = homeCountryLabel({ country: '<img src=x onerror=alert(1)>' }); return { text: node.innerText, images: node.querySelectorAll('img').length }; });
     assert.equal(escaped.images, 0); assert.equal(escaped.text, '<img src=x onerror=alert(1)>');
     assert.deepEqual(errors, []);
-    console.log('PASS creator country UI: featured/Home/Following/All Creators/Search, light/dark at320/390px, hidden missing data, escaping and unchanged call/status/price');
+    console.log('PASS creator country UI: Home/Following/All Creators/Search, India flag and other country names, light/dark at 320/390px, hidden missing data, escaping and unchanged call/status');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -50,17 +50,6 @@ const SENDERS=["Rohit S.","Arnav M.","Kunal T.","Faisal R.","Devika N.","Yash P.
 const CAPS=["late night set","practice run, be kind","new routine, day one","getting ready for my next call",
  "thank you for last night","testing a new sound","rehearsal cut","this one took a while",
  "same song, slower","one take, no edits","sunday morning","from the last stream"];
-const PERIODS=[["daily","Daily",1],["weekly","Weekly",6.4],["all","All time",41]];
-
-/* Deterministic totals so the ordering is stable between renders. */
-function boardRows(){
- const mult=PERIODS.find(x=>x[0]===S.per)[2];
- return H.concat(EXTRA)
-  .map(h=>({id:h.id,n:h.n,seed:h.seed,live:!!h.live,
-   c:Math.round((((h.seed*613)%780+120)*1000)*mult)}))
-  .sort((a,b)=>b.c-a.c);
-}
-
 const previewMode=new URLSearchParams(location.search).get("preview");
 const callPreview=previewMode==="call"||previewMode==="gifts";
 const roleParam=new URLSearchParams(location.search).get("role");
@@ -785,17 +774,6 @@ function focusField(id){const i=document.getElementById(id);
  if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}
 /* The conversation thread lives in chats.js; loading and server events repaint it through here. */
 function paint(){zcPaintThread()}
-
-function vBoard(){
- const rows=boardRows();
- return `  ${S.bt==="family"
-   ? `<div class="empty">Family boards start once you join or create one.</div>`
-   : `<div class="blist">${rows.map((x,i)=>`<button class="brow ${i<3?"top":""}" onclick="go('host','${domId(x.id)}')">
-      <span class="brank">${i+1}</span>
-      <span class="bav">${window.ZIMI_LIVE_STREAMING_ENABLED&&x.live?`<span class="blive">LIVE</span>`:""}${av(x,42,"none")}<span class="flag">&#127470;&#127475;</span></span>
-      <span class="bname">${esc(x.n)}</span>
-      <span class="bcoin">${gem}${n(x.c)}</span></button>`).join("")}</div>`}
-  <div style="height:10px"></div>`}
 
 function vSearch(){ return `<div class="clist" id="sres"></div><div style="height:16px"></div>`}
 
@@ -1629,13 +1607,6 @@ function topFor(){
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
    <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
- if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
-   ${backButton("go('home')")}
-   ${[["creators","Creators"],["family","Family"]].map(([k,l])=>
-     `<button class="btab ${S.bt===k?"on":""}" onclick="S.bt='${k}';r()">${l}</button>`).join("")}</div>
-  <div class="bctl">
-   <span class="seg3">${PERIODS.map(([k,l])=>
-     `<button class="${S.per===k?"on":""}" onclick="S.per='${k}';r()">${l}</button>`).join("")}</span></div></div>`;
  return ""}
 
 let appNoticeTimer;
@@ -1660,7 +1631,7 @@ function r(){
  const top=document.getElementById("top"),header=topFor();
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
- let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,'create-post':()=>ZimiPostCreate.render(),
+ let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,'create-post':()=>ZimiPostCreate.render(),
   welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,incoming:vMemberRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
@@ -1698,6 +1669,7 @@ function hostFrom(p){const id=String(p.id);
   ...(Object.prototype.hasOwnProperty.call(p,'country')?{country:typeof p.country==='string'&&p.country.trim().length<=100&&!/[\u0000-\u001f\u007f]/.test(p.country)?p.country.trim():''}:{}),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
+  ...(Object.prototype.hasOwnProperty.call(p,'creatorCardUrl')?{creatorCardUrl:obPhotoUrl(p.creatorCardUrl||'')}:{}),
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:hostShownOnline(p)?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
