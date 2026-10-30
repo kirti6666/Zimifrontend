@@ -119,6 +119,14 @@ export interface PublicPosts {
   limit: number;
 }
 
+export type RelationshipKind = "followers" | "following";
+export interface Relationships {
+  users: (Host & { canViewProfile: boolean })[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface HomeStream {
   id: string;
   hostId: string;

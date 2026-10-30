@@ -81,6 +81,20 @@ export function hostFrom(value: unknown): Host {
 }
 
 const count = (value: unknown) => Math.max(0, Math.floor(finite(value) ?? 0));
+export function relationshipsFrom(value: unknown, kind: "followers" | "following") {
+  const data = record(value);
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < 0 ||
+    !Number.isSafeInteger(data.page) || Number(data.page) < 1 || !Number.isSafeInteger(data.limit) || Number(data.limit) < 1)
+    throw new ApiError("Your connections could not be loaded. Try again.", 502);
+  const users = data.items.map(value => {
+    const entry = record(value), peer = record(entry.user ?? entry[kind === "followers" ? "userId" : "followingId"]);
+    if (!idOf(peer) || (peer.name != null && typeof peer.name !== "string")) throw new ApiError("Your connections could not be loaded. Try again.", 502);
+    const name = typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive member";
+    return { ...hostFrom({ ...peer, name }), canViewProfile: peer.canViewProfile === true };
+  });
+  return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
+}
+
 export function publicProfileFrom(value: unknown): PublicProfile {
   const profile = record(value);
   if (!idOf(profile) || typeof profile.name !== "string" ||

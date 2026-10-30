@@ -5,6 +5,8 @@ import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } fr
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
 import { officialChatFrom } from "./adapters";
+import { relationshipsFrom } from "./adapters";
+import type { RelationshipKind, Relationships } from "./types";
 import type { OfficialReadPatch } from "./types";
 
 let identity: { id: string; version: number } | undefined;
@@ -55,6 +57,13 @@ export const api = {
     return request<void>("POST", "/auth/logout", undefined, token ? { auth: false, bearerToken: token, refresh: false } : undefined);
   },
   deactivateAccount: () => request("POST", "/account/deactivate", { confirmed: true }),
+  async relationships(kind: RelationshipKind, page = 1): Promise<Relationships> {
+    const version = getSessionVersion(), id = await selfId();
+    ensureSession(version);
+    const result = await request("GET", `/users/${encodeURIComponent(id)}/${kind}?page=${page}&limit=20`);
+    ensureSession(version);
+    return relationshipsFrom(result, kind);
+  },
   async saveCreatorCard(photo: string) {
     const version = getSessionVersion();
     decodePhoto(photo);

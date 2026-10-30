@@ -221,6 +221,13 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal((await api.createPost(png,'Hello')).id,'sender-post','Sender photos use the confirmed upload and publication path');finished();
   expect('DELETE','/posts/sender-post',{});await api.deletePost('sender-post');finished();
   expect('POST','/account/deactivate',{deactivated:true},body=>assert.deepEqual(plain(body),{confirmed:true}));await api.deactivateAccount();finished();
+  const connections={items:[{user:{_id:'follower-id',name:'Mira',role:'host',hostStatus:'approved',isVerifiedHost:true,isFollowing:true,canViewProfile:true,avatar:{url:'https://cdn.example.test/mira.jpg'}}}],total:21,page:2,limit:20};
+  expect('GET','/users/member-id/followers?page=2&limit=20',connections);
+  const followers=await api.relationships('followers',2);
+  assert.equal(followers.users[0].id,'follower-id');assert.equal(followers.users[0].following,true);assert.equal(followers.users[0].canViewProfile,true);assert.equal(followers.page,2);finished();
+  expect('GET','/users/member-id/following?page=1&limit=20',{items:[{user:{_id:'unnamed-id',name:null}}],total:1,page:1,limit:20});
+  const following=await api.relationships('following');assert.equal(following.users[0].name,'BinzoLive member');assert.equal(following.users[0].canViewProfile,false);finished();
+  for(const invalid of [{...connections,total:-1},{...connections,page:0},{...connections,limit:0},{...connections,items:[{user:{name:'Missing ID'}}]}])assert.throws(()=>adapters.relationshipsFrom(invalid,'followers'),/connections could not be loaded/);
   reset();
   expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/card',key:'covers/member-id/card.png'},body=>assert.equal(body.purpose,'cover'));
   expect('PATCH','/profile',{},body=>assert.deepEqual(plain(body),{coverKey:'covers/member-id/card.png'}));

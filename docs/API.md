@@ -79,6 +79,7 @@ for it (login, call failed).
 | Enter the 6-digit code | `POST /auth/otp/verify` `{country_code, phone, otp}` | `Session` |
 | Log out | `POST /auth/logout` | – |
 | Deactivate account | `POST /account/deactivate` `{confirmed: true}` | `{deactivated: true}`; ends calls and revokes all sessions. A newly verified OTP reactivates the same account and preserves its wallet and posts. |
+| Your followers / following | `GET /users/:selfId/followers?page=1&limit=20` or `/following` | Paginated relationships with a public `user`, `total`, `page`, `limit`. Inactive, deleted and blocked peers are excluded before pagination. Only `canViewProfile` peers open a profile; list membership grants no extra access. |
 | Share a profile photo post | `POST /media/upload-url` `{purpose: "post", contentType, contentLength}`, PUT to storage, then `POST /posts` `{mediaKey, kind: "photo", caption}` | A confirmed post; available to verified members and approved hosts. Video posts still require approved host access. |
 | Delete your post | `DELETE /posts/:id` | The deleted post. Only its owner may delete it; repeated deletion is safe. |
 | Set creator card image in call setup | Upload with `purpose: "cover"`, then `PATCH /profile` `{coverKey}` | Saved profile cover, also used on creator cards. The setup stays open. |

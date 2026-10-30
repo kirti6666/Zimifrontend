@@ -5,6 +5,7 @@ import { AppState, Linking, Share } from "react-native";
 import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
+import type { RelationshipKind, Relationships } from "./api/types";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
 import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet, PostComment, PostComments } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
@@ -83,6 +84,7 @@ export type WebMessage =
   | { type: "profile.settings.load"; data: Record<string, never> }
   | { type: "profile.load"; data: { id: string; requestId?: number } }
   | { type: "profile.posts.load"; data: { id: string; page?: number; requestId?: number } }
+  | { type: "relationships.load"; data: { kind: RelationshipKind; page?: number; requestId: number } }
   | { type: "profile.settings.save" | "settings.set"; data: ProfileSettingsPatch & { requestId?: number } }
   | { type: "privacy.save"; data: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">> & { requestId?: number } }
   | { type: "blocked.load"; data: { page?: number } }
@@ -112,7 +114,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "blocked" | "themes" | "ads";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads";
 export type AppMessage =
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
@@ -166,6 +168,7 @@ export type AppMessage =
   | { type: "data.profileSettings"; data: ProfileSettings }
   | { type: "data.publicProfile"; data: { id: string; profile: PublicProfile; requestId?: number } }
   | { type: "data.publicPosts"; data: PublicPosts & { id: string; requestId?: number } }
+  | { type: "data.relationships"; data: Relationships & { id: string; kind: RelationshipKind; requestId: number } }
   | { type: "profile.settings.saved"; data: { settings: ProfileSettings; requestId?: number } }
   | { type: "profile.settings.error" | "privacy.error"; data: { message: string; requestId?: number } }
   | { type: "privacy.saved"; data: { privacy: PrivacySettings; requestId?: number } }
@@ -627,6 +630,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }, { id, requestId });
   };
   const loadPublicPosts = (id: string, page = 1, requestId?: number) => readResource("publicPosts", () => api.publicPosts(id, page), data => emit({ type: "data.publicPosts", data: { ...data, id, requestId } }), { id, page, requestId });
+  const loadRelationships = (kind: RelationshipKind, page: number, requestId: number) => {
+    const id = accountId;
+    if (!id) return Promise.reject(new ApiError("Sign in to view your connections.", 401));
+    return readResource("relationships", () => api.relationships(kind, page), data => emit({ type: "data.relationships", data: { ...data, id, kind, requestId } }), { id, page, requestId });
+  };
   const loadBlocked = (page = 1) => readResource("blocked", () => api.blockedUsers(page), data => emit({ type: "data.blocked", data }), { page });
   const deliverProfileSettings = (settings: ProfileSettings) => {
     // A GET started before this committed write cannot restore old preferences.
@@ -960,6 +968,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "profile.settings.load": return loadProfileSettings();
       case "profile.load": return loadPublicProfile(msg.data.id, msg.data.requestId);
       case "profile.posts.load": return loadPublicPosts(msg.data.id, msg.data.page, msg.data.requestId);
+      case "relationships.load": return loadRelationships(msg.data.kind, msg.data.page ?? 1, msg.data.requestId);
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
       case "rtc.signal": case "stream.signal": case "stream.ready": {

@@ -3058,6 +3058,29 @@ test('verified members publish photos and delete their own posts through correla
   h.bridge.close();
 });
 
+test('connection list loads validate owner-free payloads and retire stale tab/account reads',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  for(const data of [{kind:'followers',requestId:0},{kind:'other',requestId:1},{kind:'followers',page:0,requestId:1},{kind:'followers',page:1.5,requestId:1},{kind:'following',requestId:1,id:'someone-else'}]){
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'relationships.load',data})),null);
+    h.bridge.handle({type:'relationships.load',data});
+  }
+  assert.equal(h.count('relationships'),0);
+  const old=deferred(),latest=deferred();h.overrides.relationships=kind=>kind==='followers'?old.promise:latest.promise;
+  h.bridge.handle({type:'relationships.load',data:{kind:'followers',requestId:1}});
+  h.bridge.handle({type:'relationships.load',data:{kind:'following',page:2,requestId:2}});
+  old.resolve({users:[{id:'retired'}],total:1,page:1,limit:20});await settle();
+  assert.equal(h.find('data.relationships').length,0);
+  latest.resolve({users:[{id:'current'}],total:21,page:2,limit:20});await settle();
+  const delivered=h.find('data.relationships').at(-1).data;
+  assert.equal(delivered.id,'alice');assert.equal(delivered.kind,'following');assert.equal(delivered.requestId,2);assert.equal(delivered.page,2);
+  const late=deferred();h.overrides.relationships=()=>late.promise;
+  h.bridge.handle({type:'relationships.load',data:{kind:'followers',requestId:3}});await settle();
+  await h.session.clearToken();late.resolve({users:[{id:'old-private-follower'}],total:1,page:1,limit:20});await settle();
+  assert.equal(h.find('data.relationships').length,1,'A signed-out account cannot receive a late private list');h.bridge.close();
+});
+
 test('deactivation waits for a confirmed API result, deduplicates requests and preserves a newer login',async()=>{
   const h=harness(),pending=deferred();await h.session.setSessionTokens(tokenPair());
   h.overrides.deactivateAccount=()=>{throw new h.ApiError('Please retry',503)};

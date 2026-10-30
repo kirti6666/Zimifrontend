@@ -5,6 +5,7 @@ const Zu = { id:'', profile:null, loading:false, error:'', requestId:0, sequence
   followBusy:false, followRequestId:0, followError:'', blockBusy:false, blockRequestId:0,
   back:{view:'home'}, dialog:'', dialogFocus:null, gallery:0 };
 const zuPendingFollows=new Map(),zuPendingBlocks=new Map();
+const ZuRelationships={owner:'',kind:'followers',users:[],total:0,page:0,limit:20,loading:false,error:'',requestId:0,requestedPage:1};
 const zuActive = () => ['host','user','profile'].includes(S.v);
 const zuSelfId = () => S.user?.id || (DEMO?ZProfile.data?.profile?.id:'');
 const zuId = () => S.v === 'profile' ? zuSelfId() : S.v === 'user' ? S.u : S.h;
@@ -156,7 +157,7 @@ function zuIdentity(p){
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
-    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${contentBalance()}</strong><span>Coins</span></div>`:''}<div><strong>${n(p.followers||0)}</strong><span>Followers</span></div><div><strong>${n(p.followingCount||0)}</strong><span>Following</span></div>${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
+    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${contentBalance()}</strong><span>Coins</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
     <p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>
     ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
     ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
@@ -205,6 +206,7 @@ function zuScreen(){
 }
 
 function zuCloseDialog(){
+  if(Zu.dialog==='relationships'){ZuRelationships.requestId=++Zu.sequence;ZuRelationships.loading=false}
   const dialog=document.getElementById('zu-dialog');
   if(dialog){dialog.querySelector('video')?.pause();dialog.close();dialog.remove()}
   Zu.dialog='';
@@ -222,6 +224,58 @@ function zuOpenOptions(){
   const p=zuPeer();if(!p||Zu.error)return;
   zuDialog('Profile options',`<p class="zu-dialog-intro">${esc(p.name||'BinzoLive member')}</p><label class="zu-id-field">Account ID<input id="zu-copy-field" readonly value="${esc(p.id)}" aria-label="Account ID"></label><button class="zu-option" onclick="zuCopyId()">${hi('copy',18)} Copy account ID</button><button class="zu-option zu-danger-text" onclick="zuConfirmBlock()">${zi('shield',18)} Block user</button><p class="zu-dialog-status" role="status"></p>`,'options');
 }
+
+function zuOpenRelationships(kind){
+  if(!zuSelf()||!Zu.profile||Zu.loading||!['followers','following'].includes(kind))return;
+  if(Zu.dialog!=='relationships')zuDialog('Your connections','<div id="zu-relationships"></div>','relationships');
+  Object.assign(ZuRelationships,{owner:zuSelfId(),kind,users:[],total:0,page:0,error:'',loading:false});
+  zuLoadRelationships();
+}
+function zuLoadRelationships(more=false){
+  const state=ZuRelationships;
+  if(Zu.dialog!=='relationships'||state.owner!==zuSelfId()||state.loading)return;
+  state.loading=true;state.error='';state.requestedPage=more?state.page+1:1;state.requestId=++Zu.sequence;
+  if(!more){state.users=[];state.page=0}
+  zuPaintRelationships();
+  if(DEMO){state.loading=false;state.total=0;state.page=1;zuPaintRelationships();return}
+  Native.send('relationships.load',{kind:state.kind,page:state.requestedPage,requestId:state.requestId});
+}
+function zuRelationshipKeys(event){
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();const kind=event.key==='Home'?'followers':event.key==='End'?'following':ZuRelationships.kind==='followers'?'following':'followers';
+  zuOpenRelationships(kind);document.getElementById('zu-relationships-'+kind)?.focus();
+}
+function zuRelationshipOpen(id){
+  const peer=ZuRelationships.users.find(person=>person.id===id);
+  if(!peer?.canViewProfile)return;
+  if(peer.serverRole==='host')knowHost(peer);else personFrom(peer);
+  zuCloseDialog();go(peer.id===zuSelfId()?'profile':peer.serverRole==='host'?'host':'user',peer.id);
+}
+function zuPaintRelationships(){
+  const target=document.getElementById('zu-relationships'),state=ZuRelationships;
+  if(!target||Zu.dialog!=='relationships')return;
+  const focusId=target.contains(document.activeElement)?document.activeElement?.id:'';
+  const title=state.kind==='followers'?'followers':'following';
+  const rows=state.users.map(peer=>{
+    const body=`${avc({id:peer.id,n:peer.name,avatarUrl:peer.avatarUrl,gender:peer.gender,seed:seedOf(peer.id)},44)}<span class="zu-relationship-name"><strong>${esc(peer.name)}</strong><small>${esc(peer.city||(peer.serverRole==='host'?'Creator':'Member'))}</small></span>${peer.canViewProfile?hi('arrow',18):''}`;
+    return `<li>${peer.canViewProfile?`<button type="button" class="zu-relationship-row" aria-label="View ${esc(peer.name)}'s profile" onclick="zuRelationshipOpen('${domId(peer.id)}')">${body}</button>`:`<div class="zu-relationship-row">${body}</div>`}</li>`;
+  }).join('');
+  target.innerHTML=`<div class="zu-relationship-tabs" role="tablist" aria-label="Your connections" onkeydown="zuRelationshipKeys(event)">${['followers','following'].map(kind=>`<button type="button" role="tab" id="zu-relationships-${kind}" aria-selected="${state.kind===kind}" aria-controls="zu-relationship-panel" tabindex="${state.kind===kind?0:-1}" onclick="zuOpenRelationships('${kind}')">${kind==='followers'?'Followers':'Following'}</button>`).join('')}</div><div id="zu-relationship-panel" role="tabpanel" aria-labelledby="zu-relationships-${state.kind}">${rows?`<ul class="zu-relationship-list" aria-label="Your ${title}">${rows}</ul>`:''}${state.loading?contentSkeleton('rows','Loading '+title,state.page?2:5):state.error?`<div class="zu-error" role="alert"><p>${esc(state.error)}</p><button type="button" class="zu-secondary" onclick="zuLoadRelationships(${state.requestedPage>1})">Try again</button></div>`:!state.users.length?`<div class="zu-empty"><h2>${state.kind==='followers'?'No followers yet':'You’re not following anyone yet'}</h2><p>${state.kind==='followers'?'People who follow you will appear here.':'Creators you follow will appear here.'}</p></div>`:state.page*state.limit<state.total?'<button type="button" class="zu-secondary zu-relationship-more" onclick="zuLoadRelationships(true)">Load more</button>':''}</div>`;
+  if(focusId)document.getElementById(focusId)?.focus({preventScroll:true});
+}
+function zuRelationshipsMatch(d){return Zu.dialog==='relationships'&&ZuRelationships.owner===zuSelfId()&&d.id===ZuRelationships.owner&&d.requestId===ZuRelationships.requestId}
+Native.on('data.relationships',d=>{
+  if(!zuRelationshipsMatch(d)||d.kind!==ZuRelationships.kind)return;
+  const state=ZuRelationships,rows=d.users||[];
+  state.users=d.page>1?[...state.users,...rows.filter(peer=>!state.users.some(old=>old.id===peer.id))]:rows;
+  Object.assign(state,{page:d.page,total:d.total,limit:d.limit,loading:false,error:''});
+  if(Zu.id===state.owner&&Zu.profile)Zu.profile[state.kind==='followers'?'followers':'followingCount']=state.total;
+  zuPaint();zuPaintRelationships();
+});
+Native.on('data.loading',d=>{
+  if(d.resource!=='relationships'||!zuRelationshipsMatch(d))return;
+  ZuRelationships.loading=!!d.loading;ZuRelationships.error=d.error||'';zuPaintRelationships();
+});
 async function zuCopyId(){
   const id=zuPeer()?.id;if(!id)return;
   try{
@@ -332,7 +386,7 @@ Native.on('gift.sent',()=>{if(zuActive())zuPaint()});
 Native.on('operation.error',d=>{if(zuActive()&&d.action==='gift.send')zuPaint()});
 Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.checking&&(Zu.error||Zu.postsError))zuRetry();else zuPaint()});
 for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
-for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog();Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
 window.ZimiPublicProfile={
   render:zuScreen,
   beforeNavigate(view,id){

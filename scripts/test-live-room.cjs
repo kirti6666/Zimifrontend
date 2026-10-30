@@ -423,6 +423,16 @@ async function privateCallChecks(browser, errors) {
     assert.equal(await button(invitation, 'Join live').isDisabled(), true, 'An invitation cannot interrupt a private call');
     await button(invitation, 'Dismiss invitation').click();
     assert.equal(await page.evaluate(() => S.v), view);
+    const automationBefore=await page.evaluate(()=>{
+      CH.push(['507f1f77bcf86cd799439099','Earlier conversation','Now',0]);
+      return {messages:S.rmsgs.length,notice:document.getElementById('app-notice')?.textContent||''};
+    });
+    await receive(page,'chat.message',{id:`automatic-peer-${view}`,from:peer.id,name:peer.name,text:'Automated welcome must not interrupt this call',automated:true});
+    await receive(page,'chat.message',{id:`automatic-other-${view}`,from:'507f1f77bcf86cd799439099',name:'Another host',text:'Automated preview must not interrupt this call',automated:true});
+    const automationAfter=await page.evaluate(()=>({messages:S.rmsgs.length,preview:CH.find(row=>row[0]==='507f1f77bcf86cd799439099'),notice:document.getElementById('app-notice')?.textContent||''}));
+    assert.equal(automationAfter.messages,automationBefore.messages,'Late automated peer messages never enter private call chat');
+    assert.deepEqual(automationAfter.preview,['507f1f77bcf86cd799439099','Earlier conversation','Now',0],'Unrelated automated messages do not change unread previews during a call');
+    assert.equal(automationAfter.notice,automationBefore.notice,'Automated messages never create an in-call notice');
     const text = `${hosting ? 'Host' : 'Viewer'} receives a direct peer message`;
     await receive(page, 'chat.message', { id: `call-chat-${view}`, from: peer.id, name: peer.name, text });
     assert.match(await page.getByRole('log', { name: 'Call chat' }).innerText(), new RegExp(text), 'A matching peer message appears without an inCall flag');
@@ -434,11 +444,15 @@ async function privateCallChecks(browser, errors) {
       await page.getByRole('region', { name: 'Private voice call', exact: true }).waitFor();
       await receive(page, 'chat.message', { id: 'voice-chat', from: peer.id, name: peer.name, text: 'A matching voice-call message' });
       assert.match(await page.getByRole('log', { name: 'Call chat' }).innerText(), /A matching voice-call message/);
+      await receive(page,'chat.message',{id:'automatic-voice',from:peer.id,name:peer.name,text:'Automated voice-call welcome must stay hidden',automated:true});
+      assert.doesNotMatch(await page.getByRole('log',{name:'Call chat'}).innerText(),/Automated voice-call welcome must stay hidden/);
       await receive(page, 'chat.message', { id: 'voice-other', from: '507f1f77bcf86cd799439099', name: 'Other account', text: 'Not part of this voice call', inCall: true });
       assert.doesNotMatch(await page.getByRole('log', { name: 'Call chat' }).innerText(), /Not part of this voice call/);
     }
     await page.locator('.zr-hangup').click();
     assert.equal((await lastSent(page, 'call.end')).callId, event.callId);
+    await receive(page,'chat.message',{id:`automatic-after-${view}`,from:'507f1f77bcf86cd799439099',name:'Another host',text:'Welcome after the call',automated:true});
+    assert.equal(await page.evaluate(()=>CH.find(row=>row[0]==='507f1f77bcf86cd799439099')[1]),'Welcome after the call','Ordinary automated welcomes remain available outside calls');
     await page.close();
 
     const rejected = await pendingPrivateCall(browser, errors, hosting, 'denied');

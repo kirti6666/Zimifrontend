@@ -115,7 +115,7 @@ Native.on('data.chats',d=>{const rows=(d.chats||[]).filter(c=>c.user?.id).map(c=
 Native.on('data.loading',d=>{if(d.resource==='chats'){Chats.loadingMore=!!d.loading&&d.page>1;if(S.v==='chats')r()}});
 Native.on('chats.readAll',()=>{Chats.readBusy=false;Chats.readError='';if(S.v==='chats')r()});
 /* Only a server thread read confirms that an incoming visible message is read. */
-Native.on('chat.message',d=>{if(!DEMO&&!d.inCall&&S.v==='thread'&&String(d.from)===S.h)Native.send('chat.open',{with:S.h})});
+Native.on('chat.message',d=>{if(!ignoreAutomatedCallMessage(d)&&!DEMO&&!d.inCall&&S.v==='thread'&&String(d.from)===S.h)Native.send('chat.open',{with:S.h})});
 Native.on('operation.error',d=>{if(d.action==='chats.readAll'){Chats.readBusy=false;Chats.readError=d.message;if(S.v==='chats')r()}if(d.action==='chats.reload'){Chats.loadingMore=false;Object.assign(ContentLoading.chats,{loading:false,error:d.message});if(S.v==='chats')r()}});
 function zcReset(){Object.assign(Chats,{rows:[],query:'',filter:'all',sort:'recent',onlineOnly:false,filtersOpen:false,composeOpen:false,composeQuery:'',readBusy:false,readError:'',page:1,total:0,unreadCount:0,unreadConversations:0,loadingMore:false,drafts:{},gifts:{},playing:'',threadPermission:null,reply:null,editing:null,menu:'',contextPeer:null});zcEndGesture()}
 Native.on('data.thread',d=>{if(d.with===S.h){Chats.threadPermission={with:d.with,canSend:d.canSend,reason:d.sendDisabledReason};if(S.v==='thread'){zcUpdateSendControls();if(Chats.reply){const original=zcFind(Chats.reply.id);if(original)zcRefreshReplies(original);else zcClearContext()}}}});
