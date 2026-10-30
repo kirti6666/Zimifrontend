@@ -129,6 +129,7 @@ const page = (demo, hosted = false) =>
   read("web/all-creators.css") +
   read("web/wallet.css") +
   read("web/coin-packages.css") +
+  read("web/gift-picker.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +

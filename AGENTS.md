@@ -155,6 +155,13 @@ keeps it identical to the original Next.js version.
   pickers and receipts show the still cover; the animation plays only when a
   gift is sent or received (the cover under reduced motion). Read gift artwork
   through `giftStillUrl`/`giftMotionUrl`, not the raw `mediaUrl`.
+- The gift picker follows the supplied dark reference in `web/gift-picker.css`:
+  a rounded bottom sheet, purple/pink header glow, live pink balance/top-up pill,
+  and four open columns of still artwork, names and gold prices. `.zg-reference`
+  is a scoped exception to the flat palette/corner rules; keep other account
+  themes and embedded coin checkout unchanged. Reference gift names appear first
+  when present, with all remaining real catalog gifts below. Selection reveals
+  the explicit Send action; never invent gifts, prices or wallet balances.
 - Show the All/Explore Home header only on Home. Chat, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
   the same size across those main screens; All Creators, Notifications and Themes

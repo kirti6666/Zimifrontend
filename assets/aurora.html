@@ -4626,6 +4626,54 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
  :root[data-theme-id] .zw-reference .zw-note{margin-top:10px}
 }
 @media(min-width:620px){:root[data-theme-id] .zw-coins.zw-reference{padding-left:20px;padding-right:20px}.zw-page-header{max-width:620px;margin:0 auto}}
+/* The requested gift reference is a scoped dark sheet; the surrounding account
+   theme and embedded coin checkout retain their existing palettes. */
+html:root .zg-reference-backdrop{background:rgba(0,0,0,.62);backdrop-filter:blur(5px);padding-top:max(20px,var(--safe-top))}
+html:root[data-theme-id] .zh-sheet.zw-sheet.zg-reference{
+  --ink:#fff;--muted:#b8b2bf;--surface:#1b1b20;--raised:#27222d;
+  --accent:#ff2e93;--accent-ink:#ff8cc6;--cta-ink:#fff;--line:#ffffff24;
+  position:relative;isolation:isolate;display:flex;flex-direction:column;
+  width:100%;max-width:540px;max-height:78dvh;overflow:hidden;margin:0;
+  padding:0 0 max(10px,var(--safe-bottom));border:0;border-top:1px solid #ffffff29;
+  border-radius:22px 22px 0 0!important;color:#fff;color-scheme:dark;
+  background:linear-gradient(180deg,#241a2b 0%,#1b1b20 46%,#141418 100%);
+}
+html:root .zg-reference::before{content:"";position:absolute;z-index:-1;top:-90px;left:50%;transform:translateX(-50%);width:340px;height:200px;pointer-events:none;background:radial-gradient(closest-side,#ff2e9399,#5b5bf038 52%,transparent 74%);border-radius:50%!important}
+.zg-reference .zg-heading{display:grid;grid-template-columns:minmax(0,1fr) auto 28px;align-items:center;gap:9px;flex:none;padding:14px 16px 10px}
+.zg-reference .zg-heading-copy{min-width:0}
+html:root .zg-reference .zg-heading h2{margin:0;color:#fff;font-size:16px;font-weight:700;line-height:1.3;letter-spacing:-.01em}
+.zg-reference .zg-heading p{margin:3px 0 0;color:#ffffff9e;font-size:11.5px;line-height:1.4}
+html:root .zg-reference .zg-balance{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:30px;padding:6px 12px;border:0;border-radius:999px!important;color:#fff;background:linear-gradient(135deg,#ff5cae,#ff2e93);font-size:12.5px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:0 4px 14px -4px #ff2e93b3!important}
+.zg-reference .zg-balance>svg{flex:none}
+html:root .zg-reference .zg-close{display:grid;place-items:center;width:28px;height:32px;padding:0;border:0;border-radius:999px!important;color:#ffffff8c;background:transparent}
+.zg-reference .zg-catalog{min-height:0;max-height:322px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:0 8px}
+.zg-reference .zg-catalog::-webkit-scrollbar{display:none}
+html:root .zg-reference .zw-gifts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 6px;margin:0;padding:6px 0 12px}
+html:root .zg-reference .zh-skeleton-catalog{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 6px;margin:0;padding:6px 0 12px}
+html:root .zg-reference .zw-gifts>.zg-gift{position:relative;display:flex;flex-direction:column;align-items:center;gap:0;min-width:0;min-height:92px;padding:8px 2px 6px;border:1px solid transparent;background:transparent;color:#dedbe0;box-shadow:none!important}
+html:root .zg-reference .zw-gifts>.zg-gift.selected{border-color:#ff70b4;background:#ff2e9314}
+html:root .zg-reference .zw-gifts .zg-art{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:42px;margin:0;padding:0;line-height:1}
+.zg-reference .zg-art::before{content:"";position:absolute;inset:-8px 0;background:radial-gradient(circle,#ffffff12,transparent 72%);pointer-events:none}
+.zg-reference .rare .zg-art::before{background:radial-gradient(circle,#ff2e936b,#ff2e931a 55%,transparent 74%)}
+.zg-reference .epic .zg-art::before{background:radial-gradient(circle,#ffc02e70,#ff2e932e 52%,transparent 76%)}
+.zg-reference .zg-art>img{position:relative;width:54px;height:54px;object-fit:contain}
+.zg-reference .zg-emoji{position:relative;display:block;font-size:33px;line-height:1}
+html:root .zg-reference .zg-tier{position:absolute;z-index:1;right:4px;top:-9px;padding:2px 5px;border-radius:999px!important;color:#fff;background:linear-gradient(90deg,#ff8cc6,#ff2e93);font-size:7px;font-weight:800;line-height:1;letter-spacing:.04em}
+.zg-reference .epic .zg-tier{background:linear-gradient(90deg,#ffc02e,#f5b301)}
+html:root .zg-reference .zw-gifts b{width:100%;margin-top:7px;color:#dedbe0;text-align:center;font-size:10px;font-weight:500;line-height:1.3;white-space:normal;overflow-wrap:anywhere}
+html:root .zg-reference .zw-gifts .zg-price{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:4px;color:#f5bf18;font-size:11px;font-weight:800;line-height:1.3;font-variant-numeric:tabular-nums}
+.zg-reference .zg-price>svg{width:14px;height:14px;flex:none}
+.zg-reference .zw-gift-footer{flex:none;margin:0 16px;padding:10px 0 0;border-top:1px solid #ffffff1a}
+.zg-reference .zw-gift-footer>p{margin:0 0 8px;color:#c7becd;font-size:11px}
+html:root .zg-reference .zw-send{min-height:42px;background:linear-gradient(135deg,#ff5cae,#ff2e93);color:#fff;border:0}
+.zg-reference .zw-empty,.zg-reference .zw-recovery p{color:#b8b2bf}
+.zg-reference .zw-recovery{background:#27222d;border-color:#ffffff24}
+.zg-reference .zw-error{color:#ffb4d0;background:#ff2e931a}
+.zg-reference .zh-skeleton-shape{background:#ffffff16}
+.zg-reference button:focus-visible{outline:2px solid #ff9dcc;outline-offset:2px}
+@media(min-width:560px){html:root[data-theme-id] .zh-sheet.zw-sheet.zg-reference{border-radius:22px!important;margin-bottom:20px}}
+@media(max-width:350px){.zg-reference .zg-heading{padding-inline:12px;gap:6px}.zg-reference .zg-heading p{font-size:10.5px}.zg-reference .zg-balance{padding-inline:9px;font-size:12px}.zg-reference .zg-catalog{padding-inline:5px}.zg-reference .zg-art>img{width:48px;height:48px}.zg-reference .zw-gifts{column-gap:3px}}
+@media(prefers-reduced-motion:reduce){.zg-reference,.zg-reference button{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -10372,8 +10420,8 @@ window.ZimiAllCreators={render:allCreatorsView};
 ZimiHome.views['all-creators']=allCreatorsView;
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
-const CoinUI={giftId:'',topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
-function coinPaint(){if(Home.giftTo||S.v==='coins')r()}
+const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
+function coinPaint(){const catalog=document.querySelector('.zg-catalog');if(catalog)CoinUI.giftScroll=catalog.scrollTop;if(Home.giftTo||S.v==='coins')r()}
 function coinWalletReady(){return DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error)}
 function coinHasPendingPayment(){return coinPendingPayment()||Array.from(CoinUI.orders.values()).some(p=>p.status==='PENDING'&&!CoinUI.dismissedOrders.has(p.merchantOrderId))}
 function coinPendingPayment(){return !!Home.checkout&&!CoinUI.dismissedOrders.has(Home.checkout.merchantOrderId)&&!['SUCCESS','FAILED','REVERTED'].includes(Home.checkout.status)}
@@ -10489,7 +10537,7 @@ function coinAcceptPayment(d,checkout=false){
 }
 function homeGifts(id){
  if(!id)return;CoinUI.focus={label:document.activeElement?.getAttribute('aria-label'),id:document.activeElement?.id};
- if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError=''}
+ if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError='';CoinUI.giftScroll=0}
  Home.giftTo=id;CoinUI.topup=false;
  if(!DEMO){contentStart('catalog');Native.send('catalog.load')}
  r();
@@ -10497,11 +10545,21 @@ function homeGifts(id){
 function homeSelectGift(id){if(Home.giftBusy)return;CoinUI.giftId=id;CoinUI.giftError='';coinPaint()}
 function homeGiftUrl(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password&&!/[<>"'`\s]/.test(raw)?esc(u.href):''}catch{return ''}}
 function homeGiftTopup(){CoinUI.topup=true;CoinUI.paymentError='';coinPaint()}
+function homeGiftDisplayOrder(){
+ const names=['rosewaterfall','rose','kiss','berry','bear','cheers','party','tulip','bunny','blossom','bouquet','hibiscus'];
+ const rank=name=>{const index=names.indexOf(String(name).toLowerCase().replace(/[^a-z0-9]/g,''));return index<0?names.length:index};
+ return [...Home.gifts].sort((a,b)=>rank(a.name)-rank(b.name));
+}
+function homeGiftTile(gift){
+ const artwork=giftStillUrl(gift.name,gift.mediaUrl),tier=gift.coins>=19999?'epic':gift.coins>=5999?'rare':'';
+ return `<button type="button" data-gift-id="${domId(gift.id)}" aria-pressed="${gift.id===CoinUI.giftId}" aria-label="${esc(gift.name)}, ${n(gift.coins)} coins" class="zg-gift ${tier} ${gift.id===CoinUI.giftId?'selected':''}" onclick="homeSelectGift('${domId(gift.id)}')" ${Home.giftBusy?'disabled':''}><span class="zg-art">${tier?`<span class="zg-tier">${tier==='epic'?'LGD':'RARE'}</span>`:''}${artwork?`<img src="${artwork}" alt="">`:`<span class="zg-emoji" aria-hidden="true">${esc(gift.emoji||'🎁')}</span>`}</span><b>${esc(gift.name)}</b><small class="zg-price">${coinIcon(14)}<span>${n(gift.coins)}</span></small></button>`;
+}
 function homeGiftSheet(){
  if(!Home.giftTo)return '';
  if(CoinUI.topup)return `<div class="zh-sheet-backdrop zw-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zw-topup" role="dialog" aria-modal="true" aria-label="Add coins"><div class="zw-topup-heading">${backButton('CoinUI.topup=false;coinPaint()',{label:'Back to gifts'})}<h2>Add coins</h2><button class="zw-icon-button" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',20)}</button></div>${homeCoins(true)}</section></div>`;
- const h=g(Home.giftTo),recover=Home.giftAttempt?.to===Home.giftTo&&Home.giftAttempt?.gift===CoinUI.giftId,gift=Home.gifts.find(x=>x.id===CoinUI.giftId)||(recover?CoinUI.receipts.get(Home.giftAttempt.idempotencyKey):null),ready=coinWalletReady(),surface=DEMO?null:contentSurface('catalog','gifts','Loading gifts'),short=gift&&ready?Math.max(0,gift.coins-S.bal):0;
- return `<div class="zh-sheet-backdrop zw-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet" role="dialog" aria-modal="true" aria-label="Send a gift"><div class="zh-sheet-heading"><div><span class="zw-eyebrow">MAKE THEIR DAY</span><h2>A gift for ${esc(h?first(h.n):'your creator')}</h2><p>Choose a gift, then send a little appreciation.</p></div><button aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',20)}</button></div><div class="zw-gift-balance"><span>${coinIcon(22)} ${contentBalance()} <small>coins available</small></span><button onclick="homeGiftTopup()" aria-label="Add coins">${hi('plus',15)} Add coins</button></div>${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${Home.gifts.map(x=>`<button aria-pressed="${x.id===CoinUI.giftId}" class="${x.id===CoinUI.giftId?'selected':''}" onclick="homeSelectGift('${domId(x.id)}')" ${Home.giftBusy?'disabled':''}>${giftStillUrl(x.name,x.mediaUrl)?`<img src="${giftStillUrl(x.name,x.mediaUrl)}" alt="">`:`<span>${esc(x.emoji||'🎁')}</span>`}<b>${esc(x.name)}</b><small>${coinIcon(14)} ${n(x.coins)}</small></button>`).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${!ready&&!contentPending('wallet')?`<p class="zw-error" role="alert">Refresh your balance before sending. <button onclick="coinRefresh()">Retry</button></p>`:''}<div class="zw-gift-footer"><p aria-live="polite">${Home.giftBusy?'Confirming your gift…':short?`You need ${n(short)} more coins for this gift.`:gift&&ready?`${n(S.bal-gift.coins)} coins remaining after sending`:gift?'Waiting for your balance…':'Select a gift to see the total.'}</p><button class="zh-primary zw-send" aria-label="Send gift" onclick="homeSendGift()" ${Home.giftBusy||(!recover&&(!gift||!ready||surface||short||Home.giftAttempt))?'disabled':''}>${hi('gift',19)} ${Home.giftBusy?'Sending…':gift?`Send ${esc(gift.name)} · ${n(gift.coins)} coins`:'Choose a gift'}</button></div></section></div>`;
+ const recover=Home.giftAttempt?.to===Home.giftTo&&Home.giftAttempt?.gift===CoinUI.giftId,gift=Home.gifts.find(x=>x.id===CoinUI.giftId)||(recover?CoinUI.receipts.get(Home.giftAttempt.idempotencyKey):null),ready=coinWalletReady(),surface=DEMO?null:contentPending('catalog')?contentSkeleton('gifts','Loading gifts',12):ContentLoading.catalog.error?contentError('catalog'):null,short=gift&&ready?Math.max(0,gift.coins-S.bal):0;
+ const footer=gift||Home.giftBusy||Home.giftAttempt?`<div class="zw-gift-footer"><p aria-live="polite">${Home.giftBusy?'Confirming your gift…':short?`You need ${n(short)} more coins for this gift.`:gift&&ready?`${n(S.bal-gift.coins)} coins remaining after sending`:gift?'Waiting for your balance…':'Select a gift to see the total.'}</p><button type="button" class="zh-primary zw-send" aria-label="Send gift" onclick="homeSendGift()" ${Home.giftBusy||(!recover&&(!gift||!ready||surface||short||Home.giftAttempt))?'disabled':''}>${hi('gift',19)} ${Home.giftBusy?'Sending…':gift?`Send ${esc(gift.name)} · ${n(gift.coins)} coins`:'Choose a gift'}</button></div>`:'';
+ return `<div class="zh-sheet-backdrop zw-backdrop zg-reference-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zg-reference" role="dialog" aria-modal="true" aria-label="Send a gift"><header class="zg-heading"><div class="zg-heading-copy"><h2>Send a gift</h2><p>Coins go straight to the host</p></div><button type="button" class="zg-balance" aria-label="Add coins" onclick="homeGiftTopup()">${coinIcon(17)}<span>${contentBalance()}</span>${hi('plus',13)}</button><button type="button" class="zg-close" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',19)}</button></header><div class="zg-catalog">${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${homeGiftDisplayOrder().map(homeGiftTile).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${!ready&&!contentPending('wallet')?`<p class="zw-error" role="alert">Refresh your balance before sending. <button onclick="coinRefresh()">Retry</button></p>`:''}</div>${footer}</section></div>`;
 }
 function homeCloseGifts(e){if(e&&e.target!==e.currentTarget)return;Home.giftTo=null;S.tray=0;if(S.sh==='gift')S.sh=0;CoinUI.topup=false;r();const saved=CoinUI.focus;if(saved){const target=saved.id?document.getElementById(saved.id):Array.from(document.querySelectorAll('button[aria-label]')).find(x=>x.getAttribute('aria-label')===saved.label);target?.focus({preventScroll:true})}}
 function homeSendGift(id=CoinUI.giftId){
@@ -10542,7 +10600,7 @@ Native.on('operation.error',d=>{
 });
 document.addEventListener('aurora:navigate',()=>{if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
 document.addEventListener('keydown',e=>{if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
-window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
+window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
 
 /* Real media stays in the WebView. The authenticated native bridge carries
    signaling only; camera/microphone capture begins from an explicit action. */

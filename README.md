@@ -152,6 +152,13 @@ coin packs, payment recovery, and gift selection. Selecting a gift does not
 spend coins; the separate Send action confirms it. Adding coins from a gift
 sheet keeps the current conversation, live stream, or call open.
 
+`web/gift-picker.css` matches the supplied dark gift-sheet reference: four open
+columns, still gift artwork, names and gold coin prices, a pink balance/top-up
+pill and a close control in the header. The reference gifts appear first when
+present in the API catalog; additional gifts remain available by scrolling.
+The dark sheet is scoped to the picker and keeps surrounding themes and the
+embedded coin checkout unchanged. The Send action appears after selection.
+
 Prices and balances come from the authenticated API. Uncertain payment and gift
 retries reuse their original idempotency keys. Pending payment references are
 stored per account in native SecureStore and verified on restart. Successful

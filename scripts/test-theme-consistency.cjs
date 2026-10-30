@@ -58,6 +58,16 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     check(common.sameView, true, `${label}: theme change preserves navigation`);
     check(common.overflow, false, `${label}: no document width overflow`);
     check(common.font.includes({ system: 'Inter', rounded: 'Poppins', serif: 'Georgia' }[theme.typography.fontFamily]), true, `${label}: selected body font`);
+    if(name==='thread gifts'||name==='call gifts'){
+      const reference=await page.locator('.zg-reference').evaluate(node=>{
+        const sheet=getComputedStyle(node),balance=getComputedStyle(node.querySelector('.zg-balance'));
+        const colors=value=>[...value.matchAll(/rgba?\(([^)]+)\)/g)].map(match=>match[1].split(/[ ,]+/).slice(0,3).map(Number));
+        return {dark:colors(sheet.backgroundImage+' '+sheet.backgroundColor).some(rgb=>Math.max(...rgb)<85),pink:colors(balance.backgroundImage+' '+balance.backgroundColor).some(rgb=>rgb[0]>rgb[1]+70&&rgb[2]>rgb[1]+25),heading:getComputedStyle(node.querySelector('h2')).color};
+      });
+      check(reference.dark,true,`${label}: only the gift modal keeps the requested dark reference`);
+      check(reference.pink,true,`${label}: gift balance keeps the requested pink pill`);
+      check(reference.heading,'rgb(255, 255, 255)',`${label}: reference heading remains readable`);
+    }
     for (const [selector, property, token] of rules) {
       const actual = await page.locator(selector).first().evaluateAll((nodes, property) => nodes.length ? getComputedStyle(nodes[0])[property] : '<missing>', property);
       const expected = { ...theme.colors, background:'#ffffff', surface:'#ffffff', surfaceElevated:'#f8f8fa', text:'#18181b', textMuted:'#71717a', wallet:'#171717', primaryContrast:theme.id==='theme-ocean'?'#000000':'#ffffff' };
@@ -127,7 +137,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await page.getByRole('textbox', { name: /^Message / }).fill('A themed message draft');
     await mountedThemes(page, 'thread', [bg('.zc-thread', 'background'), ink('.zc-thread'), bg('.zc-composer-field', 'surface'), ...cta('.zc-composer-send')], true);
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'thread gifts', [bg('.zh-sheet', 'surface'), ink('.zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated'), ink('.zh-sheet-heading p', 'textMuted')]);
+    await mountedThemes(page, 'thread gifts');
     await nav(page, 'precall');
     await mountedThemes(page, 'call setup', [bg('.zpc-setup', 'background'), ink('.zpc-setup h1'), ...cta('.zpc-primary')]);
     await page.evaluate(() => homeStartCall(false)); await page.locator('.ringscr').waitFor();
@@ -137,7 +147,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await page.evaluate(id => { Home.giftTo = null; Home.stream = null; Home.hosting = false; S.callId = 'theme-private-call'; go('call', id); zrCallChat(); }, creator.id);
     await mountedThemes(page, 'private video', [bg('.zr-room', 'background'), bg('.zr-compose', 'surface'), ink('.zr-compose input'), bg('.zr-pip', 'surface'), ink('.zr-call-feed .lvmsg.sys .txt', 'textMuted')], true);
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'call gifts', [bg('.zr-room .zh-sheet', 'surface'), ink('.zr-room .zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated')]);
+    await mountedThemes(page, 'call gifts');
     await page.evaluate(() => { homeCloseGifts(); zrOpen('call-controls'); });
     await mountedThemes(page, 'call controls', [bg('.zr-sheet', 'surface'), ink('.zr-sheet'), bg('.zr-tool>span', 'surfaceElevated')]);
     await page.evaluate(() => zrClose());
