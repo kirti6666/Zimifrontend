@@ -147,7 +147,7 @@ let homeCallPreparation = null;
    The server checks the permission again; the member pays the host's rate once they answer. */
 function hostCallMember(id,voice,person={}){
   if(!isApprovedHost()){window.ZimiHostAccess?.guard();return}
-  if(Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
+  if(S.bgCall||Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
   S.caller=personFrom({id,name:person.name,avatarUrl:person.avatarUrl,city:person.city,gender:person.gender});
   S.nextCallVoice=!!voice;S.dialFrom={view:S.v,id:S.v==='user'?S.u:['thread','host'].includes(S.v)?S.h:undefined};
   if(DEMO)return go('dialback',id);
@@ -162,6 +162,7 @@ function homeCallFundsReady(h){
 }
 function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
+  if(S.bgCall)return appNotice('Finish your current call first.');
   if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
   if(isHost()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
@@ -174,6 +175,8 @@ function homeStartCall(voice=false){
   }
   if(!homeCallFundsReady(g(S.h)))return;
   S.nextCallVoice=!!voice;S.callId=null;S.pcerr='';
+  // A video call rings with the camera on, in the preview as in the app (homePrepareCall).
+  if(!voice)S.scam=1;
   return go('dial',S.h);
 }
 function homeCancelPrepare(message='',paint=true){

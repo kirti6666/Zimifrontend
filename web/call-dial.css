@@ -17,8 +17,41 @@
 .ringscr.dial .dialnote{margin-top:18px;border:1px solid var(--line)}
 .ringscr.dial .ringact{margin-top:auto;padding-top:40px}
 .ringscr.dial .rbtn{color:var(--muted)}
+/* Back minimizes a ringing call; it keeps ringing behind other screens (web/ongoing-call.js). */
+.ringscr.dial>.dialmin{position:absolute;top:16px;left:16px;z-index:2}
 .ringscr.dial .voiceend{width:64px;height:64px;transition:transform .18s}
 .ringscr.dial .voiceend:active{transform:scale(.94)}
+/* Video calls: flip, camera and mute sit beside Cancel, like the call's own dock. */
+.ringscr.dial .dialdock{gap:18px;align-items:flex-end}
+.ringscr.dial .dialtool{width:52px;height:52px;flex:0 0 52px;border:1px solid var(--line);background:var(--surface);color:var(--ink);transition:transform .18s,background-color .18s,color .18s}
+.ringscr.dial .dialtool[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:var(--canvas)}
+.ringscr.dial .dialtool:active{transform:scale(.94)}
+.ringscr.dial .dialtool svg{width:22px;height:22px}
+/* Beside the tools, Cancel matches their size. */
+.ringscr.dial .dialdock .voiceend{width:52px;height:52px}
+.ringscr.dial .dialdock .voiceend svg{width:22px;height:22px}
+/* The caller sees their own camera full screen while it rings: portrait frames fill the
+   screen, landscape frames sit whole on the media canvas and the front camera is mirrored,
+   as on the host stage. The camera is the call's own HD capture, never zoomed or filtered.
+   White type rides on scrims, as on other camera stages, and the avatar shrinks to keep
+   the caller's face clear. */
+.ringscr.dial.is-video{color:#fff}
+.ringscr.dial.is-video .ringbg{background:var(--media-canvas);animation:none}
+.ringscr.dial .ringbg>:is(video,svg){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
+.ringscr.dial .ringbg>video[data-zimi-facing=user]{transform:scaleX(-1)}
+.ringscr.dial .ringbg>video[data-zimi-shape=landscape]{object-fit:contain}
+.dialscrim{position:absolute;inset:0;background:linear-gradient(180deg,rgb(0 0 0 / .62),rgb(0 0 0 / .28) 30%,transparent 48%,transparent 58%,rgb(0 0 0 / .62))}
+.ringscr.dial:not(.is-video) .ringbg>video{visibility:hidden}
+.ringscr.dial:not(.is-video) .ringbg>:is(svg,.dialscrim){display:none}
+.ringscr.dial.is-video .ringeye{display:none}
+.ringscr.dial.is-video .ringorb{margin-top:max(8px,2dvh)}
+.ringscr.dial.is-video .ringorb::before,.ringscr.dial.is-video .ringorb::after{border-color:color-mix(in srgb,var(--accent) 40%,#fff)}
+.ringscr.dial.is-video h2{margin-top:28px;font-size:24px;color:#fff}
+.ringscr.dial.is-video .dialstatus{color:rgb(255 255 255 / .85)}
+.ringscr.dial.is-video .dialnote{margin-top:auto;border-color:rgb(255 255 255 / .22);background:rgb(0 0 0 / .35);color:#fff}
+.ringscr.dial.is-video .dialnote+.ringact{margin-top:18px;padding-top:0}
+.ringscr.dial.is-video .rbtn{color:rgb(255 255 255 / .9)}
+.ringscr.dial.is-video .dialtool{border-color:transparent}
 /* Two rings leave the avatar 0.6s apart, like the tone's two bursts, then the stage rests;
    the call label sits above them. */
 @keyframes dial-ripple{0%{transform:scale(.96);opacity:.85}70%,100%{transform:scale(1.5);opacity:0}}
@@ -30,5 +63,5 @@
   .ringscr.dial .ringbg,.ringscr.dial .ringorb,.ringscr.dial .ringorb::before,.ringscr.dial .ringorb::after,.dialdots i{animation:none}
   .dialdots i{opacity:1}
   .ringscr.dial .ringorb::before{opacity:.5;transform:scale(1.08)}
-  .ringscr.dial .voiceend{transition:none}
+  .ringscr.dial :is(.voiceend,.dialtool){transition:none}
 }

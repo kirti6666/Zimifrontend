@@ -218,7 +218,7 @@ async function previewChecks(browser, errors) {
   const call = await newPage(browser, errors, false, '?preview=call');
   await call.locator('.zr-call').waitFor();
   await layout(call, call.locator('.zr-room'), () => [
-    button(call, 'Leave call'), button(call, 'Call options'), button(call, 'Open call chat'),
+    button(call, 'Minimize call'), button(call, 'Call options'), button(call, 'Open call chat'),
     button(call, 'Add coins'), button(call, 'Send a gift'), call.locator('.zr-hangup'),
   ], 'Private video call');
   await call.screenshot({ path: path.join(root, 'live-preview-call.png') });

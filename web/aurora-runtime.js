@@ -174,6 +174,8 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
+ if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
@@ -187,11 +189,13 @@ function go(v,id){
   if(v==='voice'&&!S.callId){S.nextCallVoice=true;v='dial'}
   if(['dial','dialback'].includes(v)&&!S.allowPreparedCall)return homePrepareCall(v,id);
  }
- if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
+ /* A minimized call keeps its clock running behind other screens. */
+ if(S.t&&!S.bgCall){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
  if(v==="kyc"){S.kerr=0;S.creatorSetup=true}
- if(v==="precall"){S.scam=0;S.nextCallVoice=false;if(S.automaticCall?.hostId!==(id||S.h))S.automaticCall=null}
+ /* Opening a call setup never changes a minimized call's camera or kind. */
+ if(v==="precall"&&!S.bgCall){S.scam=0;S.nextCallVoice=false;if(S.automaticCall?.hostId!==(id||S.h))S.automaticCall=null}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -1073,15 +1077,20 @@ function vPrecall(){
 /* ringing out: no "busy" state, a host on another call still gets the ring */
 function vDial(){
  const out=S.v==="dialback",p=out?S.caller:g(S.h),voice=out?!!p.voice:!!S.nextCallVoice;
+ /* A video call rings over the caller's own camera, full screen. The video stays in the page
+    while the camera is off, so turning it back on is instant, and moves into the call on answer. */
+ const video=!voice&&!!camOn()&&(DEMO||!!window.ZimiMedia?.hasVideo?.());
  /* A redraw continues the rings in step with the ringback tone (web/call-ringback.js). */
  const phase=window.ZimiRingback?window.ZimiRingback.phase():0;
- return `<div class="ringscr dial" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
-  <div class="ringbg" aria-hidden="true"></div>
+ const tool=(icon,label,text,action,pressed)=>`<span class="rbtn"><button class="zr-round dialtool" aria-label="${label}" ${pressed==null?"":`aria-pressed="${pressed}"`} onclick="${action}">${I(icon,22)}</button><span aria-hidden="true">${text}</span></span>`;
+ return `<div class="ringscr dial ${video?"is-video":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
+  <div class="ringbg" aria-hidden="true">${voice?"":`${DEMO?art(me.seed+2):""}<video data-zimi-local autoplay muted playsinline></video><i class="dialscrim"></i>`}</div>
+  ${backButton("callMinimize()",{label:"Minimize call",media:video,slot:"dialmin"})}
   <span class="ringeye">${I(voice?"ph":"vid",13)}${voice?"Voice":"Video"} call</span>
-  <div class="ringorb">${avc(p,104)}</div>
+  <div class="ringorb">${avc(p,video?72:104)}</div>
   <h2>${esc(p.n)}</h2><p class="dialstatus">Calling<span class="dialdots" aria-hidden="true"><i></i><i></i><i></i></span></p>
   ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
-  <div class="ringact"><span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
+  <div class="ringact ${voice?"":"dialdock"}">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())+tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
  </div>`}
 
 function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
@@ -1131,7 +1140,7 @@ function vRing(){const c=S.caller;
 function memberIncoming(d){
  if(window.ZimiCallInvitations?.receiveIncoming(d))return;
  /* S.callId outlives a finished call, so only the screen tells whether the member is busy. */
- const busy=["dial","call","voice","incoming"].includes(S.v)||window.Home?.preparingCall;
+ const busy=["dial","call","voice","incoming"].includes(S.v)||!!S.bgCall||window.Home?.preparingCall;
  if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
  const from=d.from||{},h=knowHost({id:from.id,name:from.name,avatarUrl:from.avatarUrl,city:from.city,gender:from.gender,verified:true,role:"host",serverRole:"host"});
  S.memberRing={callId:d.callId,id:h.id,voice:!!d.voice,rate:d.rate||0,error:""};
@@ -1591,7 +1600,7 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call");if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
@@ -1705,6 +1714,10 @@ for(const type of ['session','auth.ok','session.none','session.expired'])Native.
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
+ /* An answer to a minimized outgoing call opens the call screen. */
+ if(["dial","dialback"].includes(S.bgCall?.view))callRestore(false);
+ /* A minimized host call only takes its own updated terms. */
+ if(S.bgCall?.view==="hcall"){if(d.callId===S.bgCall.callId)hcCallTerms(d);return}
  /* A host mid-call only hears about the call they are on or switching to. */
  if(S.v==="hcall"&&d.callId!==S.callId&&d.callId!==S.connecting?.to.callId)return;
  S.callRate=d.rate||0;
@@ -1716,6 +1729,8 @@ Native.on("call.connected",d=>{
  /* The answer and the realtime event both report the call; the answer adds today's early endings. */
  else if(S.v==="hcall")hcCallTerms(d)});
 Native.on("call.failed",d=>{
+ /* A minimized call fails where it would on screen: a ringing one returns with the reason. */
+ if(S.bgCall)callRestore(!["dial","dialback"].includes(S.bgCall.view));
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")dialReturn(d.message||"The call didn't go through. Try again.");
@@ -1724,6 +1739,9 @@ Native.on("call.failed",d=>{
 Native.on("call.incoming",d=>{if(d.fromHost&&!isHost())return memberIncoming(d);if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
+ /* A minimized host call comes back to show the banner; other minimized calls ignore it, as on screen. */
+ if(S.bgCall?.view==="hcall"){callRestore();return ringIncoming(c)}
+ if(S.bgCall)return;
  /* Already in a call: the new caller rings as a banner, never a busy signal. */
  if(S.v==="hcall")return ringIncoming(c);
  /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
@@ -1736,6 +1754,8 @@ function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
  S.acceptingCall=false;S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
+ /* A minimized call ends as it would on screen: a summary, or the unanswered notice. */
+ if(ongoingMatches(id))callRestore(false);
  /* The server's charge replaces the summary's estimate once it arrives. */
  if(S.v==='summary'&&S.sum?.callId===id){if(d.coins!=null)S.sum.coins=d.coins;if(d.reason==='out_of_coins')S.sum.outOfCoins=true;return r()}
  /* Switching: the call being left ends first; the new caller hanging up leaves the host where they were. */

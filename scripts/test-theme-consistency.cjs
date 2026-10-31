@@ -142,6 +142,10 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await nav(page, 'precall');
     await mountedThemes(page, 'call setup', [bg('.zpc-setup', 'background'), ink('.zpc-setup h1'), ...cta('.zpc-primary')]);
     await page.evaluate(() => homeStartCall(false)); await page.locator('.ringscr').waitFor();
+    // A video call rings over the caller's camera with white type on scrims, like other camera
+    // stages; with the camera off the calling screen follows the theme.
+    check(await page.locator('.ringscr.dial.is-video h2').evaluate(node => getComputedStyle(node).color), 'rgb(255, 255, 255)', 'A video call rings over the camera with white type');
+    await page.evaluate(() => zrCamera());
     await mountedThemes(page, 'outgoing dial', [bg('.ringscr', 'background'), ink('.ringscr h2'), ink('.ringscr p', 'textMuted')]);
     await page.evaluate(() => cancelDial());
     await disabledStreams(page);

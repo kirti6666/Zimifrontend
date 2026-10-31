@@ -1,0 +1,18 @@
+/* The ongoing-call bar (web/ongoing-call.js): a theme-accent card above every other screen
+   while a call is minimized. It sits in the app's flow, so it never covers a header. */
+.zoc{position:relative;z-index:30;display:flex;flex:none;align-items:center;gap:8px;margin:8px 12px 0;padding:6px 6px 6px 8px;background:var(--accent);color:var(--cta-ink);font-family:var(--theme-font,Inter,Arial,sans-serif);animation:zoc-in .18s ease-out}
+.zoc-return{display:flex;flex:1;align-items:center;gap:10px;min-width:0;min-height:44px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.zoc-return:focus-visible{outline:2px solid var(--cta-ink);outline-offset:2px}
+.zoc-media{position:relative;display:grid;flex:none;place-items:center;width:40px;height:40px;overflow:hidden}
+.zoc-media>video{width:100%;height:100%;object-fit:cover;background:rgb(0 0 0 / .22)}
+.zoc-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.zoc-text strong{overflow:hidden;font-size:14px;font-weight:650;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+.zoc-status{display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.3;opacity:.92;font-variant-numeric:tabular-nums;white-space:nowrap}
+.zoc-status i{width:7px;height:7px;flex:none;background:currentColor;animation:zoc-live 1.6s ease-in-out infinite}
+.zoc-cta{margin-left:auto;padding-left:6px;font-size:12px;font-weight:650;opacity:.92}
+.zoc .voiceend{width:40px;height:40px;flex:0 0 40px;border:2px solid color-mix(in srgb,var(--cta-ink) 70%,transparent)}
+.zoc .voiceend svg{width:20px;height:20px}
+@keyframes zoc-in{from{opacity:0;transform:translateY(-6px)}}
+@keyframes zoc-live{50%{opacity:.35}}
+@media(max-width:340px){.zoc-cta{display:none}}
+@media(prefers-reduced-motion:reduce){.zoc,.zoc-status i{animation:none}}

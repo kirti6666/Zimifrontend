@@ -59,8 +59,9 @@ window.ZimiNavigation=(()=>{
     if(S.v==='thread'&&(Chats.reply||Chats.editing)){zcCancelContext();return}
     if(Home.preparingCall){homeCancelPrepare();return}
     if(Room.transition){appNotice('Your call is connecting. Please wait for the call controls.');return}
-    if(['live','call','voice','hcall'].includes(S.v)){zrExit();return}
-    if(['dial','dialback'].includes(S.v)){cancelDial();return}
+    if(S.v==='live'){zrExit();return}
+    // Back keeps a call going behind other screens; its red button ends it (web/ongoing-call.js).
+    if(['call','voice','hcall','dial','dialback'].includes(S.v)){callMinimize();return}
     if(S.v==='ring'){window.ZimiMedia?.stop();declineRing();return}
     if(S.v==='incoming'){declineMemberRing();return}
     if(S.v==='login'){if(S.auth)obBack();return}
@@ -68,6 +69,8 @@ window.ZimiNavigation=(()=>{
     // routes), and respect disabled Back controls during an in-flight save.
     const control=[...document.querySelectorAll('#top .zb-back,#screen .zb-back')].find(button=>button.getClientRects().length&&!button.closest('[hidden],[inert]'));
     if(control){if(!control.disabled)control.click();return}
+    // Leaving the app would drop a minimized call, so the root returns to it instead.
+    if(S.bgCall&&['home','welcome'].includes(S.v)){callRestore();return}
     if(['home','welcome'].includes(S.v)){Native.send('app.exit.request');return}
     if(S.v==='summary')S.callId=null;
     go(S.loggedIn?'home':'welcome');

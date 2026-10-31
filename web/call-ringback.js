@@ -1,4 +1,4 @@
-/* Outgoing calls ring audibly. While the dial screen waits for an answer, the
+/* Outgoing calls ring audibly. While the dial screen (or its minimized call) waits for an answer, the
    classic double ringback plays (400 + 450 Hz: 0.4s on, 0.2s off, 0.4s on, 2s
    off); it stops as soon as the call is answered, cancelled, declined, missed or
    fails, or the app leaves the foreground. Web Audio draws the tone, so no sound
@@ -6,7 +6,8 @@
 window.ZimiRingback=(()=>{
   const CYCLE=3,BURSTS=[[0,.4],[.6,.4]],LEVEL=.2;
   let context=null,tone=null,timer=0,next=0,began=0,foreground=true;
-  const wanted=()=>['dial','dialback'].includes(S.v)&&foreground&&!document.hidden;
+  // A minimized ringing call (web/ongoing-call.js) keeps ringing behind other screens.
+  const wanted=()=>(['dial','dialback'].includes(S.v)||['dial','dialback'].includes(S.bgCall?.view))&&foreground&&!document.hidden;
   function audio(){
     if(context)return context;
     const Context=window.AudioContext||window.webkitAudioContext;

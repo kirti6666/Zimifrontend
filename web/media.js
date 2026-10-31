@@ -120,7 +120,7 @@
   function cameraEnabled() {
     if (active && active.kind === 'call' && active.voice) return false;
     if (typeof S === 'undefined') return true;
-    const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v);
+    const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v) || !!S.bgCall;
     return inCall && typeof camOn === 'function' ? !!camOn() : S.cam !== 0;
   }
   /* data-zimi-shape lets full-screen stages fill the screen with portrait frames and show
@@ -222,6 +222,8 @@
     attach();
     return playbackMuted;
   }
+  /** Whether this device's camera is capturing (it may still be turned off for the call). */
+  function hasVideo() { return !!local && local.getVideoTracks().some(track => track.readyState === 'live'); }
   function getState() {
     return {
       facingMode, playbackMuted, switchingCamera: !!cameraSwitch, connectionQuality: quality,
@@ -695,6 +697,8 @@
     }
   });
   document.addEventListener('aurora:navigate', () => {
+    // A minimized call (web/ongoing-call.js) keeps its camera, microphone and connection.
+    if (typeof S !== 'undefined' && S.bgCall) { attach(); return; }
     const view = typeof S !== 'undefined' ? S.v : '';
     if (!mediaViews.has(view) || (active && active.kind === 'stream' && view !== 'live') || (active && active.kind === 'call' && !['call', 'hcall', 'voice', 'switch'].includes(view))) stop();
     else attach();
@@ -714,5 +718,5 @@
   window.addEventListener('online', resume);
   window.addEventListener('offline', () => { if (active?.kind === 'call') setQuality('reconnecting'); });
   Native.on('app.foreground', resume);
-  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
+  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState, hasVideo };
 })();

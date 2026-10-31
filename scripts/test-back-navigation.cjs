@@ -178,13 +178,22 @@ async function mediaChecks(page) {
       go(view, peer);
     }, { view, peer: creator.id });
     const endedBefore = (await sent(page, 'call.end')).length;
+    // Back keeps the call going behind other screens, like other calling apps.
     await back(page);
+    assert.equal(await current(page), 'home', `${view}: Back minimizes the call`);
+    assert.equal(await page.evaluate(() => S.bgCall?.view), view);
+    assert.equal(await page.locator('#zimi-ongoing').count(), 1, 'Other screens show the ongoing call');
+    assert.equal((await sent(page, 'call.end')).length, endedBefore, 'Minimizing never ends the call');
+    await back(page);
+    assert.equal(await current(page), view, 'Back on Home returns to the call instead of leaving the app');
+    assert.equal(await page.locator('#zimi-ongoing').count(), 0);
+    // Ending still asks first from the call controls; Back closes that sheet and keeps the call.
+    await page.evaluate(() => zrExit());
     assert.equal(await page.evaluate(() => Room.sheet), 'exit', `${view} asks before ending`);
-    assert.equal((await sent(page, 'call.end')).length, endedBefore);
     await back(page);
     assert.equal(await page.evaluate(() => Room.sheet), '');
     assert.equal(await current(page), view, 'Back from the end-call sheet keeps the call active');
-    await back(page);
+    await page.evaluate(() => zrExit());
     await page.locator('.zr-sheet .zr-danger').click();
     assert.equal(await current(page), 'summary');
     assert.equal((await sent(page, 'call.end')).length, endedBefore + 1, 'Only explicit confirmation ends the call');
@@ -210,8 +219,14 @@ async function mediaChecks(page) {
       S.allowPreparedCall = false;
     }, { view, peer: creator.id });
     const endsBefore = (await sent(page, 'call.end')).length;
+    // Back minimizes a ringing call too; the bar's red button cancels it where the person is.
     await back(page);
-    assert.equal(await current(page), view === 'dial' ? 'precall' : 'chats');
+    assert.equal(await current(page), 'home', `${view}: Back minimizes the ringing call`);
+    assert.equal((await sent(page, 'call.end')).length, endsBefore, 'The call keeps ringing');
+    assert.match(await page.locator('#zimi-ongoing').innerText(), /Calling/);
+    await page.locator('#zimi-ongoing .voiceend').click();
+    assert.equal(await current(page), 'home');
+    assert.equal(await page.locator('#zimi-ongoing').count(), 0);
     assert.equal((await sent(page, 'call.end')).length, endsBefore + 1);
     assert.equal((await sent(page, 'call.end')).at(-1).reason, 'cancelled');
   }
@@ -253,6 +268,6 @@ async function onboardingChecks(page) {
     await mediaChecks(page);
     await onboardingChecks(page);
     assert.deepEqual(errors, [], 'Back handling has no browser runtime errors');
-    console.log('PASS back navigation: native bridge routing, settings and chat overlays, photo cleanup, recording protection, call confirmation and disabled streaming, preparation and dialing cancellation, onboarding, and root-only exit requests.');
+    console.log('PASS back navigation: native bridge routing, settings and chat overlays, photo cleanup, recording protection, call minimizing and end confirmation, disabled streaming, preparation cancellation and minimized ringing calls, onboarding, and root-only exit requests.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

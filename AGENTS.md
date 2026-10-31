@@ -165,6 +165,10 @@ keeps it identical to the original Next.js version.
   Missed calls lists missed calls with Call back. Call rows use the full-width
   conversation row and open the other person's profile. When a call ends, is
   declined or is missed, the bridge re-reads both lists in the background.
+  A conversation also shows the account's calls with that person at their time
+  (`zcCallBubble` in `web/chats.js`, from `data.calls`): outgoing on the right,
+  incoming on the left, with the duration or how it ended (missed in red). They
+  are not messages: no menu, reply or read ticks.
 - Approved hosts may message any member or another approved host at any time;
   members message approved hosts. Approved hosts may also call any member by
   voice or video at any time (there is no member permission switch), and can
@@ -176,6 +180,20 @@ keeps it identical to the original Next.js version.
   that screen shows and the app is in the foreground; any other view silences
   it. The avatar rings and "Calling" dots in `web/call-dial.css` follow the
   tone's 3s cycle through `--dial-phase`, so redraws do not restart them.
+  A video call rings over the caller's own camera, full screen (portrait frames
+  cover, landscape frames stay whole, the front camera is mirrored), with Flip,
+  Camera and Mute beside Cancel. The same `video[data-zimi-local]` moves into
+  the call when it is answered; with the camera off the plain calling screen shows.
+- Calls keep going behind other screens (`web/ongoing-call.js`). Back on the
+  calling and call screens (their Back button and Android back) minimizes the
+  call into `S.bgCall` instead of ending it; the red buttons end it. A
+  theme-accent bar above every other screen shows the person and "Calling…" or
+  the call time, keeps the other person's audio playing (a small live video for
+  video calls) and returns to the call as it was on tap; its red button ends the
+  call. While a call is minimized its clock, camera, microphone and ringback keep
+  running, no other call can start, an answer opens the call screen, a host's
+  next caller reopens the call with its banner, Back on Home returns to the call
+  instead of leaving the app, and screens stay secure.
 - Animated gift stickers live in `web/stickers/` (built with
   `scripts/build-gift-sticker.py`) and are matched to catalog gifts by name in
   `web/gift-stickers.js`; the backend catalog seed uses the same names. Gift
