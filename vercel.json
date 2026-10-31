@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "echo \"no dependencies needed to build the page\"",
+  "installCommand": "npm ci --ignore-scripts --no-audit --no-fund",
   "buildCommand": "node scripts/build-web.mjs",
   "outputDirectory": "dist",
   "rewrites": [
