@@ -114,19 +114,23 @@ async function receiptPreviewLayouts(browser, errors) {
         const layout = await card.evaluate(card => {
           const box = element => { const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height }; };
           const image = card.querySelector('img'), style = getComputedStyle(card), row = card.closest('.zc-msg');
-          return { card: box(card), art: box(card.querySelector('.zc-gift-icon')), image: box(image), title: box(card.querySelector('h3')), row: box(row), stack: box(card.parentElement), natural: { width: image.naturalWidth, height: image.naturalHeight }, padding: [style.paddingLeft, style.paddingRight], margin: [style.marginLeft, style.marginRight], overflow: document.documentElement.scrollWidth > innerWidth + 1, cardOverflow: card.scrollWidth > card.clientWidth + 1 };
+          return { card: box(card), art: box(card.querySelector('.zc-gift-icon')), image: box(image), title: box(card.querySelector('h3')), row: box(row), stack: box(card.parentElement), natural: { width: image.naturalWidth, height: image.naturalHeight }, padding: [style.paddingLeft, style.paddingRight], margin: [style.marginLeft, style.marginRight], border: { width: style.borderTopWidth, style: style.borderTopStyle, color: style.borderTopColor }, overflow: document.documentElement.scrollWidth > innerWidth + 1, cardOverflow: card.scrollWidth > card.clientWidth + 1 };
         });
         const label = `${mine ? 'sent' : 'received'} ${shape.name} ${width}px ${dark ? 'dark' : 'light'}`;
         assert.deepEqual(layout.padding, ['0px', '0px'], `${label}: no card side padding`);
         assert.deepEqual(layout.margin, ['0px', '0px'], `${label}: no card side margin`);
+        assert.equal(layout.border.width, '1px', `${label}: gift message has a thin border`);
+        assert.equal(layout.border.style, 'solid');
+        assert.notEqual(layout.border.color, 'rgba(0, 0, 0, 0)', `${label}: border is visible in the active theme`);
         assert.equal(layout.overflow || layout.cardOverflow, false, `${label}: preview and metadata stay within the screen`);
         assert.deepEqual(layout.natural, { width: shape.width, height: shape.height });
         assert.ok(Math.abs(layout.image.width / layout.image.height - shape.width / shape.height) < .01, `${label}: original aspect ratio has no letterboxed image slot`);
         for (const edge of ['left', 'right']) {
-          assert.ok(Math.abs(layout.image[edge] - layout.art[edge]) < 1, `${label}: artwork uses its whole preview ${edge} edge`);
-          assert.ok(Math.abs(layout.art[edge] - layout.card[edge]) < 1, `${label}: preview has no blank internal ${edge} gutter`);
+          assert.ok(layout.image[edge] >= layout.art.left - 1 && layout.image[edge] <= layout.art.right + 1, `${label}: artwork stays inside its compact preview`);
+          assert.ok(Math.abs(Math.abs(layout.art[edge] - layout.card[edge]) - 1) < 1, `${label}: artwork has no extra side gutter beyond the border`);
         }
-        assert.ok(layout.image.width > 100 && layout.image.width <= 260 && layout.image.height <= 340, `${label}: artwork has a readable bounded size`);
+        assert.ok(Math.abs((layout.image.left + layout.image.right) / 2 - (layout.art.left + layout.art.right) / 2) < 1, `${label}: portrait artwork is centered`);
+        assert.ok(layout.card.width <= 180 && layout.image.width > 60 && layout.image.width <= 178 && layout.image.height <= 144, `${label}: gift preview stays compact`);
         assert.ok(layout.image.bottom <= layout.title.top + 1, `${label}: name and coins stay beneath the artwork`);
         assert.ok(Math.abs(layout.card[mine ? 'right' : 'left'] - layout.stack[mine ? 'right' : 'left']) < 1, `${label}: message keeps its sender/recipient alignment`);
         if (mine) assert.ok(Math.abs(layout.card.right - layout.row.right) < 1, `${label}: sent gift stays on the right`);
@@ -236,6 +240,6 @@ async function receiptPreviewLayouts(browser, errors) {
     const receiptLayouts = await receiptPreviewLayouts(browser, errors);
     assert.deepEqual(errors, []);
     fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify({ actualArtwork: realArt ? { path: realArtPath, bytes: realArt.length, width: 360, height: 640 } : null, layouts, receiptLayouts, checks: ['production bundle', 'native-edge fixtures only', '320/390/1280 light/dark', 'server artwork and prices', 'quick-select full picker', 'separate Gift action', 'no automatic spend', 'wallet failure and retry identity', 'persisted receipts', 'transfer deduplication', 'host reception', 'sent/received natural-aspect previews without side gaps'], pageErrors: errors }, null, 2));
-    console.log('PASS chat gifts: compact quick row, explicit server-priced sends, retry/deduplication, persisted receipts, and sent/received portrait/landscape/square previews without side gaps at 320/390px in both themes.');
+    console.log('PASS chat gifts: compact quick row, explicit server-priced sends, retry/deduplication, persisted receipts, and smaller bordered sent/received portrait/landscape/square previews at 320/390px in both themes.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

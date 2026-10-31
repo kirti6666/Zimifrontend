@@ -2661,20 +2661,20 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-call-copy small{display:flex;align-items:center;gap:4px;font-size:12px;opacity:.8;font-variant-numeric:tabular-nums}
 .zc-call-bubble.is-missed .zc-call-icon,.zc-call-bubble.is-missed small{color:var(--theme-danger,#e5486a);opacity:1}
 
-.zc-msg-gift .zc-msg-stack{width:fit-content;max-width:min(80%,240px)}
-.zc-gift-card{width:100%;padding:0;background:transparent;border:0;box-shadow:none}
-.zc-gift-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.zc-msg-gift .zc-msg-stack{width:fit-content;max-width:min(80%,180px)}
+.zc-gift-card{width:100%;padding:8px 0;background:transparent;border:1px solid var(--line);border-radius:10px;box-shadow:none}
+.zc-gift-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px;padding-inline:8px}
 .zc-gift-top>span{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)}
 .zc-gift-top>b{font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .zc-gift-body{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
-.zc-gift-body>div{min-width:0;max-width:100%}
-.zc-gift-icon{display:block;width:100%;height:auto;font-size:54px;line-height:1}
-.zc-gift-icon>img{display:block;width:auto;height:auto;max-width:100%;max-height:320px;margin:0;object-fit:contain}
-.zc-gift-icon>span{display:grid;place-items:center;min-width:120px;min-height:120px}
+.zc-gift-body>div{min-width:0;max-width:100%;padding-inline:8px}
+.zc-gift-icon{display:flex;justify-content:center;width:100%;height:auto;font-size:44px;line-height:1}
+.zc-gift-icon>img{display:block;width:auto;height:auto;max-width:100%;max-height:144px;margin:0;object-fit:contain}
+.zc-gift-icon>span{display:grid;place-items:center;min-width:96px;min-height:96px}
 .zc-gift-body h3{font-size:14px;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
 .zc-gift-value{display:inline-flex;align-items:center;gap:4px;margin-top:3px;font-size:12px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
 .zc-gift-value>span{font-weight:400;color:var(--muted)}
-.zc-gift-person{margin-top:5px;text-align:center;font-size:11px;line-height:1.4;color:var(--muted)}
+.zc-gift-person{margin-top:5px;padding-inline:8px;text-align:center;font-size:11px;line-height:1.4;color:var(--muted)}
 
 .zc-voice{width:100%;padding:12px 14px 14px;border-radius:20px;border-top-left-radius:6px;background:var(--surface)}
 .zc-voice-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:12px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
@@ -4916,7 +4916,7 @@ html:root .zg-reference .zw-send{min-height:42px;background:linear-gradient(135d
 html:root .zg-reference::before{width:min(340px,100%)}
 /* Gift files contain their own artwork and animation. Keep every surface clear:
    no added glows, masks, framing, decorative layers or motion on the image. */
-html:root :is(.zc-gift-card,.zc-gift-icon,.zc-quick-gift-art,.zg-reference .zg-art,.gi .gl,.gbub,.zr-gift-emoji,.zr-gift-stage-art,.hs-gift-art,.hs-target-art,.fxg){background:transparent!important;background-image:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important}
+html:root :is(.zc-gift-icon,.zc-quick-gift-art,.zg-reference .zg-art,.gi .gl,.gbub,.zr-gift-emoji,.zr-gift-stage-art,.hs-gift-art,.hs-target-art,.fxg){background:transparent!important;background-image:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important}
 html:root :is(.zc-gift-icon,.zc-quick-gift-art,.zg-art,.gi .gl,.gbub,.zr-gift-emoji,.zr-gift-stage-art,.hs-gift-art,.hs-target-art,.fxg)>img{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;object-fit:contain}
 html:root :is(.zg-art,.gi,.gbub,.fxg)::before,html:root :is(.zg-art,.gi,.gbub,.fxg)::after{content:none!important;display:none!important}
 html:root :is(.zg-tier,.gi .tier,.zr-gift-halo,.zr-gift-wave,.zr-gift-sparks,.zr-gift-caption){display:none!important}
@@ -4941,7 +4941,7 @@ html:root .hs-gift-options>button.is-on>small{text-decoration:underline;text-und
 html:root :is(.zc-gift-icon,.zc-quick-gift-art,.hs-gift-art,.hs-target-art,.zr-gift-emoji,.zr-gift-stage-art){grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
 html:root :is(.zc-gift-icon,.zc-quick-gift-art,.zg-art,.hs-gift-art,.hs-target-art,.zr-gift-emoji,.zr-gift-stage-art)>img{min-width:0;min-height:0;max-width:100%;max-height:100%}
 /* Receipt artwork keeps its natural shape instead of letterboxing in a short slot. */
-html:root .zc-gift-icon>img{width:auto;height:auto;max-height:320px;margin:0}
+html:root .zc-gift-icon>img{width:auto;height:auto;max-height:144px;margin:0}
 html:root .zc-quick-gift-art>img{height:52px}
 /* One original gift animation across the visible app. The portal is
    transparent, outside message layout and below sheets; typing stays usable. */
