@@ -44,8 +44,8 @@ async function checkLayout(page, label, voice = false) {
       fullStage: Math.abs(stage.left-box.left)<1 && Math.abs(stage.top-box.top)<1 && Math.abs(stage.width-box.width)<1 && Math.abs(stage.height-box.height)<1 && Math.abs(box.width-innerWidth)<1,
       opaqueChrome: [...room.querySelectorAll('.zr-top,.zr-bottom,.zr-call-stat,.hs-target-card')].filter(el=>getComputedStyle(el).backgroundColor!=='rgba(0, 0, 0, 0)').map(el=>el.className),
       incorrectVideoFit: [...room.querySelectorAll('video')].filter(el=>{
-        const fillStage=room.classList.contains('zr-sender-call')&&el.parentElement.classList.contains('zr-video');
-        return getComputedStyle(el).objectFit!==(fillStage?'cover':'contain')||getComputedStyle(el).objectPosition!=='50% 50%';
+        const remote=el.hasAttribute('data-zimi-remote');
+        return getComputedStyle(el).objectFit!==(remote?'cover':'contain')||getComputedStyle(el).objectPosition!=='50% 50%';
       }).map(el=>el.outerHTML),
       blurred: [room,...room.querySelectorAll('*')].filter(el=>{const style=getComputedStyle(el);return style.backdropFilter!=='none'||/blur\(/.test(style.filter)}).map(el=>el.className),
       overlayColor: getComputedStyle(room.querySelector('.zr-top')).color,
@@ -62,7 +62,7 @@ async function checkLayout(page, label, voice = false) {
   assert.equal(result.primaryTabs, 0, `${label}: main tabs are absent in calls`);
   assert.equal(result.fullStage, true, `${label}: the camera stage reaches every screen edge behind the controls`);
   assert.deepEqual(result.opaqueChrome, [], `${label}: header, footer and stats remain transparent`);
-  assert.deepEqual(result.incorrectVideoFit, [], `${label}: sender video fills the stage and previews preserve their framing`);
+  assert.deepEqual(result.incorrectVideoFit, [], `${label}: remote video fills its container and local previews preserve their framing`);
   assert.deepEqual(result.blurred, [], `${label}: camera, overlays and dialogs never blur the screen`);
   assert.equal(result.overlayColor, voice ? result.expectedColor : 'rgb(255, 255, 255)', `${label}: video controls remain readable in every theme`);
   if (voice) assert.equal(result.pip, null, `${label}: voice calls have no camera preview`);
