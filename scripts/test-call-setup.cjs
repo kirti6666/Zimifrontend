@@ -199,14 +199,23 @@ async function assertLayout(page, label) {
     assert.deepEqual((await sent(page, 'call.start')).at(-1).data, { to: hostId, voice: false });
     assert.equal(await page.evaluate(() => __media.requests.at(-1).constraints.video !== false), true);
     assert.equal(await page.evaluate(() => __media.tracks.filter(track => track.readyState === 'live').length), 2);
+    // The caller hears ringback, and the screen names the call type, while the call rings.
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), true, 'Ringback plays while the video call rings');
+    assert.match(await page.locator('.ringscr.dial .ringeye').innerText(), /video call/i);
     await button(page, 'Cancel call').click();
     await page.waitForFunction(() => __media.tracks.every(track => track.readyState === 'ended'));
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), false, 'Cancelling silences the ringback');
     await button(page, 'Voice call').click();
     await button(page, 'Start voice call').click();
     await page.waitForFunction(() => __sent.filter(message => message.type === 'call.start').length === 2);
     assert.deepEqual((await sent(page, 'call.start')).at(-1).data, { to: hostId, voice: true });
     assert.equal(await page.evaluate(() => __media.requests.at(-1).constraints.video), false, 'Voice requests microphone only');
     assert.equal(await page.evaluate(() => __media.tracks.filter(track => track.readyState === 'live' && track.kind === 'video').length), 0);
+    assert.match(await page.locator('.ringscr.dial .ringeye').innerText(), /voice call/i);
+    await receive(page, 'app.background', {});
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), false, 'Ringback stops when the app leaves the foreground');
+    await receive(page, 'app.foreground', {});
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), true, 'Ringback resumes while the call still rings');
     await button(page, 'Cancel call').click();
 
     const left = await startPending(page);
@@ -246,7 +255,7 @@ async function assertLayout(page, label) {
     assert.equal(await page.evaluate(() => S.v), 'home', 'Explore is removed, so its route opens Home');
     assert.equal(await page.evaluate(() => __media.tracks.every(track => track.readyState === 'ended')), true);
     assert.deepEqual(errors, [], 'All setup states run without uncaught browser errors');
-    console.log('PASS: full-height themed call setup, responsive identity/fallback, blocked live routing, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, creator changes, unavailable refresh and Explore.');
+    console.log('PASS: full-height themed call setup, responsive identity/fallback, blocked live routing, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, ringback while dialing, creator changes, unavailable refresh and Explore.');
   } finally {
     await browser.close();
   }

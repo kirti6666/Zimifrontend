@@ -157,9 +157,6 @@
 /* Portraits are artwork: they keep a dark scrim and white type in every theme. */
 .ob-card { position: absolute; overflow: hidden; border-radius: 26px; background: var(--ob-raised); border: 1px solid rgb(255 255 255 / .16); box-shadow: 0 26px 42px -20px var(--ob-shadow); }
 .ob-card > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 32%; }
-/* The welcome artwork keeps softer corners than the shared content cards. */
-html:root .ob-welcome .ob-card { border-radius: 22px !important; }
-html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { border-radius: inherit !important; }
 .ob-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(12 4 9 / .2), transparent 34%, rgb(12 4 9 / .3) 60%, rgb(12 4 9 / .88)); }
 .ob-card-main { z-index: 3; width: 64%; height: 88%; left: 18%; top: 0; transform: rotate(-2.5deg); animation: ob-card-float 6s ease-in-out infinite; }
 .ob-card-main.is-dragging, .ob-card-main.is-settling { animation: none; transform: translate3d(calc(var(--ob-drag, 0) * 1px), calc(var(--ob-drag, 0) * var(--ob-drag, 0) * .0006px), 0) rotate(calc(-2.5deg + var(--ob-drag, 0) * .06deg)); cursor: grabbing; }
@@ -236,16 +233,24 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
 .ob-email-status.taken, .ob-email-status.invalid { color: var(--ob-danger); font-weight: 550; animation: ob-error-in .25s ease-out; }
 .ob-email-status.available { color: var(--ob-soft); font-weight: 650; }
 .ob-email-status svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
-.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
-.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1px solid var(--ob-edge); border-radius: 16px; background: var(--ob-field); color: var(--ob-text); font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s, transform .18s; }
-.ob-otp input:focus { border-color: var(--ob-pink); }
-.ob-otp input.filled { border-color: color-mix(in srgb, var(--ob-pink) 55%, transparent); background-color: color-mix(in srgb, var(--ob-pink) 10%, var(--ob-surface)); }
-.ob-resend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-top: 16px; font-size: 13px; line-height: 1.6; color: var(--ob-faint); }
-.ob-resend button { min-height: 44px; padding: 10px 6px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
+/* The number being verified, with Edit beside it, kept together on one line. */
+.ob-sent-to { display: inline-flex; flex-wrap: nowrap; align-items: baseline; gap: 8px; white-space: nowrap; }
+.ob-sent-to strong { color: var(--ob-text); font-weight: 650; }
+.ob-shell .ob-description .ob-edit-number { min-height: 0; margin: -10px -6px; padding: 10px 6px; color: var(--ob-soft); font-size: inherit; font-weight: 650; line-height: inherit; }
+.ob-shell .ob-description .ob-edit-number:disabled { opacity: .5; }
+/* Code cells share the column evenly in the shared 10px boxes; only the cell being
+   typed in takes the accent. */
+.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 88px)); gap: min(10px, 2.5vw); }
+.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1.5px solid var(--ob-edge); background: var(--ob-field); color: var(--ob-text); font-size: 26px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s; }
+.ob-otp input.filled { background: var(--ob-bg); border-color: color-mix(in srgb, var(--ob-text) 30%, transparent); }
+.ob-otp input:focus { background: var(--ob-bg); border-color: var(--ob-pink); }
+.ob-otp:has([aria-invalid="true"]) input { border-color: var(--ob-danger); }
+.ob-otp input:disabled { opacity: .6; }
+.ob-resend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--ob-muted); }
+.ob-resend b { color: var(--ob-text); font-weight: 650; font-variant-numeric: tabular-nums; }
+.ob-resend button { min-height: 44px; margin-block: -10px; padding: 10px 4px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
 .ob-resend button:disabled { color: var(--ob-faint); }
-.ob-change-number { display: inline-flex; align-items: center; gap: 6px; padding: 5px 0; color: var(--ob-soft); }
-.ob-change-number + .ob-otp { margin-top: 12px; }
-.ob-demo-note { justify-content: center; margin-top: 8px; font-size: 10px; }
+.ob-demo-note { margin-top: 8px; font-size: 10px; }
 .ob-options { display: flex; gap: 8px; flex-wrap: wrap; }
 .ob-options button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 15px; border: 1px solid var(--ob-edge); border-radius: 999px; color: var(--ob-text); background: var(--ob-field); font-size: 13px; font-weight: 600; }
 .ob-options button.selected { color: var(--ob-on-pink); border-color: var(--ob-pink); background: var(--ob-pink); box-shadow: 0 8px 18px -12px var(--ob-glow); }
@@ -435,7 +440,7 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
   .ob-country { padding: 0 11px; gap: 4px; }
   .ob-phone-field input { padding-inline: 12px !important; font-size: 17px !important; }
   .ob-otp { gap: 6px; }
-  .ob-otp input { height: 56px; border-radius: 14px; font-size: 23px; }
+  .ob-otp input { font-size: 23px; }
   .ob-photo-layout { gap: 9px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 239px; border-radius: 20px; }
   .ob-upload b { font-size: 13px; }
@@ -465,7 +470,6 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 48px; padding-block: 11px; }
   .ob-options button { padding-block: 8px; }
   .ob-check { padding: 4px 0; }
-  .ob-otp input { height: 56px; }
   .ob-photo-layout { min-height: 0; margin-top: 18px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 220px; }
   .ob-preview-heading { margin: 16px 0 10px; }
@@ -487,6 +491,7 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 44px; padding-block: 9px; }
   .ob-segment { padding: 3px; }
   .ob-segment button { min-height: 36px !important; padding-block: 4px; }
+  .ob-otp input { height: 56px; }
   .ob-actions { padding-top: 12px; }
   .ob-actions .ob-primary { min-height: 52px; }
   .ob-error { margin-top: 8px; padding: 7px 12px; }

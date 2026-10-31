@@ -1873,9 +1873,6 @@ button.gpill[onclick]{cursor:pointer}
 /* Portraits are artwork: they keep a dark scrim and white type in every theme. */
 .ob-card { position: absolute; overflow: hidden; border-radius: 26px; background: var(--ob-raised); border: 1px solid rgb(255 255 255 / .16); box-shadow: 0 26px 42px -20px var(--ob-shadow); }
 .ob-card > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 32%; }
-/* The welcome artwork keeps softer corners than the shared content cards. */
-html:root .ob-welcome .ob-card { border-radius: 22px !important; }
-html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { border-radius: inherit !important; }
 .ob-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgb(12 4 9 / .2), transparent 34%, rgb(12 4 9 / .3) 60%, rgb(12 4 9 / .88)); }
 .ob-card-main { z-index: 3; width: 64%; height: 88%; left: 18%; top: 0; transform: rotate(-2.5deg); animation: ob-card-float 6s ease-in-out infinite; }
 .ob-card-main.is-dragging, .ob-card-main.is-settling { animation: none; transform: translate3d(calc(var(--ob-drag, 0) * 1px), calc(var(--ob-drag, 0) * var(--ob-drag, 0) * .0006px), 0) rotate(calc(-2.5deg + var(--ob-drag, 0) * .06deg)); cursor: grabbing; }
@@ -1952,16 +1949,24 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
 .ob-email-status.taken, .ob-email-status.invalid { color: var(--ob-danger); font-weight: 550; animation: ob-error-in .25s ease-out; }
 .ob-email-status.available { color: var(--ob-soft); font-weight: 650; }
 .ob-email-status svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
-.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
-.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1px solid var(--ob-edge); border-radius: 16px; background: var(--ob-field); color: var(--ob-text); font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s, transform .18s; }
-.ob-otp input:focus { border-color: var(--ob-pink); }
-.ob-otp input.filled { border-color: color-mix(in srgb, var(--ob-pink) 55%, transparent); background-color: color-mix(in srgb, var(--ob-pink) 10%, var(--ob-surface)); }
-.ob-resend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-top: 16px; font-size: 13px; line-height: 1.6; color: var(--ob-faint); }
-.ob-resend button { min-height: 44px; padding: 10px 6px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
+/* The number being verified, with Edit beside it, kept together on one line. */
+.ob-sent-to { display: inline-flex; flex-wrap: nowrap; align-items: baseline; gap: 8px; white-space: nowrap; }
+.ob-sent-to strong { color: var(--ob-text); font-weight: 650; }
+.ob-shell .ob-description .ob-edit-number { min-height: 0; margin: -10px -6px; padding: 10px 6px; color: var(--ob-soft); font-size: inherit; font-weight: 650; line-height: inherit; }
+.ob-shell .ob-description .ob-edit-number:disabled { opacity: .5; }
+/* Code cells share the column evenly in the shared 10px boxes; only the cell being
+   typed in takes the accent. */
+.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 88px)); gap: min(10px, 2.5vw); }
+.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1.5px solid var(--ob-edge); background: var(--ob-field); color: var(--ob-text); font-size: 26px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s; }
+.ob-otp input.filled { background: var(--ob-bg); border-color: color-mix(in srgb, var(--ob-text) 30%, transparent); }
+.ob-otp input:focus { background: var(--ob-bg); border-color: var(--ob-pink); }
+.ob-otp:has([aria-invalid="true"]) input { border-color: var(--ob-danger); }
+.ob-otp input:disabled { opacity: .6; }
+.ob-resend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--ob-muted); }
+.ob-resend b { color: var(--ob-text); font-weight: 650; font-variant-numeric: tabular-nums; }
+.ob-resend button { min-height: 44px; margin-block: -10px; padding: 10px 4px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
 .ob-resend button:disabled { color: var(--ob-faint); }
-.ob-change-number { display: inline-flex; align-items: center; gap: 6px; padding: 5px 0; color: var(--ob-soft); }
-.ob-change-number + .ob-otp { margin-top: 12px; }
-.ob-demo-note { justify-content: center; margin-top: 8px; font-size: 10px; }
+.ob-demo-note { margin-top: 8px; font-size: 10px; }
 .ob-options { display: flex; gap: 8px; flex-wrap: wrap; }
 .ob-options button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 15px; border: 1px solid var(--ob-edge); border-radius: 999px; color: var(--ob-text); background: var(--ob-field); font-size: 13px; font-weight: 600; }
 .ob-options button.selected { color: var(--ob-on-pink); border-color: var(--ob-pink); background: var(--ob-pink); box-shadow: 0 8px 18px -12px var(--ob-glow); }
@@ -2151,7 +2156,7 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
   .ob-country { padding: 0 11px; gap: 4px; }
   .ob-phone-field input { padding-inline: 12px !important; font-size: 17px !important; }
   .ob-otp { gap: 6px; }
-  .ob-otp input { height: 56px; border-radius: 14px; font-size: 23px; }
+  .ob-otp input { font-size: 23px; }
   .ob-photo-layout { gap: 9px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 239px; border-radius: 20px; }
   .ob-upload b { font-size: 13px; }
@@ -2181,7 +2186,6 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 48px; padding-block: 11px; }
   .ob-options button { padding-block: 8px; }
   .ob-check { padding: 4px 0; }
-  .ob-otp input { height: 56px; }
   .ob-photo-layout { min-height: 0; margin-top: 18px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 220px; }
   .ob-preview-heading { margin: 16px 0 10px; }
@@ -2203,6 +2207,7 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 44px; padding-block: 9px; }
   .ob-segment { padding: 3px; }
   .ob-segment button { min-height: 36px !important; padding-block: 4px; }
+  .ob-otp input { height: 56px; }
   .ob-actions { padding-top: 12px; }
   .ob-actions .ob-primary { min-height: 52px; }
   .ob-error { margin-top: 8px; padding: 7px 12px; }
@@ -3338,6 +3343,40 @@ html:root[data-theme="dark"] .zc-thread{
 
 .zpc-modes.zpc-video-only{grid-template-columns:minmax(0,1fr)}
 .zpc-cost-note{margin:10px 0 0;text-align:center;font-size:calc(10px * var(--theme-font-scale,1));color:var(--muted);line-height:1.6}
+/* Outgoing call: the incoming ring's quiet stage. The avatar rings, its small double
+   nudge and the "Calling" dots keep time with the ringback tone's 3s cycle;
+   web/call-ringback.js supplies --dial-phase so a redraw continues the cycle. */
+.ringscr.dial{justify-content:flex-start;padding:max(40px,8dvh) 24px max(36px,calc(var(--safe-bottom) + 24px));overflow-y:auto;overscroll-behavior:contain}
+.ringscr.dial .ringbg{inset:0;opacity:1;filter:none;transform:none;background:radial-gradient(ellipse 75% 45% at 50% 40%,color-mix(in srgb,var(--accent) 14%,transparent),transparent);animation:dial-glow 3s ease-in-out var(--dial-phase,0s) infinite}
+.ringscr.dial .ringeye{z-index:1;gap:6px;margin:auto 0 48px;border:1px solid var(--line);font-size:10px;letter-spacing:.09em}
+.ringscr.dial .ringeye svg{width:13px;height:13px;color:var(--accent-ink)}
+.ringscr.dial .ringorb{isolation:isolate;margin:0;animation:dial-nudge 3s ease-in-out var(--dial-phase,0s) infinite}
+.ringscr.dial .ringorb::before,.ringscr.dial .ringorb::after{content:"";position:absolute;inset:-14px;z-index:-1;border:1.5px solid color-mix(in srgb,var(--accent) 50%,transparent);opacity:0;animation:dial-ripple 3s cubic-bezier(.2,.6,.35,1) var(--dial-phase,0s) infinite}
+.ringscr.dial .ringorb::after{animation-delay:calc(var(--dial-phase,0s) + .6s)}
+.ringscr.dial h2{max-width:100%;margin-top:40px;overflow-wrap:anywhere;font-size:26px;line-height:1.2;letter-spacing:-.5px}
+.ringscr.dial .dialstatus{display:inline-flex;align-items:baseline;margin-top:6px;font-size:14px}
+.dialdots{display:inline-flex;align-items:baseline;gap:3px;margin-left:3px}
+.dialdots i{width:4px;height:4px;background:currentColor;opacity:.25;animation:dial-dot 1.5s ease-in-out var(--dial-phase,0s) infinite}
+.dialdots i:nth-child(2){animation-delay:calc(var(--dial-phase,0s) + .2s)}
+.dialdots i:nth-child(3){animation-delay:calc(var(--dial-phase,0s) + .4s)}
+.ringscr.dial .dialnote{margin-top:18px;border:1px solid var(--line)}
+.ringscr.dial .ringact{margin-top:auto;padding-top:40px}
+.ringscr.dial .rbtn{color:var(--muted)}
+.ringscr.dial .voiceend{width:64px;height:64px;transition:transform .18s}
+.ringscr.dial .voiceend:active{transform:scale(.94)}
+/* Two rings leave the avatar 0.6s apart, like the tone's two bursts, then the stage rests;
+   the call label sits above them. */
+@keyframes dial-ripple{0%{transform:scale(.96);opacity:.85}70%,100%{transform:scale(1.5);opacity:0}}
+@keyframes dial-nudge{0%,13%,20%,33%,100%{transform:none}6.5%,26.5%{transform:scale(1.035)}}
+@keyframes dial-dot{0%,100%{opacity:.25;transform:none}35%{opacity:1;transform:translateY(-2px)}}
+@keyframes dial-glow{0%,100%{opacity:.7}20%{opacity:1}}
+@media(max-height:600px){.ringscr.dial{padding-top:24px}.ringscr.dial .ringeye{margin-bottom:32px}.ringscr.dial h2{margin-top:30px}.ringscr.dial .ringact{padding-top:24px}}
+@media(prefers-reduced-motion:reduce){
+  .ringscr.dial .ringbg,.ringscr.dial .ringorb,.ringscr.dial .ringorb::before,.ringscr.dial .ringorb::after,.dialdots i{animation:none}
+  .dialdots i{opacity:1}
+  .ringscr.dial .ringorb::before{opacity:.5;transform:scale(1.08)}
+  .ringscr.dial .voiceend{transition:none}
+}
 /* Creator call flow: setup before going online, a second caller during a call, and the session summary.
    Colours come from the selected theme, like the call room in live-room.css; the layout follows the host studio reference. */
 :root:has(.hc-setup,.hc-waiting,.hc-summary) .app{background:var(--canvas)}
@@ -4165,9 +4204,9 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
   box-shadow:none!important;
   text-shadow:none!important;
 }
-/* Full rounding makes wide actions pills and square actions circles. */
-:root :is(button,[role=button],[role=tab],[role=switch],input[type=button],input[type=submit],input[type=reset]):not(:is(.zr-pip,.pip,.zu-photo,.zc-photo,.za-campaign-slide,.hc-card-image,.ob-thumb,.hpcard,.zt-card,.zh-creator-hit,.zw-packs>button)) {
-  border-radius:999px!important;
+/* Preserve the original 10px button shape across component/theme overrides. */
+:root :is(button,[role=button],[role=tab],[role=switch],input[type=button],input[type=submit],input[type=reset]) {
+  border-radius:10px!important;
 }
 html,body,.app,#top,#scroll-root,#screen {
   background-color:var(--canvas)!important;
@@ -4471,8 +4510,10 @@ html,body,.app,#top,#scroll-root,#screen {
 :root[data-theme-id] button.zb-back>svg {width:21px;height:21px}
 :root[data-theme-id] button.zb-back.on-media {border-color:rgb(255 255 255 / .55);background:rgb(12 4 9 / .36);color:#fff}
 
-/* Buttons use full rounding; avatars, their badges/rings, and switches also
-   stay circular. Keep these selectors in step with ROUND in flat-corners.cjs. */
+/* Every element keeps the shared 10px corner except where a circle reads
+   better: Back and the close/more buttons beside it, every call action,
+   avatars with their badges and rings, and switches. Keep this list in step
+   with ROUND in scripts/flat-corners.cjs. */
 html:root :is(
   .zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zr-round,
   .zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline,
@@ -4499,23 +4540,6 @@ html:root{border-radius:0!important}
 html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
-
-/* App-root specificity keeps every action fully rounded even when later
-   store, sheet or theme rules supply their own important corner values.
-   Body also covers native-dialog and viewer portals mounted outside the app.
-   Content surfaces implemented as buttons (video previews, photos, preview
-   cards and coin packages) retain their framing; action buttons still round.
-   Content framing and underlines keep their existing geometry. A large length
-   avoids the ellipses produced by 100%. Keep the content exclusions in step
-   with BUTTONS in scripts/flat-corners.cjs. */
-html:root :is(body,.app,#screen,#nav,#top) :is(button,[role=button],[role=tab],[role=switch],input[type=button],input[type=submit],input[type=reset]):not(:is(.zr-pip,.pip,.zu-photo,.zc-photo,.za-campaign-slide,.hc-card-image,.ob-thumb,.hpcard,.zt-card,.zh-creator-hit,.zw-packs>button)){border-radius:999px!important}
-
-/* Text entry follows the action buttons' pill shape, including portal forms.
-   Multiline fields use softer corners so their first/last lines stay readable.
-   Keep these selectors in step with FIELDS and MULTILINE in flat-corners.cjs. */
-html:root :is(body,.app,#screen,#nav,#top) :is(input:not(:is([type=checkbox],[type=radio],[type=range],[type=file],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image])),select:not([multiple])){border-radius:999px!important}
-html:root :is(body,.app,#screen,#nav,#top) :is(.srch>div,.sfield,.zc-search,.zc-compose-search,.zc-composer-field,.zh-search-header>div,.zr-compose,.zn-search,.zc-photo-reply-bar){border-radius:999px!important}
-html:root :is(body,.app,#screen,#nav,#top) :is(textarea,select[multiple]){border-radius:24px!important}
 /* A photo card opens the profile; its video call button starts the call. Keep the
    featured card's complete surface keyboard-accessible too. */
 .zh-home.zh-dashboard .zh-featured-host>.zh-featured-profile-hit{position:absolute;inset:0;z-index:3;width:100%;height:100%;min-height:44px;flex:none;padding:0;border:0;background:transparent}
@@ -7537,7 +7561,7 @@ function obOtpSent(data = {}) {
 }
 function obResendText() {
   const left = Math.max(obWait("auth.sendOtp"), Math.ceil(((S.auth.resendAt || 0) - Date.now()) / 1000), 0);
-  return left ? `Request a new code in <b>${obDuration(left)}</b>` : `<span>Didn’t receive it?</span> <button class="ob-text-button" onclick="obResend()" ${S.auth.busy ? "disabled" : ""}>Send a new code</button>`;
+  return left ? `Resend code in <b>${obDuration(left)}</b>` : `<span>Didn’t receive it?</span> <button class="ob-text-button" onclick="obResend()" ${S.auth.busy ? "disabled" : ""}>Send a new code</button>`;
 }
 function obResend() {
   if (S.auth.busy || Date.now() < S.auth.resendAt || obWait("auth.sendOtp")) return;
@@ -7777,8 +7801,10 @@ function obLogin() {
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
     const length = obOtpLength();
-    title = "Verify your <em>number</em>."; description = `Enter the ${length}-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
-    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${I("back", 16)} Edit phone number</button><div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
+    title = "Verify your <em>number</em>.";
+    // The number and its Edit link wrap together, so the link never strands on its own line.
+    description = `Enter the ${length}-digit code sent to <span class="ob-sent-to"><strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong><button class="ob-edit-number" onclick="obBack()" aria-label="Edit phone number" ${a.busy ? "disabled" : ""}>Edit</button></span>`;
+    content = `<div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
     title = "Make it <em>yours</em>.";
@@ -9014,13 +9040,16 @@ function vPrecall(){
 
 /* ringing out: no "busy" state, a host on another call still gets the ring */
 function vDial(){
- const out=S.v==="dialback",p=out?S.caller:g(S.h);
- return `<div class="ringscr">
-  <div class="ringbg">${art(p.seed)}</div>
+ const out=S.v==="dialback",p=out?S.caller:g(S.h),voice=out?!!p.voice:!!S.nextCallVoice;
+ /* A redraw continues the rings in step with the ringback tone (web/call-ringback.js). */
+ const phase=window.ZimiRingback?window.ZimiRingback.phase():0;
+ return `<div class="ringscr dial" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
+  <div class="ringbg" aria-hidden="true"></div>
+  <span class="ringeye">${I(voice?"ph":"vid",13)}${voice?"Voice":"Video"} call</span>
   <div class="ringorb">${avc(p,104)}</div>
-  <h2>${esc(p.n)}</h2><p>Calling&hellip;</p>
+  <h2>${esc(p.n)}</h2><p class="dialstatus">Calling<span class="dialdots" aria-hidden="true"><i></i><i></i><i></i></span></p>
   ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
-  <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
+  <div class="ringact"><span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
  </div>`}
 
 function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
@@ -11935,6 +11964,75 @@ if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Khan',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':PREVIEW_HOSTS[5],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});
   S.v='precall';S.h=h.id;S.loggedIn=1;S.bal=offline?0:1250;
 }
+
+/* Outgoing calls ring audibly. While the dial screen waits for an answer, the
+   classic double ringback plays (400 + 450 Hz: 0.4s on, 0.2s off, 0.4s on, 2s
+   off); it stops as soon as the call is answered, cancelled, declined, missed or
+   fails, or the app leaves the foreground. Web Audio draws the tone, so no sound
+   file ships. The dial screen's rings keep the same 3s cycle through phase(). */
+window.ZimiRingback=(()=>{
+  const CYCLE=3,BURSTS=[[0,.4],[.6,.4]],LEVEL=.2;
+  let context=null,tone=null,timer=0,next=0,began=0,foreground=true;
+  const wanted=()=>['dial','dialback'].includes(S.v)&&foreground&&!document.hidden;
+  function audio(){
+    if(context)return context;
+    const Context=window.AudioContext||window.webkitAudioContext;
+    try{context=Context?new Context():null}catch{context=null}
+    // A browser that held the tone until a tap starts it in step with the rings.
+    // A context that simply took a moment to start is already on time.
+    if(context)context.onstatechange=()=>{
+      if(!tone||context.state!=='running')return;
+      const late=(performance.now()-began)/1000-(context.currentTime-tone.start);
+      if(late<.3)return;
+      tone.level.gain.cancelScheduledValues(0);tone.level.gain.value=0;next=context.currentTime+(CYCLE-phase())%CYCLE;queue();
+    };
+    return context;
+  }
+  // Bursts are queued a cycle ahead, so a busy screen cannot open gaps in the tone.
+  function queue(){
+    const level=tone.level.gain;
+    while(next<context.currentTime+CYCLE){
+      for(const [at,length] of BURSTS){
+        const t=next+at;
+        level.setValueAtTime(0,t);level.linearRampToValueAtTime(LEVEL,t+.02);
+        level.setValueAtTime(LEVEL,t+length-.02);level.linearRampToValueAtTime(0,t+length);
+      }
+      next+=CYCLE;
+    }
+  }
+  function play(){
+    const c=audio();if(!c)return;
+    if(c.state==='suspended')c.resume().catch(()=>{});
+    const level=c.createGain();level.gain.value=0;level.connect(c.destination);
+    const voices=[400,450].map(frequency=>{const o=c.createOscillator();o.frequency.value=frequency;o.connect(level);o.start();return o});
+    tone={level,voices,start:c.currentTime};next=c.currentTime+.01;queue();timer=setInterval(queue,500);
+  }
+  function silence(){
+    clearInterval(timer);timer=0;if(!tone)return;
+    const {level,voices}=tone,c=context,t=c.currentTime;tone=null;
+    level.gain.cancelScheduledValues(t);level.gain.setValueAtTime(level.gain.value,t);level.gain.linearRampToValueAtTime(0,t+.04);
+    voices.forEach(o=>o.stop(t+.05));
+    // Release the audio output once nothing rings.
+    setTimeout(()=>{level.disconnect();if(!tone&&c.state==='running')c.suspend().catch(()=>{})},150);
+  }
+  function sync(){
+    if(wanted()){if(!began){began=performance.now();play()}}
+    else if(began){began=0;silence()}
+  }
+  /** Seconds into the current ring cycle; 0 before ringing starts. */
+  function phase(){return began?((performance.now()-began)/1000)%CYCLE:0}
+  function unlock(){if(tone&&context.state==='suspended')context.resume().catch(()=>{})}
+  document.addEventListener('pointerup',unlock,{capture:true,passive:true});
+  document.addEventListener('keydown',unlock,{capture:true,passive:true});
+  document.addEventListener('aurora:navigate',sync);
+  document.addEventListener('visibilitychange',sync);
+  // Leaving the screen without navigation (a redraw that changes the view) also stops it.
+  const screen=document.getElementById('screen');
+  if(screen&&typeof MutationObserver!=='undefined')new MutationObserver(sync).observe(screen,{childList:true});
+  Native.on('app.background',()=>{foreground=false;sync()});
+  Native.on('app.foreground',()=>{foreground=true;sync()});
+  return {sync,phase,playing:()=>!!tone};
+})();
 
 /* The creator side of private calls: getting ready and going online, a second caller ringing
    while a call is in progress (decline or switch, never a busy signal), and the entry fee

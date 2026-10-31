@@ -1072,13 +1072,16 @@ function vPrecall(){
 
 /* ringing out: no "busy" state, a host on another call still gets the ring */
 function vDial(){
- const out=S.v==="dialback",p=out?S.caller:g(S.h);
- return `<div class="ringscr">
-  <div class="ringbg">${art(p.seed)}</div>
+ const out=S.v==="dialback",p=out?S.caller:g(S.h),voice=out?!!p.voice:!!S.nextCallVoice;
+ /* A redraw continues the rings in step with the ringback tone (web/call-ringback.js). */
+ const phase=window.ZimiRingback?window.ZimiRingback.phase():0;
+ return `<div class="ringscr dial" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
+  <div class="ringbg" aria-hidden="true"></div>
+  <span class="ringeye">${I(voice?"ph":"vid",13)}${voice?"Voice":"Video"} call</span>
   <div class="ringorb">${avc(p,104)}</div>
-  <h2>${esc(p.n)}</h2><p>Calling&hellip;</p>
+  <h2>${esc(p.n)}</h2><p class="dialstatus">Calling<span class="dialdots" aria-hidden="true"><i></i><i></i><i></i></span></p>
   ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
-  <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
+  <div class="ringact"><span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
  </div>`}
 
 function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}

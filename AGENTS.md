@@ -18,13 +18,10 @@ keeps it identical to the original Next.js version.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
 - `web/flat.css` — the final shared design layer: a pure white canvas, no box,
-  text or filter shadows, and 10px corners on content. All app buttons and
-  single-line text fields/selects use fully rounded pill corners. Multiline
-  fields use 24px corners to preserve readable text. Square icon buttons, the bordered 44px Back button,
-  avatars and switches are circles. Native retry/update buttons follow the same
-  rule. Media/preview containers retain their content framing, with round action
-  buttons over them. Keep the round list in step with `ROUND` in
-  `scripts/flat-corners.cjs`. Lines never get rounded
+  text or filter shadows, and 10px corners on every element except its round
+  list: the bordered 44px Back button and the close/more buttons beside it,
+  every call button, avatars and switches are always circles. Keep that list in
+  step with `ROUND` in `scripts/flat-corners.cjs`. Lines never get rounded
   ends: dividers, single-side borders, tab and navigation underlines and
   edge-to-edge surfaces (the post feed, page shells) and country flags keep square
   corners via the straight list in `web/flat.css`, mirrored by `STRAIGHT` in
@@ -174,6 +171,11 @@ keeps it identical to the original Next.js version.
   Follow members back. The member pays the host's rate after answering, with
   no entry fee, on the `incoming` ring screen; blocks still stop calls. See
   `docs/POLICIES.md`.
+- Outgoing calls (`dial` and `dialback`, both drawn by `vDial`) play a ringback
+  tone drawn with Web Audio (`web/call-ringback.js`, no sound file) only while
+  that screen shows and the app is in the foreground; any other view silences
+  it. The avatar rings and "Calling" dots in `web/call-dial.css` follow the
+  tone's 3s cycle through `--dial-phase`, so redraws do not restart them.
 - Animated gift stickers live in `web/stickers/` (built with
   `scripts/build-gift-sticker.py`) and are matched to catalog gifts by name in
   `web/gift-stickers.js`; the backend catalog seed uses the same names. Gift

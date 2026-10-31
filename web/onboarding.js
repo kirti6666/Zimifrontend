@@ -249,7 +249,7 @@ function obOtpSent(data = {}) {
 }
 function obResendText() {
   const left = Math.max(obWait("auth.sendOtp"), Math.ceil(((S.auth.resendAt || 0) - Date.now()) / 1000), 0);
-  return left ? `Request a new code in <b>${obDuration(left)}</b>` : `<span>Didn’t receive it?</span> <button class="ob-text-button" onclick="obResend()" ${S.auth.busy ? "disabled" : ""}>Send a new code</button>`;
+  return left ? `Resend code in <b>${obDuration(left)}</b>` : `<span>Didn’t receive it?</span> <button class="ob-text-button" onclick="obResend()" ${S.auth.busy ? "disabled" : ""}>Send a new code</button>`;
 }
 function obResend() {
   if (S.auth.busy || Date.now() < S.auth.resendAt || obWait("auth.sendOtp")) return;
@@ -489,8 +489,10 @@ function obLogin() {
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
     const length = obOtpLength();
-    title = "Verify your <em>number</em>."; description = `Enter the ${length}-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
-    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${I("back", 16)} Edit phone number</button><div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
+    title = "Verify your <em>number</em>.";
+    // The number and its Edit link wrap together, so the link never strands on its own line.
+    description = `Enter the ${length}-digit code sent to <span class="ob-sent-to"><strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong><button class="ob-edit-number" onclick="obBack()" aria-label="Edit phone number" ${a.busy ? "disabled" : ""}>Edit</button></span>`;
+    content = `<div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
     title = "Make it <em>yours</em>.";
