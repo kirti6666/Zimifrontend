@@ -28,7 +28,7 @@
   flex-direction: column;
   width: 100%;
   min-height: 100dvh;
-  padding: 20px max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  padding: 20px max(20px, var(--safe-right)) max(24px, var(--safe-bottom)) max(20px, var(--safe-left));
   overflow: hidden;
   /* A clean canvas: white, or black in Dark Mode. */
   background: var(--ob-bg);
@@ -335,7 +335,7 @@
 .ob-spinner { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid color-mix(in srgb, currentColor 30%, transparent); border-top-color: currentColor; animation: ob-spin .7s linear infinite; }
 .ob-primary, .ob-secondary, .ob-interest, .ob-options button { position: relative; overflow: hidden; }
 .ob-ripple { position: absolute; z-index: 2; width: 20px; height: 20px; margin: -10px 0 0 -10px; pointer-events: none; border-radius: 50%; background: color-mix(in srgb, currentColor 24%, transparent); animation: ob-ripple .6s cubic-bezier(.1,.55,.35,1) both; }
-.ob-toast { position: fixed; z-index: 1000; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: max-content; max-width: calc(100% - 40px); padding: 12px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--raised); color: var(--ink); box-shadow: 0 12px 40px rgb(0 0 0 / .3); font-size: 12px; line-height: 1.5; text-align: center; animation: ob-toast-in .2s ease-out; }
+.ob-toast { position: fixed; z-index: 1000; left: 50%; bottom: max(28px, var(--safe-bottom)); transform: translateX(-50%); width: max-content; max-width: calc(100% - 40px); padding: 12px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--raised); color: var(--ink); box-shadow: 0 12px 40px rgb(0 0 0 / .3); font-size: 12px; line-height: 1.5; text-align: center; animation: ob-toast-in .2s ease-out; }
 .ob-enter { animation: ob-enter .34s cubic-bezier(.2,.8,.2,1) both; }
 .ob-back { animation: ob-back .3s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes ob-enter { from { opacity: 0; transform: translate3d(22px, 4px, 0); } to { opacity: 1; transform: none; } }
@@ -447,7 +447,7 @@
   .ob-preview-heading span { font-size: 10px; }
 }
 @media (max-height: 740px) and (max-width: 599px) {
-  .ob-welcome { padding-top: 14px; padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+  .ob-welcome { padding-top: 14px; padding-bottom: max(18px, var(--safe-bottom)); }
   .ob-welcome-top { margin-bottom: 10px; }
   .ob-welcome-grid { gap: 14px; }
   .ob-hero-heading { font-size: clamp(30px, 8.6vw, 38px); }
@@ -456,7 +456,7 @@
 }
 /* Short phones: every sign-up step fits on one screen, without scrolling. */
 @media (max-height: 820px) and (max-width: 599px) {
-  .ob-shell:not(.ob-welcome) { padding-top: 14px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .ob-shell:not(.ob-welcome) { padding-top: 14px; padding-bottom: max(16px, var(--safe-bottom)); }
   .ob-header { margin-bottom: 18px; }
   .ob-description { margin-top: 8px; }
   .ob-content { margin-top: 20px; }
@@ -518,7 +518,7 @@
 .app-network-note { display: flex; gap: 12px; align-items: center; padding: 12px 16px; margin: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 12px; line-height: 1.5; }
 .app-network-note span { flex: 1; overflow-wrap: anywhere; }
 .app-network-note button { min-width: 48px; min-height: 44px; color: var(--accent-ink); font-weight: 700; }
-#app-notice { z-index: 9999; bottom: max(90px, env(safe-area-inset-bottom)); max-width: min(480px, calc(100vw - 32px)); padding: 14px 18px; border-radius: 16px; background: var(--raised); color: var(--ink); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+#app-notice { z-index: 9999; bottom: max(90px, var(--safe-bottom)); max-width: min(480px, calc(100vw - 32px)); padding: 14px 18px; border-radius: 16px; background: var(--raised); color: var(--ink); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 .kyc .ob-options { flex-wrap: wrap; }
 .kyc .ob-options button { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
 .kyc .ob-options button.selected { background: var(--accent); border-color: var(--accent); color: var(--cta-ink); }

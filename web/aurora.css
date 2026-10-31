@@ -7,6 +7,13 @@
  --gold:#e0a200;--media-canvas:#0b0c0f;
  --shadow:0 1px 2px rgb(16 16 18/.06),0 12px 28px -16px rgb(16 16 18/.22);
 }
+/* Device safe-area insets: use these, never the env() insets directly. In the app
+   the native SafeAreaView already keeps the page clear of the status bar,
+   navigation bar and cutouts, yet newer Android WebViews still report those insets,
+   so screens would pad for them twice. They are zero there (data-native-safe-area,
+   set in bridge.js) and the device insets in a standalone browser. */
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px)}
+:root[data-native-safe-area]{--safe-top:0px;--safe-right:0px;--safe-bottom:0px;--safe-left:0px}
 [data-theme="dark"]{
  --canvas:#000000;--deep:#000000;--surface:#17171a;--raised:#212126;--line:#2c2c31;
  --ink:#ffffff;--muted:#9a9aa6;--faint:#6a6a75;
@@ -52,7 +59,7 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .callbtn{position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:99px;background:var(--btn);
  color:var(--btn-ink);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px -6px rgba(0,0,0,.6)}
 .nav{position:relative;display:flex;align-self:center;justify-content:center;width:calc(100% - 20px);max-width:440px;
- margin:6px 10px calc(7px + env(safe-area-inset-bottom));padding:4px 5px;border:0;border-radius:18px;
+ margin:6px 10px calc(7px + var(--safe-bottom));padding:4px 5px;border:0;border-radius:18px;
  background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 8px 28px -16px rgba(0,0,0,.5);
  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .nav button{position:relative;flex:1;max-width:142px;padding:3px 0 4px;display:flex;flex-direction:column;
@@ -77,9 +84,9 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
  --zf-top:color-mix(in srgb,var(--accent) 78%,var(--surface))}
 .zf-face .zf-skin{fill:var(--zf-skin)}.zf-face .zf-hair{fill:var(--zf-hair)}.zf-face .zf-top{fill:var(--zf-top)}
 .zh-profile{position:relative}.zp-avatar>.zf-face{border-radius:50%}
-/* One back button for the whole app: a 40px surface circle with a hairline border, as on call setup.
+/* One back button for the whole app: a 44px surface circle with a hairline border.
    :root lifts it above each screen's own button rules; those classes only position it. */
-:root .zb-back{display:grid;place-items:center;flex:none;width:40px;height:40px;min-width:40px;min-height:40px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);touch-action:manipulation;transition:transform .15s ease}
+:root .zb-back{display:grid;place-items:center;flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);touch-action:manipulation;transition:transform .15s ease}
 :root .zb-back:active:not(:disabled){transform:scale(.94)}
 :root .zb-back:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 :root .zb-back:disabled{opacity:.45;cursor:default}
@@ -317,7 +324,7 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .slid{padding:6px 2px 2px}
 .slid input{width:100%;accent-color:var(--accent)}
 .actbar{position:relative;z-index:4;flex:0 0 auto;display:flex;align-items:center;gap:9px;
- padding:12px 14px calc(14px + env(safe-area-inset-bottom));background:var(--surface);
+ padding:12px 14px calc(14px + var(--safe-bottom));background:var(--surface);
  border-top:1px solid var(--line)}
 .shbody{padding:10px 14px 18px;overflow-y:auto;scrollbar-width:none}
 .shbody::-webkit-scrollbar{display:none}
@@ -402,7 +409,7 @@ svg.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .cclose{width:30px;height:30px;flex:0 0 auto;color:rgba(255,255,255,.5);font-size:19px;
  display:flex;align-items:center;justify-content:center}
 .lvbar{position:relative;z-index:5;display:flex;align-items:center;gap:8px;
- padding:0 14px calc(14px + env(safe-area-inset-bottom))}
+ padding:0 14px calc(14px + var(--safe-bottom))}
 .rndb{width:46px;height:46px;border-radius:99px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
  background:rgba(255,255,255,.16);color:#fff;backdrop-filter:blur(10px)}
 .rndb.giftb{background:#fff;color:#17171a}
@@ -796,7 +803,7 @@ button.acctrow:active{background:var(--raised)}
 [data-theme="dark"] .mrow.p1 .mcoin{color:#ffc02e}
 .hppane{padding:14px 16px;font-size:13.5px;line-height:1.65;color:var(--muted)}
 .hpbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;align-items:center;gap:9px;
- max-width:720px;margin:0 auto;padding:10px 16px calc(12px + env(safe-area-inset-bottom));
+ max-width:720px;margin:0 auto;padding:10px 16px calc(12px + var(--safe-bottom));
  background:color-mix(in srgb,var(--canvas) 94%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
 .hpbar .msg{flex:0 0 auto;width:46px;height:46px;border-radius:99px;border:1px solid var(--line);
  display:flex;align-items:center;justify-content:center}
@@ -932,7 +939,7 @@ button.acctrow:active{background:var(--raised)}
  background:linear-gradient(120deg,#ff4da2,#e8117a)}
 .cnote{margin-top:13px;font-size:10.5px;line-height:1.5;text-align:center;color:var(--muted)}
 .cbar{position:fixed;left:0;right:0;bottom:0;z-index:20;max-width:720px;margin:0 auto;
- padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:var(--canvas);
+ padding:10px 16px calc(12px + var(--safe-bottom));background:var(--canvas);
  border-top:1px solid var(--line)}
 .cbtn{width:100%;height:48px;border-radius:99px;color:#fff;font-size:15px;font-weight:800;
  display:flex;align-items:center;justify-content:center;gap:8px;
@@ -1117,7 +1124,7 @@ button.acctrow:active{background:var(--raised)}
 .pcbadge{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:6px 12px;border-radius:99px;background:rgba(27,197,164,.14);
  color:#7ff0d8;font-size:11.5px;font-weight:650}
 .pcbadge i{width:7px;height:7px;border-radius:50%;background:#1bc5a4;box-shadow:0 0 8px #1bc5a4}
-.pcsheet{position:relative;z-index:2;margin:0 10px calc(10px + env(safe-area-inset-bottom));padding:14px;border-radius:24px;
+.pcsheet{position:relative;z-index:2;margin:0 10px calc(10px + var(--safe-bottom));padding:14px;border-radius:24px;
  background:rgba(24,22,27,.82);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.08)}
 .pcprice{display:grid;grid-template-columns:repeat(3,1fr);border-radius:16px;background:rgba(255,255,255,.05)}
 .pcprice div{display:flex;flex-direction:column;gap:3px;padding:10px 11px}
@@ -1364,7 +1371,7 @@ button.gpill[onclick]{cursor:pointer}
 .earncard b{font-size:14px}
 .earncard b svg{width:14px;height:14px}
 /* incoming second caller: top of the screen */
-.incban{top:calc(8px + env(safe-area-inset-top,0px))}
+.incban{top:calc(8px + var(--safe-top))}
 /* gift panel opens to half the screen and scrolls */
 .tray .panel{max-height:52%;min-height:52%}
 .tray .ggrid{flex:1;min-height:0}
@@ -1391,7 +1398,7 @@ button.gpill[onclick]{cursor:pointer}
    bar: back · timer(+visibility) ········ earnings · ⋯
    goals: [gift target][mission] side by side; video tile on the right below */
 .vshade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,.08) 26%,transparent 45%,rgba(0,0,0,.85))}
-.ctop{position:relative;z-index:9;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 0}
+.ctop{position:relative;z-index:9;display:flex;align-items:center;gap:8px;padding:calc(10px + var(--safe-top)) 12px 0}
 .ctop .morebtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;
  background:rgba(0,0,0,.38);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12)}
 .ctop .more{position:relative;top:auto;left:auto;margin:0}
@@ -1407,7 +1414,7 @@ button.gpill[onclick]{cursor:pointer}
 .cearn span{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.55)}
 .cearn b{display:flex;align-items:center;gap:3px;font-size:14px;font-weight:800;color:#ffc02e;font-variant-numeric:tabular-nums;text-shadow:0 1px 6px rgba(0,0,0,.6)}
 .cearn b svg{width:14px;height:14px}
-.ctop .moremenu{left:auto;right:12px;top:calc(54px + env(safe-area-inset-top,0px));width:236px}
+.ctop .moremenu{left:auto;right:12px;top:calc(54px + var(--safe-top));width:236px}
 
 .goalrow{position:relative;z-index:8;display:flex;gap:8px;padding:10px 12px 0}
 .gcard{flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:15px;text-align:left;font:inherit;color:#fff;
@@ -1434,7 +1441,7 @@ button.gpill[onclick]{cursor:pointer}
 .gcard.done .gbar i{width:100%!important;background:linear-gradient(90deg,#ffc02e,#fff1a8,#ffc02e)}
 .gcard.done .gval{color:#ffc02e}
 
-.pip{position:absolute;z-index:8;top:calc(128px + env(safe-area-inset-top,0px));right:12px;left:auto;width:84px;height:116px}
+.pip{position:absolute;z-index:8;top:calc(128px + var(--safe-top));right:12px;left:auto;width:84px;height:116px}
 .glab{white-space:nowrap}
 .gname{overflow:hidden;text-overflow:ellipsis;margin-right:2px}
 @media (max-width:370px){.gname{display:none}.gcard{padding:8px 9px;gap:7px}.gcard .gem{font-size:22px}.glab{letter-spacing:.05em}}
@@ -1512,7 +1519,7 @@ button.gpill[onclick]{cursor:pointer}
 .feechip b{color:#ffc02e;font-variant-numeric:tabular-nums}
 .feechip.ok{border-color:rgba(27,197,164,.45);color:#7ff0d8}
 .feechip.ok>svg{color:#1bc5a4}
-.tray .panel.cfm{min-height:0;max-height:none;align-items:center;text-align:center;padding:22px 20px calc(18px + env(safe-area-inset-bottom,0px));gap:8px;color:#fff}
+.tray .panel.cfm{min-height:0;max-height:none;align-items:center;text-align:center;padding:22px 20px calc(18px + var(--safe-bottom));gap:8px;color:#fff}
 .cfmico{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:rgba(255,192,46,.15);color:#ffc02e}
 .cfm>b{font-family:"Poppins",Inter,sans-serif;font-size:19px;font-weight:800;margin-top:4px}
 .cfm p{font-size:13px;line-height:1.5;color:rgba(255,255,255,.75);max-width:340px}
@@ -1566,8 +1573,8 @@ button.gpill[onclick]{cursor:pointer}
 .lg18 input{width:auto;flex:0 0 auto}
 
 /* ---- login, sober pass: one column, neutral surfaces, one accent button ---- */
-.lgwrap{min-height:100dvh;max-width:440px;margin:0 auto;display:flex;flex-direction:column;padding:0 20px calc(16px + env(safe-area-inset-bottom,0px))}
-.lghead{display:flex;align-items:center;justify-content:space-between;height:56px;padding-top:env(safe-area-inset-top,0px)}
+.lgwrap{min-height:100dvh;max-width:440px;margin:0 auto;display:flex;flex-direction:column;padding:0 20px calc(16px + var(--safe-bottom))}
+.lghead{display:flex;align-items:center;justify-content:space-between;height:56px;padding-top:var(--safe-top)}
 .lgbk{width:36px;height:36px;margin-left:-8px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink)}
 .lgbk:active{background:var(--raised)}
 .lglogo{display:inline-flex;align-items:center;gap:7px;font-family:"Poppins",Inter,sans-serif;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
@@ -1628,3 +1635,5 @@ button.gpill[onclick]{cursor:pointer}
 @keyframes host-call-ripple{from{transform:scale(.92);opacity:.7}to{transform:scale(1.4);opacity:0}}
 @media(max-height:600px){.ringscr.host.ring{justify-content:flex-start;padding-top:32px}.ringscr.host.ring .ringeye{margin-bottom:18px}.ringscr.host.ring .ringact{margin-top:28px}.ringscr.host.ring h2{margin-top:16px}}
 @media(prefers-reduced-motion:reduce){.ringscr.host.ring .ringorb::before,.ringscr.host.ring .ringorb::after,.ringscr.host.ring .ringeye i,.ringscr.host.ring .accept{animation:none}.ringscr.host.ring .ringorb::after{display:none}.ringscr.host.ring .accept,.ringscr.host.ring .voiceend{transition:none}}
+/* A member who is short of coins can add them from the ring screen. */
+.ring-add-coins{margin-top:12px;padding:9px 16px;min-height:40px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;font-weight:600}

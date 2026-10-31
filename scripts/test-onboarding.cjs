@@ -416,12 +416,26 @@ async function hostFlow() {
   await uploadPhotos(page);
   await action(page, 'obNextPhotos').click();
   await action(page, 'obFinish').click();
-  await page.waitForFunction(() => S.v === 'kyc');
+  await joinHostAgency(page);
   const verification = await page.evaluate(() => S.kf);
   assert.equal(verification.name, 'Creator Test', 'Creator verification must reuse the display name');
   assert.equal(verification.email, 'onboarding@example.test', 'Creator verification must reuse the email');
   assert.equal(verification.photos.length, 3, 'Creator verification must reuse uploaded photos');
   console.log('PASS creator signup: role requirements and verification prefill');
+}
+
+async function joinHostAgency(page, native = false) {
+  await page.waitForFunction(() => S.v === 'agency');
+  const status = { agency: { id: 'agency-1', name: 'Dream Star Agency', recruitmentCode: 'BINZO7K9Q2M', status: 'ACTIVE' }, joiningCode: 'BINZO7K9Q2M8X4R', codeType: 'host-invite', canJoin: true, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  const latest = type => page.evaluate(value => window.__messages.filter(message => message.type === value).at(-1).data, type);
+  if (native) await receive(page, 'agency.loaded', { ...status, agency: null, nextStep: 'agency', requestId: (await latest('agency.load')).requestId });
+  await page.getByLabel('Host joining code').fill('BINZO7K9Q2M8X4R');
+  await page.getByRole('button', { name: 'Verify joining code', exact: true }).click();
+  if (native) await receive(page, 'agency.verified', { ...status, requestId: (await latest('agency.verify')).requestId });
+  await page.getByRole('button', { name: 'Join agency & continue', exact: true }).click();
+  if (native) await receive(page, 'agency.joined', { ...status, requestId: (await latest('agency.join')).requestId });
+  await page.getByRole('button', { name: 'Continue host application', exact: true }).click();
+  await page.waitForFunction(() => S.v === 'kyc');
 }
 
 async function nativeFlow() {
@@ -553,7 +567,7 @@ async function nativeCreatorFlow() {
   assert.equal((await state(page)).busy, 'profile.save', 'An older profile save cannot complete the current onboarding');
   await receive(page, 'profile.progress', { done: 2, total: 3 });
   await receive(page, 'profile.saved', { onboarding: true, account: { requiresOnboarding: false, verification: 'none', user: { id: 'new-creator', name: 'Creator Test', email: 'onboarding@example.test', role: 'sender', hostStatus: 'none', onboardingPreference: 'creator', languages: ['English'], category: 'Music' } } });
-  await page.waitForFunction(() => S.v === 'kyc');
+  await joinHostAgency(page, true);
   assert.equal(await page.evaluate(() => S.role), 'sender');
   const request = await page.evaluate(() => window.__messages.find(message => message.type === 'profile.save'));
   assert.equal(request.data.preferredRole, 'creator');

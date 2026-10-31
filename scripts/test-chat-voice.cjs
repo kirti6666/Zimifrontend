@@ -431,6 +431,8 @@ async function deterministicSuite() {
       { messageId: id('73'), everyone: false },
       { messageId: id('73'), everyone: true },
     ]) {
+      // Each iteration restores an independent server fixture after its prior deletion.
+      await page.evaluate(()=>Chats.hidden.clear());
       await openThread(page, mira, history);
       const message = page.locator(`#zc-m-${messageId}`);
       await message.locator('.zc-voice-play').click();

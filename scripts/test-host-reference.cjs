@@ -6,7 +6,7 @@ const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const artifacts = path.join(root, 'artifacts');
-const host = { id: '507f1f77bcf86cd799439017', name: 'Host', role: 'host', hostStatus: 'approved', isVerifiedHost: true };
+const host = { id: '507f1f77bcf86cd799439017', name: 'Host', role: 'host', hostStatus: 'approved', isVerifiedHost: true, coverUrl:'https://media.example.test/profile-cover.jpg' };
 const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 85, atCoins: 500000 }, tiers: [{ tier: 1, rate: 17 }, { tier: 2, rate: 50 }, { tier: 3, rate: 85 }], entryFeeCoins: 60, entryFeeHoldSeconds: 60, earlyEnds: { today: 0, limit: 2, penaltyCoins: 60 }, visibleDuringCalls: true };
 
 (async () => {
@@ -25,7 +25,7 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     await session(host);
     await receive('data.home', { hosts: [], stage: [], total: 0, page: 1, categories: ['Music'] });
     await page.evaluate(() => { window.__captures = 0; ZimiMedia.prepare = () => { __captures++; return new Promise(resolve => window.__resolveCapture = resolve); }; });
-    assert.equal(await page.locator('.zh-host-status').innerText(), 'Offline');
+    assert.equal(await page.locator('.zh-host-status').innerText(), 'Go online', 'An offline host sees the floating Go online button');
     assert.equal(await page.locator('.zh-host-entry').count(), 0, 'Home has no large availability banner');
     await button('Get ready to go online').click();
     assert.equal(await page.evaluate(() => S.v), 'setup');
@@ -54,6 +54,63 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     }
     await page.setViewportSize({ width: 390, height: 844 });
 
+    assert.equal(await page.locator('.hc-card-image img').count(),0,'An existing profile cover is not used as the creator card');
+    await button('Set creator card image').click();
+    const cardPhoto=Buffer.from(await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=800;canvas.height=600;const ctx=canvas.getContext('2d');ctx.fillStyle='#b85c87';ctx.fillRect(0,0,800,600);return canvas.toDataURL('image/png').split(',')[1]}),'base64');
+    await page.evaluate(()=>{window.__cardPhotoReader=obReadPhoto;obReadPhoto=()=>new Promise(resolve=>window.__finishSameOwnerCard=resolve)});
+    await page.getByLabel('Choose creator card image',{exact:true}).setInputFiles({name:'pending-card.png',mimeType:'image/png',buffer:cardPhoto});
+    await page.waitForFunction(()=>HostStudio.cardPreparing);
+    await page.evaluate(()=>{S.user={...S.user,coverUrl:'https://media.example.test/concurrent-cover.jpg'};S.coverData=S.user.coverUrl;__finishSameOwnerCard('data:image/jpeg;base64,AAAA')});
+    await page.waitForFunction(()=>!HostStudio.cardPreparing&&HostStudio.cardDraft==='data:image/jpeg;base64,AAAA');
+    assert.equal(await page.evaluate(()=>S.coverData),'https://media.example.test/concurrent-cover.jpg','A same-owner cover refresh during image preparation is preserved');
+    assert.equal(await button('Save card image').isDisabled(),false,'Replacing the same account object cannot leave card preparation stuck');
+    await page.evaluate(()=>{obReadPhoto=()=>new Promise(resolve=>window.__finishRetiredCard=resolve)});
+    await page.getByLabel('Choose creator card image',{exact:true}).setInputFiles({name:'retired-card.png',mimeType:'image/png',buffer:cardPhoto});
+    await page.waitForFunction(()=>HostStudio.cardPreparing);
+    await receive('session.none',{});
+    await session(host);
+    await page.evaluate(()=>go('setup'));
+    await receive('host.callStatus',status);
+    await button('Set creator card image').click();
+    await page.evaluate(()=>{obReadPhoto=window.__cardPhotoReader});
+    await page.getByLabel('Choose creator card image',{exact:true}).setInputFiles({name:'card.png',mimeType:'image/png',buffer:cardPhoto});
+    await page.waitForFunction(()=>!HostStudio.cardPreparing&&!!HostStudio.cardDraft);
+    const currentCardDraft=await page.evaluate(()=>HostStudio.cardDraft);
+    await page.evaluate(()=>__finishRetiredCard('data:image/jpeg;base64,CCCC'));
+    assert.equal(await page.evaluate(()=>HostStudio.cardDraft),currentCardDraft,'An old preparation cannot replace a newer draft after signing back into the same account');
+    assert.equal(await page.evaluate(()=>HostStudio.cardPreparing),false);
+    assert.equal(await page.evaluate(()=>S.coverData),host.coverUrl,'Retired card preparation cannot change the current cover');
+    assert.equal(await page.evaluate(()=>__sent.filter(m=>m.type==='creator.card.save').length),0,'Card images are saved only after confirmation');
+    await page.screenshot({path:path.join(artifacts,'creator-card-image-picker.png')});
+    await button('Save card image').click();
+    const cardSave=await page.evaluate(()=>__sent.filter(m=>m.type==='creator.card.save').at(-1).data);
+    assert.match(cardSave.photo,/^data:image\/jpeg;base64,/);
+    await receive('creator.card.error',{requestId:cardSave.requestId,message:'Image upload failed'});
+    assert.ok(await page.evaluate(()=>HostStudio.cardDraft),'A failed save retains the chosen card');
+    await button('Save card image').click();
+    const cardRetry=await page.evaluate(()=>__sent.filter(m=>m.type==='creator.card.save').at(-1).data);
+    const savedHost={user:{...host,creatorCardUrl:'https://media.example.test/creator-card.jpg',creatorCardKey:'creator-cards/owner/card.jpg'},verification:'verified',requiresOnboarding:false};
+    await receive('creator.card.saved',{requestId:cardSave.requestId,account:savedHost});
+    assert.equal(await page.evaluate(()=>HostStudio.cardSaving),true,'A stale save cannot finish the current upload');
+    await page.evaluate(()=>{S.coverData='data:image/png;base64,BBBB';S.avatarData='data:image/png;base64,CCCC';S.mediaDirty={cover:true,avatar:true};S.editName='Unfinished profile edit'});
+    await receive('creator.card.saved',{requestId:cardRetry.requestId,account:savedHost});
+    assert.equal(await page.evaluate(()=>S.v),'setup','Saving a card keeps the go-online setup open');
+    assert.equal(await page.locator('.hc-card-image img').getAttribute('src'),savedHost.user.creatorCardUrl);
+    assert.equal(await page.evaluate(()=>S.user.coverUrl),host.coverUrl,'A confirmed creator card leaves the saved profile cover unchanged');
+    assert.equal(await page.evaluate(()=>S.coverData),'data:image/png;base64,BBBB','A card acknowledgement preserves the unsaved cover draft');
+    assert.equal(await page.evaluate(()=>S.avatarData),'data:image/png;base64,CCCC');
+    assert.deepEqual(await page.evaluate(()=>S.mediaDirty),{cover:true,avatar:true});
+    assert.equal(await page.evaluate(()=>S.editName),'Unfinished profile edit');
+    await button('Set creator card image').click();
+    assert.equal(await page.locator('.hs-card-preview img').getAttribute('src'),savedHost.user.creatorCardUrl,'Reopening the picker uses the saved card, independently of the cover draft');
+    await button('Close Creator card image').click();
+    await session({...savedHost.user,coverUrl:'https://media.example.test/refreshed-profile-cover.jpg'});
+    await page.evaluate(()=>go('setup'));
+    await receive('host.callStatus',status);
+    assert.equal(await page.locator('.hc-card-image img').getAttribute('src'),savedHost.user.creatorCardUrl,'Reloading account data with a different cover preserves the saved card');
+    assert.equal(await page.evaluate(()=>S.coverData),'https://media.example.test/refreshed-profile-cover.jpg');
+    assert.equal(await page.evaluate(()=>__captures),0,'Changing the creator card does not capture the camera');
+
     // Choosing a mission target updates the open sheet in place instead of redrawing the screen.
     await button('Mission').click();
     await page.locator('.hs-sheet').waitFor();
@@ -75,7 +132,8 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     await page.screenshot({ path: path.join(artifacts, 'host-online-light.png') });
     await button('Browse the app').click();
     assert.equal(await page.locator('.zh-host-status').innerText(), 'Online');
-    assert.ok(await page.locator('.zh-header .zh-host-status').evaluate(el => el.getBoundingClientRect().height <= 40), 'Availability fits compactly in the Home header');
+    assert.ok(await page.locator('.zh-dashboard .zh-host-status').evaluate(el => { const box = el.getBoundingClientRect(); return box.height <= 48 && box.right > innerWidth - 30; }), 'Availability floats compactly at the bottom right of Home, like the reference LIVE button');
+    assert.equal(await page.locator('.zh-header .zh-host-status').count(), 0, 'The Home header keeps only the reference actions');
     await receive('app.background', {});
     await receive('app.foreground', {});
     assert.equal(await page.locator('.zh-host-status').innerText(), 'Online', 'App switching preserves the acknowledged host choice');
@@ -88,7 +146,7 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     await receive('operation.error', { action: 'presence.set', message: 'Temporary connection error' });
     assert.equal(await page.locator('.zh-host-status').innerText(), 'Online', 'A failed status update preserves the last saved choice');
     await receive('presence.saved', { online: false, visible: false });
-    assert.equal(await page.locator('.zh-host-status').innerText(), 'Offline', 'Recovered presence refreshes Home');
+    assert.equal(await page.locator('.zh-host-status').innerText(), 'Go online', 'Recovered presence refreshes Home');
     await receive('presence.saved', { online: true, visible: true });
     await button('Manage your call availability').click();
     await receive('call.incoming', { callId: 'incoming-reference', from: { id: 'member', name: 'Imran Q.', city: 'Bhopal', level: 20 }, voice: true, rate: 50, entryFee: 60, feeHoldSeconds: 60 });

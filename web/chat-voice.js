@@ -179,7 +179,7 @@ window.ZimiChatVoice = (() => {
       if (Chats.reply?.id === state.reply?.id) { Chats.reply = null; zcPaintContext(); }
       cancel();
     }
-    if (S.v === 'thread' && S.h === String(data.to)) zcPaintThread(true);
+    if (S.v === 'thread' && S.h === String(data.to)) { S.msgs=ZimiChatOrder.merge([],S.msgs,Chats.hidden);zcAdvanceSummary(data.to,data.message,true);zcPaintThread(true); }
   });
   Native.on('operation.error', data => {
     if (data.action !== 'chat.voice') return;

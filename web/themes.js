@@ -33,7 +33,7 @@ function ztApply(animate=false){
   const root=document.documentElement;
   const theme=ztCurrent(),c=ztDisplayColors(theme),t=theme.typography,signature=JSON.stringify([theme.id,c,t]);
   const mode=ZThemes.dark?'dark':'light';
-  root.classList.toggle('zp-light',!ZThemes.dark);if(root.dataset.theme!==mode)root.dataset.theme=mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
+  root.classList.toggle('zp-light',mode==='light');if(root.dataset.theme!==mode)root.dataset.theme=mode;if(root.dataset.canvas!==c.background)root.dataset.canvas=c.background;
   for(const [key,value] of Object.entries({themeInk:c.text,themePrimary:c.primary,themeContrast:c.primaryContrast,themeSurface:c.surface,themeRaised:c.surfaceElevated}))if(root.dataset[key]!==value)root.dataset[key]=value;
   if(signature===ZThemes.signature)return;
   const motion=animate&&ZThemes.signature&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -75,10 +75,13 @@ function ztBeforeNavigate(view){
 }
 function ztOpen(){go('themes')}
 function ztBack(){
+  ztClosePurchase();
   const target=ZThemes.returnTo==='settings'?'settings':'profile',top=ZThemes.returnScroll,focus=ZThemes.returnFocus;
   go(target);ztRestoreScroll(top);
   if(focus)[...document.querySelectorAll('.zp-page [aria-label]')].find(el=>el.getAttribute('aria-label')===focus)?.focus({preventScroll:true});
 }
+function ztClosePurchase(){if(DEMO)return;const order=ZThemes.checkout?.merchantOrderId,attempt=ZThemes.attempt;if(order||attempt)Native.send('payments.checkout.closed',{kind:'premium',...(order?{merchantOrderId:order}:{idempotencyKey:attempt})})}
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='themes')ztClosePurchase()});
 function ztHeader(){return `<header class="zh-subheader zt-header">${backButton('ztBack()',{label:ZThemes.returnTo==='settings'?'Back to settings':'Back to profile'})}<h1>Appearance &amp; Theme</h1></header>`}
 function ztPage(){ZThemes.renderView=document.getElementById('zt-page')?ztViewState():null;return `<section class="zt-page" id="zt-page" aria-label="Theme gallery"><div id="zt-content">${ztContent()}</div></section>`}
 function ztSkeleton(){return `<div class="zt-grid" role="status" aria-label="Loading themes">${Array.from({length:ZThemes.catalog?.items.length||4},()=>`<div class="zt-card zt-placeholder"><span class="zh-skeleton-shape zt-preview"></span>${skeletonLine('65%',14)}${skeletonLine('85%',10)}${skeletonLine('45%',11)}</div>`).join('')}</div>`}

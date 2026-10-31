@@ -17,7 +17,46 @@ const lastRequest = (page, type) => page.evaluate(type => window.__messages.filt
     await page.route('**/*', route => route.abort());
     await page.setContent('<main><div id="top"></div><div id="screen"></div><div id="nav"></div></main>');
     await page.addScriptTag({ content: 'window.ZIMI_DEMO=false;window.__messages=[];window.ReactNativeWebView={postMessage(json){window.__messages.push(JSON.parse(json))}};' });
-    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
+    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js', 'loading.js', 'post-create.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
+
+    await page.evaluate(initial => { obApplyAccount(initial); S.loggedIn=1; go('editprofile'); }, account());
+    await page.locator('#editname').fill('My unsaved name');
+    await page.locator('#editcity').fill('Draft city');
+    await page.locator('#editcountry').fill('India');
+    await page.locator('#editabout').fill('My unsaved introduction');
+    const remote = account();
+    Object.assign(remote.user,{name:'Saved on another device',city:'London',country:'United Kingdom',gender:'undisclosed',avatarUrl:'https://media.example.test/saved-avatar.jpg'});
+    await receive(page,'profile.account',remote);
+    assert.equal(await page.locator('#editname').inputValue(),'My unsaved name','Background account refresh preserves the open editor draft');
+    assert.equal(await page.locator('#editcity').inputValue(),'Draft city');
+    assert.equal(await page.locator('#editcountry').inputValue(),'India');
+    assert.equal(await page.evaluate(()=>S.user.name),remote.user.name,'The saved identity still receives changes from another device');
+    await page.evaluate(()=>{S.avatarData='data:image/png;base64,AAAA';S.mediaDirty={avatar:true};go('profile')});
+    assert.equal(await page.evaluate(()=>S.avatarData),remote.user.avatarUrl,'Leaving without saving discards the local avatar preview');
+    assert.deepEqual(await page.evaluate(()=>S.mediaDirty),{});
+    await page.evaluate(()=>go('editprofile'));
+    assert.equal(await page.locator('#editname').inputValue(),remote.user.name);
+    assert.equal(await page.locator('#editcountry').inputValue(),'United Kingdom');
+    await page.locator('#editname').fill('');
+    await page.getByRole('button',{name:'Save profile',exact:true}).click();
+    assert.equal(await page.evaluate(()=>!!S.profileSaving),false,'An empty name is validated rather than silently replaced with the previous name');
+    await page.evaluate(async()=>{
+      const previous=obReadPhoto;let finish;
+      obReadPhoto=()=>new Promise(resolve=>{finish=resolve});
+      const preparing=pickMedia({target:{files:[{}],value:''}},'avatar');
+      go('profile');finish('data:image/jpeg;base64,AAAA');await preparing;obReadPhoto=previous;
+    });
+    assert.equal(await page.evaluate(()=>S.avatarData),remote.user.avatarUrl,'A photo finishing after cancel cannot restore an unsaved preview');
+    assert.equal(await page.evaluate(()=>S.mediaPreparing),false);
+    await page.evaluate(async()=>{
+      ZimiPostCreate.open();const previous=obReadPhoto;let finish;
+      obReadPhoto=()=>new Promise(resolve=>{finish=resolve});
+      const preparing=pickMedia({target:{files:[{}],value:''}},'posts');
+      go('profile');
+      if(S.mediaPreparing)throw new Error('Abandoned new-post photo left controls busy');
+      ZimiPostCreate.open();finish('data:image/jpeg;base64,AAAA');await preparing;obReadPhoto=previous;
+      if(S.mediaPreparing||S.postDraftData)throw new Error('An abandoned picker changed the reopened post editor');
+    });
     const rendering = await page.evaluate(() => {
       const avatar = 'https://media.example.test/creator.jpg?v=1&size=small', cover = 'https://media.example.test/cover.jpg';
       const h = hostFrom({ id: '507f1f77bcf86cd799439012', name: 'Riya <3 & friends', avatarUrl: avatar, coverUrl: cover });
@@ -65,17 +104,17 @@ const lastRequest = (page, type) => page.evaluate(type => window.__messages.filt
     assert.equal(await page.evaluate(() => S.coverData), saved.user.coverUrl);
     assert.deepEqual(await page.evaluate(() => S.mediaDirty), {}, 'After save, previews use authenticated R2 URLs');
 
-    await page.evaluate(() => go('editprofile'));
+    await page.evaluate(() => ZimiPostCreate.open());
     await page.locator('input[onchange*="posts"]').setInputFiles({ name: 'post.png', mimeType: 'image/png', buffer: photo });
     await page.waitForFunction(() => !!S.postDraftData && !S.mediaPreparing);
     await page.locator('#postcaption').fill('A new moment');
-    await page.getByRole('button', { name: 'Publish photo', exact: true }).click();
+    await page.getByRole('button', { name: 'Publish post', exact: true }).click();
     const publication = await lastRequest(page, 'media.post.create');
     assert.ok(publication.data.photo.startsWith('data:image/jpeg;base64,')); assert.equal(publication.data.caption, 'A new moment');
     assert.equal(await page.evaluate(() => S.postData.length), 0, 'An unconfirmed upload is not shown as a published post');
     await receive(page, 'post.error', { requestId: publication.data.requestId, message: 'Upload failed. Try again.' });
     assert.ok(await page.evaluate(() => S.postDraftData)); assert.equal(await page.locator('#postcaption').inputValue(), 'A new moment');
-    await page.getByRole('button', { name: 'Publish photo', exact: true }).click();
+    await page.getByRole('button', { name: 'Publish post', exact: true }).click();
     const secondPublication = await lastRequest(page, 'media.post.create');
     const post = { id: 'post-id', mediaUrl: 'https://media.example.test/post.jpg', kind: 'photo', caption: 'A new moment' };
     await receive(page, 'post.saved', { requestId: publication.data.requestId, post });
@@ -85,7 +124,7 @@ const lastRequest = (page, type) => page.evaluate(type => window.__messages.filt
     assert.equal(await page.evaluate(() => S.postDraftData), '');
 
     await page.evaluate(account => { obApplyAccount(account); go('editprofile'); }, account('sender'));
-    assert.equal(await page.locator('input[onchange*="posts"]').count(), 0, 'Publishing remains available only to approved creators');
+    assert.equal(await page.locator('input[onchange*="posts"]').count(), 0, 'Post creation is separate from profile editing');
     await page.locator('input[onchange*="avatar"]').setInputFiles({ name: 'not-an-image.txt', mimeType: 'text/plain', buffer: Buffer.from('not an image') });
     await page.waitForFunction(() => !S.mediaPreparing && !!S.mediaError);
     assert.match(await page.getByRole('alert').textContent(), /image file/);

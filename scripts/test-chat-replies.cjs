@@ -52,6 +52,7 @@ const threadRows = () => [
       await menu.waitFor({ state: 'visible' });
     };
     const reset = async (rows = threadRows(), extra = {}) => {
+      await page.evaluate(()=>Chats.hidden.clear()); // Restore an independent server fixture after prior delete-for-me scenarios.
       await page.evaluate(peer => zcOpen(peer), mira.id);
       await receive('data.thread', { with: mira.id, canSend: true, messages: rows, ...extra });
       await input.waitFor();
@@ -384,7 +385,7 @@ const threadRows = () => [
     await drag(messages.incoming, 82);
     await input.fill('I will bring my guitar');
     await input.press('Enter');
-    assert.deepEqual(await last('chat.send'), { to: mira.id, text: 'I will bring my guitar', replyTo: messages.incoming });
+    const replySend=await last('chat.send');assert.ok(replySend.clientId);assert.deepEqual({...replySend,clientId:undefined}, { to: mira.id, text: 'I will bring my guitar', replyTo: messages.incoming,clientId:undefined });
     await assertNoReply('Sending text closes the selected reply');
     await receive('chat.sent', { to: mira.id, sent: 'I will bring my guitar', text: 'I will bring my guitar', id: id('60'), inCall: false, reply: { ...originalReply(), text: 'Server-confirmed preview' } });
     assert.match(await quote(id('60')).innerText(), /Server-confirmed preview/);

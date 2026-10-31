@@ -1,17 +1,47 @@
 import { ApiError, request } from "./client";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
-import { officialChatFrom } from "./adapters";
-import type { OfficialReadPatch } from "./types";
+import { leaderboardFrom, officialChatFrom, referralFrom } from "./adapters";
+import { relationshipsFrom } from "./adapters";
+import type { RelationshipKind, Relationships } from "./types";
+import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
+import type { HostAgencyStatus } from "./types";
+import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
+let pendingProfileWrite: Promise<unknown> | undefined;
 let voiceUploadVersion: number | undefined;
 const voiceUploads = new Map<string, { to: string; durationMs: number; replyTo?: string; audioKey: string }>();
+let photoUploadVersion: number | undefined;
+const photoUploads = new Map<string, { to: string; replyTo?: string; fingerprint: string; imageKey: string }>();
+function photoFingerprint(source: string) {
+  let left = 2166136261, right = 5381;
+  for (let index = 0; index < source.length; index++) { const value = source.charCodeAt(index); left = Math.imul(left ^ value, 16777619); right = Math.imul(right, 33) ^ value; }
+  return `${source.length}:${left >>> 0}:${right >>> 0}`;
+}
 const remember = (account: Account) => { identity = { id: account.user.id, version: getSessionVersion() }; return account; };
+async function queueProfileWrite<T>(version: number, save: () => Promise<T>): Promise<T> {
+  const commit = () => { ensureSession(version); return save(); };
+  const write = pendingProfileWrite ? pendingProfileWrite.catch(() => {}).then(commit) : commit();
+  pendingProfileWrite = write;
+  try { return await write; }
+  finally { if (pendingProfileWrite === write) pendingProfileWrite = undefined; }
+}
+async function savedProfileAccount(response: unknown, version: number): Promise<Account> {
+  ensureSession(version);
+  pendingProfile = undefined;
+  const user = record(response);
+  // New servers return the committed owner profile. A successful write must
+  // not become a failed save merely because a second network read goes offline.
+  if (["user", "host", "admin"].includes(String(user.role)) && typeof user.onboardingStatus === "string")
+    return remember(accountFrom({ user }));
+  // Older servers return only selected fields, without account authority.
+  return api.me(true);
+}
 async function selfId(): Promise<string> {
   return identity?.version === getSessionVersion() ? identity.id : (await api.me()).user.id;
 }
@@ -30,6 +60,29 @@ function boundedStrings(value: unknown, label: string, min: number, max: number)
   return [...new Set(value.map(item => (item as string).trim()))];
 }
 const queryString = (query: Record<string, string | number | undefined>) => Object.entries(query).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join("&");
+
+function agencyCodePayload(value: string, joining = false) {
+  const agencyCode = value.trim().toUpperCase();
+  if (!(joining ? /^BINZO[A-Z0-9]{10}$/ : /^[A-Z0-9]{6,32}$/).test(agencyCode))
+    throw new ApiError("Ask your agency for your one-time host joining code. Its public agency ID cannot be used to join.", 400);
+  return { agencyCode };
+}
+function hostAgencyFrom(value: unknown): HostAgencyStatus {
+  const data = record(value), agency = data.agency == null ? null : record(data.agency);
+  if (!["agency", "application", "review", "active"].includes(String(data.nextStep)) || typeof data.eligible !== "boolean" ||
+    !Array.isArray(data.requirements) || data.requirements.some(item => typeof item !== "string") ||
+    (agency && (typeof agency.name !== "string" || typeof agency.recruitmentCode !== "string" || !["ACTIVE", "SUSPENDED"].includes(String(agency.status)))) ||
+    (data.joiningCode !== undefined && data.joiningCode !== null && (typeof data.joiningCode !== "string" || !/^BINZO[A-Z0-9]{10}$/.test(data.joiningCode))) ||
+    (data.codeType !== undefined && (typeof data.codeType !== "string" || !["host-invite", "agency"].includes(data.codeType))) ||
+    (data.canJoin !== undefined && typeof data.canJoin !== "boolean"))
+    throw new ApiError("Your agency details could not be confirmed. Please try again.", 502);
+  return { agency: agency ? { id: idOf(agency), name: agency.name as string, recruitmentCode: agency.recruitmentCode as string, status: agency.status as "ACTIVE" | "SUSPENDED" } : null,
+    hostStatus: typeof data.hostStatus === "string" ? data.hostStatus : "none", isVerifiedHost: data.isVerifiedHost === true,
+    eligible: data.eligible, requirements: data.requirements as string[], nextStep: data.nextStep as HostAgencyStatus["nextStep"],
+    ...(data.joiningCode === undefined ? {} : { joiningCode: data.joiningCode as string | null }),
+    ...(data.codeType === undefined ? {} : { codeType: data.codeType as HostAgencyStatus["codeType"] }),
+    ...(data.canJoin === undefined ? {} : { canJoin: data.canJoin as boolean }) };
+}
 
 export const api = {
   async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number; otpLength: number }> {
@@ -54,6 +107,38 @@ export const api = {
     identity = undefined;
     return request<void>("POST", "/auth/logout", undefined, token ? { auth: false, bearerToken: token, refresh: false } : undefined);
   },
+  deactivateAccount: () => request("POST", "/account/deactivate", { confirmed: true }),
+  async relationships(kind: RelationshipKind, page = 1): Promise<Relationships> {
+    const version = getSessionVersion(), id = await selfId();
+    ensureSession(version);
+    const result = await request("GET", `/users/${encodeURIComponent(id)}/${kind}?page=${page}&limit=20`);
+    ensureSession(version);
+    return relationshipsFrom(result, kind);
+  },
+  async saveCoverPhoto(photo: string): Promise<Account> {
+    const version = getSessionVersion();
+    decodePhoto(photo);
+    // A new document can choose another cover while an older upload finishes.
+    // Keep these writes in selection order so the last choice stays saved.
+    const save = async () => {
+      ensureSession(version);
+      const mediaKey = await uploadMedia(photo, "cover", version);
+      ensureSession(version);
+      const response = await request("PATCH", "/profile", { coverKey: mediaKey });
+      return savedProfileAccount(response, version);
+    };
+    return queueProfileWrite(version, save);
+  },
+  async saveCreatorCard(photo: string): Promise<Account> {
+    const version = getSessionVersion();
+    decodePhoto(photo);
+    return queueProfileWrite(version, async () => {
+      const mediaKey = await uploadMedia(photo, "creator-card", version);
+      ensureSession(version);
+      const response = await request("PATCH", "/profile", { creatorCardKey: mediaKey });
+      return savedProfileAccount(response, version);
+    });
+  },
   async me(fresh = false): Promise<Account> {
     const version = getSessionVersion();
     if (!fresh && pendingProfile?.version === version) return pendingProfile.promise;
@@ -63,6 +148,7 @@ export const api = {
   },
   async saveProfile(profile: Record<string, unknown>, onProgress?: (done: number, total: number) => void): Promise<Account> {
     const version = getSessionVersion();
+    return queueProfileWrite(version, async () => {
     if (typeof profile.name !== "string" || profile.name.trim().length < 2 || profile.name.trim().length > 100) throw new ApiError("Your name must be between 2 and 100 characters.", 400);
     if (profile.photos !== undefined && (!Array.isArray(profile.photos) || profile.photos.some(photo => typeof photo !== "string"))) throw new ApiError("Choose valid photos to continue.", 400);
     if (Array.isArray(profile.photos)) {
@@ -90,6 +176,7 @@ export const api = {
     if (profile.avatar !== undefined) decodePhoto(profile.avatar as string);
     if (profile.cover !== undefined && profile.cover !== null) decodePhoto(profile.cover as string);
     if (profile.city !== undefined && (typeof profile.city !== "string" || profile.city.length > 100)) throw new ApiError("Keep your location under 100 characters.", 400);
+    if (profile.country !== undefined && (typeof profile.country !== "string" || profile.country.length > 100)) throw new ApiError("Keep your country under 100 characters.", 400);
     if (profile.about !== undefined && (typeof profile.about !== "string" || profile.about.length > 500)) throw new ApiError("Keep your introduction under 500 characters.", 400);
     const media: { avatarKey?: string; coverKey?: string | null } = {};
     const total = Number(profile.avatar !== undefined) + Number(profile.cover !== undefined && profile.cover !== null);
@@ -99,11 +186,9 @@ export const api = {
     if (profile.cover === null) media.coverKey = null;
     else if (profile.cover !== undefined) { media.coverKey = await uploadMedia(profile.cover as string, "cover", version); onProgress?.(++done, total); }
     ensureSession(version);
-    await request("PATCH", "/profile", { name: profile.name.trim(), ...(typeof profile.city === "string" ? { city: profile.city.trim() } : {}), ...(typeof profile.about === "string" ? { bio: profile.about.trim() } : {}), ...genderOf(profile.gender), ...media });
-    ensureSession(version);
-    // A /me read started before this mutation must not hide the saved media.
-    pendingProfile = undefined;
-    return api.me();
+    const response = await request("PATCH", "/profile", { name: profile.name.trim(), ...(typeof profile.city === "string" ? { city: profile.city.trim() } : {}), ...(typeof profile.country === "string" ? { country: profile.country.trim() } : {}), ...(typeof profile.about === "string" ? { bio: profile.about.trim() } : {}), ...genderOf(profile.gender), ...media });
+    return savedProfileAccount(response, version);
+    });
   },
   async myPosts() {
     const version = getSessionVersion(), id = await selfId();
@@ -118,18 +203,32 @@ export const api = {
     decodePhoto(photo);
     const account = await api.me();
     ensureSession(version);
-    if (!approvedHost(account)) throw new ApiError("Your creator profile must be approved before you can publish posts.", 403);
+    if (account.user.serverRole !== "user" && !approvedHost(account)) throw new ApiError("Verify your account before publishing photos.", 403);
     const mediaKey = await uploadMedia(photo, "post", version);
     ensureSession(version);
     const response = await request("POST", "/posts", { caption: caption.trim(), kind: "photo", mediaKey });
     ensureSession(version);
     return postFrom(response);
   },
+  deletePost: (id: string) => request("DELETE", `/posts/${encodeURIComponent(id)}`),
+  async likePost(id: string, liked: boolean) {
+    const data = record(await request("POST", `/posts/${encodeURIComponent(id)}/like`, { liked }));
+    if (typeof data.liked !== "boolean" || typeof data.likes !== "number") throw new ApiError("Your like could not be confirmed. Try again.", 502);
+    return { liked: data.liked, likes: Math.max(0, Math.floor(data.likes)) };
+  },
+  async postComments(id: string, page = 1) { return commentsFrom(await request("GET", `/posts/${encodeURIComponent(id)}/comments?page=${page}&limit=20`), id); },
+  async addPostComment(id: string, text: string) { return commentFrom(await request("POST", `/posts/${encodeURIComponent(id)}/comments`, { text: text.trim() })); },
+  deletePostComment: (id: string, commentId: string) => request("DELETE", `/posts/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}`),
+  async hostAgency(): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("GET", "/hosts/agency")); },
+  async verifyAgencyCode(code: string): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("POST", "/hosts/verify-agency-code", agencyCodePayload(code))); },
+  async joinAgency(code: string): Promise<HostAgencyStatus> { return hostAgencyFrom(await request("POST", "/hosts/activate", agencyCodePayload(code, true))); },
   async submitVerification(details: Record<string, unknown>): Promise<{ status: Verification }> {
     const displayName = typeof details.name === "string" ? details.name.trim() : "";
     const bio = typeof details.bio === "string" ? details.bio.trim() : "";
     if (displayName.length < 2 || bio.length < 20) throw new ApiError("Add your display name and an introduction of at least 20 characters to apply as a creator.", 400);
     const languages = boundedStrings(details.languages ?? details.langs, "languages", 1, 10);
+    const agency = await api.hostAgency();
+    if (!agency.agency) throw new ApiError("Join your agency with your one-time host joining code before submitting your host application.", 400);
     const application = await request<{ status: string }>("POST", "/hosts/application", { displayName, bio, languages });
     return { status: verificationOf(application.status) };
   },
@@ -146,7 +245,9 @@ export const api = {
     return profile;
   },
   async publicPosts(id: string, page = 1) { return publicPostsFrom(await request("GET", `/users/${encodeURIComponent(id)}/posts?page=${page}&limit=12`)); },
-  async saveProfileSettings(input: ProfileSettingsPatch) { return profileSettingsFrom(await request("PATCH", "/account/settings", input)); },
+  async saveProfileSettings(input: ProfileSettingsPatch) {
+    return queueProfileWrite(getSessionVersion(), async () => profileSettingsFrom(await request("PATCH", "/account/settings", input)));
+  },
   async savePrivacy(input: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">>) { return privacyFrom(await request("PATCH", "/safety", input)); },
   async blockedUsers(page = 1) { return blockedUsersFrom(await request("GET", `/users/blocked?page=${page}&limit=20`)); },
   setBlocked: (id: string, blocked: boolean) => request<void>(blocked ? "POST" : "DELETE", `/users/${encodeURIComponent(id)}/block`, blocked ? {} : undefined),
@@ -210,11 +311,34 @@ export const api = {
     if (!Number.isSafeInteger(data.updated) || Number(data.updated) < 0 || typeof data.readAt !== "string") throw new ApiError("The read status could not be confirmed. Refresh your conversations.", 502);
     return { updated: data.updated as number, readAt: data.readAt };
   },
-  async thread(withId: string) { const id = await selfId(); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}`), id); },
+  async thread(withId: string, knownIds?: string[]) { const id = await selfId(); const known = knownIds?.filter(id => /^[a-f\d]{24}$/i.test(id)).slice(-200); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}${known?.length ? `?knownIds=${encodeURIComponent(known.join(","))}` : ""}`), id); },
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
+  async referral() { return referralFrom(await request("GET", "/referrals/me")); },
+  async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },
+  async leaderboard(period: LeaderboardPeriod) { return leaderboardFrom(await request("GET", `/leaderboard/creators?${queryString({ period, limit: 50 })}`), period); },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
+  async automaticCallInvitation(active = false) { return automaticInvitationFrom(await request(active ? "GET" : "POST", active ? "/calls/automatic-invitation/active" : "/calls/automatic-invitation", active ? undefined : {})); },
+  async dismissAutomaticInvitation(id: string) { return automaticInvitationFrom(await request("POST", `/calls/automatic-invitation/${encodeURIComponent(id)}/dismiss`, {})); },
+  async connectAutomaticInvitation(id: string, expectedCoinsPerMinute: number, expectedEntryFeeCoins: number) {
+    if (![expectedCoinsPerMinute, expectedEntryFeeCoins].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000))
+      throw new ApiError("Review this invitation's current call price before connecting.", 400);
+    const call = record(await request("POST", `/calls/automatic-invitation/${encodeURIComponent(id)}/connect`, { expectedCoinsPerMinute, expectedEntryFeeCoins }));
+    if (!idOf(call) || !idOf(call.calleeId) || call.source !== "automatic" || idOf(call.automaticInvitationId) !== id || call.hostInitiated === true)
+      throw new ApiError("The automatic invitation could not be connected safely. Please check your call history.", 502);
+    if (!["ringing", "accepted"].includes(String(call.status))) throw new ApiError("This invitation's call has ended. Choose another host when you are ready.", 409, "INVITATION_CALL_ENDED");
+    if (Number(call.coinsPerMinute || 0) !== expectedCoinsPerMinute || Number(call.entryFeeCoins || 0) !== expectedEntryFeeCoins)
+      throw new ApiError("This invitation's call price changed. Review the current price before connecting.", 409, "CALL_PRICE_CHANGED");
+    return { callId: idOf(call), to: idOf(call.calleeId), voice: false, invitationId: id, connected: call.status === "accepted", ...callPrice(call) };
+  },
+  async holdIncomingForTopup(callId: string) { return topupHoldFrom(await request("POST", `/calls/${encodeURIComponent(callId)}/topup-hold`, {}), callId); },
+  async reviewIncomingTopup(callId: string) {
+    const data = record(await request("GET", `/calls/${encodeURIComponent(callId)}`));
+    if (idOf(data) !== callId || data.hostInitiated !== true) throw new ApiError("This incoming call could not be verified.", 409);
+    return { callId, ringing: data.status === "ringing" && typeof data.expiresAt === "string" && Date.parse(data.expiresAt) > Date.now(),
+      ...(typeof data.topupHoldUntil === "string" ? { until: data.topupHoldUntil } : {}), ...callPrice(data) };
+  },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
   async acceptCall(callId: string) {
     const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)), early = record(call.earlyEnds);
@@ -230,13 +354,21 @@ export const api = {
   acceptVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/accept`),
   endVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/end`),
   verificationSignal: (callId: string, signal: RtcPayload) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/signal`, signal),
-  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string) {
+  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<{ id: string; coins: number; message?: import("./types").Message | null; giftDetails?: import("./types").Gift & { transferId: string; quantity: number } }> {
     if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
     const receipt = record(await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey }));
-    if (!idOf(receipt) || typeof receipt.coins !== "number" || !Number.isSafeInteger(receipt.coins) || receipt.coins < 1) throw new ApiError("The gift confirmation could not be read. Retry to check this same gift.", 502);
+    if (!idOf(receipt) || typeof receipt.coins !== "number" || !Number.isSafeInteger(receipt.coins) || receipt.coins < 0) throw new ApiError("The gift confirmation could not be read. Retry to check this same gift.", 502);
+    let message: import("./types").Message | undefined;
+    if (receipt.message && typeof receipt.message === "object" && !Array.isArray(receipt.message)) {
+      const raw = record(receipt.message), normalized = messageFrom(raw, idOf(raw.senderId));
+      if (normalized.id && normalized.kind === "gift" && normalized.gift?.transferId === idOf(receipt) && normalized.gift.coins === receipt.coins && idOf(raw.recipientId) === to) message = normalized;
+    }
+    const rawSnapshot = receipt.giftSnapshot && typeof receipt.giftSnapshot === "object" && !Array.isArray(receipt.giftSnapshot) ? record(receipt.giftSnapshot) : undefined;
+    const snapshot = message?.gift ?? (rawSnapshot ? chatGiftFrom({ ...rawSnapshot, giftId: idOf(receipt.giftId) || gift, transferId: idOf(receipt), coins: receipt.coins, quantity: receipt.quantity ?? 1 }) : undefined);
+    const giftDetails = snapshot ? { id: snapshot.giftId, transferId: snapshot.transferId, name: snapshot.name, emoji: snapshot.emoji, mediaUrl: snapshot.mediaUrl, coins: snapshot.coins, quantity: snapshot.quantity, ...(snapshot.durationMs !== undefined ? { durationMs: snapshot.durationMs } : {}) } : undefined;
     // A confirmed transfer must not become a failed send if a subsequent wallet
     // read loses its connection. The bridge refreshes the balance independently.
-    return { id: idOf(receipt), coins: receipt.coins };
+    return { id: idOf(receipt), coins: receipt.coins, ...(message ? { message } : receipt.message === null ? { message: null } : {}), ...(giftDetails ? { giftDetails } : {}) };
   },
   async chatPhotoUrl(to: string, id: string): Promise<string> {
     const version = getSessionVersion();
@@ -250,13 +382,23 @@ export const api = {
     throw new ApiError("This photo does not have a secure download address.", 502);
   },
   /** Uploads a chat photo into the sender's own folder, then sends it. */
-  async sendPhotoMessage(to: string, photo: string, replyTo?: string) {
+  setChatActivity: (withId: string, active: boolean) => request("POST", "/chats/activity", { with: withId, active }),
+  async sendPhotoMessage(to: string, photo: string, replyTo?: string, clientId?: string) {
     const version = getSessionVersion();
     decodePhoto(photo);
-    const imageKey = await uploadMedia(photo, "chat", version);
+    if (photoUploadVersion !== version) { photoUploads.clear(); photoUploadVersion = version; }
+    const previous = clientId ? photoUploads.get(clientId) : undefined, fingerprint = clientId ? photoFingerprint(photo) : "";
+    if (previous && (previous.to !== to || previous.replyTo !== replyTo || previous.fingerprint !== fingerprint)) throw new ApiError("This photo belongs to an earlier send. Choose it again to send a new message.", 409);
+    const imageKey = previous?.imageKey ?? await uploadMedia(photo, "chat", version);
     ensureSession(version);
-    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey, ...(replyTo ? { replyTo } : {}) }));
-    return { id: idOf(message), reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
+    if (clientId && !previous) {
+      if (photoUploads.size >= 100) photoUploads.delete(photoUploads.keys().next().value!);
+      photoUploads.set(clientId, { to, replyTo, fingerprint, imageKey });
+    }
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { imageKey, ...(replyTo ? { replyTo } : {}), ...(clientId ? { clientId } : {}) }));
+    return { id: idOf(message), reply: messageFrom(message, idOf(message.senderId)).reply ?? null,
+      ...(typeof message.createdAt === "string" ? { createdAt: message.createdAt } : {}),
+      ...(Number.isSafeInteger(message.sequence) && Number(message.sequence) > 0 ? { sequence: Number(message.sequence) } : {}) };
   },
   async sendVoiceMessage(to: string, audio: string, durationMs: number, clientId: string, replyTo?: string) {
     const version = getSessionVersion();
@@ -287,11 +429,13 @@ export const api = {
   deleteMessage: async (to: string, id: string, everyone: boolean) =>
     record(await request("DELETE", `/chats/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}?for=${everyone ? "everyone" : "me"}`)),
   /** Returns the text as delivered: the server hides phone numbers and abusive words. */
-  async sendMessage(to: string, text: string, callId?: string, replyTo?: string) {
-    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}) }));
+  async sendMessage(to: string, text: string, callId?: string, replyTo?: string, clientId?: string) {
+    const message = record(await request("POST", `/chats/${encodeURIComponent(to)}`, { text, ...(callId ? { callId } : {}), ...(replyTo ? { replyTo } : {}), ...(clientId ? { clientId } : {}) }));
     // A quoted message may have changed while this send was in flight. Carry
     // the server's current quote (or its absence) back to the optimistic UI.
-    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text, reply: messageFrom(message, idOf(message.senderId)).reply ?? null };
+    return { id: idOf(message), text: typeof message.text === "string" ? message.text : text, reply: messageFrom(message, idOf(message.senderId)).reply ?? null,
+      ...(typeof message.createdAt === "string" ? { createdAt: message.createdAt } : {}),
+      ...(Number.isSafeInteger(message.sequence) && Number(message.sequence) > 0 ? { sequence: Number(message.sequence) } : {}) };
   },
   async follow(id: string, on: boolean) {
     const data = record(await request("POST", `/users/${encodeURIComponent(id)}/follow`, { following: on }));

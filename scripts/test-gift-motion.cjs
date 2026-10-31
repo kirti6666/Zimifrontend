@@ -28,7 +28,9 @@ const host = { id: '507f1f77bcf86cd799439017', name: 'Host', role: 'host', hostS
     await receive('gift.received', gift);
     await page.locator('.zr-gift-celebration').waitFor();
     const start = await page.evaluate(() => Room.giftMotion.at);
-    assert.match(await page.locator('.zr-gift-caption').innerText(), /Berry[\s\S]*Imran[\s\S]*299/);
+    assert.match(await page.locator('.zr-gift-alert').innerText(), /Imran[\s\S]*Berry[\s\S]*299/);
+    assert.equal(await page.locator('.zr-gift-celebration').locator('.zr-gift-halo,.zr-gift-wave,.zr-gift-sparks,.zr-gift-caption').count(),0,'The supplied animation has no added layers');
+    assert.deepEqual(await page.locator('.zr-gift-stage-art').evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.backgroundImage,s.boxShadow,s.filter,s.animationName]}),['rgba(0, 0, 0, 0)','none','none','none','none'],'The file owns the animation and transparency');
     assert.equal(await page.evaluate(() => S.recvN), 1);
     await receive('gift.received', gift);
     assert.equal(await page.evaluate(() => S.recvN), 1, 'Duplicate receipts neither count nor replay');
@@ -50,9 +52,9 @@ const host = { id: '507f1f77bcf86cd799439017', name: 'Host', role: 'host', hostS
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await receive('gift.received', { ...gift, id: 'receipt-2', giftName: '<img src=x onerror=alert(1)>', mediaUrl: 'javascript:alert(1)' });
     assert.equal(await page.locator('.zr-gift-stage-art img').count(), 0, 'Unsafe media falls back to the gift emoji');
-    assert.equal(await page.locator('.zr-gift-caption img').count(), 0, 'Gift names are escaped');
+    assert.equal(await page.locator('.zr-gift-alert strong img').count(), 0, 'Gift names are escaped');
     const animations = await page.locator('.zr-gift-celebration').evaluate(el => [el, ...el.querySelectorAll('*')].map(node => getComputedStyle(node).animationName));
-    assert.ok(animations.every(name => name === 'none'), 'Reduced motion displays a static celebration');
+    assert.ok(animations.every(name => name === 'none'), 'Gift artwork has no additional CSS movement');
     await page.evaluate(() => go('home'));
     assert.deepEqual(await page.evaluate(() => [Room.giftMotion, Room.giftTimer, Room.gift]), [null, null, null], 'Leaving the call clears visual state and its timer');
     await page.evaluate(() => { S.callId = 'next-call'; go('hcall'); });

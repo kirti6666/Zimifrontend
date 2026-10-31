@@ -28,8 +28,9 @@ window.ZimiChatPhoto = (() => {
     if (!current) return;
     // The photo-send acknowledgement replaces a local ID on the same message.
     // Keep its open preview and enable Download once the server ID is known.
-    const m = photo(current.id) || (S.msgs.includes(current.message) && photo(current.message.id));
-    if (S.v !== 'thread' || S.h !== current.peer || !m || m.imageUrl !== current.src) close(false);
+    const correlated = current.message.clientId && S.msgs.find(message => message.mine && message.clientId === current.message.clientId);
+    const m = photo(current.id) || (correlated && photo(correlated.id)) || photo(current.message.id);
+    if (S.v !== 'thread' || S.h !== current.peer || !m || (m.imageUrl !== current.src && !correlated)) close(false);
     else { current.id = m.id; current.message = m; controls(); }
   }
   function bounds() {

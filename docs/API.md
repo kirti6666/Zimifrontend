@@ -28,6 +28,122 @@ Native.on("call.connected")      <--  postToWeb(...)
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
 
+## Conversation ordering and engagement
+
+Message history and realtime delivery use the conversation's positive server
+`sequence`. Legacy messages sort first by `createdAt` then ID; sequenced messages
+follow in sequence order. The UI merges by server ID and the sender's `clientId`,
+so delayed welcomes, duplicate socket delivery and history fetched before a send
+response cannot replace or duplicate a newer human conversation. Send receipts
+carry server time and sequence. Pending messages retain distinct local UUIDs;
+text/photo acknowledgments and failures match that UUID. Photo retries reuse the
+original uploaded storage key for that account and send attempt.
+
+Background reads preserve the visible thread, composer, selection and scroll
+anchor. They include up to 200 known server message IDs in `knownIds`; the server
+returns conversation-scoped `hiddenIds` to reconcile delete-for-me events missed
+while offline. Reconnection and foregrounding re-read the active thread. Older
+pagination is retained, while explicit deletions and edit/read state are merged.
+
+`chat.activity {with,active}` reaches `POST /chats/activity`. Opening a thread
+activates its authenticated device-session lease before the history request;
+foreground reading, typing and voice drafts renew every 15 seconds. Leaving,
+backgrounding or replacing the WebView releases it. Native requests serialize
+and coalesce so an earlier close cannot override a newer open. Lease failures
+remain unobtrusive and the server expires an unrenewed lease after 45 seconds.
+The backend separately suppresses scheduled welcomes during engagement and
+permanently stops them for a pair once either participant sends a human message.
+
+Gift catalog `coins: 0` means **Free**; paid gifts retain positive server prices.
+The picker, quick gifts, receipts and host targets show Free. Sending still
+requires explicit confirmation and an idempotency key, but zero-priced gifts
+do not require wallet readiness or create spending, earnings or commission.
+Catalog pricing remains server-owned; client-supplied zero never discounts a
+paid gift. Historical receipts preserve the original zero cost after price edits.
+
+Direct gifts use persisted `Message.kind = "gift"` receipts. `Message.gift`
+contains the server's immutable `{giftId,transferId,name,emoji,mediaUrl,coins,quantity}`
+snapshot; its name and total coin cost do not depend on later catalog edits.
+History, incoming `chat.message` and sender `chat.updated` echoes carry the same
+message ID. `gift.sent.message` supplies that canonical receipt when the HTTP
+confirmation wins the socket race; replaying an idempotency key keeps its ID.
+Historical backfills may use `orderAfterSequence` to retain their original place.
+Gift artwork uses the uploaded animation directly in the chat quick row, full
+picker, persistent receipts, call feedback and host gift targets. Transparent
+GIF/WebP/SVG assets receive no added background, badge, glow, filter or effect.
+When a direct gift is confirmed in the open chat, its original animation also
+plays once at the center of the visible history. A separate non-interactive
+portal survives chat redraws without changing input, focus, scrolling or message
+order. Confirmed gifts queue by transfer identity and never overlap; history
+loads do not replay them. Leaving the chat, backgrounding or signing out clears
+pending playback. Timing starts after the artwork loads and uses the saved
+animation duration, with a finite fallback for older gifts without timing.
+Playback caches the original file bytes and uses a fresh, revoked-after-playback
+Blob URL for each transfer so a WebP already looping in the picker starts from
+its first frame. Public media GET CORS should allow the app's origin (or `*` with
+omitted credentials) to share that cache. Without CORS, unsigned public artwork
+uses a fresh image resource URL; existing signed query parameters stay intact.
+The admin uploader converts numbered WebP/PNG frame ZIPs into looping transparent
+WebP (30 FPS by default, configurable from 1 to 60). Matching a bundled gift name
+never replaces an uploaded file; bundled animations only fill missing media.
+
+Transient `gift.received` notifications remain animation events, and never create
+another receipt. Stream gifts return `message: null`. Paid transfers re-read
+authoritative wallet balances; free gifts need no wallet request.
+
+Gift animation timing is optional server metadata: catalog `media.durationMs`
+becomes `Gift.durationMs`; historical receipts retain `Message.gift.durationMs`.
+`gift.sent.giftDetails` carries the original transfer artwork and timing for both
+direct and stream gifts, while `gift.received.durationMs` preserves incoming
+notification timing. No duration is invented for older records, and invalid or
+fractional values are omitted. This is separate from a voice message's top-level
+`Message.durationMs`. Playback can show one complete animation cycle after the
+image loads, using the original transparent artwork without added effects.
+
+## Agency host onboarding
+
+All new host applicants join an admin-created agency with their own one-time
+host joining code before applying. The short agency ID (`BINZO` + six characters)
+identifies an agency; the personal joining code (`BINZO` + ten characters) is
+issued by that agency for one host. Common agency IDs and referral codes cannot
+create membership. Settings
+and the owner's Profile open **Become a Host** (`agency`); approved hosts see
+**My agency**. Creator signup and every creator application entry point use the
+same gate. Existing approved host access continues to use `ZimiHostAccess`.
+
+| Screen message | Endpoint | Result message |
+| --- | --- | --- |
+| `agency.load {requestId}` | `GET /hosts/agency` | `agency.loaded` |
+| `agency.verify {agencyCode,requestId}` | `POST /hosts/verify-agency-code` | `agency.verified` |
+| `agency.join {agencyCode,requestId}` | `POST /hosts/activate` | `agency.joined` |
+
+Responses contain `agency` (null or `{id,name,recruitmentCode,status}`),
+`hostStatus`, `isVerifiedHost`, `eligible`, `requirements` and `nextStep`
+(`agency`, `application`, `review`, `active`). Optional `joiningCode` is the
+personal invitation code (null for legacy membership); it is displayed separately
+from `agency.recruitmentCode`, the public short agency ID. Verification also
+returns `codeType` (`host-invite` or `agency`) and `canJoin`. The app enables
+confirmation only for an eligible `host-invite` with `canJoin: true` whose
+`joiningCode` matches the exact code that was verified. Result messages also carry
+`requestId`; stale responses are ignored. Failures use `agency.error`
+`{action,message,requestId}` and stay next to the form. Codes are normalized to
+uppercase. Verification previews identity without consuming an invitation. The
+explicit join atomically claims it for the authenticated backend identity;
+repeating that same claim for the same member is safe. A code already claimed
+by another member or revoked by the agency cannot be used. Editing a previewed
+code invalidates confirmation. The wire field remains `agencyCode` for both
+requests, and always carries the entered invitation, never a substituted public ID.
+
+Joining does not grant creator capability. The linked member completes
+`POST /hosts/application` using established membership and no code, then staff
+identity/video verification and approval. Existing joined and approved hosts do
+not need a fresh invitation to continue their application or use host capabilities.
+The server validates age, account status, phone verification, agency activity,
+host capacity and one-agency membership. A referral reward code is separate.
+Agency commission is paid from the platform share without reducing host earnings.
+The app has no agency self-registration or agency login; administrators create,
+manage and settle agencies in the production admin dashboard.
+
 Phone OTP requests return `otpLength` (4–8) with `expiresIn` and `resendAfter`.
 The native bridge forwards this as `auth.otpSent`; onboarding uses it for the
 input count, SMS autofill, paste and validation. Six digits remain the fallback
@@ -51,6 +167,40 @@ acceptance copies by call ID. No automatic `call.connected` event precedes that
 media preparation.
 
 ## Call charges
+
+Automatic call suggestions are separate from incoming calls. Once an onboarded
+member is foreground, connected and idle on Home, `call.invitation.load
+{requestId}` requests `POST /calls/automatic-invitation {}`. It returns a pending
+invitation or `null`; the latter is quiet. Suggestions name a real online,
+available admin-created host and display **Automatic call invitation**. They
+never ring, capture media, create a Call or charge coins before explicit Connect.
+Leaving Home, an actual incoming call, backgrounding or account changes retires
+the optional display. Dismiss uses `POST /calls/automatic-invitation/:id/dismiss`;
+the per-account mute preference stores only a boolean on this device.
+
+`call.invitation.connect {id,requestId,expectedCoinsPerMinute,expectedEntryFeeCoins}`
+uses `POST /calls/automatic-invitation/:id/connect` with the exact displayed quote,
+each component an integer from 0 through 1,000,000. It never falls back to ordinary
+`POST /calls`. The server rechecks presence, availability, permissions and price;
+`CALL_PRICE_CHANGED` requires a fresh `GET /calls/automatic-invitation/active`
+review and another explicit Connect. Replays use the same real Call; an ended
+replay cannot reopen media. Immutable `source: "automatic"` and
+`automaticInvitationId` remain visible through ringing and the connected call.
+
+An insufficient balance opens the existing coin checkout with invitation context.
+Verified payment or wallet updates never connect or accept a call. The member
+returns to review current host availability, quote and balance, then chooses
+Connect themselves.
+
+For a genuine host-initiated incoming call, `call.topup.hold {callId,requestId}`
+requests `POST /calls/:id/topup-hold {}` before opening Coins. A valid server
+acknowledgement provides one non-extending hold of at most five minutes.
+`call.topup.waiting {callId,until}` tells the real caller that the member is adding
+coins; duplicate ringing updates preserve checkout. A `TOPUP_NOT_REQUIRED`
+refusal refreshes a stale wallet and leaves the member to choose Accept.
+`call.topup.review` fetches `GET /calls/:id` and the wallet before returning to the
+incoming screen. Host cancellation or expiry wins over late callbacks, and the
+member must still explicitly Accept. No hold failure declines or answers a call.
 
 Staff set the price in coins per minute in the admin dashboard (0 keeps calls free).
 A call keeps the price it was placed at. The server bills whole seconds once the host
@@ -78,19 +228,27 @@ for it (login, call failed).
 | Continue (phone number) | `POST /auth/otp/request` `{country_code, phone}` (the screen sends E.164 plus the chosen calling code; any country) | – |
 | Enter the 6-digit code | `POST /auth/otp/verify` `{country_code, phone, otp}` | `Session` |
 | Log out | `POST /auth/logout` | – |
+| Deactivate account | `POST /account/deactivate` `{confirmed: true}` | `{deactivated: true}`; ends calls and revokes all sessions. A newly verified OTP reactivates the same account and preserves its wallet and posts. |
+| Your followers / following | `GET /users/:selfId/followers?page=1&limit=20` or `/following` | Paginated relationships with a public `user`, `total`, `page`, `limit`. Inactive, deleted and blocked peers are excluded before pagination. Only `canViewProfile` peers open a profile; list membership grants no extra access. |
+| Share a profile photo post | `POST /media/upload-url` `{purpose: "post", contentType, contentLength}`, PUT to storage, then `POST /posts` `{mediaKey, kind: "photo", caption}` | A confirmed post; available to verified members and approved hosts. Video posts still require approved host access. |
+| Delete your post | `DELETE /posts/:id` | The deleted post. Only its owner may delete it; repeated deletion is safe. |
+| Set creator card image in call setup | Upload with `purpose: "creator-card"`, then `PATCH /profile` `{creatorCardKey}` | Saved separately as `creatorCardUrl` for discovery cards. Profile `coverUrl` and cover drafts stay unchanged; the setup stays open. |
+| Change cover on your Profile | `profile.cover.save` uploads with `purpose: "cover"`, then `PATCH /profile` `{coverKey}` and fresh `GET /auth/me` | Members and hosts preview and confirm the change without opening Edit Profile. Dedicated success/error events preserve other profile drafts and keep failed uploads available for retry. |
 | App opens with a saved login | `GET /me` | `Account` |
 | Finish sign-up, edit profile | `PUT /me/profile` | – |
 | Submit verification | `POST /me/verification` | `{status}` |
 | Go online or offline | `PATCH /safety` `{onlineForCalls, allowRequests, showActivity, discoverable}` | Saved safety flags; `onlineForCalls` persists through backgrounding and socket loss |
 | Show MVPs switch | `PUT /me/settings` | – |
-| Home | `GET /home?mode=online&page=1` | Adapter returns `HomeData` with active hosts, live stage and pagination |
-| Explore | `GET /home?mode=popular` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
+| Home header feeds | `GET /home?mode=following\|popular\|foryou\|new&page=1`, optional `country` (the India chip sends `country=India`) | Adapter returns `HomeData`. Following lists saved follows, Explore (`popular`) every host, For You the hosts not followed yet, New the latest hosts first; `country` matches the host's country (ignoring case) before pagination |
+| Other discovery filters | `GET /home?mode=online` or `mode=instant`, optional `category` and `page` | Adapter returns `HomeData` for the selected discovery filters |
+| Refer a Friend (Settings, Home pop-up, call card) | `GET /referrals/me`, `POST /referrals/apply` `{code}` | `referral.load` → `data.referral` `{code, shareUrl, rewardCoins, friendBonusCoins, applyDays, friendsJoined, friendsRewarded, coinsEarned, appliedCode, canApplyCode}`; `referral.apply {code, requestId}` → `referral.applied` (same summary + `requestId`, then a wallet refresh) or `referral.error {message, requestId, status}`; `referral.share` opens the native share sheet with the code and link |
+| Leaderboard (Home trophy) | `GET /leaderboard/creators?period=daily\|weekly\|all&limit=50` | `leaderboard.load` `{period}` → `data.leaderboard` `{period, items: {id, name, avatarUrl, coins, rank}[], total}`: approved creators ranked by gift coins received |
 | Chats | `GET /chats` | `{chats: ChatSummary[]}` |
 | Open a chat | `GET /chats/:id` | Adapter returns `{messages: Message[], canSend, sendDisabledReason?}` |
 | Missed calls tab | `GET /calls/missed` | `{calls: MissedCall[]}` |
 | Call history | `GET /calls` | `{calls: CallRecord[]}` |
 | Transactions | `GET /wallet/transactions` | `{items: Transaction[]}` |
-| Start a call, call back | `POST /calls` `{to, voice}` | `{callId}` |
+| Start a call, call back | `POST /calls` `{to, voice}` | `{callId}`; approved hosts may also call members, by voice or video, at any time |
 | Accept, decline, end a call | `POST /calls/:id/accept`, `/decline`, `/end` | – |
 | Send a gift | `POST /gifts` `{to, gift, coins, callId?}` | `Wallet` |
 | Send a message | `POST /chats/:id` `{text}` | The message as delivered (phone numbers and abusive words hidden) |
@@ -100,7 +258,11 @@ for it (login, call failed).
 | Reply to a message | `POST /chats/:id` `{text, replyTo}` (or `{imageKey, replyTo}`) | The message, with a `reply` quote |
 | Edit your message | `PATCH /chats/:id/messages/:messageId` `{text}` | The edited message (filtered again) |
 | Delete a message | `DELETE /chats/:id/messages/:messageId?for=everyone` (your own) or `?for=me` (any) | The deleted placeholder, or `{_id}` |
-| Follow | `PUT /follows/:id` `{on}` | – |
+| Follow | `POST /users/:id/follow` `{following}` | `{following}`; members follow hosts, hosts follow members back |
+| A profile's posts | `GET /users/:id/posts?page=1` | `{items, total, page, limit}`; each post has `likes`, `comments` and the viewer's `liked` |
+| Like a post | `POST /posts/:id/like` `{liked}` | `{liked, likes}` |
+| Post comments | `GET /posts/:id/comments?page=1`, `POST /posts/:id/comments` `{text}` | Newest first, with the author; text is moderated like chat |
+| Delete a comment | `DELETE /posts/:id/comments/:commentId` (its author or the post owner) | `{_id}` |
 | Payment methods | `GET /payments/routes` | `{mode,routeChoice,routes:[{route,pageStyle,upiIntent,takingPayments,currency}]}`; available INR routes only |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey, route?}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Unlock lifetime premium | `POST /themes/premium/purchase` `{idempotencyKey, route?}`; `POST /themes/premium/verify` `{merchantOrderId}` | `Purchase` with `kind: "premium"` |
@@ -280,20 +442,28 @@ databases; they never create live payments.
 
 ## Sponsored ads
 
-Staff run campaigns that promote our other apps from the admin dashboard
-(**Engagement → Ad campaigns**): a banner image or MP4 video, copy, a link,
-placements, audience, schedule, rotation weight, a daily cap per member and
-optional impression or click budgets.
+Staff run campaigns that promote our events and other apps from the admin
+dashboard (**Engagement → Ad campaigns**): a wide campaign banner, a banner image
+or an MP4 video, copy, a link, placements, audience, schedule, rotation weight, a
+daily cap per member and optional impression or click budgets.
 
 - Only members on the free plan see ads. Premium (`Purchase.kind = "premium"`)
   removes them everywhere: the server returns `adFree: true`, never counts their
   events, and the screens also hide ads as soon as `data.themes` reports premium.
-- Placements: `home` (between the featured host and trending hosts, once the
-  feed has loaded), `explore` (above the creator grid), `chats` (a compact banner
-  above conversations) and `call_summary` (below the summary actions). Never in a
-  call, live room or conversation.
-- Each screen visit shows the next eligible campaign for that placement; redraws
-  keep the same card, and a video keeps playing because its element is moved
+- Formats: `campaign` is a wide 11:3 image (about 1100 × 300) with the campaign's
+  text drawn in; it is shown on its own, with a small "Ad" label and position dots,
+  and rotates with the other live campaign banners (up to 8 per placement, on top
+  of the 3 cards). It may use only the `home` and `explore` placements, and the
+  server refuses a video or any other placement. `banner` (16:9 image) and `video`
+  (MP4) are sponsored cards with copy and a button.
+- Placements: `home` (inside the Home host grid: campaign banners after the
+  first four hosts, cards after ten, both below a shorter grid), `explore` (the
+  All Creators grid, placed the same way), `chats` (a compact banner above
+  conversations) and `call_summary` (below the summary actions). Never in a call,
+  live room or conversation.
+- Each screen visit shows the next eligible card for that placement and starts the
+  campaign banners at the first slide; every banner slide counts its own view once
+  it has been half visible for a second. Redraws keep the same card and slide, and a video keeps playing because its element is moved
   rather than recreated. Video is muted, loops, always offers pause and sound
   controls, plays only while half visible, and never autoplays with reduced motion.
 - The feed never contains destinations. A tap sends `ads.click`; native calls

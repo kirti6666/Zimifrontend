@@ -69,7 +69,7 @@ function safeUploadUrl(raw: string, media = "photo"): string {
   if ((url.protocol !== "https:" && !(development && local && url.protocol === "http:")) || url.username || url.password || url.hash) throw new ApiError(`The ${media} upload address must use a secure connection.`, 502);
   return url.toString();
 }
-type PhotoPurpose = "avatar" | "cover" | "post" | "chat";
+type PhotoPurpose = "avatar" | "cover" | "creator-card" | "post" | "chat";
 async function sendPhoto(source: string, version: number, route: string, purpose?: PhotoPurpose): Promise<string> {
   ensureSession(version);
   const { contentType, bytes } = decodePhoto(source);

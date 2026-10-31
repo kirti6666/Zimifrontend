@@ -1,0 +1,366 @@
+{
+  "started": "2026-10-29T12:15:28.140Z",
+  "updated": "2026-10-29T12:21:57.870Z",
+  "results": [
+    {
+      "file": "test-api-client.cjs",
+      "status": "passed",
+      "phase": "initial checks"
+    },
+    {
+      "file": "test-api-adapter.cjs",
+      "status": "passed",
+      "phase": "initial checks"
+    },
+    {
+      "file": "test-auth-bridge.cjs",
+      "status": "passed",
+      "phase": "initial checks"
+    },
+    {
+      "file": "test-native-network.cjs",
+      "status": "passed",
+      "phase": "initial checks"
+    },
+    {
+      "file": "test-chats.cjs",
+      "status": "passed",
+      "phase": "initial checks"
+    },
+    {
+      "file": "test-back-navigation.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.5
+    },
+    {
+      "file": "test-bottom-tabs.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.5
+    },
+    {
+      "file": "test-call-charges.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.1
+    },
+    {
+      "file": "test-call-setup.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.6
+    },
+    {
+      "file": "test-call-layout.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.9
+    },
+    {
+      "file": "test-chat-actions.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.3
+    },
+    {
+      "file": "test-chat-photo-download.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 0.2
+    },
+    {
+      "file": "test-chat-photo-picker.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 0.1
+    },
+    {
+      "file": "test-ads.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 9.1
+    },
+    {
+      "file": "test-card-video.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 5.6
+    },
+    {
+      "file": "test-chat-photos-webkit.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 10.5
+    },
+    {
+      "file": "test-chat-safety.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.5
+    },
+    {
+      "file": "test-chat-photos.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 11.1
+    },
+    {
+      "file": "test-coin-checkout.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.2
+    },
+    {
+      "file": "test-chat-voice.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 8.5
+    },
+    {
+      "file": "test-creator-discovery.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.7
+    },
+    {
+      "file": "test-chat-replies.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 18.3
+    },
+    {
+      "file": "test-flat-design.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.4
+    },
+    {
+      "file": "test-gift-motion.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 3.4
+    },
+    {
+      "file": "test-coins.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 12.2
+    },
+    {
+      "file": "test-home-stability.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.1
+    },
+    {
+      "file": "test-home-discovery.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 7.4
+    },
+    {
+      "file": "test-host-calls.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.6
+    },
+    {
+      "file": "test-host-member-calls.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.5
+    },
+    {
+      "file": "test-host-reference.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.2
+    },
+    {
+      "file": "test-icons.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.8
+    },
+    {
+      "file": "test-launch.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.5
+    },
+    {
+      "file": "test-live-room.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 7.8
+    },
+    {
+      "file": "test-loading.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.8
+    },
+    {
+      "file": "test-home.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 21.6
+    },
+    {
+      "file": "test-motion.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.4
+    },
+    {
+      "file": "test-navigation.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 5.5
+    },
+    {
+      "file": "test-home-media.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 7.4,
+      "initialStatus": "failed",
+      "initialSeconds": 30.7,
+      "rerun": "Passed outside the sandbox; sandbox run stalled during local ICE connectivity."
+    },
+    {
+      "file": "test-offline.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.9
+    },
+    {
+      "file": "test-notifications.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 7.6
+    },
+    {
+      "file": "test-own-profile.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.3
+    },
+    {
+      "file": "test-payout-cache.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 0.2
+    },
+    {
+      "file": "test-payouts.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 3.4
+    },
+    {
+      "file": "test-payment-return.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 5.7
+    },
+    {
+      "file": "test-private-screens.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 0.9
+    },
+    {
+      "file": "test-post-ui.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.3
+    },
+    {
+      "file": "test-professional-ui.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.3
+    },
+    {
+      "file": "test-profile-media.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1
+    },
+    {
+      "file": "test-profile-premium.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.9
+    },
+    {
+      "file": "test-profile-settings.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 3.7
+    },
+    {
+      "file": "test-public-profile.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 2.9
+    },
+    {
+      "file": "test-render-security.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 0.8
+    },
+    {
+      "file": "test-onboarding.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 17.4
+    },
+    {
+      "file": "test-simple-settings.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.8
+    },
+    {
+      "file": "test-theme-consistency.cjs",
+      "status": "failed",
+      "code": 1,
+      "seconds": 2.4
+    },
+    {
+      "file": "test-verification-call.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.2
+    },
+    {
+      "file": "test-wallet.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 1.1
+    },
+    {
+      "file": "test-themes.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 5.2
+    },
+    {
+      "file": "test-safe-area.cjs",
+      "status": "passed",
+      "code": 0,
+      "seconds": 8
+    }
+  ],
+  "summary": {
+    "passed": 58,
+    "total": 59,
+    "typecheck": "passed",
+    "webBuild": "passed",
+    "androidReleaseSmoke": "passed: existing release APK installed and cold-launched on connected CPH2689; welcome screen rendered, no fatal app startup errors",
+    "missingScript": "test:payments references scripts/test-payment-routes.cjs, which is absent"
+  }
+}

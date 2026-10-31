@@ -2,9 +2,10 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { callerFrom, callPrice, coinCount, genderOf, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callerFrom, callPrice, coinCount, genderOf, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
+import { getAppUpdateAuth, notifyAppUpdate } from "../app-update-events";
 
 export interface ServerEvent { type: string; data?: Record<string, unknown> }
 /** What an ended call cost, and whether it ended because the caller's coins ran out. */
@@ -26,7 +27,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     autoConnect: false, forceNew: true, transports: ["websocket", "polling"], tryAllTransports: true,
     reconnection: true, reconnectionDelay: 1000, reconnectionDelayMax: 30000, timeout: 15000,
     auth: callback => {
-      void getToken().then(token => { if (!closed && token) callback({ token }); else socket.disconnect(); }).catch(() => socket.disconnect());
+      void getToken().then(token => { if (!closed && token) callback({ token, ...getAppUpdateAuth() }); else socket.disconnect(); }).catch(() => socket.disconnect());
     },
   });
   const emit = (type: string, data: Record<string, unknown>) => { if (!closed) onEvent({ type, data }); };
@@ -58,7 +59,11 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     // are retried by the Socket.IO manager; server disconnects need fresh auth.
     if (reason === "io server disconnect") void recover();
   });
-  socket.on("connect_error", () => {
+  socket.on("app:release-updated", () => notifyAppUpdate(true));
+  socket.on("connect_error", error => {
+    if (error?.data?.code === "APP_UPDATE_REQUIRED" || error?.data?.code === "APP_VERSION_REQUIRED") {
+      notifyAppUpdate(true); socket.disconnect(); return;
+    }
     emit("realtime.status", { connected: false, message: "Reconnecting to live updates…" });
     if (!socket.active) void recover();
   });
@@ -66,7 +71,9 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     try {
       const call = record(payload), callId = idOf(call);
       if (!callId || !userId) return;
-      if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: callerFrom(call), kind: call.kind, voice: call.kind === "audio", ...callPrice(call) });
+      if (call.status === "ringing" && (idOf(call.callerId) === userId || idOf(call.calleeId) === userId) && call.waitingForTopup === true && typeof call.topupHoldUntil === "string" && Number.isFinite(Date.parse(call.topupHoldUntil)))
+        emit("call.topup.waiting", { callId, until: call.topupHoldUntil });
+      if (call.status === "ringing" && idOf(call.calleeId) === userId) emit("call.incoming", { callId, from: callerFrom(call), kind: call.kind, voice: call.kind === "audio", ...(call.hostInitiated === true ? { fromHost: true } : {}), ...callPrice(call) });
       else if (call.status === "accepted") emit("call.connected", { callId, initiator: idOf(call.callerId) === userId, peerId: idOf(call.callerId) === userId ? idOf(call.calleeId) : idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call) });
       else if (["ended", "missed", "declined"].includes(string(call.status))) emit("call.ended", { callId, ...callCharge(call) });
     } catch { /* Ignore malformed events instead of corrupting screen state. */ }
@@ -77,11 +84,15 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
       if (!from || !to || !userId || (from !== userId && to !== userId) || typeof message.text !== "string") return;
       const normalized = messageFrom(message, userId);
       if (from !== userId) emit("chat.message", { from, name: "", text: message.text.slice(0, 4000), id: idOf(message), createdAt: string(message.createdAt),
+        ...(normalized.sequence !== undefined ? { sequence: normalized.sequence } : {}), ...(normalized.clientId ? { clientId: normalized.clientId } : {}),
+        ...(normalized.orderAfterSequence !== undefined ? { orderAfterSequence: normalized.orderAfterSequence } : {}),
         kind: normalized.kind, ...(normalized.imageUrl ? { imageUrl: normalized.imageUrl } : {}),
+        ...(normalized.gift ? { gift: normalized.gift } : {}),
         ...(normalized.audioUrl ? { audioUrl: normalized.audioUrl, durationMs: normalized.durationMs } : {}), automated: message.automated === true,
         ...(normalized.reply ? { reply: normalized.reply } : {}),
         ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
       });
+      else if (normalized.id) emit("chat.updated", { with: to, message: normalized });
       // Sender echoes also update the list, including messages sent on another device.
       emit("chats.updated", {});
     } catch { /* Ignore malformed events. */ }
@@ -108,14 +119,17 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("gift:received", payload => {
     try {
       const gift = record(payload);
+      const durationMs = giftDurationFrom(gift.durationMs);
       if (idOf(gift.recipientId) !== userId) return;
-      if (typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins > 0) emit("gift.received", {
+      if (typeof gift.coins !== "number" || !Number.isSafeInteger(gift.coins) || gift.coins < 0) return;
+      emit("gift.received", {
         gift: string(gift.giftName) || idOf(gift.giftId) || "Gift", coins: gift.coins, from: idOf(gift.senderId),
         id: idOf(gift), streamId: idOf(gift.streamId), giftId: idOf(gift.giftId), giftName: string(gift.giftName),
         senderName: string(gift.senderName), emoji: string(gift.emoji), mediaUrl: string(gift.mediaUrl), senderAvatarUrl: string(gift.senderAvatarUrl),
+        ...(durationMs !== undefined ? { durationMs } : {}),
         senderGender: genderOf(gift.senderGender).gender,
       });
-      refreshWallet();
+      if (gift.coins > 0) refreshWallet();
     } catch { /* Ignore malformed events. */ }
   });
   socket.on("host:reviewed", payload => {
@@ -148,6 +162,8 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   // Read receipts already have the server's home:updated signal for the badge.
   socket.on("notifications:read", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); });
   socket.on("account:updated", () => emit("account.updated", {}));
+  // Owner identity is fetched over the authenticated API, never trusted from a socket payload.
+  socket.on("profile:updated", () => emit("profile.updated", {}));
   // Socket payloads only invalidate; entitlement and tokens come from GET /themes.
   for (const event of ["themes:updated", "appearance:updated", "premium:updated"]) socket.on(event, () => {
     // Premium also removes ads, so it refreshes which ads this member may see.

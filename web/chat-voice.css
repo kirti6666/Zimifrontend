@@ -11,7 +11,6 @@
 .zc-composer-field>button:disabled{opacity:.4}
 .zc-composer-field>button:focus-visible,.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
 #zc-recording{flex:none;min-width:0}
-.zc-thread.zc-is-recording .zc-chips{display:none}
 .zc-recorder{margin:10px var(--zc-gutter) 12px;padding:14px 12px 10px;border:1px solid var(--line);border-radius:22px;background:var(--surface)}
 .zc-recording-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 5px 8px;color:var(--ink)}
 .zc-recording-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650}

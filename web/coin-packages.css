@@ -1,0 +1,43 @@
+/* Keep the reference layout while inheriting the active account theme and
+   Dark Mode. Coin pages and gift top-ups use the shared palette and Back button. */
+:root.zw-app :is(.app,#top,#scroll-root,#screen){border-radius:0!important}
+:root .zw-page-header{display:flex;align-items:center;gap:10px;min-height:56px;padding:6px max(12px,var(--safe-right)) 6px max(12px,var(--safe-left));border:0;border-radius:0!important;background:var(--canvas)}
+:root .zw-page-header h1{font-size:24px;line-height:32px;font-weight:800;letter-spacing:-.8px}
+:root[data-theme-id] .zw-coins.zw-reference{max-width:620px;min-height:100%;margin:0 auto;padding:12px 12px calc(108px + var(--safe-bottom));color:var(--ink);background:var(--canvas);border-radius:0!important}
+:root[data-theme-id] .zw-reference .zw-wallet{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0;border:0;background:transparent}
+:root[data-theme-id] .zw-reference .zw-wallet-main{display:block;min-width:0;margin:0;padding:8px 12px;background:var(--raised);border:1px solid var(--line);border-radius:999px!important}
+:root[data-theme-id] .zw-reference .zw-wallet-main h2{display:flex;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:750;line-height:18px;letter-spacing:0;color:var(--ink);font-variant-numeric:tabular-nums}
+:root[data-theme-id] .zw-reference .zw-currency{display:flex;align-items:center;justify-content:center;gap:9px;min-height:34px;padding:7px 12px;border:1px solid var(--line);border-radius:999px!important;background:var(--raised);color:var(--ink);font-size:12px;font-weight:650;white-space:nowrap}
+.zw-currency>span{width:5px;height:5px;border:solid var(--muted);border-width:0 1px 1px 0;transform:rotate(45deg);margin:-3px 1px 0 0}
+:root[data-theme-id] .zw-reference .zw-section-heading{margin:17px 0 14px}
+:root[data-theme-id] .zw-reference .zw-section-heading h2{margin:0;font-size:clamp(21px,5.6vw,27px);line-height:1.25;font-weight:800;letter-spacing:-.85px}
+:root[data-theme-id] .zw-reference .zw-packs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 6px;margin:0}
+:root[data-theme-id] .zw-reference .zw-packs>button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;min-width:0;min-height:clamp(137px,35vw,174px);padding:12px 6px 6px;border:1px solid var(--line);border-radius:15px!important;background:var(--surface);color:var(--ink);text-align:center;box-shadow:none!important}
+:root[data-theme-id] .zw-reference .zw-packs>button.selected{padding:12px 6px 6px;border:1px solid var(--accent-ink);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+:root[data-theme-id] .zw-reference .zw-packs>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+:root[data-theme-id] .zw-reference .zw-pack-amount{display:flex;order:0;align-items:center;justify-content:center;gap:3px;min-height:20px;font-size:inherit;color:var(--ink)}
+:root[data-theme-id] .zw-reference .zw-pack-amount strong{order:0;margin:0;font-size:clamp(16px,4.2vw,22px);line-height:22px;font-weight:800;letter-spacing:-.5px;white-space:nowrap}
+:root[data-theme-id] .zw-reference .zw-pack-name{display:block;order:1;max-width:100%;min-height:17px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;line-height:15px}
+:root[data-theme-id] .zw-reference .zw-packs>button .zw-pack-art{display:block;order:2;flex:none;width:clamp(49px,13vw,76px);height:clamp(45px,12vw,66px);margin:auto 0 2px;overflow:visible}
+:root[data-theme-id] .zw-reference .zw-packs>button>b{display:block;order:3;flex:none;width:100%;margin:0;padding:6px 1px;border-radius:8px!important;background:var(--raised);color:var(--ink);font-size:clamp(11px,2.9vw,14px);line-height:17px;font-weight:750;white-space:nowrap}
+:root[data-theme-id] .zw-reference .zw-pack-badge{position:absolute;z-index:1;top:-7px;left:50%;display:block;order:0;min-height:0;padding:2px 8px;border-radius:5px!important;background:var(--accent);color:var(--cta-ink);font-size:9px;line-height:14px;font-weight:750;white-space:nowrap;transform:translateX(-50%)}
+:root[data-theme-id] .zw-reference .zw-note{display:block;margin:13px 2px 0;color:var(--muted);text-align:center;font-size:10px;line-height:16px}
+:root .zw-reference .zw-checkout-footer{position:fixed;z-index:35;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:12px 15px calc(24px + var(--safe-bottom));border-top:1px solid var(--line);border-radius:0!important;background:var(--canvas)}
+:root[data-theme-id] .zw-coins.zw-reference .zw-buy{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:590px;min-height:46px;margin:0;padding:12px 14px;border:0;border-radius:999px!important;background:var(--accent)!important;color:var(--cta-ink)!important;box-shadow:none!important;font-size:14px;line-height:21px;font-weight:800}
+:root[data-theme-id] .zw-reference .zw-buy>span{margin:0;padding:0;border:0;font-size:inherit;line-height:inherit;white-space:nowrap}
+.zw-reference .zw-buy>span::before{content:'·';margin-right:6px}
+.zw-reference .zw-buy>.zc-coin{width:18px;height:18px}
+.zw-reference .zw-buy:disabled{opacity:.6}
+:root[data-theme-id] .zw-reference.zw-embedded{min-height:0;padding:16px 0 0;background:var(--canvas)}
+:root .zw-reference.zw-embedded .zw-checkout-footer{position:static;margin-top:18px;padding:14px 0 10px;border:0}
+.zw-reference .zw-payment,.zw-reference .zw-recovery{margin:14px 0}
+@media(max-height:700px){
+ :root[data-theme-id] .zw-coins.zw-reference{padding-top:10px;padding-bottom:calc(86px + var(--safe-bottom))}
+ :root[data-theme-id] .zw-reference .zw-section-heading{margin:13px 0 12px}
+ :root[data-theme-id] .zw-reference .zw-packs>button,:root[data-theme-id] .zw-reference .zw-packs>button.selected{min-height:112px;padding:9px 5px 5px}
+ :root[data-theme-id] .zw-reference .zw-packs>button .zw-pack-art{width:47px;height:41px}
+ :root[data-theme-id] .zw-reference .zw-packs>button>b{padding:4px 1px;line-height:16px}
+ :root .zw-reference .zw-checkout-footer{padding-top:10px;padding-bottom:calc(18px + var(--safe-bottom))}
+ :root[data-theme-id] .zw-reference .zw-note{margin-top:10px}
+}
+@media(min-width:620px){:root[data-theme-id] .zw-coins.zw-reference{padding-left:20px;padding-right:20px}.zw-page-header{max-width:620px;margin:0 auto}}

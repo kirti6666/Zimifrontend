@@ -1,0 +1,335 @@
+{
+  "errors": [],
+  "messages": [
+    {
+      "id": "host",
+      "type": "rtc.config",
+      "data": {}
+    },
+    {
+      "id": "host",
+      "type": "stream.ready",
+      "data": {
+        "streamId": "live-one"
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "description": {
+          "type": "offer"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2762196009 1 udp 2113937151 74dbffed-5eff-485e-88d4-81561e9e98e8.local 55268 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "0",
+          "sdpMLineIndex": 0,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2657089404 1 udp 2113939711 a9fd8b93-c119-4033-b05b-62dcbd0d0814.local 55269 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "0",
+          "sdpMLineIndex": 0,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2762196009 1 udp 2113937151 74dbffed-5eff-485e-88d4-81561e9e98e8.local 55270 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "1",
+          "sdpMLineIndex": 1,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2657089404 1 udp 2113939711 a9fd8b93-c119-4033-b05b-62dcbd0d0814.local 55271 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "1",
+          "sdpMLineIndex": 1,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "viewer",
+      "type": "rtc.config",
+      "data": {}
+    },
+    {
+      "id": "viewer",
+      "type": "stream.ready",
+      "data": {
+        "streamId": "live-one"
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "description": {
+          "type": "offer"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2762196009 1 udp 2113937151 74dbffed-5eff-485e-88d4-81561e9e98e8.local 55268 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "0",
+          "sdpMLineIndex": 0,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2657089404 1 udp 2113939711 a9fd8b93-c119-4033-b05b-62dcbd0d0814.local 55269 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "0",
+          "sdpMLineIndex": 0,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2762196009 1 udp 2113937151 74dbffed-5eff-485e-88d4-81561e9e98e8.local 55270 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "1",
+          "sdpMLineIndex": 1,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "host",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "viewer",
+        "candidate": {
+          "candidate": "candidate:2657089404 1 udp 2113939711 a9fd8b93-c119-4033-b05b-62dcbd0d0814.local 55271 typ host generation 0 ufrag YOFb network-cost 999",
+          "sdpMid": "1",
+          "sdpMLineIndex": 1,
+          "usernameFragment": "YOFb"
+        }
+      }
+    },
+    {
+      "id": "viewer",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "host",
+        "description": {
+          "type": "answer"
+        }
+      }
+    },
+    {
+      "id": "viewer",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "host",
+        "description": {
+          "type": "answer"
+        }
+      }
+    },
+    {
+      "id": "viewer",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "host",
+        "candidate": {
+          "candidate": "candidate:236941230 1 udp 2113937151 e90d241c-62ea-4e71-a4c3-4b823dbdee76.local 57552 typ host generation 0 ufrag q9W/ network-cost 999",
+          "sdpMid": "0",
+          "sdpMLineIndex": 0,
+          "usernameFragment": "q9W/"
+        }
+      }
+    },
+    {
+      "id": "viewer",
+      "type": "stream.signal",
+      "data": {
+        "streamId": "live-one",
+        "to": "host",
+        "candidate": {
+          "candidate": "candidate:1199437007 1 udp 2113939711 e80254ed-c8a3-4508-b109-4143f55e5452.local 57553 typ host generation 0 ufrag q9W/ network-cost 999",
+          "sdpMid": "0",
+          "sdpMLineIndex": 0,
+          "usernameFragment": "q9W/"
+        }
+      }
+    }
+  ],
+  "host": {
+    "state": {
+      "facingMode": "user",
+      "playbackMuted": false,
+      "switchingCamera": false,
+      "connectionQuality": "good",
+      "microphoneEnabled": true,
+      "cameraEnabled": true
+    },
+    "peers": [
+      {
+        "connection": "new",
+        "ice": "new",
+        "gathering": "complete",
+        "signaling": "stable",
+        "local": "offer",
+        "remote": "answer",
+        "receivers": [
+          {
+            "kind": "audio",
+            "state": "live",
+            "muted": true
+          },
+          {
+            "kind": "video",
+            "state": "live",
+            "muted": true
+          }
+        ]
+      }
+    ],
+    "video": [
+      {
+        "local": true,
+        "readyState": 4,
+        "paused": false,
+        "muted": true,
+        "stream": [
+          {
+            "kind": "audio",
+            "state": "live",
+            "enabled": true,
+            "muted": false
+          },
+          {
+            "kind": "video",
+            "state": "live",
+            "enabled": true,
+            "muted": false
+          }
+        ]
+      },
+      {
+        "local": false,
+        "readyState": 0,
+        "paused": true,
+        "muted": false,
+        "stream": null
+      }
+    ]
+  },
+  "viewer": {
+    "state": {
+      "facingMode": "user",
+      "playbackMuted": false,
+      "switchingCamera": false,
+      "connectionQuality": "good",
+      "microphoneEnabled": true,
+      "cameraEnabled": true
+    },
+    "peers": [
+      {
+        "connection": "new",
+        "ice": "new",
+        "gathering": "complete",
+        "signaling": "stable",
+        "local": "answer",
+        "remote": "offer",
+        "receivers": [
+          {
+            "kind": "audio",
+            "state": "live",
+            "muted": true
+          },
+          {
+            "kind": "video",
+            "state": "live",
+            "muted": true
+          }
+        ]
+      }
+    ],
+    "video": [
+      {
+        "local": true,
+        "readyState": 0,
+        "paused": true,
+        "muted": true,
+        "stream": null
+      },
+      {
+        "local": false,
+        "readyState": 0,
+        "paused": false,
+        "muted": false,
+        "stream": [
+          {
+            "kind": "audio",
+            "state": "live",
+            "enabled": true,
+            "muted": true
+          },
+          {
+            "kind": "video",
+            "state": "live",
+            "enabled": true,
+            "muted": true
+          }
+        ]
+      }
+    ]
+  }
+}

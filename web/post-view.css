@@ -1,0 +1,78 @@
+/* Post feed: one column of posts under a Back header, like other photo apps.
+   Colours come from the theme tokens; only the liked heart uses the app's red. */
+html:root .zu-dialog.zu-photo-dialog.zu-feed-dialog{width:100%;max-width:none;height:100dvh;max-height:100dvh;margin:0;padding:0;border:0;border-radius:0!important;background:var(--canvas);color:var(--ink);overflow:hidden}
+.zu-dialog.zu-feed-dialog[open]{display:flex;flex-direction:column}
+.zu-feed-dialog::backdrop{background:var(--canvas)}
+.zu-dialog>.zu-feed-header{flex:none;display:flex;align-items:center;justify-content:flex-start;gap:12px;margin:0;padding:calc(10px + var(--safe-top)) max(16px,var(--safe-right)) 10px max(16px,var(--safe-left));background:var(--canvas)}
+.zu-feed-title{display:flex;flex-direction:column;min-width:0}
+.zu-feed-title>span{font-size:12px;line-height:1.3;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zu-feed-header .zu-feed-title h2{margin:0;font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-.2px}
+.zu-feed{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:var(--safe-bottom)}
+.zu-feed-post{width:100%;max-width:520px;margin:0 auto;padding-bottom:22px;outline:none}
+.zu-feed-author{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 8px 8px 16px}
+.zu-feed-avatar{position:relative;display:block;width:34px;height:34px;flex:none;overflow:hidden;background:var(--raised)}
+.zu-feed-avatar>img,.zu-feed-avatar>.zf-face{display:block;width:100%;height:100%;object-fit:cover}
+.zu-feed-who{flex:1;min-width:0;display:flex;align-items:center;gap:4px}
+.zu-feed-who>strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zu-feed-who svg{width:14px;height:14px;flex:none}
+.zu-feed-options{display:grid;place-items:center;width:44px;height:44px;flex:none;padding:0;border:0;background:transparent;color:var(--ink)}
+/* The photo keeps its whole frame; a tall photo fills a 4:5 frame like most photo feeds. */
+.zu-feed-media{position:relative;width:100%;aspect-ratio:4/5;max-height:72dvh;overflow:hidden;background:var(--raised);touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+/* The feed runs edge to edge: its scroller, posts and photos keep square edges. */
+html:root :is(.zu-feed,.zu-feed-header,.zu-feed-post,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video){border-radius:0!important}
+.zu-feed-media>img,.zu-feed-media>video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
+.zu-feed-media>:is(img,video)[hidden]{display:none}
+.zu-feed-media>.zu-post-loading{position:absolute;inset:0;z-index:1;display:grid;place-items:center;pointer-events:none}
+.zu-feed-media>.zu-post-unavailable{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;text-align:center;color:var(--ink)}
+.zu-feed-media>.zu-post-unavailable[hidden]{display:none}
+.zu-post-unavailable>strong{font-size:16px;font-weight:600}
+.zu-post-unavailable>p{font-size:12px;color:var(--muted)}
+.zu-post-unavailable>button{min-height:40px;padding:8px 16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;font-weight:600}
+.zu-like-burst{position:absolute;left:50%;top:50%;z-index:3;width:92px;height:92px;margin:-46px 0 0 -46px;color:#fff;opacity:0;pointer-events:none}
+.zu-like-burst>svg{width:92px;height:92px;fill:currentColor;stroke:currentColor}
+.zu-like-burst.is-bursting{animation:zu-like-burst 800ms ease-out both}
+@keyframes zu-like-burst{0%{opacity:0;transform:scale(.3)}15%{opacity:.95;transform:scale(1.15)}30%{transform:scale(.94)}45%,75%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+.zu-feed-actions{display:flex;align-items:center;gap:2px;padding:4px 8px 0}
+.zu-feed-actions>button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;background:transparent;color:var(--ink)}
+.zu-feed-actions>button:disabled{opacity:.45}
+.zu-like.is-liked{color:var(--live,#ed2b4a)}
+.zu-like.is-liked>svg{fill:currentColor}
+.zu-like.is-popping>svg{animation:zu-like-pop 320ms ease-out}
+@keyframes zu-like-pop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+.zu-feed-likes{padding:0 16px;font-size:14px;font-weight:600;line-height:1.5}
+.zu-feed-caption{padding:4px 16px 0}
+.zu-feed-caption>p{font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.zu-feed-caption>p.is-clamped{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.zu-feed-caption strong{font-weight:600}
+.zu-feed-more{min-height:32px;padding:0;border:0;background:transparent;color:var(--muted);font-size:14px}
+.zu-feed-comments{display:block;min-height:32px;margin:0 16px;padding:0;border:0;background:transparent;color:var(--muted);font-size:14px;text-align:left}
+.zu-feed-comments[hidden]{display:none}
+.zu-feed-time{display:block;padding:4px 16px 0;font-size:11px;color:var(--muted)}
+.zu-feed-end{display:grid;place-items:center;gap:10px;padding:16px 16px 32px;font-size:13px;color:var(--muted);text-align:center}
+/* Comments: a sheet over the feed with the newest first and a composer at the bottom. */
+.zu-comments-backdrop{position:fixed;inset:0;z-index:5;background:#00000059}
+html:root .zu-comments-backdrop{border-radius:0!important}
+.zu-comments{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;flex-direction:column;max-height:78dvh;min-height:45dvh;margin:0 auto;max-width:620px;background:var(--surface);color:var(--ink)}
+html:root .zu-comments{border-radius:10px 10px 0 0!important}
+.zu-comments>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 12px 6px 20px}
+.zu-comments h3{margin:0;font-size:16px;font-weight:600}
+.zu-comments-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 20px 8px}
+.zu-comment{display:flex;align-items:flex-start;gap:10px;padding:10px 0}
+.zu-comment>.av,.zu-comment-form>.av{position:relative;display:block;width:32px;height:32px;flex:none;overflow:hidden;background:var(--raised)}
+.zu-comment>.av>img,.zu-comment>.av>.zf-face,.zu-comment-form>.av>img,.zu-comment-form>.av>.zf-face{display:block;width:100%;height:100%;object-fit:cover}
+.zu-comment>div{flex:1;min-width:0}
+.zu-comment p{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.zu-comment strong{font-weight:600}
+.zu-comment-meta{display:flex;align-items:center;gap:14px;margin-top:3px;font-size:11px;color:var(--muted)}
+.zu-comment-meta>button{min-height:28px;padding:0;border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:600}
+.zu-comments-state{display:grid;justify-items:center;gap:6px;padding:28px 0;text-align:center;font-size:13px;color:var(--muted)}
+.zu-comments-state h4{font-size:16px;font-weight:600;color:var(--ink)}
+.zu-comments-state>.zu-comment{width:100%}
+.zu-comments-more{display:block;margin:6px auto 0;min-height:36px;padding:0 12px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:600}
+.zu-comment-form{display:flex;align-items:center;gap:10px;padding:10px max(16px,var(--safe-right)) calc(10px + var(--safe-bottom)) max(16px,var(--safe-left));background:var(--surface)}
+.zu-comment-form>input{flex:1;min-width:0;min-height:44px;padding:0 14px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);font-size:14px}
+.zu-comment-form>input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.zu-comment-post{min-height:44px;padding:0 6px;border:0;background:transparent;color:var(--accent-ink);font-size:14px;font-weight:600}
+.zu-comment-post:disabled{opacity:.4}
+@media(prefers-reduced-motion:reduce){.zu-like-burst.is-bursting{animation-duration:600ms;animation-name:zu-like-fade}.zu-like.is-popping>svg{animation:none}}
+@keyframes zu-like-fade{0%,100%{opacity:0}20%,70%{opacity:.95}}

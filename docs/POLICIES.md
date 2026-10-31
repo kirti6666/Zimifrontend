@@ -11,8 +11,10 @@ numbers.
 | --- | --- | --- |
 | Minors | Sign-up cannot finish without the 18+ confirmation | `auth/auth.validation.ts` |
 | Fake creators | Only admin-approved hosts can go live, take calls, receive gifts or withdraw; approval can be suspended | `hosts/host-access.ts` |
-| Unwanted contact | Only members start chats, calls and gifts, and only with approved hosts; a host can message or view a member only after the member writes first | `hosts/host-access.ts`, `chat/chat.controller.ts`, `users/user.service.ts` |
+| Unwanted contact | Members start chats, calls and gifts only with approved hosts. Approved hosts may message any member or another approved host (owner decision, 29 Oct 2026). Approved hosts may also call any member by voice or video at any time; the member pays the host's rate once they answer, and blocks stop calls. A host views a member's profile only after a chat, a follow either way or a call | `hosts/host-access.ts`, `calls/call.controller.ts`, `chat/chat.controller.ts`, `users/user.service.ts` |
 | Harassment | A block hides both people from each other in chats, posts, profiles and search | `users/user.service.ts` (`hiddenUserIds`) |
+| Profile posts | Verified members and approved hosts can share photo posts. Video posts require an approved host. Only the post owner can delete a post. | `content/content-access.ts`, `content/content.controller.ts` |
+| Account deactivation | A confirmed deactivation hides the profile and posts, ends calls, and revokes all sessions. Wallet and posts are retained; a newly verified OTP reactivates the account. An admin block cannot be bypassed this way. | `users/account-lifecycle.controller.ts`, `auth/auth.service.ts` |
 | Off-platform contact and abuse | Phone numbers (any spacing, or spelled out in English or Hindi words) and abusive words (Hinglish, Hindi, English) are hidden from private, in-call and live chat before they are saved or delivered; the other person sees a blur | `lib/moderation.ts` |
 | Gift farming | Nobody can gift themselves | `commerce/commerce.controller.ts` |
 | Fake coins | Coins are credited only by the server after PayPlus confirms payment (verify call or signed webhook); reversals take them back | `commerce/commerce.service.ts` |

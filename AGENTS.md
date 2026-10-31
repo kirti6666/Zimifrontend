@@ -11,15 +11,37 @@ keeps it identical to the original Next.js version.
   passing messages to `src/bridge.ts`.
 - `src/` — all server access: `api/endpoints.ts`, `api/types.ts`,
   `api/realtime.ts`, `bridge.ts`, `session.ts`, `config.ts`. See `docs/API.md`.
+- Mandatory Android updates gate the WebView in `src/app-update*`. Native build
+  identity, download verification and system installation stay outside the web
+  bridge. Preserve the updater plugin and signing key; bump the real Android
+  version code for each release. See `docs/APP_UPDATES.md` and `docs/NATIVE_UPDATES.md`.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
 - `web/flat.css` — the final shared design layer: a pure white canvas, no box,
   text or filter shadows, and 10px corners on every element except its round
   list: the bordered 44px Back button and the close/more buttons beside it,
   every call button, avatars and switches are always circles. Keep that list in
-  step with `ROUND` in `scripts/flat-corners.cjs`. Headers sit on the page
-  without a divider line, and settings rows have no dividers.
+  step with `ROUND` in `scripts/flat-corners.cjs`. Lines never get rounded
+  ends: dividers, single-side borders, tab and navigation underlines and
+  edge-to-edge surfaces (the post feed, page shells) and country flags keep square
+  corners via the straight list in `web/flat.css`, mirrored by `STRAIGHT` in
+  `scripts/flat-corners.cjs`. Headers sit on the page without a divider line,
+  and settings rows have no dividers.
   Account themes customize accents and typography while keeping the white canvas.
+  The reference coin-package geometry is a scoped exception: `.zw-reference`
+  keeps the three-column cards, gold coin artwork and rounded pills. It follows
+  the active account theme and Dark Mode using shared color tokens, including
+  the purchase button. Never force a black canvas, pink palette or glow on Coins.
+  Back buttons always use the shared bordered 44px circle and the same icon;
+  do not add a coin-specific size, color or border override.
+- Posts: `web/post-create.js` is a separate New post page (`create-post`
+  view) that keeps its draft for the session. Tapping a profile photo opens
+  `web/post-view.js`, a vertical feed like other photo apps, starting at that
+  post: author row, the whole photo, a heart (tap it, or double-tap the photo
+  to like with a large heart), comments in a sheet (add; authors delete their
+  own and the post owner deletes any), caption with "more", relative time and
+  more posts as you scroll. Likes update at once and roll back if the server
+  refuses; the server hides phone numbers and abuse in comments.
 - Dark Mode is a Settings toggle remembered on the device (`zimi.darkMode` in
   localStorage, `ZimiThemes.dark()`/`setDark()` in `web/themes.js`). It swaps
   the palette to black and keeps the theme's accent; the native status bar
@@ -55,73 +77,134 @@ keeps it identical to the original Next.js version.
   `ZIMI_LIVE_STREAMING_ENABLED` and native `LIVE_STREAMING_ENABLED` off; retain
   private video/voice calling. Hide stream discovery, broadcasts, links and
   queues, and route creator availability through the 1:1 call setup.
-- The Home header has All/Following tabs in place of the app name, then
-  (approved hosts only) the host's own Online/Offline status, the coin
-  balance, Search and Notifications. All lists every host; Following uses
-  the server's `mode: "following"` feed. No category chips on Home or All Creators
-  for now. Home shows a featured photo card and a two-column host grid titled
-  "Instant Connect" ("Following" on that tab). Cards
-  open the creator profile; Chat belongs on that profile. Use
-  the selected theme's colors. Filter hosts on the
-  server before pagination; feature a host once across hero/grid.
-- Every host list (Home grid, All Creators, Search) uses the photo card `homeTile`
-  in `web/home.js`, matching the user's reference: Online and price pills over
-  the photo, then avatar, name, tagline and a round video call button that is always
-  active (never disabled, whatever the host's status; `homeCall` explains when a
-  call can't start). Do not add Chat buttons to discovery cards.
-  Sponsored cards go inside the grid after six hosts (`HOME_AD_AFTER`), or
-  below a shorter grid; never above the hosts.
-- The featured card rotates every 6s (`HomeFeatured` in
-  `web/home-dashboard.js`) with Pause and Next controls. It holds while the
-  card is hovered, focused or scrolled away, the app is backgrounded or Home is
-  loading, and starts paused for reduced motion.
+- The Home header follows the user's reference: Following, Explore, For You
+  and New tabs in place of the app name (the selected one larger and bold),
+  then Search and a gold trophy that opens the creator leaderboard (`board`,
+  `web/leaderboard.js`, real `GET /leaderboard/creators` data). No wallet or
+  notification bell on Home. The feeds map to the server's `mode`: Following
+  = `following`, Explore = `popular` (default), For You = `foryou` (hosts not
+  followed yet), New = `new` (latest hosts first). Under the header, country
+  chips: Popular and India only for now (`country=India`), hidden on
+  Following. Then one square-card two-column grid with "Load more"; there is
+  no featured card, section title or category chips. An approved host's
+  availability is a floating "Go online"/"Online" button at the bottom right of
+  Home, where the reference has its LIVE button. Use the selected theme's
+  colors. Filter hosts on the server before pagination.
+- Every host list (Home grid, All Creators, Search) uses the square photo card
+  `homeTile` in `web/home.js`, matching the user's reference: an Online tag over
+  the photo, then the name with the country (India as a rectangular CSS flag, never a circle; other
+  countries as text) and a round video call button that is always active
+  (never disabled, whatever the host's status; `homeCall` explains when a call
+  can't start). No price, tagline or avatar on the card, and no Chat buttons.
+  Ads sit inside the host grids (Home and All Creators), never above the hosts.
+  Campaign banners (ad format `campaign`, from the user's reference) rotate
+  after the first two rows (`HOME_CAMPAIGN_AFTER` = 4 hosts): a full-width 11:3
+  picture with its text drawn in, position dots, a small "Ad" label that opens
+  About this ad, native swipe, auto-advance every 4.5s (held while touched,
+  focused, hovered, off screen or hidden; never with reduced motion), a counted
+  view per slide and a counted tap (`zaCampaigns` in `web/ads.js`). Sponsored
+  cards (banner/video) follow ten hosts (`HOME_AD_AFTER`). A shorter grid keeps
+  both below its hosts.
 - Never show a host as offline. `hostFrom` in `web/aurora-runtime.js` marks
   every host online and lets members call an offline host (the server rings
   until the call is missed); only an online host's own call settings make
   calls unavailable. New screens must read `h.on`/`h.available`, never the
   raw `online` field.
 - The bottom tabs are Home, Chat, Profile and Settings (the chat route remains
-  `chats`). Explore is removed; old Explore routes resolve to Home. "See All"
-  opens `all-creators`, a paginated detail page with Back and no bottom tabs.
+  `chats`). Explore is removed; old Explore routes resolve to Home. `all-creators`
+  (from the Home empty state) and the `board` leaderboard are detail pages
+  with Back and no bottom tabs.
   Profile and Settings are separate screens;
   Settings owns the total coin balance card and Add coins action.
 - Shared tab geometry lives in `web/navigation.css`: 58px content bar, 44px
   button targets and zero outer margins. Native `SafeAreaView` owns system
   insets; `data-native-safe-area` prevents a second web bottom inset. Standalone
   browsers add their bottom inset once. Do not add extra height in `flat.css`.
+- Safe-area insets everywhere: use `var(--safe-top)`, `var(--safe-right)`,
+  `var(--safe-bottom)` and `var(--safe-left)` (defined in `web/aurora.css`), never
+  `env(safe-area-inset-*)`. They are 0 inside the app, where the native
+  `SafeAreaView` already pads and newer Android WebViews still report the insets
+  (that doubled the space under bottom bars and above top bars); standalone
+  browsers get the device insets once. `scripts/test-safe-area.cjs` checks this.
 - The Profile tab uses the same `web/public-profile.js` layout and authenticated
   public-profile reads as other users' profiles, with Edit profile, avatar/cover
   upload and own-photo actions. Keep its bottom tabs and owner-only controls;
   public gallery publishing still requires current approved creator access.
 - Settings follows the simple reference layout: Back header, compact profile,
-  balance card and one compact list of plain icon/title rows, with the Dark Mode
-  switch after General. Account, Payments, Privacy & Terms and General open their
+  balance card and one compact list of plain icon/title rows, led by "Refer a
+  Friend & Earn 1,000 Coins", with the Dark Mode switch after General. Account, Payments, Privacy & Terms and General open their
   detailed options; Appearance & Theme lives under General. Call availability,
   Match & Speed Pulse and Notifications & Alerts are not settings items (hosts
   go online from Home; notification preferences open from the inbox). Anywhere
   in Settings, including the detail rows, keep only titles, icons and status
   controls: no search box, category chips, theme banners, section headings,
   helper subtitles, divider lines or decorative footer.
+- Refer a Friend & Earn (`web/referral.js`, view `refer`, server-owned rewards):
+  the Settings row opens a detail page (Back, no bottom tabs) with the member's
+  code, Copy, Share invite (native share sheet), how it works, counts and, while
+  the account may still use one, a friend's-code form whose refusals show beside
+  the field (`referral.error`). A friend gets 100 coins for using a code; the
+  inviter gets 1,000 when that friend's first coin purchase is confirmed. Two
+  promotions, both only after `data.referral` arrives from the server: a Home
+  pop-up for members (not approved hosts) at most once a day per account, and a
+  card under the call toolbar one minute into a member's video call, for eight
+  seconds, once per call, never over the camera preview or the call controls;
+  its Invite opens the share sheet over the running call. The design preview
+  shows the pop-up and card only with `?promo=refer`.
 - There are no refresh buttons or refresh icons. Screens reload with pull to
   refresh (`web/pull-refresh.js`): register a screen with
-  `ZimiPullRefresh.register(view,{refresh,busy})`. The indicator only follows the
-  finger; the screen's own skeletons show the reload. Error states keep a text
-  Retry/Try again button.
+  `ZimiPullRefresh.register(view,{refresh,busy})`. The indicator is the
+  platform-default round spinner: it follows the finger, spins while `busy()`
+  is true (at least briefly, at most 15s) and then shrinks away. Error states
+  keep a text Retry/Try again button.
 - Automated welcome messages show in chats without an automation label.
+- Chats has no "Online now" strip. Its tabs: All and Unread list conversations;
+  Calls lists call history (`data.calls`: voice/video, direction, status) and
+  Missed calls lists missed calls with Call back. Call rows use the full-width
+  conversation row and open the other person's profile. When a call ends, is
+  declined or is missed, the bridge re-reads both lists in the background.
+- Approved hosts may message any member or another approved host at any time;
+  members message approved hosts. Approved hosts may also call any member by
+  voice or video at any time (there is no member permission switch), and can
+  Follow members back. The member pays the host's rate after answering, with
+  no entry fee, on the `incoming` ring screen; blocks still stop calls. See
+  `docs/POLICIES.md`.
 - Animated gift stickers live in `web/stickers/` (built with
   `scripts/build-gift-sticker.py`) and are matched to catalog gifts by name in
   `web/gift-stickers.js`; the backend catalog seed uses the same names. Gift
   pickers and receipts show the still cover; the animation plays only when a
   gift is sent or received (the cover under reduced motion). Read gift artwork
   through `giftStillUrl`/`giftMotionUrl`, not the raw `mediaUrl`.
-- Show the All/Following Home header only on Home. Chat, Profile and
+- The gift picker follows the supplied dark reference in `web/gift-picker.css`:
+  a rounded bottom sheet, purple/pink header glow, live pink balance/top-up pill,
+  and four open columns of still artwork, names and gold prices. `.zg-reference`
+  is a scoped exception to the flat palette/corner rules; keep other account
+  themes and embedded coin checkout unchanged. Reference gift names appear first
+  when present, with all remaining real catalog gifts below. Selection reveals
+  the explicit Send action; never invent gifts, prices or wallet balances.
+- Show the Following/Explore/For You/New Home header only on Home. Chat, Profile and
   Settings use their existing page headings and actions. Keep primary tabs
-  the same size across those main screens; All Creators, Notifications and Themes
+  the same size across those main screens; All Creators, Leaderboard, Notifications and Themes
   have their own Back headers and no bottom tabs. Themes opens as a page, not
   a settings modal. Animate only page content on tab changes and
   respect reduced-motion preferences.
-- Your Coins uses a compact Wallet summary and a 3-by-2 pack grid so the balance
-  and six packages fit a normal phone viewport. Get Coins opens payment-method
+- Add coins follows the supplied coin-package geometry: a compact balance pill
+  and static INR pill, a 3-by-2 pack grid with gold coin stacks, and a fixed
+  `.zw-checkout-footer`. All colors and native chrome follow the active account
+  theme and Dark Mode; entering or leaving Coins must not change those choices.
+  Its Back button is the same shared 44px bordered circle used elsewhere.
+  Embedded gift top-ups also follow the active theme and keep their footer
+  in normal flow so they do not cover an active call or the enclosing sheet.
+  Keep content, errors and recovery controls reachable above the fixed footer.
+  Display only server-supplied coin quantities and prices. Optional purchase
+  `bonusPercent` metadata must be an integer from 1 through 1000; `badge` accepts
+  only `hot` or `popular`. Without valid bonus metadata, use "Choose your coin
+  pack" and the server's pack names, with no invented promotion. "Welcome Bonus
+  for You!" belongs to actual purchase-bonus metadata or the demo catalog; do
+  not derive a purchase bonus from creator mission rewards or catalog pricing.
+  Demo-only fixtures contain the six reference packs and promotion labels.
+  Preserve the purchase action's `Get N coins` accessible name while its visible
+  label includes the selected quantity and price. Get Coins opens payment-method
   selection before creating a new checkout. Use only server-supported routes,
   retain uncertain-request route/idempotency recovery, and leave premium checkout
   separate. On return from an incomplete external coin payment, refresh the

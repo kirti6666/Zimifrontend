@@ -1,6 +1,6 @@
 /* Primary tabs share one geometry. Home owns the branded header; other screens
    provide their own headings and actions. */
-:root{--tab-device-inset:env(safe-area-inset-bottom,0px);--tab-safe-bottom:var(--tab-device-inset)}
+:root{--tab-device-inset:var(--safe-bottom);--tab-safe-bottom:var(--tab-device-inset)}
 /* The native SafeAreaView already reserves the gesture/navigation area. Only
    standalone browsers need that inset inside the web tab bar. */
 :root[data-native-safe-area]{--tab-safe-bottom:0px}

@@ -94,6 +94,9 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await shot(page, 'switch-confirm');
     await button('Switch anyway').click();
     await page.locator('.hc-connecting').waitFor();
+    const switchingBefore=await page.evaluate(()=>({peer:S.caller.id,messages:S.rmsgs.length}));
+    await receive('chat.message',{from:switchingBefore.peer,text:'Automated welcome during call switch',automated:true});
+    assert.equal(await page.evaluate(()=>S.rmsgs.length),switchingBefore.messages,'Pending call switches never accept automated chat messages');
     await page.waitForFunction(() => __sent.some(message => message.type === 'call.accept' && message.data.callId === 'c2'));
     assert.equal((await sent('call.end')).length, 0, 'The server ends the first call as part of the switch');
     await receive('call.ended', { callId: 'c1', reason: 'switch' });
@@ -108,6 +111,9 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await receive('call.incoming', { callId: 'c4', from: { id: 'm4', name: 'Arjun' }, voice: false, ...terms });
     await receive('call.ended', { callId: 'c2' });
     await page.waitForFunction(() => S.v === 'ring' && S.caller.callId === 'c4');
+    await page.evaluate(()=>CH.push(['m4','Prior message','Now',0]));
+    await receive('chat.message',{from:'m4',text:'Automated welcome while ringing',automated:true});
+    assert.deepEqual(await page.evaluate(()=>CH.find(row=>row[0]==='m4')),['m4','Prior message','Now',0],'Ringing screens suppress automated unread previews');
     await button('Decline').click();
     await page.waitForFunction(() => S.v === 'summary');
     const summary = await page.locator('.hc-summary').innerText();

@@ -2,6 +2,11 @@
 
 A React Native (Expo) app with creator discovery, private 1:1 video and voice calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
 
+Android supports mandatory updates published from the admin APK release panel.
+Install the updater bootstrap build once, then future releases download and
+open Android's installer in the app. There is no skip action. See the
+[update workflow](docs/APP_UPDATES.md) and [native build/version instructions](docs/NATIVE_UPDATES.md).
+
 Live streaming is temporarily paused in this release. Its entry points, public
 rooms and call queues are disabled; approved creators go online for private
 calls instead. The release switches are `window.ZIMI_LIVE_STREAMING_ENABLED`
@@ -9,12 +14,23 @@ in `web/aurora-runtime.js` and `LIVE_STREAMING_ENABLED` in `src/features.ts`.
 Both are off. The existing themes remain unchanged. Rebuild the WebView bundle
 and the installed app after changing release switches.
 
+New hosts enter through an agency-issued one-time **host joining code** in
+Settings/Profile → Become a Host. The app previews the agency before an explicit
+join claims the code. Each host needs a unique invitation; the shorter public
+agency ID cannot create membership. Joined hosts continue their application
+without another code, and hosting still requires staff verification and approval.
+See [the agency bridge/API contract](docs/API.md#agency-host-onboarding).
+
 ## App icon and browser icons
 
 `assets/brand/app_icon.png` is the supplied BinzoLive app icon. Run
-`npm run build:icons` after replacing it to refresh the opaque launcher icon,
-Android adaptive icon layers, and web app icon. Then run `npm run build:web`
-and rebuild the native app to see the updated launcher icon on a device.
+`npm run build:icons` after replacing it to refresh launcher assets, existing
+Android launcher resources, and the web app icon. The original is preserved:
+no extra border, colored backing or visible padding is added. The adaptive
+artwork fills Android's 72dp visible viewport, with only the platform's invisible
+overscan outside it; the launcher applies its normal circle/squircle mask.
+Run `npm run test:launcher-icons`, then `npm run build:web` and rebuild the native
+app. Launcher regeneration leaves the updater and other native setup intact.
 
 Browser favicon files live in `web/favicon/`. Both `npm run build:web` and
 `npm run build:admin` copy them to the deployment root and include the BinzoLive
@@ -115,6 +131,25 @@ Do not use `--clean` on a native project with manual changes. EAS **preview**
 APKs and production builds use release configuration and require an HTTPS API;
 an internally distributed release APK is not a Debug development build.
 
+The EAS `production` profile pins the public API to
+`https://api.binzolive.com/api/v1` and Socket.IO to `https://api.binzolive.com`.
+For a local production APK from PowerShell, explicitly set those values and
+regenerate the JavaScript bundle so Gradle cannot reuse a bundle containing
+development addresses:
+
+```powershell
+npm.cmd run build:web
+$env:NODE_ENV = 'production'
+$env:EXPO_PUBLIC_API_URL = 'https://api.binzolive.com/api/v1'
+$env:EXPO_PUBLIC_SOCKET_URL = 'https://api.binzolive.com'
+Push-Location android
+.\gradlew.bat :app:createBundleReleaseJsAndAssets --rerun :app:packageRelease --rerun :app:assembleRelease
+Pop-Location
+```
+
+The APK is written to `android/app/build/outputs/apk/release/app-release.apk`.
+The local development `.env` can retain its local server addresses.
+
 ## Run the website
 
 ```bash
@@ -128,10 +163,25 @@ The phone app is built from the same screens with that turned off.
 
 ## Coins and gifts
 
+Automatic call invitations are disclosed suggestions from real available hosts.
+They appear only while an authenticated member is idle on Home and require an
+explicit Connect. Coin purchases return to invitation review without starting a
+call. Genuine incoming host calls can use a server-confirmed five-minute top-up
+hold; after checkout the member reviews the live call and explicitly accepts.
+Run `npm run test:call-invitations` for the mocked disclosure, checkout, cancellation,
+account isolation, expiry and mobile layout regressions. No real payment is made.
+
 `web/coins.js` and `web/coins.css` provide the shared gold BinzoLive coin, wallet,
 coin packs, payment recovery, and gift selection. Selecting a gift does not
 spend coins; the separate Send action confirms it. Adding coins from a gift
 sheet keeps the current conversation, live stream, or call open.
+
+`web/gift-picker.css` matches the supplied dark gift-sheet reference: four open
+columns, still gift artwork, names and gold coin prices, a pink balance/top-up
+pill and a close control in the header. The reference gifts appear first when
+present in the API catalog; additional gifts remain available by scrolling.
+The dark sheet is scoped to the picker and keeps surrounding themes and the
+embedded coin checkout unchanged. The Send action appears after selection.
 
 Prices and balances come from the authenticated API. Uncertain payment and gift
 retries reuse their original idempotency keys. Pending payment references are

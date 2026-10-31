@@ -1,8 +1,8 @@
 node_modules/
 .expo/
 dist/
-android/
-ios/
+/android/
+/ios/
 *.log
 .DS_Store
 dist/
@@ -12,3 +12,4 @@ admin-site/dist/
 /home-production-state.png
 google-services.json
 GoogleService-Info.plist
+artifacts/*

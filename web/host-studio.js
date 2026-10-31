@@ -30,7 +30,7 @@ function hsReloadCatalog() {
   contentStart('catalog'); Native.send('catalog.load'); r();
 }
 function hsOpenSheet(kind) {
-  if (!['mission', 'gift-target', 'appearance'].includes(kind) || !hsAllowed()) return;
+  if (!['mission', 'gift-target', 'appearance', 'card-image'].includes(kind) || !hsAllowed()) return;
   const active = document.activeElement;
   HostStudio.opener = active?.getAttribute('aria-label') || active?.getAttribute('data-hs-focus') || null;
   HostStudio.focus = 'close'; HostStudio.sheet = kind; HostStudio.openedAt = Date.now();
@@ -99,7 +99,11 @@ function hsSheet() {
   } else if (kind === 'gift-target') {
     title = 'Gift target'; subtitle = 'Pick the gift you’d love to receive';
     const gift = hsTargetGift();
-    body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${coinIcon(10)} ${n(item.coins)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${n((gift?.coins || 0) * HostStudio.giftCount)} coins</span></div><p class="hs-sheet-note">A personal target for gifts you receive during this session.</p>`;
+    body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${giftPriceMarkup(item,10)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${giftIsFree(gift)?'Free':n((gift?.coins || 0)*HostStudio.giftCount)+' coins'}</span></div><p class="hs-sheet-note">A personal target for gifts you receive during this session.</p>`;
+  } else if (kind === 'card-image') {
+    title = 'Creator card image'; subtitle = 'Shown on your creator card';
+    const src=imageSrc(HostStudio.cardDraft||S.user?.creatorCardUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
+    body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:hi('user',48)}</div><label class="hs-card-choose">${zi('camera',18)} Choose image<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label>${HostStudio.cardPreparing?'<p role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}<button type="button" class="hc-primary" onclick="hsSaveCard()" ${!HostStudio.cardDraft||busy?'disabled':''}>${HostStudio.cardSaving?'Saving…':'Save card image'}</button>`;
   } else {
     title = 'Beauty & filters'; subtitle = 'Choose the look of your camera preview';
     body = `<div class="hs-effects" role="group" aria-label="Camera preview filter">${HS_EFFECTS.map(([key, label]) => `<button type="button" class="${HostStudio.previewEffect === key ? 'is-on' : ''}" aria-pressed="${HostStudio.previewEffect === key}" data-hs-focus="effect-${key}" onclick="hsSetEffect('${key}')"><span class="hs-effect-swatch hs-effect-${key}">${hi('star', 22)}</span><span>${label}</span></button>`).join('')}</div><p class="hs-preview-only">${hi('eye', 14)} Preview only</p><p class="hs-sheet-note">These filters change your own preview. Your caller sees the original camera video.</p>`;
@@ -108,13 +112,41 @@ function hsSheet() {
   const age = Math.min(250, Math.max(0, Date.now() - HostStudio.openedAt));
   return `<div class="hs-sheet-backdrop" onclick="if(event.target===this)hsCloseSheet()"><section class="hs-sheet hs-sheet-${kind}" style="--hs-enter-age:-${age}ms" role="dialog" aria-modal="true" aria-labelledby="hs-title" data-lenis-prevent><header><div><h2 id="hs-title">${title}</h2><p>${subtitle}</p></div><button type="button" class="hs-sheet-close" aria-label="Close ${title}" data-hs-focus="close" onclick="hsCloseSheet()">${hi('close', 18)}</button></header><div class="hs-sheet-body">${body}</div></section></div>`;
 }
+function hsCardButton(){
+  const src=imageSrc(S.user?.creatorCardUrl);
+  return `<button type="button" class="hc-card-image" aria-label="Set creator card image" onclick="hsOpenSheet('card-image')">${src?`<img src="${src}" alt="">`:zi('camera',22)}<span>Creator card image</span>${hi('chev',16)}</button>`;
+}
+async function hsPickCard(event){
+  const file=event.target.files?.[0];event.target.value='';if(!file||!hsAllowed()||HostStudio.cardSaving||HostStudio.cardPreparing)return;
+  const owner=S.user?.id,run=++mediaSequence;HostStudio.cardPrepareId=run;HostStudio.cardPreparing=true;HostStudio.cardError='';hsPaintSheet();
+  const current=()=>owner===S.user?.id&&run===HostStudio.cardPrepareId;
+  try{const photo=await obReadPhoto(file);if(current()){if(photo.length>2*1024*1024)throw new Error('Choose a smaller image.');HostStudio.cardDraft=photo}}
+  catch(error){if(current())HostStudio.cardError=error.message||'Could not prepare this image.'}
+  finally{if(current()){HostStudio.cardPreparing=false;if(hsAllowed())hsPaintSheet()}}
+}
+function hsSaveCard(){
+  if(!hsAllowed()||!HostStudio.cardDraft||HostStudio.cardSaving||HostStudio.cardPreparing)return;
+  HostStudio.cardSaving=true;HostStudio.cardError='';HostStudio.cardRequestId=++mediaSequence;
+  if(DEMO){S.user={...S.user,creatorCardUrl:HostStudio.cardDraft};HostStudio.cardDraft='';HostStudio.cardSaving=false;hsCloseSheet();return}
+  Native.send('creator.card.save',{photo:HostStudio.cardDraft,requestId:HostStudio.cardRequestId});hsPaintSheet();
+}
+Native.on('creator.card.saved',d=>{
+  if(d.requestId!==HostStudio.cardRequestId||!d.account?.user||d.account.user.id!==S.user?.id)return;
+  const user=d.account.user;
+  S.user={...S.user,creatorCardUrl:obPhotoUrl(user.creatorCardUrl||''),creatorCardKey:user.creatorCardKey};
+  window.ZimiHostAccess?.apply(d.account);
+  HostStudio.cardDraft='';HostStudio.cardSaving=false;
+  if(HostStudio.sheet==='card-image')hsCloseSheet();else if(hsAllowed())r();
+  appNotice('Creator card image saved.');
+});
+Native.on('creator.card.error',d=>{if(d.requestId!==HostStudio.cardRequestId)return;HostStudio.cardSaving=false;HostStudio.cardError=d.message||'Could not save the image. Try again.';if(HostStudio.sheet==='card-image'&&hsAllowed())hsPaintSheet()});
 function hsTargets() {
   const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
-  return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${coinIcon(10)} ${n(gift.coins)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
+  return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
 }
 function hsGiftRail() {
   if (!hsCatalog().length || !DEMO && contentPending('catalog')) return hsCatalogPlaceholder(true);
-  return `<div class="hs-gift-rail" role="group" aria-label="Gift targets" data-lenis-prevent>${hsCatalog().map(gift => `<button type="button" aria-label="Choose ${esc(gift.name)} as gift target" onclick="hsChooseGift('${domId(gift.id)}',true)"><span class="hs-gift-art">${hsGiftArt(gift)}</span><small>${coinIcon(9)} ${n(gift.coins)}</small></button>`).join('')}</div>`;
+  return `<div class="hs-gift-rail" role="group" aria-label="Gift targets" data-lenis-prevent>${hsCatalog().map(gift => `<button type="button" aria-label="Choose ${esc(gift.name)} as gift target" onclick="hsChooseGift('${domId(gift.id)}',true)"><span class="hs-gift-art">${hsGiftArt(gift)}</span><small>${giftPriceMarkup(gift,9)}</small></button>`).join('')}</div>`;
 }
 function hsPaintTargets() {
   document.querySelectorAll('.hs-targets').forEach(node => { node.outerHTML = hsTargets(); });
@@ -140,7 +172,7 @@ function hsResetProgress() {
   HostStudio.receivedCoins = 0; HostStudio.received = Object.create(null); HostStudio.giftNames = Object.create(null); HostStudio.receipts = new Set();
 }
 function hsReset() {
-  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '' });
+  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardPrepareId:null,cardError:'',cardRequestId:null });
   delete document.documentElement.dataset.hostPreviewEffect;
 }
 function hsAfter() {

@@ -1,6 +1,8 @@
 import { ApiError } from "./client";
+import { compareChatMessages } from "./chat-order";
+import type { ChatGift } from "./types";
 import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
-import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, UserPost, Verification, Wallet } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -8,6 +10,11 @@ export function record(value: unknown): RecordValue {
   return value as RecordValue;
 }
 export const string = (value: unknown): string => typeof value === "string" ? value : "";
+const countryField = (value: RecordValue): { country?: string } => {
+  if (!Object.hasOwn(value, "country")) return {};
+  const country = typeof value.country === "string" ? value.country.trim() : "";
+  return { country: country.length <= 100 && !/[\u0000-\u001f\u007f]/.test(country) ? country : "" };
+};
 const stringList = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 const finite = (value: unknown): number | undefined => typeof value === "number" && Number.isFinite(value) ? value : undefined;
 export function idOf(value: unknown): string {
@@ -33,7 +40,7 @@ export function accountFrom(value: unknown): Account {
     user: {
       id, name: string(user.name), role: user.role === "host" && user.hostStatus === "approved" && user.isVerifiedHost === true ? "host" : "sender",
       ...(user.role === "user" || user.role === "host" || user.role === "admin" ? { serverRole: user.role } : {}),
-      city: string(user.city), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), photos,
+      city: string(user.city), ...countryField(user), about: string(user.bio), email: string(user.email), avatarUrl: string(user.avatarUrl), avatarKey: string(user.avatarKey), coverUrl: string(user.coverUrl), coverKey: string(user.coverKey), creatorCardUrl: string(user.creatorCardUrl), creatorCardKey: string(user.creatorCardKey), photos,
       languages: stringList(user.languages), interests: stringList(user.interests), category: string(user.category), ...genderOf(user.gender), adultConfirmed: user.adultConfirmed === true,
       ...(user.onboardingPreference === "creator" || user.onboardingPreference === "member" ? { onboardingPreference: user.onboardingPreference } : {}),
       hostStatus: string(user.hostStatus),
@@ -45,13 +52,29 @@ export function accountFrom(value: unknown): Account {
 export function postFrom(value: unknown): UserPost {
   const post = record(value), id = idOf(post);
   if (!id || typeof post.mediaUrl !== "string" || !/^https:\/\/[^\s"'<>]+$/.test(post.mediaUrl) || (post.kind !== "photo" && post.kind !== "video")) throw new ApiError("Your post could not be loaded. Please try again.", 502);
-  return { id, mediaUrl: post.mediaUrl, kind: post.kind, caption: string(post.caption) };
+  return { id, mediaUrl: post.mediaUrl, kind: post.kind, caption: string(post.caption), ...(typeof post.createdAt === "string" && Number.isFinite(Date.parse(post.createdAt)) ? { createdAt: post.createdAt } : {}),
+    ...(typeof post.likes === "number" ? { likes: count(post.likes) } : {}), ...(typeof post.comments === "number" ? { comments: count(post.comments) } : {}),
+    ...(typeof post.liked === "boolean" ? { liked: post.liked } : {}) };
+}
+/** A comment and its author, as the server populates it. */
+export function commentFrom(value: unknown): PostComment {
+  const comment = record(value), author = typeof comment.userId === "object" && comment.userId ? record(comment.userId) : {};
+  const avatar = author.avatar && typeof author.avatar === "object" ? record(author.avatar) : {};
+  const id = idOf(comment);
+  if (!id || typeof comment.text !== "string") throw new ApiError("This comment could not be loaded. Try again.", 502);
+  return { id, text: comment.text, ...(typeof comment.createdAt === "string" && Number.isFinite(Date.parse(comment.createdAt)) ? { createdAt: comment.createdAt } : {}),
+    user: { id: idOf(comment.userId), name: string(author.name) || "BinzoLive member", avatarUrl: string(author.avatarUrl || avatar.url) } };
+}
+export function commentsFrom(value: unknown, postId: string): PostComments {
+  const data = record(value);
+  return { id: postId, comments: items(data).map(commentFrom), total: count(data.total), page: Math.max(1, count(data.page)), limit: Math.max(1, count(data.limit)) };
 }
 export function hostFrom(value: unknown): Host {
   const host = typeof value === "string" ? { _id: value } : record(value);
   const avatar = host.avatar && typeof host.avatar === "object" ? record(host.avatar) : {};
   return {
-    id: idOf(host), name: string(host.name), city: string(host.city), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
+    id: idOf(host), name: string(host.name), city: string(host.city), ...countryField(host), category: string(host.category), avatarUrl: string(host.avatarUrl || avatar.url), coverUrl: string(host.coverUrl),
+    ...(Object.hasOwn(host, "creatorCardUrl") ? { creatorCardUrl: string(host.creatorCardUrl) } : {}),
     languages: stringList(host.languages), ratePerMin: finite(host.callRateCoinsPerMinute ?? host.ratePerMin), entryFee: finite(host.callEntryFeeCoins ?? host.entryFee), followers: finite(host.followers),
     about: string(host.bio), verified: host.isVerifiedHost === true, ...genderOf(host.gender),
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
@@ -66,6 +89,20 @@ export function hostFrom(value: unknown): Host {
 }
 
 const count = (value: unknown) => Math.max(0, Math.floor(finite(value) ?? 0));
+export function relationshipsFrom(value: unknown, kind: "followers" | "following") {
+  const data = record(value);
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < 0 ||
+    !Number.isSafeInteger(data.page) || Number(data.page) < 1 || !Number.isSafeInteger(data.limit) || Number(data.limit) < 1)
+    throw new ApiError("Your connections could not be loaded. Try again.", 502);
+  const users = data.items.map(value => {
+    const entry = record(value), peer = record(entry.user ?? entry[kind === "followers" ? "userId" : "followingId"]);
+    if (!idOf(peer) || (peer.name != null && typeof peer.name !== "string")) throw new ApiError("Your connections could not be loaded. Try again.", 502);
+    const name = typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive member";
+    return { ...hostFrom({ ...peer, name }), canViewProfile: peer.canViewProfile === true };
+  });
+  return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
+}
+
 export function publicProfileFrom(value: unknown): PublicProfile {
   const profile = record(value);
   if (!idOf(profile) || typeof profile.name !== "string" ||
@@ -81,8 +118,12 @@ export function publicProfileFrom(value: unknown): PublicProfile {
     interests: stringList(profile.interests),
     ...(typeof profile.level === "number" && Number.isSafeInteger(profile.level) && profile.level >= 0 ? { level: profile.level } : {}),
     ...(typeof profile.crown === "boolean" ? { crown: profile.crown } : {}),
+    ...flags(profile, ["followsYou"]),
   };
 }
+/** Copies the boolean fields the server sent; an absent field stays absent. */
+const flags = <K extends string>(data: Record<string, unknown>, keys: K[]) =>
+  Object.fromEntries(keys.filter(key => typeof data[key] === "boolean").map(key => [key, data[key]])) as Partial<Record<K, boolean>>;
 export function publicPostsFrom(value: unknown): PublicPosts {
   const data = record(value);
   if ([data.total, data.page, data.limit].some(value => typeof value !== "number" || !Number.isSafeInteger(value)) ||
@@ -143,7 +184,7 @@ export function profileSettingsFrom(value: unknown): ProfileSettings {
     typeof preferences.pushNotifications !== "boolean" || (preferences.matchCategory !== null && typeof preferences.matchCategory !== "string") ||
     !["dark", "light", "system"].includes(String(preferences.appearance))) throw new ApiError("Your account settings could not be loaded. Try again.", 502);
   return {
-    profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
+    profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), ...countryField(profile), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
     stats: { fans: stats.fans as number, following: stats.following as number, giftsSent: stats.giftsSent as number, giftsReceived: stats.giftsReceived as number, coinsSent: stats.coinsSent as number, coinsReceived: stats.coinsReceived as number },
     standing: { level: count(record(data.standing ?? {}).level), crown: record(data.standing ?? {}).crown === true },
     preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
@@ -163,9 +204,15 @@ export function streamChatFrom(value: unknown): StreamChat {
   const message = record(value), user = message.userId && typeof message.userId === "object" ? record(message.userId) : {};
   return { id: idOf(message), streamId: idOf(message.streamId), userId: idOf(message.userId), name: string(user.name), text: string(message.text), createdAt: string(message.createdAt) };
 }
+export function giftDurationFrom(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
 export function catalogFrom(giftData: unknown, packData: unknown): Catalog {
-  return { gifts: items(giftData).map(record).map(gift => ({ id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: gift.media && typeof gift.media === "object" ? string(record(gift.media).url) : "" })),
-    packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise) })), paymentsAvailable: record(packData).paymentsAvailable === true };
+  return { gifts: items(giftData).map(record).filter(gift => typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins >= 0).map(gift => {
+    const media = gift.media && typeof gift.media === "object" ? record(gift.media) : {}, durationMs = giftDurationFrom(media.durationMs);
+    return { id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: string(media.url), ...(durationMs !== undefined ? { durationMs } : {}) };
+  }),
+    packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise), ...(Number.isSafeInteger(pack.bonusPercent) && Number(pack.bonusPercent) > 0 && Number(pack.bonusPercent) <= 1000 ? { bonusPercent: Number(pack.bonusPercent) } : {}), ...(["hot", "popular"].includes(String(pack.badge)) ? { badge: pack.badge as "hot" | "popular" } : {}) })), paymentsAvailable: record(packData).paymentsAvailable === true };
 }
 export const validPaymentRoute = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(value);
 export function paymentRoutesFrom(value: unknown): PaymentRoutes {
@@ -234,18 +281,34 @@ export function chatsFrom(value: unknown, userId: string): ChatsData {
   const chats = items(data).map(record).map(chat => {
     const peer = (Array.isArray(chat.participants) ? chat.participants : []).find(person => idOf(person) !== userId);
     const last = chat.lastMessage && typeof chat.lastMessage === "object" ? record(chat.lastMessage) : {};
+    const gift = last.kind === "gift" ? chatGiftFrom(last.gift) : undefined;
     if (!peer || !idOf(peer)) throw new ApiError("A conversation could not be loaded. Try again.", 502);
     const lastAt = string(chat.lastMessageAt) || string(last.createdAt);
-    return { id: idOf(chat), user: hostFrom(peer), last: string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
+    return { id: idOf(chat), user: hostFrom(peer), last: gift?.name || string(last.text), time: timeOf(lastAt), unread: count(chat.unread),
       ...(typeof chat.canSend === "boolean" ? { canSend: chat.canSend } : {}), automatedOnly: chat.automatedOnly === true,
       ...(typeof chat.sendDisabledReason === "string" ? { sendDisabledReason: chat.sendDisabledReason } : {}),
-      lastKind: last.kind === "voice" ? "voice" as const : last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
+      lastKind: last.kind === "gift" ? "gift" as const : last.kind === "voice" ? "voice" as const : last.kind === "image" ? "image" as const : "text" as const, ...(last.deleted === true ? { lastDeleted: true } : {}), lastMine: typeof last.mine === "boolean" ? last.mine : idOf(last.senderId) === userId,
       lastAutomated: last.automated === true,
+      ...(idOf(last) ? { lastId: idOf(last) } : {}),
+      ...(Number.isSafeInteger(last.sequence) && Number(last.sequence) > 0 ? { lastSequence: Number(last.sequence) } : {}),
+      ...(last.kind === "gift" && Number.isSafeInteger(last.orderAfterSequence) && Number(last.orderAfterSequence) >= 0 ? { lastOrderAfterSequence: Number(last.orderAfterSequence) } : {}),
       lastAt, lastStatus: last.status === "read" || Boolean(last.readAt) ? "read" as const : "sent" as const, hasCalls: chat.hasCalls === true };
   });
   return { chats, ...(data.official ? { official: officialChatSummaryFrom(data.official) } : {}), total: typeof data.total === "number" ? count(data.total) : chats.length, page: count(data.page) || 1, limit: count(data.limit) || 20,
     unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : chats.reduce((sum, chat) => sum + chat.unread, 0),
     unreadConversations: typeof data.unreadConversations === "number" ? count(data.unreadConversations) : chats.filter(chat => chat.unread > 0).length };
+}
+/** Never invent receipt names or amounts from the current catalog. Unsafe artwork
+ * is omitted while the server's historical name, quantity and price remain. */
+export function chatGiftFrom(value: unknown): ChatGift | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  const gift = record(value), giftId = idOf(gift.giftId), transferId = idOf(gift.transferId), name = string(gift.name);
+  if (!giftId || !transferId || !name.trim() || name.length > 80 || !Number.isSafeInteger(gift.coins) || Number(gift.coins) < 0 || !Number.isSafeInteger(gift.quantity) || Number(gift.quantity) <= 0) return;
+  const artwork = string(gift.mediaUrl);
+  let mediaUrl = "";
+  try { const url = new URL(artwork); if (/^https:\/\/[^\s"'<>\\]+$/.test(artwork) && !url.username && !url.password) mediaUrl = artwork; } catch { /* A name-only receipt still remains valid. */ }
+  const durationMs = giftDurationFrom(gift.durationMs);
+  return { giftId, transferId, name, emoji: string(gift.emoji).slice(0, 20), mediaUrl, coins: Number(gift.coins), quantity: Number(gift.quantity), ...(durationMs !== undefined ? { durationMs } : {}) };
 }
 /** One chat message as the screens show it, including its edit, delete and reply state. */
 export function messageFrom(value: unknown, userId: string): Message {
@@ -255,27 +318,38 @@ export function messageFrom(value: unknown, userId: string): Message {
   const audio = message.audio && typeof message.audio === "object" ? record(message.audio) : undefined;
   const audioUrl = string(audio?.url), durationMs = finite(audio?.durationMs);
   const reply = message.reply && typeof message.reply === "object" ? record(message.reply) : undefined;
+  const gift = message.kind === "gift" ? chatGiftFrom(message.gift) : undefined;
   return { id: idOf(message), mine, text: string(message.text), time: timeOf(message.createdAt), createdAt: string(message.createdAt),
-    ...(audioUrl ? { kind: "voice" as const, audioUrl, ...(durationMs !== undefined ? { durationMs } : {}) } : imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
-    ...(message.editedAt ? { edited: true } : {}), ...(message.deletedAt ? { deleted: true } : {}),
+    ...(Number.isSafeInteger(message.sequence) && Number(message.sequence) > 0 ? { sequence: Number(message.sequence) } : {}),
+    ...(message.kind === "gift" && Number.isSafeInteger(message.orderAfterSequence) && Number(message.orderAfterSequence) >= 0 ? { orderAfterSequence: Number(message.orderAfterSequence) } : {}),
+    ...(typeof message.clientId === "string" && message.clientId ? { clientId: message.clientId } : {}),
+    ...(message.kind === "gift" ? { kind: "gift" as const, ...(gift ? { gift } : {}) } : audioUrl ? { kind: "voice" as const, audioUrl, ...(durationMs !== undefined ? { durationMs } : {}) } : imageUrl ? { kind: "image" as const, imageUrl } : { kind: "text" as const }), automated: message.automated === true,
+    ...(message.editedAt ? { edited: true, editedAt: string(message.editedAt) } : {}), ...(message.deletedAt ? { deleted: true, deletedAt: string(message.deletedAt) } : {}),
     ...(reply ? { reply: { id: idOf(reply), mine: idOf(reply.senderId) === userId, text: string(reply.text), image: reply.image === true, ...(reply.voice === true ? { voice: true } : {}), deleted: reply.deleted === true } } : {}),
     ...(mine ? { status: message.readAt ? "read" as const : "sent" as const } : {}) };
 }
-export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } {
+export function messagesFrom(value: unknown, userId: string): { messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; hiddenIds?: string[] } {
   const data = record(value);
   return { ...(typeof data.canSend === "boolean" ? { canSend: data.canSend } : {}),
     ...(typeof data.sendDisabledReason === "string" ? { sendDisabledReason: data.sendDisabledReason } : {}),
-    messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)),
+    messages: items(data).map(record).reverse().map(message => messageFrom(message, userId)).sort(compareChatMessages),
+    ...(Array.isArray(data.hiddenIds) ? { hiddenIds: data.hiddenIds.filter((id): id is string => typeof id === "string" && /^[a-f\d]{24}$/i.test(id)).slice(0, 200) } : {}),
     ...(typeof data.readAt === "string" ? { readAt: data.readAt } : {}) };
 }
+const CALL_STATUSES = ["ringing", "accepted", "ended", "declined", "missed"] as const;
 export function callsFrom(value: unknown, userId: string): { calls: CallRecord[] } {
   return { calls: items(value).map(record).map(call => {
-    const seconds = finite(call.durationSeconds) ?? 0;
-    return { user: hostFrom(idOf(call.callerId) === userId ? call.calleeId : call.callerId), time: timeOf(call.createdAt), duration: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`, coins: finite(call.coins) };
+    const seconds = finite(call.durationSeconds) ?? 0, outgoing = idOf(call.callerId) === userId;
+    const status = CALL_STATUSES.find(known => known === call.status);
+    return {
+      user: hostFrom(outgoing ? call.calleeId : call.callerId), time: timeOf(call.createdAt), at: string(call.createdAt) || undefined,
+      duration: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`, coins: finite(call.coins),
+      kind: call.kind === "audio" ? "voice" : "video", direction: outgoing ? "outgoing" : "incoming", ...(status ? { status } : {}),
+    };
   }) };
 }
 export function missedFrom(value: unknown, userId: string): { calls: MissedCall[] } {
-  return { calls: items(value).map(record).filter(call => idOf(call.calleeId) === userId && call.status === "missed").map(call => ({ user: hostFrom(call.callerId), when: timeOf(call.createdAt), kind: call.kind === "audio" ? "voice" : "video" })) };
+  return { calls: items(value).map(record).filter(call => idOf(call.calleeId) === userId && call.status === "missed").map(call => ({ user: hostFrom(call.callerId), when: timeOf(call.createdAt), at: string(call.createdAt) || undefined, kind: call.kind === "audio" ? "voice" : "video" })) };
 }
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);
@@ -307,6 +381,7 @@ export function payoutsFrom(value: unknown): Payouts {
 export const coinCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
 /** Coins per minute locked onto a paid call, and its entry fee and hold; free calls carry none. */
 export const callPrice = (call: Record<string, unknown>) => ({
+  ...(call.source === "automatic" && idOf(call.automaticInvitationId) ? { source: "automatic" as const, automaticInvitationId: idOf(call.automaticInvitationId) } : {}),
   ...(coinCount(call.coinsPerMinute) ? { rate: coinCount(call.coinsPerMinute) } : {}),
   ...(coinCount(call.entryFeeCoins) ? { entryFee: coinCount(call.entryFeeCoins), feeHoldSeconds: coinCount(call.entryFeeHoldSeconds) } : {}),
 });
@@ -317,6 +392,8 @@ export function callerFrom(call: Record<string, unknown>) {
   return {
     id: idOf(call.callerId), name: string(caller.name), avatarUrl: string(caller.avatarUrl), city: string(caller.city),
     ...(level && level > 0 ? { level } : {}), ...genderOf(caller.gender),
+    // A verified host calling a member who allowed it.
+    ...(caller.role === "host" && caller.verified === true ? { host: true } : {}),
   };
 }
 /** A host's price tier, entry fee and early endings, shown before going online. */
@@ -346,6 +423,27 @@ export function transactionsFrom(value: unknown): { items: Transaction[] } {
   }) };
 }
 
+const referralCode = (value: unknown) => typeof value === "string" && /^[A-HJ-NP-Z2-9]{6}$/.test(value) ? value : "";
+export function referralFrom(value: unknown): ReferralSummary {
+  const data = record(value), code = referralCode(data.code);
+  if (!code) throw new ApiError("Your invite code could not be loaded. Please try again.", 502);
+  return {
+    code, shareUrl: safeHttps(data.shareUrl), rewardCoins: count(data.rewardCoins), friendBonusCoins: count(data.friendBonusCoins),
+    applyDays: count(data.applyDays), friendsJoined: count(data.friendsJoined), friendsRewarded: count(data.friendsRewarded),
+    coinsEarned: count(data.coinsEarned), appliedCode: referralCode(data.appliedCode) || null, canApplyCode: data.canApplyCode === true,
+  };
+}
+export function leaderboardFrom(value: unknown, period: LeaderboardPeriod): Leaderboard {
+  const data = record(value);
+  return {
+    period, total: finite(data.total) ?? 0,
+    items: items(value).map(record).map((row, index) => {
+      const avatar = row.avatar && typeof row.avatar === "object" ? record(row.avatar) : {};
+      return { id: idOf(row), name: string(row.name) || "Creator", avatarUrl: string(avatar.url), coins: finite(row.coins) ?? 0, rank: finite(row.rank) ?? index + 1 };
+    }).filter(row => row.id),
+  };
+}
+
 export const AD_PLACEMENTS: readonly AdPlacement[] = ["home", "explore", "chats", "call_summary"];
 export const isAdPlacement = (value: unknown): value is AdPlacement => AD_PLACEMENTS.includes(value as AdPlacement);
 /** Campaign media is shown in the app and its link opens outside it: plain public HTTPS only. */
@@ -356,8 +454,10 @@ export function safeHttps(value: unknown): string {
 const adText = (value: unknown, max: number) => string(value).trim().slice(0, max);
 function adFrom(value: unknown): AdCreative | null {
   const ad = record(value), id = idOf(ad), media = ad.media && typeof ad.media === "object" ? record(ad.media) : {};
-  const format = ad.format === "video" || ad.format === "banner" ? ad.format : null;
-  const mediaUrl = safeHttps(media.url), mediaType = string(media.contentType), placements = stringList(ad.placements).filter(isAdPlacement);
+  const format = ad.format === "video" || ad.format === "banner" || ad.format === "campaign" ? ad.format : null;
+  // Campaign banners belong to the host grids only.
+  const mediaUrl = safeHttps(media.url), mediaType = string(media.contentType), placements = stringList(ad.placements).filter(isAdPlacement)
+    .filter(placement => format !== "campaign" || placement === "home" || placement === "explore");
   const headline = adText(ad.headline, 60), advertiser = adText(ad.advertiser, 40), ctaLabel = adText(ad.ctaLabel, 20);
   if (!/^[a-f\d]{24}$/i.test(id) || !format || !mediaUrl || !headline || !advertiser || !ctaLabel || !placements.length ||
     (format === "video" ? mediaType !== "video/mp4" : !/^image\/(jpeg|png|webp|gif)$/.test(mediaType))) return null;

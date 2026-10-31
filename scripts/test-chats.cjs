@@ -49,7 +49,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
       assert.equal(await preview.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Chats does not overflow at ${width}px`);
       assert.equal(await preview.getByRole('button', { name: 'New chat', exact: true }).isVisible(), true);
       assert.equal(await preview.locator('.zh-nav button').count(), 4);
-      const animations = await preview.locator('.zc-row,.zc-person').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).animationName));
+      const animations = await preview.locator('.zc-row').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).animationName));
       assert.ok(animations.every(name => name === 'none'), 'Reduced motion removes decorative chat entrance animations');
       await preview.screenshot({ path: path.join(os.tmpdir(), `zimi-chats-preview-${width}.png`) });
     }
@@ -182,13 +182,49 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.match((await names())[0], /Rohan Patel/);
     assert.deepEqual(await page.getByRole('tab').allInnerTexts(), ['All', 'Unread', 'Calls', 'Missed calls'], 'Four plain filters, without counts');
     assert.equal(await page.locator('.zc-pulse,.zc-match-footer').count(), 0, 'Speed matching stays on Home, not in the chat list');
+    // Calls lists call history, not conversations; a row opens the other person's profile.
     await selectTab('Calls');
     assert.equal(await rows().count(), 1);
-    assert.match((await names())[0], /Mira North/);
+    assert.match((await names())[0], /Mira North[\s\S]*Yesterday[\s\S]*Outgoing video call · 1:20/, 'Older call records read as outgoing video calls');
+    await settle('data.calls', { calls: [] }, 'calls');
+    await page.getByRole('heading', { name: 'No calls yet', exact: true }).waitFor();
+    await settle('data.calls', { calls: [
+      { user: mira, time: 'Oct 29, 11:42 AM', at: at(5), duration: '7:05', coins: 420, kind: 'video', direction: 'outgoing', status: 'ended' },
+      { user: asha, time: 'Oct 29, 09:10 AM', at: at(150), duration: '0:00', coins: 0, kind: 'voice', direction: 'incoming', status: 'missed' },
+      { user: mira, time: 'Oct 28, 08:00 PM', at: at(1500), duration: '0:00', coins: 0, kind: 'video', direction: 'outgoing', status: 'declined' },
+    ] }, 'calls');
+    const calls = await names();
+    assert.equal(calls.length, 3, 'Every call is listed, including repeat calls with one person');
+    assert.match(calls[0], /Mira North[\s\S]*5m ago[\s\S]*Outgoing video call · 7:05/);
+    assert.match(calls[1], /Asha Sen[\s\S]*2h ago[\s\S]*Missed voice call/);
+    assert.match(calls[2], /Mira North[\s\S]*Outgoing video call · Not answered/);
+    assert.equal(await page.locator('.zc-call-row .zc-call-badge').count(), 1, 'Only the missed call is marked');
+    assert.equal(await page.locator('#zc-list .zc-unread-count,#zc-list .zc-presence').count(), 0, 'Call rows carry no message counts or presence');
+    await receive('data.loading', { resource: 'calls', loading: true, background: true });
+    assert.equal(await page.getByRole('status', { name: 'Loading call history' }).count(), 0, 'A refresh after a call keeps the shown calls');
+    assert.equal(await rows().count(), 3);
+    await search().fill('asha');
+    assert.equal(await rows().count(), 1, 'Search filters calls by name');
+    await search().fill('');
+    await rows().first().click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', mira.id], "A call opens the other person's profile");
+    await navigate('chats');
     await selectTab('Unread');
     assert.equal(await rows().count(), 2);
+    // Missed calls fill the list width like conversations; the row opens the caller, Call back calls.
     await selectTab('Missed calls');
     await page.getByRole('heading', { name: 'No missed calls', exact: true }).waitFor();
+    await settle('data.missed', { calls: [{ user: asha, when: 'Oct 29, 09:10 AM', at: at(150), kind: 'voice' }] }, 'missed');
+    const missed = page.locator('.zc-missed-row');
+    assert.match(await missed.innerText(), /Asha Sen[\s\S]*2h ago[\s\S]*Missed voice call[\s\S]*Call back/);
+    const [missedBox, listBox] = [await missed.boundingBox(), await page.locator('#zc-list').boundingBox()];
+    assert.ok(missedBox.width >= listBox.width - 1, `Missed calls use the full list width (${missedBox.width} of ${listBox.width})`);
+    await missed.getByRole('button', { name: /^Asha Sen, missed voice call/ }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', asha.id], "A missed call opens the caller's profile");
+    await navigate('chats');
+    await page.getByRole('button', { name: 'Call Asha Sen back', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['precall', asha.id], 'Call back starts a call to the caller');
+    await navigate('chats');
     await selectTab('All');
     await search().fill('coffee');
     assert.equal(await rows().count(), 1);
@@ -226,7 +262,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await filters.getByLabel('Sort conversations', { exact: true }).inputValue(), 'recent');
     await page.keyboard.press('Escape');
     await filters.waitFor({ state: 'hidden' });
-    console.log('PASS chats: All/Creators/Calls/Unread filters, name/message/tag search, sort and online filter');
+    console.log('PASS chats: All/Unread conversations, Calls history and full-width Missed calls that open profiles, name/message/tag search, sort and online filter');
 
     const readAll = () => page.getByRole('button', { name: 'Mark all as read', exact: true });
     await readAll().click();
@@ -253,7 +289,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.evaluate(() => S.v), 'thread');
     assert.equal((await lastSent('chat.open')).with, mira.id);
     await page.getByRole('status', { name: 'Loading messages', exact: true }).waitFor();
-    await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00', automated: true }], readAt: new Date().toISOString() }, 'thread');
+    await settle('data.thread', { with: mira.id, messages: [{ id:id('30'),mine: false, text: 'A real thread response', time: '12:00', automated: true }], readAt: new Date().toISOString() }, 'thread');
     assert.match(await page.locator('#tf').innerText(), /A real thread response/);
     assert.doesNotMatch(await page.locator('#tf').innerText(), /automated/i, 'Automated welcomes read like any other message');
     const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
@@ -267,7 +303,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.evaluate(() => window.ZimiChats.unread()), 2, 'Opening or receiving a message does not optimistically clear unread counts');
     await loading('thread', true);
     assert.equal(await draft.inputValue(), 'Keep this unsent draft');
-    await settle('data.thread', { with: mira.id, messages: [{ mine: false, text: 'A real thread response', time: '12:00', automated: true }, { mine: false, text: 'A new message in the active thread', time: '12:01', automated: true }], readAt: new Date().toISOString() }, 'thread');
+    await settle('data.thread', { with: mira.id, messages: [{ id:id('30'),mine: false, text: 'A real thread response', time: '12:00', automated: true }, { id:id('31'),mine: false, text: 'A new message in the active thread', time: '12:01', automated: true }], readAt: new Date().toISOString() }, 'thread');
     assert.equal((await page.locator('#tf').innerText()).match(/A real thread response|A new message in the active thread/g).length, 2, 'Refreshing history keeps automated messages visible');
     assert.equal(await draft.inputValue(), 'Keep this unsent draft', 'The authoritative thread response preserves an unsent draft');
     await receive('chat.message', { from: asha.id, text: 'Message in another conversation', id: id('32') });
@@ -284,10 +320,9 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await draft.inputValue(), '', 'Sending clears the draft');
     await receive('operation.error', { action: 'chat.send', message: 'Message could not be sent.' });
     await page.locator('#tf .zc-meta').filter({ hasText: 'Not sent' }).waitFor();
-    await page.getByRole('button', { name: 'Love it', exact: true }).click();
-    assert.equal((await lastSent('chat.send')).text, 'Love it 🔥', 'Quick replies send real messages');
+    assert.equal(await page.getByRole('group', { name: 'Quick replies', exact: true }).count(), 0, 'Suggested messages are removed from the thread');
     const rose = { id: id('41'), name: 'Rose', emoji: '🌹', coins: 10 };
-    await page.getByRole('button', { name: 'Send a gift', exact: true }).click();
+    await page.getByRole('button', { name: 'Gift', exact: true }).click();
     await settle('data.catalog', { gifts: [rose], packs: [], paymentsAvailable: false }, 'catalog');
     await page.getByRole('dialog', { name: 'Send a gift', exact: true }).getByRole('button').filter({ hasText: 'Rose' }).click();
     await page.getByRole('button', { name: 'Send gift', exact: true }).click();
@@ -300,7 +335,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.locator('.zc-gift-card').count(), 1, 'A confirmed gift stays in the thread across history refreshes');
     assert.equal(await page.locator('#app-notice').textContent(), 'Gift sent!');
     await page.evaluate(() => document.getElementById('app-notice')?.remove()); // the toast would cover later steps for 7s
-    console.log('PASS chats: thread read ticks, quick replies, failed sends and confirmed gift cards');
+    console.log('PASS chats: thread read ticks, no suggested messages, failed sends and confirmed gift cards');
     await navigate('chats');
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
     const picker = page.getByRole('dialog', { name: 'New conversation', exact: true });
@@ -317,10 +352,8 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await picker.getByRole('button', { name: 'Find more creators', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'search');
     await navigate('chats');
-    await page.locator('.zc-available .zc-person').filter({ hasText: 'Mira' }).click();
-    assert.equal(await page.evaluate(() => S.v), 'precall');
-    assert.equal(await page.evaluate(() => S.h), mira.id);
-    console.log('PASS chats: real thread navigation, new contact picker and available creator');
+    assert.equal(await page.getByText('Online now', { exact: true }).count(), 0, 'Chats has no Online now strip');
+    console.log('PASS chats: real thread navigation, new contact picker and no Online now strip');
 
     await navigate('chats');
     await loadChats({ ...chatData(conversations.slice(0, 2)), total: 3 });
@@ -360,24 +393,24 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await page.evaluate(value => go('thread', value), mira.id);
     const guardedDraft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     const sendButton = page.getByRole('button', { name: 'Send message', exact: true });
-    const quickReply = page.getByRole('button', { name: 'Love it', exact: true });
+    const giftButton = page.getByRole('button', { name: 'Gift', exact: true });
     const sendsBeforeGuard = await sentCount('chat.send');
     await page.getByRole('status', { name: 'Loading messages', exact: true }).waitFor();
     await guardedDraft.fill('Keep my draft through failed thread loads');
     assert.equal(await sendButton.isDisabled(), true, 'Thread loading cannot send before server permissions arrive');
-    assert.equal(await quickReply.isDisabled(), true, 'Quick replies wait for the same thread authorization');
+    assert.equal(await giftButton.isDisabled(), true, 'Gift action waits for the same thread authorization');
     await guardedDraft.press('Enter');
-    await page.evaluate(() => zcThreadSend('A quick reply attempted while loading'));
+    await page.evaluate(() => zcThreadSend('A direct send attempted while loading'));
     assert.equal(await sentCount('chat.send'), sendsBeforeGuard);
     assert.equal(await guardedDraft.inputValue(), 'Keep my draft through failed thread loads');
 
     await loading('thread', false, { error: 'Connections are allowed only between a member and an approved host' });
     await page.getByRole('alert').filter({ hasText: 'Connections are allowed only between' }).waitFor();
     assert.equal(await sendButton.isDisabled(), true, 'A forbidden thread cannot keep a working send control');
-    assert.equal(await quickReply.isDisabled(), true);
+    assert.equal(await giftButton.isDisabled(), true);
     await guardedDraft.press('Enter');
-    await page.evaluate(() => zcThreadSend('A quick reply attempted after a thread error'));
-    assert.equal(await sentCount('chat.send'), sendsBeforeGuard, 'Error states cannot bypass disabled buttons through Enter or quick-reply handlers');
+    await page.evaluate(() => zcThreadSend('A direct send attempted after a thread error'));
+    assert.equal(await sentCount('chat.send'), sendsBeforeGuard, 'Error states cannot bypass disabled buttons through Enter or direct send handlers');
     assert.equal(await guardedDraft.inputValue(), 'Keep my draft through failed thread loads');
 
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
@@ -392,7 +425,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await guardedDraft.fill('Keep my draft while this conversation is read-only');
     await settle('data.thread', { with: mira.id, messages: [], canSend: false, sendDisabledReason: 'The member must reply before the host can send messages.' }, 'thread');
     assert.equal(await sendButton.isDisabled(), true, 'Authoritative canSend:false takes precedence over local account and peer roles');
-    assert.equal(await quickReply.isDisabled(), true);
+    assert.equal(await giftButton.isDisabled(), true);
     await guardedDraft.press('Enter');
     await page.evaluate(() => zcThreadSend('Cannot bypass canSend:false'));
     assert.equal(await sentCount('chat.send'), sendsBeforeGuard + 1);
@@ -422,14 +455,16 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.evaluate(() => S.user.serverRole), 'host');
     await page.evaluate(() => document.getElementById('app-notice')?.remove());
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
-    assert.deepEqual(await picker.locator('.zc-contact b').allTextContents(), ['Rohan Patel'], 'Approved creators can select only existing member-initiated conversations');
+    assert.deepEqual(await picker.locator('.zc-contact b').allTextContents(), ['Rohan Patel', 'Welcome-only Member', 'Mira North', 'Asha Sen'],
+      'Approved creators can start a chat with any member they know and with other creators');
     await page.keyboard.press('Escape');
     opened = await sentCount('chat.open');
     await page.evaluate(value => go('thread', value), mira.id);
-    assert.equal(await page.evaluate(() => S.v), 'chats');
-    assert.equal(await sentCount('chat.open'), opened, 'An approved creator cannot open another creator from stale discovery data');
+    assert.equal(await page.evaluate(() => S.v), 'thread');
+    assert.equal((await lastSent('chat.open')).with, mira.id, 'An approved creator can open a chat with another creator');
     await page.evaluate(value => go('thread', value), id('98'));
-    assert.equal(await sentCount('chat.open'), opened, 'A creator cannot initiate a chat with an unknown member ID');
+    assert.equal((await lastSent('chat.open')).with, id('98'), 'The server decides whether a creator may message an unfamiliar account');
+    assert.equal(await sentCount('chat.open'), opened + 2);
     await page.evaluate(value => go('thread', value), rohan.id);
     assert.equal(await page.evaluate(() => S.v), 'thread');
     assert.equal((await lastSent('chat.open')).with, rohan.id, 'Existing member conversations remain accessible to approved creators');
@@ -453,9 +488,9 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal((await lastSent('chat.open')).with, rohan.id, 'Profile Message targets the displayed member rather than the previous creator profile');
     assert.equal(await page.evaluate(() => S.h), rohan.id);
     await page.evaluate(value => go('host', value), mira.id);
-    assert.equal(await profileMessage.isDisabled(), true, 'A creator profile cannot offer another creator a Message action');
-    await profileMessage.evaluate(button => button.click());
-    assert.equal(await sentCount('chat.open'), opened + 1, 'A disabled creator-to-creator profile action never opens a thread');
+    assert.equal(await profileMessage.isEnabled(), true, 'A creator can message another creator from their profile');
+    await profileMessage.click();
+    assert.equal((await lastSent('chat.open')).with, mira.id);
     console.log('PASS chats: member profile Message targets its displayed account despite a stale creator back target');
 
     for (const hostStatus of ['pending', 'suspended']) {

@@ -3,7 +3,7 @@
    rotate them per screen visit, report a view once a card has been at least
    half on screen for a second (two for video), and send taps through the app,
    which counts the click before it opens the link. Sample ads exist only in DEMO. */
-const ZAds={items:[],adFree:false,picks:{},turn:{},retired:new Set(),counted:new Set(),visible:new Set(),timers:new Map(),videos:new Map(),paused:new Set(),opening:'',observer:null};
+const ZAds={items:[],adFree:false,picks:{},turn:{},retired:new Set(),counted:new Set(),visible:new Set(),timers:new Map(),videos:new Map(),paused:new Set(),opening:'',observer:null,campaignAt:{},campaignHeld:0,campaignTimer:null};
 const zaReduced=matchMedia('(prefers-reduced-motion: reduce)');
 Object.assign(homeIcons,{
   volOff:'<path d="M5 10h3l4-3.5v11L8 14H5z" stroke-linejoin="round"/><path d="m16 9.5 5 5m0-5-5 5" stroke-linecap="round"/>',
@@ -11,12 +11,13 @@ Object.assign(homeIcons,{
   playFill:'<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
   crown:'<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z"/>'
 });
-function zaSafe(ad){return !!ad&&/^[a-f\d]{24}$/i.test(ad.id||'')&&['banner','video'].includes(ad.format)&&/^https:\/\/[^\s"'<>\\]+$/.test(ad.mediaUrl||'')&&Array.isArray(ad.placements)&&[ad.headline,ad.advertiser,ad.ctaLabel].every(value=>typeof value==='string'&&value.trim())}
+function zaSafe(ad){return !!ad&&/^[a-f\d]{24}$/i.test(ad.id||'')&&['banner','video','campaign'].includes(ad.format)&&/^https:\/\/[^\s"'<>\\]+$/.test(ad.mediaUrl||'')&&Array.isArray(ad.placements)&&[ad.headline,ad.advertiser,ad.ctaLabel].every(value=>typeof value==='string'&&value.trim())}
 /* Premium removes ads the moment it is confirmed, before the next ad list arrives. */
 function zaAdFree(){return ZAds.adFree||ZThemes.catalog?.premium?.active===true}
 function zaPick(placement){
   if(zaAdFree())return null;
-  const fits=ad=>ad.placements.includes(placement),pinned=ZAds.picks[placement];
+  // Campaign banners rotate in their own carousel (zaCampaigns), never as a card.
+  const fits=ad=>ad.format!=='campaign'&&ad.placements.includes(placement),pinned=ZAds.picks[placement];
   // Keep the card chosen for this visit through redraws, even if it just reached its cap.
   const current=pinned&&ZAds.items.find(ad=>ad.id===pinned&&fits(ad));
   if(current)return current;
@@ -56,6 +57,58 @@ function zaBanner(placement){
     <span class="za-banner-copy" onclick="zaOpen('${id}','${placement}')"><b>${esc(ad.headline)}</b><small>${esc(ad.advertiser)} · Sponsored</small></span>
     ${zaCta(ad,placement)}<button type="button" class="za-info za-info-icon" onclick="zaAbout('${id}')" aria-label="About this ad">${hi('info',16)}</button>
   </aside>`;
+}
+
+/* Campaign banners, after the reference: wide pictures that rotate inside the Home and All
+   Creators grids, with position dots and a small Ad label. Each slide is its own ad slot, so a
+   view counts once the slide itself has been on screen for a second, and a tap goes through
+   the same counted click as the cards. The picture carries the campaign's text; the headline
+   is its accessible name. Slides scroll natively, so a swipe moves them; they also advance by
+   themselves unless the member is touching, focusing or hovering them, the banner is off
+   screen, the app is hidden or motion is reduced. */
+const ZA_CAMPAIGN_PLACEMENTS=['home','explore'],ZA_CAMPAIGN_MS=4500;
+function zaCampaignList(placement){
+  if(zaAdFree()||!ZA_CAMPAIGN_PLACEMENTS.includes(placement))return [];
+  return ZAds.items.filter(ad=>ad.format==='campaign'&&ad.placements.includes(placement)&&!ZAds.retired.has(ad.id));
+}
+function zaCampaigns(placement){
+  const list=zaCampaignList(placement);if(!list.length)return '';
+  const at=Math.min(ZAds.campaignAt[placement]||0,list.length-1),many=list.length>1;
+  const slides=list.map((ad,index)=>{const id=esc(ad.id);return `<button type="button" class="za-campaign-slide" data-za-slot="${placement}" data-za-id="${id}" aria-label="${esc(`${ad.headline}, ${ad.advertiser}, sponsored`)}${many?`, ${index+1} of ${list.length}`:''}" onclick="zaOpen('${id}','${placement}')"><img src="${imageSrc(ad.mediaUrl)}" alt="" loading="${index?'lazy':'eager'}" decoding="async"></button>`}).join('');
+  const dots=many?`<span class="za-campaign-dots" aria-hidden="true">${list.map((_,index)=>`<i class="${index===at?'on':''}"></i>`).join('')}</span>`:'';
+  return `<section class="za-campaigns" data-za-campaigns="${placement}" aria-label="Sponsored campaigns" ${many?'aria-roledescription="carousel"':''} onpointerdown="zaCampaignHold()" onfocusin="zaCampaignHold()"><div class="za-campaign-track" onscroll="zaCampaignScrolled(this)">${slides}</div><button type="button" class="za-campaign-ad" onclick="zaCampaignAbout(this)" aria-label="About this ad">Ad</button>${dots}</section>`;
+}
+function zaCampaignIndex(track){return track.clientWidth?Math.round(track.scrollLeft/track.clientWidth):0}
+function zaCampaignScrolled(track){
+  const box=track.closest('[data-za-campaigns]'),at=zaCampaignIndex(track);if(!box)return;
+  ZAds.campaignAt[box.dataset.zaCampaigns]=at;
+  box.querySelectorAll('.za-campaign-dots>i').forEach((dot,index)=>dot.classList.toggle('on',index===at));
+}
+function zaCampaignAbout(button){
+  const track=button.closest('[data-za-campaigns]')?.querySelector('.za-campaign-track'),slide=track?.children[zaCampaignIndex(track)];
+  if(slide)zaAbout(slide.dataset.zaId);
+}
+// A touch or keyboard focus holds the rotation for a while, so a slide never moves under the finger.
+function zaCampaignHold(){ZAds.campaignHeld=Date.now()+8000}
+function zaCampaignTick(){
+  if(document.visibilityState==='hidden'||zaReduced.matches||Date.now()<ZAds.campaignHeld)return;
+  document.querySelectorAll('[data-za-campaigns]').forEach(box=>{
+    const track=box.querySelector('.za-campaign-track'),count=track?.children.length||0;
+    if(count<2||box.contains(document.activeElement)||matchMedia('(hover: hover)').matches&&box.matches(':hover'))return;
+    const rect=box.getBoundingClientRect(),shown=Math.min(rect.bottom,innerHeight)-Math.max(rect.top,0);
+    if(!rect.height||shown<rect.height/2)return;
+    track.scrollTo({left:(zaCampaignIndex(track)+1)%count*track.clientWidth,behavior:'smooth'});
+  });
+}
+// After a redraw, each carousel shows the slide the member was on.
+function zaCampaignAttach(){
+  const boxes=document.querySelectorAll('[data-za-campaigns]');
+  boxes.forEach(box=>{
+    const track=box.querySelector('.za-campaign-track'),at=Math.min(ZAds.campaignAt[box.dataset.zaCampaigns]||0,track.children.length-1);
+    if(track.clientWidth&&zaCampaignIndex(track)!==at)track.scrollLeft=at*track.clientWidth;
+  });
+  if(boxes.length&&!ZAds.campaignTimer)ZAds.campaignTimer=setInterval(zaCampaignTick,ZA_CAMPAIGN_MS);
+  else if(!boxes.length&&ZAds.campaignTimer){clearInterval(ZAds.campaignTimer);ZAds.campaignTimer=null}
 }
 
 /* Screens are redrawn with innerHTML. Each video element is kept and moved into
@@ -152,11 +205,11 @@ function zaAbout(id){
 function zaGoPremium(){zaCloseAbout();window.ZimiThemes?.open()}
 
 /* Each screen visit shows the next campaign in rotation and counts its own view. */
-function zaBeforeNavigate(){ZAds.picks={};ZAds.counted.clear();zaStopTimers();zaCloseAbout()}
+function zaBeforeNavigate(){ZAds.picks={};ZAds.campaignAt={};ZAds.counted.clear();zaStopTimers();zaCloseAbout()}
 function zaReset(){
-  zaStopTimers();zaCloseAbout();ZAds.observer?.disconnect();
+  zaStopTimers();zaCloseAbout();ZAds.observer?.disconnect();clearInterval(ZAds.campaignTimer);
   for(const video of ZAds.videos.values()){video.pause();video.removeAttribute('src');video.load()}
-  Object.assign(ZAds,{items:[],adFree:false,picks:{},turn:{},opening:''});
+  Object.assign(ZAds,{items:[],adFree:false,picks:{},turn:{},opening:'',campaignAt:{},campaignHeld:0,campaignTimer:null});
   ZAds.videos.clear();ZAds.retired.clear();ZAds.counted.clear();ZAds.paused.clear();
 }
 Native.on('data.ads',data=>{
@@ -173,9 +226,9 @@ Native.on('app.background',()=>{zaPauseAll();zaStopTimers()});
 Native.on('session.none',zaReset);Native.on('session.expired',zaReset);
 zaReduced.addEventListener?.('change',()=>{if(zaReduced.matches)zaPauseAll();document.querySelectorAll('[data-za-controls]').forEach(el=>zaPaintControls(el.dataset.zaControls))});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')zaPauseAll()});
-window.ZimiAds={card:zaCard,banner:zaBanner,beforeNavigate:zaBeforeNavigate,reset:zaReset};
+window.ZimiAds={card:zaCard,banner:zaBanner,campaigns:zaCampaigns,beforeNavigate:zaBeforeNavigate,reset:zaReset};
 const zaPreviousAfterRender=ZimiHome.afterRender;
-ZimiHome.afterRender=()=>{zaPreviousAfterRender();zaAttach();zaObserve()};
+ZimiHome.afterRender=()=>{zaPreviousAfterRender();zaAttach();zaCampaignAttach();zaObserve()};
 
 if(DEMO){
   /* A drawn sample creative, so the preview needs no network or bundled image. */
@@ -187,4 +240,26 @@ if(DEMO){
     c.fillStyle='#fff';c.font='700 34px Inter, sans-serif';c.fillText('NEW ON ANDROID',80,230);c.font='800 92px Inter, sans-serif';c.fillText('Binzo Studio',80,340);c.font='500 42px Inter, sans-serif';c.fillText('Edit reels in seconds',80,410);
     ZAds.items=[{id:'00000000000000000000d001',format:'banner',advertiser:'Binzo Studio',headline:'Edit reels in seconds',body:'Templates, music and auto captions. Free on Android.',ctaLabel:'Install now',domain:'play.google.com',mediaUrl:art.toDataURL('image/png'),mediaType:'image/png',logoUrl:'',placements:['home','explore','chats','call_summary']}];
   }
+  /* Drawn sample campaign banners (11:3), like an event banner made by the design team. */
+  const campaign=(dates,title,lines,from,to,accent)=>{
+    const art=document.createElement('canvas');art.width=1100;art.height=300;const c=art.getContext('2d');if(!c)return '';
+    const fill=c.createLinearGradient(0,0,1100,300);fill.addColorStop(0,from);fill.addColorStop(1,to);c.fillStyle=fill;c.fillRect(0,0,1100,300);
+    c.fillStyle='rgba(255,255,255,.1)';c.beginPath();c.arc(930,150,190,0,Math.PI*2);c.fill();
+    // A simple trophy: cup, handles, stem and base.
+    c.fillStyle=accent;c.strokeStyle=accent;c.lineWidth=13;
+    c.beginPath();c.moveTo(872,62);c.lineTo(988,62);c.quadraticCurveTo(990,176,930,182);c.quadraticCurveTo(870,176,872,62);c.fill();
+    c.beginPath();c.arc(872,104,30,Math.PI*.5,Math.PI*1.5);c.stroke();c.beginPath();c.arc(988,104,30,-Math.PI*.5,Math.PI*.5);c.stroke();
+    c.fillRect(918,178,24,42);c.beginPath();c.roundRect?.(878,214,104,24,8);c.fill();
+    c.fillStyle='rgba(0,0,0,.22)';c.font='700 58px Inter, sans-serif';c.textAlign='center';c.fillText('★',930,140);c.textAlign='left';
+    c.fillStyle='#fff';c.font='600 30px Inter, sans-serif';c.fillText(dates,70,78);
+    let size=70;do{c.font=`800 ${size}px Inter, sans-serif`;size-=2}while(c.measureText(title).width>740&&size>36);
+    c.fillStyle=accent;c.fillText(title,66,156);
+    c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.roundRect?.(70,186,520,86,24);c.fill();
+    c.fillStyle='#fff';c.font='600 27px Inter, sans-serif';lines.forEach((line,index)=>c.fillText(line,98,222+index*36));
+    return art.toDataURL('image/png');
+  };
+  [['00000000000000000000d002','29/10 – 05/11','Diwali Gift Festival',['Daily Top 1  ·  20,000 coins','5-Day Top 1  ·  60,000 coins'],'#3a0d4f','#8f1a62','#ffc23d'],
+   ['00000000000000000000d003','Every Sat & Sun','Weekend Call Marathon',['Most call minutes wins','A Home spotlight for a week'],'#082f4f','#0f6f8f','#7ff0ff'],
+   ['00000000000000000000d004','Limited time','Invite & Earn',['100 coins for every friend','who joins and makes a call'],'#4f1a06','#b8401a','#ffd6a0']]
+    .forEach(([id,dates,title,lines,from,to,accent])=>{const mediaUrl=campaign(dates,title,lines,from,to,accent);if(mediaUrl)ZAds.items.push({id,format:'campaign',advertiser:'BinzoLive',headline:title,body:'',ctaLabel:'Open',domain:'binzolive.com',mediaUrl,mediaType:'image/png',logoUrl:'',placements:['home','explore']})});
 }

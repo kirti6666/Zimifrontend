@@ -44,18 +44,30 @@ async function mountedThemes(page, name, rules = [], shot = false) {
       sameMedia: __themeMounted.media.every(({ node, stream }) => node.isConnected && node.srcObject === stream) && __themeMounted.media.length === document.querySelectorAll('video,audio').length,
       captures: __captureCount - __themeMounted.captures, sameView: S.v === __themeMounted.view,
       overflow: document.documentElement.scrollWidth > innerWidth + 1,
+      purchaseGradient: document.documentElement.classList.contains('zw-app') ? getComputedStyle(document.querySelector('.zw-buy')).backgroundImage : '',
     }));
     const label = `${name} / ${theme.name}`;
     check(common.theme, 'light', `${label}: native theme mode`);
     check(common.canvas, '#ffffff', `${label}: native safe-area canvas`);
     check(common.scheme, 'light', `${label}: color scheme`);
     check(common.app, 'rgb(255, 255, 255)', `${label}: app canvas`);
+    if(name==='coins')check(common.purchaseGradient,'none',`${label}: purchase button retains the selected theme accent`);
     check(common.sameScreen, true, `${label}: changing theme preserves screen DOM`);
     check(common.sameMedia, true, `${label}: changing theme preserves media DOM and streams`);
     check(common.captures, 0, `${label}: theme change does not capture camera or microphone`);
     check(common.sameView, true, `${label}: theme change preserves navigation`);
     check(common.overflow, false, `${label}: no document width overflow`);
     check(common.font.includes({ system: 'Inter', rounded: 'Poppins', serif: 'Georgia' }[theme.typography.fontFamily]), true, `${label}: selected body font`);
+    if(name==='thread gifts'||name==='call gifts'){
+      const reference=await page.locator('.zg-reference').evaluate(node=>{
+        const sheet=getComputedStyle(node),balance=getComputedStyle(node.querySelector('.zg-balance'));
+        const colors=value=>[...value.matchAll(/rgba?\(([^)]+)\)/g)].map(match=>match[1].split(/[ ,]+/).slice(0,3).map(Number));
+        return {dark:colors(sheet.backgroundImage+' '+sheet.backgroundColor).some(rgb=>Math.max(...rgb)<85),pink:colors(balance.backgroundImage+' '+balance.backgroundColor).some(rgb=>rgb[0]>rgb[1]+70&&rgb[2]>rgb[1]+25),heading:getComputedStyle(node.querySelector('h2')).color};
+      });
+      check(reference.dark,true,`${label}: only the gift modal keeps the requested dark reference`);
+      check(reference.pink,true,`${label}: gift balance keeps the requested pink pill`);
+      check(reference.heading,'rgb(255, 255, 255)',`${label}: reference heading remains readable`);
+    }
     for (const [selector, property, token] of rules) {
       const actual = await page.locator(selector).first().evaluateAll((nodes, property) => nodes.length ? getComputedStyle(nodes[0])[property] : '<missing>', property);
       const expected = { ...theme.colors, background:'#ffffff', surface:'#ffffff', surfaceElevated:'#f8f8fa', text:'#18181b', textMuted:'#71717a', wallet:'#171717', primaryContrast:theme.id==='theme-ocean'?'#000000':'#ffffff' };
@@ -106,7 +118,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     for (const view of ['home', 'all-creators', 'chats', 'profile', 'settings']) {
       await nav(page, view);
       if (view === 'all-creators') await receive(page, 'data.home', home);
-      const rules = view === 'home' ? [bg('.zh-person-card', 'surface'), ink('.zh-section-title h2'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'all-creators' ? [ink('.zac-heading h1')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : view === 'profile' ? [bg('.zu-own-page', 'surface')] : [bg('.zp-wallet', 'wallet'), ...cta('.zp-topup')];
+      const rules = view === 'home' ? [bg('.zh-region-chips [aria-pressed="false"]', 'surfaceElevated'), ink('.zh-region-chips [aria-pressed="false"]', 'textMuted'), bg('.zh-region-chips [aria-pressed="true"]', 'primary'), ink('.zh-region-chips [aria-pressed="true"]', 'primaryContrast'), ink('.zh-feed-tabs [aria-selected="true"]'), ink('.zh-feed-tabs [aria-selected="false"]', 'textMuted')] : view === 'all-creators' ? [ink('.zac-heading h1')] : view === 'chats' ? [bg('.zc-search', 'surfaceElevated'), ink('.zc-name')] : view === 'profile' ? [bg('.zu-own-page', 'surface')] : [bg('.zp-wallet', 'wallet'), ...cta('.zp-topup')];
       await mountedThemes(page, view, rules);
     }
     for (const view of ['themes', 'wallet', 'transactions', 'calls', 'blocked', 'safety', 'help', 'editprofile', 'notifications', 'board', 'host', 'post']) {
@@ -116,13 +128,17 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await receive(page, 'data.search', { q: '', hosts: [creator], page: 1, total: 1 });
     await mountedThemes(page, 'search', [bg('.zh-search-header>div', 'surfaceElevated'), ink('#sq')]);
     await nav(page, 'coins'); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'coins', [bg('.zw-wallet', 'surface'), ink('.zw-wallet-main>div>span', 'textMuted'), ink('.zw-wallet p', 'textMuted'), ...cta('.zw-coins>.zh-primary')], true);
+    await mountedThemes(page, 'coins', [bg('.zw-coins', 'background'), bg('.zw-wallet-main', 'surfaceElevated'), bg('.zw-currency', 'surfaceElevated'), ink('.zw-wallet-main h2'), ink('.zw-note', 'textMuted'), ...cta('.zw-checkout-footer .zw-buy')], true);
+    await nav(page, 'home');
+    check(await page.evaluate(()=>document.documentElement.classList.contains('zw-app')),false,'Leaving coins clears the layout class');
+    check(await page.evaluate(()=>document.documentElement.dataset.canvas),'#ffffff','Leaving coins retains the account safe-area canvas');
     await nav(page, 'thread');
     await receive(page, 'data.thread', { with: creator.id, canSend: true, messages: [{ id: 'thread-theme', from: creator.id, text: 'Hello from the server fixture', createdAt: new Date().toISOString() }] });
     await page.getByRole('textbox', { name: /^Message / }).fill('A themed message draft');
-    await mountedThemes(page, 'thread', [bg('.zc-thread', 'background'), ink('.zc-thread'), bg('.zc-composer-field', 'surface'), ...cta('.zc-composer-send')], true);
+    await mountedThemes(page, 'thread', [bg('.zc-thread-header', 'background'), ink('.zc-thread'), ink('#ti'), ...cta('.zc-composer-send')], true);
+    check(await page.locator('.zc-composer-field').evaluate(node=>getComputedStyle(node).backgroundColor!=='rgba(0, 0, 0, 0)'),true,'Chat composer has a theme-colored fill');
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'thread gifts', [bg('.zh-sheet', 'surface'), ink('.zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated'), ink('.zh-sheet-heading p', 'textMuted')]);
+    await mountedThemes(page, 'thread gifts');
     await nav(page, 'precall');
     await mountedThemes(page, 'call setup', [bg('.zpc-setup', 'background'), ink('.zpc-setup h1'), ...cta('.zpc-primary')]);
     await page.evaluate(() => homeStartCall(false)); await page.locator('.ringscr').waitFor();
@@ -132,7 +148,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await page.evaluate(id => { Home.giftTo = null; Home.stream = null; Home.hosting = false; S.callId = 'theme-private-call'; go('call', id); zrCallChat(); }, creator.id);
     await mountedThemes(page, 'private video', [bg('.zr-room', 'background'), bg('.zr-compose', 'surface'), ink('.zr-compose input'), bg('.zr-pip', 'surface'), ink('.zr-call-feed .lvmsg.sys .txt', 'textMuted')], true);
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
-    await mountedThemes(page, 'call gifts', [bg('.zr-room .zh-sheet', 'surface'), ink('.zr-room .zh-sheet'), bg('.zh-gifts>button', 'surfaceElevated')]);
+    await mountedThemes(page, 'call gifts');
     await page.evaluate(() => { homeCloseGifts(); zrOpen('call-controls'); });
     await mountedThemes(page, 'call controls', [bg('.zr-sheet', 'surface'), ink('.zr-sheet'), bg('.zr-tool>span', 'surfaceElevated')]);
     await page.evaluate(() => zrClose());

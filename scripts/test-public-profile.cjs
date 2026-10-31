@@ -146,13 +146,13 @@ async function run() {
     assert.equal(await page.getByRole('button', { name: /^Open photo/ }).count(), 2, 'Pagination deduplicates repeated server posts');
     assert.equal(await button(page, 'Load more posts').count(), 0);
     await button(page, 'Open photo 1: An acoustic evening.').click();
-    const viewer = page.getByRole('dialog');
-    await viewer.getByRole('heading', { name: 'Photo 1 of 2', exact: true }).waitFor();
-    assert.equal(await viewer.locator('img').getAttribute('src'), photo.mediaUrl);
-    assert.equal(await button(page, 'Previous post').isDisabled(), true);
-    await button(page, 'Next post').click();
-    await page.getByRole('dialog').getByRole('heading', { name: 'Photo 2 of 2', exact: true }).waitFor();
-    assert.equal(await button(page, 'Next post').isDisabled(), true);
+    // Photos open as a feed of every loaded post, starting at the tapped one.
+    const postFeed = page.locator('.zu-feed-dialog');
+    await postFeed.waitFor();
+    assert.equal(await postFeed.locator('.zu-feed-post').count(), 2);
+    assert.equal(await postFeed.locator('.zu-feed-media>img').first().getAttribute('src'), photo.mediaUrl);
+    assert.match(await postFeed.locator('.zu-feed-post').nth(1).innerText(), /A second moment\./);
+    assert.equal(await button(postFeed, 'Post options').count(), 0, 'Visitors cannot delete a creator\'s posts');
     await page.keyboard.press('Escape');
     assert.equal(await page.getByRole('dialog').count(), 0);
     await tab(page, 'Posts').focus();
@@ -160,7 +160,7 @@ async function run() {
     assert.equal(await tab(page, 'About').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
     await page.keyboard.press('Home');
     assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true');
-    console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, media viewer and keyboard tabs');
+    console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, post feed and keyboard tabs');
 
     const readsBeforePresence = await sentCount(page, 'profile.load');
     const unavailable = { ...creator, online: true, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };
@@ -305,18 +305,20 @@ async function run() {
     await receive(page, 'data.chats', { chats: [{ id: id('61'), user: member, last: 'Hello', time: 'Today', unread: 0, automatedOnly: false }], total: 1, page: 1 });
     await navigate(page, creator);
     await acceptProfile(page); await acceptPosts(page);
-    assert.equal(await button(page, 'Message').isDisabled(), true, 'A host cannot message another host');
+    assert.equal(await button(page, 'Message').isEnabled(), true, 'Hosts can message other hosts');
     assert.equal(await button(page, 'Follow').count(), 0, 'Host-to-host Follow is unavailable');
     await navigate(page, member);
     await acceptProfile(page, member);
     assert.equal(await button(page, 'Message').isEnabled(), true, 'An approved host can reply to an existing member');
-    assert.equal(await button(page, 'Follow').count(), 0, 'A member profile has no unsupported Follow action');
-    assert.equal(await button(page, 'Start video call').count(), 0, 'Member profiles do not advertise host call actions');
+    assert.equal(await button(page, 'Follow').count(), 1, 'A host can follow a member');
+    assert.equal(await button(page, 'Start video call').count(), 0, 'Member profiles do not advertise the member call action');
+    assert.deepEqual([await button(page, 'Voice call').isDisabled(), await button(page, 'Video call').isDisabled()], [false, false],
+      'Hosts can call a member at any time');
     assert.equal(await page.locator('.zu-page [aria-label="Verified creator"],.zu-page [aria-label="Verified user"]').count(), 0, 'An unverified member receives no verified badge');
     assert.doesNotMatch(await page.locator('.zu-page').innerText(), /127|Acoustic evenings/, 'A member profile never leaks the previously viewed creator content');
     await button(page, 'Message').click();
     assert.equal((await lastSent(page, 'chat.open')).with, member.id, 'Member Message uses S.u rather than a stale host target');
-    console.log('PASS public profile: creator/member permissions, privacy and chat-target isolation');
+    console.log('PASS public profile: creator/member permissions, host Follow and calls, privacy and chat-target isolation');
 
     await receive(page, 'session', account);
     await receive(page, 'data.home', feed);
@@ -346,7 +348,8 @@ async function run() {
     await acceptProfile(page, self);
     await acceptPosts(page, self, [photo]);
     await page.getByRole('heading', { name: 'Approved creator', exact: true }).waitFor();
-    assert.match(await page.locator('.zu-self-bar').innerText(), /Edit profile[\s\S]*Upload photos/);
+    assert.equal(await button(page,'Edit profile').count(),1,'The owner has one compact edit control');
+    assert.equal(await button(page,'Upload photos').count(),1,'Photo upload is next to the content tabs');
     assert.equal(await page.locator('#nav [aria-current="page"]').innerText(), 'Profile', 'The shared layout retains the selected primary tab');
     assert.equal(await page.locator('#zu-follow, #zu-message, #zu-call, .zu-gift').count(), 0, 'Nothing to follow, message, call or gift on your own profile');
     assert.equal(await button(page, 'More profile options').count(), 0, 'You cannot report or block yourself');

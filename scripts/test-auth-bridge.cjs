@@ -111,6 +111,8 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
       if (id === './src/launch-screen') return { LaunchScreen: 'LaunchScreen' };
+      if (id === './src/app-update') return { useAppUpdates: () => ({ state: overrides.appUpdatesState ?? { status: 'allowed' }, check: () => {}, update: () => {} }) };
+      if (id === './src/app-update-screen') return { AppUpdateScreen: 'AppUpdateScreen' };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
       throw new Error(`Unexpected import ${id}`);
     };
@@ -131,6 +133,81 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
+
+test('conversation activity serializes old close/new open, renews and releases in background without interrupting chat', async () => {
+  const h=harness(),first=deferred();
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  let attempts=0;h.overrides.setChatActivity=()=>++attempts===1?first.promise:undefined;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'chat.activity',data:{with:'peer-a',active:true,userId:'forged'}})),null);
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-a',active:true}});await settle();
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-a',active:false}});
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-b',active:true}});
+  first.resolve();await settle();
+  const requests=()=>plain(h.calls.filter(call=>call.name==='setChatActivity').map(call=>call.args));
+  assert.deepEqual(requests(),[['peer-a',true],['peer-a',false],['peer-b',true]],'The old close completes before the new peer lease opens');
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-b',active:true}});await settle();
+  for(const listener of [...h.activities])listener('background');await settle();
+  assert.deepEqual(requests().at(-1),['peer-b',false]);
+  for(const listener of [...h.activities])listener('active');await settle();
+  assert.deepEqual(requests().at(-1),['peer-b',true]);
+  h.bridge.documentLoading();await settle();assert.deepEqual(requests().at(-1),['peer-b',false]);
+  h.overrides.setChatActivity=()=>{throw new h.ApiError('Network offline',503)};
+  h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'chat.activity',data:{with:'peer-b',active:true}});await settle();
+  assert.equal(h.find('operation.error').length,0,'Best-effort engagement failures do not interrupt manual conversations');h.bridge.close();
+});
+
+test('chat acknowledgments preserve client identity and committed server ordering while background reads stay unobtrusive', async () => {
+  const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  const delivered={id:'server-message',text:'Delivered text',createdAt:'2026-10-30T10:00:00Z',sequence:8};
+  h.overrides.sendMessage=()=>delivered;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  const knownIds=['507f1f77bcf86cd799439099'];
+  h.bridge.handle({type:'chat.open',data:{with:'host',background:true,knownIds}});await settle();
+  assert.deepEqual(plain(h.calls.filter(call=>call.name==='thread').at(-1).args),['host',knownIds]);
+  assert.equal(h.find('data.loading').filter(event=>event.data.resource==='thread')[0].data.background,true);
+  h.bridge.handle({type:'chat.send',data:{to:'host',text:'Original text',clientId:'text-attempt-1'}});await settle();
+  assert.deepEqual(plain(h.find('chat.sent').at(-1).data),{to:'host',sent:'Original text',text:'Delivered text',id:'server-message',inCall:false,reply:null,clientId:'text-attempt-1',createdAt:delivered.createdAt,sequence:8});
+  assert.equal(h.calls.filter(call=>call.name==='sendMessage').at(-1).args[4],'text-attempt-1');
+  h.overrides.thread=()=>{throw new h.ApiError('History unavailable',503)};
+  h.bridge.handle({type:'chat.open',data:{with:'host',background:true}});await settle();
+  assert.equal(h.find('operation.error').length,0,'A failed background reconciliation retains visible messages and the active draft');h.bridge.close();
+});
+
+test('agency messages validate identity-free payloads and retain request correlation without granting host access', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
+  const status = { agency: { id: 'agency-1', name: 'Dream Star', recruitmentCode: 'BINZO7K9Q2M', status: 'ACTIVE' }, joiningCode: 'BINZO7K9Q2M8X4R', codeType: 'host-invite', canJoin: true, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  h.overrides.hostAgency = () => status; h.overrides.verifyAgencyCode = () => status; h.overrides.joinAgency = () => status;
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  for (const [action, result] of [['load', 'loaded'], ['verify', 'verified'], ['join', 'joined']]) {
+    const data = { requestId: 9, ...(action === 'load' ? {} : { agencyCode: 'BINZO7K9Q2M8X4R' }) };
+    assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data })));
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: `agency.${action}`, data: { ...data, userId: 'someone-else' } })), null);
+    await h.bridge.handle({ type: `agency.${action}`, data }); await settle();
+    assert.deepEqual(plain(h.find(`agency.${result}`).at(-1).data), { ...status, requestId: 9 });
+  }
+  assert.equal(h.find('host.access').some(event => event.data.approved), false);
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.join', data: { agencyCode: 'BINZO7K9Q2M', requestId: 10 } })), null, 'A common agency ID never reaches activation through the web bridge');
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'agency.verify', data: { agencyCode: 'BINZO7K9Q2M', requestId: 10 } })), 'A common code can only be checked for agency identity');
+  h.overrides.verifyAgencyCode = () => { throw new h.ApiError('Agency suspended', 403); };
+  await h.bridge.handle({ type: 'agency.verify', data: { agencyCode: 'BINZO7K9Q2M8X4R', requestId: 10 } });
+  await settle();
+  assert.deepEqual(plain(h.find('agency.error').at(-1).data), { action: 'agency.verify', message: 'Agency suspended', requestId: 10 });
+  const oldDocument = deferred(); h.overrides.hostAgency = () => oldDocument.promise;
+  h.bridge.handle({ type: 'agency.load', data: { requestId: 12 } });
+  h.bridge.documentLoading(); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  oldDocument.resolve(status); await settle();
+  assert.equal(h.find('agency.loaded').some(event => event.data.requestId === 12), false, 'A replaced WebView cannot receive an old membership response with a reused request ID');
+  const pending = deferred(); h.overrides.hostAgency = () => pending.promise;
+  h.bridge.handle({ type: 'agency.load', data: { requestId: 11 } });
+  await h.bridge.handle({ type: 'auth.logout', data: {} });
+  pending.resolve(status); await settle();
+  assert.equal(h.find('agency.loaded').some(event => event.data.requestId === 11), false, 'A response from the retired account never reaches the page');
+  h.bridge.close();
+});
 
 test('the calls-only rollout blocks streaming commands and links while preserving cleanup, calls and gifts', async () => {
   const h = harness('active', 'binzolive://live/cold-room');
@@ -532,9 +609,23 @@ test('closing the bridge removes session observers and prevents pending UI deliv
   assert.equal(h.count('sendOtp'), 1);
 });
 
+test('the native update gate mounts app content only after an allowed policy', () => {
+  const h = harness(), app = h.load('App.tsx');
+  for (const status of ['checking', 'required', 'error']) {
+    h.overrides.appUpdatesState = { status };
+    const tree = app.default();
+    assert.equal(tree.type, 'AppUpdateScreen', `${status} cannot mount the WebView or session bridge`);
+    assert.equal(tree.props.state.status, status);
+    assert.equal(h.effects.length, 0, 'Blocked builds do not start app-content effects');
+  }
+  h.overrides.appUpdatesState = { status: 'allowed' };
+  assert.equal(app.default().type, app.AppContent);
+  assert.equal(h.effects.length, 0, 'The wrapper leaves content mounting to React');
+});
+
 test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
   const h = harness();
-  const provider = h.load('App.tsx').default();
+  const provider = h.load('App.tsx').AppContent();
   const [shell] = [provider.props.children].flat();
   const keyboard = shell.type(shell.props);
   const safeArea = keyboard.props.children;
@@ -557,7 +648,7 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
 
 test('the animated logo covers the app at launch instead of a loading skeleton', () => {
   const h = harness();
-  const provider = h.load('App.tsx').default();
+  const provider = h.load('App.tsx').AppContent();
   const [keyboard, launch] = [provider.props.children].flat();
   const web = [keyboard.props.children.props.children].flat().find(node => node?.type === 'WebView');
   assert.equal(launch.type, 'LaunchScreen', 'The logo is drawn over the whole screen, outside the safe-area padding');
@@ -574,7 +665,7 @@ test('the animated logo covers the app at launch instead of a loading skeleton',
 
 test('native app inactivity explicitly notifies the WebView and removes its listener on unmount', () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -596,7 +687,7 @@ test('native app inactivity explicitly notifies the WebView and removes its list
 
 test('native App tells the page when the keyboard opens and closes', () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   const findWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findWeb).find(Boolean) || null;
   const web = findWeb(tree), received = [];
   web.props.ref.current = { injectJavaScript: script => vm.runInNewContext(script, { window: { zimiReceive: raw => received.push(JSON.parse(raw)) } }) };
@@ -609,7 +700,7 @@ test('native App tells the page when the keyboard opens and closes', () => {
 
 test('native App refuses external document navigation and messages before privileged dispatch', async () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -637,7 +728,7 @@ test('native App refuses external document navigation and messages before privil
 
 test('the app page alone turns screenshot protection on and off for private screens', async () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -659,7 +750,7 @@ test('the app page alone turns screenshot protection on and off for private scre
 
 test('Android origin-only WebView messages reach OTP and haptic handlers', async () => {
   const h = harness();
-  const tree = h.load('App.tsx').default();
+  const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -817,7 +908,7 @@ test('retiring a document, account or bridge prevents photo saves and stale conf
 });
 
 function nativeAppHarness() {
-  const h = harness(), tree = h.load('App.tsx').default();
+  const h = harness(), tree = h.load('App.tsx').AppContent();
   const findWeb = node => {
     if (!node || typeof node !== 'object') return null;
     if (node.type === 'WebView') return node;
@@ -1192,6 +1283,42 @@ test('a confirmed gift stays successful when its independent wallet refresh fail
   assert.deepEqual(h.find('operation.error').map(item => item.data.action), ['wallet.load']);
   assert.equal(h.find('data.loading').at(-1).data.error, 'Something went wrong. Please try again.');
   h.bridge.close();
+});
+
+test('direct gift confirmations retain the canonical persisted receipt and transient animations never synthesize another chat message', async () => {
+  const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  const message={id:'persisted-gift',mine:true,text:'',time:'10:00',createdAt:'2026-10-30T10:00:00Z',sequence:9,kind:'gift',gift:{giftId:'catalog-gift',transferId:'gift-transfer',name:'Golden Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:75,quantity:3},automated:false,status:'sent'};
+  message.gift.durationMs=6400;
+  const giftDetails={id:'catalog-gift',transferId:'gift-transfer',quantity:3,name:'Golden Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:75,durationMs:6400};
+  h.overrides.sendGift=()=>({id:'gift-transfer',coins:75,message,giftDetails});
+  h.overrides.wallet=()=>({coins:425,earningsPaise:0});
+  h.bridge.handle({type:'gift.send',data:{to:'actual-recipient',gift:'catalog-gift',coins:99999,inCall:false,idempotencyKey:'direct-gift-receipt'}});await settle();
+  const receipt=h.find('gift.sent').at(-1).data;
+  assert.equal(receipt.to,'actual-recipient');assert.equal(receipt.coins,75);assert.deepEqual(plain(receipt.message),message);
+  assert.deepEqual(plain(receipt.giftDetails),giftDetails,'The web playback layer receives the original animation duration without consulting an edited catalog');
+  assert.equal(h.find('wallet.balance').at(-1).data.coins,425,'Balances are read from the server rather than inferred from the gift amount');
+  assert.equal(h.find('data.loading').some(event=>event.data.resource==='chats'&&event.data.background),true,'A committed receipt refreshes the real inbox');
+  const before=h.find('chat.updated').length;
+  h.live[0].onEvent({type:'gift.received',data:{id:'gift-transfer',gift:'Golden Rose',coins:75,from:'host',durationMs:6400}});await settle();
+  assert.equal(h.find('gift.received').at(-1).data.durationMs,6400);
+  assert.equal(h.find('chat.updated').length,before,'The animation notification never creates a second receipt');
+  h.live[0].onEvent({type:'chat.updated',data:{with:'actual-recipient',message}});await settle();
+  assert.equal(h.find('chat.updated').at(-1).data.message.id,'persisted-gift','Sender echoes retain the same canonical ID as the HTTP response');h.bridge.close();
+});
+
+test('free gifts pass native validation and preserve zero receipts without needing a wallet', async () => {
+  const h=harness(),send={type:'gift.send',data:{to:'host',gift:'catalog-gift',coins:0,inCall:false,idempotencyKey:'free-gift-attempt'}};
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify(send)));
+  for(const coins of [-1,1.5,'0',null,Infinity])assert.equal(h.webMessages.parseWebMessage(JSON.stringify({...send,data:{...send.data,coins}})),null);
+  const message={id:'free-message',mine:true,text:'',time:'10:00',kind:'gift',gift:{giftId:'catalog-gift',transferId:'free-transfer',name:'Free Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:0,quantity:1,durationMs:6400}};
+  h.overrides.sendGift=()=>({id:'free-transfer',coins:0,message,giftDetails:{id:'catalog-gift',transferId:'free-transfer',name:'Free Rose',emoji:'rose',mediaUrl:'https://cdn.example.test/rose.webp',coins:0,quantity:1,durationMs:6400}});
+  h.overrides.wallet=()=>{throw new Error('A free gift must not need a funded wallet')};
+  h.bridge.handle(send);await settle();
+  const delivered=h.find('gift.sent').at(-1).data;
+  assert.equal(delivered.coins,0);assert.equal(delivered.message.gift.coins,0);assert.equal(delivered.giftDetails.coins,0);assert.equal(delivered.giftDetails.durationMs,6400);
+  assert.equal(h.count('wallet'),0);assert.equal(h.find('wallet.balance').length,0);assert.equal(h.find('operation.error').length,0);
+  assert.equal(h.count('sendGift'),1,'The zero-priced gift still follows the server-controlled gift endpoint');h.bridge.close();
 });
 
 test('withdrawal messages reject legacy amounts, malformed requests and extra authority fields', async () => {
@@ -1788,6 +1915,225 @@ test('creator search uses its own latest request and preserves the home category
   h.bridge.close();
 });
 
+test('prepareForUpdate preserves an active billed call until its normal terminal event', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => ({ callId: 'active-update-call' });
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.equal(h.find('call.created').length, 1);
+  const activity = h.load('src/app-update-activity.ts');
+  h.load('src/app-update-events.ts').notifyAppUpdate(true);
+  h.bridge.prepareForUpdate(); h.bridge.prepareForUpdate(); await settle();
+  assert.equal(h.count('endCall'), 0, 'A new release must never hang up an ongoing call');
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  assert.equal(h.live[0].stopped, false);
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'active-update-call' } }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false);
+  const messages = h.posts.length; h.bridge.prepareForUpdate(); h.bridge.close();
+  assert.equal(await h.session.getToken(), tokenPair().accessToken, 'Updating cannot revoke the account session');
+  assert.equal(h.live[0].stopped, true);
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'active-update-call', initiator: true } }); await settle();
+  assert.equal(h.posts.length, messages, 'Retired media cannot reopen content under the mandatory gate');
+});
+
+test('prepareForUpdate retires an outgoing call and cleans up its late server response safely', async () => {
+  const h = harness(), started = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => started.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.equal(h.count('startCall'), 1);
+  h.bridge.prepareForUpdate(); h.bridge.close();
+  assert.equal(h.count('endCall'), 0, 'The call ID is not known before creation returns');
+  started.resolve({ callId: 'late-update-call' }); await settle();
+  assert.equal(h.count('endCall'), 1); assert.equal(h.calls.find(call => call.name === 'endCall').args[0], 'late-update-call');
+  assert.equal(h.find('call.created').length, 0); assert.equal(h.find('call.connected').length, 0); assert.equal(h.find('call.failed').length, 0);
+  assert.equal(await h.session.getToken(), tokenPair().accessToken);
+});
+
+test('prepareForUpdate never borrows replacement credentials for a late outgoing cleanup', async () => {
+  const h = harness(), started = deferred();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => started.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id' } }); await settle();
+  h.bridge.prepareForUpdate(); h.bridge.close();
+  await h.session.setSessionTokens(tokenPair('replacement'));
+  started.resolve({ callId: 'old-update-call' }); await settle();
+  assert.equal(h.count('endCall'), 0);
+  assert.equal(await h.session.getToken(), tokenPair('replacement').accessToken);
+});
+
+test('update activity hands a pending outgoing call to its server ID without an idle gap', async () => {
+  const h = harness(), started = deferred(), activity = h.load('src/app-update-activity.ts'), changes = [];
+  activity.onUpdateActivityChanged(busy => changes.push(busy));
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => started.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: true } });
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Protect before the asynchronous POST can receive a release event');
+  h.load('src/app-update-events.ts').notifyAppUpdate(true); h.bridge.prepareForUpdate();
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'early-call', initiator: true } });
+  started.resolve({ callId: 'early-call' }); await settle();
+  assert.deepEqual(changes, [true], 'Socket-before-POST and POST completion share one continuous lease');
+  assert.equal(h.count('endCall'), 0);
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'early-call' } });
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'early-call' } }); await settle();
+  assert.deepEqual(changes, [true, false], 'A duplicate terminal event releases only once'); h.bridge.close();
+});
+
+test('cancelled pending call remains protected through its late cleanup and errors release matching', async () => {
+  const h = harness(), started = deferred(), ended = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.startCall = () => started.promise; h.overrides.endCall = () => ended.promise;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id' } });
+  h.bridge.handle({ type: 'call.end', data: { reason: 'cancelled' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  started.resolve({ callId: 'late-cancelled' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Do not mount a gate while the late created call is being ended');
+  ended.resolve(); await settle(); assert.equal(activity.isUpdateActivityBusy(), false);
+  assert.equal(h.find('call.created').length, 0);
+  const matching = deferred(); h.overrides.matchHost = () => matching.promise;
+  h.bridge.handle({ type: 'call.match', data: {} }); assert.equal(activity.isUpdateActivityBusy(), true);
+  matching.reject(new h.ApiError('No available host', 404)); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('incoming rings and acceptance stay protected until peer hangup or completed decline', async () => {
+  const h = harness(), accepted = deferred(), declined = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.me = () => approvedAccount(); await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'incoming-update', from: { id: 'member' } } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.overrides.acceptCall = () => accepted.promise;
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming-update' } }); await settle();
+  h.load('src/app-update-events.ts').notifyAppUpdate(true); h.bridge.prepareForUpdate();
+  accepted.resolve({ peerId: 'member', voice: false }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.count('endCall'), 0);
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'incoming-update' } });
+  assert.equal(activity.isUpdateActivityBusy(), false);
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'decline-update', from: { id: 'member' } } });
+  h.overrides.declineCall = () => declined.promise;
+  h.bridge.handle({ type: 'call.decline', data: { callId: 'decline-update' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); declined.resolve(); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('staff verification acceptance and end protect their complete asynchronous lifetimes', async () => {
+  const h = harness(), accepted = deferred(), ended = deferred(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'verify.updated', data: { callId: 'verify-update', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => accepted.promise; h.overrides.endVerificationCall = () => ended.promise;
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-update' } });
+  h.bridge.prepareForUpdate(); assert.equal(h.count('endVerificationCall'), 0);
+  accepted.resolve(); await settle(); assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'verify.end', data: { callId: 'verify-update' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); ended.resolve(); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('coin checkout stays protected through external return verification and preserves unresolved credit tracking', async () => {
+  const h = harness(), checkout = deferred(), verified = deferred(), activity = h.load('src/app-update-activity.ts'), changes = [];
+  activity.onUpdateActivityChanged(busy => changes.push(busy));
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false }); await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.checkout = () => checkout.promise; h.overrides.verifyPurchase = () => verified.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'deferral-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); h.load('src/app-update-events.ts').notifyAppUpdate(true);
+  checkout.resolve({ purchaseId: 'purchase', merchantOrderId: 'deferral_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' }); await settle();
+  assert.deepEqual(changes, [true], 'Order handoff cannot expose an idle gap');
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.count('verifyPurchase'), 1);
+  verified.reject(new h.ApiError('Provider unavailable', 503)); await settle();
+  assert.deepEqual(changes, [true, false]); assert.equal(h.find('wallet.payment-returned').at(-1).data.status, 'UNKNOWN');
+  const cache = h.load('src/payment-cache.ts'); assert.equal((await cache.readPendingPayments('alice'))[0].orderId, 'deferral_order');
+  h.overrides.verifyPurchase = () => ({ purchaseId: 'purchase', merchantOrderId: 'deferral_order', status: 'SUCCESS' });
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false, 'Background reconciliation never recreates an abandoned checkout lease');
+  assert.equal((await cache.readPendingPayments('alice')).length, 0); h.bridge.close();
+});
+
+test('closing a correlated checkout waits for its pending POST and never opens a late provider URL', async () => {
+  const h = harness(), checkout = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.checkout = () => checkout.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'closing-attempt-1' } });
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'premium', idempotencyKey: 'closing-attempt-1' } });
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', idempotencyKey: 'another-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', idempotencyKey: 'closing-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Closing the view cannot retire an unresolved create request');
+  checkout.resolve({ purchaseId: 'purchase', merchantOrderId: 'closed_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); assert.equal(h.opened.length, 0); assert.equal(h.find('wallet.checkout').length, 0);
+  h.bridge.close();
+});
+
+test('overlapping call and premium purchase defer until both finish and pending UI close retains verification', async () => {
+  const h = harness(), verified = deferred(), activity = h.load('src/app-update-activity.ts'), changes = [];
+  activity.onUpdateActivityChanged(busy => changes.push(busy));
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.startCall = () => ({ callId: 'overlap-call' });
+  h.overrides.checkoutPremium = () => ({ purchaseId: 'premium', merchantOrderId: 'overlap_order', kind: 'premium', status: 'PENDING' });
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: true } });
+  h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'premium-overlap-1' } }); await settle();
+  h.live[0].onEvent({ type: 'call.ended', data: { callId: 'overlap-call' } }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.deepEqual(changes, [true]);
+  h.overrides.verifyPremium = () => verified.promise;
+  h.bridge.handle({ type: 'themes.premium.verify', data: { merchantOrderId: 'overlap_order' } });
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'premium', merchantOrderId: 'overlap_order', idempotencyKey: 'wrong-attempt-1' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'premium', merchantOrderId: 'overlap_order' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  verified.resolve({ purchaseId: 'premium', merchantOrderId: 'overlap_order', kind: 'premium', status: 'PENDING' }); await settle();
+  assert.deepEqual(changes, [true, false]); h.bridge.close();
+});
+
+test('checkout leases end at trusted expiry and account reset cannot release a replacement activity', async () => {
+  const h = harness(), activity = h.load('src/app-update-activity.ts'), oldCheckout = deferred();
+  h.overrides.checkoutPremium = () => ({ purchaseId: 'premium', merchantOrderId: 'expired_order', status: 'PENDING', expiresAt: new Date(Date.now()-1000).toISOString() });
+  h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'expired-attempt-1' } }); await settle();
+  await new Promise(resolve => setTimeout(resolve, 5)); assert.equal(activity.isUpdateActivityBusy(), false);
+  h.overrides.checkout = () => oldCheckout.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'old-pack', idempotencyKey: 'old-owner-attempt' } });
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); assert.equal(activity.isUpdateActivityBusy(), false);
+  h.overrides.startCall = () => ({ callId: 'replacement-call' });
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id' } }); await settle();
+  oldCheckout.resolve({ purchaseId: 'old', merchantOrderId: 'old_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/old' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true, 'Stale completion cannot release the new session call');
+  assert.equal(h.opened.length, 0); h.bridge.close(); assert.equal(activity.isUpdateActivityBusy(), false);
+  for (const data of [{}, {kind:'coins'}, {kind:['coins'],merchantOrderId:'order'}, {kind:'other',merchantOrderId:'order'}, {kind:'coins',idempotencyKey:'short'}, {kind:'coins',merchantOrderId:'order',busy:false}])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'payments.checkout.closed',data})), null);
+});
+
+test('manual payment checks protect an already-running background verification until it settles', async () => {
+  const h = harness(), verified = deferred(), activity = h.load('src/app-update-activity.ts');
+  h.overrides.checkout = () => ({ purchaseId: 'purchase', merchantOrderId: 'background_order', status: 'PENDING' });
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'background-attempt' } }); await settle();
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', merchantOrderId: 'background_order' } });
+  h.overrides.verifyPurchase = () => verified.promise;
+  h.activities.forEach(listener => listener('active')); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false, 'Background order reconciliation alone cannot defer a gate');
+  h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'background_order' } });
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.count('verifyPurchase'), 1);
+  verified.resolve({ purchaseId: 'purchase', merchantOrderId: 'background_order', status: 'PENDING' }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
+test('an older provider return cannot retire a concurrently resumed checkout for the same order', async () => {
+  const h = harness(), verified = deferred(), resumed = deferred(), activity = h.load('src/app-update-activity.ts');
+  const request = { type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'resumed-attempt-1' } };
+  const pending = { purchaseId: 'purchase', merchantOrderId: 'resumed_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' };
+  h.overrides.checkout = () => pending; h.overrides.verifyPurchase = () => verified.promise;
+  h.bridge.handle(request); await settle();
+  h.activities.forEach(listener => listener('background')); h.activities.forEach(listener => listener('active')); await settle();
+  h.overrides.checkout = () => resumed.promise; h.bridge.handle(request); await settle();
+  verified.resolve({ ...pending, paymentUrl: undefined }); await settle();
+  assert.equal(activity.isUpdateActivityBusy(), true); assert.equal(h.find('wallet.payment-returned').length, 0);
+  resumed.resolve(pending); await settle(); assert.equal(h.opened.length, 2, 'The newest explicit resume owns the provider launch');
+  assert.equal(activity.isUpdateActivityBusy(), true);
+  h.bridge.handle({ type: 'payments.checkout.closed', data: { kind: 'coins', merchantOrderId: 'resumed_order' } });
+  assert.equal(activity.isUpdateActivityBusy(), false); h.bridge.close();
+});
+
 test('cancel before call creation returns ends the returned call without reopening the UI', async () => {
   const h = harness(), started = deferred();
   await h.session.setSessionTokens(tokenPair());
@@ -2235,7 +2581,7 @@ test('a successful message send refreshes conversations while failed sends leave
   h.bridge.close();
 });
 
-test('chat rejects host-to-host and unapproved host requests before sending them to the API', async () => {
+test('approved hosts message other hosts, while unapproved hosts are stopped before the API', async () => {
   for (const status of ['approved', 'pending', 'suspended']) {
     const h = harness();
     h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host', role: status === 'approved' ? 'host' : 'sender', hostStatus: status, isVerifiedHost: status === 'approved' }, verification: status === 'approved' ? 'verified' : 'pending' });
@@ -2244,8 +2590,13 @@ test('chat rejects host-to-host and unapproved host requests before sending them
     h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
     h.bridge.handle({ type: 'chat.open', data: { with: 'other-host' } }); await settle();
     h.bridge.handle({ type: 'chat.send', data: { to: 'other-host', text: 'Hello' } }); await settle();
-    assert.equal(h.count('thread'), 0); assert.equal(h.count('sendMessage'), 0);
-    assert.match(h.find('operation.error').at(-1).data.message, status === 'approved' ? /reply to members only/ : /admin approval/);
+    if (status === 'approved') {
+      assert.equal(h.count('thread'), 1, 'The open conversation is read before the first send');
+      assert.equal(h.count('sendMessage'), 1, 'Approved hosts message other hosts');
+    } else {
+      assert.equal(h.count('thread'), 0); assert.equal(h.count('sendMessage'), 0);
+      assert.match(h.find('operation.error').at(-1).data.message, /admin approval/);
+    }
     h.bridge.close();
   }
 });
@@ -2912,6 +3263,17 @@ test('accepted calls allow the first host message with server-verified call cont
   assert.equal(h.count('sendMessage'),1,'Ending the call does not grant permission to start ordinary text chat');h.bridge.close();
 });
 
+test('a finished, declined or missed call refreshes call history and missed calls in the background', async () => {
+  const h=harness();await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const before={history:h.count('callHistory'),missed:h.count('missedCalls')};
+  h.overrides.callHistory=()=>({calls:[{user:{id:'host-id',name:'Mira'},time:'Now',duration:'0:00',kind:'video',direction:'incoming',status:'missed'}]});
+  h.live[0].onEvent({type:'call.ended',data:{callId:'missed-call'}});await settle();
+  assert.deepEqual([h.count('callHistory')-before.history,h.count('missedCalls')-before.missed],[1,1],'Both call lists are read again');
+  const loads=h.find('data.loading').filter(message=>['calls','missed'].includes(message.data.resource)).slice(-4);
+  assert.ok(loads.length===4&&loads.every(message=>message.data.background===true),'The refresh is a background read');
+  assert.equal(h.find('data.calls').at(-1).data.calls[0].status,'missed');h.bridge.close();
+});
+
 const pushSettings = (serverPush = true) => { const settings = profileSettings(); settings.capabilities.pushNotifications = serverPush; return settings; };
 const signedIn = (id = 'alice') => ({ ...account(id), requiresOnboarding: false, tokens: tokenPair(id), isNew: false });
 const pushCapability = h => h.find('data.profileSettings').at(-1).data.capabilities;
@@ -2995,5 +3357,450 @@ test('a tapped notification opens the inbox once a signed-in, onboarded screen c
   h.overrides.saveProfile = () => ({ ...account(), requiresOnboarding: false });
   h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
   assert.equal(h.find('push.opened').length, 3);
+  h.bridge.close();
+});
+
+test('automatic invitations use a strict quoted endpoint and never start or accept on wallet refresh', async () => {
+  const h = harness(), created = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  h.overrides.automaticCallInvitation = active => ({ id: 'invite', active });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.bridge.handle({ type: 'call.invitation.load', data: { requestId: 1 } }); await settle();
+  assert.deepEqual(plain(h.find('call.invitation.loaded').at(-1).data), { invitation: { id: 'invite', active: false }, requestId: 1 });
+  const message = { type: 'call.invitation.connect', data: { id: 'invite', requestId: 2, expectedCoinsPerMinute: 60, expectedEntryFeeCoins: 10 } };
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify(message)));
+  for (const bad of [{ to: 'forged-host' }, { source: 'manual' }, { expectedCoinsPerMinute: -1 }, { expectedEntryFeeCoins: '10' }, { expectedCoinsPerMinute: 1000001 }]) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ ...message, data: { ...message.data, ...bad } })), null);
+  }
+  h.live[0].onEvent({ type: 'wallet.refresh', data: {} }); await settle();
+  assert.equal(h.count('startCall') + h.count('connectAutomaticInvitation') + h.count('acceptCall'), 0);
+  h.overrides.connectAutomaticInvitation = () => created.promise;
+  h.bridge.handle(message); h.bridge.handle(message); await settle();
+  assert.equal(h.count('connectAutomaticInvitation'), 1, 'Concurrent taps share one native write');
+  assert.deepEqual(plain(h.calls.find(call => call.name === 'connectAutomaticInvitation').args), ['invite', 60, 10]);
+  assert.equal(h.count('startCall'), 0, 'Automatic Connect cannot fall back to the normal busy-host queue endpoint');
+  created.resolve({ callId: 'real-call', to: 'real-host', voice: false, connected: false, source: 'automatic', automaticInvitationId: 'invite' }); await settle();
+  assert.equal(h.find('call.created').at(-1).data.invitationId, 'invite'); assert.equal(h.find('call.connected').length, 0);
+  h.bridge.close();
+});
+
+test('automatic invitation callbacks retire with their document and terminal call replay never reconnects', async () => {
+  const h = harness(), loaded = deferred();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.overrides.automaticCallInvitation = () => loaded.promise;
+  h.bridge.handle({ type: 'call.invitation.load', data: { requestId: 3 } }); await settle();
+  h.bridge.documentLoading(); loaded.resolve({ id: 'stale-invite' }); await settle();
+  assert.equal(h.find('call.invitation.loaded').length, 0);
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.overrides.connectAutomaticInvitation = () => { throw new h.ApiError('The original call ended.', 409, 'INVITATION_CALL_ENDED'); };
+  h.bridge.handle({ type: 'call.invitation.connect', data: { id: 'invite', requestId: 4, expectedCoinsPerMinute: 60, expectedEntryFeeCoins: 10 } }); await settle();
+  assert.equal(h.find('call.failed').at(-1).data.code, 'INVITATION_CALL_ENDED');
+  assert.equal(h.find('call.created').length + h.find('call.connected').length + h.count('startCall'), 0);
+  for (const listener of [...h.activities]) listener('background');
+  h.bridge.handle({ type: 'call.invitation.load', data: { requestId: 5 } }); await settle();
+  assert.equal(h.count('automaticCallInvitation'), 1, 'Background discovery cannot contact the invitation endpoint');
+  assert.equal(h.find('call.invitation.loaded').at(-1).data.invitation, null); h.bridge.close();
+});
+
+test('genuine incoming top-up waits for a bounded server hold and explicit review, preserving cancellation', async () => {
+  const h = harness(), held = deferred(), until = new Date(Date.now() + 300000).toISOString();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'real-incoming', from: { id: 'real-host', host: true }, fromHost: true, rate: 60 } });
+  h.overrides.holdIncomingForTopup = () => held.promise;
+  h.bridge.handle({ type: 'call.topup.hold', data: { callId: 'real-incoming', requestId: 10 } }); await settle();
+  assert.equal(h.find('call.topup.held').length, 0, 'The UI receives no checkout permission before server acknowledgement');
+  assert.equal(h.count('declineCall') + h.count('endCall') + h.count('acceptCall'), 0);
+  held.resolve({ callId: 'real-incoming', until }); await settle();
+  assert.deepEqual(plain(h.find('call.topup.held').at(-1).data), { callId: 'real-incoming', until, requestId: 10 });
+  h.overrides.reviewIncomingTopup = () => ({ callId: 'real-incoming', ringing: false, rate: 60 });
+  const walletBefore = h.count('wallet');
+  h.bridge.handle({ type: 'call.topup.review', data: { callId: 'real-incoming', requestId: 11 } }); await settle();
+  assert.equal(h.count('wallet'), walletBefore + 1); assert.equal(h.find('call.topup.reviewed').at(-1).data.ringing, false);
+  assert.equal(h.count('acceptCall') + h.count('connectAutomaticInvitation'), 0, 'Even a funded verified return only reviews the real call');
+  h.overrides.holdIncomingForTopup = () => { throw new h.ApiError('Your balance is already sufficient. Return and choose Accept.', 409, 'TOPUP_NOT_REQUIRED'); };
+  const fundedWalletBefore = h.count('wallet'), holdsBefore = h.find('call.topup.held').length;
+  h.overrides.wallet = () => ({ coins: 100, earningsPaise: 0 });
+  h.bridge.handle({ type: 'call.topup.hold', data: { callId: 'real-incoming', requestId: 13 } }); await settle();
+  assert.equal(h.count('wallet'), fundedWalletBefore + 1, 'A server-funded refusal corrects a stale displayed balance');
+  assert.equal(h.find('wallet.balance').at(-1).data.coins, 100);
+  assert.equal(h.find('call.topup.held').length, holdsBefore, 'Already funded calls receive no checkout permission');
+  assert.equal(h.count('acceptCall') + h.count('declineCall'), 0, 'The corrected balance still needs explicit Accept');
+  assert.equal(h.find('call.topup.error').at(-1).data.requestId, 13);
+  const late = deferred(); h.overrides.holdIncomingForTopup = () => late.promise;
+  h.bridge.handle({ type: 'call.topup.hold', data: { callId: 'real-incoming', requestId: 12 } }); await settle();
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
+  late.resolve({ callId: 'real-incoming', until }); await settle();
+  assert.equal(h.find('call.topup.held').length, 1, 'An old account cannot receive a late checkout intent'); h.bridge.close();
+});
+
+test('members answer a verified host\'s call, and a refused answer keeps the call ringing', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'from-host', from: { id: 'host-1', name: 'Ananya', host: true }, voice: true, fromHost: true, rate: 60 } }); await settle();
+  assert.equal(h.find('call.incoming').at(-1).data.callId, 'from-host', 'A host\'s call reaches the member');
+  assert.equal(h.count('declineCall'), 0);
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'not-from-host', from: { id: 'member-2' } } }); await settle();
+  assert.equal(h.count('declineCall'), 1, 'Only calls a host started ring a member');
+
+  h.overrides.acceptCall = () => { throw new h.ApiError('You need at least 60 coins to answer this call (one minute). Recharge to answer.', 402, 'INSUFFICIENT_COINS'); };
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'from-host' } }); await settle();
+  const refused = h.find('call.failed').at(-1).data;
+  assert.deepEqual([refused.callId, refused.code], ['from-host', 'INSUFFICIENT_COINS']);
+  assert.match(refused.message, /60 coins/);
+  assert.equal(h.find('call.ended').length, 0, 'A refused answer does not end the ringing call');
+  assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), true, 'Recharge recovery still belongs to the same protected ringing call');
+
+  h.overrides.acceptCall = () => ({ peerId: 'host-1', voice: true, rate: 60 });
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'from-host' } }); await settle();
+  assert.equal(h.count('acceptCall'), 2, 'The member can answer again after recharging');
+  const connected = h.find('call.connected').at(-1).data;
+  assert.deepEqual([connected.callId, connected.initiator, connected.peerId], ['from-host', false, 'host-1']);
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'from-host', initiator: false, peerId: 'host-1', voice: true } }); await settle();
+  assert.equal(h.find('call.connected').length, 2, 'The server event for an answered host call is not treated as a stray host call');
+  assert.equal(h.count('endCall'), 0);
+  h.bridge.close();
+});
+
+test('verified members publish photos and delete their own posts through correlated native events',async()=>{
+  const h=harness();
+  h.overrides.me=()=>({...account(),user:{...account().user,serverRole:'user'},requiresOnboarding:false});
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.createPost=()=>({id:'member-photo',kind:'photo',mediaUrl:'https://media.example.test/photo.jpg'});
+  h.bridge.handle({type:'media.post.create',data:{photo:'data:image/png;base64,AAAA',caption:'A member photo',requestId:11}});await settle();
+  assert.equal(h.count('createPost'),1);assert.equal(h.find('post.saved').at(-1).data.requestId,11);
+  h.bridge.handle({type:'media.post.delete',data:{id:'member-photo',requestId:12}});await settle();
+  assert.deepEqual({...h.find('post.deleted').at(-1).data},{id:'member-photo',requestId:12});
+  h.overrides.deletePost=()=>{throw new h.ApiError('Not your post',404)};
+  h.bridge.handle({type:'media.post.delete',data:{id:'other-photo',requestId:13}});await settle();
+  assert.equal(h.find('post.delete.error').at(-1).data.requestId,13);
+  h.bridge.close();
+});
+
+test('connection list loads validate owner-free payloads and retire stale tab/account reads',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  for(const data of [{kind:'followers',requestId:0},{kind:'other',requestId:1},{kind:'followers',page:0,requestId:1},{kind:'followers',page:1.5,requestId:1},{kind:'following',requestId:1,id:'someone-else'}]){
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'relationships.load',data})),null);
+    h.bridge.handle({type:'relationships.load',data});
+  }
+  assert.equal(h.count('relationships'),0);
+  const old=deferred(),latest=deferred();h.overrides.relationships=kind=>kind==='followers'?old.promise:latest.promise;
+  h.bridge.handle({type:'relationships.load',data:{kind:'followers',requestId:1}});
+  h.bridge.handle({type:'relationships.load',data:{kind:'following',page:2,requestId:2}});
+  old.resolve({users:[{id:'retired'}],total:1,page:1,limit:20});await settle();
+  assert.equal(h.find('data.relationships').length,0);
+  latest.resolve({users:[{id:'current'}],total:21,page:2,limit:20});await settle();
+  const delivered=h.find('data.relationships').at(-1).data;
+  assert.equal(delivered.id,'alice');assert.equal(delivered.kind,'following');assert.equal(delivered.requestId,2);assert.equal(delivered.page,2);
+  const late=deferred();h.overrides.relationships=()=>late.promise;
+  h.bridge.handle({type:'relationships.load',data:{kind:'followers',requestId:3}});await settle();
+  await h.session.clearToken();late.resolve({users:[{id:'old-private-follower'}],total:1,page:1,limit:20});await settle();
+  assert.equal(h.find('data.relationships').length,1,'A signed-out account cannot receive a late private list');h.bridge.close();
+});
+
+test('deactivation waits for a confirmed API result, deduplicates requests and preserves a newer login',async()=>{
+  const h=harness(),pending=deferred();await h.session.setSessionTokens(tokenPair());
+  h.overrides.deactivateAccount=()=>{throw new h.ApiError('Please retry',503)};
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:1}});await settle();
+  assert.equal(h.find('account.deactivate.error').at(-1).data.requestId,1);
+  assert.ok(await h.session.getToken(),'A failed request keeps the session');
+  h.overrides.deactivateAccount=()=>pending.promise;
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:2}});
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:2}});await settle();
+  assert.equal(h.count('deactivateAccount'),2,'One failed attempt and one pending retry');
+  pending.resolve({deactivated:true});await settle();
+  assert.equal(h.find('account.deactivated').at(-1).data.requestId,2);
+  assert.equal(await h.session.getToken(),null,'Successful deactivation clears stored credentials');
+  await h.session.setSessionTokens(tokenPair());const stale=deferred();h.overrides.deactivateAccount=()=>stale.promise;
+  h.bridge.handle({type:'account.deactivate',data:{confirmed:true,requestId:3}});await settle();
+  h.bridge.handle({type:'auth.logout',data:{}});await settle();await h.session.setSessionTokens(tokenPair('bob'));
+  stale.resolve({deactivated:true});await settle();
+  assert.equal(await h.session.getToken(),tokenPair('bob').accessToken,'An old completion cannot clear another account');
+  assert.equal(h.find('account.deactivated').length,1);h.bridge.close();
+});
+
+test('inline cover changes support members, correlate retry errors and deduplicate pending saves without generic profile events',async()=>{
+  const h=harness(),saved=deferred();
+  const member={...account(),requiresOnboarding:false,user:{...account().user,serverRole:'user'}};
+  h.overrides.me=()=>member;await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  h.overrides.saveCoverPhoto=()=>{throw new h.ApiError('Cover storage unavailable',503)};
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:11}});await settle();
+  assert.deepEqual(plain(h.find('profile.cover.error').at(-1).data),{message:'Cover storage unavailable',requestId:11});
+  h.overrides.saveCoverPhoto=()=>saved.promise;
+  const retry={type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:12}};
+  h.bridge.handle(retry);h.bridge.handle(retry);await settle();
+  assert.equal(h.count('saveCoverPhoto'),2,'One failed attempt plus one pending retry; duplicate taps do not upload twice');
+  const covered={...member,user:{...member.user,coverUrl:'https://media.example.test/cover.jpg'}};
+  saved.resolve(covered);await settle();
+  assert.deepEqual(plain(h.find('profile.cover.saved').at(-1).data),{account:covered,requestId:12});
+  assert.equal(h.find('profile.saved').length,0,'Inline cover acknowledgements cannot navigate the generic editor');
+  assert.equal(h.find('profile.error').length,0);
+  assert.equal(h.find('session').length,1,'A cover save does not emit a session that would clear unrelated edit drafts');
+  for(const data of [{photo:'https://media.example.test/x.jpg',requestId:1},{photo:'data:image/png;base64,AAAA',requestId:0},{photo:'data:image/png;base64,AAAA',requestId:1,userId:'someone-else'}])
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'profile.cover.save',data})),null);
+  h.bridge.close();
+});
+
+test('inline cover saves ignore late successes and errors after a session change or document reload',async()=>{
+  for(const change of ['session','document'])for(const fail of [false,true]){
+    const h=harness(),saved=deferred();
+    const member={...account(),requiresOnboarding:false};
+    h.overrides.me=()=>member;await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({type:'session.resume',data:{}});await settle();
+    h.overrides.saveCoverPhoto=()=>saved.promise;
+    h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:21}});await settle();
+    if(change==='session')await h.session.setSessionTokens(tokenPair('bob'));else h.bridge.documentLoading();
+    if(fail)saved.reject(new h.ApiError('Old upload failed',503));else saved.resolve(member);
+    await settle();
+    assert.equal(h.find('profile.cover.saved').length,0,`${change}: old success cannot repaint a newer account/document`);
+    assert.equal(h.find('profile.cover.error').length,0,`${change}: old failure cannot replace a newer draft`);
+    h.bridge.close();
+  }
+});
+
+test('inline cover saves retire stale summaries while keeping another profile read independent',async()=>{
+  const h=harness(),before=deferred(),during=deferred(),fresh=deferred(),peer=deferred(),saved=deferred();
+  const member={...account(),requiresOnboarding:false};
+  h.overrides.me=()=>member;await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const summariesBefore=h.find('data.profileSettings').length;let reads=0;
+  h.overrides.profileSettings=()=>[before,during,fresh][reads++].promise;
+  h.overrides.saveCoverPhoto=()=>saved.promise;h.overrides.publicProfile=()=>peer.promise;
+  h.bridge.handle({type:'profile.settings.load',data:{}});
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:31}});
+  before.resolve(profileSettings());await settle();
+  assert.equal(h.find('data.profileSettings').length,summariesBefore,'Pre-save summaries cannot restore old cover-related data');
+  h.bridge.handle({type:'profile.settings.load',data:{}});
+  h.bridge.handle({type:'profile.load',data:{id:'other-profile',requestId:44}});
+  saved.resolve({...member,user:{...member.user,coverUrl:'https://media.example.test/new.jpg'}});await settle();
+  during.resolve(profileSettings());await settle();
+  assert.equal(h.find('data.profileSettings').length,summariesBefore,'Summaries begun during the mutation are retired too');
+  peer.resolve({id:'other-profile',name:'Other person'});await settle();
+  assert.equal(h.find('data.publicProfile').at(-1).data.id,'other-profile','Another open profile settles without interference from the cover save');
+  fresh.resolve({...profileSettings(),profile:{...profileSettings().profile,city:'Saved city'}});await settle();
+  assert.equal(h.find('data.profileSettings').at(-1).data.profile.city,'Saved city');
+  h.bridge.close();
+});
+
+test('inline cover saves re-read account authority after an admin review without granting host access',async()=>{
+  const h=harness(),saved=deferred();
+  h.overrides.me=()=>approvedAccount();await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  h.overrides.saveCoverPhoto=()=>saved.promise;
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:51}});
+  const latest={...account(),requiresOnboarding:false,user:{...account().user,serverRole:'host',hostStatus:'suspended',isVerifiedHost:false,coverUrl:'https://media.example.test/saved-cover.jpg'}};
+  h.overrides.me=()=>latest;
+  h.live[0].onEvent({type:'verification.status',data:{status:'rejected',hostStatus:'suspended'}});await settle();
+  const reads=h.count('me');saved.resolve(approvedAccount());await settle();
+  const delivered=h.find('profile.cover.saved').at(-1).data;
+  assert.equal(delivered.account.user.hostStatus,'suspended');
+  assert.equal(delivered.account.user.isVerifiedHost,false);
+  assert.equal(delivered.account.user.coverUrl,latest.user.coverUrl);
+  assert.equal(h.count('me'),reads+1,'A response crossing a review uses fresh account authority');
+  h.bridge.close();
+});
+
+test('inline cover responses publish changed host authority without resetting media drafts through a session event',async()=>{
+  const h=harness();h.overrides.me=()=>approvedAccount();await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const sessions=h.find('session').length;
+  h.overrides.saveCoverPhoto=()=>({...account(),requiresOnboarding:false,user:{...account().user,serverRole:'host',hostStatus:'suspended',isVerifiedHost:false,coverUrl:'https://media.example.test/new-cover.jpg'}});
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,AAAA',requestId:61}});await settle();
+  assert.equal(h.find('profile.cover.saved').at(-1).data.requestId,61);
+  assert.equal(h.find('host.access').at(-1).data.approved,false);
+  assert.equal(h.find('host.access').at(-1).data.hostStatus,'suspended');
+  assert.equal(h.find('session').length,sessions,'Authority refresh cannot clear unrelated editor drafts');
+  h.bridge.close();
+});
+
+test('creator card saves require current approved access and their bridge messages reject forged payloads',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:1}});await settle();
+  assert.equal(h.count('saveCreatorCard'),0);
+  h.overrides.me=()=>approvedAccount();h.overrides.saveCreatorCard=()=>({...approvedAccount(),user:{...approvedAccount().user,creatorCardUrl:'https://media.example.test/card.jpg'}});
+  h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:2}});await settle();
+  assert.equal(h.find('creator.card.saved').at(-1).data.requestId,2);
+  for(const message of [{type:'account.deactivate',data:{confirmed:false,requestId:1}},{type:'media.post.delete',data:{id:'post',requestId:1,userId:'someone-else'}},{type:'creator.card.save',data:{photo:'https://untrusted.example/image.jpg',requestId:1}}])assert.equal(h.webMessages.parseWebMessage(JSON.stringify(message)),null);
+  h.bridge.close();
+});
+
+test('card and cover saves use distinct methods and return independently persisted images without resetting the session',async()=>{
+  const h=harness();
+  const original={...approvedAccount(),user:{...approvedAccount().user,coverUrl:'https://media.example.test/original-cover.jpg',creatorCardUrl:'https://media.example.test/original-card.jpg'}};
+  h.overrides.me=()=>original;await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const sessionCount=h.find('session').length;
+  const cardSaved={...original,user:{...original.user,creatorCardUrl:'https://media.example.test/new-card.jpg',creatorCardKey:'creator-cards/alice/new.jpg'}};
+  h.overrides.saveCreatorCard=()=>cardSaved;
+  h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:71}});await settle();
+  assert.equal(h.count('saveCreatorCard'),1);assert.equal(h.count('saveCoverPhoto'),0);
+  assert.deepEqual(plain(h.find('creator.card.saved').at(-1).data),{account:cardSaved,requestId:71});
+  assert.equal(h.find('creator.card.saved').at(-1).data.account.user.coverUrl,original.user.coverUrl);
+  const coverSaved={...cardSaved,user:{...cardSaved.user,coverUrl:'https://media.example.test/new-cover.jpg',coverKey:'covers/alice/new.jpg'}};
+  h.overrides.saveCoverPhoto=()=>coverSaved;
+  h.bridge.handle({type:'profile.cover.save',data:{photo:'data:image/png;base64,BBBB',requestId:72}});await settle();
+  assert.equal(h.count('saveCreatorCard'),1);assert.equal(h.count('saveCoverPhoto'),1);
+  assert.deepEqual(plain(h.find('profile.cover.saved').at(-1).data),{account:coverSaved,requestId:72});
+  assert.equal(h.find('profile.cover.saved').at(-1).data.account.user.creatorCardUrl,cardSaved.user.creatorCardUrl);
+  assert.equal(h.find('session').length,sessionCount,'Image-specific saves cannot reset unrelated profile drafts');
+  h.bridge.close();
+});
+
+test('creator card acknowledgements cannot replace images after the document or account changes',async()=>{
+  for(const change of ['session','document'])for(const fail of [false,true]){
+    const h=harness(),pending=deferred();
+    h.overrides.me=()=>approvedAccount();await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({type:'session.resume',data:{}});await settle();
+    h.overrides.saveCreatorCard=()=>pending.promise;
+    h.bridge.handle({type:'creator.card.save',data:{photo:'data:image/png;base64,AAAA',requestId:81}});await settle();
+    assert.equal(h.count('saveCreatorCard'),1);
+    if(change==='session')await h.session.setSessionTokens(tokenPair('bob'));else h.bridge.documentLoading();
+    if(fail)pending.reject(new h.ApiError('Retired image upload failed',503));
+    else pending.resolve({...approvedAccount(),user:{...approvedAccount().user,creatorCardUrl:'https://media.example.test/retired-card.jpg'}});
+    await settle();
+    assert.equal(h.find('creator.card.saved').length,0,`${change}: an old image cannot replace the current card`);
+    assert.equal(h.find('creator.card.error').length,0,`${change}: an old error cannot interrupt the current selection`);
+    h.bridge.close();
+  }
+});
+
+test('post likes and comments go through the server and report failures', async () => {
+  const h = harness();
+  h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const json = value => JSON.parse(JSON.stringify(value));
+  h.overrides.likePost = (id, liked) => ({ liked, likes: 5 });
+  h.bridge.handle({ type: 'post.like', data: { id: 'post-1', liked: true, requestId: 3 } }); await settle();
+  assert.deepEqual(json(h.find('post.liked').at(-1).data), { id: 'post-1', liked: true, likes: 5, requestId: 3 });
+  h.overrides.likePost = () => { throw new h.ApiError('Your like could not be confirmed. Try again.', 502); };
+  h.bridge.handle({ type: 'post.like', data: { id: 'post-1', liked: false, requestId: 4 } }); await settle();
+  assert.deepEqual(json(h.find('post.like.error').at(-1).data), { id: 'post-1', liked: false, message: 'Your like could not be confirmed. Try again.', requestId: 4 });
+  h.overrides.postComments = (id, page) => ({ id, comments: [], total: 0, page, limit: 20 });
+  h.bridge.handle({ type: 'post.comments.load', data: { id: 'post-1', page: 2, requestId: 5 } }); await settle();
+  assert.deepEqual(json(h.find('data.postComments').at(-1).data), { id: 'post-1', comments: [], total: 0, page: 2, limit: 20, requestId: 5 });
+  h.overrides.addPostComment = (id, text) => ({ id: 'comment-1', text, user: { id: 'alice', name: 'alice', avatarUrl: '' } });
+  h.bridge.handle({ type: 'post.comment.add', data: { id: 'post-1', text: 'Nice', requestId: 6 } }); await settle();
+  assert.equal(h.find('post.comment.saved').at(-1).data.comment.text, 'Nice');
+  h.bridge.handle({ type: 'post.comment.add', data: { id: 'post-1', text: '   ', requestId: 7 } }); await settle();
+  assert.equal(h.count('addPostComment'), 1, 'Blank comments never reach the server');
+  h.bridge.handle({ type: 'post.comment.delete', data: { id: 'post-1', commentId: 'comment-1', requestId: 8 } }); await settle();
+  assert.deepEqual(json(h.find('post.comment.deleted').at(-1).data), { id: 'post-1', commentId: 'comment-1', requestId: 8 });
+  h.bridge.close();
+});
+
+test('profile invalidations refresh the authenticated owner and ignore earlier identity reads', async () => {
+  const h=harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const old=deferred(),latest=deferred();let reads=0;
+  h.overrides.me=()=>++reads===1?old.promise:latest.promise;
+  h.live[0].onEvent({type:'profile.updated',data:{user:{id:'forged',name:'Untrusted socket name'}}});
+  h.live[0].onEvent({type:'profile.updated',data:{}});
+  const updated={...account(),user:{...account().user,name:'Saved remotely',country:'India',gender:'undisclosed'},requiresOnboarding:false};
+  latest.resolve(updated);await settle();
+  assert.equal(h.find('profile.account').at(-1).data.user.name,'Saved remotely');
+  assert.equal(h.find('profile.account').at(-1).data.user.country,'India');
+  const delivered=h.find('profile.account').length;
+  old.resolve(account());await settle();
+  assert.equal(h.find('profile.account').length,delivered,'An earlier identity read cannot undo a later profile update');
+  h.bridge.close();
+});
+
+test('a local profile save invalidates earlier background identity reads',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const old=deferred(),save=deferred();
+  h.overrides.me=()=>old.promise;h.overrides.saveProfile=()=>save.promise;
+  h.live[0].onEvent({type:'profile.updated',data:{}});
+  const before=h.find('profile.account').length;
+  h.bridge.handle({type:'profile.save',data:{name:'Latest saved name',country:'India',requestId:901}});
+  save.resolve({...account(),user:{...account().user,name:'Latest saved name',country:'India'}});await settle();
+  assert.equal(h.find('profile.saved').at(-1).data.account.user.name,'Latest saved name');
+  old.resolve(account());await settle();
+  assert.equal(h.find('profile.account').length,before,'A pre-save account read cannot repaint previous personal details');
+  h.bridge.close();
+});
+
+test('a profile save from a retired WebView cannot complete a new editor with a reused request ID',async()=>{
+  const h=harness(),save=deferred();h.overrides.saveProfile=()=>save.promise;
+  h.bridge.handle({type:'profile.save',data:{name:'Older edit',requestId:1}});
+  h.bridge.documentLoading();
+  save.resolve({...account(),user:{...account().user,name:'Older edit'}});await settle();
+  assert.equal(h.find('profile.saved').length,0);
+  assert.equal(h.find('profile.error').length,0);
+  h.bridge.close();
+});
+
+test('profile invalidations received during a settings write are replayed after it settles',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokenPair());
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const save=deferred();h.overrides.saveProfileSettings=()=>save.promise;
+  const initialReads=h.count('me');
+  h.bridge.handle({type:'profile.settings.save',data:{languages:['English'],requestId:903}});
+  const remote={...account(),user:{...account().user,avatarUrl:'https://media.example.test/new-avatar.jpg',country:'India'},requiresOnboarding:false};
+  h.overrides.me=()=>remote;
+  h.live[0].onEvent({type:'profile.updated',data:{}});await settle();
+  assert.equal(h.count('me'),initialReads,'Identity refresh waits for pending owner writes');
+  save.resolve(profileSettings());await settle();
+  assert.equal(h.count('me'),initialReads+1,'An invalidation is not lost behind an owner write');
+  assert.equal(h.find('profile.account').at(-1).data.user.avatarUrl,remote.user.avatarUrl);
+  h.bridge.close();
+});
+
+test('retired document settings writes and identity reads cannot update a replacement screen',async()=>{
+  const h=harness(),save=deferred();h.overrides.saveProfileSettings=()=>save.promise;
+  h.bridge.handle({type:'profile.settings.save',data:{city:'Older choice',requestId:1}});
+  h.bridge.documentLoading();save.resolve(profileSettings());await settle();
+  assert.equal(h.find('profile.settings.saved').length,0);
+  assert.equal(h.find('data.profileSettings').length,0);
+  await h.session.setSessionTokens(tokenPair());h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'session.resume',data:{}});await settle();
+  const read=deferred();h.overrides.me=()=>read.promise;
+  const before=h.find('profile.account').length;
+  h.live[0].onEvent({type:'profile.updated',data:{}});
+  h.bridge.documentLoading();read.resolve(account());await settle();
+  assert.equal(h.find('profile.account').length,before);
+  h.bridge.close();
+});
+
+test('Home feeds, the leaderboard and Refer a Friend pass the message check and reach the server', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  // The feeds and the country filter the Home header sends.
+  for (const mode of ['following', 'popular', 'foryou', 'new']) assert.ok(parse({ type: 'home.reload', data: { page: 1, mode } }), mode);
+  assert.ok(parse({ type: 'home.reload', data: { page: 1, mode: 'new', country: 'India' } }));
+  for (const data of [{ mode: 'trending' }, { country: '' }, { country: 'x'.repeat(101) }, { country: 7 }]) assert.equal(parse({ type: 'home.reload', data }), null);
+  assert.ok(parse({ type: 'leaderboard.load', data: { period: 'weekly' } }));
+  for (const data of [{}, { period: 'monthly' }, { period: 'daily', page: 2 }]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
+  for (const type of ['referral.load', 'referral.share']) { assert.ok(parse({ type, data: {} })); assert.equal(parse({ type, data: { code: 'AB2CD3' } }), null); }
+  assert.ok(parse({ type: 'referral.apply', data: { code: 'ab2-cd3', requestId: 4 } }));
+  for (const data of [{ code: 'AB2CD3' }, { code: ' ', requestId: 1 }, { code: 'x'.repeat(21), requestId: 1 }, { code: 'AB2CD3', requestId: 1, extra: true }])
+    assert.equal(parse({ type: 'referral.apply', data }), null);
+
+  const summary = { code: 'AB2CD3', shareUrl: 'https://binzolive.com/?ref=AB2CD3', rewardCoins: 1000, friendBonusCoins: 100, applyDays: 7, friendsJoined: 0, friendsRewarded: 0, coinsEarned: 0, appliedCode: null, canApplyCode: true };
+  h.overrides.referral = () => summary;
+  h.overrides.applyReferral = code => ({ ...summary, appliedCode: code, canApplyCode: false });
+  h.bridge.handle({ type: 'referral.load', data: {} }); await settle();
+  assert.deepEqual(plain(h.find('data.referral').at(-1).data), summary);
+  const wallets = h.count('wallet');
+  h.bridge.handle({ type: 'referral.apply', data: { code: 'XY7ZK9', requestId: 3 } }); await settle();
+  assert.deepEqual(plain(h.find('referral.applied').at(-1).data), { ...summary, appliedCode: 'XY7ZK9', canApplyCode: false, requestId: 3 });
+  assert.equal(h.count('wallet'), wallets + 1, 'The friend bonus refreshes the balance');
+  h.overrides.applyReferral = () => { throw new h.ApiError("You have already used a friend's code.", 409); };
+  h.bridge.handle({ type: 'referral.apply', data: { code: 'XY7ZK9', requestId: 5 } }); await settle();
+  assert.deepEqual(plain(h.find('referral.error').at(-1).data), { message: "You have already used a friend's code.", requestId: 5, status: 409 }, 'A refused code is answered beside the field, not as a toast');
+  assert.equal(h.find('operation.error').filter(item => item.data.action === 'referral.apply').length, 0);
+  h.bridge.handle({ type: 'referral.share', data: {} }); await settle();
+  assert.equal(h.shares.length, 1);
+  assert.equal(h.shares[0].message, 'Join me on BinzoLive! Use my code AB2CD3 when you sign up and get 100 free coins. https://binzolive.com/?ref=AB2CD3');
   h.bridge.close();
 });

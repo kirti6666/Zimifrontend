@@ -7,7 +7,7 @@ const optionalText = (value: unknown, max = 128) => value === undefined || text(
 const boolean = (value: unknown) => typeof value === "boolean";
 const optionalColor = (value: unknown) => value === undefined || (typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value));
 const role = (value: unknown) => value === "sender" || value === "host";
-const amount = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 1e9;
+const giftAmount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 1e9;
 const identifier = (value: unknown) => text(value) && /^[a-zA-Z0-9_-]+$/.test(value as string);
 const strings = (value: unknown, max: number) => Array.isArray(value) && value.length <= max && value.every(item => text(item, 100));
 const photoData = (value: unknown) => typeof value === "string" && value.length <= 2 * 1024 * 1024 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value);
@@ -49,11 +49,12 @@ const notificationQuery = (data: Record<string, unknown>) => Object.keys(data).e
   (data.since === undefined || data.before === undefined || Date.parse(data.since as string) < Date.parse(data.before as string));
 const settingsPatch = (data: Record<string, unknown>) => {
   const keys = Object.keys(data).filter(key => key !== "requestId");
-  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city"].includes(key)) &&
+  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city", "country"].includes(key)) &&
     (data.pushNotifications === undefined || boolean(data.pushNotifications)) &&
     (data.matchCategory === undefined || data.matchCategory === null || category(data.matchCategory)) &&
     (data.appearance === undefined || ["dark", "light", "system"].includes(String(data.appearance))) &&
     (data.city === undefined || (typeof data.city === "string" && data.city.length <= 100)) &&
+    (data.country === undefined || (typeof data.country === "string" && data.country.length <= 100)) &&
     (data.languages === undefined || (Array.isArray(data.languages) && data.languages.length <= 8 && data.languages.every(value => typeof value === "string" && value.trim().length > 0 && value.length <= 50 && /^[\p{L}\p{M}\p{N} _&+-]+$/u.test(value)) && new Set(data.languages.map(value => String(value).trim().toLowerCase())).size === data.languages.length));
 };
 const privacyPatch = (data: Record<string, unknown>) => {
@@ -76,7 +77,11 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "app.exit.request": case "app.launched": valid = Object.keys(d).length === 0; break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
     case "connection.check": case "wallet.load": case "transactions.load": case "push.enable": valid = Object.keys(d).length === 0; break;
-    case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online", "following"].includes(String(d.mode))) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
+    case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online", "following", "foryou", "new"].includes(String(d.mode))) && (d.country === undefined || (typeof d.country === "string" && d.country.trim().length > 0 && d.country.length <= 100)) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
+    case "leaderboard.load": valid = ["daily", "weekly", "all"].includes(String(d.period)) && Object.keys(d).every(key => key === "period"); break;
+    case "referral.load": case "referral.share": valid = Object.keys(d).length === 0; break;
+    case "referral.apply": valid = typeof d.code === "string" && d.code.trim().length > 0 && d.code.length <= 20 && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
+      Object.keys(d).every(key => ["code", "requestId"].includes(key)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": valid = notificationQuery(d); break;
     case "official.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
@@ -107,6 +112,11 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "stream.request.cancel": case "stream.request.decline": case "stream.request.accept": valid = identifier(d.streamId) && identifier(d.id); break;
     case "wallet.checkout": valid = identifier(d.packId) && idempotency(d.idempotencyKey) && paymentRoute(d.route) && Object.keys(d).every(key => ["packId", "idempotencyKey", "route"].includes(key)); break;
     case "wallet.verify": case "themes.premium.verify": valid = text(d.merchantOrderId, 100) && /^[a-zA-Z0-9_-]+$/.test(String(d.merchantOrderId)) && Object.keys(d).every(key => key === "merchantOrderId"); break;
+    case "payments.checkout.closed": valid = (d.kind === "coins" || d.kind === "premium") &&
+      (d.merchantOrderId !== undefined || d.idempotencyKey !== undefined) &&
+      (d.merchantOrderId === undefined || identifier(d.merchantOrderId)) &&
+      (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)) &&
+      Object.keys(d).every(key => ["kind", "merchantOrderId", "idempotencyKey"].includes(key)); break;
     case "theme": valid = (d.theme === "light" || d.theme === "dark") && (d.canvas === "" || optionalColor(d.canvas)) && ["ink", "primary", "contrast", "surface", "raised"].every(key => optionalColor(d[key])); break;
     case "ui.haptic": valid = ["selection", "success", "error", "light"].includes(String(d.kind)); break;
     case "screen.secure": valid = boolean(d.on); break;
@@ -114,10 +124,13 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "auth.verifyOtp": valid = phoneNumber(d) && typeof d.code === "string" && /^\d{4,8}$/.test(d.code) && role(d.role) && boolean(d.signup); break;
     case "auth.google": valid = role(d.role) && boolean(d.signup); break;
     case "auth.emailCheck": valid = text(d.email, 254) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(d.email)) && d.requestId !== undefined && Object.keys(d).every(key => ["email", "requestId"].includes(key)); break;
+    case "account.deactivate": valid = d.confirmed === true && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["confirmed", "requestId"].includes(key)); break;
+    case "relationships.load": valid = ["followers", "following"].includes(String(d.kind)) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["kind", "page", "requestId"].includes(key)); break;
+    case "creator.card.save": case "profile.cover.save": valid = photoData(d.photo) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["photo", "requestId"].includes(key)); break;
     case "profile.save":
       valid = (d.name === undefined || text(d.name, 100)) && (d.email === undefined || text(d.email, 254)) &&
         (d.avatar === undefined || photoData(d.avatar)) && (d.cover === undefined || d.cover === null || photoData(d.cover)) &&
-        (d.city === undefined || (typeof d.city === "string" && d.city.length <= 100)) && (d.about === undefined || (typeof d.about === "string" && d.about.length <= 500)) &&
+        (d.city === undefined || (typeof d.city === "string" && d.city.length <= 100)) && (d.country === undefined || (typeof d.country === "string" && d.country.length <= 100)) && (d.about === undefined || (typeof d.about === "string" && d.about.length <= 500)) &&
         (d.photos === undefined || (Array.isArray(d.photos) && d.photos.length <= 6 && d.photos.every(photo =>
           typeof photo === "string" && photo.length <= 2 * 1024 * 1024 && (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(photo) || /^https:\/\/[^\s"'<>]+$/.test(photo))))) &&
         (d.langs === undefined || strings(d.langs, 20)) && (d.interests === undefined || strings(d.interests, 20)) &&
@@ -125,23 +138,35 @@ export function parseWebMessage(raw: string): WebMessage | null {
         (d.gender === undefined || d.gender === "female" || d.gender === "male" || d.gender === "undisclosed");
       break;
     case "media.post.create": valid = photoData(d.photo) && typeof d.caption === "string" && d.caption.length <= 2000; break;
+    case "post.like": valid = identifier(d.id) && boolean(d.liked) && (d.requestId === undefined || Number.isSafeInteger(d.requestId)) && Object.keys(d).every(key => ["id", "liked", "requestId"].includes(key)); break;
+    case "post.comments.load": valid = identifier(d.id) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && (d.requestId === undefined || Number.isSafeInteger(d.requestId)) && Object.keys(d).every(key => ["id", "page", "requestId"].includes(key)); break;
+    case "post.comment.add": valid = identifier(d.id) && text(d.text, 1000) && String(d.text).trim().length > 0 && Number.isSafeInteger(d.requestId) && Object.keys(d).every(key => ["id", "text", "requestId"].includes(key)); break;
+    case "post.comment.delete": valid = identifier(d.id) && identifier(d.commentId) && Number.isSafeInteger(d.requestId) && Object.keys(d).every(key => ["id", "commentId", "requestId"].includes(key)); break;
+    case "media.post.delete": valid = identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
+    case "agency.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
+    case "agency.verify": case "agency.join": valid = typeof d.agencyCode === "string" && (message.type === "agency.join" ? /^BINZO[A-Z0-9]{10}$/ : /^[A-Z0-9]{6,32}$/).test(d.agencyCode) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["agencyCode", "requestId"].includes(key)); break;
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
     case "presence.duringCalls": valid = boolean(d.on); break;
     case "host.callStatus.load": valid = true; break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
-    case "chat.open": valid = identifier(d.with); break;
+    case "chat.open": valid = identifier(d.with) && (d.background === undefined || boolean(d.background)) && (d.knownIds === undefined || (Array.isArray(d.knownIds) && d.knownIds.length <= 200 && d.knownIds.every(id => typeof id === "string" && /^[a-f\d]{24}$/i.test(id)) && new Set(d.knownIds).size === d.knownIds.length)) && Object.keys(d).every(key => ["with", "background", "knownIds"].includes(key)); break;
+    case "chat.activity": valid = identifier(d.with) && boolean(d.active) && Object.keys(d).every(key => ["with", "active"].includes(key)); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "chats.readAll": valid = true; break;
-    case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)) && (d.replyTo === undefined || identifier(d.replyTo)); break;
+    case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)) && (d.replyTo === undefined || identifier(d.replyTo)) && (d.clientId === undefined || voiceClientId(d.clientId)); break;
     case "chat.edit": valid = identifier(d.to) && identifier(d.id) && typeof d.text === "string" && d.text.length <= 4000; break;
     case "chat.delete": valid = identifier(d.to) && identifier(d.id) && boolean(d.everyone); break;
-    case "chat.photo": valid = identifier(d.to) && photoData(d.photo) && (d.replyTo === undefined || identifier(d.replyTo)); break;
+    case "chat.photo": valid = identifier(d.to) && photoData(d.photo) && (d.replyTo === undefined || identifier(d.replyTo)) && (d.clientId === undefined || voiceClientId(d.clientId)); break;
     case "chat.photoDownload": valid = identifier(d.to) && identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["to", "id", "requestId"].includes(key)); break;
     case "chat.photoViewer": valid = boolean(d.open) && Object.keys(d).every(key => key === "open"); break;
     case "chat.voice": valid = identifier(d.to) && audioData(d.audio) && Number.isInteger(d.durationMs) && Number(d.durationMs) >= 500 && Number(d.durationMs) <= 120000 && voiceClientId(d.clientId) && (d.replyTo === undefined || identifier(d.replyTo)) && Object.keys(d).every(key => ["to", "audio", "durationMs", "clientId", "replyTo"].includes(key)); break;
-    case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && amount(d.coins) && boolean(d.inCall) && (d.streamId === undefined || identifier(d.streamId)) && (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)); break;
+    case "gift.send": valid = identifier(d.to) && text(d.gift, 100) && giftAmount(d.coins) && boolean(d.inCall) && (d.streamId === undefined || identifier(d.streamId)) && (d.idempotencyKey === undefined || idempotency(d.idempotencyKey)); break;
     case "call.start": valid = identifier(d.to) && (d.voice === undefined || boolean(d.voice)); break;
+    case "call.invitation.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.active === undefined || boolean(d.active)) && Object.keys(d).every(key => ["requestId", "active"].includes(key)); break;
+    case "call.invitation.connect": valid = identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && giftAmount(d.expectedCoinsPerMinute) && Number(d.expectedCoinsPerMinute) <= 1_000_000 && giftAmount(d.expectedEntryFeeCoins) && Number(d.expectedEntryFeeCoins) <= 1_000_000 && Object.keys(d).every(key => ["id", "requestId", "expectedCoinsPerMinute", "expectedEntryFeeCoins"].includes(key)); break;
+    case "call.invitation.dismiss": valid = identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
+    case "call.topup.hold": case "call.topup.review": valid = identifier(d.callId) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["callId", "requestId"].includes(key)); break;
     case "call.accept": case "call.decline": case "verify.accept": case "verify.end": valid = identifier(d.callId); break;
     case "call.end": valid = (d.callId === undefined || identifier(d.callId)) && optionalText(d.reason, 300); break;
     case "payout.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&

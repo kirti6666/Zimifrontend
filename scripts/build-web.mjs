@@ -115,6 +115,8 @@ const page = (demo, hosted = false) =>
   read("web/verification-call.css") +
   read("web/offline.css") +
   read("web/public-profile.css") +
+  read("web/post-create.css") +
+  read("web/post-view.css") +
   read("web/home-dashboard.css") +
   read("web/coins.css") +
   read("web/notifications.css") +
@@ -125,7 +127,14 @@ const page = (demo, hosted = false) =>
   read("web/card-video.css") +
   read("web/flat.css") +
   read("web/all-creators.css") +
+  read("web/leaderboard.css") +
+  read("web/referral.css") +
+  read("web/agency.css") +
   read("web/wallet.css") +
+  read("web/coin-packages.css") +
+  read("web/gift-picker.css") +
+  read("web/gift-art.css") +
+  read("web/call-invitations.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -134,6 +143,7 @@ const page = (demo, hosted = false) =>
   read("node_modules/qrcode-generator/dist/qrcode.js") +
   read("web/bridge.js") +
   read("web/phone-countries.js") +
+  "\n" + read("web/chat-order.js") +
   read("web/onboarding.js").replace(/__OB_MEDIA_([1-6])__/g, (_, i) =>
     "data:image/webp;base64," + readFileSync(join(root, `web/onboarding-media/india-${i}.webp`)).toString("base64"))
     // The app shows only the three welcome photos; the preview also needs the sample hosts'.
@@ -147,6 +157,9 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/home.js") +
   "\n" + read("web/home-dashboard.js") +
   "\n" + read("web/all-creators.js") +
+  "\n" + read("web/leaderboard.js") +
+  "\n" + read("web/referral.js") +
+  "\n" + read("web/agency.js") +
   "\n" + read("web/coins.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
@@ -155,8 +168,10 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/host-studio.js") +
   "\n" + read("web/verification-call.js") +
   "\n" + read("web/chats.js") +
+  "\n" + read("web/chat-activity.js") +
   "\n" + read("web/chat-voice.js") +
   "\n" + read("web/chat-photo.js") +
+  "\n" + read("web/chat-gift-playback.js") +
   "\n" + read("web/profile.js") +
   "\n" + read("web/themes.js") +
   "\n" + read("web/notifications.js") +
@@ -164,11 +179,14 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/icons.js") +
   "\n" + read("web/offline.js") +
   "\n" + read("web/public-profile.js") +
+  "\n" + read("web/post-create.js") +
+  "\n" + read("web/post-view.js") +
   "\n" + read("web/payouts.js") +
   "\n" + read("web/payment-routes.js") +
   "\n" + read("web/ads.js") +
   "\n" + read("web/tactile.js") +
   "\n" + read("web/card-video.js") +
+  "\n" + read("web/call-invitations.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

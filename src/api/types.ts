@@ -8,18 +8,49 @@ export type Gender = "female" | "male" | "undisclosed";
 export type ServerRole = "user" | "host" | "admin";
 export type Verification = "none" | "pending" | "verified" | "rejected";
 
+export interface AutomaticCallInvitation {
+  id: string; source: "automatic"; label: "Automatic call invitation";
+  host: { id: string; name: string; avatarUrl?: string; city?: string };
+  kind: "video"; coinsPerMinute: number; entryFeeCoins: number; requiredCoins: number;
+  affordable: boolean; expiresAt: string; status: "pending" | "connected" | "dismissed" | "expired";
+  callId?: string | null;
+}
+
+export interface HostAgency {
+  id: string;
+  name: string;
+  recruitmentCode: string;
+  status: "ACTIVE" | "SUSPENDED";
+}
+export interface HostAgencyStatus {
+  agency: HostAgency | null;
+  hostStatus: string;
+  isVerifiedHost: boolean;
+  eligible: boolean;
+  requirements: string[];
+  nextStep: "agency" | "application" | "review" | "active";
+  /** Personal single-use host invitation; separate from the agency's public ID. */
+  joiningCode?: string | null;
+  codeType?: "host-invite" | "agency";
+  canJoin?: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
   role: Role;
   serverRole?: ServerRole;
   city?: string;
+  /** Explicit public country, separate from the private phone dialing prefix. */
+  country?: string;
   about?: string;
   email?: string;
   avatarUrl?: string;
   avatarKey?: string;
   coverUrl?: string;
   coverKey?: string;
+  creatorCardUrl?: string;
+  creatorCardKey?: string;
   photos?: { key: string; url: string }[];
   languages?: string[];
   interests?: string[];
@@ -50,6 +81,26 @@ export interface UserPost {
   mediaUrl: string;
   kind: "photo" | "video";
   caption: string;
+  createdAt?: string;
+  /** Reactions, present on profile post lists. */
+  likes?: number;
+  comments?: number;
+  liked?: boolean;
+}
+
+export interface PostComment {
+  id: string;
+  text: string;
+  createdAt?: string;
+  user: { id: string; name: string; avatarUrl: string };
+}
+
+export interface PostComments {
+  id: string;
+  comments: PostComment[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface Host {
@@ -58,12 +109,15 @@ export interface Host {
   role?: Role;
   serverRole?: ServerRole;
   city?: string;
+  country?: string;
   category?: string;
   tag?: string;
   languages?: string[];
   age?: number;
   avatarUrl?: string;
   coverUrl?: string;
+  /** Independent artwork for discovery cards, separate from the profile cover. */
+  creatorCardUrl?: string;
   /** The host's newest video post, played muted on discovery cards; null when they have none. */
   previewVideoUrl?: string | null;
   gender?: Gender;
@@ -88,10 +142,20 @@ export interface PublicProfile extends Host {
   interests: string[];
   level?: number;
   crown?: boolean;
+  /** This person follows the viewer. */
+  followsYou?: boolean;
 }
 
 export interface PublicPosts {
   posts: UserPost[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type RelationshipKind = "followers" | "following";
+export interface Relationships {
+  users: (Host & { canViewProfile: boolean })[];
   total: number;
   page: number;
   limit: number;
@@ -119,7 +183,8 @@ export interface Mission {
   claimed: boolean;
   endsAt: string;
 }
-export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant" | "online" | "following"; page?: number; }
+// For You leaves out followed hosts; New lists the latest hosts first. `country` filters on the server.
+export interface HomeQuery { category?: string; q?: string; mode?: "popular" | "instant" | "online" | "following" | "foryou" | "new"; country?: string; page?: number; }
 export interface HomeData {
   hosts: Host[];
   stage: Host[];
@@ -161,8 +226,8 @@ export interface StreamCallRequest { id: string; streamId: string; userId: strin
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
 export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string; gender?: Gender | null }; }
 export interface StreamReaction { id: string; streamId: string; userId: string; emoji: string; }
-export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; }
-export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; }
+export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; durationMs?: number; }
+export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; bonusPercent?: number; badge?: "hot" | "popular"; }
 export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
 export interface PaymentRoutes {
   mode: "SINGLE" | "ROTATION";
@@ -190,7 +255,7 @@ export interface ThemeCatalog {
 export type Appearance = "dark" | "light" | "system";
 export interface PrivacySettings { discoverable: boolean; showActivity: boolean; allowRequests: boolean; }
 export interface ProfileSettings {
-  profile: { id: string; name: string; bio: string; city: string; languages: string[]; maskedPhone: string; countryCode: string; isPhoneVerified: boolean; createdAt: string };
+  profile: { id: string; name: string; bio: string; city: string; country?: string; languages: string[]; maskedPhone: string; countryCode: string; isPhoneVerified: boolean; createdAt: string };
   stats: { fans: number; following: number; giftsSent: number; giftsReceived: number; coinsSent: number; coinsReceived: number };
   /** level 0 means the server did not report one. */
   standing: { level: number; crown: boolean };
@@ -199,7 +264,7 @@ export interface ProfileSettings {
   categories: string[];
   capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; nativePushStatus: "registered" | "denied" | "unavailable"; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
 }
-export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; }
+export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; country?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
 export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; requestedRoute?: string; route?: string; pageStyle?: string; currency?: "INR"; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
 export interface RtcPayload {
@@ -223,6 +288,9 @@ export interface Person {
 }
 
 export interface ChatSummary {
+  lastId?: string;
+  lastSequence?: number;
+  lastOrderAfterSequence?: number;
   canSend?: boolean;
   automatedOnly?: boolean;
   sendDisabledReason?: string;
@@ -231,7 +299,7 @@ export interface ChatSummary {
   last: string;
   time: string;
   unread: number;
-  lastKind: "text" | "image" | "voice";
+  lastKind: "text" | "image" | "voice" | "gift";
   lastDeleted?: boolean;
   lastMine: boolean;
   lastAutomated: boolean;
@@ -250,17 +318,35 @@ export interface ChatsData {
   unreadConversations: number;
 }
 
+/** Immutable catalog and transfer snapshot supplied with a persisted gift receipt. */
+export interface ChatGift {
+  giftId: string;
+  transferId: string;
+  name: string;
+  emoji: string;
+  mediaUrl: string;
+  coins: number;
+  quantity: number;
+  durationMs?: number;
+}
+
 export interface Message {
   id?: string;
+  sequence?: number;
+  orderAfterSequence?: number;
+  clientId?: string;
   mine: boolean;
   text: string;
   time: string;
   createdAt?: string;
-  kind?: "text" | "image" | "voice";
+  kind?: "text" | "image" | "voice" | "gift";
+  gift?: ChatGift;
   imageUrl?: string;
   audioUrl?: string;
   durationMs?: number;
   edited?: boolean;
+  editedAt?: string;
+  deletedAt?: string;
   deleted?: boolean; // deleted for everyone; only a placeholder remains
   reply?: { id: string; mine: boolean; text: string; image: boolean; voice?: boolean; deleted: boolean };
   automated?: boolean;
@@ -270,16 +356,38 @@ export interface Message {
 export interface MissedCall {
   user: Person & Partial<Host>;
   when: string;
+  at?: string; // ISO time the call was placed
   kind: "video" | "voice";
 }
 
 export interface CallRecord {
   user: Host;
   time: string;
+  at?: string; // ISO time the call was placed
   duration: string;
   coins?: number;
+  kind?: "video" | "voice";
+  direction?: "incoming" | "outgoing"; // from this account's side
+  status?: "ringing" | "accepted" | "ended" | "declined" | "missed";
 }
 
+/** Refer a Friend: the account's own code and what its invitations have earned. */
+export interface ReferralSummary {
+  code: string;
+  shareUrl: string;
+  rewardCoins: number;
+  friendBonusCoins: number;
+  applyDays: number;
+  friendsJoined: number;
+  friendsRewarded: number;
+  coinsEarned: number;
+  appliedCode: string | null;
+  canApplyCode: boolean;
+}
+export type LeaderboardPeriod = "daily" | "weekly" | "all";
+/** Creators ranked by the gift coins they received in the period. */
+export interface LeaderboardEntry { id: string; name: string; avatarUrl: string; coins: number; rank: number; }
+export interface Leaderboard { period: LeaderboardPeriod; items: LeaderboardEntry[]; total: number; }
 export interface Transaction {
   title: string;
   time: string;
@@ -318,10 +426,11 @@ export interface Payouts {
 
 export type AdPlacement = "home" | "explore" | "chats" | "call_summary";
 
-/** A sponsored card for a member on the free plan. The destination stays on the server until a counted tap. */
+/** A sponsored card for a member on the free plan. The destination stays on the server until a counted tap.
+ *  A `campaign` is a wide image banner that rotates with others inside the Home and All Creators grids. */
 export interface AdCreative {
   id: string;
-  format: "banner" | "video";
+  format: "banner" | "video" | "campaign";
   advertiser: string;
   headline: string;
   body: string;

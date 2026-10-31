@@ -79,6 +79,8 @@ const chromeSize = page => page.evaluate(() => ['top', 'nav'].map(id => {
     assert.equal(await preview.evaluate(() => S.v), 'home');
     console.log('PASS offline preview: white-canvas accent screenshots, responsive layouts, reduced motion, retry and stable chrome');
 
+    // The compact profile fits a tall phone, so saved positions are checked on a short one.
+    await preview.setViewportSize({ width: 390, height: 568 });
     const scroll = preview.locator('#scroll-root');
     const homeScroll = await scroll.evaluate(el => { el.scrollTop = 220; return el.scrollTop; });
     assert.ok(homeScroll > 100, 'The preview home has enough content to verify saved scroll');
@@ -102,6 +104,7 @@ const chromeSize = page => page.evaluate(() => ['top', 'nav'].map(id => {
     assert.ok(Math.abs(await scroll.evaluate(el => el.scrollTop) - homeScroll) < 2, 'Recovery restores the home content position saved before it was covered');
     await preview.getByRole('button', { name: 'Profile', exact: true }).click();
     assert.ok(Math.abs(await scroll.evaluate(el => el.scrollTop) - profileScroll) < 2, 'Offline navigation does not overwrite the other primary tab scroll position');
+    await preview.setViewportSize({ width: 390, height: 844 });
     await preview.evaluate(() => go('all-creators'));
     assert.equal(await preview.locator('#nav').isVisible(), false, 'All Creators is a detail page without bottom tabs');
     await preview.context().setOffline(true);

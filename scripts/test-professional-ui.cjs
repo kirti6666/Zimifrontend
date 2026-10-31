@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
-const { ROUND } = require('./flat-corners.cjs');
+const { ROUND, STRAIGHT } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const shots = path.join(root, 'artifacts', 'professional');
 const navigate = (page, view) => page.evaluate(view => go(view), view);
@@ -34,7 +34,7 @@ async function backControl(page,label) {
   assert.equal(control.iconCentered,true,`${label}: arrow is centered inside the circle`);
 }
 async function audit(page, label) {
-  const result = await page.evaluate(round => {
+  const result = await page.evaluate(({round,straight}) => {
     const app = document.querySelector('.app'), nav = document.getElementById('nav');
     const box = nav.getBoundingClientRect(), appBox = app.getBoundingClientRect();
     const active = nav.querySelector('[aria-current="page"]'), before = getComputedStyle(active, '::before');
@@ -46,11 +46,11 @@ async function audit(page, label) {
       filledActiveBubble:painted && parseFloat(before.height) > 4,
       wrong:[...document.querySelectorAll('body *')].filter(el => el.getClientRects().length).flatMap(el => {
         const c = getComputedStyle(el), name = el.id || el.className || el.tagName;
-        const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round);
+        const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
         return [!radiusOK && `${name}: radius ${c.borderRadius}`, c.boxShadow !== 'none' && `${name}: box shadow`, c.textShadow !== 'none' && `${name}: text shadow`, c.filter.includes('drop-shadow') && `${name}: filter shadow`].filter(Boolean);
       })
     };
-  }, ROUND);
+  }, {round:ROUND,straight:STRAIGHT});
   assert.equal(result.overflow, false, `${label}: fits the viewport`);
   assert.equal(result.canvas, 'rgb(255, 255, 255)', `${label}: pure white canvas`);
   assert.deepEqual(result.wrong, [], `${label}: flat styling with 10px corners except the round Back, call, avatar and switch controls`);
@@ -76,10 +76,13 @@ async function audit(page, label) {
         await navigate(page, view);
         await audit(page, `${view} ${width}px`);
         if (view === 'home') {
-          const heading = await style(page, '.zh-section-title h2');
-          assert.equal(heading.fontSize, '18px', 'Home uses a clear section hierarchy');
-          assert.equal(heading.weight, '600', 'Home headings use restrained semibold type');
-          if (width < 760) assert.equal((await style(page, '.zh-dashboard')).paddingLeft, '20px', 'Mobile content uses a consistent gutter');
+          // Like the reference: the selected feed is the bold, larger heading of Home.
+          const [selected, other] = await Promise.all([style(page, '.zh-feed-tabs>[aria-selected="true"]'), style(page, '.zh-feed-tabs>[aria-selected="false"]')]);
+          assert.equal(selected.weight, '700', 'The selected Home feed is bold');
+          assert.equal(other.weight, '500', 'The other Home feeds are medium');
+          assert.ok(parseFloat(selected.fontSize) > parseFloat(other.fontSize), 'The selected Home feed is larger');
+          assert.equal(await page.locator('.zh-dashboard .zh-section-title').count(), 0, 'Home has no section titles over the grid');
+          if (width < 760) assert.equal((await style(page, '.zh-dashboard')).paddingLeft, width < 360 ? '10px' : '14px', 'Home uses the narrow gutter of the reference');
         } else if (view === 'chats') {
           const heading = await style(page, '.zc-heading h1');
           assert.equal(heading.fontSize, '24px', 'Chats has a readable page heading');
@@ -87,8 +90,9 @@ async function audit(page, label) {
           assert.equal((await style(page, '.zc-name')).fontSize, '15px', 'Conversation names use the shared body hierarchy');
         } else if (view === 'profile') {
           await backControl(page,`Own profile ${width}px`);
+          // The compact account profile keeps a short cover at every width.
           const cover = await style(page, '.zu-cover');
-          assert.ok(Math.abs(cover.height - (width < 760 ? 192 : 220)) < .6, 'Profile cover does not dominate the first screen');
+          assert.ok(Math.abs(cover.height - 128) < .6, 'Profile cover does not dominate the first screen');
           assert.equal(await page.locator('.zu-cover.has-photo').count(), 0, 'This fixture covers a profile without a cover image');
           assert.equal((await style(page, '.zu-cover-art')).backgroundImage, 'none', 'Missing covers use a simple neutral surface');
           const shadeVisible = await page.locator('.zu-cover-shade').evaluateAll(nodes => nodes.some(node => { const c = getComputedStyle(node); return c.display !== 'none' && c.visibility !== 'hidden' && Number(c.opacity) > 0; }));
@@ -96,7 +100,7 @@ async function audit(page, label) {
           assert.equal(await page.locator('.zu-eyebrow').evaluateAll(nodes => nodes.some(node => node.getClientRects().length)), false, 'Profile has no decorative all-caps eyebrow');
           const stats = await style(page, '.zu-stats');
           assert.equal(stats.border, '0px', 'Profile statistics remain a simple unboxed row');
-          assert.equal((await style(page, '.zu-bio')).fontSize, '14px', 'Profile biography stays readable');
+          assert.equal((await style(page, '.zu-bio')).fontSize, '12px', 'The compact profile biography uses the small text size');
           assert.equal(await page.getByRole('button', { name:'Edit profile', exact:true }).isVisible(), true);
           assert.equal(await page.getByRole('button', { name:'Upload photos', exact:true }).isVisible(), true);
         } else {

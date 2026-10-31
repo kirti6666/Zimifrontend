@@ -12,7 +12,7 @@ function localHost(host: string): boolean {
     (parts[0] === 169 && parts[1] === 254);
 }
 
-function configurationError(address: string): string | null {
+export function configurationError(address: string): string | null {
   if (!address) return "The server address is not set. Please configure EXPO_PUBLIC_API_URL and restart the app.";
   try {
     const url = new URL(address);

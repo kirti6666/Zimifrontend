@@ -5,8 +5,9 @@ import { AppState, Linking, Share } from "react-native";
 import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
 import { messageFrom } from "./api/adapters";
+import type { LeaderboardPeriod, RelationshipKind, Relationships } from "./api/types";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet } from "./api/types";
+import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet, PostComment, PostComments } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
@@ -15,6 +16,7 @@ import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
 import { LIVE_STREAMING_ENABLED } from "./features";
+import { beginUpdateActivity } from "./app-update-activity";
 import type { OfficialChatData, OfficialReadPatch } from "./api/types";
 import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
 
@@ -54,7 +56,12 @@ export type WebMessage =
   | { type: "payments.routes.load"; data: { requestId: number } }
   | { type: "wallet.load"; data: Record<string, never> }
   | { type: "transactions.load"; data: Record<string, never> }
+  | { type: "leaderboard.load"; data: { period: LeaderboardPeriod } }
+  | { type: "referral.load"; data: Record<string, never> }
+  | { type: "referral.apply"; data: { code: string; requestId: number } }
+  | { type: "referral.share"; data: Record<string, never> }
   | { type: "wallet.verify"; data: { merchantOrderId: string } }
+  | { type: "payments.checkout.closed"; data: { kind: "coins" | "premium"; merchantOrderId?: string; idempotencyKey?: string } }
   | { type: "themes.load"; data: Record<string, never> }
   | { type: "themes.select"; data: { themeId: string; requestId?: number } }
   | { type: "themes.premium.checkout"; data: { idempotencyKey: string; route?: string } }
@@ -67,25 +74,37 @@ export type WebMessage =
   | { type: "auth.google"; data: { role: Role; signup: boolean } }
   | { type: "auth.emailCheck"; data: { email: string; requestId: number } }
   | { type: "auth.logout"; data: Record<string, never> }
+  | { type: "account.deactivate"; data: { confirmed: true; requestId: number } }
+  | { type: "creator.card.save"; data: { photo: string; requestId: number } }
+  | { type: "profile.cover.save"; data: { photo: string; requestId: number } }
   | { type: "profile.save"; data: Record<string, unknown> }
   | { type: "media.post.create"; data: { photo: string; caption: string; requestId?: number } }
+  | { type: "media.post.delete"; data: { id: string; requestId: number } }
+  | { type: "post.like"; data: { id: string; liked: boolean; requestId?: number } }
+  | { type: "post.comments.load"; data: { id: string; page?: number; requestId?: number } }
+  | { type: "post.comment.add"; data: { id: string; text: string; requestId: number } }
+  | { type: "post.comment.delete"; data: { id: string; commentId: string; requestId: number } }
   | { type: "verification.submit"; data: Record<string, unknown> }
+  | { type: "agency.load"; data: { requestId: number } }
+  | { type: "agency.verify" | "agency.join"; data: { agencyCode: string; requestId: number } }
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls"; data: { on: boolean } }
   | { type: "host.callStatus.load"; data: Record<string, never> }
   | { type: "profile.settings.load"; data: Record<string, never> }
   | { type: "profile.load"; data: { id: string; requestId?: number } }
   | { type: "profile.posts.load"; data: { id: string; page?: number; requestId?: number } }
+  | { type: "relationships.load"; data: { kind: RelationshipKind; page?: number; requestId: number } }
   | { type: "profile.settings.save" | "settings.set"; data: ProfileSettingsPatch & { requestId?: number } }
   | { type: "privacy.save"; data: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">> & { requestId?: number } }
   | { type: "blocked.load"; data: { page?: number } }
   | { type: "block.set"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "follow.set"; data: { id: string; on: boolean; requestId?: number } }
-  | { type: "chat.open"; data: { with: string } }
+  | { type: "chat.open"; data: { with: string; background?: boolean; knownIds?: string[] } }
+  | { type: "chat.activity"; data: { with: string; active: boolean } }
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
-  | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string } }
-  | { type: "chat.photo"; data: { to: string; photo: string; replyTo?: string } }
+  | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string; clientId?: string } }
+  | { type: "chat.photo"; data: { to: string; photo: string; replyTo?: string; clientId?: string } }
   | { type: "chat.photoDownload"; data: { to: string; id: string; requestId: number } }
   | { type: "chat.photoViewer"; data: { open: boolean } }
   | { type: "chat.voice"; data: { to: string; audio: string; durationMs: number; clientId: string; replyTo?: string } }
@@ -93,6 +112,10 @@ export type WebMessage =
   | { type: "chat.delete"; data: { to: string; id: string; everyone: boolean } }
   | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
   | { type: "call.start"; data: { to: string; voice?: boolean } }
+  | { type: "call.invitation.load"; data: { requestId: number; active?: boolean } }
+  | { type: "call.invitation.connect"; data: { id: string; requestId: number; expectedCoinsPerMinute: number; expectedEntryFeeCoins: number } }
+  | { type: "call.invitation.dismiss"; data: { id: string; requestId: number } }
+  | { type: "call.topup.hold" | "call.topup.review"; data: { callId: string; requestId: number } }
   | { type: "call.accept"; data: { callId: string } }
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
@@ -105,7 +128,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "blocked" | "themes" | "ads";
+export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
@@ -117,12 +140,21 @@ export type AppMessage =
   | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; otpLength: number; requestId?: number } }
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
+  | { type: "profile.account"; data: Account }
   | { type: "profile.progress"; data: { done: number; total: number; requestId?: number } }
   | { type: "profile.error"; data: { onboarding: boolean; message: string; code?: string; requestId?: number } }
   /* Without `available`, the check failed; `status` 400 means the address itself is invalid. */
   | { type: "auth.emailChecked"; data: { email: string; requestId: number; available?: boolean; message?: string; code?: string; status?: number } }
   | { type: "post.saved"; data: { post: UserPost; requestId?: number } }
   | { type: "post.error"; data: { message: string; requestId?: number } }
+  | { type: "post.deleted"; data: { id: string; requestId: number } }
+  | { type: "post.delete.error"; data: { id: string; requestId: number; message: string } }
+  | { type: "creator.card.saved"; data: { account: Account; requestId: number } }
+  | { type: "creator.card.error"; data: { message: string; requestId: number } }
+  | { type: "profile.cover.saved"; data: { account: Account; requestId: number } }
+  | { type: "profile.cover.error"; data: { message: string; requestId: number } }
+  | { type: "account.deactivated"; data: { requestId: number } }
+  | { type: "account.deactivate.error"; data: { message: string; requestId: number } }
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } }
   | { type: "data.loaded"; data: Record<string, never> }
@@ -153,6 +185,7 @@ export type AppMessage =
   | { type: "data.profileSettings"; data: ProfileSettings }
   | { type: "data.publicProfile"; data: { id: string; profile: PublicProfile; requestId?: number } }
   | { type: "data.publicPosts"; data: PublicPosts & { id: string; requestId?: number } }
+  | { type: "data.relationships"; data: Relationships & { id: string; kind: RelationshipKind; requestId: number } }
   | { type: "profile.settings.saved"; data: { settings: ProfileSettings; requestId?: number } }
   | { type: "profile.settings.error" | "privacy.error"; data: { message: string; requestId?: number } }
   | { type: "privacy.saved"; data: { privacy: PrivacySettings; requestId?: number } }
@@ -160,6 +193,14 @@ export type AppMessage =
   | { type: "block.saved"; data: { id: string; blocked: boolean; requestId?: number } }
   | { type: "block.error"; data: { id: string; blocked: boolean; message: string; requestId?: number } }
   | { type: "follow.saved"; data: { id: string; on: boolean; requestId?: number } }
+  | { type: "post.liked"; data: { id: string; liked: boolean; likes: number; requestId?: number } }
+  | { type: "post.like.error"; data: { id: string; liked: boolean; message: string; requestId?: number } }
+  | { type: "data.postComments"; data: PostComments & { requestId?: number } }
+  | { type: "post.comments.error"; data: { id: string; page: number; message: string; requestId?: number } }
+  | { type: "post.comment.saved"; data: { id: string; comment: PostComment; requestId: number } }
+  | { type: "post.comment.error"; data: { id: string; message: string; requestId: number } }
+  | { type: "post.comment.deleted"; data: { id: string; commentId: string; requestId: number } }
+  | { type: "post.comment.delete.error"; data: { id: string; commentId: string; message: string; requestId: number } }
   | { type: "follow.error"; data: { id: string; on: boolean; message: string; requestId?: number } }
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls.saved"; data: { on: boolean } }
@@ -168,7 +209,7 @@ export type AppMessage =
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "data.ads"; data: AdFeed }
   | { type: "ads.opened" | "ads.retired"; data: { id: string } }
-  | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number } }
+  | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number; message?: Message | null; giftDetails?: import("./api/types").Gift & { transferId: string; quantity: number } } }
   | { type: "rtc.config"; data: RtcConfig }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string; from: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string; from: string } }
@@ -186,35 +227,47 @@ export type AppMessage =
   | { type: "stream.privateCall"; data: StreamPrivateCall }
   | { type: "stream.reaction"; data: StreamReaction }
   | { type: "call.matched"; data: { host: Host } }
-  | { type: "call.created"; data: { callId: string; to: string; voice: boolean } }
+  | { type: "call.created"; data: { callId: string; to: string; voice: boolean; invitationId?: string; requestId?: number } }
+  | { type: "call.invitation.loaded" | "call.invitation.dismissed"; data: { invitation: import("./api/types").AutomaticCallInvitation | null; requestId: number } }
+  | { type: "call.invitation.error"; data: { message: string; requestId: number; code?: string } }
+  | { type: "call.topup.held"; data: { callId: string; until: string; requestId: number } }
+  | { type: "call.topup.reviewed"; data: { callId: string; ringing: boolean; until?: string; rate?: number; requestId: number } }
+  | { type: "call.topup.error"; data: { callId: string; message: string; requestId: number } }
+  | { type: "call.topup.waiting"; data: { callId: string; until: string } }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
   | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
   | { type: "chats.readAll"; data: { updated: number; readAt: string } }
-  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string } }
+  | { type: "data.thread"; data: { with: string; messages: Message[]; readAt?: string; canSend?: boolean; sendDisabledReason?: string; hiddenIds?: string[] } }
   | { type: "data.missed"; data: Awaited<ReturnType<typeof api.missedCalls>> }
   | { type: "data.calls"; data: Awaited<ReturnType<typeof api.callHistory>> }
   | { type: "data.transactions"; data: Awaited<ReturnType<typeof api.transactions>> }
+  | { type: "data.leaderboard"; data: Awaited<ReturnType<typeof api.leaderboard>> }
+  | { type: "data.referral"; data: Awaited<ReturnType<typeof api.referral>> }
+  | { type: "referral.applied"; data: Awaited<ReturnType<typeof api.referral>> & { requestId: number } }
+  | { type: "referral.error"; data: { message: string; requestId?: number; code?: string; status?: number } }
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "payout.loaded"; data: Payouts & { requestId: number; pending?: PendingPayout | null; recovered?: Payout | null } }
   | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
   | { type: "payout.error"; data: { action: "payout.load" | "payout.request"; requestId: number; idempotencyKey?: string; message: string; code?: string; status?: number } }
-  | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null } }
-  | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null } }
+  | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null; clientId?: string; createdAt?: string; sequence?: number } }
+  | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null; clientId?: string; createdAt?: string; sequence?: number } }
   | { type: "chat.photoDownloaded"; data: { to: string; id: string; requestId: number } }
   | { type: "chat.voiceSent"; data: { to: string; clientId: string; message: Message } }
   | { type: "chat.updated"; data: { with: string; message: Message } }
   | { type: "chat.removed"; data: { id: string } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
+  | { type: "agency.loaded" | "agency.verified" | "agency.joined"; data: import("./api/types").HostAgencyStatus & { requestId: number } }
+  | { type: "agency.error"; data: { action: "agency.load" | "agency.verify" | "agency.join"; message: string; requestId: number } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
-  | { type: "call.failed"; data: { message: string } }
-  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
+  | { type: "call.failed"; data: { message: string; callId?: string; code?: string; invitationId?: string; requestId?: number } }
+  | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
   | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
-  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; senderAvatarUrl?: string; senderGender?: Gender } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; kind?: "text" | "image" | "voice"; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
+  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; sequence?: number; orderAfterSequence?: number; clientId?: string; kind?: "text" | "image" | "voice" | "gift"; gift?: Message["gift"]; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -230,7 +283,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   // A staff verification call; `accepted` marks the device that answered it.
   let verifyCall: { callId: string; accepted: boolean } | undefined;
   let callGeneration = 0;
-  let pendingOutgoing: { generation: number; callId?: string } | undefined;
+  let pendingOutgoing: { generation: number; callId?: string; activity: UpdateLease } | undefined;
   let pendingStreamAccept: { generation: number; streamId: string; id: string } | undefined;
   const cancelledCalls = new Set<string>();
   let epoch = 0;
@@ -255,6 +308,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let hostRevision = 0;
   let hostChecking = false;
   let activeHostCall = false;
+  /** A host's call this member picked up; the member is its callee. */
+  let answeredHostCall: string | undefined;
   let publishingAt: number | undefined;
   // Home lists every host, online or offline, each with their status.
   let homeQuery: HomeQuery = { mode: "popular" };
@@ -265,15 +320,81 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const resetHomeReads = () => { homeFlight = undefined; homeInvalidated = false; clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined; lastHomeRefresh = 0; };
   let notificationQueryOwner: { query: NotificationsQuery; requestId?: number; epoch: number; sessionVersion: number; document: number } | undefined;
   const readRequests = new Map<DataResource, number>();
+  let profileRevision = 0, profileReadSequence = 0, profileWrites = 0;
+  let pendingProfileRefresh: { epoch: number; sessionVersion: number; document: number } | undefined;
+  const beginProfileWrite = () => {
+    profileRevision++; profileWrites++;
+    return () => {
+      profileRevision++; profileWrites--;
+      if (!profileWrites && pendingProfileRefresh) {
+        const pending = pendingProfileRefresh; pendingProfileRefresh = undefined;
+        if (current(pending.epoch) && pending.sessionVersion === getSessionVersion() && pending.document === documentRevision) quietly(refreshProfileAccount(), "profile.refresh");
+      }
+    };
+  };
   let activeStream: { id: string; hosting: boolean } | undefined;
   let streamRequestsRevision = 0;
   type PurchaseKind = "coins" | "premium";
   const pendingPurchases = new Map<string, PendingPayment & { epoch: number; sessionVersion: number }>();
   const verifyingPurchases = new Map<string, Promise<Purchase | undefined>>();
-  type CoinReturn = { payment: PendingPayment; owner?: string; epoch: number; sessionVersion: number; document: number; departed: boolean; settling: boolean; terminal?: Purchase };
+  type CoinReturn = { payment: PendingPayment; owner?: string; epoch: number; sessionVersion: number; document: number; departed: boolean; settling: boolean; terminal?: Purchase; activity?: PurchaseActivity; generation?: number };
   const externalCoinCheckouts = new Map<string, CoinReturn>();
   const operations = new Set<string>();
   const authWork = new Set<string>();
+  type UpdateLease = { finished: boolean; finish: () => void };
+  type PurchaseActivity = { lease: UpdateLease; kind: PurchaseKind; attempt?: string; orderId?: string; epoch: number; session: number; owner?: string; generation: number; inFlight: number; dismissed: boolean; uiClosed: boolean; expiresAt?: number; timer?: ReturnType<typeof setTimeout> };
+  let activitySerial = 0;
+  const updateActivities = new Set<UpdateLease>();
+  const callActivities = new Map<string, UpdateLease>();
+  const purchaseActivities = new Set<PurchaseActivity>();
+  const holdUpdateActivity = (kind: "call" | "purchase", key: string): UpdateLease => {
+    const release = beginUpdateActivity(kind, `${epoch}:${getSessionVersion()}:${++activitySerial}:${key}`);
+    const lease: UpdateLease = { finished: false, finish: () => {
+      if (lease.finished) return;
+      lease.finished = true; updateActivities.delete(lease);
+      for (const [callId, held] of callActivities) if (held === lease) callActivities.delete(callId);
+      release();
+    } };
+    updateActivities.add(lease); return lease;
+  };
+  const holdCallActivity = (callId: string, candidate?: UpdateLease) => {
+    const existing = callActivities.get(callId);
+    if (existing) { if (candidate && candidate !== existing) candidate.finish(); return existing; }
+    const lease = candidate ?? holdUpdateActivity("call", callId);
+    if (!lease.finished) callActivities.set(callId, lease);
+    return lease;
+  };
+  const finishCallActivity = (callId: string) => callActivities.get(callId)?.finish();
+  const purchaseActivityCurrent = (entry: PurchaseActivity) => !closed && entry.epoch === epoch && entry.session === getSessionVersion() && entry.owner === accountId;
+  const purchaseActivity = (kind: PurchaseKind, attempt?: string, orderId?: string) => {
+    const existing = [...purchaseActivities].find(entry => purchaseActivityCurrent(entry) && entry.kind === kind &&
+      (orderId ? entry.orderId === orderId : attempt && entry.attempt === attempt));
+    if (existing && !existing.lease.finished) return existing;
+    const entry: PurchaseActivity = { lease: holdUpdateActivity("purchase", `${kind}:${attempt ?? orderId}`), kind, attempt, orderId, epoch, session: getSessionVersion(), owner: accountId, generation: 0, inFlight: 0, dismissed: false, uiClosed: false };
+    purchaseActivities.add(entry); return entry;
+  };
+  const finishPurchaseActivity = (entry: PurchaseActivity) => {
+    entry.dismissed = true;
+    clearTimeout(entry.timer); entry.timer = undefined;
+    if (!entry.inFlight) { entry.lease.finish(); purchaseActivities.delete(entry); }
+  };
+  const expirePurchaseActivity = (entry: PurchaseActivity, expiresAt?: string) => {
+    const deadline = expiresAt ? Date.parse(expiresAt) : NaN;
+    if (!Number.isFinite(deadline) || entry.expiresAt !== undefined && entry.expiresAt <= deadline) return;
+    entry.expiresAt = deadline; clearTimeout(entry.timer);
+    const settleExpiry = () => {
+      const remaining = deadline - Date.now();
+      if (remaining > 2147483647) entry.timer = setTimeout(settleExpiry, 2147483647);
+      else entry.timer = setTimeout(() => finishPurchaseActivity(entry), Math.max(0, remaining));
+    };
+    settleExpiry();
+  };
+  const resetUpdateActivities = () => {
+    for (const entry of purchaseActivities) { entry.dismissed = true; clearTimeout(entry.timer); }
+    purchaseActivities.clear();
+    for (const lease of updateActivities) lease.finish();
+    callActivities.clear();
+  };
   const current = (version: number) => !closed && version === epoch;
   const emit = (message: AppMessage) => { if (!closed) post(message); };
   const stopConnection = onConnectionChanged(data => {
@@ -285,6 +406,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
   const operationError = (error: unknown, action?: string, context: { to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } = {}) => {
     if (action?.startsWith("themes.")) emit({ type: "themes.error", data: { message: errorMessage(error), action, ...(error instanceof ApiError ? { code: error.code } : {}) } });
+    // A refused friend code is explained beside the code field, not in a toast.
+    else if (action === "referral.apply") emit({ type: "referral.error", data: { message: errorMessage(error), requestId: context.requestId, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
     else emit({ type: "operation.error", data: { message: errorMessage(error), action, ...context, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
   };
   const quietly = (work: Promise<unknown>, action?: string) => {
@@ -356,13 +479,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (activeHostCall && activeCall) {
         const callId = activeCall; activeCall = undefined; activeHostCall = false; callGeneration++;
         rememberCancelledCall(callId); emit({ type: "call.ended", data: { callId } });
-        void api.endCall(callId, "host approval changed").catch(() => {});
+        void api.endCall(callId, "host approval changed").catch(() => {}).finally(() => finishCallActivity(callId));
       }
     }
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
+    if (accountId !== account.user.id) { if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
@@ -378,18 +501,52 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const refreshHostAccount = async () => {
     const version = epoch, sessionVersion = getSessionVersion(), revision = hostRevision;
+    const profileVersion = profileRevision;
     const account = await api.me(true);
     if (!current(version) || sessionVersion !== getSessionVersion() || revision !== hostRevision) return;
     applyHostAccount(account);
+    if (profileVersion === profileRevision && !profileWrites) emit({ type: "profile.account", data: account });
   };
-  const requireApprovedHost = async () => {
+  const refreshProfileAccount = async () => {
+    if (profileWrites) { pendingProfileRefresh = { epoch, sessionVersion: getSessionVersion(), document: documentRevision }; return; }
+    const version = epoch, sessionVersion = getSessionVersion(), revision = profileRevision;
+    const requestId = ++profileReadSequence, authority = hostRevision, document = documentRevision;
+    const account = await api.me(true);
+    if (!current(version) || sessionVersion !== getSessionVersion() || revision !== profileRevision || requestId !== profileReadSequence || authority !== hostRevision || document !== documentRevision || account.user.id !== accountId) return;
+    const authorityChanged = hostChecking || hasHostAccess() !== approvedHost(account) || hostStatus !== account.user.hostStatus ||
+      accountRole !== (account.user.serverRole ?? (account.user.role === "host" ? "host" : "user"));
+    applyHostAccount(account, false);
+    if (authorityChanged) publishHostAccess();
+    emit({ type: "profile.account", data: account });
+  };
+  const requireApprovedHost = async (allowMemberPhotos = false) => {
     const version = epoch, sessionVersion = getSessionVersion(), revision = hostRevision;
     const account = await api.me(true);
     if (!current(version) || sessionVersion !== getSessionVersion()) throw new ApiError("Your sign-in changed. Please try again.", 409);
     if (revision !== hostRevision) throw new ApiError("Your creator approval changed. Please try again.", 403);
     applyHostAccount(account);
-    if (!approvedHost(account)) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
+    if (!approvedHost(account) && !(allowMemberPhotos && account.user.serverRole === "user")) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
     return revision;
+  };
+  const acceptHostCall = async (callId: string, version: number) => {
+    const wasRinging = callActivities.has(callId);
+    holdCallActivity(callId);
+    const generation = ++callGeneration, sessionVersion = getSessionVersion();
+    activeCall = callId; activeHostCall = false; answeredHostCall = callId;
+    try {
+      const details = await api.acceptCall(callId);
+      if (!current(version) || sessionVersion !== getSessionVersion() || generation !== callGeneration || cancelledCalls.has(callId)) {
+        try { await endCancelledCall(callId, sessionVersion); } finally { finishCallActivity(callId); }
+        return;
+      }
+      emit({ type: "call.connected", data: { callId, initiator: false, ...details } });
+    } catch (error) {
+      if (current(version) && generation === callGeneration) {
+        activeCall = undefined; answeredHostCall = undefined;
+        if (!wasRinging) finishCallActivity(callId);
+        emit({ type: "call.failed", data: { message: errorMessage(error), callId, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
+      }
+    }
   };
   const requireChatPair = async (peerId: string) => {
     if (!hostAccount || hostChecking) await refreshHostAccount();
@@ -398,7 +555,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (accountRole === "admin" || (accountRole === "host" && !hasHostAccess())) throw new ApiError("Your creator profile needs admin approval before you can chat.", 403);
     const peer = chatPeers.get(peerId);
     const peerRole = peer?.serverRole ?? (peer?.role === "host" || peer?.verified === true ? "host" : peer?.role === "sender" ? "user" : undefined);
-    if (accountRole === "host" && peerRole === "host") throw new ApiError("Host accounts can reply to members only. Use a member account to message a host.", 403);
     if (accountRole === "user" && peerRole && peerRole !== "host") throw new ApiError("Members can message approved hosts only.", 403);
   };
   /** The checks the server makes before a direct message: an allowed pair and an open conversation. False when the session changed. */
@@ -413,16 +569,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
       rememberThreadPermission(to, data);
     }
     const permission = threadPermissions.get(to);
-    if (!permission?.canSend) throw new ApiError(permission?.reason || "Wait for this member to reply before sending a message.", 403);
+    if (!permission?.canSend) throw new ApiError(permission?.reason || "You can't send messages in this conversation right now.", 403);
     return true;
   };
   const rememberHomePeers = (data: HomeData) => {
     for (const peer of [...data.hosts, ...(data.stage ?? []), ...(data.featured ? [data.featured] : [])]) chatPeers.set(peer.id, { ...peer, serverRole: "host" });
   };
   const rememberThreadPermission = (peerId: string, data: { canSend?: boolean; sendDisabledReason?: string }) => {
-    // Older servers may omit this flag; they still enforce every send. Hosts
-    // require explicit permission because welcomes do not unlock manual replies.
-    threadPermissions.set(peerId, { canSend: data.canSend ?? accountRole === "user", reason: data.sendDisabledReason });
+    // Older servers may omit this flag; they still enforce every send.
+    threadPermissions.set(peerId, { canSend: data.canSend ?? true, reason: data.sendDisabledReason });
   };
   const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number; background?: boolean } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, requestId = (readRequests.get(resource) ?? 0) + 1;
@@ -440,10 +595,47 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
   };
   const refreshWallet = () => readResource("wallet", () => api.wallet(), data => emit({ type: "wallet.balance", data }));
+  // One serialized lease per authenticated device session. Coalesce renewals and
+  // close the previous peer before opening another; delayed closes never race a
+  // newer open. A network failure is best-effort and the server lease expires.
+  type ChatLease = { epoch: number; session: number; wanted?: string; applied?: string; revision: number; delivered: number; work?: Promise<void> };
+  let chatLease: ChatLease | undefined;
+  const flushChatActivity = () => {
+    const state = chatLease;
+    if (!state || state.work) return;
+    const applicable = () => !closed && chatLease === state && current(state.epoch) && state.session === getSessionVersion();
+    state.work = (async () => {
+      while (applicable() && state.delivered !== state.revision) {
+        const revision = state.revision, target = appActive ? state.wanted : undefined;
+        if (state.applied && state.applied !== target) {
+          const previous = state.applied; state.applied = undefined;
+          try { await api.setChatActivity(previous, false); } catch { /* TTL handles an unreachable close. */ }
+        }
+        if (!applicable()) return;
+        if (target && target === (appActive ? state.wanted : undefined)) {
+          state.applied = target;
+          try { await api.setChatActivity(target, true); } catch { /* Next heartbeat renews after recovery. */ }
+        }
+        state.delivered = revision;
+      }
+    })().finally(() => { state.work = undefined; if (applicable() && state.delivered !== state.revision) flushChatActivity(); });
+  };
+  const setChatActivity = (peer?: string, active = false) => {
+    if (!chatLease || chatLease.epoch !== epoch || chatLease.session !== getSessionVersion()) chatLease = { epoch, session: getSessionVersion(), revision: 0, delivered: 0 };
+    if (active && peer) chatLease.wanted = peer;
+    else if (!peer || chatLease.wanted === peer) chatLease.wanted = undefined;
+    chatLease.revision++; flushChatActivity();
+  };
+  // A call that ends, is declined or goes unanswered belongs in Chats' Calls and Missed calls
+  // tabs. A background read keeps the shown list until the new one arrives.
+  const refreshCalls = () => Promise.allSettled([
+    readResource("calls", () => api.callHistory(), data => emit({ type: "data.calls", data }), { background: true }),
+    readResource("missed", () => api.missedCalls(), data => emit({ type: "data.missed", data }), { background: true }),
+  ]);
   const homeFlightCurrent = () => homeFlight && current(homeFlight.epoch) && homeFlight.session === getSessionVersion() && homeFlight.document === documentRevision;
   const loadHome = (query = homeQuery, background = false): Promise<void> => {
     query = { ...query };
-    const key = JSON.stringify([query.mode, query.category, query.q, query.page ?? 1]);
+    const key = JSON.stringify([query.mode, query.category, query.country, query.q, query.page ?? 1]);
     if (homeFlightCurrent() && homeFlight!.key === key && (background || !homeFlight!.background)) {
       if (background) homeInvalidated = true;
       return homeFlight!.work;
@@ -583,6 +775,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }, { id, requestId });
   };
   const loadPublicPosts = (id: string, page = 1, requestId?: number) => readResource("publicPosts", () => api.publicPosts(id, page), data => emit({ type: "data.publicPosts", data: { ...data, id, requestId } }), { id, page, requestId });
+  const loadRelationships = (kind: RelationshipKind, page: number, requestId: number) => {
+    const id = accountId;
+    if (!id) return Promise.reject(new ApiError("Sign in to view your connections.", 401));
+    return readResource("relationships", () => api.relationships(kind, page), data => emit({ type: "data.relationships", data: { ...data, id, kind, requestId } }), { id, page, requestId });
+  };
   const loadBlocked = (page = 1) => readResource("blocked", () => api.blockedUsers(page), data => emit({ type: "data.blocked", data }), { page });
   const deliverProfileSettings = (settings: ProfileSettings) => {
     // A GET started before this committed write cannot restore old preferences.
@@ -590,18 +787,26 @@ export function createBridge(post: (msg: AppMessage) => void) {
     emitProfileSettings(settings);
     emit({ type: "data.loading", data: { resource: "profileSettings", loading: false } });
   };
-  const loadChats = (page = 1) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
+  const loadChats = (page = 1, background = false) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
     ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => {
       for (const chat of data.chats) if (chat.user?.id) {
         chatPeers.set(chat.user.id, chat.user);
         if (threadPermissions.has(chat.user.id) && typeof chat.canSend === "boolean") rememberThreadPermission(chat.user.id, chat);
       }
       emit({ type: "data.chats", data });
-    }, { page });
-  const verifyPurchase = (orderId: string, kind: PurchaseKind = "coins"): Promise<Purchase | undefined> => {
+    }, { page, ...(background ? { background: true } : {}) });
+  const verifyPurchase = (orderId: string, kind: PurchaseKind = "coins", protect = true): Promise<Purchase | undefined> => {
     const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${sessionVersion}:${kind}:${orderId}`;
     const existing = verifyingPurchases.get(key);
-    if (existing) return existing;
+    const held = [...purchaseActivities].find(entry => purchaseActivityCurrent(entry) && entry.kind === kind && entry.orderId === orderId);
+    if (existing) {
+      if (!protect || held) return existing;
+      const activity = purchaseActivity(kind, undefined, orderId); activity.inFlight++;
+      return existing.finally(() => { activity.inFlight--; finishPurchaseActivity(activity); });
+    }
+    const activity = held ?? (protect ? purchaseActivity(kind, undefined, orderId) : undefined);
+    const transient = !held && !!activity;
+    if (activity) activity.inFlight++;
     const work = (async () => { try {
       const purchase = await (kind === "premium" ? api.verifyPremium(orderId) : api.verifyPurchase(orderId));
       if (current(version) && getSessionVersion() === sessionVersion && owner === accountId) {
@@ -613,14 +818,22 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (purchase.status !== "PENDING") {
           pendingPurchases.delete(orderId);
           if (owner) void forgetPendingPayment(owner, orderId);
+          if (activity) finishPurchaseActivity(activity);
         }
+        if (activity && purchase.status === "PENDING") expirePurchaseActivity(activity, purchase.expiresAt);
         // Only a fresh authenticated catalog can grant or revoke theme access.
         if (resolvedKind === "premium") { quietly(loadThemes(), "themes.load"); void loadAds(); } else quietly(refreshWallet(), "wallet.load");
         return purchase;
       }
     } catch (error) {
       if (current(version) && getSessionVersion() === sessionVersion && owner === accountId) operationError(error, kind === "premium" ? "themes.premium.verify" : "wallet.verify", { merchantOrderId: orderId });
-    } })().finally(() => verifyingPurchases.delete(key));
+    } })().finally(() => {
+      verifyingPurchases.delete(key);
+      if (activity) {
+        activity.inFlight--;
+        if (transient || activity.dismissed || !purchaseActivityCurrent(activity)) finishPurchaseActivity(activity);
+      }
+    });
     verifyingPurchases.set(key, work);
     return work;
   };
@@ -629,7 +842,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const coinPaymentReturned = async (entry: CoinReturn) => {
     if (entry.settling) return;
     entry.settling = true;
-    const applicable = () => current(entry.epoch) && entry.sessionVersion === getSessionVersion() && entry.owner === accountId && entry.document === documentRevision;
+    const applicable = () => current(entry.epoch) && entry.sessionVersion === getSessionVersion() && entry.owner === accountId && entry.document === documentRevision &&
+      (!entry.activity || entry.activity.generation === entry.generation && !entry.activity.uiClosed);
     try {
       if (!applicable()) return;
       const purchase = entry.terminal ?? await verifyPurchase(entry.payment.orderId);
@@ -643,6 +857,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       } });
     } finally {
       if (externalCoinCheckouts.get(entry.payment.orderId) === entry) externalCoinCheckouts.delete(entry.payment.orderId);
+      if (entry.activity && entry.activity.generation === entry.generation) finishPurchaseActivity(entry.activity);
     }
   };
   const restorePendingPurchases = async () => {
@@ -652,6 +867,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!current(version) || accountId !== owner || sessionVersion !== getSessionVersion()) return;
     for (const payment of payments) {
       pendingPurchases.set(payment.orderId, { ...payment, epoch: version, sessionVersion });
+      // These restored controls are visible again; abandon/terminal signals,
+      // not a durable local order ID, determine the protected UI lifetime.
+      const activity = purchaseActivity(payment.kind, payment.idempotencyKey, payment.orderId);
       // Restore order correlation before verification. Coin orders can release
       // their abandoned UI while native tracking still reconciles late credit.
       emit({ type: payment.kind === "premium" ? "themes.premium.purchase" : "wallet.purchase", data: {
@@ -659,7 +877,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         ...(payment.packId ? { packId: payment.packId } : {}), ...(payment.idempotencyKey ? { idempotencyKey: payment.idempotencyKey } : {}),
         ...(payment.requestedRoute ? { requestedRoute: payment.requestedRoute } : {}),
       } });
-      if (payment.kind === "coins") void coinPaymentReturned({ payment, owner, epoch: version, sessionVersion, document: documentRevision, departed: false, settling: false });
+      if (payment.kind === "coins") void coinPaymentReturned({ payment, owner, epoch: version, sessionVersion, document: documentRevision, departed: false, settling: false, activity, generation: activity.generation });
       else void verifyPurchase(payment.orderId, payment.kind);
     }
   };
@@ -667,6 +885,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (closed) return;
     appActive = state === "active";
     stopLive.setActive?.(appActive && !liveOnboarding);
+    if (chatLease) { chatLease.revision++; flushChatActivity(); }
     if (!appActive) {
       clearTimeout(homeRefreshTimer); homeRefreshTimer = undefined;
       for (const external of externalCoinCheckouts.values()) if (!external.settling) external.departed = true;
@@ -676,7 +895,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     for (const external of externalCoinCheckouts.values()) if (external.departed) void coinPaymentReturned(external);
     for (const pending of pendingPurchases.values()) {
       if (pending.epoch === epoch && pending.sessionVersion === getSessionVersion()) {
-        quietly(verifyPurchase(pending.orderId, pending.kind), pending.kind === "premium" ? "themes.premium.verify" : "wallet.verify");
+        quietly(verifyPurchase(pending.orderId, pending.kind, false), pending.kind === "premium" ? "themes.premium.verify" : "wallet.verify");
       }
     }
     if (accountId && getCachedToken() && !hostAccount?.requiresOnboarding) quietly(loadThemes(), "themes.load");
@@ -694,7 +913,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       readResource("missed", () => api.missedCalls(), data => deliver({ type: "data.missed", data })),
       readResource("calls", () => api.callHistory(), data => deliver({ type: "data.calls", data })),
       readResource("transactions", () => api.transactions(), data => deliver({ type: "data.transactions", data })),
-      readResource("posts", () => hasHostAccess() ? api.myPosts() : Promise.resolve({ posts: [] }), data => deliver({ type: "data.posts", data })),
+      readResource("posts", () => accountRole === "user" || hasHostAccess() ? api.myPosts() : Promise.resolve({ posts: [] }), data => deliver({ type: "data.posts", data })),
       refreshWallet(),
     ]);
     if (!current(version)) return;
@@ -732,9 +951,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } else if (!hostChecking) invalidateHostAccess(true);
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
-      if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(), "chats.reload"); return; }
-      if (event.type === "account.updated") {
-        if (!liveOnboarding) { quietly(loadProfileSettings(), "profile.settings.load"); quietly(loadThemes(), "themes.load"); }
+      if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(1, true), "chats.reload"); return; }
+      if (event.type === "account.updated" || event.type === "profile.updated") {
+        profileRevision++;
+        if (!liveOnboarding) { quietly(refreshProfileAccount(), "profile.refresh"); quietly(loadProfileSettings(), "profile.settings.load"); if (event.type === "account.updated") quietly(loadThemes(), "themes.load"); }
         return;
       }
       if (event.type === "themes.updated") { if (!liveOnboarding) quietly(loadThemes(), "themes.load"); return; }
@@ -743,11 +963,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "verify.updated" && typeof callId === "string") {
         const status = String(event.data?.status);
         if (status === "ringing") {
+          holdCallActivity(callId);
           if (verifyCall?.callId !== callId) verifyCall = { callId, accepted: false };
           emit({ type: "verify.incoming", data: { callId } });
         } else if (status !== "accepted" || (verifyCall?.callId === callId && !verifyCall.accepted)) {
           // Ended, or answered on another of this person's devices.
           if (verifyCall?.callId === callId) verifyCall = undefined;
+          finishCallActivity(callId);
           emit({ type: "verify.ended", data: { callId, status } });
         }
         return;
@@ -762,15 +984,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
           quietly(endCancelledCall(callId, getSessionVersion()), "call.end"); return;
         }
         activeCall = callId; activeHostCall = event.data?.initiator === false;
+        holdCallActivity(callId);
         if (event.data?.streamId === activeStream?.id) activeStream = undefined;
       }
-      if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess()) {
+      if (event.type === "call.incoming" && typeof callId === "string" && !hasHostAccess() &&
+        !(accountRole === "user" && event.data?.fromHost === true)) {
         if (hostChecking && approvedHost(hostAccount)) {
           // A replayed ring can beat the reconnect approval read. Revalidate it
           // before showing it, without treating temporary uncertainty as a decline.
           const version = epoch;
           void requireApprovedHost().then(() => {
-            if (current(version) && hasHostAccess() && !cancelledCalls.has(callId)) emit(event as AppMessage);
+            if (current(version) && hasHostAccess() && !cancelledCalls.has(callId)) { holdCallActivity(callId); emit(event as AppMessage); }
           }).catch(() => {
             if (current(version) && !hostChecking && !approvedHost(hostAccount)) void api.declineCall(callId).catch(() => {});
           });
@@ -781,9 +1005,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "call.ended" && typeof callId === "string") {
         rememberCancelledCall(callId);
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
+        finishCallActivity(callId);
+        void refreshCalls();
       }
       if (event.type === "call.connected" && typeof callId === "string") {
-        if (event.data?.initiator === false && !hasHostAccess() && !(hostChecking && activeHostCall && activeCall === callId)) {
+        if (event.data?.initiator === false && !hasHostAccess() && !(hostChecking && activeHostCall && activeCall === callId) &&
+          !(accountRole === "user" && answeredHostCall === callId)) {
           quietly(endCancelledCall(callId, getSessionVersion()), "call.end");
           emit({ type: "call.ended", data: { callId } }); return;
         }
@@ -794,7 +1021,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (event.data?.initiator === true && pendingOutgoing) pendingOutgoing.callId = callId;
         activeCall = callId;
         activeHostCall = event.data?.initiator === false;
+        holdCallActivity(callId, event.data?.initiator === true ? pendingOutgoing?.activity : undefined);
       }
+      if (event.type === "call.incoming" && typeof callId === "string") holdCallActivity(callId);
       if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
       if (event.type === "home.updated") invalidateHome();
       if (event.type === "realtime.status" && event.data?.connected === true && !liveOnboarding) {
@@ -814,6 +1043,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     void flushStreamLink(); flushPushOpen();
   };
   const unsubscribe = onSessionExpired(() => {
+    resetUpdateActivities();
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
     epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; stopLive(); activeCall = undefined; activeStream = undefined; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear();
@@ -866,6 +1096,29 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "connection.check": await checkConnection(); return;
       case "wallet.load": return refreshWallet();
       case "transactions.load": return readResource("transactions", () => api.transactions(), data => emit({ type: "data.transactions", data }));
+      case "referral.load": return readResource("referral", () => api.referral(), data => emit({ type: "data.referral", data }));
+      case "referral.apply": {
+        const { code, requestId } = msg.data;
+        const data = await api.applyReferral(code);
+        if (!current(version)) return;
+        emit({ type: "referral.applied", data: { ...data, requestId } });
+        // The friend bonus is already in the wallet.
+        quietly(refreshWallet(), "wallet.load");
+        return;
+      }
+      // Opened from Settings, the Home pop-up or the in-call card: the call keeps running under the share sheet.
+      case "referral.share": {
+        const data = await api.referral();
+        if (!current(version)) return;
+        emit({ type: "data.referral", data });
+        const bonus = data.friendBonusCoins.toLocaleString("en-IN");
+        await Share.share({ title: "BinzoLive", message: `Join me on BinzoLive! Use my code ${data.code} when you sign up and get ${bonus} free coins.${data.shareUrl ? ` ${data.shareUrl}` : ""}` });
+        return;
+      }
+      case "leaderboard.load": {
+        const period = (["daily", "weekly", "all"] as const).find(value => value === msg.data?.period) ?? "daily";
+        return readResource("leaderboard", () => api.leaderboard(period), data => emit({ type: "data.leaderboard", data }));
+      }
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "push.enable": if (sessionAvailable && pushSession === getSessionVersion()) await syncPush("settings"); return;
@@ -913,6 +1166,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "profile.settings.load": return loadProfileSettings();
       case "profile.load": return loadPublicProfile(msg.data.id, msg.data.requestId);
       case "profile.posts.load": return loadPublicPosts(msg.data.id, msg.data.page, msg.data.requestId);
+      case "relationships.load": return loadRelationships(msg.data.kind, msg.data.page ?? 1, msg.data.requestId);
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
       case "rtc.signal": case "stream.signal": case "stream.ready": {
@@ -924,8 +1178,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return stopLive.send(msg.type === "rtc.signal" ? "webrtc:signal" : msg.type === "stream.ready" ? "stream:ready" : "stream:signal", msg.data);
       }
       case "call.match": {
-        try { const data = await api.matchHost(msg.data.category); if (current(version)) emit({ type: "call.matched", data }); }
+        const activity = holdUpdateActivity("call", "match"), sessionVersion = getSessionVersion();
+        try { const data = await api.matchHost(msg.data.category); if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "call.matched", data }); }
         catch (error) { if (current(version)) operationError(error, msg.type); }
+        finally { activity.finish(); }
         return;
       }
       case "stream.start": case "stream.join": {
@@ -1002,10 +1258,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "wallet.checkout": case "themes.premium.checkout": {
         const kind: PurchaseKind = msg.type === "themes.premium.checkout" ? "premium" : "coins", sessionVersion = getSessionVersion(), owner = accountId;
+        const activity = purchaseActivity(kind, msg.data.idempotencyKey);
+        const checkoutGeneration = ++activity.generation;
+        activity.inFlight++;
+        let retained = !!activity.orderId;
+        try {
         const result = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey, msg.data.route) : api.checkoutPremium(msg.data.idempotencyKey, msg.data.route));
         const purchase = { ...result, idempotencyKey: msg.data.idempotencyKey, ...(msg.data.route ? { requestedRoute: msg.data.route } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
         if (!current(version) || sessionVersion !== getSessionVersion()) return;
         if (purchase.status === "PENDING" && purchase.merchantOrderId) {
+          activity.orderId = purchase.merchantOrderId; retained = true;
+          expirePurchaseActivity(activity, purchase.expiresAt);
           const pending = { orderId: purchase.merchantOrderId, kind, idempotencyKey: purchase.idempotencyKey, ...(purchase.requestedRoute ? { requestedRoute: purchase.requestedRoute } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
           pendingPurchases.set(purchase.merchantOrderId, { ...pending, epoch: version, sessionVersion });
           if (owner) await rememberPendingPayment(owner, pending);
@@ -1013,16 +1276,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
           pendingPurchases.delete(purchase.merchantOrderId);
           if (owner) void forgetPendingPayment(owner, purchase.merchantOrderId);
         }
-        if (!current(version) || sessionVersion !== getSessionVersion()) return;
+        if (!current(version) || sessionVersion !== getSessionVersion() || activity.dismissed) return;
         // Deliver the owned order before opening a provider app. A failed launch
         // or app restart can then resume exactly this checkout without paying twice.
         emit({ type: kind === "premium" ? "themes.premium.checkout" : "wallet.checkout", data: purchase });
         if (purchase.status !== "PENDING") {
+          retained = false;
           if (kind === "premium") quietly(loadThemes(), "themes.load"); else quietly(refreshWallet(), "wallet.load");
         }
         // Payment pages stay outside the privileged application WebView.
         if (purchase.status === "PENDING" && purchase.paymentUrl) {
-          const external: CoinReturn | undefined = kind === "coins" ? { payment: { orderId: purchase.merchantOrderId, kind, packId: purchase.packId, idempotencyKey: purchase.idempotencyKey }, owner, epoch: version, sessionVersion, document: documentRevision, departed: !appActive, settling: false } : undefined;
+          const external: CoinReturn | undefined = kind === "coins" ? { payment: { orderId: purchase.merchantOrderId, kind, packId: purchase.packId, idempotencyKey: purchase.idempotencyKey }, owner, epoch: version, sessionVersion, document: documentRevision, departed: !appActive, settling: false, activity, generation: checkoutGeneration } : undefined;
           if (external) externalCoinCheckouts.set(purchase.merchantOrderId, external);
           try { await Linking.openURL(purchase.paymentUrl); }
           catch {
@@ -1031,9 +1295,19 @@ export function createBridge(post: (msg: AppMessage) => void) {
           }
         }
         return;
+        } finally {
+          activity.inFlight--;
+          if (!retained || activity.dismissed || !purchaseActivityCurrent(activity)) finishPurchaseActivity(activity);
+        }
       }
       case "wallet.verify": return verifyPurchase(msg.data.merchantOrderId);
       case "themes.premium.verify": return verifyPurchase(msg.data.merchantOrderId, "premium");
+      case "payments.checkout.closed": {
+        for (const activity of purchaseActivities) if (purchaseActivityCurrent(activity) && activity.kind === msg.data.kind &&
+          (!msg.data.merchantOrderId || activity.orderId === msg.data.merchantOrderId) &&
+          (!msg.data.idempotencyKey || activity.attempt === msg.data.idempotencyKey)) { activity.uiClosed = true; finishPurchaseActivity(activity); }
+        return;
+      }
       case "auth.sendOtp": {
         if (authWork.has("send")) return;
         authWork.add("send");
@@ -1054,7 +1328,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!current(version) || getSessionVersion() !== sessionVersion) return;
           if (!await setSessionTokens(session.tokens, sessionVersion)) return;
           if (!current(version)) return;
-          epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
+          resetUpdateActivities(); epoch++; callGeneration++; pendingOutgoing = undefined; verifyCall = undefined; activeCall = undefined; notificationQueryOwner = undefined; pendingPurchases.clear(); externalCoinCheckouts.clear(); chatPeers.clear(); threadPermissions.clear(); // Retire work and socket callbacks owned by the previous identity.
           // Tokens stay native; never spread a Session into a WebView event.
           const { user, balance, earned, verification, requiresOnboarding, isNew } = session;
           applyHostAccount({ user, balance, earned, verification, requiresOnboarding }, false);
@@ -1079,6 +1353,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.logout": {
+        resetUpdateActivities();
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
         const logoutEpoch = ++epoch;
@@ -1100,21 +1375,97 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       }
+      case "account.deactivate": {
+        const sessionVersion = getSessionVersion();
+        try {
+          await api.deactivateAccount();
+          if (current(version) && sessionVersion === getSessionVersion()) {
+            emit({ type: "account.deactivated", data: { requestId: msg.data.requestId } });
+            await handle({ type: "auth.logout", data: {} });
+          }
+        } catch (error) {
+          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "account.deactivate.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+        }
+        return;
+      }
+      case "profile.cover.save": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && owner === accountId;
+        if (!owner) { emit({ type: "profile.cover.error", data: { message: "Sign in before changing your cover photo.", requestId: msg.data.requestId } }); return; }
+        const retireProfileReads = () => {
+          readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
+        };
+        const recoverProfileReads = () => {
+          quietly(loadProfileSettings(), "profile.settings.load");
+        };
+        let revision = hostRevision;
+        const finishProfileWrite = beginProfileWrite();
+        retireProfileReads();
+        try {
+          let account = await api.saveCoverPhoto(msg.data.photo);
+          while (applicable() && revision !== hostRevision) {
+            revision = hostRevision; account = await api.me(true);
+          }
+          if (!applicable()) return;
+          if (account.user.id !== owner) throw new ApiError("Your sign-in changed. Please try again.", 409);
+          retireProfileReads();
+          const authorityChanged = hostChecking || hasHostAccess() !== approvedHost(account) ||
+            hostStatus !== account.user.hostStatus || accountRole !== (account.user.serverRole ?? (account.user.role === "host" ? "host" : "user"));
+          applyHostAccount(account, false);
+          if (authorityChanged) publishHostAccess();
+          emit({ type: "profile.cover.saved", data: { account, requestId: msg.data.requestId } });
+          recoverProfileReads();
+          if (account.user.serverRole === "host" || account.user.role === "host")
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
+        } catch (error) {
+          if (!applicable()) return;
+          retireProfileReads();
+          emit({ type: "profile.cover.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+          recoverProfileReads();
+        } finally {
+          finishProfileWrite();
+        }
+        return;
+      }
+      case "creator.card.save": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && owner === accountId;
+        const finishProfileWrite = beginProfileWrite();
+        try {
+          const approval = await requireApprovedHost();
+          if (!applicable()) return;
+          const account = await api.saveCreatorCard(msg.data.photo);
+          if (applicable() && approval === hostRevision && hasHostAccess()) {
+            if (account.user.id !== owner) throw new ApiError("Your sign-in changed. Please try again.", 409);
+            applyHostAccount(account, false);
+            emit({ type: "creator.card.saved", data: { account, requestId: msg.data.requestId } });
+            quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
+          }
+        } catch (error) {
+          if (applicable()) emit({ type: "creator.card.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
+        } finally {
+          finishProfileWrite();
+        }
+        return;
+      }
       case "profile.save": {
         const { onboarding, requestId, ...profile } = msg.data;
         const id = typeof requestId === "number" ? requestId : undefined;
         const sessionVersion = getSessionVersion();
+        const document = documentRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
         let revision = hostRevision;
+        const finishProfileWrite = beginProfileWrite();
         // A summary fetched before this edit must not repaint old profile fields.
         readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
         try {
           let account = await api.saveProfile(profile, (done, total) => {
-            if (current(version)) emit({ type: "profile.progress", data: { done, total, requestId: id } });
+            if (applicable()) emit({ type: "profile.progress", data: { done, total, requestId: id } });
           });
-          while (current(version) && sessionVersion === getSessionVersion() && revision !== hostRevision) {
+          while (applicable() && revision !== hostRevision) {
             revision = hostRevision; account = await api.me(true);
           }
-          if (current(version) && sessionVersion === getSessionVersion()) {
+          if (applicable()) {
             // Also retire summary reads started while the profile write was pending.
             readRequests.set("profileSettings", (readRequests.get("profileSettings") ?? 0) + 1);
             applyHostAccount(account, false);
@@ -1128,11 +1479,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
             else quietly(loadProfileSettings(), "profile.settings.load");
           }
         } catch (error) {
-          if (current(version) && sessionVersion === getSessionVersion()) {
+          if (applicable()) {
             emit({ type: "profile.error", data: { onboarding: onboarding === true, message: errorMessage(error), requestId: id, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
             // The retired read cannot settle its skeleton; recover current data.
             quietly(loadProfileSettings(), "profile.settings.load");
           }
+        } finally {
+          finishProfileWrite();
         }
         return;
       }
@@ -1140,12 +1493,74 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (publishingAt === version) return;
         publishingAt = version;
         try {
-          const approval = await requireApprovedHost();
+          const approval = await requireApprovedHost(true), member = accountRole === "user";
           const post = await api.createPost(msg.data.photo, msg.data.caption);
-          if (current(version) && approval === hostRevision && hasHostAccess()) emit({ type: "post.saved", data: { post, requestId: msg.data.requestId } });
+          if (current(version) && approval === hostRevision && (member || hasHostAccess())) emit({ type: "post.saved", data: { post, requestId: msg.data.requestId } });
         } catch (error) {
           if (current(version)) emit({ type: "post.error", data: { message: errorMessage(error), requestId: msg.data.requestId } });
         } finally { if (publishingAt === version) publishingAt = undefined; }
+        return;
+      }
+      case "post.like": {
+        const { id, liked, requestId } = msg.data;
+        try {
+          const result = await api.likePost(id, liked);
+          if (current(version)) emit({ type: "post.liked", data: { id, ...result, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.like.error", data: { id, liked, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "post.comments.load": {
+        const { id, page = 1, requestId } = msg.data;
+        try {
+          const data = await api.postComments(id, page);
+          if (current(version)) emit({ type: "data.postComments", data: { ...data, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.comments.error", data: { id, page, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "post.comment.add": {
+        const { id, text, requestId } = msg.data;
+        try {
+          const comment = await api.addPostComment(id, text);
+          if (current(version)) emit({ type: "post.comment.saved", data: { id, comment, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.comment.error", data: { id, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "post.comment.delete": {
+        const { id, commentId, requestId } = msg.data;
+        try {
+          await api.deletePostComment(id, commentId);
+          if (current(version)) emit({ type: "post.comment.deleted", data: { id, commentId, requestId } });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.comment.delete.error", data: { id, commentId, message: errorMessage(error), requestId } });
+        }
+        return;
+      }
+      case "media.post.delete": {
+        try {
+          await api.deletePost(msg.data.id);
+          if (current(version)) emit({ type: "post.deleted", data: msg.data });
+        } catch (error) {
+          if (current(version)) emit({ type: "post.delete.error", data: { ...msg.data, message: errorMessage(error) } });
+        }
+        return;
+      }
+      case "agency.load": case "agency.verify": case "agency.join": {
+        const requestId = msg.data.requestId;
+        const document = documentRevision, sessionVersion = getSessionVersion();
+        const relevant = () => current(version) && document === documentRevision && sessionVersion === getSessionVersion();
+        try {
+          const data = msg.type === "agency.load" ? await api.hostAgency() : msg.type === "agency.verify" ? await api.verifyAgencyCode(msg.data.agencyCode) : await api.joinAgency(msg.data.agencyCode);
+          if (relevant()) emit({ type: msg.type === "agency.load" ? "agency.loaded" : msg.type === "agency.verify" ? "agency.verified" : "agency.joined", data: { ...data, requestId } });
+          if (msg.type === "agency.join" && relevant()) void refreshHostAccount().catch(() => {});
+        } catch (error) {
+          if (relevant()) emit({ type: "agency.error", data: { action: msg.type, message: errorMessage(error), requestId } });
+        }
         return;
       }
       case "verification.submit":
@@ -1175,14 +1590,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "profile.settings.save": case "settings.set": {
         const { requestId, ...patch } = msg.data;
         const sessionVersion = getSessionVersion();
+        const document = documentRevision;
+        const finishProfileWrite = beginProfileWrite();
         try {
           const settings = await api.saveProfileSettings(patch);
-          if (current(version) && sessionVersion === getSessionVersion()) {
+          if (current(version) && sessionVersion === getSessionVersion() && document === documentRevision) {
             deliverProfileSettings(settings);
             emit({ type: "profile.settings.saved", data: { settings: withPushStatus(settings), requestId } });
           }
         } catch (error) {
-          if (current(version) && sessionVersion === getSessionVersion()) emit({ type: "profile.settings.error", data: { message: errorMessage(error), requestId } });
+          if (current(version) && sessionVersion === getSessionVersion() && document === documentRevision) emit({ type: "profile.settings.error", data: { message: errorMessage(error), requestId } });
+        } finally {
+          finishProfileWrite();
         }
         return;
       }
@@ -1243,11 +1662,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "chat.open": {
         const withId = msg.data.with;
+        setChatActivity(withId, true);
         threadPermissions.delete(withId);
-        return readResource("thread", async () => {
+        const read = readResource("thread", async () => {
           await requireChatPair(withId);
           if (!current(version)) throw new ApiError("Your sign-in changed. Please try again.", 409);
-          const revision = hostRevision, data = await api.thread(withId);
+          const revision = hostRevision, data = msg.data.knownIds?.length ? await api.thread(withId, msg.data.knownIds) : await api.thread(withId);
           if (revision !== hostRevision) throw new ApiError("Your account permissions changed. Open the conversation again.", 403);
           return data;
         }, data => {
@@ -1256,8 +1676,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
           // Only the messages returned by this page are marked read by the server.
           // Reload its counts instead of incorrectly clearing the entire conversation.
           quietly(loadChats(), "chats.reload");
-        });
+        }, msg.data.background ? { background: true } : {});
+        return msg.data.background ? read.catch(() => {}) : read;
       }
+      case "chat.activity": setChatActivity(msg.data.with, msg.data.active); return;
       case "chat.send": {
         const callId = msg.data.inCall ? activeCall : undefined;
         if (msg.data.inCall && !callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);
@@ -1269,16 +1691,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // The server verifies that this accepted call belongs to both users;
         // an in-call reply need not wait for a preexisting text conversation.
         // The screen learns the message's server ID (for reply, edit and delete) and the text as delivered.
-        const delivered = await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo);
+        const delivered = msg.data.clientId ? await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo, msg.data.clientId) : await api.sendMessage(msg.data.to, msg.data.text, callId, msg.data.replyTo);
         if (current(version) && typeof delivered?.text === "string")
-          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered.text, id: delivered.id, inCall: !!msg.data.inCall, reply: delivered.reply ?? null } });
+          emit({ type: "chat.sent", data: { to: msg.data.to, sent: msg.data.text, text: delivered.text, id: delivered.id, inCall: !!msg.data.inCall, reply: delivered.reply ?? null, ...(msg.data.clientId ? { clientId: msg.data.clientId } : {}), ...(delivered.createdAt ? { createdAt: delivered.createdAt } : {}), ...(delivered.sequence !== undefined ? { sequence: delivered.sequence } : {}) } });
         if (current(version)) quietly(loadChats(), "chats.reload");
         return;
       }
       case "chat.photo": {
         if (!(await requireThreadSend(msg.data.to, version))) return;
-        const sent = await api.sendPhotoMessage(msg.data.to, msg.data.photo, msg.data.replyTo);
-        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "", reply: sent?.reply ?? null } }); quietly(loadChats(), "chats.reload"); }
+        const sent = msg.data.clientId ? await api.sendPhotoMessage(msg.data.to, msg.data.photo, msg.data.replyTo, msg.data.clientId) : await api.sendPhotoMessage(msg.data.to, msg.data.photo, msg.data.replyTo);
+        if (current(version)) { emit({ type: "chat.photoSent", data: { to: msg.data.to, id: sent?.id ?? "", reply: sent?.reply ?? null, ...(msg.data.clientId ? { clientId: msg.data.clientId } : {}), ...(sent?.createdAt ? { createdAt: sent.createdAt } : {}), ...(sent?.sequence !== undefined ? { sequence: sent.sequence } : {}) } }); quietly(loadChats(), "chats.reload"); }
         return;
       }
       case "app.exit.request": return; // The native shell owns exit confirmation.
@@ -1329,42 +1751,88 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const sessionVersion = getSessionVersion();
         const receipt = await api.sendGift(msg.data.to, msg.data.gift, msg.data.coins, msg.data.inCall ? activeCall : undefined, msg.data.streamId, msg.data.idempotencyKey);
         if (current(version) && sessionVersion === getSessionVersion()) {
-          emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey, id: receipt.id, coins: receipt.coins } });
-          quietly(refreshWallet(), "wallet.load");
+          emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey, id: receipt.id, coins: receipt.coins, ...(receipt.message !== undefined ? { message: receipt.message } : {}), ...(receipt.giftDetails ? { giftDetails: receipt.giftDetails } : {}) } });
+          if (receipt.message) quietly(loadChats(1, true), "chats.reload");
+          if (receipt.coins > 0) quietly(refreshWallet(), "wallet.load");
         }
         return;
       }
-      case "call.start": {
-        const intent = { generation: ++callGeneration, callId: undefined as string | undefined }, sessionVersion = getSessionVersion();
+      case "call.invitation.load": case "call.invitation.dismiss": {
+        const document = documentRevision, sessionVersion = getSessionVersion();
+        const relevant = () => current(version) && document === documentRevision && sessionVersion === getSessionVersion();
+        try {
+          const invitation = msg.type === "call.invitation.load" ?
+            (!appActive || liveOnboarding || accountRole !== "user" ? null : await api.automaticCallInvitation(!!msg.data.active)) : await api.dismissAutomaticInvitation(msg.data.id);
+          if (msg.type === "call.invitation.load" && msg.data.active && relevant()) await refreshWallet();
+          if (relevant()) emit({ type: msg.type === "call.invitation.load" ? "call.invitation.loaded" : "call.invitation.dismissed", data: { invitation, requestId: msg.data.requestId } });
+        } catch (error) { if (relevant()) emit({ type: "call.invitation.error", data: { requestId: msg.data.requestId, message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } }); }
+        return;
+      }
+      case "call.topup.hold": case "call.topup.review": {
+        const document = documentRevision, sessionVersion = getSessionVersion();
+        const relevant = () => current(version) && document === documentRevision && sessionVersion === getSessionVersion();
+        try {
+          if (accountRole !== "user" || !appActive) throw new ApiError("Return to the incoming call to continue.", 409);
+          if (msg.type === "call.topup.hold") {
+            const held = await api.holdIncomingForTopup(msg.data.callId);
+            if (relevant()) emit({ type: "call.topup.held", data: { ...held, requestId: msg.data.requestId } });
+          } else {
+            const review = await api.reviewIncomingTopup(msg.data.callId);
+            if (relevant()) { await refreshWallet(); if (relevant()) emit({ type: "call.topup.reviewed", data: { ...review, requestId: msg.data.requestId } }); }
+          }
+        } catch (error) {
+          if (relevant() && error instanceof ApiError && error.code === "TOPUP_NOT_REQUIRED") {
+            // A stale low balance must recover to explicit Accept without opening checkout.
+            try { await refreshWallet(); } catch { /* The original refusal remains useful if the wallet is temporarily unavailable. */ }
+          }
+          if (relevant()) emit({ type: "call.topup.error", data: { callId: msg.data.callId, requestId: msg.data.requestId, message: errorMessage(error) } });
+        }
+        return;
+      }
+      case "call.start": case "call.invitation.connect": {
+        const automatic = msg.type === "call.invitation.connect";
+        if (automatic && (!appActive || accountRole !== "user" || liveOnboarding || activeCall || pendingOutgoing || verifyCall || callActivities.size)) {
+          emit({ type: "call.failed", data: { message: "Finish your current activity before connecting this invitation.", invitationId: msg.data.id, requestId: msg.data.requestId } }); return;
+        }
+        const intent = { generation: ++callGeneration, callId: undefined as string | undefined, activity: holdUpdateActivity("call", "outgoing") }, sessionVersion = getSessionVersion();
         pendingOutgoing = intent;
         try {
-          const result = await api.startCall(msg.data.to, !!msg.data.voice);
-          if (!current(version) || intent.generation !== callGeneration || cancelledCalls.has(result.callId)) {
-            await endCancelledCall(result.callId, sessionVersion);
+          let result: { callId: string; to: string; voice: boolean; connected: boolean; rate?: number; entryFee?: number };
+          if (msg.type === "call.start") {
+            const { to, voice } = msg.data;
+            result = { ...await api.startCall(to, !!voice), to, voice: !!voice, connected: false };
+          } else result = await api.connectAutomaticInvitation(msg.data.id, msg.data.expectedCoinsPerMinute, msg.data.expectedEntryFeeCoins);
+          if (!current(version) || sessionVersion !== getSessionVersion() || intent.generation !== callGeneration || cancelledCalls.has(result.callId)) {
+            try { await endCancelledCall(result.callId, sessionVersion); } finally { intent.activity.finish(); }
             return;
           }
           activeCall = result.callId;
-          emit({ type: "call.created", data: { callId: activeCall, to: msg.data.to, voice: !!msg.data.voice } });
-        } catch (error) { if (current(version) && intent.generation === callGeneration) emit({ type: "call.failed", data: { message: errorMessage(error) } }); }
-        finally { if (pendingOutgoing === intent) pendingOutgoing = undefined; verifyCall = undefined; }
+          holdCallActivity(result.callId, intent.activity);
+          emit({ type: "call.created", data: { callId: activeCall, to: result.to, voice: result.voice, ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
+          if (result.connected && intent.callId !== result.callId) emit({ type: "call.connected", data: { ...result, initiator: true, peerId: result.to } });
+        } catch (error) { if (current(version) && intent.generation === callGeneration) emit({ type: "call.failed", data: { message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}), ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } }); }
+        finally { if (![...callActivities.values()].includes(intent.activity)) intent.activity.finish(); if (pendingOutgoing === intent) pendingOutgoing = undefined; verifyCall = undefined; }
         return;
       }
       case "call.accept": {
         if (cancelledCalls.has(msg.data.callId)) return;
+        if (accountRole === "user") return acceptHostCall(msg.data.callId, version);
+        holdCallActivity(msg.data.callId);
         const generation = ++callGeneration, sessionVersion = getSessionVersion();
         activeCall = msg.data.callId; activeHostCall = true;
         try {
           const approval = await requireApprovedHost();
-          if (generation !== callGeneration || cancelledCalls.has(msg.data.callId)) return;
+          if (generation !== callGeneration || cancelledCalls.has(msg.data.callId)) { finishCallActivity(msg.data.callId); return; }
           const details = await api.acceptCall(msg.data.callId);
-          if (!current(version) || generation !== callGeneration || cancelledCalls.has(msg.data.callId) || approval !== hostRevision || !hasHostAccess()) {
-            await endCancelledCall(msg.data.callId, sessionVersion);
+          if (!current(version) || sessionVersion !== getSessionVersion() || generation !== callGeneration || cancelledCalls.has(msg.data.callId) || approval !== hostRevision || !hasHostAccess()) {
+            try { await endCancelledCall(msg.data.callId, sessionVersion); } finally { finishCallActivity(msg.data.callId); }
             return;
           }
           emit({ type: "call.connected", data: { callId: msg.data.callId, initiator: false, ...details } });
         } catch {
           if (current(version) && generation === callGeneration) {
             activeCall = undefined; activeHostCall = false; rememberCancelledCall(msg.data.callId);
+            finishCallActivity(msg.data.callId);
             emit({ type: "call.ended", data: { callId: msg.data.callId } });
           }
         }
@@ -1373,16 +1841,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "call.decline": {
         rememberCancelledCall(msg.data.callId);
         if (activeCall === msg.data.callId) { activeCall = undefined; activeHostCall = false; callGeneration++; }
-        return quietly(api.declineCall(msg.data.callId), msg.type);
+        return quietly(api.declineCall(msg.data.callId).finally(() => finishCallActivity(msg.data.callId)), msg.type);
       }
       case "verify.accept": {
-        const callId = msg.data.callId;
+        const callId = msg.data.callId, sessionVersion = getSessionVersion(), activity = holdCallActivity(callId);
         verifyCall = { callId, accepted: true };
         try {
           await api.acceptVerificationCall(callId);
-          if (current(version) && verifyCall?.callId === callId) emit({ type: "verify.connected", data: { callId, peerId: VERIFY_PEER, initiator: false, voice: false } });
+          if (current(version) && sessionVersion === getSessionVersion() && verifyCall?.callId === callId) emit({ type: "verify.connected", data: { callId, peerId: VERIFY_PEER, initiator: false, voice: false } });
+          else activity.finish();
         } catch (error) {
           if (verifyCall?.callId === callId) verifyCall = undefined;
+          finishCallActivity(callId);
           if (current(version)) emit({ type: "verify.ended", data: { callId, status: "unavailable" } });
           throw error;
         }
@@ -1390,20 +1860,21 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "verify.end": {
         if (verifyCall?.callId === msg.data.callId) verifyCall = undefined;
-        return quietly(api.endVerificationCall(msg.data.callId), msg.type);
+        return quietly(api.endVerificationCall(msg.data.callId).finally(() => finishCallActivity(msg.data.callId)), msg.type);
       }
       case "call.end": {
         if (msg.data.callId && msg.data.callId === verifyCall?.callId) {
+          const verificationId = msg.data.callId;
           // The call media failed on this device.
           verifyCall = undefined;
           emit({ type: "verify.ended", data: { callId: msg.data.callId, status: "failed" } });
-          return quietly(api.endVerificationCall(msg.data.callId), msg.type);
+          return quietly(api.endVerificationCall(verificationId).finally(() => finishCallActivity(verificationId)), msg.type);
         }
         const callId = msg.data.callId ?? activeCall;
         if (!msg.data.callId || callId === activeCall || callId === pendingOutgoing?.callId) callGeneration++;
         if (callId) rememberCancelledCall(callId);
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; }
-        if (callId) quietly(api.endCall(callId, msg.data.reason), msg.type);
+        if (callId) quietly(api.endCall(callId, msg.data.reason).finally(() => finishCallActivity(callId)), msg.type);
         return;
       }
       case "payout.load": {
@@ -1518,13 +1989,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { webReady = false; documentRevision++; externalCoinCheckouts.clear(); homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ["call.start", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" ? `:${documentRevision}` : ""}`;
+      const serialized = notificationWrite || ((msg.type === "chat.send" || msg.type === "chat.photo") && !!msg.data.clientId) || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.invitation.connect", "call.invitation.dismiss", "call.topup.hold", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "profile.cover.save" || msg.type === "creator.card.save" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {
@@ -1533,13 +2004,24 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // query. An unkeyed error could finish a newer debounced search.
         if (msg.type === "notifications.load" && msg.data.requestId !== undefined) return;
         const context = msg.type === "gift.send" ? { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey }
-          : msg.type === "chat.voice" ? { to: msg.data.to, clientId: msg.data.clientId }
+          : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId }
-          : msg.type === "ads.click" ? { id: msg.data.id } : {};
+          : msg.type === "ads.click" ? { id: msg.data.id }
+          : msg.type === "referral.apply" ? { requestId: msg.data.requestId } : {};
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));
     },
-    close: () => { closed = true; epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
+    prepareForUpdate: () => {
+      if (updateActivities.size) return;
+      // End server-owned billing before retiring media. Cleanup endpoints remain
+      // available to outdated clients; queued call creation also detects epoch changes.
+      const callId = activeCall, verification = verifyCall, stream = activeStream;
+      activeCall = undefined; verifyCall = undefined; activeStream = undefined; callGeneration++;
+      if (callId) void api.endCall(callId).catch(() => {});
+      if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
+      if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
+    },
+    close: () => { closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }

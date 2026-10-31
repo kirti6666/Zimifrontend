@@ -50,25 +50,14 @@ const SENDERS=["Rohit S.","Arnav M.","Kunal T.","Faisal R.","Devika N.","Yash P.
 const CAPS=["late night set","practice run, be kind","new routine, day one","getting ready for my next call",
  "thank you for last night","testing a new sound","rehearsal cut","this one took a while",
  "same song, slower","one take, no edits","sunday morning","from the last stream"];
-const PERIODS=[["daily","Daily",1],["weekly","Weekly",6.4],["all","All time",41]];
-
-/* Deterministic totals so the ordering is stable between renders. */
-function boardRows(){
- const mult=PERIODS.find(x=>x[0]===S.per)[2];
- return H.concat(EXTRA)
-  .map(h=>({id:h.id,n:h.n,seed:h.seed,live:!!h.live,
-   c:Math.round((((h.seed*613)%780+120)*1000)*mult)}))
-  .sort((a,b)=>b.c-a.c);
-}
-
 const previewMode=new URLSearchParams(location.search).get("preview");
 const callPreview=previewMode==="call"||previewMode==="gifts";
 const roleParam=new URLSearchParams(location.search).get("role");
 const S={v:callPreview?"call":roleParam?"home":"welcome",role:roleParam==="host"?"host":"sender",
  acct:{sender:{earn:0,kyc:"none",mvp:0},host:{earn:184250,kyc:"none",mvp:1}},
  vis:1,kf:{},giftedTo:{},loggedIn:roleParam?1:0,auth:{step:"phone"},early:0,feeLog:[],cel:{ask:0,mission:0},hcel:{ask:0,mission:0},celq:[],mall:0,
- missed:{sender:[{id:"meher",when:"Today, 5:40 pm",kind:"video"},{id:"tara",when:"Today, 1:12 pm",kind:"voice"},{id:"noor",when:"Yesterday, 9:05 pm",kind:"video"}],
-  host:[{id:"u_zoyak",when:"Today, 6:10 pm",kind:"video"},{id:"u_sahilb",when:"Today, 2:31 pm",kind:"video"},{id:"u_imranq",when:"Yesterday, 11:48 pm",kind:"voice"}]},
+ missed:{sender:[{id:"meher",when:"Today, 5:40 pm",at:new Date(Date.now()-25*6e4).toISOString(),kind:"video"},{id:"tara",when:"Today, 1:12 pm",at:new Date(Date.now()-4*36e5).toISOString(),kind:"voice"},{id:"noor",when:"Yesterday, 9:05 pm",at:new Date(Date.now()-26*36e5).toISOString(),kind:"video"}],
+  host:[{id:"u_zoyak",when:"Today, 6:10 pm",at:new Date(Date.now()-12*6e4).toISOString(),kind:"video"},{id:"u_sahilb",when:"Today, 2:31 pm",at:new Date(Date.now()-3*36e5).toISOString(),kind:"video"},{id:"u_imranq",when:"Yesterday, 11:48 pm",at:new Date(Date.now()-28*36e5).toISOString(),kind:"voice"}]},
 kerr:0,ci:0,spent:0,giftN:0,
  tasks:[
   {k:"mins",ico:"ph",t:"Call marathon",d:"Spend 60 minutes on calls",goal:60,p:59,u:"min",rw:5000},
@@ -185,6 +174,7 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
@@ -201,7 +191,7 @@ function go(v,id){
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
  if(v==="kyc"){S.kerr=0;S.creatorSetup=true}
- if(v==="precall"){S.scam=0;S.nextCallVoice=false}
+ if(v==="precall"){S.scam=0;S.nextCallVoice=false;if(S.automaticCall?.hostId!==(id||S.h))S.automaticCall=null}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -211,7 +201,9 @@ function go(v,id){
  if(v==='host'&&id!==S.h)S.ht='posts';
  if(v==='user'){S.back='host';S.backId=S.h;S.u=id;id=null}
  if(v==='search')S.sq='';
- if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';S.editName=me.n;S.editCity=me.c;S.editAbout=me.about}
+ if(S.v==='editprofile'&&v!=='editprofile'){mediaSequence++;obResetProfileDraft()}
+ if(S.v!==v&&S.mediaPreparing){mediaSequence++;S.mediaPreparing=false}
+ if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';obResetProfileDraft()}
  window.ZimiThemes?.beforeNavigate(v);
  window.ZimiAds?.beforeNavigate(v);
  const navigationChange=window.ZimiNavigation?.before(v);
@@ -222,8 +214,8 @@ function go(v,id){
   S.rmsgs=[["sys","",DEMO&&!window.ZimiHome?`Connected &middot; entry fee ${n(g(S.h).fee)} coins charged`:S.callRate?`Connected · ${n(S.callRate)} coins a minute, billed by the second`:'Connected · Free call']].concat(DEMO?[["host",g(S.h).n.split(" ")[0],"hey, you made it"]]:[]);S.giftN=0;S.spent=DEMO&&!window.ZimiHome?g(S.h).fee:0;
   if(DEMO&&!window.ZimiHome)S.bal-=g(S.h).fee;S.t=setInterval(()=>{S.sec++;if(DEMO&&!window.ZimiHome&&S.sec%60===0){S.bal=Math.max(0,S.bal-g(S.h).rate);S.spent+=g(S.h).rate}tick()},1000)}
  /* outgoing calls: the preview picks up by itself, the app waits for call.connected */
- if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}
- if(v==="dialback"){if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id})}
+ if(v==="dial"){if(DEMO)S.wt=setTimeout(()=>go(S.nextCallVoice?"voice":"call",S.h),2600);else if(S.callInvitationIntent?.hostId===S.h){const invitation=S.callInvitationIntent;S.callInvitationIntent=null;Native.send("call.invitation.connect",{id:invitation.id,requestId:invitation.requestId,expectedCoinsPerMinute:invitation.expectedCoinsPerMinute,expectedEntryFeeCoins:invitation.expectedEntryFeeCoins})}else{S.automaticCall=null;Native.send("call.start",{to:S.h,voice:!!S.nextCallVoice})}}
+ if(v==="dialback"){S.caller.voice=!!S.nextCallVoice;if(DEMO)S.wt=setTimeout(()=>go("hcall"),2600);else Native.send("call.start",{to:S.caller.id,voice:!!S.nextCallVoice})}
  if(v==="waiting"){const t=S.tasks.find(x=>x.k==="sessions");if(t&&!S.online)t.p++;S.online=1;
   if(!window.ZimiHome)Native.send("presence.set",{online:true,visible:!!S.vis});
   if(DEMO)S.wt=setTimeout(()=>{S.ringBack="waiting";S.caller=nextCaller();go("ring")},3200)}
@@ -250,9 +242,10 @@ function skGifts(k){return `<div class="ggrid">${Array.from({length:k},()=>
  `<div class="sk dark" style="height:78px;border-radius:15px"></div>`).join("")}</div>`}
 
 function nav(){const el=document.getElementById("nav");
+ if(S.v==='create-post'){el.style.display='none';el.replaceChildren();return}
  if(window.ZimiHome&&window.ZimiHome.nav())return;
  if(['broadcast','live'].includes(S.v)){el.style.display='none';return}
- if(["welcome","login","precall","dial","dialback","waiting","ring","hcall","summary","kyc","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
+ if(["welcome","login","precall","dial","dialback","waiting","ring","incoming","hcall","summary","kyc","agency","payout","awards","host","call","voice","thread","setup","board","search","post","user","coins","all-creators","wallet","transactions","calls","blocked","safety","help","editprofile"].includes(S.v)){el.style.display="none";return}el.style.display="flex";
  el.innerHTML=[["home","Home","home"],["chats","Chat","chat"],["profile","Profile","user"],["settings","Settings","set"]]
   .map(([v,l,i])=>`<button class="${S.v===v?"on":""}" onclick="go('${v}')"><span class="ic">${I(i)}</span>${l}</button>`).join("")}
 
@@ -637,49 +630,16 @@ function sendGift(l,e,v,k){
  r(); playGift(l,e,v,k); hostReply();
 }
 
-/* Centre-stage gift animation. Cheap gifts get a quick rise; the top tiers
-   take over the frame with a flash, rotating rays and a spark burst. */
-function playGift(l,e,v,k,label){
- const f=document.getElementById("fl"); if(!f)return;
- const sticker=giftSticker(l),big=!!sticker||v>=19999,mid=!!sticker||v>=5999,life=sticker?5200:big?3000:2000;
- const frag=document.createElement("div");
- frag.style.cssText="position:absolute;inset:0";
- const add=(cls,style)=>{const d=document.createElement("div");d.className=cls;
-  if(style)d.style.cssText=style;frag.appendChild(d);return d};
-
- /* every gift gets a shockwave and a halo; they are what read as "shiny" */
- add("fxhalo");
- add("fxring");
- if(mid||big)add("fxring two");
- if(mid||big)add("fxflash");
- if(big){add("fxbeam");add("fxrays")}
-
- /* gold dust: more, smaller and twinkling for the top tier */
- const dust=big?22:mid?12:6;
- for(let i=0;i<dust;i++){
-  const sp=document.createElement("span"); sp.className="fxsp";
-  const a=Math.random()*Math.PI*2, d=(big?110:70)+Math.random()*(big?150:90);
-  const sz=(big?4:3)+Math.random()*5;
-  sp.style.width=sp.style.height=sz.toFixed(1)+"px";
-  sp.style.setProperty("--dx",(Math.cos(a)*d).toFixed(0)+"px");
-  sp.style.setProperty("--dy",(Math.sin(a)*d).toFixed(0)+"px");
-  sp.style.animationDelay=(Math.random()*0.5).toFixed(2)+"s";
-  frag.appendChild(sp);
- }
-
- const gl=document.createElement("div");
- gl.className="fxg"+(big?" big":"")+(sticker?" sticker":"");
- gl.innerHTML=sticker?`<img src="${giftMotionUrl(l)}" alt="">`:`<span class="em">${giftGlyph(e)}</span>`;
- frag.appendChild(gl);
-
- const tag=document.createElement("div");
- tag.className="fxtag";
- tag.textContent=String(label||(sticker?`${g(S.h).n.split(" ")[0]} received ${n(v)} coins`:`You sent ${l} · ${n(v)}`)).replace(/&middot;/g,"·");
- if(big){tag.style.animationDuration="3s, 2.2s";tag.style.fontSize="13px"}
- frag.appendChild(tag);
-
- f.appendChild(frag);
- setTimeout(()=>frag.remove(),life+300);
+/* Render only the supplied transparent gift; its file owns the animation. */
+function playGift(l,e,v,k,label,mediaUrl){
+ const f=document.getElementById("fl");if(!f)return;
+ const media=giftMotionUrl(l,mediaUrl),frag=document.createElement("div");
+ frag.style.cssText="position:absolute;inset:0;pointer-events:none";
+ const art=document.createElement("div");art.className="fxg";
+ if(media){const img=document.createElement("img");img.src=media;img.alt=l;art.appendChild(img)}
+ else{const emoji=document.createElement("span");emoji.className="em";emoji.innerHTML=giftGlyph(e);art.appendChild(emoji)}
+ frag.appendChild(art);f.appendChild(frag);
+ setTimeout(()=>frag.remove(),media?8000:2400);
 }
 
 function tick(){if(!["call","voice"].includes(S.v))return;const h=g(S.h);
@@ -737,10 +697,10 @@ function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return go("coins");se
 function kfmt(v){return v>=1e6?(v/1e6).toFixed(v>=1e7?1:2).replace(/\.0+$/,"")+"M":v>=1e5?(v/1e3).toFixed(1).replace(/\.0$/,"")+"K":n(v)}
 /* Missed calls, per role: senders miss hosts, hosts miss senders. */
 function missedRows(){
- return S.missed[S.role].map(m=>{const p=isHost()?sender(m.id):g(m.id);return p&&{...m,p}}).filter(Boolean)}
+ return S.missed[S.role].map(m=>{const p=callPerson(m.id);return p&&{...m,p}}).filter(Boolean)}
 function callBack(id){
  S.missed[S.role]=S.missed[S.role].filter(m=>m.id!==id);
- if(isHost()){S.caller=sender(id);go("dialback")}else go("precall",id)}
+ if(isHost()){S.caller=sender(id);S.nextCallVoice=false;S.dialFrom={view:"calls"};go("dialback")}else go("precall",id)}
 function missedList(){
  const pending=window.contentSurface?.('missed','rows','Loading missed calls');if(pending)return pending;
  const L=missedRows();
@@ -782,17 +742,6 @@ function focusField(id){const i=document.getElementById(id);
  if(i){i.focus();setTimeout(()=>i.scrollIntoView({block:"nearest"}),260)}}
 /* The conversation thread lives in chats.js; loading and server events repaint it through here. */
 function paint(){zcPaintThread()}
-
-function vBoard(){
- const rows=boardRows();
- return `  ${S.bt==="family"
-   ? `<div class="empty">Family boards start once you join or create one.</div>`
-   : `<div class="blist">${rows.map((x,i)=>`<button class="brow ${i<3?"top":""}" onclick="go('host','${domId(x.id)}')">
-      <span class="brank">${i+1}</span>
-      <span class="bav">${window.ZIMI_LIVE_STREAMING_ENABLED&&x.live?`<span class="blive">LIVE</span>`:""}${av(x,42,"none")}<span class="flag">&#127470;&#127475;</span></span>
-      <span class="bname">${esc(x.n)}</span>
-      <span class="bcoin">${gem}${n(x.c)}</span></button>`).join("")}</div>`}
-  <div style="height:10px"></div>`}
 
 function vSearch(){ return `<div class="clist" id="sres"></div><div style="height:16px"></div>`}
 
@@ -870,15 +819,18 @@ function vTransactions(){const pending=window.contentSurface?.('transactions','r
  ${L.length?"":`<div class="s13 muted" style="text-align:center;padding:36px 20px">No activity yet.</div>`}
  ${DEMO?`<div class="s11 muted" style="padding:11px 3px;text-align:center">Showing recent demo activity</div>`:""}</div>`}
 
+/* Call history, newest first: who, when, how long, coins, voice or video, who placed
+   it and how it ended (status). The other person is a creator, or a member for hosts. */
 const CALLS=[
- ["aanya","Today, 11:42 AM","7m 00s",420],
- ["noor","2 Sep, 10:24 PM","5m 42s",285],
- ["tara","31 Aug, 9:08 PM","3m 16s",156],
- ["meher","29 Aug, 8:31 PM","11m 04s",552]];
-function vCalls(){const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct"><div class="acctcard">${CALLS.map(([id,time,dur,cost])=>{const h=g(id);return `<div class="acctrow">
+ {id:"aanya",time:"Today, 11:42 AM",at:new Date(Date.now()-2*36e5).toISOString(),duration:"7:00",coins:420,kind:"video",direction:"outgoing",status:"ended"},
+ {id:"noor",time:"2 Sep, 10:24 PM",duration:"5:42",coins:285,kind:"voice",direction:"outgoing",status:"ended"},
+ {id:"tara",time:"31 Aug, 9:08 PM",duration:"0:00",coins:0,kind:"video",direction:"outgoing",status:"missed"},
+ {id:"meher",time:"29 Aug, 8:31 PM",duration:"11:04",coins:552,kind:"video",direction:"incoming",status:"ended"}];
+function callPerson(id){return g(id)||sender(id)}
+function vCalls(){const pending=window.contentSurface?.('calls','rows','Loading call history');if(pending)return '<div class="acct">'+pending+'</div>';return `<div class="acct"><div class="acctcard">${CALLS.map(({id,time,duration,coins})=>{const h=callPerson(id);if(!h)return '';return `<div class="acctrow">
  <span class="callav">${av(h,38,'none')}<span class="badge">${I('ph',9)}</span></span>
- <span style="flex:1;min-width:0"><span class="main">${esc(h.n)}</span><span class="meta">${esc(time)} · ${esc(dur)}</span></span>
- <span class="end"><span class="meta">${gem}${n(cost)}</span><button onclick="go('precall','${domId(id)}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
+ <span style="flex:1;min-width:0"><span class="main">${esc(h.n)}</span><span class="meta">${esc(time)} · ${esc(duration)}</span></span>
+ <span class="end"><span class="meta">${gem}${n(coins)}</span><button onclick="go('precall','${domId(id)}')" style="display:block;margin-top:3px;color:var(--accent-ink);font-size:11.5px;font-weight:750">Call again</button></span></div>`}).join('')}</div></div>`}
 
 function vBlocked(){return `<div class="acct">${S.blocked.length?`<div class="acctcard">${S.blocked.map(id=>{const h=g(id);return `<div class="acctrow">${av(h,38,'none')}<span style="flex:1"><span class="main">${esc(h.n)}</span><span class="meta">Blocked host</span></span><button class="softbtn" style="margin:0" onclick="S.blocked=S.blocked.filter(x=>x!=='${domId(id)}');r()">Unblock</button></div>`}).join('')}</div>`:`<div class="acctcard emptycompact"><span class="acctico">${I('shield',22)}</span><h3>No blocked hosts</h3><p>People you block can’t call or message you. You can manage them here anytime.</p><button class="softbtn" onclick="go('home')">Browse creators</button></div>`}</div>`}
 
@@ -913,30 +865,30 @@ let mediaSequence=0;
 async function pickMedia(e,k){
  const files=Array.from(e.target.files||[]);e.target.value="";
  if(!files.length||S.profileSaving||S.mediaPreparing||S.postPublishing||!["avatar","cover","posts"].includes(k))return;
- if(k==="posts"&&!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
- const owner=S.user;S.mediaPreparing=true;S.mediaError="";r();
+ const owner=S.user?.id,view=S.v,selection=++mediaSequence;
+ const current=()=>S.user?.id===owner&&S.v===view&&mediaSequence===selection;
+ S.mediaPreparing=true;S.mediaError="";r();
  try{
   const image=await obReadPhoto(files[0]);
-  if(S.user!==owner)return;
+  if(!current())return;
   if(image.length>2*1024*1024)throw new Error("This photo is still too large. Choose a smaller image.");
   if(k==="posts"){S.postDraftData=image;S.postError=""}
   else{S[k+"Data"]=image;S.mediaDirty={...(S.mediaDirty||{}),[k]:true}}
   obHaptic("selection");
- }catch(error){if(S.user===owner){S.mediaError=error.message||"This image could not be prepared. Please choose another photo.";obHaptic("error")}}
- finally{if(S.user===owner){S.mediaPreparing=false;r()}}
+ }catch(error){if(current()){S.mediaError=error.message||"This image could not be prepared. Please choose another photo.";obHaptic("error")}}
+ finally{if(S.user?.id===owner&&mediaSequence===selection){S.mediaPreparing=false;r()}}
 }
 function publishPost(){
  if(S.postPublishing||S.profileSaving||S.mediaPreparing||!S.postDraftData)return;
- if(!isHost())return appNotice("Your creator profile must be approved before you can publish posts.");
- if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";r();return appNotice("Preview post added.")}
+ if(DEMO){S.postData=[S.postDraftData,...S.postData];S.postDraftData="";S.postCaption="";if(S.v==='create-post')go('profile');else r();return appNotice("Preview post added.")}
  S.postPublishing=true;S.postError="";S.postRequestId=++mediaSequence;
  Native.send("media.post.create",{photo:S.postDraftData,caption:S.postCaption||"",requestId:S.postRequestId});r();
 }
 function saveProfile(){
  if(S.profileSaving||S.mediaPreparing||S.postPublishing)return;
- const profile={name:(S.editName||me.n).trim(),city:(S.editCity||"").trim(),about:(S.editAbout||"").trim(),...(S.editGender?{gender:S.editGender}:{})};
+ const profile={name:(S.editName??me.n).trim(),city:(S.editCity||"").trim(),country:(S.editCountry||"").trim(),about:(S.editAbout||"").trim(),...(S.editGender?{gender:S.editGender}:{})};
  if(profile.name.length<2)return appNotice("Use at least two characters for your name.");
- if(DEMO){me.n=profile.name;me.c=profile.city;me.about=profile.about;me.gender=S.editGender||me.gender;return go(S.editBack||"profile")}
+ if(DEMO){me.n=profile.name;me.c=profile.city;me.country=profile.country;me.about=profile.about;me.gender=S.editGender||me.gender;return go(S.editBack||"profile")}
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
@@ -949,13 +901,10 @@ function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPubl
  <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
  <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
  <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
+ <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div>
  <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
  <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
- ${isHost()?`<div class="editgroup"><span class="editlabel">Your posts</span><div class="editposts">
-  <label class="editpost add">${I('grid',18)} Add photo<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'posts')" ${disabled}></label>
-  ${window.contentSurface?.('posts','posts','Loading your posts')||(S.postData||[]).map((src,i)=>`<span class="editpost"><img src="${imageSrc(src)}" alt="Published photo ${i+1}"></span>`).join('')}
-  ${DEMO&&!(S.postData||[]).length?postsFor(me).slice(0,3).map(p=>`<span class="editpost">${artC(p.seed)}</span>`).join(''):''}
- </div>${S.postDraftData?`<div class="editposts"><span class="editpost"><img src="${imageSrc(S.postDraftData)}" alt="Photo ready to publish"></span></div><label class="editlabel" for="postcaption">Caption</label><textarea id="postcaption" class="editinput" maxlength="2000" placeholder="Say something about this moment" oninput="S.postCaption=this.value" ${disabled}>${esc(S.postCaption||"")}</textarea>${S.postError?`<div class="ob-error" role="alert">${esc(S.postError)}</div>`:""}<button class="editsave" onclick="publishPost()" ${disabled}>${S.postPublishing?"Publishing photo…":"Publish photo"}</button>`:""}</div>`:""}</div>`}
+ <button type="button" class="zpost-editor-link" onclick="ZimiPostCreate.open()" ${disabled}>${I('plus',18)} Create a post ${I('chev',16)}</button></div>`}
 
 function vProfile(){
  const host=isHost();
@@ -1132,7 +1081,9 @@ function vDial(){
   <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
  </div>`}
 
-function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")go("chats");else go("precall",S.h)}
+function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
+/* A host's call to a member ended before it connected: back to where it was placed. */
+function dialReturn(notice){if(notice)appNotice(notice);const from=S.dialFrom||{};S.dialFrom=null;go(from.view||"chats",from.id)}
 
 /* ---- Host: going online, waiting, and the incoming ring ---- */
 function vWaiting(){
@@ -1172,6 +1123,40 @@ function vRing(){const c=S.caller;
    <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
   ${S.acceptingCall?'<span class="ring-connecting-note" role="status">Preparing your private call…</span>':''}
  </div>`}
+
+/* ---- Member: a host they follow back, or allowed to video call, is calling ---- */
+function memberIncoming(d){
+ if(window.ZimiCallInvitations?.receiveIncoming(d))return;
+ /* S.callId outlives a finished call, so only the screen tells whether the member is busy. */
+ const busy=["dial","call","voice","incoming"].includes(S.v)||window.Home?.preparingCall;
+ if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
+ const from=d.from||{},h=knowHost({id:from.id,name:from.name,avatarUrl:from.avatarUrl,city:from.city,gender:from.gender,verified:true,role:"host",serverRole:"host"});
+ S.memberRing={callId:d.callId,id:h.id,voice:!!d.voice,rate:d.rate||0,error:""};
+ S.acceptingCall=false;if(S.v!=="incoming")S.ringBack={view:S.v,id:S.v==="thread"||S.v==="host"?S.h:undefined};go("incoming")}
+function ringReturn(){const back=S.ringBack||{};S.ringBack=null;go(back.view&&back.view!=="incoming"?back.view:"home",back.id)}
+function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
+ const name=first(h.n),short=!!m.topupRequired||m.rate>0&&S.bal<m.rate;
+ return `<div class="ringscr host ring ${S.acceptingCall?'is-connecting':''}" role="region" aria-label="Incoming ${m.voice?'voice':'video'} call from ${esc(h.n)}">
+  <div class="ringbg" aria-hidden="true"></div>
+  <span class="ringeye"><i></i>Incoming ${m.voice?'voice':'video'} call</span>
+  <div class="ringorb pulse">${hcIdentityAvatar(h,112)}</div>
+  <h2>${esc(h.n)}</h2><p>Verified creator</p>
+  <span class="ringearn">${m.rate>0?`${gem}${n(m.rate)} coins/min · charged once you answer`:'Free call &middot; gifts are optional'}</span>
+  ${short?`<span class="ringfee">You need ${n(m.rate)} coins to answer. Add coins while the caller waits, then return and choose Accept.</span><button type="button" class="ring-add-coins" onclick="memberRingAddCoins()">Add coins</button>`:''}
+  ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
+  <div class="ringact two">
+   <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall||short?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+ </div>`}
+async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)return;
+ S.acceptingCall=true;m.error="";r();
+ try{
+  if(window.ZimiMedia?.prepare)await window.ZimiMedia.prepare(!m.voice);
+  if(S.v!=="incoming"||S.memberRing!==m){S.acceptingCall=false;window.ZimiMedia?.stop();return}
+  Native.send("call.accept",{callId:m.callId});
+ }catch(error){S.acceptingCall=false;m.error=error?.message||"Your camera or microphone could not be started. Try again.";r()}}
+function declineMemberRing(){const m=S.memberRing;if(!m)return;S.memberRing=null;S.acceptingCall=false;window.ZimiMedia?.stop();Native.send("call.decline",{callId:m.callId});ringReturn()}
+function memberRingAddCoins(){if(window.ZimiCallInvitations)return ZimiCallInvitations.topupIncoming();appNotice("Coin purchases for this call are unavailable right now.")}
 
 /* ---- Host: in the call ---- */
 function vHostCall(){const c=S.caller;
@@ -1482,6 +1467,7 @@ function kycPhotos(e){readImgs(e,d=>{S.kerr=0;S.kf.photos=(S.kf.photos||[]).conc
 function dropPhoto(i){S.kf.photos.splice(i,1);r()}
 function submitKyc(){
  if(S.kycBusy)return;
+ if(window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(!isHost()&&!S.creatorSetup){
   if(!DEMO)return appNotice("Payout verification is not available in this version.");
   if(!String(S.kf.name||"").trim()||!String(S.kf.pan||"").trim()){S.kerr="Please fill in every field to continue.";return r()}
@@ -1583,7 +1569,7 @@ function topFor(){
    <span class="disp title">Add coins</span></div>`;
  const acctTitles={wallet:"Wallet",transactions:"Transactions",calls:"Call history",blocked:"Blocked hosts",safety:"Privacy and safety",help:"Help",editprofile:"Edit profile",
   kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
- const backTo={editprofile:S.editBack||'profile',kyc:'wallet',payout:'wallet'}[S.v]||'settings';
+ const backTo={editprofile:S.editBack||'profile',kyc:window.ZimiAgency?.linked()?'agency':'settings',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
    ${backButton(`go('${backTo}')`)}
    <span class="disp title">${acctTitles[S.v]}</span>
@@ -1591,13 +1577,6 @@ function topFor(){
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
    <button class="bal" onclick="go('profile')">${gem}${window.contentBalance?contentBalance():n(S.bal)}</button></div>`;
  if(S.v==="settings")return `<div class="hdr"><span class="disp title">Settings</span></div>`;
- if(S.v==="board")return `<div class="bsticky"><div class="bhdr">
-   ${backButton("go('home')")}
-   ${[["creators","Creators"],["family","Family"]].map(([k,l])=>
-     `<button class="btab ${S.bt===k?"on":""}" onclick="S.bt='${k}';r()">${l}</button>`).join("")}</div>
-  <div class="bctl">
-   <span class="seg3">${PERIODS.map(([k,l])=>
-     `<button class="${S.per===k?"on":""}" onclick="S.per='${k}';r()">${l}</button>`).join("")}</span></div></div>`;
  return ""}
 
 let appNoticeTimer;
@@ -1615,14 +1594,15 @@ function r(){
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const postFocus=window.ZimiPostCreate?.capture();
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
  if(window.ZimiHome)window.ZimiHome.theme();
  const top=document.getElementById("top"),header=topFor();
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(top,header);else top.innerHTML=header;
  const el=document.getElementById("screen");
- let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,board:vBoard,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,
-  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
+ let html={home:vHome,host:vHost,setup:vSetup,call:vCall,voice:vVoice,chats:vChats,search:vSearch,post:vPost,user:vUser,coins:vCoins,profile:vProfile,settings:vSettings,wallet:vWallet,transactions:vTransactions,calls:vCalls,blocked:vBlocked,safety:vSafety,help:vHelp,editprofile:vEditProfile,'create-post':()=>ZimiPostCreate.render(),
+  welcome:vWelcome,login:vLogin,precall:vPrecall,dial:vDial,waiting:vWaiting,dialback:vDial,ring:vRing,incoming:vMemberRing,hcall:vHostCall,summary:vSummary,kyc:vKyc,payout:vPayout,awards:vAwards,...(window.ZimiHome?window.ZimiHome.views:{})}[S.v]();
  if(S.loggedIn&&!['call','voice','hcall'].includes(S.v)&&(S.dataError||S.realtimeError))html=`<div id="app-network-note" class="app-network-note" role="status"><span>${esc(S.dataError||S.realtimeError)}</span>${S.dataError?'<button onclick="Native.send(\'data.reload\')">Retry</button>':""}</div>`+html;
  if(S.v==='home'&&window.ZimiHomeRender)window.ZimiHomeRender.render(el,html);
  else if(window.ZimiMedia)window.ZimiMedia.render(el,html);else el.innerHTML=html;
@@ -1640,7 +1620,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1656,8 +1636,10 @@ function hostShownOnline(p){return isHostPayload(p)||!!p.online}
 function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&p.online!==true&&!isHost()}
 function hostFrom(p){const id=String(p.id);
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
+  ...(Object.prototype.hasOwnProperty.call(p,'country')?{country:typeof p.country==='string'&&p.country.trim().length<=100&&!/[\u0000-\u001f\u007f]/.test(p.country)?p.country.trim():''}:{}),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
   avatarUrl:obPhotoUrl(p.avatarUrl||""),coverUrl:obPhotoUrl(p.coverUrl||""),gender:p.gender,
+  ...(Object.prototype.hasOwnProperty.call(p,'creatorCardUrl')?{creatorCardUrl:obPhotoUrl(p.creatorCardUrl||'')}:{}),
   age:p.age||0,rate:p.ratePerMin||0,fee:p.entryFee||0,on:hostShownOnline(p)?1:0,live:window.ZIMI_LIVE_STREAMING_ENABLED&&p.live?1:0,seed:seedOf(id),
   v:kfmt(p.followers||0),pk:0,top:p.top?1:0,fol:p.following?1:0,nw:p.isNew?1:0,fresh:p.isNew?1:0}}
 function personFrom(p){const id=String(p.id);
@@ -1693,22 +1675,24 @@ Native.on("auth.ok",d=>{
  S.auth.mode="login";S.auth.creatorIntent=creator;signedIn();
 });
 Native.on("auth.error",obAuthError);
+Native.on("profile.account",d=>{if(d.user?.id!==S.user?.id)return;obApplyAccount(d,true);if(S.v!=='editprofile')refresh()});
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
 Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set")refresh()});
-Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);go(S.editBack||"profile");appNotice("Profile saved.");obHaptic("success")});
+Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);if(S.v==='editprofile')go(S.editBack||"profile");else refresh();appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
 Native.on("data.posts",d=>{S.postData=(d.posts||[]).filter(p=>p.kind==="photo").map(p=>obPhotoUrl(p.mediaUrl)).filter(Boolean);refresh()});
-Native.on("post.saved",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError="";S.postDraftData="";S.postCaption="";const url=obPhotoUrl(d.post?.mediaUrl);if(url)S.postData=[url,...S.postData.filter(src=>src!==url)];r();appNotice("Your photo is published.");obHaptic("success")});
+Native.on("post.saved",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError="";S.postDraftData="";S.postCaption="";const url=obPhotoUrl(d.post?.mediaUrl);if(url)S.postData=[url,...S.postData.filter(src=>src!==url)];if(S.v==='create-post')go('profile');else r();appNotice("Your photo is published.");obHaptic("success")});
 Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublishing=false;S.postError=d.message||"Your photo could not be published. Please try again.";r();obHaptic("error")});
 
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});
 Native.on("data.chats",d=>{CH.splice(0,CH.length,...(d.chats||[]).map(c=>[knowHost(c.user).id,c.last||"",c.time||"",c.unread||0]));refresh()});
-Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()?personFrom(c.user):knowHost(c.user)).id,when:c.when||"",kind:c.kind||"video"}));refresh()});
+Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()?personFrom(c.user):knowHost(c.user)).id,when:c.when||"",at:c.at||"",kind:c.kind||"video"}));refresh()});
 Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise]));refresh()});
-Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>[knowHost(c.user).id,c.time||"",c.duration||"",c.coins||0]));refresh()});
+Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>({id:knowHost(c.user).id,time:c.time||"",at:c.at||"",duration:c.duration||"",coins:c.coins||0,
+ kind:c.kind==="voice"?"voice":"video",direction:c.direction==="incoming"?"incoming":"outgoing",status:c.status||""})));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
  S.msgs=zcThreadMessages(d);paint()});
 // Capture the authenticated payload before refresh: later module handlers also
@@ -1722,7 +1706,8 @@ Native.on("call.connected",d=>{
  if(S.v==="hcall"&&d.callId!==S.callId&&d.callId!==S.connecting?.to.callId)return;
  S.callRate=d.rate||0;
  if(S.v==="dial"){S.callId=d.callId;S.callFee=d.entryFee||0;go(d.voice?'voice':"call",S.h)}
- else if(S.v==="dialback"){S.caller.callId=d.callId;hcCallTerms(d);go("hcall")}
+ else if(S.v==="dialback"){S.caller.callId=d.callId;S.caller.voice=!!d.voice;hcCallTerms(d);go("hcall")}
+ else if(S.v==="incoming"&&S.memberRing?.callId===d.callId){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;S.callId=d.callId;S.callFee=0;go(m.voice?"voice":"call",m.id)}
  else if(S.v==="ring"&&S.caller.callId===d.callId){hcCallTerms(d);S.callId=d.callId;S.acceptingCall=false;go('hcall');ringQueued()}
  else if(S.v==="hcall"&&S.connecting)finishSwitch(d);
  /* The answer and the realtime event both report the call; the answer adds today's early endings. */
@@ -1730,9 +1715,10 @@ Native.on("call.connected",d=>{
 Native.on("call.failed",d=>{
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
  if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
- else if(S.v==="dialback")go("chats");
+ else if(S.v==="dialback")dialReturn(d.message||"The call didn't go through. Try again.");
+ else if(S.v==="incoming"&&d.callId&&S.memberRing?.callId===d.callId){S.memberRing.error=d.message||"The call couldn't be answered. Try again.";r()}
  else if(S.v==="ring"){appNotice(d.message||"The call didn't connect. Please try again.");r()}});
-Native.on("call.incoming",d=>{if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
+Native.on("call.incoming",d=>{if(d.fromHost&&!isHost())return memberIncoming(d);if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
  /* Already in a call: the new caller rings as a banner, never a busy signal. */
@@ -1753,6 +1739,8 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="hcall"&&S.connecting){const c=S.connecting;
   if(c.from.callId===id){c.fromEnded=true;return}
   if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
+ if(S.v==="incoming"&&S.memberRing?.callId===id){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();appNotice(`Missed call from ${first(g(m.id)?.n||"a creator")}`);return ringReturn()}
+ if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
  if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
@@ -1760,13 +1748,20 @@ Native.on("call.ended",d=>{const id=d.callId;
  if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
  if(S.v==="hcall"&&S.caller.callId===id)return endCall(true);
  if((S.v==="call"||S.v==="voice")&&(!S.callId||S.callId===id))endCall(true)});
+/* A balance update can let the member answer: show it on the ring screen at once. */
+Native.on("wallet.balance",()=>{if(S.v==="incoming")r()});
 Native.on("gift.received",d=>{if(window.zrIsCall||S.v!=="hcall")return;
  const gf=GIFTS.find(x=>x[0]===d.gift)||["Gift","&#127873;",d.coins||0];
  hostGotGift(gf[0],gf[1],d.coins||gf[2])});
-Native.on("chat.message",d=>{const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
+/* Late welcome events can arrive after a call starts. Keep them out of call chat
+   and unread previews while preserving real messages from either participant. */
+function ignoreAutomatedCallMessage(d){return d.automated===true&&(d.inCall===true||["dial","dialback","ring","incoming","call","hcall","voice"].includes(S.v)||!!S.connecting||!!S.memberRing||!!S.inc||!!S.queuedInc)}
+Native.on("chat.message",d=>{if(ignoreAutomatedCallMessage(d))return;const t=new Date().toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});
+ if(d.kind==="gift"&&["call","hcall","voice"].includes(S.v)){window.zcAdvanceSummary?.(String(d.from),d,false);return}
  if(["call","hcall","voice"].includes(S.v)&&String(d.from)===String(S.v==="hcall"?S.caller?.id:S.h)){S.rmsgs.push(["host",first(d.name||(S.v==="hcall"?S.caller?.n:g(S.h)?.n)||"Them"),d.text]);if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);return paintFeed()}
- if(S.v==="thread"&&S.h===String(d.from)){S.msgs.push({id:d.id,mine:false,text:d.text,kind:d.kind,imageUrl:d.imageUrl,audioUrl:d.audioUrl,durationMs:d.durationMs,reply:d.reply||null,time:t,at:d.createdAt||new Date().toISOString(),automated:d.automated===true});return paint()}
- const c=CH.find(x=>x[0]===String(d.from));if(c){c[1]=d.text;c[2]=t;c[3]++}refresh()});
+ const advance=window.zcAdvanceSummary?zcAdvanceSummary(String(d.from),d,false):true;
+ if(window.zcIncomingMessage&&zcIncomingMessage(d))return;
+ const c=CH.find(x=>x[0]===String(d.from));if(c&&advance){c[1]=d.text;c[2]=t;c[3]++}refresh()});
 
 const st=document.createElement("style");
 st.textContent="@keyframes up{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{transform:translateY(-180px);opacity:0}}";

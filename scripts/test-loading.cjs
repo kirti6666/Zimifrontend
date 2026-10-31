@@ -48,11 +48,12 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
   try {
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=sender');
     assert.deepEqual(errors, [], 'Production startup must initialize loading state before rendering');
-    for (const label of ['Loading featured creator', 'Loading creators']) await visible(label);
+    await visible('Loading creators');
+    assert.equal(await status('Loading featured creator').count(), 0, 'Home has no featured card to load');
     assert.equal(await page.locator('.zh-live-section').count(), 0, 'Initial loading shows no Live now section before a live host is known');
     assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 0, 'Initial content has no invented creator cards');
     assert.equal(await page.locator('.zh-empty,.zh-stage-empty').count(), 0, 'Pending is distinct from an empty feed');
-    assert.equal(await page.locator('.zh-balance').innerText(), '', 'An unknown balance must not flash a fabricated zero');
+    assert.equal(await page.locator('.zh-balance,.zh-wallet-icon').count(), 0, 'Like the reference, the Home header shows no balance, so an unknown balance can never flash a zero');
     assert.equal(await page.getByText('0 Available', { exact: true }).count(), 0);
     assert.equal(await page.getByText('0 BROADCASTERS', { exact: true }).count(), 0);
     const animations = await page.locator('.zh-skeleton-shape').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).animationName));
@@ -61,19 +62,18 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('wallet.balance', { coins: 1234, earningsPaise: 0 }, 'wallet');
     await gone('Loading creators');
     assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 1);
-    assert.match(await page.locator('.zh-balance').innerText(), /1,234/);
+    assert.equal(await page.evaluate(() => S.bal), 1234);
 
     // A socket refresh hides the cached first page until the new response arrives.
     await loading('home', true, { page: 1 });
     await visible('Loading creators');
     await gone('Loading live creators');
-    await visible('Loading featured creator');
     assert.equal(await page.locator('.zh-tile,article.zh-creator-card,article.zh-featured').count(), 0);
     await receive('data.loaded');
     await visible('Loading creators');
     await result('data.home', feed(), 'home', { page: 1 });
     const homeLoads = await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length);
-    await page.getByRole('button', { name: 'See all', exact: true }).click();
+    await navigate('all-creators');
     assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeLoads, 'All Creators reuses the full feed Home already loaded');
     assert.equal(await page.locator('.zh-tile,article.zh-creator-card').count(), 1);
     assert.equal(await page.locator('[data-home-filter],[data-dashboard-filter]').count(), 0, 'All Creators has no category filters for now');
@@ -118,9 +118,9 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.evaluate(() => { homeDashboardFilter('following'); homeDashboardFilter('instant'); homeDashboardFilter('Music'); });
     assert.equal(await page.evaluate(() => window.__sent.filter(message => message.type === 'home.reload').length), homeRequests,
       'Repeated and retired filters do not trigger requests');
-    await page.getByRole('tab', { name: 'All', exact: true }).click();
+    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
     await visible('Loading creators');
-    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'All restores the full feed');
+    assert.deepEqual(await lastSent('home.reload'), { page: 1, mode: 'popular' }, 'Explore restores the full feed');
     await result('data.home', feed(), 'home', { page: 1 });
     console.log('PASS loading: Home keeps Following across All Creators, the directory stays unfiltered and retired filters send nothing');
 
@@ -155,7 +155,8 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await page.getByRole('button', { name: 'Back to home', exact: true }).click();
     console.log('PASS loading: search current/stale requests, query changes, clearing and retry');
 
-    await page.getByRole('button', { name: /^Notifications/ }).click();
+    // Home has no bell any more; notifications open from a push.
+    await page.evaluate(() => homeNotifications());
     await visible('Loading notifications');
     assert.equal(await page.getByText("You're all caught up", { exact: true }).count(), 0);
     await result('data.notifications', { items: [{ id: 'notice-id', title: 'Tonight on BinzoLive', body: 'A real admin update', read: false }], unreadCount: 1 }, 'notifications');
@@ -188,7 +189,7 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('wallet.balance', { coins: 1234, earningsPaise: 0 }, 'wallet');
     await page.getByRole('button', { name: 'Close gifts', exact: true }).click();
     await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await page.getByRole('button', { name: /^Wallet, / }).click();
+    await navigate('coins');
     await visible('Loading coin packs');
     assert.equal(await page.getByRole('button', { name: 'Get 200 coins', exact: true }).count(), 0);
     await result('data.catalog', catalog, 'catalog');
@@ -266,17 +267,13 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
     await result('data.calls', { calls: [] }, 'calls');
     await gone('Loading call history');
     await receive('session', { user: { id: hostId, name: 'Mira North', role: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified', requiresOnboarding: false });
+    // Posts are created on their own page; the profile editor only links to it.
     await navigate('editprofile');
-    await visible('Loading your posts');
-    assert.equal(await page.locator('.editposts .editpost>img').count(), 0);
-    await result('data.posts', { posts: [{ id: 'post-id', kind: 'photo', mediaUrl: 'https://media.example.test/photo.jpg', caption: 'Photo' }] }, 'posts');
-    assert.equal(await page.getByRole('img', { name: 'Published photo 1', exact: true }).count(), 1);
     await loading('posts', true);
-    assert.equal(await page.getByRole('img', { name: 'Published photo 1', exact: true }).count(), 0);
-    await loading('posts', false, { error: 'Posts could not be loaded' });
-    await gone('Loading your posts');
-    assert.match(await page.getByRole('alert').innerText(), /Posts could not be loaded/);
-    console.log('PASS loading: wallet, transactions, call history and profile editor posts');
+    assert.equal(await status('Loading your posts').count(), 0, 'The profile editor does not load posts');
+    assert.equal(await page.locator('.editposts').count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Create a post' }).count(), 1);
+    console.log('PASS loading: wallet, transactions, call history and the profile editor without a posts list');
 
     assert.deepEqual(errors, [], 'Skeleton transitions must not cause browser errors');
     console.log('PASS reduced-motion skeletons and no uncaught browser errors');

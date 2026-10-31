@@ -1,0 +1,35 @@
+Coin-package reference UI — 29 October 2026
+
+Implemented: Add coins header, isolated black storefront/native chrome,
+balance and INR pills, 3-column charcoal cards with gold coin stacks,
+selected-card treatment, gold price bars, optional bonus and Hot/Popular
+metadata, and fixed pink gradient checkout action. Embedded gift top-ups keep
+the purchase action within the sheet. Account colors restore on leaving Coins.
+
+Server quantities, prices, balance, payment routes, idempotency and return
+recovery remain authoritative. Ordinary catalog packs show their names;
+promotion copy appears only with valid catalog metadata. The demo includes
+the six reference packs. Preview screenshots use isolated reference fixtures.
+
+Passed:
+- npm run typecheck
+- npm run build:web
+- Android release build (:app:assembleRelease --offline)
+- test-api-adapter.cjs
+- test-coin-checkout.cjs
+- test-coins.cjs
+- test-payment-return.cjs
+- test-loading.cjs
+- test-safe-area.cjs
+- test-back-navigation.cjs
+- test-wallet.cjs
+- test-flat-design.cjs
+- test-render-security.cjs
+
+Visual checks: 320x568, 320x640, 390x844, 768x900, and reference-width preview.
+All four palette checks for the new coin screen passed. The full existing
+theme-consistency script still reports the same 16 private-call color failures
+recorded before this change; there are no new coin-screen failures.
+
+No real purchase was made. The updated APK is built for installation; native
+authenticated checkout and a live payment were not exercised.

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
-const { ROUND } = require('./flat-corners.cjs');
+const { ROUND, STRAIGHT } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const member = {
   user: { id:'507f1f77bcf86cd799439001', name:'Asha Sharma', role:'sender', serverRole:'user', hostStatus:'none', isVerifiedHost:false, isPhoneVerified:true, city:'Pune' },
@@ -25,15 +25,15 @@ const dialog = (page,name) => page.getByRole('dialog',{name,exact:true});
 const button = (page,name) => page.getByRole('button',{name,exact:true});
 
 async function audit(page,label) {
-  const state=await page.evaluate(round=>{
+  const state=await page.evaluate(({round,straight})=>{
     const visible=[document.documentElement,...document.querySelectorAll('body,body *')].filter(el=>el.getClientRects().length);
     const wrong=visible.flatMap(el=>{
       const c=getComputedStyle(el),name=el.id||el.classList?.value||el.tagName;
-      const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round);
+      const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
       return [c.boxShadow!=='none'&&`${name}: shadow`,c.textShadow!=='none'&&`${name}: text shadow`,c.filter.includes('drop-shadow')&&`${name}: filter shadow`,!radiusOK&&`${name}: radius ${c.borderRadius}`].filter(Boolean);
     });
     return {wrong,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1};
-  },ROUND);
+  },{round:ROUND,straight:STRAIGHT});
   assert.deepEqual(state.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
   assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: white canvas`);
   assert.equal(state.overflow,false,`${label}: no horizontal overflow`);
@@ -127,7 +127,7 @@ async function audit(page,label) {
     const version=await page.evaluate(()=>window.ZIMI_APP_VERSION);
     assert.ok((await page.getByRole('dialog').innerText()).includes(version),'About shows the shipped app version');
     await button(page,'Close settings').click();
-    assert.equal(await page.getByRole('button',{name:/^Creator application$/i}).count(),1,'Members retain their application entry');
+    assert.equal(await page.getByRole('button',{name:/^Become a Host$/i}).count(),1,'Members retain their application entry');
 
     await button(page,'Add coins').click();
     assert.equal(await page.evaluate(()=>S.v),'coins','Add coins opens the existing pack flow');

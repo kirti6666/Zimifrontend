@@ -64,7 +64,7 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
     await page.screenshot({ path: path.join(os.tmpdir(), 'zimi-chat-reply.png') });
     await page.locator('#ti').fill('Yes, at 9!');
     await page.locator('#ti').press('Enter');
-    assert.deepEqual(await last('chat.send'), { to: mira.id, text: 'Yes, at 9!', replyTo: 'm1' });
+    const replySend=await last('chat.send');assert.ok(replySend.clientId);assert.deepEqual({...replySend,clientId:undefined}, { to: mira.id, text: 'Yes, at 9!', replyTo: 'm1',clientId:undefined });
     assert.equal(await page.locator('.zc-context').count(), 0, 'The reply bar closes after sending');
     const reply = page.locator('.zc-msg.mine').last();
     assert.match(await reply.locator('.zc-quote').innerText(), /Mira\s*Are you live tonight\?/);
@@ -115,15 +115,16 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
     await page.getByRole('group', { name: 'Emoji' }).waitFor();
     const composer = page.locator('.zc-composer-field');
     assert.equal(await composer.getByRole('button', { name: 'Add a photo or emoji', exact: true }).count(), 1, 'The attachment control sits inside the shared composer');
-    assert.equal(await composer.getByRole('button', { name: 'Send a gift', exact: true }).count(), 1);
+    assert.equal(await page.locator('.zc-composer').getByRole('button', { name: 'Gift', exact: true }).count(), 1,'A separate Gift action sits beside the input');
     assert.equal(await composer.getByRole('button', { name: 'Record voice message', exact: true }).count(), 1, 'An empty composer has one recording action');
     assert.equal(await composer.getByRole('button', { name: 'Send message', exact: true }).count(), 0);
 
     // Gifts sit above the composer; a tap picks the gift in the sheet and never spends coins by itself.
     const catalog = { gifts: [{ id: id('61'), name: 'Rose', emoji: '🌹', coins: 99 }, { id: id('62'), name: 'Crown', coins: 999, mediaUrl: 'https://media.example.test/crown.png' }], packs: [], paymentsAvailable: false };
     await receive('data.catalog', catalog);
-    const strip = page.getByRole('group', { name: 'Send a gift' });
-    assert.deepEqual(await strip.getByRole('button').allInnerTexts(), ['🌹\n99', '999'], 'Each gift shows its emoji or artwork and price');
+    const strip = page.getByRole('group', { name: 'Quick gifts' });
+    assert.match(await strip.getByRole('button').first().innerText(), /Rose[\s\S]*99/, 'Each gift shows its name and real coin price');
+    assert.match(await strip.getByRole('button').last().innerText(), /Crown[\s\S]*999/);
     assert.equal(await strip.locator('img').getAttribute('src'), 'https://media.example.test/crown.png');
     await strip.getByRole('button', { name: 'Crown, 999 coins', exact: true }).click();
     const sheet = page.getByRole('dialog', { name: 'Send a gift', exact: true });

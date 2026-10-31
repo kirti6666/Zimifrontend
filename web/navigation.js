@@ -62,6 +62,7 @@ window.ZimiNavigation=(()=>{
     if(['live','call','voice','hcall'].includes(S.v)){zrExit();return}
     if(['dial','dialback'].includes(S.v)){cancelDial();return}
     if(S.v==='ring'){window.ZimiMedia?.stop();declineRing();return}
+    if(S.v==='incoming'){declineMemberRing();return}
     if(S.v==='login'){if(S.auth)obBack();return}
     // Reuse screen-specific destinations (including public-profile return
     // routes), and respect disabled Back controls during an in-flight save.

@@ -3,7 +3,7 @@
     "name": "BinzoLive",
     "slug": "aurora-live-app",
     "scheme": "binzolive",
-    "version": "1.0.0",
+    "version": "1.0.11",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/brand/icon.png",
@@ -27,23 +27,52 @@
     },
     "android": {
       "package": "com.aurora.liveapp",
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/adaptive-icon.png",
-        "backgroundImage": "./assets/brand/adaptive-icon-background.png",
-        "backgroundColor": "#210F1D"
+        "backgroundColor": "#00000000"
       },
-      "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"],
-      "blockedPermissions": ["android.permission.READ_MEDIA_VISUAL_USER_SELECTED"],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+      ],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
       "expo-secure-store",
-      ["expo-notifications", { "icon": "./assets/brand/notification-icon.png", "color": "#EC0785", "defaultChannel": "default" }],
-      ["expo-media-library", { "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.", "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.", "granularPermissions": [] }],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/brand/notification-icon.png",
+          "color": "#EC0785",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "BinzoLive saves a chat photo to your library when you tap Download.",
+          "photosPermission": "BinzoLive lets you choose photos from your library to send in chats or add to your profile.",
+          "granularPermissions": []
+        }
+      ],
       "./plugins/with-onboarding-camera",
       "./plugins/with-development-network",
-      ["expo-splash-screen", { "image": "./assets/brand/logo.png", "imageWidth": 170, "resizeMode": "contain", "backgroundColor": "#FFFFFF" }]
+      "./plugins/with-apk-updater",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand/logo.png",
+          "imageWidth": 170,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
     ]
   }
 }
