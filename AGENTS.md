@@ -93,9 +93,13 @@ keeps it identical to the original Next.js version.
   Home, where the reference has its LIVE button. Use the selected theme's
   colors. Filter hosts on the server before pagination.
 - Every host list (Home grid, All Creators, Search) uses the square photo card
-  `homeTile` in `web/home.js`, matching the user's reference: an Online tag over
-  the photo, then the name with the country (India as a rectangular CSS flag, never a circle; other
-  countries as text) and a round video call button that is always active
+  `homeTile` in `web/home.js`, matching the user's reference: an Online tag in
+  the photo's top-left corner, then the name with the country flag (India as a
+  rectangular CSS flag, other countries as the system flag emoji, never a
+  circle; a name the country list doesn't know stays text). The server sends
+  the country a host chose, else their phone number's (`countryOf` in the
+  backend), so flags and the India chip work for hosts who left it blank. Then
+  a round video call button that is always active
   (never disabled, whatever the host's status; `homeCall` explains when a call
   can't start). No price, tagline or avatar on the card, and no Chat buttons.
   Ads sit inside the host grids (Home and All Creators), never above the hosts.

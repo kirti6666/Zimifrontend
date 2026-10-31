@@ -85,7 +85,7 @@
 .zh-creator-card>.zh-card-video{z-index:-2}
 .zh-creator-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,0) 26%,rgba(0,0,0,0) 58%,rgba(0,0,0,.72))}
 .zh-creator-hit{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:transparent}
-.zh-creator-status{position:absolute;top:7px;left:7px;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 14px);padding:3px 8px;background:rgba(0,0,0,.42);color:#fff;font-size:12px;font-weight:500;line-height:1.4;white-space:nowrap;pointer-events:none}
+.zh-creator-status{position:absolute;top:0;left:0;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 14px);padding:4px 10px;background:rgba(0,0,0,.42);color:#fff;font-size:12px;font-weight:500;line-height:1.4;white-space:nowrap;pointer-events:none}
 .zh-creator-status>i{width:6px;height:6px;flex:none;border-radius:50%;background:var(--online)}
 .zh-creator-status.is-live>i{background:var(--live)}
 .zh-creator-bottom{position:absolute;left:10px;right:7px;bottom:7px;display:flex;align-items:center;gap:6px;pointer-events:none}
@@ -102,8 +102,9 @@
 /* India's flag is drawn in CSS so it looks the same on every device: a plain 3:2 rectangle
    with square corners (in the flat straight list), in its own colors in every theme. */
 .zh-flag{display:inline-block;flex:none;width:18px;height:12px;background:radial-gradient(circle at 50% 50%,#06038d 0 1.5px,transparent 1.9px),linear-gradient(#ff9933 0 33.4%,#fff 33.4% 66.6%,#138808 66.6%)}
+.zh-flag-emoji{display:inline-block;flex:none;font-size:15px;line-height:1;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
 .zh-flag.zh-flag-chip{width:21px;height:14px;background:radial-gradient(circle at 50% 50%,#06038d 0 1.8px,transparent 2.2px),linear-gradient(#ff9933 0 33.4%,#fff 33.4% 66.6%,#138808 66.6%)}
-@media(min-width:600px){.zh-creator-status{top:10px;left:10px;font-size:13px;padding:4px 10px}.zh-creator-bottom{left:12px;right:10px;bottom:10px;gap:8px}.zh-creator-name{font-size:17px}.zh-creator-call{width:44px;height:44px}}
+@media(min-width:600px){.zh-creator-status{font-size:13px;padding:5px 12px}.zh-creator-bottom{left:12px;right:10px;bottom:10px;gap:8px}.zh-creator-name{font-size:17px}.zh-creator-call{width:44px;height:44px}}
 @media(max-width:359px){.zh-creator-status{font-size:11px;padding:2px 7px}.zh-creator-bottom{left:8px;right:6px;bottom:6px;gap:4px}.zh-creator-name{font-size:13px;gap:4px}.zh-creator-call{width:30px;height:30px}}
 @media(prefers-reduced-motion:reduce){.zh-creator-card>.zh-photo{transition:none!important;transform:none!important}}
 .zh-bonus{display:flex;align-items:center;gap:10px;background:#331c2b;border-radius:14px;padding:12px;margin:24px 0 0}
