@@ -11,7 +11,7 @@ export interface ServerEvent { type: string; data?: Record<string, unknown> }
 /** What an ended call cost, and whether it ended because the caller's coins ran out. */
 const callCharge = (call: Record<string, unknown>) => ({
   ...(coinCount(call.coinsPerMinute) ? { coins: coinCount(call.coinsCharged) } : {}),
-  ...(call.endReason === "out_of_coins" || call.endReason === "switch" ? { reason: call.endReason } : {}),
+  ...(call.endReason === "out_of_coins" || call.endReason === "switch" || call.endReason === "host_unavailable" ? { reason: call.endReason } : {}),
 });
 /** The staff side of a verification call, as the call's media peer. */
 export const VERIFY_PEER = "zimi-team";
@@ -174,6 +174,9 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     emit("themes.updated", {});
   });
   socket.on("ads:updated", () => emit("ads.updated", {}));
+  socket.on("support:updated", payload => {
+    try { const ticketId = record(payload).ticketId;if (typeof ticketId === "string" && /^[a-f\d]{24}$/i.test(ticketId)) emit("support.updated", { ticketId }); } catch { /* Only authenticated invalidation hints are accepted. */ }
+  });
   const unsubscribe = onTokenChanged(() => {
     if (closed) return;
     socket.disconnect();

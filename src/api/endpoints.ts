@@ -1,4 +1,5 @@
 import { ApiError, request } from "./client";
+import { getAppUpdateAuth } from "../app-update-events";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
 import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
@@ -12,6 +13,8 @@ import type { HostAgencyStatus } from "./types";
 import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
 import { callTargetsFrom } from "./adapters";
 import type { CallTargetsInput } from "./types";
+import type { SupportCategory, SupportStatus } from "./types";
+import { supportConversationFrom, supportReceiptFrom, supportTicketFrom, supportTicketsFrom } from "./support";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -87,6 +90,33 @@ function hostAgencyFrom(value: unknown): HostAgencyStatus {
 }
 
 export const api = {
+  async supportTickets(query: { page?: number; status?: SupportStatus | "all" } = {}) {
+    const params = queryString({ page: query.page ?? 1, limit: 20, status: query.status === "all" ? undefined : query.status });
+    return supportTicketsFrom(await request("GET", `/support/tickets?${params}`));
+  },
+  async supportTicket(ticketId: string, before?: string) {
+    return supportConversationFrom(await request("GET", `/support/tickets/${encodeURIComponent(ticketId)}${before ? `?before=${encodeURIComponent(before)}` : ""}`), ticketId);
+  },
+  async createSupportTicket(input: { subject: string; category: SupportCategory; body: string; clientMessageId: string }) {
+    return supportReceiptFrom(await request("POST", "/support/tickets", input));
+  },
+  async sendSupportMessage(ticketId: string, body: string, clientMessageId: string) {
+    const receipt = supportReceiptFrom(await request("POST", `/support/tickets/${encodeURIComponent(ticketId)}/messages`, { body, clientMessageId }));
+    if (receipt.ticket.id !== ticketId) throw new ApiError("The support reply could not be confirmed. Please try again.", 502);
+    return receipt;
+  },
+  async readSupportTicket(ticketId: string, throughMessageId: string) {
+    const data = record(await request("POST", `/support/tickets/${encodeURIComponent(ticketId)}/read`, { throughMessageId }));
+    const ticket = supportTicketFrom(data.ticket);
+    if (ticket.id !== ticketId) throw new ApiError("The support read status could not be confirmed.", 502);
+    return { ticket };
+  },
+  async updateSupportTicket(ticketId: string, status: "open" | "resolved") {
+    const data = record(await request("PATCH", `/support/tickets/${encodeURIComponent(ticketId)}`, { status }));
+    const ticket = supportTicketFrom(data.ticket);
+    if (ticket.id !== ticketId) throw new ApiError("The support status could not be confirmed.", 502);
+    return { ticket };
+  },
   async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number; otpLength: number }> {
     const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number; otpLength?: number }>("POST", "/auth/otp/request", phonePayload(phone, dialCode), { auth: false });
     // Older backend releases use six digits and do not return this field.
@@ -247,6 +277,13 @@ export const api = {
     return profile;
   },
   async publicPosts(id: string, page = 1) { return publicPostsFrom(await request("GET", `/users/${encodeURIComponent(id)}/posts?page=${page}&limit=12`)); },
+  async notificationPost(id: string) {
+    const version = getSessionVersion();
+    const raw = record(await request("GET", `/posts/${encodeURIComponent(id)}`));ensureSession(version);
+    const ownerId = idOf(raw.userId);
+    if (!/^[a-f\d]{24}$/i.test(ownerId)) throw new ApiError("This post could not be opened.", 502);
+    return { ownerId, post: postFrom(raw) };
+  },
   async saveProfileSettings(input: ProfileSettingsPatch) {
     return queueProfileWrite(getSessionVersion(), async () => profileSettingsFrom(await request("PATCH", "/account/settings", input)));
   },
@@ -260,9 +297,19 @@ export const api = {
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
   async officialChat(page = 1) { return officialChatFrom(await request("GET", `/chats/official?${queryString({ page, limit: 20 })}`)); },
   async readOfficialChat(input: OfficialReadPatch) { return notificationReadFrom(await request("POST", "/chats/official/read", input)); },
-  registerPushDevice: (token: string) => request<void>("POST", "/notifications/devices", { token }),
+  registerPushDevice: (token: string, notificationProtocol?: "binzo.push.v1") => {
+    const version = Number(getAppUpdateAuth().appVersionCode);
+    return request<void>("POST", "/notifications/devices", { token, platform: "android", ...(notificationProtocol === "binzo.push.v1" ? { notificationProtocol } : {}), ...(Number.isSafeInteger(version) && version > 0 ? { appVersionCode: version } : {}) });
+  },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
+  async beautyAuth() {
+    const data = record(await request("POST", "/facebetter/auth"));
+    if (typeof data.licenseToken !== "string" || !data.licenseToken.trim() || data.licenseToken.length > 128 * 1024) {
+      throw new ApiError("Beauty effects could not be started. Please try again.", 502);
+    }
+    return { licenseToken: data.licenseToken };
+  },
   async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
   async streamMessages(streamId: string) { return items(await request("GET", `/streams/${encodeURIComponent(streamId)}/messages?limit=50`)).map(streamChatFrom).reverse(); },
   async startStream(input: { title: string; category: string; kind?: "video" | "audio" }) {
@@ -316,6 +363,17 @@ export const api = {
   async thread(withId: string, knownIds?: string[]) { const id = await selfId(); const known = knownIds?.filter(id => /^[a-f\d]{24}$/i.test(id)).slice(-200); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}${known?.length ? `?knownIds=${encodeURIComponent(known.join(","))}` : ""}`), id); },
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
+  async notificationCall(id: string) {
+    const version = getSessionVersion(), self = await selfId();ensureSession(version);
+    const raw = await request<unknown>("GET", "/calls/active");ensureSession(version);
+    if (!raw || typeof raw !== "object") return null;
+    const call = record(raw), callerId = idOf(call.callerId);
+    if (idOf(call) !== id || call.status !== "ringing" || idOf(call.calleeId) !== self || !callerId ||
+      !["audio", "video"].includes(String(call.kind)) || !Number.isFinite(Date.parse(String(call.expiresAt))) || Date.parse(String(call.expiresAt)) <= Date.now()) return null;
+    const caller = await api.publicProfile(callerId);ensureSession(version);
+    if (Date.parse(String(call.expiresAt)) <= Date.now()) return null;
+    return { callId: id, from: { id: callerId, name: caller.name, avatarUrl: caller.avatarUrl, city: caller.city, gender: caller.gender }, voice: call.kind === "audio", fromHost: call.hostInitiated === true, ...callPrice(call) };
+  },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async referral() { return referralFrom(await request("GET", "/referrals/me")); },
   async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },

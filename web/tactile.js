@@ -7,18 +7,9 @@ window.ZimiTactile = (() => {
   const OWN_STYLE = '.ob-shell, .ob-dialog';
   const COVERS = '.zh-person-photo-link, .zh-person-watch, .zh-tile-hit';
   const CARDS = '.zh-person-card, .zh-tile';
-  let pressed = null, lastHaptic = 0;
+  let pressed = null;
 
   function usable(el) { return el && !el.closest(OWN_STYLE) && !el.disabled && el.getAttribute('aria-disabled') !== 'true'; }
-  function filled(el) {
-    const style = getComputedStyle(el), rgba = style.backgroundColor.match(/[\d.]+/g);
-    return style.backgroundImage.includes('gradient') || (!!rgba && (rgba.length < 4 || Number(rgba[3]) >= .6));
-  }
-  function haptic(kind) {
-    const now = Date.now();
-    if (now - lastHaptic < 70) return;
-    lastHaptic = now; Native.send('ui.haptic', { kind });
-  }
   function cancelAnimations(el) {
     el.getAnimations().forEach(animation => { if (animation.id.startsWith('zt-press')) animation.cancel(); });
   }
@@ -51,14 +42,7 @@ window.ZimiTactile = (() => {
   window.addEventListener('blur', () => release(false));
   document.addEventListener('aurora:navigate', () => release(false));
   reduced.addEventListener?.('change', () => { if (reduced.matches) release(false); });
-  document.addEventListener('click', event => {
-    const el = event.target.closest?.(TAPPABLE);
-    if (!usable(el)) return;
-    if (el.matches('[aria-pressed], [aria-checked], [role="tab"], [role="switch"], [data-tab], [data-dashboard-filter], [data-home-filter]')) haptic('selection');
-    else if (filled(el)) haptic('light');
-  }, true);
   Native.on('app.background', () => release(false));
-  Native.on('follow.saved', data => { if (data.on) haptic('success'); });
-  Native.on('gift.sent', () => haptic('success'));
-  return { haptic };
+  // Retain the legacy helper without triggering device vibration.
+  return { haptic() {} };
 })();

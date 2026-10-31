@@ -1,8 +1,10 @@
 /* The call setup uses local fake media devices and a mocked native transport.
    No real camera, remote participant, account, or network service is involved. */
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const vm = require('node:vm');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
@@ -16,6 +18,49 @@ const receive = (page, type, data) => page.evaluate(message => Native.receive(me
 const sent = (page, type) => page.evaluate(type => __sent.filter(message => message.type === type), type);
 const homeData = (person = host) => ({ hosts: [person, other], stage: [], featured: person, total: 2, page: 1, categories: ['Fitness'], availableCount: person.availableForCall ? 2 : 1 });
 const button = (page, name) => page.getByRole('button', { name, exact: true });
+
+// Model a WebView whose AudioContext starts suspended. Priming must unlock it
+// without making sound, and a temporary constructor failure must be retryable.
+function assertRingbackPriming() {
+  const listeners = new Map(), events = new Map(), contexts = [], delayed = [];
+  let blocked = false, oscillators = 0, resumes = 0;
+  const gain = () => ({ value: 0, cancelScheduledValues() {}, setValueAtTime(value) { this.value = value; }, linearRampToValueAtTime(value) { this.value = value; } });
+  class SuspendedAudio {
+    constructor() { if (blocked) throw new Error('Audio output temporarily unavailable'); this.state = 'suspended'; this.currentTime = 0; this.destination = {}; contexts.push(this); }
+    resume() { resumes++; this.state = 'running'; this.onstatechange?.(); return Promise.resolve(); }
+    suspend() { this.state = 'suspended'; return Promise.resolve(); }
+    createGain() { return { gain: gain(), connect() {}, disconnect() {} }; }
+    createOscillator() { return { frequency: { value: 0 }, connect() {}, start() { oscillators++; }, stop() {} }; }
+  }
+  const state = { v: 'precall', bgCall: null };
+  const sandbox = { window: { AudioContext: SuspendedAudio }, S: state, document: { hidden: false, getElementById: () => null, addEventListener: (type, handler) => listeners.set(type, handler) }, Native: { on: (type, handler) => events.set(type, handler) }, performance: { now: () => 100 }, setInterval: () => 1, clearInterval() {}, setTimeout: handler => { delayed.push(handler); return delayed.length; }, clearTimeout() {} };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'web/call-ringback.js'), 'utf8'), sandbox);
+  const ringing = sandbox.window.ZimiRingback;
+  ringing.sync(); assert.equal(contexts.length, 0, 'Viewing setup does not acquire audio output');
+  ringing.prime();
+  assert.equal(resumes, 1, 'The explicit calling gesture resumes suspended audio before awaiting permission');
+  assert.equal(oscillators, 0); assert.equal(ringing.playing(), false, 'Priming alone never rings during media preparation');
+  ringing.release(); delayed.at(-1)();
+  assert.equal(contexts[0].state, 'suspended', 'Cancelling before ringing releases the unused primed output');
+  ringing.prime();
+  state.v = 'dial'; ringing.sync();
+  assert.equal(ringing.playing(), true); assert.equal(oscillators, 2, 'Entering the dial screen starts the shared double ringback');
+  ringing.sync(); assert.equal(oscillators, 2, 'Redraws do not restart the ringback');
+  ringing.release();
+  assert.equal(contexts[0].state, 'running', 'Preparation cleanup cannot silence an active ringing call');
+  state.bgCall = { view: 'dial' }; state.v = 'home'; ringing.sync(); assert.equal(ringing.playing(), true, 'A minimized call keeps ringing');
+  events.get('app.background')(); assert.equal(ringing.playing(), false);
+  events.get('app.foreground')(); assert.equal(ringing.playing(), true);
+  state.bgCall = null; state.v = 'voice'; ringing.sync(); assert.equal(ringing.playing(), false, 'Answering the voice call stops ringback');
+  const previousFade = delayed.at(-1);
+  ringing.prime(); previousFade();
+  assert.equal(contexts[0].state, 'running', 'An old ring fade cannot suspend a newer primed call awaiting media');
+  contexts.at(-1).state = 'closed'; blocked = true; state.v = 'dial'; ringing.sync();
+  assert.equal(ringing.playing(), false, 'Unavailable audio does not claim to be ringing');
+  blocked = false; listeners.get('pointerup')();
+  assert.equal(ringing.playing(), true, 'A new gesture retries temporarily unavailable audio');
+  state.v = 'precall'; ringing.sync();
+}
 
 async function assertLayout(page, label) {
   const layout = await page.locator(setupSelector).evaluate(el => {
@@ -76,6 +121,7 @@ async function assertLayout(page, label) {
 }
 
 (async () => {
+  assertRingbackPriming();
   const browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'], ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
   const errors = [];
   async function open(preview = '') {
@@ -177,8 +223,15 @@ async function assertLayout(page, label) {
     assert.equal(await page.evaluate(() => __media.requests.length), 0, 'Choosing video or voice never captures before Start');
     assert.equal((await sent(page, 'call.start')).length, 0);
 
+    await page.evaluate(() => {
+      window.__ringPriming = [];
+      const prime = ZimiRingback.prime;
+      ZimiRingback.prime = () => { __ringPriming.push({ requests: __media.requests.length, view: S.v }); return prime(); };
+    });
     const cancelled = await startPending(page);
     assert.equal(await page.evaluate(() => Home.preparingCall), true);
+    assert.equal(await page.evaluate(() => __ringPriming[0]?.requests), cancelled, 'Audio is primed before the media permission request starts');
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), false, 'Pending media permission remains silent');
     assert.equal(await button(page, 'Cancel preparation').isVisible(), true, 'Pending device access always has a cancel action');
     assert.equal(await page.getByRole('status', { name: 'Preparing video call', exact: true }).isVisible(), true);
     await assertLayout(page, 'pending camera access');
@@ -225,7 +278,36 @@ async function assertLayout(page, label) {
     assert.equal(await page.evaluate(() => __media.requests.at(-1).constraints.video), false, 'Voice requests microphone only');
     assert.equal(await page.evaluate(() => __media.tracks.filter(track => track.readyState === 'live' && track.kind === 'video').length), 0);
     assert.match(await page.locator('.ringscr.dial .ringeye').innerText(), /voice call/i);
-    assert.equal(await page.locator('.ringscr.dial video, .ringscr.dial .dialtool').count(), 0, 'A voice call rings without a camera preview or camera controls');
+    assert.equal(await page.locator('.ringscr.dial.is-voice').count(), 1, 'Voice uses its own calling layout');
+    assert.equal(await page.locator('#app-notice').count(), 0, 'A successful retry removes the old permission error from the calling controls');
+    assert.equal(await page.locator('.ringscr.dial video').count(), 0, 'A voice call rings without opening a camera preview');
+    assert.deepEqual(await page.locator('.ringscr.dial .dialtool').evaluateAll(tools => tools.map(tool => tool.getAttribute('aria-label'))), ['Mute microphone'], 'Voice ringing exposes its microphone without camera controls');
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), true, 'Voice calls use the same audible ringback as video');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+      await page.setViewportSize(viewport);
+      const geometry = await page.locator('.ringscr.dial.is-voice').evaluate(dial => {
+        const bounds = node => { const r = node.getBoundingClientRect(); return { label: node.getAttribute('aria-label') || node.className || node.tagName, left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+        const items = [...dial.querySelectorAll('.ringeye,.ringorb,h2,.dialstatus,.ringact>.rbtn')].map(bounds);
+        return { items, outside: items.filter(r => r.left < -1 || r.right > innerWidth + 1 || r.top < -1 || r.bottom > innerHeight + 1), horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1 || dial.scrollWidth > dial.clientWidth + 1,
+          ripple: getComputedStyle(dial.querySelector('.ringorb'), '::before').animationName, dots: getComputedStyle(dial.querySelector('.dialdots i')).animationName };
+      });
+      assert.equal(geometry.horizontalOverflow, false, `Voice ringing ${viewport.width}x${viewport.height} has no horizontal overflow`);
+      assert.deepEqual(geometry.outside, [], `Voice ringing ${viewport.width}x${viewport.height} keeps identity and controls inside the viewport: ${JSON.stringify(geometry.items)}`);
+      assert.equal(geometry.ripple, 'dial-ripple', 'The voice avatar rings like the video caller when motion is enabled');
+      assert.equal(geometry.dots, 'dial-dot', 'Calling dots share the video ring animation');
+      if (viewport.width === 390) {
+        const destination = path.join(root, 'artifacts', 'voice-call'); fs.mkdirSync(destination, { recursive: true });
+        await page.screenshot({ path: path.join(destination, 'dial-light-390.png') });
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await button(page, 'Mute microphone').click();
+    assert.equal(await page.evaluate(() => S.mic), 0, 'Microphone can be muted while the voice call rings');
+    assert.equal(await page.evaluate(() => __media.tracks.filter(track => track.kind === 'audio' && track.readyState === 'live').every(track => !track.enabled)), true, 'Muting during voice ringing disables the live microphone track');
+    await button(page, 'Unmute microphone').click();
+    assert.equal(await page.evaluate(() => __media.tracks.filter(track => track.kind === 'audio' && track.readyState === 'live').every(track => track.enabled)), true, 'Unmuting restores the microphone while ringing');
     await receive(page, 'app.background', {});
     assert.equal(await page.evaluate(() => ZimiRingback.playing()), false, 'Ringback stops when the app leaves the foreground');
     await receive(page, 'app.foreground', {});

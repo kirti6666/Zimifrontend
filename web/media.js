@@ -5,6 +5,9 @@
   let local = null, remote = null, active = null, capture = null, pendingCall = null;
   let generation = 0, configRequest = null, cameraSwitch = null, switchingStream = null;
   let facingMode = 'user', playbackMuted = false, handoffCall = null;
+  // The camera stream remains the source of device settings and camera flips.
+  // Beauty supplies a separate track for both local preview and peer senders.
+  let beauty = null, beautyRefresh = null, trackMutation = Promise.resolve();
   const peers = new Map(), earlySignals = [];
   const mediaViews = new Set(['broadcast', 'live', 'precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
   /* Cameras list their sizes in landscape and phones rotate the frames to portrait. Asking for a
@@ -71,6 +74,72 @@
   function stopTracks(stream) {
     if (stream) stream.getTracks().forEach(track => { track.onended = null; track.stop(); });
   }
+  function outgoing() { return beauty?.stream || local; }
+  function serializeTracks(work) {
+    const pending = trackMutation.then(work, work);
+    trackMutation = pending.catch(() => {});
+    return pending;
+  }
+  function releaseBeauty() {
+    beautyRefresh = null;
+    window.ZimiBeauty?.stop();
+    const previous = beauty;
+    beauty = null;
+    previous?.destroy();
+  }
+  function refreshBeauty() {
+    if (beautyRefresh) { beautyRefresh.dirty = true; return beautyRefresh.promise; }
+    const job = { dirty: true, version: generation, promise: null };
+    beautyRefresh = job;
+    const current = stream => beautyRefresh === job && generation === job.version && local === stream && stream?.getVideoTracks().some(track => track.readyState === 'live');
+    job.promise = (async () => {
+      while (job.dirty && beautyRefresh === job && generation === job.version) {
+        job.dirty = false;
+        const stream = local;
+        if (!current(stream)) return;
+        let next = null;
+        try { next = await window.ZimiBeauty?.create(stream) || null; }
+        catch (_) { /* Beauty is optional; camera and calls remain usable. */ }
+        if (!current(stream)) { if (next !== beauty) next?.destroy(); return; }
+        await serializeTracks(async () => {
+          if (!current(stream)) { if (next !== beauty) next?.destroy(); return; }
+          const previous = beauty;
+          if (next === previous) { attach(); return; }
+          const oldTrack = outgoing()?.getVideoTracks()[0];
+          const nextTrack = (next?.stream || stream).getVideoTracks()[0];
+          if (!nextTrack || nextTrack.readyState !== 'live') { next?.destroy(); return; }
+          nextTrack.enabled = cameraEnabled();
+          next?.setEnabled(cameraEnabled());
+          const replaced = new Set();
+          try {
+            // Include peers joining while an earlier replacement is pending.
+            while (true) {
+              const senders = [...peers.values()].flatMap(peer => peer.pc.getSenders()).filter(sender => sender.track === oldTrack && !replaced.has(sender));
+              if (!senders.length) break;
+              const results = await Promise.allSettled(senders.map(async sender => { replaced.add(sender); await sender.replaceTrack(nextTrack); }));
+              if (!current(stream)) { if (next !== beauty) next?.destroy(); return; }
+              const failure = results.find(result => result.status === 'rejected');
+              if (failure) throw failure.reason;
+            }
+            if (!current(stream)) { if (next !== beauty) next?.destroy(); return; }
+            beauty = next;
+            previous?.destroy();
+            attach();
+          } catch (_) {
+            // A failed optional effect must preserve the camera already in use.
+            if (current(stream)) {
+              const senders = new Set([...peers.values()].flatMap(peer => peer.pc.getSenders()));
+              await Promise.allSettled([...replaced].filter(sender => senders.has(sender)).map(sender => sender.replaceTrack(oldTrack)));
+            }
+            if (next !== beauty) next?.destroy();
+            window.ZimiBeauty?.unavailable?.();
+          }
+        });
+      }
+    })();
+    job.promise.then(() => { if (beautyRefresh === job) beautyRefresh = null; }, () => { if (beautyRefresh === job) beautyRefresh = null; });
+    return job.promise;
+  }
   function closePeer(id) {
     const peer = peers.get(id);
     if (!peer) return;
@@ -102,6 +171,8 @@
     playbackMuted = false;
     earlySignals.length = 0;
     clearPeers();
+    releaseBeauty();
+    trackMutation = Promise.resolve();
     stopTracks(local);
     local = null;
     shapes.local = shapes.remote = '';
@@ -133,7 +204,7 @@
       if (!el.videoWidth || !el.videoHeight) return;
       const shape = el.videoWidth > el.videoHeight ? 'landscape' : 'portrait';
       el.dataset.zimiShape = shape;
-      if (el.srcObject && el.srcObject === (kind === 'local' ? local : remote)) shapes[kind] = shape;
+      if (el.srcObject && el.srcObject === (kind === 'local' ? outgoing() : remote)) shapes[kind] = shape;
     };
     el.addEventListener('loadedmetadata', update);
     el.addEventListener('resize', update);
@@ -146,14 +217,15 @@
       const videoOn = cameraEnabled();
       local.getAudioTracks().forEach(track => { track.enabled = !muted; });
       local.getVideoTracks().forEach(track => { track.enabled = videoOn; });
+      beauty?.setEnabled(videoOn);
     }
-    [['local', local], ['remote', remote]].forEach(([kind, stream]) => {
+    [['local', outgoing()], ['remote', remote]].forEach(([kind, stream]) => {
       document.querySelectorAll(`video[data-zimi-${kind}], audio[data-zimi-${kind}]`).forEach(el => {
         if (!el.zimiPlaybackWatched) {
           el.zimiPlaybackWatched = true;
           el.addEventListener('pause', () => {
             // A fallback DOM move can pause media after attach() has already run.
-            if (!el.isConnected || document.hidden || !el.srcObject || ![local, remote].includes(el.srcObject)) return;
+            if (!el.isConnected || document.hidden || !el.srcObject || ![outgoing(), remote].includes(el.srcObject)) return;
             el.play()?.catch(() => {});
           });
         }
@@ -189,10 +261,15 @@
       if (requestedAt !== generation) throw new Error('Camera request cancelled. Start again when you are ready.');
     }
     if (local && local.getAudioTracks().some(track => track.readyState === 'live') && (!video || local.getVideoTracks().some(track => track.readyState === 'live'))) {
-      if (!video) local.getVideoTracks().forEach(track => { track.stop(); local.removeTrack(track); });
+      if (!video) {
+        releaseBeauty();
+        local.getVideoTracks().forEach(track => { track.stop(); local.removeTrack(track); });
+      }
       attach();
+      if (video) void refreshBeauty();
       return local;
     }
+    releaseBeauty();
     stopTracks(local);
     local = null;
     const version = generation;
@@ -210,6 +287,7 @@
         track.onended = () => { if (local === stream) status('Camera or microphone access ended. Leave and reconnect to continue.', true); };
       });
       attach();
+      if (video) void refreshBeauty();
       return stream;
     } catch (error) {
       throw new Error(explain(error));
@@ -244,7 +322,7 @@
     let released = false;
     const current = () => version === generation && local === stream && (oldTrack.readyState === 'live' || released);
     const cancelled = () => new Error('Camera switch cancelled.');
-    const pending = (async () => {
+    const pending = serializeTracks(async () => {
       let acquired = null, nextTrack = null, committed = false, switchFailure = null;
       const replaced = new Set();
       try {
@@ -325,9 +403,10 @@
         if (error?.name === 'OverconstrainedError' || error?.name === 'NotFoundError') throw new Error('Another camera is not available on this device. Your current camera is still selected.');
         throw new Error(explain(error));
       }
-    })();
+    });
     cameraSwitch = pending;
-    pending.then(() => { if (cameraSwitch === pending) cameraSwitch = null; }, () => { if (cameraSwitch === pending) cameraSwitch = null; });
+    const finished = () => { if (cameraSwitch === pending) { cameraSwitch = null; if (version === generation && local === stream) void refreshBeauty(); } };
+    pending.then(finished, finished);
     return pending;
   }
   function iceConfig() {
@@ -478,7 +557,8 @@
     const pc = new RTCPeerConnection(session.config);
     const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0, poorSamples: 0, targetSamples: 0 };
     peers.set(id, peer);
-    if ((session.kind === 'call' || session.hosting) && local) local.getTracks().forEach(track => pc.addTrack(track, local));
+    const published = outgoing();
+    if ((session.kind === 'call' || session.hosting) && published) published.getTracks().forEach(track => pc.addTrack(track, published));
     pc.onicecandidate = event => {
       if (event.candidate) {
         const candidate = event.candidate.toJSON ? event.candidate.toJSON() : event.candidate;
@@ -602,7 +682,7 @@
     if (typeof DEMO !== 'undefined' && DEMO) return;
     if (active && active.kind === 'stream' && active.id === stream.id) { attach(); return; }
     clearPeers();
-    if (!hosting) { stopTracks(local); local = null; }
+    if (!hosting) { releaseBeauty(); stopTracks(local); local = null; }
     const session = { kind: 'stream', id: stream.id, hostId: stream.hostId || stream.host?.id, hosting: !!hosting, ready: false, signals: [], waitingPeers: new Set() };
     active = session;
     earlySignals.splice(0).forEach(signal => { if (signal.kind === 'stream' && signal.data.streamId === session.id) session.signals.push(signal.data); });
@@ -718,5 +798,5 @@
   window.addEventListener('online', resume);
   window.addEventListener('offline', () => { if (active?.kind === 'call') setQuality('reconnecting'); });
   Native.on('app.foreground', resume);
-  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState, hasVideo };
+  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, refreshBeauty, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState, hasVideo };
 })();

@@ -47,12 +47,14 @@ const calls = page => page.evaluate(() => __sent.filter(message => message.type 
     await page.getByRole('button', { name: 'Buy coins to call' }).waitFor();
     await page.evaluate(() => homeStartCall());
     assert.equal(await calls(page), beforeFee, 'Entry fee plus one minute is required before capturing or ringing');
+    await page.getByRole('dialog', { name: 'Recharge to continue', exact: true }).getByRole('button', { name: 'Not now', exact: true }).click();
     assert.match(await page.locator('.zpc-setup').innerText(), /at least 80 coins/);
     await receive(page, 'data.home', { hosts: [host], total: 1, page: 1 });
     await receive(page, 'wallet.balance', { coins: 500 });
     await page.getByRole('button', { name: 'Start video call', exact: true }).click();
     await page.waitForFunction(count => __sent.filter(message => message.type === 'call.start').length > count, beforeFee);
     await receive(page, 'call.failed', { code: 'INSUFFICIENT_COINS', requiredCoins: 600, message: 'Not enough coins. Recharge to call.' });
+    await page.getByRole('dialog', { name: 'Recharge to continue', exact: true }).getByRole('button', { name: 'Not now', exact: true }).click();
     await page.getByRole('button', { name: 'Buy coins to call' }).waitFor();
     assert.match(await page.locator('.zpc-setup').innerText(), /Recharge to call/);
     await receive(page, 'wallet.balance', { coins: 500 });

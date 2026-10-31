@@ -85,6 +85,7 @@ async function openPage(native = false, viewport = { width: 390, height: 844 }, 
 
 const action = (page, name) => page.locator(`button[onclick*="${name}("]`).first();
 const step = (page, name) => page.locator(`[data-ob-step="${name}"]`).waitFor();
+async function skipDeviceAccess(page) { await step(page, 'permissions'); await page.locator('#ob-permission-continue').click(); }
 const state = page => page.evaluate(() => JSON.parse(JSON.stringify(S.auth)));
 const receive = (page, type, data = {}) => page.evaluate(({ type, data }) => {
   const correlated = type.startsWith('auth.') || type.startsWith('profile.');
@@ -379,6 +380,7 @@ async function previewFlow() {
   await action(page, 'obNextProfile').click();
   await action(page, 'obNextPhotos').click();
   await action(page, 'obFinish').click();
+  await skipDeviceAccess(page);
   await page.waitForFunction(() => S.v === 'home');
   assert.equal(await page.evaluate(() => S.loggedIn), 1, 'Signup completion must enter the signed-in app');
   console.log('PASS sender signup: validation, OTP paste, photos, featured image, interests, back navigation, completion');
@@ -420,6 +422,7 @@ async function hostFlow() {
   await uploadPhotos(page);
   await action(page, 'obNextPhotos').click();
   await action(page, 'obFinish').click();
+  await skipDeviceAccess(page);
   await joinHostAgency(page);
   const verification = await page.evaluate(() => S.kf);
   assert.equal(verification.name, 'Creator Test', 'Creator verification must reuse the display name');
@@ -480,6 +483,7 @@ async function nativeFlow() {
   assert.equal((await state(page)).photos.length, 3, 'Save failures must preserve uploaded photos');
   await action(page, 'obFinish').click();
   await receive(page, 'profile.saved', { onboarding: true });
+  await skipDeviceAccess(page);
   await page.waitForFunction(() => S.v === 'home');
   const saves = await page.evaluate(() => window.__messages.filter(message => message.type === 'profile.save'));
   assert.equal(saves.length, 2, 'Save retry must produce one additional request');
@@ -487,7 +491,7 @@ async function nativeFlow() {
   assert.equal(saves[0].data.adultConfirmed, true, 'Adult confirmation must reach the validated backend profile');
   assert.equal(saves[0].data.preferredRole, 'member', 'Member preference is metadata, not a permission grant');
   assert.equal(saves[0].data.gender, 'female', 'The chosen gender is saved with the profile');
-  assert.equal(await page.evaluate(() => window.__messages.some(message => message.type === 'ui.haptic')), true, 'Touch interactions must reach the native haptic bridge');
+  assert.equal(await page.evaluate(() => window.__messages.some(message => message.type === 'ui.haptic')), false, 'Signup interactions must not request vibration');
   console.log('PASS native bridge: send/verify acknowledgements, delivery error, save error/retry, completion');
 }
 
@@ -571,6 +575,7 @@ async function nativeCreatorFlow() {
   assert.equal((await state(page)).busy, 'profile.save', 'An older profile save cannot complete the current onboarding');
   await receive(page, 'profile.progress', { done: 2, total: 3 });
   await receive(page, 'profile.saved', { onboarding: true, account: { requiresOnboarding: false, verification: 'none', user: { id: 'new-creator', name: 'Creator Test', email: 'onboarding@example.test', role: 'sender', hostStatus: 'none', onboardingPreference: 'creator', languages: ['English'], category: 'Music' } } });
+  await skipDeviceAccess(page);
   await joinHostAgency(page, true);
   assert.equal(await page.evaluate(() => S.role), 'sender');
   const request = await page.evaluate(() => window.__messages.find(message => message.type === 'profile.save'));

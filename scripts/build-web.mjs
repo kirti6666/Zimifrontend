@@ -40,6 +40,7 @@ const HEAD = (hosted) => `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <meta name="description" content="Connect with creators through private one-to-one video and voice calls." />
 <title>BinzoLive</title>
+<script type="text/plain" id="facebetter-effect-license">${read("web/facebetter/LICENSE")}</script>
 ${hosted ? WEB_ICON_HEAD : `<link rel="icon" type="image/png" href="${brandIcon}" />`}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
@@ -132,6 +133,7 @@ const page = (demo, hosted = false) =>
   read("web/leaderboard.css") +
   read("web/referral.css") +
   read("web/agency.css") +
+  read("web/support.css") +
   read("web/wallet.css") +
   read("web/coin-packages.css") +
   read("web/gift-picker.css") +
@@ -153,6 +155,7 @@ const page = (demo, hosted = false) =>
     .replace(/__MODEL_PHOTO_([1-6])__/g, (_, i) => (demo || Number(i) <= 3 ? modelPhoto(i) : "")) +
   read("web/aurora-runtime.js").replace("__BRAND_LOGO__", brandLogo) +
   "\n" + read("web/gift-stickers.js").replace(/__GIFT_STICKER_([a-z0-9-]+)__/g, giftSticker) +
+  "\n" + read("web/gift-playback.js") +
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/pull-refresh.js") +
@@ -164,6 +167,9 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/referral.js") +
   "\n" + read("web/agency.js") +
   "\n" + read("web/coins.js") +
+  "\n" + read("node_modules/facebetter/dist/facebetter.js").replace(/[ \t]+$/gm, "") +
+  "\n" + read("web/beauty.js").replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) =>
+    readFileSync(join(root, `web/facebetter/effects/${name}.fbd`)).toString("base64")) +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +
@@ -178,6 +184,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/chat-photo.js") +
   "\n" + read("web/chat-gift-playback.js") +
   "\n" + read("web/profile.js") +
+  "\n" + read("web/support.js") +
   "\n" + read("web/themes.js") +
   "\n" + read("web/notifications.js") +
   "\n" + read("web/navigation.js") +

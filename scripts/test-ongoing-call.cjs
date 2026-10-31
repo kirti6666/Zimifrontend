@@ -82,6 +82,17 @@ async function startVideoCall(page) {
     assert.equal(await view(page), 'call', 'A tap on the bar returns to the call');
     assert.ok(await page.evaluate(at => S.sec >= at + 2, minimizedAt), 'The call clock kept running');
     assert.equal(await page.evaluate(() => !!document.querySelector('.zr-pip video[data-zimi-local]')?.srcObject), true, 'The caller’s camera is back in the call');
+    const notificationAt=await page.evaluate(()=>S.sec);
+    await receive(page,'push.opened',{targetType:'thread',targetId:hostId,recipientId:memberId,category:'messages',profile:{...creator,role:'host'}});
+    assert.equal(await view(page),'thread','A conversation notification minimizes the connected call and opens its target');
+    assert.equal(await page.evaluate(()=>S.bgCall?.callId),'member-call');
+    assert.equal(await liveTracks(page),'audio,video','Notification navigation preserves the running microphone and camera');
+    assert.equal((await sent(page,'call.end')).length,0);
+    await page.waitForFunction(at=>S.sec>=at+1,notificationAt);
+    await receive(page,'push.opened',{targetType:'creator',targetId:hostId,recipientId:memberId});
+    assert.equal(await view(page),'host','Targets remain usable while the call is already minimized');
+    await receive(page,'push.opened',{targetType:'call',targetId:'member-call',recipientId:memberId});
+    assert.equal(await view(page),'call','A tap on the current call restores it without starting another call');
     await button(page, 'Minimize call').click();
     await receive(page, 'app.back');
     assert.equal(await view(page), 'call', 'Back on Home returns to the call instead of leaving the app');

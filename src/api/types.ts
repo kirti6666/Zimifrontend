@@ -199,7 +199,7 @@ export interface HomeData {
   bonus: Mission | null;
   unreadCount: number;
 }
-export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; audience: "personal" | "announcements"; }
+export interface AppNotification { id: string; title: string; body: string; read: boolean; createdAt: string; audience: "personal" | "announcements"; category?: import("../notification-preferences").NotificationCategory; targetType?: import("../notification-target").NotificationTarget["targetType"]; targetId?: string; actorId?: string; recipientId?: string; expiresAt?: string; }
 export interface NotificationsQuery { page?: number; limit?: number; q?: string; status?: "all" | "unread" | "read"; audience?: "all" | "personal" | "announcements"; since?: string; before?: string; sort?: "newest" | "oldest"; }
 export interface NotificationsData { items: AppNotification[]; total: number; unreadCount: number; totalCount: number; page: number; limit: number; }
 export interface NotificationReadPatch { ids?: string[]; all?: true; read: boolean; }
@@ -259,12 +259,12 @@ export interface ProfileSettings {
   stats: { fans: number; following: number; giftsSent: number; giftsReceived: number; coinsSent: number; coinsReceived: number };
   /** level 0 means the server did not report one. */
   standing: { level: number; crown: boolean };
-  preferences: { pushNotifications: boolean; matchCategory: string | null; appearance: Appearance };
+  preferences: { pushNotifications: boolean; notificationPreferences: import("../notification-preferences").NotificationPreferences; matchCategory: string | null; appearance: Appearance };
   privacy: PrivacySettings;
   categories: string[];
-  capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; nativePushStatus: "registered" | "denied" | "unavailable"; liveAlerts: boolean; interfaceLanguages: string[]; currency: string };
+  capabilities: { pushNotifications: boolean; nativePushRegistered: boolean; nativePushStatus: "registered" | "denied" | "unavailable"; liveAlerts: boolean; earningsAlerts?: boolean; interfaceLanguages: string[]; currency: string };
 }
-export interface ProfileSettingsPatch { pushNotifications?: boolean; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; country?: string; }
+export interface ProfileSettingsPatch { pushNotifications?: boolean; notificationPreferences?: import("../notification-preferences").NotificationPreferencesPatch; matchCategory?: string | null; appearance?: Appearance; languages?: string[]; city?: string; country?: string; }
 export interface BlockedUsers { users: Host[]; total: number; page: number; limit: number; }
 export interface Purchase { purchaseId: string; merchantOrderId: string; status: string; paymentUrl?: string; kind?: "coins" | "premium"; packId?: string; idempotencyKey?: string; requestedRoute?: string; route?: string; pageStyle?: string; currency?: "INR"; coins?: number; amountPaise?: number; payableAmountPaise?: number; expiresAt?: string; }
 export interface RtcPayload {
@@ -452,3 +452,34 @@ export interface AdFeed {
   adFree: boolean;
   items: AdCreative[];
 }
+
+export type SupportCategory = "general" | "account" | "coins" | "payments" | "calls" | "gifts" | "technical" | "payouts";
+export type SupportStatus = "open" | "in_progress" | "resolved";
+export interface SupportMessage {
+  id: string;
+  ticketId: string;
+  body: string;
+  senderType: "user" | "staff";
+  senderName: string;
+  clientMessageId: string;
+  createdAt: string;
+  sequence?: number;
+}
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  category: SupportCategory;
+  status: SupportStatus;
+  priority: string;
+  requester: { id: string; name: string; role: "user" | "host"; avatar: string | null };
+  assignee: { id: string; name: string } | null;
+  lastMessage: { body: string; senderType: "user" | "staff"; createdAt: string } | null;
+  unreadUser: number;
+  unreadStaff: number;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+}
+export interface SupportTickets { tickets: SupportTicket[]; page: number; limit: number; total: number; unreadCount: number; }
+export interface SupportConversation { ticket: SupportTicket; messages: SupportMessage[]; total: number; hasMore: boolean; before: string | null; }
+export interface SupportReceipt { ticket: SupportTicket; message: SupportMessage; }

@@ -253,7 +253,7 @@ async function screenshotCall(page, name) {
       const layout=await page.locator('.zw-sheet').evaluate(sheet=>({overflow:sheet.scrollWidth>sheet.clientWidth+1,bottom:sheet.getBoundingClientRect().bottom,height:innerHeight,columns:getComputedStyle(sheet.querySelector('.zw-gifts')).gridTemplateColumns.split(' ').length}));
       assert.equal(layout.overflow,false,`Gift panel ${width}: no horizontal overflow`);
       assert.ok(layout.bottom<=layout.height+1,`Gift panel ${width}: panel stays inside the viewport`);
-      assert.equal(layout.columns,width===320?3:4,`Gift panel ${width}: responsive gift grid`);
+      assert.equal(layout.columns,4,`Gift panel ${width}: reference four-column gift grid`);
     }
     await page.locator('.zw-gifts button').first().click();
     await page.locator('.zw-sheet').evaluate(sheet=>{sheet.scrollTop=0});

@@ -69,6 +69,33 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
+  const licenseToken = JSON.stringify({ token: 'signed-facebetter-license' });
+  expect('POST', '/facebetter/auth', { licenseToken });
+  assert.deepEqual(plain(await api.beautyAuth()), { licenseToken }, 'Facebetter receives the complete license response text');
+  for (const licenseToken of [undefined, '', '   ', 123, 'x'.repeat(128 * 1024 + 1)]) {
+    expect('POST', '/facebetter/auth', { licenseToken });
+    await assert.rejects(api.beautyAuth(), /Beauty effects could not be started/);
+  }
+  finished();
+  const supportId='507f1f77bcf86cd799439041',supportMessageId='507f1f77bcf86cd799439042',supportOwner='507f1f77bcf86cd799439043',supportNow='2026-10-31T10:00:00.000Z';
+  const supportTicket={id:supportId,subject:'Call audio problem',category:'calls',status:'open',priority:'normal',requester:{id:supportOwner,name:'Support fixture',role:'host',avatar:null},assignee:null,lastMessage:{body:'Please help',senderType:'user',createdAt:supportNow},unreadUser:0,unreadStaff:1,createdAt:supportNow,updatedAt:supportNow,lastMessageAt:supportNow};
+  const supportMessage={id:supportMessageId,ticketId:supportId,body:'Please help',senderType:'user',senderName:'Support fixture',clientMessageId:'support-test-one',createdAt:supportNow};
+  expect('GET','/support/tickets?page=2&limit=20&status=resolved',{tickets:[supportTicket],page:2,limit:20,total:21,unreadCount:0});
+  assert.equal((await api.supportTickets({page:2,status:'resolved'})).tickets[0].requester.role,'host');
+  expect('GET',`/support/tickets/${supportId}?before=${supportMessageId}`,{ticket:supportTicket,messages:[supportMessage],total:1,hasMore:false,before:supportMessageId});
+  assert.equal((await api.supportTicket(supportId,supportMessageId)).messages[0].body,'Please help');
+  const supportInput={subject:supportTicket.subject,category:'calls',body:'Please help',clientMessageId:'support-test-one'};
+  expect('POST','/support/tickets',{ticket:supportTicket,message:supportMessage},body=>assert.deepEqual(plain(body),supportInput));
+  assert.equal((await api.createSupportTicket(supportInput)).ticket.id,supportId);
+  expect('POST',`/support/tickets/${supportId}/messages`,{ticket:supportTicket,message:supportMessage},body=>assert.deepEqual(plain(body),{body:'Please help',clientMessageId:'support-test-one'}));
+  assert.equal((await api.sendSupportMessage(supportId,'Please help','support-test-one')).message.id,supportMessageId);
+  expect('POST',`/support/tickets/${supportId}/read`,{ticket:supportTicket},body=>assert.deepEqual(plain(body),{throughMessageId:supportMessageId}));
+  await api.readSupportTicket(supportId,supportMessageId);
+  expect('PATCH',`/support/tickets/${supportId}`,{ticket:{...supportTicket,status:'resolved'}},body=>assert.deepEqual(plain(body),{status:'resolved'}));
+  assert.equal((await api.updateSupportTicket(supportId,'resolved')).ticket.status,'resolved');
+  expect('GET',`/support/tickets/${supportId}`,{ticket:supportTicket,messages:[{...supportMessage,ticketId:supportOwner}],total:1,hasMore:false,before:supportMessageId});
+  await assert.rejects(api.supportTicket(supportId),/could not be confirmed/,'Cross-ticket messages cannot enter the support conversation');
+  finished();
   const adapters = load('src/api/adapters.ts');
   const ordered = adapters.messagesFrom({items:[{_id:'seq2',sequence:2,createdAt:'2026-10-30T10:00:00Z'},{_id:'legacy',createdAt:'2026-10-30T11:00:00Z'},{_id:'seq1',sequence:1,createdAt:'2026-10-30T12:00:00Z'}]},'self').messages;
   assert.deepEqual(plain(ordered.map(message=>message.id)),['legacy','seq1','seq2'],'Transport preserves server sequence ahead of clock skew, with legacy history first');
@@ -636,6 +663,16 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const publicPosts = await api.publicPosts('host-id', 2);
   assert.equal(publicPosts.posts[0].caption, 'A song for today'); assert.equal(publicPosts.total, 13); assert.equal(publicPosts.page, 2);
   assert.throws(() => adapters.publicPostsFrom({ items: [], total: undefined, page: 1, limit: 12 }), /could not be loaded/);
+  const pushPeer = '507f1f77bcf86cd799439012', pushCallId = '507f1f77bcf86cd799439013', pushPostId = '507f1f77bcf86cd799439014';
+  const activeRing = { _id: pushCallId, callerId: pushPeer, calleeId: 'member-id', status: 'ringing', kind: 'audio', hostInitiated: true, coinsPerMinute: 35, expiresAt: new Date(Date.now() + 30000).toISOString() };
+  expect('GET', '/calls/active', activeRing); expect('GET', `/users/${pushPeer}`, { ...publicHost, _id: pushPeer });
+  const notificationCall = await api.notificationCall(pushCallId);
+  assert.equal(notificationCall.from.id, pushPeer); assert.equal(notificationCall.voice, true); assert.equal(notificationCall.fromHost, true);
+  for(const changed of [{status:'ended'},{calleeId:'other-account'},{_id:'different-call'},{expiresAt:new Date(0).toISOString()},{kind:'unknown'}]){
+    expect('GET','/calls/active',{...activeRing,...changed});assert.equal(await api.notificationCall(pushCallId),null,'Expired, completed, unrelated or malformed calls never become incoming rings');
+  }
+  expect('GET', `/posts/${pushPostId}`, { _id: pushPostId, userId: pushPeer, kind: 'photo', mediaUrl: 'https://cdn.example.test/target.jpg', caption: 'Targeted post' });
+  const notificationPost=await api.notificationPost(pushPostId);assert.equal(notificationPost.ownerId,pushPeer);assert.equal(notificationPost.post.id,pushPostId);
   finished();
   reset();
   await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
@@ -684,6 +721,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(settings.stats.fans, 42); assert.equal(settings.stats.coinsReceived, 950); assert.equal(settings.preferences.appearance, 'system');
   assert.equal(settings.profile.maskedPhone, '+91 ••••••3210'); assert.equal(settings.profile.countryCode, '+91'); assert.equal(settings.profile.isPhoneVerified, true);
   assert.equal(settings.capabilities.pushNotifications, true); assert.equal(settings.capabilities.nativePushRegistered, false, 'Server worker availability is not device push registration');
+  assert.equal(settings.preferences.notificationPreferences.earningsAlerts,false,'Earning inspiration starts opt-in even for an older server');
+  assert.equal(settings.preferences.notificationPreferences.quietHours.timeZone,'Asia/Kolkata');
+  const granular={messages:false,earningsAlerts:true,quietHours:{enabled:true,startHour:21,endHour:7,timeZone:'UTC'}};
+  assert.equal(adapters.profileSettingsFrom({...serverSettings,preferences:{...serverSettings.preferences,notificationPreferences:granular}}).preferences.notificationPreferences.messages,false);
+  assert.throws(()=>adapters.profileSettingsFrom({...serverSettings,preferences:{...serverSettings.preferences,notificationPreferences:{calls:'false'}}}),/settings could not be loaded/);
   assert.equal(JSON.stringify(settings).includes('9876543210'), false, 'Only the masked phone may reach the settings WebView');
   assert.equal(settings.profile.role, undefined); assert.equal(settings.profile.isVerifiedHost, undefined, 'Settings summaries cannot grant host authority');
   assert.throws(() => adapters.profileSettingsFrom({ ...serverSettings, stats: {} }), /settings could not be loaded/, 'Missing statistics must not become fabricated zero values');
@@ -939,6 +981,12 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'paid-call', coins: 150, reason: 'out_of_coins' } }, 'An ended call reports its charge and why it ended');
   socket.emitServer('call:updated', { _id: 'free-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 0, coinsCharged: 0 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'free-call' } }, 'Free calls report no charge');
+  for (const status of ['ended', 'missed', 'declined']) {
+    socket.emitServer('call:updated', { _id: `unavailable-${status}`, callerId: 'member-id', calleeId: 'host-id', status, coinsPerMinute: 0, coinsCharged: 0, endReason: 'host_unavailable' });
+    assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: `unavailable-${status}`, reason: 'host_unavailable' } }, 'The server terminal reason survives every terminal status without inventing a charge');
+  }
+  socket.emitServer('call:updated', { _id: 'unknown-reason', callerId: 'member-id', calleeId: 'host-id', status: 'ended', endReason: 'untrusted-server-text' });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'unknown-reason' } }, 'Unknown terminal reasons cannot become UI copy');
   socket.emitServer('chat:message-updated', { _id: 'm-1', senderId: 'host-id', recipientId: 'member-id', text: 'Edited words', editedAt: chatAt, reply: { _id: 'm-0', senderId: 'member-id', text: 'Question', image: false, deleted: false } });
   const update = events.filter(event => event.type === 'chat.updated').at(-1);
   assert.equal(update.data.with, 'host-id');
@@ -985,6 +1033,15 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.connected = true; socket.emitServer('connect');
   assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: false } }], 'A session opened in background never starts a welcome schedule');
   backgroundStop();
+  expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'legacy-device', platform: 'android' }));
+  await api.registerPushDevice('legacy-device');
+  const { configureAppUpdates } = load('src/app-update-events.ts');
+  configureAppUpdates({ packageName: 'com.aurora.liveapp', versionName: '1.0.29', versionCode: 29 });
+  expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'native-device', platform: 'android', appVersionCode: 29, notificationProtocol: 'binzo.push.v1' }));
+  await api.registerPushDevice('native-device', 'binzo.push.v1');
+  expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'legacy-versioned-device', platform: 'android', appVersionCode: 29 }));
+  await api.registerPushDevice('legacy-versioned-device');
+  finished();
   reset();
   const adId = '6a0000000000000000000001';
   const creative = { _id: adId, format: 'banner', advertiser: '  BinzoLive Studio ', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now', domain: 'play.google.com',

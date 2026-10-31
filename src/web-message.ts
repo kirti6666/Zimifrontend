@@ -1,4 +1,7 @@
 import type { WebMessage } from "./bridge";
+import { validNotificationPreferencesPatch } from "./notification-preferences";
+import { notificationTargetFrom } from "./notification-target";
+import { SUPPORT_CATEGORIES, SUPPORT_STATUSES } from "./api/support";
 
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -31,6 +34,10 @@ const rtcSignal = (data: Record<string, unknown>) => {
 const phoneNumber = (d: Record<string, unknown>) => typeof d.phone === "string" && /^\+[1-9]\d{5,14}$/.test(d.phone) &&
   (d.dialCode === undefined || (typeof d.dialCode === "string" && /^\+[1-9]\d{0,2}$/.test(d.dialCode) && d.phone.startsWith(d.dialCode)));
 const idempotency = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(value);
+const supportId = (value: unknown) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
+const supportKeys = (data: Record<string, unknown>, keys: string[]) => Object.keys(data).every(key => keys.includes(key));
+const supportRequest = (data: Record<string, unknown>) => Number.isSafeInteger(data.requestId) && Number(data.requestId) > 0;
+const supportBody = (value: unknown) => text(value, 4000) && !!(value as string).trim();
 const paymentRoute = (value: unknown) => value === undefined || (typeof value === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(value));
 const voiceClientId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 const notificationIds = (value: unknown) => Array.isArray(value) && value.length > 0 && value.length <= 100 && value.every(identifier) && new Set(value).size === value.length;
@@ -49,8 +56,9 @@ const notificationQuery = (data: Record<string, unknown>) => Object.keys(data).e
   (data.since === undefined || data.before === undefined || Date.parse(data.since as string) < Date.parse(data.before as string));
 const settingsPatch = (data: Record<string, unknown>) => {
   const keys = Object.keys(data).filter(key => key !== "requestId");
-  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city", "country"].includes(key)) &&
+  return keys.length > 0 && keys.every(key => ["pushNotifications", "notificationPreferences", "matchCategory", "appearance", "languages", "city", "country"].includes(key)) &&
     (data.pushNotifications === undefined || boolean(data.pushNotifications)) &&
+    (data.notificationPreferences === undefined || validNotificationPreferencesPatch(data.notificationPreferences)) &&
     (data.matchCategory === undefined || data.matchCategory === null || category(data.matchCategory)) &&
     (data.appearance === undefined || ["dark", "light", "system"].includes(String(data.appearance))) &&
     (data.city === undefined || (typeof data.city === "string" && data.city.length <= 100)) &&
@@ -77,6 +85,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "app.exit.request": case "app.launched": valid = Object.keys(d).length === 0; break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
     case "connection.check": case "wallet.load": case "transactions.load": case "push.enable": valid = Object.keys(d).length === 0; break;
+    case "permissions.load": case "permissions.request": case "permissions.settings": case "permissions.cancel":
+      valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
+    case "beauty.auth": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online", "following", "foryou", "new"].includes(String(d.mode))) && (d.country === undefined || (typeof d.country === "string" && d.country.trim().length > 0 && d.country.length <= 100)) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "leaderboard.load": valid = ["daily", "weekly", "all"].includes(String(d.period)) && Object.keys(d).every(key => key === "period"); break;
     case "referral.load": case "referral.share": valid = Object.keys(d).length === 0; break;
@@ -84,7 +95,22 @@ export function parseWebMessage(raw: string): WebMessage | null {
       Object.keys(d).every(key => ["code", "requestId"].includes(key)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": valid = notificationQuery(d); break;
+    case "notifications.open": {
+      const target = notificationTargetFrom(d);
+      valid = !!target && target.targetType === d.targetType && (d.targetId === undefined || target.targetId === d.targetId) &&
+        Object.keys(d).every(key => ["notificationId", "category", "targetType", "targetId", "actorId", "recipientId", "expiresAt"].includes(key));
+      break;
+    }
     case "official.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
+    case "support.activity": valid = boolean(d.active) && (d.ticketId === undefined || supportId(d.ticketId)) && supportKeys(d, ["active", "ticketId"]);break;
+    case "support.load": valid = supportRequest(d) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) &&
+      (d.status === undefined || d.status === "all" || SUPPORT_STATUSES.includes(d.status as never)) && supportKeys(d, ["page", "status", "requestId"]);break;
+    case "support.open": valid = supportRequest(d) && supportId(d.ticketId) && (d.before === undefined || supportId(d.before)) && supportKeys(d, ["ticketId", "before", "requestId"]);break;
+    case "support.create": valid = supportRequest(d) && text(d.subject, 120) && !!(d.subject as string).trim() && SUPPORT_CATEGORIES.includes(d.category as never) && supportBody(d.body) &&
+      idempotency(d.clientMessageId) && supportKeys(d, ["subject", "category", "body", "clientMessageId", "requestId"]);break;
+    case "support.send": valid = supportRequest(d) && supportId(d.ticketId) && supportBody(d.body) && idempotency(d.clientMessageId) && supportKeys(d, ["ticketId", "body", "clientMessageId", "requestId"]);break;
+    case "support.read": valid = supportRequest(d) && supportId(d.ticketId) && supportId(d.throughMessageId) && supportKeys(d, ["ticketId", "throughMessageId", "requestId"]);break;
+    case "support.status": valid = supportRequest(d) && supportId(d.ticketId) && ["open", "resolved"].includes(String(d.status)) && supportKeys(d, ["ticketId", "status", "requestId"]);break;
     case "official.read": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && ((notificationIds(d.ids) && d.all === undefined) || (d.all === true && d.ids === undefined)) && Object.keys(d).every(key => ["ids", "all", "requestId"].includes(key)); break;
     case "catalog.load": case "rtc.config": valid = true; break;
     case "themes.load": valid = Object.keys(d).length === 0; break;

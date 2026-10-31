@@ -32,8 +32,8 @@ const FAVN=[5,10,20,50];
 const BEAUTY={
  "Beauty":[["Original","&#9711;",0],["Smooth","&#128167;",1],["Tone","&#9680;",1],["Clearness","&#9678;",1],["Face","&#9723;",1],["Slim","&#9724;",1]],
  "Makeup":[["None","&#9711;",0],["Honey pink","&#128139;",1],["Orange soda","&#128139;",1],["Grapefruit","&#128139;",1],["Watermelon","&#128139;",1],["Red velvet","&#128139;",1]],
- "Sticker":[["None","&#9711;",0],["Reindeer","&#129418;",0],["Ski goggles","&#127958;",0],["Bunny ears","&#128048;",0],["Love","&#128150;",0],["Crown","&#128081;",0]],
- "Filters":[["Original","&#9711;",0],["CT","&#127912;",1],["Warm yellow","&#127774;",1],["Journey","&#127756;",1],["Film","&#127909;",1],["Blue","&#127756;",1]],
+ "Sticker":[["None","&#9711;",0],["Fox","&#129418;",0],["Glasses","&#128083;",0],["Kiss","&#128139;",0],["Mustache","&#129492;",0],["Fan club","&#128150;",0]],
+ "Filters":[["Original","&#9711;",0],["Natural","&#127912;",1],["Milk tea","&#127774;",1],["Rose","&#127801;",1],["Japanese","&#127909;",1],["Vivid","&#127756;",1]],
  "Image quality":[["Original","&#9711;",0],["Temperature","&#127777;",1],["Tints","&#127912;",1],["Luminance","&#9728;",1],["Saturation","&#9681;",1],["Contrast","&#9680;",1]]
 };
 const TASKS=[["Stream 60 minutes","0 / 60 min","5,000"],["Receive 20 gifts","0 / 20","2,000"],["Reach 500 viewers","0 / 500","1,500"]];
@@ -453,9 +453,11 @@ function fxSheet(){
  return shWrap("Beauty and effects",S.v==="setup"?"Applies to your camera before your next call":"Changes apply now and stay on for your next calls",
  `<div class="dtabs">${Object.keys(BEAUTY).map(k=>`<button class="${S.btab===k?"on":""}" onclick="S.btab='${k}';r()">${k}</button>`).join("")}
    <button class="rst" onclick="resetFx()">Reset</button></div>
-  <div class="dopts">${opts.map(([l,e],i)=>`<button class="dopt ${sel===i?"on":""}" onclick="pickFx(${i})">
+  <div class="dopts">${opts.map(([l,e],i)=>`<button class="dopt ${sel===i?"on":""}" aria-pressed="${sel===i}" onclick="pickFx(${i})">
     <span class="dcirc">${e}</span><span class="dlab">${l}</span></button>`).join("")}</div>
-  ${adj?`<div class="slid"><input type="range" min="0" max="100" value="60" aria-label="${opts[sel][0]} strength"></div>`:""}`)}
+  ${adj?`<div class="slid"><input type="range" min="0" max="100" value="${window.ZimiBeauty?ZimiBeauty.strength(S.btab,sel):60}" oninput="setFxStrength(this.value)" aria-label="${opts[sel][0]} strength"></div>`:""}
+  <p data-zimi-beauty-status role="status" aria-live="polite">${esc(window.ZimiBeauty?ZimiBeauty.getState().message:'')}</p>
+  <button class="rst" data-zimi-beauty-retry onclick="ZimiBeauty.sync()" ${!window.ZimiBeauty||ZimiBeauty.getState().status!=='error'?'hidden':''}>Retry effects</button>`)}
 
 function missionSheet(){
  const goal=S.goal, prog=S.gifted||0, pct=Math.min(100,goal?prog/goal*100:0);
@@ -480,8 +482,9 @@ function giftSheet(){
   <div class="gchip" style="margin-top:10px">${FAVN.map(c=>`<button class="${S.favn===c?"on":""}" onclick="S.favn=${c};r()">${c} &times;</button>`).join("")}</div>
   <div class="pnum" style="margin-top:9px"><span>${f[1]} ${f[0]}</span><span>${S.favGot||0} / ${S.favn} &middot; ${n(f[2]*S.favn)} coins</span></div>`)}
 
-function pickFx(i){S.bsel[S.btab]=i;r()}
-function resetFx(){S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,"Image quality":0};r()}
+function pickFx(i){S.bsel[S.btab]=i;if(window.ZimiBeauty)ZimiBeauty.sync();r()}
+function setFxStrength(value){if(window.ZimiBeauty)ZimiBeauty.setStrength(S.btab,S.bsel[S.btab],value)}
+function resetFx(){S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,"Image quality":0};if(window.ZimiBeauty)ZimiBeauty.reset();r()}
 
 /* A rough on-screen stand-in for the chosen beauty filter, so changes are visible. */
 function fxCss(){
@@ -493,7 +496,7 @@ function video(p){
  if(p===me&&!camOn())return `<div class="vcoff">${I("camoff",22)}<span>Camera off</span></div>`;
  if(!DEMO&&window.ZimiMedia)return `<video class="zh-call-video ${p===me?'zh-call-local':''}" ${p===me?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`;
  return p===me?`<div style="position:absolute;inset:0;filter:${fxCss()||"none"}">${art(p.seed)}</div>`:art(p.seed)}
-function fxOn(){return Object.values(S.bsel).some(Boolean)}
+function fxOn(){return window.ZimiBeauty&&!DEMO?ZimiBeauty.getState().status==='ready':Object.values(S.bsel).some(Boolean)}
 /* One ⋯ button under the video tile; beauty, mute and camera live in its menu. */
 function more(){
  const warn=!S.mic||!camOn();
@@ -536,7 +539,7 @@ function vCall(){const h=g(S.h);
  <div class="fx" id="fl"></div>
  <div id="wn" style="position:relative;margin-top:auto;padding:0 14px"></div>
  <div class="lvfeed" id="rfeed"></div>
- <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button aria-label="Send ${l}"
    onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
 
  ${S.cmp?"":`<div class="lvbar">
@@ -612,13 +615,13 @@ function giftTray(){
     <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?esc(first(S.caller.n)):"the host"}</span></span>
     <button class="addc" onclick="go('coins')">${gem}${window.contentBalance?contentBalance():n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
-   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${giftSticker(l)?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
+   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${giftSticker(l)?"media":""}" onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
      ${giftSticker(l)?`<span class="gl"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gn">${l}</span><span class="gc">${gem}${n(v)}</span></button>`).join("")}</div>`}
   </div></div>`}
 
 function sendGift(l,e,v,k){
- if(S.bal<v)return;
+ if(S.bal<v)return coinRequireRecharge();
  if(!DEMO){Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});return}
  S.bal-=v; S.tray=0; S.sh=0;
  Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});
@@ -690,12 +693,11 @@ function nextCeleb(){
  el.innerHTML=`<div class="celcard"><span class="celico">${c.kind==="ask"?"&#127873;":"&#127942;"}</span>
   <b>Congratulations!</b><span>${esc(c.text)}</span></div>`;
  document.querySelector(".app").appendChild(el);
- if(navigator.vibrate)try{navigator.vibrate(120)}catch(e){}
  setTimeout(()=>{el.classList.add("out")},2600);
  setTimeout(()=>{el.remove();S.cel[c.kind]=2;S.celq.shift();
   if(S.v==="call"||S.v==="hcall")paintGoal();nextCeleb()},3000)}
 /* A sender tapping the asked-for gift sends it. */
-function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return go("coins");sendGift(l,e,v,k||"")}
+function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return coinRequireRecharge();sendGift(l,e,v,k||"")}
 
 /* Compact coin count for tight spots, in the same K / M style as the mission goals. */
 function kfmt(v){return v>=1e6?(v/1e6).toFixed(v>=1e7?1:2).replace(/\.0+$/,"")+"M":v>=1e5?(v/1e3).toFixed(1).replace(/\.0$/,"")+"K":n(v)}
@@ -1083,14 +1085,14 @@ function vDial(){
  /* A redraw continues the rings in step with the ringback tone (web/call-ringback.js). */
  const phase=window.ZimiRingback?window.ZimiRingback.phase():0;
  const tool=(icon,label,text,action,pressed)=>`<span class="rbtn"><button class="zr-round dialtool" aria-label="${label}" ${pressed==null?"":`aria-pressed="${pressed}"`} onclick="${action}">${I(icon,22)}</button><span aria-hidden="true">${text}</span></span>`;
- return `<div class="ringscr dial ${video?"is-video":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
+ return `<div class="ringscr dial ${video?"is-video":""} ${voice?"is-voice":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
   <div class="ringbg" aria-hidden="true">${voice?"":`${DEMO?art(me.seed+2):""}<video data-zimi-local autoplay muted playsinline></video><i class="dialscrim"></i>`}</div>
   ${backButton("callMinimize()",{label:"Minimize call",media:video,slot:"dialmin"})}
   <span class="ringeye">${I(voice?"ph":"vid",13)}${voice?"Voice":"Video"} call</span>
   <div class="ringorb">${avc(p,video?72:104)}</div>
   <h2>${esc(p.n)}</h2><p class="dialstatus">Calling<span class="dialdots" aria-hidden="true"><i></i><i></i><i></i></span></p>
   ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
-  <div class="ringact ${voice?"":"dialdock"}">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())+tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
+  <div class="ringact dialdock">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())}${tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
  </div>`}
 
 function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
@@ -1158,9 +1160,12 @@ function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
   ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
-   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall||short?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
  </div>`}
 async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)return;
+ if(m.topupRequired)return coinRequireRecharge(memberRingAddCoins);
+ if(m.rate>0&&!coinWalletReady())return;
+ if(m.rate>0&&S.bal<m.rate)return coinRequireRecharge(memberRingAddCoins);
  S.acceptingCall=true;m.error="";r();
  try{
   if(window.ZimiMedia?.prepare)await window.ZimiMedia.prepare(!m.voice);
@@ -1180,7 +1185,7 @@ function vHostCall(){const c=S.caller;
  <div style="margin-top:auto"></div>
 
  <div class="lvfeed" id="rfeed"></div>
- <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button aria-label="Send ${l}"
    onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
  ${S.cmp?`<div class="lvcomp">
    ${av(me,34,"none")}
@@ -1600,12 +1605,13 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const supportFocus=window.ZimiSupport?.capture();
  const postFocus=window.ZimiPostCreate?.capture();
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
@@ -1632,7 +1638,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1678,6 +1684,7 @@ Native.on("session.expired",d=>obResetSession(d.message||"Your session has expir
 Native.on("session",d=>{
  S.sessionState="";obApplyAccount(d);
  if(d.requiresOnboarding)return obResumeOnboarding(d);
+ if(obResumePermissionSetup(d))return;
  S.loggedIn=1;S.kf={name:me.n,bio:me.about,langs:(d.user||{}).languages||[]};
  go(S.creatorSetup&&!isHost()?"kyc":"home");
 });
@@ -1686,6 +1693,7 @@ Native.on("auth.ok",d=>{
  clearInterval(S.otpT);clearTimeout(obRequestTimer);S.auth.busy=false;S.sessionState="";
  const creator=S.auth.creatorIntent;obApplyAccount(d);
  if(d.requiresOnboarding){obResumeOnboarding(d,creator);obHaptic("success");return}
+ if(obResumePermissionSetup(d))return;
  S.auth.mode="login";S.auth.creatorIntent=creator;signedIn();
 });
 Native.on("auth.error",obAuthError);
@@ -1693,7 +1701,7 @@ Native.on("profile.account",d=>{if(d.user?.id!==S.user?.id)return;obApplyAccount
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
-Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set")refresh()});
+Native.on("operation.error",d=>{if(String(d.action||'').startsWith('support.'))return;if(d.code==='INSUFFICIENT_COINS')window.ZimiCoins?.requireRecharge();else appNotice(d.message);if(d.action==="presence.set")refresh()});
 Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);if(S.v==='editprofile')go(S.editBack||"profile");else refresh();appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
@@ -1765,9 +1773,9 @@ Native.on("call.ended",d=>{const id=d.callId;
   if(c.from.callId===id){c.fromEnded=true;return}
   if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
  if(S.v==="incoming"&&S.memberRing?.callId===id){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();appNotice(`Missed call from ${first(g(m.id)?.n||"a creator")}`);return ringReturn()}
- if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
+ if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(d.reason==='host_unavailable'?'Host can’t accept the call.':`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
- if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
+ if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr=d.reason==='host_unavailable'?'Host can’t accept the call.':'The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
  if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}

@@ -5,11 +5,11 @@
    file ships. The dial screen's rings keep the same 3s cycle through phase(). */
 window.ZimiRingback=(()=>{
   const CYCLE=3,BURSTS=[[0,.4],[.6,.4]],LEVEL=.2;
-  let context=null,tone=null,timer=0,next=0,began=0,foreground=true;
+  let context=null,tone=null,timer=0,next=0,began=0,foreground=true,releaseRequested=false,releaseTimer=0,audioVersion=0;
   // A minimized ringing call (web/ongoing-call.js) keeps ringing behind other screens.
   const wanted=()=>(['dial','dialback'].includes(S.v)||['dial','dialback'].includes(S.bgCall?.view))&&foreground&&!document.hidden;
   function audio(){
-    if(context)return context;
+    if(context&&context.state!=='closed')return context;
     const Context=window.AudioContext||window.webkitAudioContext;
     try{context=Context?new Context():null}catch{context=null}
     // A browser that held the tone until a tap starts it in step with the rings.
@@ -21,6 +21,21 @@ window.ZimiRingback=(()=>{
       tone.level.gain.cancelScheduledValues(0);tone.level.gain.value=0;next=context.currentTime+(CYCLE-phase())%CYCLE;queue();
     };
     return context;
+  }
+  // Claim audio output from the explicit Start/Connect tap, before microphone
+  // permission awaits lose that gesture. Preparing remains completely silent.
+  function prime(){
+    audioVersion++;
+    releaseRequested=false;clearTimeout(releaseTimer);
+    const c=audio();if(!c)return;
+    if(c.state==='suspended')c.resume().then(()=>{if(releaseRequested)release()}).catch(()=>{});
+  }
+  function release(){
+    if(tone||wanted())return;
+    releaseRequested=true;clearTimeout(releaseTimer);
+    const c=context;if(!c)return;
+    // Let a previous ring's short fade finish before releasing the device.
+    releaseTimer=setTimeout(()=>{if(releaseRequested&&!tone&&!wanted()&&c.state==='running')c.suspend().catch(()=>{})},150);
   }
   // Bursts are queued a cycle ahead, so a busy screen cannot open gaps in the tone.
   function queue(){
@@ -35,6 +50,7 @@ window.ZimiRingback=(()=>{
     }
   }
   function play(){
+    releaseRequested=false;clearTimeout(releaseTimer);
     const c=audio();if(!c)return;
     if(c.state==='suspended')c.resume().catch(()=>{});
     const level=c.createGain();level.gain.value=0;level.connect(c.destination);
@@ -43,19 +59,19 @@ window.ZimiRingback=(()=>{
   }
   function silence(){
     clearInterval(timer);timer=0;if(!tone)return;
-    const {level,voices}=tone,c=context,t=c.currentTime;tone=null;
+    const {level,voices}=tone,c=context,t=c.currentTime,version=audioVersion;tone=null;
     level.gain.cancelScheduledValues(t);level.gain.setValueAtTime(level.gain.value,t);level.gain.linearRampToValueAtTime(0,t+.04);
     voices.forEach(o=>o.stop(t+.05));
     // Release the audio output once nothing rings.
-    setTimeout(()=>{level.disconnect();if(!tone&&c.state==='running')c.suspend().catch(()=>{})},150);
+    setTimeout(()=>{level.disconnect();if(!tone&&audioVersion===version&&c.state==='running')c.suspend().catch(()=>{})},150);
   }
   function sync(){
-    if(wanted()){if(!began){began=performance.now();play()}}
-    else if(began){began=0;silence()}
+    if(wanted()){if(!began)began=performance.now();if(!tone)play()}
+    else{began=0;silence()}
   }
   /** Seconds into the current ring cycle; 0 before ringing starts. */
   function phase(){return began?((performance.now()-began)/1000)%CYCLE:0}
-  function unlock(){if(tone&&context.state==='suspended')context.resume().catch(()=>{})}
+  function unlock(){if(tone&&context.state==='suspended')prime();else if(wanted())sync()}
   document.addEventListener('pointerup',unlock,{capture:true,passive:true});
   document.addEventListener('keydown',unlock,{capture:true,passive:true});
   document.addEventListener('aurora:navigate',sync);
@@ -65,5 +81,5 @@ window.ZimiRingback=(()=>{
   if(screen&&typeof MutationObserver!=='undefined')new MutationObserver(sync).observe(screen,{childList:true});
   Native.on('app.background',()=>{foreground=false;sync()});
   Native.on('app.foreground',()=>{foreground=true;sync()});
-  return {sync,phase,playing:()=>!!tone};
+  return {prime,release,sync,phase,playing:()=>!!tone};
 })();

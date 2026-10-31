@@ -485,10 +485,80 @@ daily cap per member and optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
+## Registration device access
+
+After the server confirms profile completion, Android registration offers a
+device-access screen for camera, microphone and notifications. Only its explicit
+Allow access action opens system prompts. Continue/Not now completes setup with
+any permission choice. A pending per-account marker resumes interrupted setup;
+completed returning accounts have no automatic permission dialog. Photo uploads
+use the system picker, with camera access requested when taking a photo.
+
+The WebView sends `permissions.load`, `permissions.request`, or
+`permissions.settings` with a positive `requestId`. Native replies with
+`permissions.status: {requestId, permissions: {camera, microphone, notifications}}`
+or `permissions.error: {requestId, message}`. Statuses are `granted`, `denied`,
+`blocked`, and `unavailable`. Settings opens only from an explicit recovery
+action. `permissions.cancel: {requestId}` retires later dialogs when setup is
+skipped or closed. Responses and queued requests retire with their account or
+WebView document. Camera/microphone and notification prompts share one native
+queue; checking or requesting access never starts a camera or audio recording.
+
+OS notification permission and FCM registration are separate states. A granted
+permission triggers silent device registration. Login and session restoration
+also register silently; the existing inbox Enable action can explicitly ask or
+open Settings. Native upfront permission setup currently supports Android;
+unsupported platforms report unavailable.
+
+## Push notifications
+
+Android uses native FCM device tokens registered through authenticated
+`POST /notifications/devices`; registrations belong to the current login session.
+Logout clears the tray and retires the device registration. The backend also
+checks that the session is still valid before sending.
+
+Calls, messages, post likes/comments, received gifts and published app updates
+produce durable notifications. Senders can receive alerts when followed approved
+creators go online for private calls. Streaming remains disabled. Approved hosts
+can opt in to earning inspiration based on another eligible creator's real
+completed session; these alerts are limited to one per recipient every 24 hours.
+
+The inbox opens Notification preferences. `PATCH /account/settings` accepts
+`pushNotifications` and a partial nested `notificationPreferences` object:
+`calls`, `messages`, `likes`, `comments`, `gifts`, `appUpdates`, `liveAlerts`,
+`earningsAlerts`, and `quietHours: {enabled, startHour, endHour, timeZone}`.
+Hours use 0–23 and the time zone is an IANA identifier. Categories default on
+except earning inspiration, which requires opt-in. Quiet hours delay non-call
+pushes; expired or no-longer-relevant alerts are discarded. Android also exposes
+separate call, message, activity, update, availability and earning channels.
+
+Payload navigation is limited to inbox, thread, call, post, creator, host and
+app-update targets. Native validates IDs, account ownership and expiry, then
+loads authenticated server state. A call tap never accepts the call; it displays
+only a still-ringing incoming call. Missed calls open the caller's profile.
+Updates invoke the existing native update-policy check. Connected calls can be
+minimized before navigation without losing their media or timer.
+
+Firebase server setup and validation-only commands are documented in
+[backend/PUSH_SETUP.md](../../backend/PUSH_SETUP.md). A new Android build is needed
+for these native changes; production server credentials must also be configured.
+
+## User and host support
+
+Help & support opens from Settings or Chats for members and hosts, including hosts awaiting approval. It uses free support conversations separate from coin-based chats. People choose a topic and subject, send messages, read earlier replies, and resolve or reopen a conversation. An unread-conversation badge appears in Chats. Replies to a resolved conversation reopen it.
+
+`GET/POST /support/tickets`, `GET/PATCH /support/tickets/:id`, and `POST /support/tickets/:id/messages` use the authenticated native session. Messages carry a stable `clientMessageId` for safe retries. Detail pages use a `before` message cursor and authoritative sequences; `POST /support/tickets/:id/read` carries the last displayed `throughMessageId`, preserving newer unseen replies. The server restricts every user operation to that account's ticket.
+
+The dashboard's Support inbox is available to support staff, admins and super admins through `support:read`/`support:write`. It supports user/host/status/unread/search filters, self-assignment, replies, and resolve/reopen. Support staff cannot steal another teammate's assignment. Staff actions are audited. Requester socket events invalidate support data immediately; active app screens and the visible admin workspace also refresh every four seconds. Background screens stop polling. Drafts and loaded history survive refreshes; account/document retirement discards stale requests and clears private UI state.
+
+`src/support-bridge.ts` owns lifecycle, concurrency, and native API calls; `web/support.js` and `web/support.css` own presentation. Run `npm run test:support`, `npm run typecheck`, backend `tests/support.test.ts`, and the dashboard tests. Responsive browser checks cover 320, 390, 768 and desktop widths, Dark Mode, keyboard resizing and long text. An isolated HTTP smoke verifies both member and host create → staff claim/reply → read → resolve → reopen using real admin cookies and the app's response parsers.
+
+The support feature requires deploying the matching backend and dashboard changes and building the updated app bundle into an APK. This implementation does not publish a release.
+
 ## Not covered yet
 
-- Incoming calls while the app is closed: needs push notifications and the
-  Android incoming-call screen in the React Native shell.
+- A full-screen native incoming-call screen while the app is closed. Android
+  currently shows a notification; tapping it opens the verified call in the app.
 - Coin purchases use PayPlus checkout. Coins are credited only by the server,
   after `POST /coins/purchase/verify` or the signed PayPlus webhook. Google
   Play's payments policy may require Play Billing (or its alternative billing

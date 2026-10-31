@@ -18,7 +18,11 @@ import { approvedHost } from "./host-access";
 import { LIVE_STREAMING_ENABLED } from "./features";
 import { beginUpdateActivity } from "./app-update-activity";
 import type { OfficialChatData, OfficialReadPatch } from "./api/types";
-import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
+import { clearDeliveredPush, dismissIncomingCallNotification, onPushTokenChange, pushDeliveryProtocol, registerPush, startPush, syncPushAccount, type PushMode, type PushStatus } from "./push";
+import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
+import { notifyAppUpdate } from "./app-update-events";
+import { openDevicePermissionSettings, readDevicePermissions, requestDevicePermissions, type DevicePermissions } from "./device-permissions";
+import { createSupportBridge, type SupportWebMessage, type SupportAppMessage } from "./support-bridge";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -28,20 +32,24 @@ import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type Pu
 
 /* Screens -> app. */
 export type WebMessage =
+  | SupportWebMessage
   | { type: "ready"; data: { demo: boolean } }
   | { type: "app.exit.request"; data: Record<string, never> }
   | { type: "app.launched"; data: Record<string, never> }
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
   | { type: "push.enable"; data: Record<string, never> }
+  | { type: "permissions.load" | "permissions.request" | "permissions.settings" | "permissions.cancel"; data: { requestId: number } }
   | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
   | { type: "catalog.load" | "rtc.config"; data: Record<string, never> }
+  | { type: "beauty.auth"; data: { requestId: number } }
   | { type: "notifications.load"; data: NotificationsQuery & { requestId?: number } }
   | { type: "notifications.read"; data: { ids: string[]; requestId?: number } }
   | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
   | { type: "notifications.readAll"; data: { requestId: number } }
+  | { type: "notifications.open"; data: NotificationTarget }
   | { type: "official.load"; data: { page?: number; requestId: number } }
   | { type: "official.read"; data: OfficialReadPatch & { requestId: number } }
   | { type: "call.match"; data: { category?: string } }
@@ -132,6 +140,7 @@ export type WebMessage =
    wallet.balance, verification.status) come straight from the server socket. */
 export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
+  | SupportAppMessage
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
   | { type: "app.back"; data: Record<string, never> }
@@ -139,6 +148,8 @@ export type AppMessage =
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
   | { type: "session.error" | "session.expired"; data: { message: string } }
   | { type: "auth.ok"; data: Account & { isNew: boolean; requestId?: number } }
+  | { type: "permissions.status"; data: { permissions: DevicePermissions; requestId: number } }
+  | { type: "permissions.error"; data: { message: string; requestId: number } }
   | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; otpLength: number; requestId?: number } }
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
@@ -176,7 +187,7 @@ export type AppMessage =
   | { type: "official.saved"; data: OfficialReadPatch & NotificationReadResult & { read: true; requestId: number } }
   | { type: "official.error"; data: { requestId: number; message: string; action: "load" | "read" } }
   | { type: "official.changed"; data: Record<string, never> }
-  | { type: "push.opened"; data: Record<string, never> }
+  | { type: "push.opened"; data: NotificationTarget & { ownerId?: string; post?: UserPost; profile?: PublicProfile } }
   | { type: "data.catalog"; data: Catalog }
   | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
   | { type: "data.themes"; data: ThemeCatalog }
@@ -213,6 +224,7 @@ export type AppMessage =
   | { type: "ads.opened" | "ads.retired"; data: { id: string } }
   | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number; message?: Message | null; giftDetails?: import("./api/types").Gift & { transferId: string; quantity: number } } }
   | { type: "rtc.config"; data: RtcConfig }
+  | { type: "beauty.auth"; data: { requestId: number; licenseToken: string } }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string; from: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string; from: string } }
   | { type: "stream.peer" | "stream.peerLeft"; data: { streamId: string; userId: string } }
@@ -265,7 +277,7 @@ export type AppMessage =
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
   | { type: "call.failed"; data: { message: string; callId?: string; code?: string; requiredCoins?: number; invitationId?: string; requestId?: number } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
-  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
+  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" | "host_unavailable" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
@@ -302,6 +314,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
   let loadingStreamLink: { revision: number; epoch: number } | undefined;
   let accountId: string | undefined;
+  let nativePushOwner: string | null | undefined;
+  let nativePushReady: Promise<void> = Promise.resolve();
+  const syncNativePush = (owner: string | null, preferences?: ProfileSettings["preferences"]) => {
+    nativePushOwner = owner;
+    nativePushReady = nativePushReady.catch(() => {}).then(() => syncPushAccount(owner, preferences));
+    return nativePushReady;
+  };
+  const registerPushDevice = (token: string) => {
+    const protocol = pushDeliveryProtocol();
+    return protocol ? api.registerPushDevice(token, protocol) : api.registerPushDevice(token);
+  };
   let hostStatus: string | undefined;
   let hostAccount: Account | undefined;
   let accountRole: ServerRole | undefined;
@@ -399,7 +422,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
     callActivities.clear();
   };
   const current = (version: number) => !closed && version === epoch;
-  const emit = (message: AppMessage) => { if (!closed) post(message); };
+  const emit = (message: AppMessage) => {
+    if (closed) return;
+    if (message.type === "call.connected" || message.type === "call.ended") void dismissIncomingCallNotification(message.data.callId).catch(() => {});
+    post(message);
+  };
+  const support = createSupportBridge({ api, emit, snapshot: () => ({
+    key: `${epoch}:${getSessionVersion()}:${documentRevision}:${accountId ?? ""}`,
+    available: !closed && sessionAvailable && !!accountId && !!getCachedToken() && webReady && !restoring,
+    foreground: appActive,
+  }) });
   const stopConnection = onConnectionChanged(data => {
     if (webReady) emit({ type: "connection.status", data });
   });
@@ -488,11 +520,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
+    if (accountId !== account.user.id) { support.reset(); if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
     accountId = account.user.id; hostStatus = account.user.hostStatus; hostAccount = account;
+    if (nativePushOwner !== accountId) void syncNativePush(accountId).catch(() => {});
     hostChecking = false;
     if (publish) publishHostAccess();
   };
@@ -736,11 +769,18 @@ export function createBridge(post: (msg: AppMessage) => void) {
   // the device decides whether it can receive it.
   let pushStatus: PushStatus = "unavailable";
   let pushSession: number | undefined;
-  let pushPrompted = false;
-  let pushOpenPending = false;
+  let permissionAction: { requestId: number; document: number; sessionVersion: number; epoch: number; retired: boolean } | undefined;
+  let pushOpenPending: NotificationTarget | undefined;
+  let pushOpenRevision = 0;
   const syncPush = async (mode: PushMode) => {
     const version = epoch, sessionVersion = getSessionVersion();
-    const status = await registerPush(token => api.registerPushDevice(token), mode);
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && sessionAvailable;
+    try { await nativePushReady; } catch { return; }
+    if (!applicable()) return;
+    const status = await registerPush(token => {
+      if (!applicable()) throw new Error("Device registration was retired");
+      return registerPushDevice(token);
+    }, mode, applicable);
     if (!current(version) || sessionVersion !== getSessionVersion() || status === pushStatus) return;
     pushStatus = status;
     quietly(loadProfileSettings(), "profile.settings.load");
@@ -748,20 +788,53 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const withPushStatus = (settings: ProfileSettings): ProfileSettings =>
     ({ ...settings, capabilities: { ...settings.capabilities, nativePushRegistered: pushStatus === "registered", nativePushStatus: pushStatus } });
   const emitProfileSettings = (settings: ProfileSettings) => {
-    // Register once per signed-in session, and never spend Android's one-time
-    // permission prompt while the server cannot send.
+    if (accountId) void syncNativePush(accountId, settings.preferences).catch(() => {});
+    // Restore/login only register permission already granted. Registration's
+    // setup screen and the explicit Enable action own permission dialogs.
     if (settings.capabilities.pushNotifications && pushSession !== getSessionVersion() && !liveOnboarding) {
       pushSession = getSessionVersion();
-      void syncPush(pushPrompted ? "silent" : "prompt");
-      pushPrompted = true;
+      void syncPush("silent");
     }
     emit({ type: "data.profileSettings", data: withPushStatus(settings) });
   };
-  /** Opens the inbox for a tapped notification once a signed-in screen can show it. */
-  const flushPushOpen = () => {
+  /** A tap is only navigation; authoritative endpoints recheck sensitive targets. */
+  const flushPushOpen = async () => {
     if (!pushOpenPending || !webReady || !sessionAvailable || restoring || liveOnboarding || hostAccount?.requiresOnboarding) return;
-    pushOpenPending = false;
-    emit({ type: "push.opened", data: {} });
+    const target = pushOpenPending, version = epoch, sessionVersion = getSessionVersion(), revision = pushOpenRevision;
+    pushOpenPending = undefined;
+    if (target.recipientId && target.recipientId !== accountId) return;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && revision === pushOpenRevision && sessionAvailable;
+    if (target.expiresAt && Date.parse(target.expiresAt) <= Date.now() && activeCall !== target.targetId) {
+      emit({ type: "push.opened", data: { targetType: "inbox", notificationId: target.notificationId } });return;
+    }
+    try {
+      if (target.targetType === "appUpdate") {
+        notifyAppUpdate(false);
+      } else if (target.targetType === "thread" && target.targetId) {
+        const profile = await api.publicProfile(target.targetId);
+        if (applicable()) emit({ type: "push.opened", data: { ...target, profile } });
+        return;
+      } else if (target.targetType === "post" && target.targetId) {
+        const post = await api.notificationPost(target.targetId);
+        if (applicable()) emit({ type: "push.opened", data: { ...target, ...post } });
+        return;
+      } else if (target.targetType === "call" && target.targetId && !activeCall && !pendingOutgoing && !verifyCall) {
+        const incoming = await api.notificationCall(target.targetId);
+        if (!applicable()) return;
+        if (incoming && (hasHostAccess() || accountRole === "user" && incoming.fromHost)) {
+          holdCallActivity(incoming.callId);
+          emit({ type: "call.incoming", data: incoming });return;
+        }
+        if (target.actorId) {
+          const profile = await api.publicProfile(target.actorId);
+          if (applicable()) emit({ type: "push.opened", data: { ...target, targetType: "creator", targetId: target.actorId, profile } });
+          return;
+        }
+      }
+      if (applicable()) emit({ type: "push.opened", data: target });
+    } catch {
+      if (applicable()) emit({ type: "push.opened", data: { targetType: "inbox", notificationId: target.notificationId } });
+    }
   };
   const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), emitProfileSettings);
   const loadPublicProfile = (id: string, requestId?: number) => {
@@ -887,6 +960,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const activity = AppState?.addEventListener("change", state => {
     if (closed) return;
     appActive = state === "active";
+    support.foreground();
     stopLive.setActive?.(appActive && !liveOnboarding);
     if (chatLease) { chatLease.revision++; flushChatActivity(); }
     if (!appActive) {
@@ -954,6 +1028,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } else if (!hostChecking) invalidateHostAccess(true);
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
+      if (event.type === "support.updated") { support.changed(typeof event.data?.ticketId === "string" ? event.data.ticketId : undefined); return; }
       if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(1, true), "chats.reload"); return; }
       if (event.type === "account.updated" || event.type === "profile.updated") {
         profileRevision++;
@@ -1044,10 +1119,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
-    if (!onboarding) { void loadLists(); void restorePendingPurchases(); }
+    if (!onboarding) { void loadLists(); void restorePendingPurchases(); void support.unread(); }
     void flushStreamLink(); flushPushOpen();
   };
   const unsubscribe = onSessionExpired(() => {
+    support.reset();
+    void syncNativePush(null).catch(() => {});
+    clearDeliveredPush();
     resetUpdateActivities();
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
@@ -1065,7 +1143,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     try {
       const token = await getToken();
       if (!current(version)) return;
-      if (!token) { void forgetAccountTheme(); emit({ type: "session.none", data: {} }); return; }
+      if (!token) { void syncNativePush(null).catch(() => {}); void forgetAccountTheme(); emit({ type: "session.none", data: {} }); return; }
       let revision = hostRevision;
       let account = await api.me();
       while (current(version) && sessionVersion === getSessionVersion() && revision !== hostRevision) {
@@ -1078,7 +1156,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; void flushStreamLink(); flushPushOpen(); }
+    } finally { restoring = false; void support.unread(); void flushStreamLink(); flushPushOpen(); }
   };
 
   async function handle(msg: WebMessage) {
@@ -1127,6 +1205,46 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "push.enable": if (sessionAvailable && pushSession === getSessionVersion()) await syncPush("settings"); return;
+      case "permissions.cancel": {
+        if (permissionAction?.requestId === msg.data.requestId && permissionAction.document === documentRevision &&
+          permissionAction.sessionVersion === getSessionVersion() && permissionAction.epoch === version) permissionAction.retired = true;
+        return;
+      }
+      case "permissions.load": case "permissions.request": case "permissions.settings": {
+        const { requestId } = msg.data, sessionVersion = getSessionVersion(), document = documentRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && sessionAvailable;
+        const fail = (message: string) => { if (current(version) && document === documentRevision) emit({ type: "permissions.error", data: { message, requestId } }); };
+        if (!sessionAvailable || !accountId || !getCachedToken()) { fail("Sign in before setting up device access."); return; }
+        const action = msg.type !== "permissions.load";
+        if (action && (liveOnboarding || hostAccount?.requiresOnboarding)) { fail("Finish your profile before setting up device access."); return; }
+        if (action && !appActive) { fail("Return to the app to allow device access."); return; }
+        if (action && (activeCall || pendingOutgoing || verifyCall || activeStream)) { fail("Finish your call before changing device access."); return; }
+        if (action && permissionAction && !permissionAction.retired && permissionAction.epoch === version && permissionAction.document === document && permissionAction.sessionVersion === sessionVersion) {
+          fail("A permission request is already open. Finish it to continue."); return;
+        }
+        const owner = action ? { requestId, document, sessionVersion, epoch: version, retired: false } : undefined;
+        if (owner) permissionAction = owner;
+        const owned = () => applicable() && !owner?.retired;
+        try {
+          if (msg.type === "permissions.settings") await openDevicePermissionSettings(owned);
+          if (!owned()) return;
+          const permissions = msg.type === "permissions.request" ? await requestDevicePermissions(owned) : await readDevicePermissions();
+          if (!owned()) return;
+          emit({ type: "permissions.status", data: { permissions, requestId } });
+          if (permissions.notifications === "granted" && (pushSession !== sessionVersion || pushStatus !== "registered")) {
+            pushSession = sessionVersion;
+            void syncPush("silent");
+          }
+        } catch {
+          if (owned()) fail("Device access could not be checked. You can continue and try again later.");
+        } finally { if (owner && permissionAction === owner) permissionAction = undefined; }
+        return;
+      }
+      case "notifications.open": {
+        const target = notificationTargetFrom({ ...msg.data, recipientId: accountId });
+        if (target && sessionAvailable && !liveOnboarding) { pushOpenPending = target;pushOpenRevision++;await flushPushOpen(); }
+        return;
+      }
       case "home.reload": return loadHome(msg.data);
       case "hosts.search": {
         const q = msg.data.q, page = msg.data.page ?? 1;
@@ -1142,6 +1260,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "notifications.unread": return updateNotifications({ ids: msg.data.ids, read: false }, msg.data.requestId);
       case "notifications.readAll": return updateNotifications({ all: true, read: true }, msg.data.requestId);
       case "official.load": return loadOfficial(msg.data.page ?? 1, msg.data.requestId);
+      case "support.activity": case "support.load": case "support.open": case "support.create": case "support.send": case "support.read": case "support.status":
+        return support.handle(msg);
       case "official.read": {
         const { requestId, ...input } = msg.data;
         return readOfficial(input, requestId);
@@ -1174,6 +1294,21 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "relationships.load": return loadRelationships(msg.data.kind, msg.data.page ?? 1, msg.data.requestId);
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
+      case "beauty.auth": {
+        const { requestId } = msg.data, sessionVersion = getSessionVersion(), document = documentRevision, owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && owner === accountId;
+        if (!sessionAvailable || !owner || !getCachedToken()) {
+          operationError(new ApiError("Sign in before using beauty effects.", 401), msg.type, { requestId });
+          return;
+        }
+        try {
+          const data = await api.beautyAuth();
+          if (applicable() && sessionAvailable) emit({ type: "beauty.auth", data: { ...data, requestId } });
+        } catch (error) {
+          if (applicable()) operationError(error, msg.type, { requestId });
+        }
+        return;
+      }
       case "rtc.signal": case "stream.signal": case "stream.ready": {
         if (msg.type === "rtc.signal" && msg.data.callId === verifyCall?.callId) {
           const { callId, ...signal } = msg.data;
@@ -1358,6 +1493,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.logout": {
+        support.reset();
+        const nativeClearing = syncNativePush(null);
+        pushOpenPending = undefined;pushOpenRevision++;
         resetUpdateActivities();
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
@@ -1374,7 +1512,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // invalidation is synchronous; this captured credential cannot revoke
         // a newer login, and network completion never clears its session.
         if (token) void api.logout(token).catch(() => {});
-        try { await clearing; }
+        try { await Promise.all([clearing, nativeClearing]); }
         catch (error) {
           if (current(logoutEpoch) && getSessionVersion() === clearedVersion) operationError(error, msg.type);
         }
@@ -1858,6 +1996,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "call.decline": {
+        void dismissIncomingCallNotification(msg.data.callId).catch(() => {});
         rememberCancelledCall(msg.data.callId);
         if (activeCall === msg.data.callId) { activeCall = undefined; activeHostCall = false; callGeneration++; }
         return quietly(api.declineCall(msg.data.callId).finally(() => finishCallActivity(msg.data.callId)), msg.type);
@@ -1882,6 +2021,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return quietly(api.endVerificationCall(msg.data.callId).finally(() => finishCallActivity(msg.data.callId)), msg.type);
       }
       case "call.end": {
+        if (msg.data.callId) void dismissIncomingCallNotification(msg.data.callId).catch(() => {});
         if (msg.data.callId && msg.data.callId === verifyCall?.callId) {
           const verificationId = msg.data.callId;
           // The call media failed on this device.
@@ -2002,13 +2142,20 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (openStreamLink(event.url)) runtimeLinkReceived = true;
   });
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
-  const stopPush = startPush(() => { pushOpenPending = true; flushPushOpen(); });
+  const stopPush = startPush(data => {
+    const target = notificationTargetFrom(data);
+    if (!target) return;
+    pushOpenPending = target;pushOpenRevision++;void flushPushOpen();
+  }, recipientId => sessionAvailable && !!accountId && (!recipientId || recipientId === accountId));
   const stopPushToken = onPushTokenChange(token => {
-    if (pushSession === getSessionVersion() && sessionAvailable) void api.registerPushDevice(token).catch(() => {});
+    if (pushSession === getSessionVersion() && sessionAvailable) {
+      const version = epoch, sessionVersion = getSessionVersion();
+      void nativePushReady.then(() => { if (current(version) && sessionVersion === getSessionVersion() && sessionAvailable) return registerPushDevice(token); }).catch(() => {});
+    }
   });
 
   return {
-    documentLoading: () => { setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { support.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
@@ -2041,6 +2188,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
       if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
     },
-    close: () => { closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
+    close: () => { support.reset(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }

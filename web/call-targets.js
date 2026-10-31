@@ -53,6 +53,7 @@ function ctPaintTargets() {
    only once the repeat time has passed since it was last shown or dismissed. */
 function ctRechargeRule() { return CallTargets.recharge || (DEMO ? CT_PREVIEW_RECHARGE : null); }
 function ctRechargeCheck() {
+  if (CoinUI.rechargePrompt) { ctRechargeClose(); return; }
   const rule = ctRechargeRule(), dialog = document.getElementById('ct-recharge');
   if (!ctMemberCall() || !rule?.enabled || !coinWalletReady()) { ctRechargeClose(); return; }
   if (dialog) { if (S.bal > rule.thresholdCoins) ctRechargeClose(); else ctRechargePaint(dialog); return; }

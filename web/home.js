@@ -99,7 +99,7 @@ function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="z
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
-  if(['notifications','themes','all-creators','board','refer'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
+  if(['notifications','themes','all-creators','board','refer','support','support-new','support-chat'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
   if(!['home','chats','profile','settings'].includes(S.v))return false;
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
@@ -132,7 +132,7 @@ function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A li
 function homeScreen(){return homeDashboard()}
 
 function homeOpen(id){if(!window.ZIMI_LIVE_STREAMING_ENABLED){const h=g(id);if(!h)return;return h.available&&!isHost()?homeCall(id):go('host',id)}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
-function homeCall(id){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');go('precall',id)}
+function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
 function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return appNotice('Live streaming is temporarily unavailable. Go online for 1:1 calls from your creator settings.');if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
 function homeClaim(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
@@ -170,7 +170,7 @@ function homeCallFundsReady(h){
   if(!h)return false;
   const need=homeCallRequiredCoins(h);
   if(need>0&&!coinWalletReady()){r();return false}
-  if(need>0&&S.bal<need){S.pcerr=`You need at least ${n(need)} coins. Recharge your wallet to call.`;r();return false}
+  if(need>0&&S.bal<need){coinRequireRecharge();return false}
   S.callFunds=null;
   return true;
 }
@@ -201,7 +201,7 @@ function homeCancelPrepare(message='',paint=true){
   S.allowPreparedCall=false;S.pcerr=message;
   // stop() also invalidates getUserMedia promises; any late stream is released
   // by the media layer without interfering with a newer capture.
-  window.ZimiMedia?.stop();pending.cancel();
+  window.ZimiMedia?.stop();window.ZimiRingback?.release();pending.cancel();
   if(paint&&S.v===pending.screen)r();
 }
 function homeValidatePreparingPeer(){
@@ -214,6 +214,7 @@ async function homePrepareCall(view,id){
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
   if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
+  window.ZimiRingback?.prime();
   const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
   const cancelled=new Promise(resolve=>{pending.cancel=()=>resolve(false)});
@@ -232,6 +233,7 @@ async function homePrepareCall(view,id){
     if(view==='dial'&&(isHost()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
     clearTimeout(pending.timer);homeCallPreparation=null;
     Home.preparingCall=false;Home.preparingVoice=false;Home.mediaStatus='Connecting…';
+    document.getElementById('app-notice')?.remove();
     S.nextCallVoice=voice;S.allowPreparedCall=true;
     try{go(view,target)}finally{S.allowPreparedCall=false}
   }catch(error){
@@ -266,6 +268,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='board')return window.ZimiLeaderboard.header();
   if(S.v==='refer')return window.ZimiReferral.header();
   if(S.v==='agency')return window.ZimiAgency.header();
+  if(['support','support-new','support-chat'].includes(S.v))return window.ZimiSupport.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;

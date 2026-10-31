@@ -7,7 +7,7 @@ const { pathToFileURL } = require('node:url');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const out = path.join(root, 'artifacts', 'chat-gifts');
-const realArtPath = process.env.CHAT_GIFT_ART_PATH || path.join(root, '..', 'Gifts', 'Rose_buqa.webp');
+const realArtPath = process.env.CHAT_GIFT_ART_PATH || (fs.existsSync(path.join(root, '..', 'Gifts', 'Rose_buqa.webp')) ? path.join(root, '..', 'Gifts', 'Rose_buqa.webp') : path.join(root, 'artifacts', 'chat-gift-playback', 'rose-original.webp'));
 const realArt = fs.existsSync(realArtPath) ? fs.readFileSync(realArtPath) : null;
 const id = n => Number(n).toString(16).padStart(24, '0');
 const at = n => new Date(Date.UTC(2026, 9, 30, 8, n)).toISOString();
@@ -30,14 +30,22 @@ const quick = (page, gift) => strip(page).getByRole('button', { name: `${gift.na
 const openQuick = async (page, gift) => { await quick(page, gift).click(); await receive(page, 'data.catalog', catalog); await sheet(page).waitFor(); };
 const receipt = (n, transfer, gift = gifts[0], mine = true, sequence = 2) => ({ id: id(n), sequence, mine, text: '', kind: 'gift', status: 'sent', createdAt: at(sequence), gift: { giftId: gift.id, transferId: id(transfer), name: gift.name, emoji: gift.emoji, mediaUrl: gift.mediaUrl, coins: gift.coins, quantity: 1 } });
 const baseHistory = [{ id: id(900), sequence: 1, mine: false, text: 'Choose a gift when you feel like it.', createdAt: at(1) }];
+const previewShapes = [['portrait', 360, 640], ['landscape', 1200, 450], ['square', 800, 800]].map(([name, width, height]) => ({
+  name, width, height, url: `https://media.fixture.test/receipt-${name}.svg`,
+  artwork: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect x="4" y="4" width="${width - 8}" height="${height - 8}" rx="12" fill="#a8268433" stroke="#db2878" stroke-width="8"/><path d="M16 16L${width - 16} ${height - 16}M${width - 16} 16L16 ${height - 16}" stroke="#e8ad36" stroke-width="8"/><text x="50%" y="50%" text-anchor="middle" fill="#a82684" font-size="34">${name} gift</text></svg>`
+}));
 
 async function makePage(browser, errors, account = member, peer = host, history = baseHistory) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   page.setDefaultTimeout(8000);
   page.on('pageerror', error => errors.push(error.message));
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=', 'base64');
-  await page.route(/^https?:\/\//, route => route.request().url().startsWith('https://media.fixture.test/')
-    ? route.fulfill({ status: 200, contentType: realArt && route.request().url().endsWith('/0.png') ? 'image/webp' : 'image/png', body: realArt && route.request().url().endsWith('/0.png') ? realArt : png }) : route.abort());
+  await page.route(/^https?:\/\//, route => {
+    const shape = previewShapes.find(item => item.url === route.request().url());
+    if (shape) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: shape.artwork });
+    return route.request().url().startsWith('https://media.fixture.test/')
+      ? route.fulfill({ status: 200, contentType: realArt && route.request().url().endsWith('/0.png') ? 'image/webp' : 'image/png', body: realArt && route.request().url().endsWith('/0.png') ? realArt : png }) : route.abort();
+  });
   await page.addInitScript(() => { window.__sent = []; window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) }; });
   await page.goto(pathToFileURL(path.join(root, 'assets', 'aurora.html')).href);
   await receive(page, 'session', account);
@@ -90,6 +98,51 @@ async function geometry(page, width, dark) {
   return { width, dark, ...metrics };
 }
 
+async function receiptPreviewLayouts(browser, errors) {
+  const results = [];
+  let next = 2000;
+  for (const mine of [true, false]) {
+    const peer = mine ? host : fan, page = await makePage(browser, errors, mine ? member : hostAccount, peer, []);
+    for (const dark of [false, true]) for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.evaluate(dark => ZimiThemes.setDark(dark), dark);
+      for (const shape of previewShapes) {
+        const item = receipt(next++, next++, { ...gifts[0], name: `${shape.name} gift`, mediaUrl: shape.url }, mine);
+        await receive(page, 'data.thread', { with: peer.id, canSend: true, messages: [item] });
+        const card = page.locator(`#zc-m-${item.id} .zc-gift-card`);
+        await card.locator('img').evaluate(image => image.decode());
+        const layout = await card.evaluate(card => {
+          const box = element => { const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height }; };
+          const image = card.querySelector('img'), style = getComputedStyle(card), row = card.closest('.zc-msg');
+          return { card: box(card), art: box(card.querySelector('.zc-gift-icon')), image: box(image), title: box(card.querySelector('h3')), row: box(row), stack: box(card.parentElement), natural: { width: image.naturalWidth, height: image.naturalHeight }, padding: [style.paddingLeft, style.paddingRight], margin: [style.marginLeft, style.marginRight], border: { width: style.borderTopWidth, style: style.borderTopStyle, color: style.borderTopColor }, overflow: document.documentElement.scrollWidth > innerWidth + 1, cardOverflow: card.scrollWidth > card.clientWidth + 1 };
+        });
+        const label = `${mine ? 'sent' : 'received'} ${shape.name} ${width}px ${dark ? 'dark' : 'light'}`;
+        assert.deepEqual(layout.padding, ['0px', '0px'], `${label}: no card side padding`);
+        assert.deepEqual(layout.margin, ['0px', '0px'], `${label}: no card side margin`);
+        assert.equal(layout.border.width, '1px', `${label}: gift message has a thin border`);
+        assert.equal(layout.border.style, 'solid');
+        assert.notEqual(layout.border.color, 'rgba(0, 0, 0, 0)', `${label}: border is visible in the active theme`);
+        assert.equal(layout.overflow || layout.cardOverflow, false, `${label}: preview and metadata stay within the screen`);
+        assert.deepEqual(layout.natural, { width: shape.width, height: shape.height });
+        assert.ok(Math.abs(layout.image.width / layout.image.height - shape.width / shape.height) < .01, `${label}: original aspect ratio has no letterboxed image slot`);
+        for (const edge of ['left', 'right']) {
+          assert.ok(layout.image[edge] >= layout.art.left - 1 && layout.image[edge] <= layout.art.right + 1, `${label}: artwork stays inside its compact preview`);
+          assert.ok(Math.abs(Math.abs(layout.art[edge] - layout.card[edge]) - 1) < 1, `${label}: artwork has no extra side gutter beyond the border`);
+        }
+        assert.ok(Math.abs((layout.image.left + layout.image.right) / 2 - (layout.art.left + layout.art.right) / 2) < 1, `${label}: portrait artwork is centered`);
+        assert.ok(layout.card.width <= 180 && layout.image.width > 60 && layout.image.width <= 178 && layout.image.height <= 144, `${label}: gift preview stays compact`);
+        assert.ok(layout.image.bottom <= layout.title.top + 1, `${label}: name and coins stay beneath the artwork`);
+        assert.ok(Math.abs(layout.card[mine ? 'right' : 'left'] - layout.stack[mine ? 'right' : 'left']) < 1, `${label}: message keeps its sender/recipient alignment`);
+        if (mine) assert.ok(Math.abs(layout.card.right - layout.row.right) < 1, `${label}: sent gift stays on the right`);
+        if (!dark && width === 390) await page.screenshot({ path: path.join(out, `receipt-${mine ? 'sent' : 'received'}-${shape.name}-390.png`) });
+        results.push({ mine, dark, width, shape: shape.name, ...layout });
+      }
+    }
+    await page.close();
+  }
+  return results;
+}
+
 (async () => {
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
@@ -122,7 +175,15 @@ async function geometry(page, width, dark) {
     assert.equal(await page.evaluate(() => S.bal), 10000, 'Only authoritative wallet events change balance');
     await receive(page, 'wallet.balance', { coins: 0 });
     await receive(page, 'data.catalog', catalog);
-    assert.equal(await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).isDisabled(), true, 'Insufficient balance prevents another gift send');
+    const recharge = page.getByRole('dialog', { name: 'Recharge to continue', exact: true });
+    await recharge.waitFor();
+    await recharge.getByRole('button', { name: 'Not now', exact: true }).click();
+    const beforeRecharge = (await sent(page, 'gift.send')).length;
+    assert.equal(await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).isEnabled(), true, 'Insufficient balance offers recharge');
+    await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).click();
+    await recharge.waitFor();
+    assert.equal((await sent(page, 'gift.send')).length, beforeRecharge, 'The local balance guard opens recharge without another gift send');
+    await recharge.getByRole('button', { name: 'Not now', exact: true }).click();
     await sheet(page).getByRole('button', { name: 'Close gifts', exact: true }).click();
     await receive(page, 'wallet.balance', { coins: 10000 });
 
@@ -144,7 +205,7 @@ async function geometry(page, width, dark) {
     assert.equal(await card.locator('.zc-gift-icon>i').count(), 0, 'Receipt artwork has no crown overlay');
     assert.equal(await card.evaluate(node => node.querySelector('img').getBoundingClientRect().bottom <= node.querySelector('h3').getBoundingClientRect().top + 1), true, 'Portrait receipt artwork stays above its name and price');
     const cardDecoration = await card.evaluate(node => { const style = getComputedStyle(node); return { background: style.backgroundImage, color: style.backgroundColor, border: style.borderTopWidth, shadow: style.boxShadow, filter: style.filter }; });
-    assert.equal(cardDecoration.background, 'none'); assert.equal(cardDecoration.border, '0px'); assert.equal(cardDecoration.shadow, 'none'); assert.equal(cardDecoration.filter, 'none'); assert.ok(['rgba(0, 0, 0, 0)', 'transparent'].includes(cardDecoration.color), 'Gift receipt has no added artwork backdrop');
+    assert.equal(cardDecoration.background, 'none'); assert.equal(cardDecoration.border, '1px'); assert.equal(cardDecoration.shadow, 'none'); assert.equal(cardDecoration.filter, 'none'); assert.ok(['rgba(0, 0, 0, 0)', 'transparent'].includes(cardDecoration.color), 'Gift receipt has no added artwork backdrop');
     await receive(page, 'data.catalog', { ...catalog, gifts: gifts.map(gift => ({ ...gift, coins: gift.coins + 500, name: gift.name + ' new catalog' })) });
     await receive(page, 'data.thread', { with: host.id, canSend: true, messages: [...baseHistory, canonical] });
     assert.match(await card.innerText(), /Orbit Rose/); assert.doesNotMatch(await card.innerText(), /new catalog/, 'Historical receipts keep their saved catalog snapshot');
@@ -176,8 +237,9 @@ async function geometry(page, width, dark) {
     assert.equal(await hostPage.locator('.zc-gift-card').count(), 2, 'Realtime receipt, gift notification and history converge without duplicates');
     assert.equal((await sent(hostPage, 'gift.send')).length, 0);
     await hostPage.screenshot({ path: path.join(out, 'host-received-receipts.png') });
+    const receiptLayouts = await receiptPreviewLayouts(browser, errors);
     assert.deepEqual(errors, []);
-    fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify({ actualArtwork: realArt ? { path: realArtPath, bytes: realArt.length, width: 360, height: 640 } : null, layouts, checks: ['production bundle', 'native-edge fixtures only', '320/390/1280 light/dark', 'server artwork and prices', 'quick-select full picker', 'separate Gift action', 'no automatic spend', 'wallet failure and retry identity', 'persisted receipts', 'transfer deduplication', 'host reception'], pageErrors: errors }, null, 2));
-    console.log('PASS chat gifts: compact row + visible Gift button; responsive themes; explicit server-priced send; wallet failure/retry; persisted sent/received receipts and deduplication.');
+    fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify({ actualArtwork: realArt ? { path: realArtPath, bytes: realArt.length, width: 360, height: 640 } : null, layouts, receiptLayouts, checks: ['production bundle', 'native-edge fixtures only', '320/390/1280 light/dark', 'server artwork and prices', 'quick-select full picker', 'separate Gift action', 'no automatic spend', 'wallet failure and retry identity', 'persisted receipts', 'transfer deduplication', 'host reception', 'sent/received natural-aspect previews without side gaps'], pageErrors: errors }, null, 2));
+    console.log('PASS chat gifts: compact quick row, explicit server-priced sends, retry/deduplication, persisted receipts, and smaller bordered sent/received portrait/landscape/square previews at 320/390px in both themes.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

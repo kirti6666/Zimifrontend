@@ -24,16 +24,26 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
   // The FCM edge: OS permission, the device token and notification taps.
-  const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
+  const push = { status: 'registered', token: 'fcm:device-token', modes: [], owners: [], dismissed: [], protocol: undefined, cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
   const pushModule = {
+    syncPushAccount: async (owner, preferences) => { push.owners.push({owner, preferences}); if(overrides.syncPushAccount) await overrides.syncPushAccount(owner, preferences); },
+    dismissIncomingCallNotification: async id => { push.dismissed.push(id); },
+    pushDeliveryProtocol: () => push.protocol,
     startPush: onOpen => { push.open = onOpen; return () => { push.stopped++; }; },
-    registerPush: async (save, mode) => {
+    registerPush: async (save, mode, isCurrent) => {
       push.modes.push(mode);
+      if (overrides.registerPush) return overrides.registerPush(save, mode, isCurrent);
       if (push.status !== 'registered') return push.status;
       try { await save(push.token); return 'registered'; } catch { return 'unavailable'; }
     },
     onPushTokenChange: listener => { push.tokenListener = listener; return () => { push.tokenListener = undefined; }; },
     clearDeliveredPush: () => { push.cleared++; },
+  };
+  const devicePermissions = { value: { camera: 'denied', microphone: 'denied', notifications: 'denied' }, actions: [] };
+  const devicePermissionModule = {
+    readDevicePermissions: async () => { devicePermissions.actions.push('read'); return overrides.readDevicePermissions ? overrides.readDevicePermissions() : { ...devicePermissions.value }; },
+    requestDevicePermissions: async isCurrent => { devicePermissions.actions.push('request'); return overrides.requestDevicePermissions ? overrides.requestDevicePermissions(isCurrent) : { ...devicePermissions.value }; },
+    openDevicePermissionSettings: async isCurrent => { devicePermissions.actions.push('settings'); if (overrides.openDevicePermissionSettings) await overrides.openDevicePermissionSettings(isCurrent); },
   };
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds, requiredCoins) { super(message); Object.assign(this, { status, code, retryAfterSeconds, requiredCoins }); }
@@ -92,6 +102,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
       if (id === './push') return pushModule;
+      if (id === './device-permissions') return devicePermissionModule;
       if (id === './features') return { LIVE_STREAMING_ENABLED: liveStreaming };
       if (id === './chat-photo-download') return { downloadChatPhoto: async (to, messageId, current) => { calls.push({ name: 'downloadChatPhoto', args: [to, messageId, current] }); if (overrides.downloadChatPhoto) return overrides.downloadChatPhoto(to, messageId, current); } };
       if (id === './api/realtime') return { VERIFY_PEER: 'zimi-team', connectRealtime: (token, onEvent, userId, initiallyActive) => {
@@ -127,12 +138,81 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push, devicePermissions };
 }
 
 // Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
+
+test('Facebetter auth validates requests and returns only the correlated license token', async () => {
+  const h = harness(), licenseToken = '{"token":"signed-facebetter-license"}';
+  for (const data of [{}, { requestId: 0 }, { requestId: -1 }, { requestId: 1.5 }, { requestId: '1' }, { requestId: 1, appKey: 'forged' }]) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'beauty.auth', data })), null);
+    h.bridge.handle({ type: 'beauty.auth', data });
+  }
+  assert.equal(h.count('beautyAuth'), 0);
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.overrides.beautyAuth = () => ({ licenseToken });
+  h.bridge.handle({ type: 'beauty.auth', data: { requestId: 17 } }); await settle();
+  assert.equal(h.count('beautyAuth'), 1);
+  assert.deepEqual(plain(h.find('beauty.auth').at(-1).data), { requestId: 17, licenseToken });
+  h.overrides.beautyAuth = () => { throw new h.ApiError('Beauty effects are unavailable.', 503); };
+  h.bridge.handle({ type: 'beauty.auth', data: { requestId: 18 } }); await settle();
+  assert.deepEqual(plain(h.find('operation.error').at(-1).data), { action: 'beauty.auth', requestId: 18, message: 'Beauty effects are unavailable.', status: 503 });
+  h.bridge.close();
+});
+
+test('Facebetter auth requires an account and discards late licenses and errors after account or document changes', async () => {
+  const signedOut = harness();
+  signedOut.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  signedOut.bridge.handle({ type: 'beauty.auth', data: { requestId: 1 } }); await settle();
+  assert.equal(signedOut.count('beautyAuth'), 0);
+  assert.equal(signedOut.find('operation.error').at(-1).data.requestId, 1);
+  signedOut.bridge.close();
+  for (const change of ['session', 'document']) for (const fail of [false, true]) {
+    const h = harness(), pending = deferred();
+    await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+    h.overrides.beautyAuth = () => pending.promise;
+    h.bridge.handle({ type: 'beauty.auth', data: { requestId: 21 } }); await settle();
+    if (change === 'session') await h.session.setSessionTokens(tokenPair('bob'));
+    else { h.bridge.documentLoading(); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle(); }
+    if (fail) pending.reject(new h.ApiError('Old beauty error', 503));
+    else pending.resolve({ licenseToken: 'old-private-license' });
+    await settle();
+    assert.equal(h.find('beauty.auth').length, 0);
+    assert.equal(h.find('operation.error').filter(event => event.data.action === 'beauty.auth').length, 0);
+    h.bridge.close();
+  }
+});
+
+test('support routes remain available to members and pending hosts and live invalidation refreshes only their active view', async () => {
+  const h=harness(),self='507f1f77bcf86cd799439031',ticketId='507f1f77bcf86cd799439032',messageId='507f1f77bcf86cd799439033';
+  const ticket={id:ticketId,subject:'Need support',status:'open',unreadUser:1,updatedAt:'2026-10-31T10:00:00Z'};
+  const message={id:messageId,ticketId,body:'Team reply',senderType:'staff',createdAt:'2026-10-31T10:00:00Z'};
+  h.overrides.me=()=>({...account(self),user:{...account(self).user,role:'host',serverRole:'host',hostStatus:'pending'},requiresOnboarding:false});
+  h.overrides.supportTickets=()=>({tickets:[ticket],page:1,limit:20,total:1,unreadCount:1});
+  h.overrides.supportTicket=()=>({ticket,messages:[message],total:1,hasMore:false,before:messageId});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'support.activity',data:{active:true,ticketId}});h.bridge.handle({type:'support.open',data:{ticketId,requestId:1}});await settle();
+  assert.equal(h.find('data.supportTicket').at(-1).data.ticket.id,ticketId,'Support does not require creator approval or spend coins');
+  const before=h.count('supportTicket');h.live.at(-1).onEvent({type:'support.updated',data:{ticketId}});await settle();assert.equal(h.count('supportTicket'),before+1);
+  assert.equal(h.find('data.supportTicket').at(-1).data.background,true);
+  h.bridge.handle({type:'support.activity',data:{active:false}});await settle();const reads=h.count('supportTicket');
+  h.live.at(-1).onEvent({type:'support.updated',data:{ticketId}});await settle();assert.equal(h.count('supportTicket'),reads,'Other screens do not poll private support content');h.bridge.close();
+});
+
+test('support content and acknowledgments are discarded after logout and document replacement', async () => {
+  const h=harness(),self='507f1f77bcf86cd799439031',ticketId='507f1f77bcf86cd799439032',pending=deferred();
+  h.overrides.me=()=>({...account(self),requiresOnboarding:false});h.overrides.supportTickets=()=>({tickets:[],page:1,limit:20,total:0,unreadCount:0});
+  h.overrides.supportTicket=()=>pending.promise;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'support.activity',data:{active:true,ticketId}});h.bridge.handle({type:'support.open',data:{ticketId,requestId:1}});await settle();
+  h.bridge.handle({type:'auth.logout',data:{}});await settle();pending.resolve({ticket:{id:ticketId},messages:[],hasMore:false});await settle();
+  assert.equal(h.find('data.supportTicket').length,0);h.bridge.documentLoading();h.bridge.close();
+});
 
 test('conversation activity serializes old close/new open, renews and releases in background without interrupting chat', async () => {
   const h=harness(),first=deferred();
@@ -748,7 +828,7 @@ test('the app page alone turns screenshot protection on and off for private scre
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
-test('Android origin-only WebView messages reach OTP and haptic handlers', async () => {
+test('Android origin-only WebView messages reach OTP while legacy UI haptic messages stay silent', async () => {
   const h = harness();
   const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
@@ -763,10 +843,10 @@ test('Android origin-only WebView messages reach OTP and haptic handlers', async
   const url = 'https://aurora.localhost';
   assert.equal(web.props.onShouldStartLoadWithRequest({ url }), true);
   web.props.onMessage({ nativeEvent: { url, data: JSON.stringify(sendMessage()) } });
-  web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type: 'ui.haptic', data: { kind: 'success' } }) } });
+  for (const kind of ['selection', 'light', 'success', 'error']) web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type: 'ui.haptic', data: { kind } }) } });
   await settle();
   assert.equal(h.count('sendOtp'), 1, 'Android messages must dispatch a real OTP request');
-  assert.deepEqual(h.haptics, ['success']);
+  assert.deepEqual(h.haptics, [], 'Click and action feedback must never vibrate');
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
@@ -3292,6 +3372,114 @@ const pushSettings = (serverPush = true) => { const settings = profileSettings()
 const signedIn = (id = 'alice') => ({ ...account(id), requiresOnboarding: false, tokens: tokenPair(id), isNew: false });
 const pushCapability = h => h.find('data.profileSettings').at(-1).data.capabilities;
 
+test('native push ownership and authoritative preferences are committed before capable-device registration', async () => {
+  const h=harness(), preferencesSaved=deferred();
+  h.push.protocol='binzo.push.v1';h.overrides.verifyOtp=()=>signedIn();h.overrides.profileSettings=()=>pushSettings(true);
+  h.overrides.syncPushAccount=async(_owner,preferences)=>{if(preferences)await preferencesSaved.promise;};
+  h.bridge.handle(verifyMessage());await settle();
+  assert.equal(h.push.owners[0].owner,'alice');assert.equal(h.push.owners[0].preferences,undefined,'A changed owner starts without enabled native display');
+  assert.ok(h.push.owners.at(-1).preferences);assert.equal(h.count('registerPushDevice'),0,'No capable token is activated before native settings persist');
+  preferencesSaved.resolve();await settle();
+  assert.deepEqual(h.calls.filter(call=>call.name==='registerPushDevice').at(-1).args,['fcm:device-token','binzo.push.v1']);
+  h.overrides.saveProfileSettings=()=>({...pushSettings(true),preferences:{...profileSettings().preferences,pushNotifications:false}});
+  h.bridge.handle({type:'profile.settings.save',data:{pushNotifications:false,requestId:2}});await settle();
+  assert.equal(h.push.owners.at(-1).preferences.pushNotifications,false,'Background rendering receives the committed opt-out');
+  h.bridge.handle({type:'auth.logout',data:{}});await settle();assert.equal(h.push.owners.at(-1).owner,null);h.bridge.close();
+});
+
+test('incoming call notifications dismiss on connection, decline and terminal events without auto-answering', async () => {
+  const h=harness();h.overrides.verifyOtp=()=>signedIn();h.bridge.handle(verifyMessage());await settle();
+  const callId='507f1f77bcf86cd799439011';
+  h.live[0].onEvent({type:'call.ended',data:{callId,reason:'host_unavailable'}});await settle();
+  assert.equal(h.find('call.ended').at(-1).data.reason,'host_unavailable');assert.deepEqual(h.push.dismissed,[callId]);
+  h.bridge.handle({type:'call.decline',data:{callId:'507f1f77bcf86cd799439012'}});await settle();
+  assert.equal(h.push.dismissed.at(-1),'507f1f77bcf86cd799439012');assert.equal(h.count('acceptCall'),0);h.bridge.close();
+});
+
+test('registration permission setup waits for server-confirmed profile completion and only prompts after Allow', async () => {
+  const h=harness();
+  h.overrides.profileSettings=()=>pushSettings(true); h.push.status='denied';
+  h.bridge.handle(verifyMessage()); await settle();
+  h.bridge.handle({type:'permissions.request',data:{requestId:1}}); await settle();
+  assert.equal(h.devicePermissions.actions.length,0,'Unfinished registration cannot trigger the setup prompt');
+  assert.match(h.find('permissions.error').at(-1).data.message,/Finish your profile/);
+  h.bridge.handle({type:'permissions.load',data:{requestId:2}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read'],'Status reads never request access');
+  h.overrides.saveProfile=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'profile.save',data:{onboarding:true,name:'Alice'}}); await settle();
+  assert.deepEqual(h.push.modes,['silent'],'Completion does not race the explanation screen with an OS prompt');
+  h.devicePermissions.value={camera:'denied',microphone:'granted',notifications:'granted'}; h.push.status='registered';
+  h.bridge.handle({type:'permissions.request',data:{requestId:3}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read','request']);
+  assert.deepEqual(plain(h.find('permissions.status').at(-1).data),{permissions:h.devicePermissions.value,requestId:3});
+  assert.ok(h.push.modes.every(mode=>mode==='silent'),'FCM registration reuses the explicit permission grant');
+  assert.equal(h.count('registerPushDevice'),1); h.bridge.close();
+});
+
+test('permission setup cancellation retires later dialogs and ignores late results without blocking account access', async () => {
+  const h=harness(),request=deferred(); let isCurrent;
+  h.overrides.verifyOtp=()=>signedIn();
+  h.overrides.requestDevicePermissions=current=>{isCurrent=current;return request.promise;};
+  h.bridge.handle(verifyMessage()); await settle();
+  h.bridge.handle({type:'permissions.request',data:{requestId:4}}); await settle();
+  assert.equal(isCurrent(),true);
+  h.bridge.handle({type:'permissions.request',data:{requestId:5}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['request'],'Repeated taps cannot start another prompt');
+  h.bridge.handle({type:'permissions.cancel',data:{requestId:99}}); assert.equal(isCurrent(),true,'An unrelated request cannot cancel this action');
+  h.bridge.handle({type:'permissions.cancel',data:{requestId:4}}); assert.equal(isCurrent(),false);
+  request.resolve({camera:'granted',microphone:'granted',notifications:'granted'}); await settle();
+  assert.equal(h.find('permissions.status').length,0,'A skipped screen cannot be reopened by a late result');
+  assert.equal(h.count('registerPushDevice'),0); assert.ok(h.session.getCachedToken(),'Skipping keeps the authenticated session');
+  h.bridge.close();
+});
+
+test('permission results are owned by the signed-in account and WebView document', async () => {
+  const h=harness(),request=deferred(); let isCurrent;
+  h.overrides.verifyOtp=()=>signedIn();
+  h.overrides.requestDevicePermissions=current=>{isCurrent=current;return request.promise;};
+  h.bridge.handle(verifyMessage()); await settle();
+  h.bridge.handle({type:'permissions.request',data:{requestId:8}}); await settle();
+  h.bridge.documentLoading(); assert.equal(isCurrent(),false,'Reload retires queued permission dialogs');
+  request.resolve({camera:'granted',microphone:'granted',notifications:'granted'}); await settle();
+  assert.equal(h.find('permissions.status').length,0); assert.equal(h.count('registerPushDevice'),0);
+  const second=deferred(); h.overrides.requestDevicePermissions=current=>{isCurrent=current;return second.promise;};
+  h.bridge.handle({type:'permissions.request',data:{requestId:9}}); await settle();
+  h.bridge.handle({type:'auth.logout',data:{}}); await settle(); assert.equal(isCurrent(),false);
+  h.overrides.verifyOtp=()=>signedIn('bob'); h.bridge.handle(verifyMessage(2)); await settle();
+  second.resolve({camera:'granted',microphone:'granted',notifications:'granted'}); await settle();
+  assert.equal(h.find('permissions.status').length,0); assert.equal(h.count('registerPushDevice'),0); h.bridge.close();
+});
+
+test('permission Settings is explicit, signed-in and foreground-only; protocol accepts only correlated known actions', async () => {
+  const h=harness();
+  for(const type of ['permissions.load','permissions.request','permissions.settings','permissions.cancel']) {
+    assert.ok(h.webMessages.parseWebMessage(JSON.stringify({type,data:{requestId:1}})));
+    for(const data of [{},{requestId:0},{requestId:-1},{requestId:1,permission:'contacts'},{requestId:1,userId:'forged'}]) assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type,data})),null);
+  }
+  h.bridge.handle({type:'permissions.request',data:{requestId:1}}); await settle();
+  assert.equal(h.devicePermissions.actions.length,0);
+  h.overrides.verifyOtp=()=>signedIn(); h.bridge.handle(verifyMessage()); await settle();
+  h.devicePermissions.value={camera:'blocked',microphone:'blocked',notifications:'blocked'};
+  h.bridge.handle({type:'permissions.load',data:{requestId:2}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read'],'Blocked permissions never auto-open Settings');
+  h.activities.forEach(listener=>listener('background'));
+  h.bridge.handle({type:'permissions.settings',data:{requestId:3}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read']);
+  h.activities.forEach(listener=>listener('active'));
+  h.bridge.handle({type:'permissions.settings',data:{requestId:4}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read','settings','read']); h.bridge.close();
+});
+
+test('retired FCM registration cannot save a device to a different account after a delayed permission/token result', async () => {
+  const h=harness(),registration=deferred(); let save,isCurrent;
+  h.overrides.verifyOtp=()=>signedIn(); h.overrides.profileSettings=()=>pushSettings(true);
+  h.overrides.registerPush=async(callback,_mode,current)=>{save=callback;isCurrent=current;await registration.promise;try{await callback('late-token');return 'registered';}catch{return 'unavailable';}};
+  h.bridge.handle(verifyMessage()); await settle(); assert.equal(isCurrent(),true);
+  h.bridge.handle({type:'auth.logout',data:{}}); await settle(); assert.equal(isCurrent(),false);
+  registration.resolve(); await settle();
+  assert.equal(h.count('registerPushDevice'),0); assert.ok(save); h.bridge.close();
+});
+
 test('push registers each session only when the server can send, and settings report this device', async () => {
   const h = harness();
   h.overrides.verifyOtp = () => signedIn();
@@ -3302,7 +3490,7 @@ test('push registers each session only when the server can send, and settings re
 
   h.overrides.profileSettings = () => pushSettings(true);
   h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
-  assert.deepEqual(h.push.modes, ['prompt']);
+  assert.deepEqual(h.push.modes, ['silent']);
   assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').map(call => call.args), [['fcm:device-token']]);
   assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [true, 'registered']);
   h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
@@ -3315,7 +3503,7 @@ test('push registers each session only when the server can send, and settings re
 
   h.overrides.verifyOtp = () => signedIn('bob');
   h.bridge.handle(verifyMessage(2)); await settle();
-  assert.deepEqual(h.push.modes, ['prompt', 'silent'], 'A later account re-registers without prompting again');
+  assert.deepEqual(h.push.modes, ['silent', 'silent'], 'Each account re-registers without prompting on login');
   assert.equal(h.count('registerPushDevice'), 2);
   h.push.tokenListener('fcm:rotated'); await settle();
   assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').at(-1).args, ['fcm:rotated']);
@@ -3332,7 +3520,7 @@ test('denied permission is reported, retried silently in the foreground and can 
   h.bridge.handle(verifyMessage()); await settle();
   assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [false, 'denied']);
   h.activities.forEach(listener => listener('active')); await settle();
-  assert.deepEqual(h.push.modes, ['prompt', 'silent']);
+  assert.deepEqual(h.push.modes, ['silent', 'silent']);
 
   assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: {} })));
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: { token: 'injected' } })), null);
@@ -3372,6 +3560,47 @@ test('a tapped notification opens the inbox once a signed-in, onboarded screen c
   h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
   assert.equal(h.find('push.opened').length, 3);
   h.bridge.close();
+});
+
+test('notification navigation resolves server-owned targets, checks recipient and discards work after logout', async () => {
+  const h = harness(), self = '507f1f77bcf86cd799439011', peer = '507f1f77bcf86cd799439012', postId = '507f1f77bcf86cd799439013';
+  h.overrides.me = () => ({ ...account(self), requiresOnboarding: false });
+  h.overrides.publicProfile = id => ({ id, name: 'Verified peer', role: 'host' });
+  h.overrides.notificationPost = id => ({ ownerId: peer, post: { id, kind: 'photo', url: 'https://cdn.example.test/photo.jpg' } });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.push.open({ targetType: 'thread', targetId: peer, recipientId: peer, category: 'messages' }); await settle();
+  assert.equal(h.count('publicProfile'), 0, 'Another account cannot resolve this notification');
+  h.push.open({ targetType: 'thread', targetId: peer, recipientId: self, category: 'messages' }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.profile.name, 'Verified peer');
+  h.bridge.handle({ type: 'notifications.open', data: { targetType: 'post', targetId: postId, category: 'likes' } }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.post.id, postId);
+  assert.equal(h.find('push.opened').at(-1).data.ownerId, peer);
+  for (const notificationPreferences of [{ messages: false }, { quietHours: { enabled: true, timeZone: 'Asia/Kolkata', startHour: 22, endHour: 8 } }]) assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.settings.save', data: { notificationPreferences, requestId: 1 } })));
+  for (const notificationPreferences of [{ calls: 1 }, { quietHours: { startHour: 24 } }, { quietHours: { timeZone: 'Invalid/Time' } }, { admin: true }]) assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.settings.save', data: { notificationPreferences, requestId: 1 } })), null);
+  const pending = deferred(); h.overrides.publicProfile = () => pending.promise;
+  h.push.open({ targetType: 'thread', targetId: peer, recipientId: self }); await settle();
+  const opened = h.find('push.opened').length;
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); pending.resolve({ id: peer, name: 'Late peer' }); await settle();
+  assert.equal(h.find('push.opened').length, opened, 'A late profile cannot navigate the replacement signed-out session'); h.bridge.close();
+});
+
+test('notification call taps recheck the active incoming call and never accept automatically', async () => {
+  const h = harness(), self = '507f1f77bcf86cd799439011', peer = '507f1f77bcf86cd799439012', callId = '507f1f77bcf86cd799439013';
+  h.overrides.me = () => ({ ...approvedAccount(self), requiresOnboarding: false });
+  h.overrides.notificationCall = id => ({ callId: id, from: { id: peer, name: 'Caller' }, voice: true });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.push.open({ targetType: 'call', targetId: callId, recipientId: self, category: 'calls', expiresAt: new Date(Date.now() + 30000).toISOString() }); await settle();
+  assert.equal(h.count('notificationCall'), 1); assert.equal(h.find('call.incoming').at(-1).data.callId, callId);
+  assert.equal(h.count('acceptCall'), 0); assert.equal(h.count('startCall'), 0);
+  h.overrides.notificationCall = () => null;
+  h.push.open({ targetType: 'call', targetId: callId, recipientId: self, category: 'calls' }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.targetType, 'call', 'A finished call opens history');
+  h.overrides.publicProfile = id => ({ id, name: 'Missed caller', role: 'sender' });
+  h.push.open({ targetType: 'call', targetId: callId, actorId: peer, recipientId: self, category: 'calls' }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.targetType, 'creator');assert.equal(h.find('push.opened').at(-1).data.profile.name, 'Missed caller');
+  const count = h.count('notificationCall');
+  h.push.open({ targetType: 'call', targetId: callId, recipientId: self, category: 'calls', expiresAt: new Date(0).toISOString() }); await settle();
+  assert.equal(h.count('notificationCall'), count); assert.equal(h.find('push.opened').at(-1).data.targetType, 'inbox'); h.bridge.close();
 });
 
 test('automatic invitations use a strict quoted endpoint and never start or accept on wallet refresh', async () => {
