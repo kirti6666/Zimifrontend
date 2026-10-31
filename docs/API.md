@@ -543,6 +543,18 @@ Firebase server setup and validation-only commands are documented in
 [backend/PUSH_SETUP.md](../../backend/PUSH_SETUP.md). A new Android build is needed
 for these native changes; production server credentials must also be configured.
 
+## User and host support
+
+Help & support opens from Settings or Chats for members and hosts, including hosts awaiting approval. It uses free support conversations separate from coin-based chats. People choose a topic and subject, send messages, read earlier replies, and resolve or reopen a conversation. An unread-conversation badge appears in Chats. Replies to a resolved conversation reopen it.
+
+`GET/POST /support/tickets`, `GET/PATCH /support/tickets/:id`, and `POST /support/tickets/:id/messages` use the authenticated native session. Messages carry a stable `clientMessageId` for safe retries. Detail pages use a `before` message cursor and authoritative sequences; `POST /support/tickets/:id/read` carries the last displayed `throughMessageId`, preserving newer unseen replies. The server restricts every user operation to that account's ticket.
+
+The dashboard's Support inbox is available to support staff, admins and super admins through `support:read`/`support:write`. It supports user/host/status/unread/search filters, self-assignment, replies, and resolve/reopen. Support staff cannot steal another teammate's assignment. Staff actions are audited. Requester socket events invalidate support data immediately; active app screens and the visible admin workspace also refresh every four seconds. Background screens stop polling. Drafts and loaded history survive refreshes; account/document retirement discards stale requests and clears private UI state.
+
+`src/support-bridge.ts` owns lifecycle, concurrency, and native API calls; `web/support.js` and `web/support.css` own presentation. Run `npm run test:support`, `npm run typecheck`, backend `tests/support.test.ts`, and the dashboard tests. Responsive browser checks cover 320, 390, 768 and desktop widths, Dark Mode, keyboard resizing and long text. An isolated HTTP smoke verifies both member and host create → staff claim/reply → read → resolve → reopen using real admin cookies and the app's response parsers.
+
+The support feature requires deploying the matching backend and dashboard changes and building the updated app bundle into an APK. This implementation does not publish a release.
+
 ## Not covered yet
 
 - A full-screen native incoming-call screen while the app is closed. Android

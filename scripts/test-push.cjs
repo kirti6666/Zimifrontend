@@ -11,7 +11,7 @@ const settle = async () => { await new Promise(resolve => setImmediate(resolve))
 function harness(os = 'android') {
   const calls = [], state = { permission: { granted: true, canAskAgain: true }, token: 'fcm:local-fixture', nativeSoundErrors: [], channelSounds: new Map() };
   const notifications = {
-    AndroidImportance: { DEFAULT: 5, HIGH: 6, MAX: 7 }, AndroidNotificationVisibility: { PRIVATE: 2 }, DEFAULT_ACTION_IDENTIFIER: 'default',
+    AndroidImportance: { DEFAULT: 5, HIGH: 6, MAX: 7 }, AndroidNotificationVisibility: { PRIVATE: 2 }, AndroidNotificationPriority: { HIGH: 'high', MAX: 'max' }, DEFAULT_ACTION_IDENTIFIER: 'default',
     setNotificationChannelAsync: async (id, options) => {
       calls.push(['channel', id, options]);
       // Expo 57 AndroidXNotificationsChannelManager.customSoundExists treats
@@ -88,8 +88,11 @@ test('foreground calls sound only for the current account and an unexpired autho
   const call = { targetType: 'call', targetId: peer, recipientId: self, category: 'calls', expiresAt: new Date(Date.now() + 30000).toISOString() };
   assert.equal((await behavior(call)).shouldPlaySound, true);
   for (const data of [{ ...call, expiresAt: new Date(0).toISOString() }, { ...call, recipientId: peer }, { ...call, targetId: 'bad' }, { ...call, expiresAt: 'bad' }]) assert.equal((await behavior(data)).shouldPlaySound, false);
-  assert.equal((await behavior({ ...call, category: 'messages' })).shouldPlaySound, false);
-  assert.equal((await behavior(call)).shouldShowBanner, false);
+  assert.equal((await behavior({ ...call, targetType: 'thread', category: 'messages' })).shouldPlaySound, true);
+  assert.equal((await behavior(call)).shouldShowBanner, true);
+  assert.equal((await behavior({ ...call, action: 'call-ended' })).shouldShowBanner, false);
+  assert.equal((await behavior({ ...call, expiresAt: undefined })).shouldPlaySound, false);
+  assert.equal((await behavior({ ...call, targetType: 'thread', category: 'messages' })).priority, 'high');
 });
 test('granular preferences normalize older servers and reject malformed/unknown quiet-hour authority', () => {
   const { preferences: p } = harness(); const defaults = p.notificationPreferencesFrom(undefined);

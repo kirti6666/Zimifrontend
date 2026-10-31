@@ -69,6 +69,25 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
+  const supportId='507f1f77bcf86cd799439041',supportMessageId='507f1f77bcf86cd799439042',supportOwner='507f1f77bcf86cd799439043',supportNow='2026-10-31T10:00:00.000Z';
+  const supportTicket={id:supportId,subject:'Call audio problem',category:'calls',status:'open',priority:'normal',requester:{id:supportOwner,name:'Support fixture',role:'host',avatar:null},assignee:null,lastMessage:{body:'Please help',senderType:'user',createdAt:supportNow},unreadUser:0,unreadStaff:1,createdAt:supportNow,updatedAt:supportNow,lastMessageAt:supportNow};
+  const supportMessage={id:supportMessageId,ticketId:supportId,body:'Please help',senderType:'user',senderName:'Support fixture',clientMessageId:'support-test-one',createdAt:supportNow};
+  expect('GET','/support/tickets?page=2&limit=20&status=resolved',{tickets:[supportTicket],page:2,limit:20,total:21,unreadCount:0});
+  assert.equal((await api.supportTickets({page:2,status:'resolved'})).tickets[0].requester.role,'host');
+  expect('GET',`/support/tickets/${supportId}?before=${supportMessageId}`,{ticket:supportTicket,messages:[supportMessage],total:1,hasMore:false,before:supportMessageId});
+  assert.equal((await api.supportTicket(supportId,supportMessageId)).messages[0].body,'Please help');
+  const supportInput={subject:supportTicket.subject,category:'calls',body:'Please help',clientMessageId:'support-test-one'};
+  expect('POST','/support/tickets',{ticket:supportTicket,message:supportMessage},body=>assert.deepEqual(plain(body),supportInput));
+  assert.equal((await api.createSupportTicket(supportInput)).ticket.id,supportId);
+  expect('POST',`/support/tickets/${supportId}/messages`,{ticket:supportTicket,message:supportMessage},body=>assert.deepEqual(plain(body),{body:'Please help',clientMessageId:'support-test-one'}));
+  assert.equal((await api.sendSupportMessage(supportId,'Please help','support-test-one')).message.id,supportMessageId);
+  expect('POST',`/support/tickets/${supportId}/read`,{ticket:supportTicket},body=>assert.deepEqual(plain(body),{throughMessageId:supportMessageId}));
+  await api.readSupportTicket(supportId,supportMessageId);
+  expect('PATCH',`/support/tickets/${supportId}`,{ticket:{...supportTicket,status:'resolved'}},body=>assert.deepEqual(plain(body),{status:'resolved'}));
+  assert.equal((await api.updateSupportTicket(supportId,'resolved')).ticket.status,'resolved');
+  expect('GET',`/support/tickets/${supportId}`,{ticket:supportTicket,messages:[{...supportMessage,ticketId:supportOwner}],total:1,hasMore:false,before:supportMessageId});
+  await assert.rejects(api.supportTicket(supportId),/could not be confirmed/,'Cross-ticket messages cannot enter the support conversation');
+  finished();
   const adapters = load('src/api/adapters.ts');
   const ordered = adapters.messagesFrom({items:[{_id:'seq2',sequence:2,createdAt:'2026-10-30T10:00:00Z'},{_id:'legacy',createdAt:'2026-10-30T11:00:00Z'},{_id:'seq1',sequence:1,createdAt:'2026-10-30T12:00:00Z'}]},'self').messages;
   assert.deepEqual(plain(ordered.map(message=>message.id)),['legacy','seq1','seq2'],'Transport preserves server sequence ahead of clock skew, with legacy history first');
@@ -954,6 +973,12 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'paid-call', coins: 150, reason: 'out_of_coins' } }, 'An ended call reports its charge and why it ended');
   socket.emitServer('call:updated', { _id: 'free-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 0, coinsCharged: 0 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'free-call' } }, 'Free calls report no charge');
+  for (const status of ['ended', 'missed', 'declined']) {
+    socket.emitServer('call:updated', { _id: `unavailable-${status}`, callerId: 'member-id', calleeId: 'host-id', status, coinsPerMinute: 0, coinsCharged: 0, endReason: 'host_unavailable' });
+    assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: `unavailable-${status}`, reason: 'host_unavailable' } }, 'The server terminal reason survives every terminal status without inventing a charge');
+  }
+  socket.emitServer('call:updated', { _id: 'unknown-reason', callerId: 'member-id', calleeId: 'host-id', status: 'ended', endReason: 'untrusted-server-text' });
+  assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'unknown-reason' } }, 'Unknown terminal reasons cannot become UI copy');
   socket.emitServer('chat:message-updated', { _id: 'm-1', senderId: 'host-id', recipientId: 'member-id', text: 'Edited words', editedAt: chatAt, reply: { _id: 'm-0', senderId: 'member-id', text: 'Question', image: false, deleted: false } });
   const update = events.filter(event => event.type === 'chat.updated').at(-1);
   assert.equal(update.data.with, 'host-id');
@@ -1000,6 +1025,15 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.connected = true; socket.emitServer('connect');
   assert.deepEqual(socket.emitted, [{ name: 'app:activity', data: { active: false } }], 'A session opened in background never starts a welcome schedule');
   backgroundStop();
+  expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'legacy-device', platform: 'android' }));
+  await api.registerPushDevice('legacy-device');
+  const { configureAppUpdates } = load('src/app-update-events.ts');
+  configureAppUpdates({ packageName: 'com.aurora.liveapp', versionName: '1.0.29', versionCode: 29 });
+  expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'native-device', platform: 'android', appVersionCode: 29, notificationProtocol: 'binzo.push.v1' }));
+  await api.registerPushDevice('native-device', 'binzo.push.v1');
+  expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'legacy-versioned-device', platform: 'android', appVersionCode: 29 }));
+  await api.registerPushDevice('legacy-versioned-device');
+  finished();
   reset();
   const adId = '6a0000000000000000000001';
   const creative = { _id: adId, format: 'banner', advertiser: '  BinzoLive Studio ', headline: 'Edit reels', body: 'Free on Android', ctaLabel: 'Install now', domain: 'play.google.com',

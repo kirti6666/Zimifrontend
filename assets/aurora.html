@@ -4785,6 +4785,24 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
 
 .za-welcome-note{margin:0;color:var(--muted);font-size:12px;text-align:center;line-height:1.5}
 .zu-agency-link{display:flex;align-items:center;gap:9px;min-height:44px;margin:12px 0;padding:10px 12px;width:100%;text-align:left;color:var(--ink);background:var(--surface);font-size:14px}.zu-agency-link>svg:last-child{margin-left:auto}
+/* A shared support destination for members and hosts. */
+.zsu-header{display:flex;align-items:center;gap:12px;width:100%;max-width:800px;margin:0 auto;padding:14px 20px;color:var(--ink);min-height:76px}
+.zsu-header>div{min-width:0;flex:1}.zsu-header h1{margin:0;font-size:20px;font-weight:600;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.zsu-header p{margin:3px 0 0;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zsu-header-new{display:grid;place-items:center;flex:none;min-width:44px;min-height:44px;border:1px solid var(--line);color:var(--accent-ink);background:var(--surface)}
+.zsu-page{width:100%;max-width:800px;margin:0 auto;padding:12px 20px calc(28px + var(--safe-bottom));font-size:14px;line-height:1.5;color:var(--ink)}
+.zsu-intro{display:flex;align-items:center;gap:14px;margin:12px 0 28px;flex-wrap:wrap}.zsu-intro-icon{display:grid;place-items:center;flex:none;width:50px;height:50px;background:var(--surface);color:var(--accent-ink)}.zsu-intro>div{flex:1;min-width:170px}.zsu-intro h2,.zsu-form-intro h2{font-size:24px;font-weight:600;line-height:1.3;margin:0}.zsu-intro p,.zsu-form-intro p{font-size:14px;line-height:1.6;color:var(--muted);margin:6px 0 0}
+.zsu-primary,.zsu-secondary{display:flex;justify-content:center;align-items:center;gap:8px;min-height:46px;padding:12px 18px;font:inherit;font-weight:600;line-height:1.4;touch-action:manipulation}.zsu-primary{background:var(--cta);color:var(--cta-ink)}.zsu-secondary{background:var(--surface);border:1px solid var(--line);color:var(--ink)}.zsu-primary:disabled,.zsu-secondary:disabled,.zsu-send:disabled{opacity:.5;cursor:default}.zsu-start{margin-left:auto}.zsu-load{width:100%;margin-top:20px}
+.zsu-filters{display:flex;gap:7px;overflow:auto;scrollbar-width:none;padding-bottom:12px;margin-bottom:7px}.zsu-filters button{min-height:40px;flex:none;padding:8px 12px;color:var(--muted);border:1px solid var(--line);font-size:12px;font-weight:600}.zsu-filters button[aria-pressed=true]{color:var(--accent-ink);background:var(--accent-wash);border-color:var(--accent-line)}
+.zsu-ticket{display:flex;align-items:center;gap:12px;width:100%;padding:18px 0;text-align:left;min-width:0;color:var(--ink);background:transparent}.zsu-ticket-icon{display:grid;place-items:center;width:44px;height:44px;flex:none;background:var(--surface);color:var(--muted)}.zsu-ticket.is-unread .zsu-ticket-icon{color:var(--accent-ink);background:var(--accent-wash)}.zsu-ticket-copy{display:block;flex:1;min-width:0}.zsu-ticket-heading{display:flex;align-items:center;gap:10px;min-width:0}.zsu-ticket-heading b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600}.zsu-ticket-heading time{color:var(--muted);font-size:11px;flex:none}.zsu-ticket-preview{display:block;margin:5px 0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px}.zsu-ticket-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:11px}.zsu-status{display:inline-flex;padding:3px 7px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:600;white-space:nowrap}.zsu-status[data-status=open]{background:var(--accent-wash);color:var(--accent-ink)}.zsu-status[data-status=resolved]{color:var(--online)}.zsu-unread{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;background:var(--cta);color:var(--cta-ink);font-size:11px;font-weight:600;flex:none}
+.zsu-empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 12px 32px}.zsu-empty>svg{color:var(--accent-ink);margin-bottom:18px}.zsu-empty h2{font-size:18px;font-weight:600;line-height:1.4;margin:0 0 9px}.zsu-empty p{max-width:370px;margin:0 0 24px;color:var(--muted);font-size:14px;line-height:1.65}.zsu-empty .zsu-primary{width:100%;max-width:320px}.zsu-error{color:var(--theme-danger);font-size:13px;padding:12px 0;line-height:1.5}.zsu-error p{margin:0}.zsu-error button{padding:8px 0;min-height:40px;color:var(--accent-ink);font:inherit;font-weight:600}.zsu-note{font-size:12px;line-height:1.6;color:var(--muted);margin:0}.zsu-form-intro{margin:10px 0 28px}.zsu-form{display:flex;flex-direction:column;gap:10px}.zsu-form>label{font-size:13px;font-weight:600;margin-top:10px}.zsu-form>input,.zsu-form>select,.zsu-form>textarea{width:100%;min-width:0;min-height:48px;padding:12px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);font:inherit;line-height:1.6}.zsu-form>textarea{resize:vertical;min-height:150px;max-height:40dvh}.zsu-form>input:focus-visible,.zsu-form>select:focus-visible,.zsu-form>textarea:focus-visible,.zsu-composer textarea:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}.zsu-form>input::placeholder,.zsu-form>textarea::placeholder,.zsu-composer textarea::placeholder{color:var(--muted)}.zsu-character-count{color:var(--muted);font-size:11px;align-self:flex-end}.zsu-form-error{font-size:13px;color:var(--theme-danger);line-height:1.5;margin:0}.zsu-form-error:empty{display:none}.zsu-form>.zsu-primary{margin-top:8px}
+.zsu-chat-active #scroll-root{display:flex;overflow:hidden!important}.zsu-chat-active #scroll-root>#screen{display:flex;flex-direction:column;flex:1;height:100%;min-height:0;overflow:hidden!important}.zsu-chat-active #app-network-note{flex:none}.zsu-chat{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:800px;margin:0 auto;color:var(--ink);font-size:14px;line-height:1.5}.zsu-chat-status{display:flex;align-items:center;gap:8px;min-height:46px;padding:0 20px;flex:none;font-size:11px;color:var(--muted)}.zsu-chat-status>span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.zsu-chat-status>button{margin-left:auto;min-height:42px;padding:7px 0 7px 8px;white-space:nowrap;font-size:12px;font-weight:600;color:var(--accent-ink)}.zsu-chat-status>button:disabled{opacity:.5}.zsu-chat>.zsu-error{flex:none;padding:6px 20px;font-size:12px}.zsu-messages{flex:1;min-height:80px;overflow:auto;overscroll-behavior:contain;padding:10px 20px 22px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}.zsu-day{text-align:center;color:var(--muted);font-size:11px;margin:14px 0 20px}.zsu-message{display:flex;flex-direction:column;align-items:flex-start;margin:0 0 16px;min-width:0}.zsu-message.is-own{align-items:flex-end}.zsu-bubble{max-width:min(86%,560px);min-width:80px;padding:12px 14px;background:var(--surface);border:1px solid var(--line)}.zsu-message.is-own .zsu-bubble{background:var(--accent-wash);border-color:var(--accent-line)}.zsu-sender{font-size:11px;font-weight:600;color:var(--muted)}.zsu-message.is-staff .zsu-sender{color:var(--accent-ink)}.zsu-bubble>p{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;margin:5px 0 8px;font-size:14px;line-height:1.6}.zsu-message-meta{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--muted)}.zsu-message-error{max-width:86%;display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:5px;color:var(--theme-danger);font-size:11px}.zsu-message-error>span{overflow-wrap:anywhere}.zsu-message-error button{min-height:38px;padding:8px;font-size:12px;font-weight:600;color:var(--accent-ink);flex:none}.zsu-earlier{display:block;margin:0 auto 20px;min-height:44px;padding:8px 16px;font-size:12px;color:var(--accent-ink);font-weight:600}.zsu-loading-older{text-align:center;font-size:12px;color:var(--muted);padding:14px}.zsu-no-messages{padding:28px 10px;text-align:center}.zsu-new-replies{position:absolute;bottom:118px;left:50%;transform:translateX(-50%);padding:10px 14px;min-height:40px;max-width:85%;white-space:nowrap;font-size:12px;color:var(--cta-ink);background:var(--cta);border:1px solid var(--accent-line)}.zsu-new-replies[hidden]{display:none}
+.zsu-composer{display:grid;grid-template-columns:minmax(0,1fr) 46px;align-items:end;gap:9px;flex:none;margin:0;padding:10px 20px calc(12px + var(--safe-bottom));background:var(--canvas)}.zsu-composer textarea{display:block;width:100%;min-height:46px;max-height:128px;resize:none;padding:12px 13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;line-height:20px;overflow-y:auto}.zsu-send{width:46px;height:46px;display:grid;place-items:center;background:var(--cta);color:var(--cta-ink);flex:none}.zsu-composer-note{grid-column:1/-1;margin:0;text-align:center;color:var(--muted);font-size:11px;line-height:1.5}.zsu-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.zc-support-entry{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:46px;margin:8px 0 14px;padding:10px 12px;background:var(--surface);color:var(--ink);font-size:13px;text-align:left}.zc-support-entry>span{display:flex;align-items:center;gap:9px}.zc-support-entry>span>svg{color:var(--accent-ink)}
+.zc-support-entry>.zsu-entry-badge{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;margin-left:auto;background:var(--cta);color:var(--cta-ink);font-size:11px;font-weight:600}
+@media(max-width:379px){.zsu-intro{gap:10px}.zsu-intro>div{min-width:150px}.zsu-start{width:100%;margin:3px 0 0}.zsu-ticket{gap:9px}.zsu-ticket-icon{width:36px;height:42px}.zsu-ticket-meta{font-size:10px}.zsu-bubble{max-width:92%}.zsu-chat-status{gap:6px}.zsu-chat-status>span:nth-child(2){display:none}.zsu-header h1{font-size:18px}}
+@media(min-width:380px) and (max-width:699px){.zsu-start{width:100%;margin:3px 0 0}}
+@media(min-width:700px){.zsu-page{padding-top:24px}.zsu-intro{margin-bottom:34px}.zsu-new{max-width:640px}.zsu-chat-status{padding-top:6px;padding-bottom:6px}.zsu-messages{padding-top:18px}.zsu-composer{padding-top:16px}.zsu-bubble{max-width:74%}}
+@media(prefers-reduced-motion:reduce){.zsu-page *,.zsu-chat *{scroll-behavior:auto!important;transition:none!important}}
 /* The wallet keeps purchased coins separate from confirmed creator earnings. */
 .zwallet-page {max-width:620px;margin:0 auto;padding:20px 20px 30px}
 :root[data-theme-id] .zwallet-page .accthero {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
@@ -5010,7 +5028,7 @@ html:root #zr-gift-playback .zr-gift-stage-art>span{font-size:clamp(100px,40vmin
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.1.1";
+window.ZIMI_APP_VERSION = "1.1.2";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -9821,12 +9839,13 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const supportFocus=window.ZimiSupport?.capture();
  const postFocus=window.ZimiPostCreate?.capture();
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
@@ -9853,7 +9872,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -9916,7 +9935,7 @@ Native.on("profile.account",d=>{if(d.user?.id!==S.user?.id)return;obApplyAccount
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
-Native.on("operation.error",d=>{if(d.code==='INSUFFICIENT_COINS')window.ZimiCoins?.requireRecharge();else appNotice(d.message);if(d.action==="presence.set")refresh()});
+Native.on("operation.error",d=>{if(String(d.action||'').startsWith('support.'))return;if(d.code==='INSUFFICIENT_COINS')window.ZimiCoins?.requireRecharge();else appNotice(d.message);if(d.action==="presence.set")refresh()});
 Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);if(S.v==='editprofile')go(S.editBack||"profile");else refresh();appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
@@ -9988,9 +10007,9 @@ Native.on("call.ended",d=>{const id=d.callId;
   if(c.from.callId===id){c.fromEnded=true;return}
   if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
  if(S.v==="incoming"&&S.memberRing?.callId===id){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();appNotice(`Missed call from ${first(g(m.id)?.n||"a creator")}`);return ringReturn()}
- if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
+ if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(d.reason==='host_unavailable'?'Host can’t accept the call.':`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
- if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
+ if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr=d.reason==='host_unavailable'?'Host can’t accept the call.':'The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
  if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
@@ -10589,7 +10608,7 @@ function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="z
 function homeNav(){
   const el=document.getElementById('nav');
   // Detail pages have their own Back action instead of the primary tabs.
-  if(['notifications','themes','all-creators','board','refer'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
+  if(['notifications','themes','all-creators','board','refer','support','support-new','support-chat'].includes(S.v)){el.style.display='none';el.replaceChildren();el.classList.remove('zh-nav');el.removeAttribute('role');el.removeAttribute('aria-label');return true}
   if(!['home','chats','profile','settings'].includes(S.v))return false;
   el.style.display='grid';el.classList.add('zh-nav');el.setAttribute('role','navigation');el.setAttribute('aria-label','Main navigation');
   const item=(v,label,icon)=>`<button type="button" data-tab="${v}" class="${S.v===v?'on':''}" ${S.v===v?'aria-current="page"':''} onclick="go('${v}')">${hi(icon,23)}<span>${label}</span>${v==='chats'&&(window.ZimiChats?window.ZimiChats.unread()>0:CH.some(c=>c[3]>0))?'<i class="zh-nav-dot"></i>':''}</button>`;
@@ -10758,6 +10777,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='board')return window.ZimiLeaderboard.header();
   if(S.v==='refer')return window.ZimiReferral.header();
   if(S.v==='agency')return window.ZimiAgency.header();
+  if(['support','support-new','support-chat'].includes(S.v))return window.ZimiSupport.header();
   if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search creators or categories" aria-label="Search creators" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
@@ -13254,7 +13274,7 @@ function zcPaintContacts(){const list=document.getElementById('zc-contacts');if(
 function zcComposeView(){if(!Chats.composeOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog zc-compose" role="dialog" aria-modal="true" aria-label="New conversation"><div class="zc-dialog-heading"><h2>New conversation</h2><button onclick="zcCloseDialogs()" aria-label="Close new conversation">×</button></div><label class="zc-compose-search">${hi('srch',19)}<input id="zc-contact-query" placeholder="Find a creator or contact" aria-label="Search contacts" value="${esc(Chats.composeQuery)}" oninput="Chats.composeQuery=this.value;zcPaintContacts()"></label><div id="zc-contacts">${zcContactList()}</div><button class="zh-soft zh-full" onclick="zcCloseDialogs();go('search')">Find more creators ${hi('explore',17)}</button></section></div>`}
 function zcCloseDialogs(){Chats.composeOpen=false;Chats.filtersOpen=false;r();document.querySelector('.zc-compose-button')?.focus({preventScroll:true})}
 function zcCloseOverlay(event){if(event.target===event.currentTarget)zcCloseDialogs()}
-function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search chats" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<section class="zc-conversations" aria-label="${Chats.filter==='calls'?'Call history':Chats.filter==='missed'?'Missed calls':'Conversations'}">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}${window.ZimiAds?.banner('chats')||''}<div id="zc-list" class="zc-list">${zcList()}</div></section>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations'+MODEL_NOTE+'</p>':''}</div>${zcFilters()}${zcComposeView()}`}
+function zcScreen(){return `<div class="zc-chats"><div class="zc-heading"><h1>Chats</h1>${zcPending()?'<span class="zc-count-skeleton" aria-hidden="true">'+skeletonLine('46px',18)+'</span>':zcUnread()?`<span class="zc-new">${n(zcUnread())} new</span>`:''}<div class="zc-heading-actions"><button class="zc-mark-read" aria-label="Mark all as read" title="Mark all as read" aria-busy="${Chats.readBusy}" onclick="zcReadAll()" ${Chats.readBusy||zcPending()||!zcUnread()?'disabled':''}>${ci('checks',24)}</button><button class="zc-compose-button" aria-label="New chat" onclick="zcCompose()">${ci('compose',24)}</button></div></div><div class="zc-search">${hi('srch',21)}<input id="cq" aria-label="Search conversations" placeholder="Search chats" value="${esc(Chats.query)}" oninput="Chats.query=this.value;zcPaintList()"><button class="${Chats.onlineOnly||Chats.sort!=='recent'?'active':''}" onclick="Chats.filtersOpen=true;r()" aria-label="Conversation filters">${ci('sliders',21)}</button></div>${zcTabs()}<button type="button" class="zc-support-entry" onclick="ZimiSupport.open('chats')"><span>${zi('help',20)} Help &amp; support</span>${window.ZimiSupport?.unreadBadge()||''}${hi('chev',18)}</button><section class="zc-conversations" aria-label="${Chats.filter==='calls'?'Call history':Chats.filter==='missed'?'Missed calls':'Conversations'}">${Chats.readError?`<div class="zh-error" role="alert">${esc(Chats.readError)}<button onclick="zcReadAll()">Retry</button></div>`:''}${window.ZimiAds?.banner('chats')||''}<div id="zc-list" class="zc-list">${zcList()}</div></section>${DEMO?'<p class="zh-preview-note">Design preview · sample conversations'+MODEL_NOTE+'</p>':''}</div>${zcFilters()}${zcComposeView()}`}
 window.ZimiHome.views.chats=zcScreen;
 const chatsAfterRender=window.ZimiHome.afterRender;
 window.ZimiHome.afterRender=()=>{chatsAfterRender();const dialog=document.querySelector('.zc-dialog');if(dialog&&!dialog.contains(document.activeElement))(dialog.querySelector('input[type="text"],input:not([type]),button'))?.focus({preventScroll:true})};
@@ -14140,7 +14160,7 @@ function zpAccountSummary(){
 }
 function zpSettingsRows(){
   // Refer a Friend leads the list; its page explains the code and the rewards.
-  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & tips',"zpOpen('help')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
+  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & support',"zpClose();ZimiSupport.open('settings')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
@@ -14261,6 +14281,169 @@ Native.on('profile.account',d=>{if(ZProfile.data?.profile.id!==d.user?.id)return
 Native.on('profile.saved',d=>{if(!d.onboarding&&d.account){if(ZProfile.data)Object.assign(ZProfile.data.profile,{name:d.account.user.name,bio:d.account.user.about,city:d.account.user.city,country:d.account.user.country||'',languages:d.account.user.languages||[]});if(zpActive())r()}});
 window.addEventListener('zimi:host-access',()=>{if(!isApprovedHost()&&['earnings','creator'].includes(ZProfile.dialog))zpClose();if(zpActive())r()});
 if(DEMO){ZProfile.data={profile:{id:'demo-aditi-rao',name:'Aditi Rao',bio:'Old Hindi songs, long walks and longer conversations.',city:'Pune, Maharashtra',languages:['Hindi','English','Marathi'],maskedPhone:'+91 •••••• 0010',isPhoneVerified:true},stats:{fans:12400,following:458,giftsSent:24,giftsReceived:149},standing:{level:7,crown:true},preferences:{pushNotifications:true,matchCategory:'Music',appearance:'dark'},privacy:{discoverable:true,showActivity:true,allowRequests:true},categories:['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],capabilities:{pushNotifications:false,nativePushRegistered:false,nativePushStatus:'unavailable',liveAlerts:false,interfaceLanguages:['en'],currency:'INR'}};ZProfile.wallet={earningsPaise:184250,reservedPaise:0};ZProfile.requested=true;Object.assign(me,{n:'Aditi Rao',c:'Pune, Maharashtra',about:ZProfile.data.profile.bio});S.editName=me.n;S.editCity=me.c;S.editAbout=me.about;S.avatarData=OB_MEDIA[0]}
+
+/* Support conversations are separate from coin-based member/creator chats.
+   Only server acknowledgments create persisted tickets or messages. */
+const ZSupport={from:'settings',selected:'',status:'all',tickets:[],firstPageIds:new Set(),total:0,page:1,loaded:false,loading:false,loadingMore:false,error:'',unreadCount:0,listRequest:0,sequence:0,threads:new Map(),drafts:new Map(),outbox:new Map(),subject:'',category:'general',body:'',creating:false,createError:'',createAttempt:null,statusBusy:'',statusError:'',readThrough:new Map(),scrollBottom:false,preserveScroll:null,connected:true,foreground:true,account:''};
+const ZSUPPORT_CATEGORIES=[['general','General question'],['account','My account'],['coins','Coins & recharge'],['payments','Payments'],['calls','Voice & video calls'],['gifts','Gifts'],['technical','App problem'],['payouts','Host earnings & payouts']];
+const zsuViews=['support','support-new','support-chat'];
+const zsuId=value=>typeof value==='string'&&/^[a-f\d]{24}$/i.test(value);
+const zsuCategory=value=>ZSUPPORT_CATEGORIES.find(row=>row[0]===value)?.[1]||'General question';
+const zsuStatus=value=>({open:'Open',in_progress:'In progress',resolved:'Resolved'})[value]||'Open';
+function zsuUnreadBadge(){const count=Math.max(0,Number(ZSupport.unreadCount)||0);return count?`<span class="zsu-entry-badge" aria-label="${count} unread support conversation${count===1?'':'s'}">${count>99?'99+':count}</span>`:''}
+function zsuKey(){return 'support-'+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2))}
+function zsuOrder(a,b){return Number.isSafeInteger(a.sequence)&&Number.isSafeInteger(b.sequence)?a.sequence-b.sequence:(Date.parse(a.createdAt)||0)-(Date.parse(b.createdAt)||0)||String(a.id||a.clientMessageId).localeCompare(String(b.id||b.clientMessageId))}
+function zsuThread(id=ZSupport.selected){if(!ZSupport.threads.has(id))ZSupport.threads.set(id,{ticket:null,messages:[],loaded:false,loading:false,loadingMore:false,error:'',hasMore:false,before:null,requestId:0});return ZSupport.threads.get(id)}
+function zsuNewer(previous,ticket){return previous&&(Date.parse(previous.updatedAt)||0)>(Date.parse(ticket?.updatedAt)||0)?previous:ticket}
+function zsuUpsert(ticket){if(!ticket?.id)return;const index=ZSupport.tickets.findIndex(row=>row.id===ticket.id),thread=ZSupport.threads.get(ticket.id);ticket=zsuNewer(thread?.ticket||ZSupport.tickets[index],ticket);if(index<0)ZSupport.tickets.unshift(ticket);else ZSupport.tickets[index]=ticket;ZSupport.tickets.sort((a,b)=>(Date.parse(b.lastMessageAt||b.updatedAt)||0)-(Date.parse(a.lastMessageAt||a.updatedAt)||0));if(thread)thread.ticket=ticket;return ticket}
+function zsuOpen(from='settings'){ZSupport.from=['settings','chats'].includes(from)?from:'settings';go('support')}
+function zsuNew(){ZSupport.createError='';go('support-new')}
+function zsuOpenTicket(id){if(!zsuId(id))return;ZSupport.selected=id;ZSupport.statusError='';go('support-chat')}
+function zsuLoad(more=false){
+  if(more&&(ZSupport.loading||ZSupport.loadingMore))return;
+  ZSupport.error='';ZSupport.loading=!more;ZSupport.loadingMore=more;ZSupport.listRequest=++ZSupport.sequence;
+  const query={page:more?ZSupport.page+1:1,requestId:ZSupport.listRequest,...(ZSupport.status==='all'?{}:{status:ZSupport.status})};
+  if(DEMO){Object.assign(ZSupport,{loaded:true,loading:false,loadingMore:false});zsuPaint();return}
+  Native.send('support.load',query);zsuPaint();
+}
+function zsuLoadTicket(more=false){
+  const id=ZSupport.selected;if(!zsuId(id))return;
+  const thread=zsuThread(id);if(more&&(thread.loadingMore||!thread.hasMore))return;
+  thread.error='';thread.loading=!more;thread.loadingMore=more;thread.requestId=++ZSupport.sequence;
+  if(DEMO){thread.loading=false;thread.loaded=true;zsuPaint();return}
+  Native.send('support.open',{ticketId:id,requestId:thread.requestId,...(more&&thread.before?{before:thread.before}:{})});zsuPaint();
+}
+function zsuFilter(value){if(!['all','open','in_progress','resolved'].includes(value)||value===ZSupport.status)return;ZSupport.status=value;ZSupport.loaded=false;ZSupport.tickets=[];zsuLoad()}
+function zsuTime(value,long=false){const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';return date.toLocaleString('en-IN',long?{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}:{hour:'numeric',minute:'2-digit'})}
+function zsuShortDate(value){const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';return date.toDateString()===new Date().toDateString()?zsuTime(value):date.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
+function zsuHeader(){
+  const chat=S.v==='support-chat',creating=S.v==='support-new',ticket=chat?zsuThread().ticket:null;
+  return `<header class="zsu-header">${backButton(chat||creating?"go('support')":`go('${ZSupport.from}')`,{label:chat||creating?'Back to support':`Back to ${ZSupport.from==='chats'?'chats':'settings'}`})}<div><h1>${chat?esc(ticket?.subject||'Support conversation'):creating?'New conversation':'Help &amp; support'}</h1>${chat?`<p>BinzoLive support${ticket?' · '+esc(zsuCategory(ticket.category)):''}</p>`:''}</div>${!chat&&!creating?`<button type="button" class="zsu-header-new" onclick="zsuNew()" aria-label="Start a support conversation">${hi('plus',20)}</button>`:''}</header>`;
+}
+function zsuError(message,action){return `<div class="zsu-error" role="alert"><p>${esc(message)}</p>${action?`<button type="button" onclick="${action}">Try again</button>`:''}</div>`}
+function zsuTicketRow(ticket){return `<button type="button" class="zsu-ticket ${ticket.unreadUser?'is-unread':''}" data-support-ticket="${esc(ticket.id)}" onclick="zsuOpenTicket(this.dataset.supportTicket)"><span class="zsu-ticket-icon">${hi('chat',22)}</span><span class="zsu-ticket-copy"><span class="zsu-ticket-heading"><b>${esc(ticket.subject)}</b><time datetime="${esc(ticket.lastMessageAt||ticket.createdAt)}">${esc(zsuShortDate(ticket.lastMessageAt||ticket.createdAt))}</time></span><span class="zsu-ticket-preview">${esc(ticket.lastMessage?.body||'Your conversation with support')}</span><span class="zsu-ticket-meta"><span class="zsu-status" data-status="${esc(ticket.status)}">${zsuStatus(ticket.status)}</span><span>${esc(zsuCategory(ticket.category))}</span></span></span>${ticket.unreadUser?`<span class="zsu-unread" aria-label="${Number(ticket.unreadUser)||1} unread replies">${Math.min(99,Number(ticket.unreadUser)||1)}</span>`:''}</button>`}
+function zsuList(){
+  const pending=ZSupport.loading&&!ZSupport.loaded;
+  const rows=ZSupport.tickets.filter(ticket=>ZSupport.status==='all'||ticket.status===ZSupport.status);
+  const content=pending?contentSkeleton('rows','Loading support conversations',4):!ZSupport.loaded&&ZSupport.error?zsuError(ZSupport.error,'zsuLoad()'):rows.length?rows.map(zsuTicketRow).join(''):`<div class="zsu-empty">${hi('chat',36)}<h2>${ZSupport.status==='all'?'Your support, in one place':'No '+zsuStatus(ZSupport.status).toLowerCase()+' conversations'}</h2><p>${ZSupport.status==='all'?'Ask about your account, calls, coins or anything in the app. Your conversations and replies stay here.':'Conversations with this status will appear here.'}</p>${ZSupport.status==='all'?'<button type="button" class="zsu-primary" onclick="zsuNew()">Start a conversation</button>':''}</div>`;
+  return `<section class="zsu-page" aria-label="Support center"><div class="zsu-intro"><span class="zsu-intro-icon">${zi('help',26)}</span><div><h2>How can we help?</h2><p>Talk to the BinzoLive team.</p></div>${rows.length||ZSupport.status!=='all'?'<button type="button" class="zsu-primary zsu-start" onclick="zsuNew()">New conversation</button>':''}</div><div class="zsu-filters" role="group" aria-label="Filter support conversations">${[['all','All'],['open','Open'],['in_progress','In progress'],['resolved','Resolved']].map(([key,label])=>`<button type="button" aria-pressed="${ZSupport.status===key}" onclick="zsuFilter('${key}')">${label}</button>`).join('')}</div><div class="zsu-list" aria-label="Your conversations">${ZSupport.loaded&&ZSupport.error?zsuError(ZSupport.error,'zsuLoad()'):''}${content}</div>${ZSupport.loadingMore?contentSkeleton('rows','Loading more conversations',2):ZSupport.total>ZSupport.tickets.length?'<button type="button" class="zsu-secondary zsu-load" onclick="zsuLoad(true)">Load more conversations</button>':''}${DEMO?'<p class="zsu-note">Design preview. Contact support from the app.</p>':''}</section>`;
+}
+function zsuFormValue(key,value){ZSupport[key]=value;ZSupport.createError='';const error=document.getElementById('zsu-create-error');if(error)error.textContent='';const count=document.getElementById('zsu-body-count');if(count)count.textContent=ZSupport.body.length+'/4000';const button=document.getElementById('zsu-create');if(button)button.disabled=ZSupport.creating||!ZSupport.subject.trim()||!ZSupport.body.trim()}
+function zsuNewView(){const busy=ZSupport.creating;return `<section class="zsu-page zsu-new" aria-labelledby="zsu-new-title"><div class="zsu-form-intro"><h2 id="zsu-new-title">Tell us what happened</h2><p>Include the details that help us understand your question. The team will reply in this conversation.</p></div><form class="zsu-form" onsubmit="event.preventDefault();zsuCreate()"><label for="zsu-category">What do you need help with?</label><select id="zsu-category" ${busy?'disabled':''} onchange="zsuFormValue('category',this.value)">${ZSUPPORT_CATEGORIES.map(([key,label])=>`<option value="${key}" ${ZSupport.category===key?'selected':''}>${label}</option>`).join('')}</select><label for="zsu-subject">Subject</label><input id="zsu-subject" maxlength="120" autocomplete="off" placeholder="A short description" value="${esc(ZSupport.subject)}" ${busy?'disabled':''} oninput="zsuFormValue('subject',this.value)" required><label for="zsu-body">Your message</label><textarea id="zsu-body" maxlength="4000" rows="6" placeholder="How can we help?" aria-describedby="zsu-private-note zsu-create-error" ${busy?'disabled':''} oninput="zsuFormValue('body',this.value)" required>${esc(ZSupport.body)}</textarea><span id="zsu-body-count" class="zsu-character-count">${ZSupport.body.length}/4000</span><p id="zsu-private-note" class="zsu-note">Never share your password, one-time sign-in code or full payment details.</p><p id="zsu-create-error" class="zsu-form-error" role="alert">${esc(ZSupport.createError)}</p><button id="zsu-create" type="submit" class="zsu-primary" ${busy||!ZSupport.subject.trim()||!ZSupport.body.trim()?'disabled':''} ${busy?'aria-busy="true"':''}>${busy?'Starting conversation…':'Start conversation'}</button></form></section>`}
+function zsuCreate(){
+  if(ZSupport.creating)return;
+  const subject=ZSupport.subject.trim(),body=ZSupport.body.trim(),category=ZSupport.category;
+  if(!subject||!body){ZSupport.createError='Add a subject and a message to start.';zsuPaint();return}
+  if(DEMO){appNotice('Open the app to send a message to support.');return}
+  const previous=ZSupport.createAttempt,same=previous&&previous.subject===subject&&previous.body===body&&previous.category===category;
+  const attempt={subject,body,category,clientMessageId:same?previous.clientMessageId:zsuKey(),requestId:++ZSupport.sequence};
+  ZSupport.createAttempt=attempt;ZSupport.creating=true;ZSupport.createError='';Native.send('support.create',attempt);zsuPaint();
+}
+function zsuMessages(thread){
+  const pending=[...ZSupport.outbox.values()].filter(row=>row.ticketId===ZSupport.selected&&!thread.messages.some(message=>message.clientMessageId===row.clientMessageId));
+  const messages=[...thread.messages].sort(zsuOrder).concat(pending.sort((a,b)=>(Date.parse(a.createdAt)||0)-(Date.parse(b.createdAt)||0)));
+  let day='';return messages.map(message=>{const date=new Date(message.createdAt),next=Number.isFinite(date.getTime())?date.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'',divider=next!==day?`<p class="zsu-day">${esc(next)}</p>`:'';day=next;const own=message.senderType==='user',failed=message.delivery==='failed';return `${divider}<article class="zsu-message ${own?'is-own':'is-staff'} ${failed?'is-failed':''}" data-support-message="${esc(message.id||message.clientMessageId)}"><div class="zsu-bubble"><span class="zsu-sender">${own?'You':esc(message.senderName||'Support team')}</span><p>${esc(message.body)}</p><div class="zsu-message-meta"><time datetime="${esc(message.createdAt)}">${esc(zsuTime(message.createdAt))}</time>${message.delivery==='sending'?'<span role="status">Sending…</span>':failed?'<span>Not sent</span>':''}</div></div>${failed?`<div class="zsu-message-error" role="alert"><span>${esc(message.error||'Message could not be sent.')}</span><button type="button" data-support-retry="${esc(message.clientMessageId)}" onclick="zsuRetry(this.dataset.supportRetry)">Retry</button></div>`:''}</article>`}).join('')||'<p class="zsu-note zsu-no-messages">Your messages with the support team will appear here.</p>';
+}
+function zsuChat(){
+  const thread=zsuThread(),ticket=thread.ticket;
+  if(!zsuId(ZSupport.selected))return `<section class="zsu-page">${zsuError('Choose a conversation from your support inbox.')}<button type="button" class="zsu-secondary" onclick="go('support')">Open support inbox</button></section>`;
+  if(!thread.loaded)return `<section class="zsu-page">${thread.error?zsuError(thread.error,'zsuLoadTicket()'):contentSkeleton('rows','Loading support conversation',4)}</section>`;
+  if(!ticket)return `<section class="zsu-page">${zsuError('This conversation is unavailable.','zsuLoadTicket()')}</section>`;
+  const draft=ZSupport.drafts.get(ticket.id)||'',sending=[...ZSupport.outbox.values()].some(message=>message.ticketId===ticket.id&&message.delivery==='sending'),busy=ZSupport.statusBusy===ticket.id;
+  return `<section class="zsu-chat" aria-label="Support conversation"><div class="zsu-chat-status"><span class="zsu-status" data-status="${esc(ticket.status)}">${zsuStatus(ticket.status)}</span><span>${ticket.assignee?'With '+esc(ticket.assignee.name):'BinzoLive support'}</span><button type="button" onclick="zsuSetStatus('${ticket.status==='resolved'?'open':'resolved'}')" ${busy?'disabled aria-busy="true"':''}>${busy?'Saving…':ticket.status==='resolved'?'Reopen':'Mark resolved'}</button></div>${thread.error?zsuError(thread.error,'zsuLoadTicket()'):''}${ZSupport.statusError?zsuError(ZSupport.statusError):''}<div id="zsu-messages" class="zsu-messages" tabindex="0" aria-label="Conversation messages" onscroll="zsuScrolled()">${thread.loadingMore?'<div class="zsu-loading-older" role="status">Loading earlier messages…</div>':thread.hasMore?'<button type="button" class="zsu-earlier" onclick="zsuEarlier()">Earlier messages</button>':''}${zsuMessages(thread)}<span id="zsu-message-end"></span></div><button id="zsu-new-replies" type="button" class="zsu-new-replies" onclick="zsuLatest()" hidden>New messages · View latest</button><form class="zsu-composer" onsubmit="event.preventDefault();zsuSend()"><label class="zsu-sr-only" for="zsu-reply">Message support</label><textarea id="zsu-reply" rows="1" maxlength="4000" placeholder="Message support…" oninput="zsuDraft(this)" onkeydown="zsuReplyKey(event)">${esc(draft)}</textarea><button id="zsu-send" type="submit" class="zsu-send" aria-label="Send message to support" ${sending||!draft.trim()?'disabled':''}>${sending?'<span aria-hidden="true">…</span>':hi('send',21)}</button><p class="zsu-composer-note">${ticket.status==='resolved'?'Sending a message will reopen this conversation.':'Replies from the team appear here.'}</p></form></section>`;
+}
+function zsuDraft(input){ZSupport.drafts.set(ZSupport.selected,input.value);input.style.height='auto';input.style.height=Math.min(input.scrollHeight,128)+'px';const busy=[...ZSupport.outbox.values()].some(row=>row.ticketId===ZSupport.selected&&row.delivery==='sending');const button=document.getElementById('zsu-send');if(button)button.disabled=busy||!input.value.trim()}
+function zsuReplyKey(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&matchMedia('(pointer:fine)').matches){event.preventDefault();zsuSend()}}
+function zsuSend(){
+  const ticketId=ZSupport.selected,body=(ZSupport.drafts.get(ticketId)||'').trim();
+  if(!body||[...ZSupport.outbox.values()].some(message=>message.ticketId===ticketId&&message.delivery==='sending'))return;
+  if(DEMO){appNotice('Open the app to send a message to support.');return}
+  const message={ticketId,body,clientMessageId:zsuKey(),requestId:++ZSupport.sequence,createdAt:new Date().toISOString(),senderType:'user',delivery:'sending'};
+  ZSupport.outbox.set(message.clientMessageId,message);ZSupport.drafts.set(ticketId,'');ZSupport.scrollBottom=true;Native.send('support.send',{ticketId,body,clientMessageId:message.clientMessageId,requestId:message.requestId});zsuPaint();document.getElementById('zsu-reply')?.focus({preventScroll:true});
+}
+function zsuRetry(id){const message=ZSupport.outbox.get(id);if(!message||message.delivery!=='failed')return;message.delivery='sending';message.error='';message.requestId=++ZSupport.sequence;Native.send('support.send',{ticketId:message.ticketId,body:message.body,clientMessageId:message.clientMessageId,requestId:message.requestId});ZSupport.scrollBottom=true;zsuPaint()}
+function zsuSetStatus(status){const ticketId=ZSupport.selected;if(ZSupport.statusBusy||!['open','resolved'].includes(status))return;if(DEMO)return;ZSupport.statusBusy=ticketId;ZSupport.statusError='';ZSupport.statusRequest=++ZSupport.sequence;Native.send('support.status',{ticketId,status,requestId:ZSupport.statusRequest});zsuPaint()}
+function zsuEarlier(){const element=document.getElementById('zsu-messages');ZSupport.preserveScroll=element?{top:element.scrollTop,height:element.scrollHeight}:null;zsuLoadTicket(true)}
+function zsuLatest(){ZSupport.scrollBottom=true;zsuThread().unseen=false;const element=document.getElementById('zsu-messages');if(element)element.scrollTop=element.scrollHeight;document.getElementById('zsu-new-replies')?.setAttribute('hidden','');zsuMarkRead()}
+function zsuScrolled(){const el=document.getElementById('zsu-messages');if(el&&el.scrollHeight-el.scrollTop-el.clientHeight<90){zsuThread().unseen=false;document.getElementById('zsu-new-replies')?.setAttribute('hidden','');zsuMarkRead()}}
+function zsuMarkRead(){
+  if(DEMO||!ZSupport.foreground||S.v!=='support-chat'||document.visibilityState==='hidden')return;
+  const thread=zsuThread(),el=document.getElementById('zsu-messages');if(!thread.ticket?.unreadUser||!el||el.scrollHeight-el.scrollTop-el.clientHeight>90)return;
+  const last=thread.messages.filter(message=>message.senderType==='staff').at(-1);if(!last?.id||ZSupport.readThrough.get(ZSupport.selected)===last.id)return;
+  ZSupport.readThrough.set(ZSupport.selected,last.id);Native.send('support.read',{ticketId:ZSupport.selected,throughMessageId:last.id,requestId:++ZSupport.sequence});
+}
+function zsuCapture(){
+  if(!zsuViews.includes(S.v))return null;
+  const el=document.activeElement,fields=['zsu-subject','zsu-body','zsu-category','zsu-reply'],scroller=document.getElementById('zsu-messages');
+  return {view:S.v,focus:fields.includes(el?.id)?{id:el.id,start:el.selectionStart,end:el.selectionEnd}:null,scroll:scroller?{top:scroller.scrollTop,height:scroller.scrollHeight,near:scroller.scrollHeight-scroller.scrollTop-scroller.clientHeight<90}:null};
+}
+function zsuAfter(saved){
+  document.documentElement.classList.toggle('zsu-chat-active',S.v==='support-chat');
+  if(!zsuViews.includes(S.v))return;
+  const field=saved?.view===S.v&&saved.focus?document.getElementById(saved.focus.id):null;if(field){field.focus({preventScroll:true});if(typeof field.setSelectionRange==='function'&&field.tagName!=='SELECT')field.setSelectionRange(saved.focus.start,saved.focus.end)}
+  const reply=document.getElementById('zsu-reply');if(reply){reply.style.height='auto';reply.style.height=Math.min(reply.scrollHeight,128)+'px'}
+  const scroller=document.getElementById('zsu-messages');if(scroller){
+    const older=ZSupport.preserveScroll;
+    if(older&&!zsuThread().loadingMore){scroller.scrollTop=older.top+scroller.scrollHeight-older.height;ZSupport.preserveScroll=null}
+    else if(ZSupport.scrollBottom||!saved?.scroll||saved.scroll.near){scroller.scrollTop=scroller.scrollHeight;zsuThread().unseen=false}
+    else{scroller.scrollTop=saved.scroll.top;if(!zsuThread().loadingMore&&scroller.scrollHeight>saved.scroll.height)zsuThread().unseen=true}
+    document.getElementById('zsu-new-replies')?.toggleAttribute('hidden',!zsuThread().unseen);
+    ZSupport.scrollBottom=false;zsuMarkRead();
+  }
+}
+function zsuPaint(){if(zsuViews.includes(S.v))r()}
+Native.on('data.supportTickets',data=>{
+  if(data.requestId!=null&&data.requestId!==ZSupport.listRequest)return;
+  const rows=Array.isArray(data.tickets)?data.tickets:[],page=Number(data.page)||1;
+  const retainPages=data.background&&ZSupport.loaded&&ZSupport.page>1;
+  const merged=new Map((page>1?ZSupport.tickets:retainPages?ZSupport.tickets.filter(ticket=>!ZSupport.firstPageIds.has(ticket.id)):[]).map(ticket=>[ticket.id,ticket]));rows.forEach(ticket=>{if(ticket?.id)merged.set(ticket.id,zsuNewer(ZSupport.threads.get(ticket.id)?.ticket||ZSupport.tickets.find(row=>row.id===ticket.id),ticket))});
+  if(page===1)ZSupport.firstPageIds=new Set(rows.map(ticket=>ticket.id));
+  Object.assign(ZSupport,{tickets:[...merged.values()],page:retainPages?ZSupport.page:page,total:Number(data.total)||0,unreadCount:Math.max(0,Number(data.unreadCount)||0),loaded:true,loading:false,loadingMore:false,error:''});if(S.v==='support')zsuPaint();
+});
+Native.on('data.supportTicket',data=>{
+  const ticket=data.ticket;if(!ticket?.id)return;const thread=zsuThread(ticket.id);
+  if(data.requestId!=null&&data.requestId!==thread.requestId)return;
+  const oldCount=thread.messages.length,oldCursor=thread.before,oldHasMore=thread.hasMore,rows=Array.isArray(data.messages)?data.messages:[],merged=new Map(thread.messages.map(message=>[message.id,message]));rows.forEach(message=>{if(message?.id)merged.set(message.id,message)});
+  thread.messages=[...merged.values()].sort(zsuOrder);
+  const keepOlder=!data.append&&oldCount>rows.length;
+  Object.assign(thread,{ticket:zsuNewer(thread.ticket,ticket),loaded:true,loading:false,loadingMore:false,error:'',hasMore:keepOlder?oldHasMore:!!data.hasMore,before:keepOlder?oldCursor:data.before||thread.messages[0]?.id||null});zsuUpsert(ticket);
+  for(const row of rows)if(row.clientMessageId)ZSupport.outbox.delete(row.clientMessageId);
+  if(ticket.id===ZSupport.selected)zsuPaint();
+});
+Native.on('support.created',data=>{
+  if(data.requestId!==ZSupport.createAttempt?.requestId||!data.ticket?.id)return;
+  Object.assign(ZSupport,{creating:false,createError:'',createAttempt:null,subject:'',body:'',category:'general'});zsuUpsert(data.ticket);const thread=zsuThread(data.ticket.id);Object.assign(thread,{ticket:data.ticket,messages:data.message?[data.message]:[],loaded:true,error:'',hasMore:false});
+  if(S.v==='support-new'){ZSupport.scrollBottom=true;zsuOpenTicket(data.ticket.id)}else zsuPaint();
+});
+Native.on('support.sent',data=>{
+  const id=data.clientMessageId||data.message?.clientMessageId,pending=ZSupport.outbox.get(id);if(pending&&data.requestId!=null&&pending.requestId!==data.requestId)return;
+  if(data.ticket)zsuUpsert(data.ticket);if(data.message){const thread=zsuThread(data.message.ticketId);if(!thread.messages.some(message=>message.id===data.message.id))thread.messages.push(data.message);thread.messages.sort(zsuOrder);thread.loaded=true}
+  if(id)ZSupport.outbox.delete(id);zsuPaint();
+});
+Native.on('support.read',data=>{if(data.ticket)zsuUpsert(data.ticket);if(zsuViews.includes(S.v))zsuPaint()});
+Native.on('support.unread',data=>{ZSupport.unreadCount=Math.max(0,Math.floor(Number(data.unreadCount)||0));if(S.v==='chats')r()});
+Native.on('support.status',data=>{if(data.requestId!=null&&data.requestId!==ZSupport.statusRequest)return;ZSupport.statusBusy='';ZSupport.statusError='';if(data.ticket)zsuUpsert(data.ticket);zsuPaint()});
+Native.on('operation.error',data=>{
+  if(!String(data.action||'').startsWith('support.'))return;const message=data.message||'Unable to contact support. Please try again.';
+  if(data.action==='support.load'&&(data.requestId==null||data.requestId===ZSupport.listRequest)){ZSupport.loading=false;ZSupport.loadingMore=false;ZSupport.error=message}
+  if(data.action==='support.open'){const thread=ZSupport.threads.get(data.ticketId||ZSupport.selected);if(thread&&(data.requestId==null||data.requestId===thread.requestId)){thread.loading=false;thread.loadingMore=false;thread.error=message;ZSupport.preserveScroll=null}}
+  if(data.action==='support.create'&&data.requestId===ZSupport.createAttempt?.requestId){ZSupport.creating=false;ZSupport.createError=message}
+  if(data.action==='support.send'){const pending=ZSupport.outbox.get(data.clientMessageId);if(pending&&(data.requestId==null||data.requestId===pending.requestId)){pending.delivery='failed';pending.error=message}}
+  if(data.action==='support.status'&&(data.requestId==null||data.requestId===ZSupport.statusRequest)){ZSupport.statusBusy='';ZSupport.statusError=message}
+  if(data.action==='support.read'){ZSupport.readThrough.delete(data.ticketId||ZSupport.selected);return}
+  zsuPaint();
+});
+function zsuActivity(){const active=zsuViews.includes(S.v)&&ZSupport.foreground&&document.visibilityState!=='hidden';Native.send('support.activity',{active,ticketId:active&&S.v==='support-chat'?ZSupport.selected:undefined});if(S.v==='support')zsuLoad();if(S.v==='support-chat'){ZSupport.scrollBottom=true;zsuLoadTicket()}}
+document.addEventListener('aurora:navigate',zsuActivity);
+document.addEventListener('visibilitychange',()=>{if(zsuViews.includes(S.v)){Native.send('support.activity',{active:document.visibilityState!=='hidden',ticketId:S.v==='support-chat'?ZSupport.selected:undefined});if(document.visibilityState!=='hidden')zsuMarkRead()}});
+Native.on('app.background',()=>{ZSupport.foreground=false});
+Native.on('app.foreground',()=>{ZSupport.foreground=true;zsuMarkRead()});
+function zsuReset(){ZSupport.sequence++;Object.assign(ZSupport,{from:'settings',selected:'',status:'all',tickets:[],firstPageIds:new Set(),total:0,page:1,loaded:false,loading:false,loadingMore:false,error:'',unreadCount:0,listRequest:ZSupport.sequence,subject:'',category:'general',body:'',creating:false,createError:'',createAttempt:null,statusBusy:'',statusError:'',preserveScroll:null,scrollBottom:false});ZSupport.threads.clear();ZSupport.drafts.clear();ZSupport.outbox.clear();ZSupport.readThrough.clear()}
+Native.on('session',data=>{const id=data.user?.id||'';if(id!==ZSupport.account){zsuReset();ZSupport.account=id}});
+Native.on('session.none',()=>{zsuReset();ZSupport.account=''});Native.on('session.expired',()=>{zsuReset();ZSupport.account=''});
+ZimiPullRefresh.register('support',{refresh:()=>zsuLoad(),busy:()=>ZSupport.loading||ZSupport.loadingMore});
+window.ZimiSupport={open:zsuOpen,openTicket:zsuOpenTicket,header:zsuHeader,capture:zsuCapture,after:zsuAfter,reset:zsuReset,unreadBadge:zsuUnreadBadge};
+Object.assign(ZimiHome.views,{support:zsuList,'support-new':zsuNewView,'support-chat':zsuChat});
 
 /* Themes are server-owned. Only acknowledged selections are applied in the app. */
 const ZThemes={catalog:null,loading:false,error:'',saving:'',requestId:0,checkout:null,checkoutBusy:false,attempt:'',requestedRoute:undefined,accountId:'',signature:'',transitionTimer:null,refreshView:null,renderView:null,returnTo:'profile',returnScroll:0,returnFocus:''};

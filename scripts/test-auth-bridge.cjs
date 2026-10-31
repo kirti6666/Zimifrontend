@@ -24,8 +24,11 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
   // The FCM edge: OS permission, the device token and notification taps.
-  const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
+  const push = { status: 'registered', token: 'fcm:device-token', modes: [], owners: [], dismissed: [], protocol: undefined, cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
   const pushModule = {
+    syncPushAccount: async (owner, preferences) => { push.owners.push({owner, preferences}); if(overrides.syncPushAccount) await overrides.syncPushAccount(owner, preferences); },
+    dismissIncomingCallNotification: async id => { push.dismissed.push(id); },
+    pushDeliveryProtocol: () => push.protocol,
     startPush: onOpen => { push.open = onOpen; return () => { push.stopped++; }; },
     registerPush: async (save, mode, isCurrent) => {
       push.modes.push(mode);
@@ -141,6 +144,32 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
+
+test('support routes remain available to members and pending hosts and live invalidation refreshes only their active view', async () => {
+  const h=harness(),self='507f1f77bcf86cd799439031',ticketId='507f1f77bcf86cd799439032',messageId='507f1f77bcf86cd799439033';
+  const ticket={id:ticketId,subject:'Need support',status:'open',unreadUser:1,updatedAt:'2026-10-31T10:00:00Z'};
+  const message={id:messageId,ticketId,body:'Team reply',senderType:'staff',createdAt:'2026-10-31T10:00:00Z'};
+  h.overrides.me=()=>({...account(self),user:{...account(self).user,role:'host',serverRole:'host',hostStatus:'pending'},requiresOnboarding:false});
+  h.overrides.supportTickets=()=>({tickets:[ticket],page:1,limit:20,total:1,unreadCount:1});
+  h.overrides.supportTicket=()=>({ticket,messages:[message],total:1,hasMore:false,before:messageId});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'support.activity',data:{active:true,ticketId}});h.bridge.handle({type:'support.open',data:{ticketId,requestId:1}});await settle();
+  assert.equal(h.find('data.supportTicket').at(-1).data.ticket.id,ticketId,'Support does not require creator approval or spend coins');
+  const before=h.count('supportTicket');h.live.at(-1).onEvent({type:'support.updated',data:{ticketId}});await settle();assert.equal(h.count('supportTicket'),before+1);
+  assert.equal(h.find('data.supportTicket').at(-1).data.background,true);
+  h.bridge.handle({type:'support.activity',data:{active:false}});await settle();const reads=h.count('supportTicket');
+  h.live.at(-1).onEvent({type:'support.updated',data:{ticketId}});await settle();assert.equal(h.count('supportTicket'),reads,'Other screens do not poll private support content');h.bridge.close();
+});
+
+test('support content and acknowledgments are discarded after logout and document replacement', async () => {
+  const h=harness(),self='507f1f77bcf86cd799439031',ticketId='507f1f77bcf86cd799439032',pending=deferred();
+  h.overrides.me=()=>({...account(self),requiresOnboarding:false});h.overrides.supportTickets=()=>({tickets:[],page:1,limit:20,total:0,unreadCount:0});
+  h.overrides.supportTicket=()=>pending.promise;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'support.activity',data:{active:true,ticketId}});h.bridge.handle({type:'support.open',data:{ticketId,requestId:1}});await settle();
+  h.bridge.handle({type:'auth.logout',data:{}});await settle();pending.resolve({ticket:{id:ticketId},messages:[],hasMore:false});await settle();
+  assert.equal(h.find('data.supportTicket').length,0);h.bridge.documentLoading();h.bridge.close();
+});
 
 test('conversation activity serializes old close/new open, renews and releases in background without interrupting chat', async () => {
   const h=harness(),first=deferred();
@@ -3299,6 +3328,30 @@ test('a finished, declined or missed call refreshes call history and missed call
 const pushSettings = (serverPush = true) => { const settings = profileSettings(); settings.capabilities.pushNotifications = serverPush; return settings; };
 const signedIn = (id = 'alice') => ({ ...account(id), requiresOnboarding: false, tokens: tokenPair(id), isNew: false });
 const pushCapability = h => h.find('data.profileSettings').at(-1).data.capabilities;
+
+test('native push ownership and authoritative preferences are committed before capable-device registration', async () => {
+  const h=harness(), preferencesSaved=deferred();
+  h.push.protocol='binzo.push.v1';h.overrides.verifyOtp=()=>signedIn();h.overrides.profileSettings=()=>pushSettings(true);
+  h.overrides.syncPushAccount=async(_owner,preferences)=>{if(preferences)await preferencesSaved.promise;};
+  h.bridge.handle(verifyMessage());await settle();
+  assert.equal(h.push.owners[0].owner,'alice');assert.equal(h.push.owners[0].preferences,undefined,'A changed owner starts without enabled native display');
+  assert.ok(h.push.owners.at(-1).preferences);assert.equal(h.count('registerPushDevice'),0,'No capable token is activated before native settings persist');
+  preferencesSaved.resolve();await settle();
+  assert.deepEqual(h.calls.filter(call=>call.name==='registerPushDevice').at(-1).args,['fcm:device-token','binzo.push.v1']);
+  h.overrides.saveProfileSettings=()=>({...pushSettings(true),preferences:{...profileSettings().preferences,pushNotifications:false}});
+  h.bridge.handle({type:'profile.settings.save',data:{pushNotifications:false,requestId:2}});await settle();
+  assert.equal(h.push.owners.at(-1).preferences.pushNotifications,false,'Background rendering receives the committed opt-out');
+  h.bridge.handle({type:'auth.logout',data:{}});await settle();assert.equal(h.push.owners.at(-1).owner,null);h.bridge.close();
+});
+
+test('incoming call notifications dismiss on connection, decline and terminal events without auto-answering', async () => {
+  const h=harness();h.overrides.verifyOtp=()=>signedIn();h.bridge.handle(verifyMessage());await settle();
+  const callId='507f1f77bcf86cd799439011';
+  h.live[0].onEvent({type:'call.ended',data:{callId,reason:'host_unavailable'}});await settle();
+  assert.equal(h.find('call.ended').at(-1).data.reason,'host_unavailable');assert.deepEqual(h.push.dismissed,[callId]);
+  h.bridge.handle({type:'call.decline',data:{callId:'507f1f77bcf86cd799439012'}});await settle();
+  assert.equal(h.push.dismissed.at(-1),'507f1f77bcf86cd799439012');assert.equal(h.count('acceptCall'),0);h.bridge.close();
+});
 
 test('registration permission setup waits for server-confirmed profile completion and only prompts after Allow', async () => {
   const h=harness();

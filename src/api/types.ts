@@ -452,3 +452,34 @@ export interface AdFeed {
   adFree: boolean;
   items: AdCreative[];
 }
+
+export type SupportCategory = "general" | "account" | "coins" | "payments" | "calls" | "gifts" | "technical" | "payouts";
+export type SupportStatus = "open" | "in_progress" | "resolved";
+export interface SupportMessage {
+  id: string;
+  ticketId: string;
+  body: string;
+  senderType: "user" | "staff";
+  senderName: string;
+  clientMessageId: string;
+  createdAt: string;
+  sequence?: number;
+}
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  category: SupportCategory;
+  status: SupportStatus;
+  priority: string;
+  requester: { id: string; name: string; role: "user" | "host"; avatar: string | null };
+  assignee: { id: string; name: string } | null;
+  lastMessage: { body: string; senderType: "user" | "staff"; createdAt: string } | null;
+  unreadUser: number;
+  unreadStaff: number;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+}
+export interface SupportTickets { tickets: SupportTicket[]; page: number; limit: number; total: number; unreadCount: number; }
+export interface SupportConversation { ticket: SupportTicket; messages: SupportMessage[]; total: number; hasMore: boolean; before: string | null; }
+export interface SupportReceipt { ticket: SupportTicket; message: SupportMessage; }

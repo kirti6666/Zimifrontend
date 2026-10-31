@@ -13,6 +13,8 @@ import type { HostAgencyStatus } from "./types";
 import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
 import { callTargetsFrom } from "./adapters";
 import type { CallTargetsInput } from "./types";
+import type { SupportCategory, SupportStatus } from "./types";
+import { supportConversationFrom, supportReceiptFrom, supportTicketFrom, supportTicketsFrom } from "./support";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -88,6 +90,33 @@ function hostAgencyFrom(value: unknown): HostAgencyStatus {
 }
 
 export const api = {
+  async supportTickets(query: { page?: number; status?: SupportStatus | "all" } = {}) {
+    const params = queryString({ page: query.page ?? 1, limit: 20, status: query.status === "all" ? undefined : query.status });
+    return supportTicketsFrom(await request("GET", `/support/tickets?${params}`));
+  },
+  async supportTicket(ticketId: string, before?: string) {
+    return supportConversationFrom(await request("GET", `/support/tickets/${encodeURIComponent(ticketId)}${before ? `?before=${encodeURIComponent(before)}` : ""}`), ticketId);
+  },
+  async createSupportTicket(input: { subject: string; category: SupportCategory; body: string; clientMessageId: string }) {
+    return supportReceiptFrom(await request("POST", "/support/tickets", input));
+  },
+  async sendSupportMessage(ticketId: string, body: string, clientMessageId: string) {
+    const receipt = supportReceiptFrom(await request("POST", `/support/tickets/${encodeURIComponent(ticketId)}/messages`, { body, clientMessageId }));
+    if (receipt.ticket.id !== ticketId) throw new ApiError("The support reply could not be confirmed. Please try again.", 502);
+    return receipt;
+  },
+  async readSupportTicket(ticketId: string, throughMessageId: string) {
+    const data = record(await request("POST", `/support/tickets/${encodeURIComponent(ticketId)}/read`, { throughMessageId }));
+    const ticket = supportTicketFrom(data.ticket);
+    if (ticket.id !== ticketId) throw new ApiError("The support read status could not be confirmed.", 502);
+    return { ticket };
+  },
+  async updateSupportTicket(ticketId: string, status: "open" | "resolved") {
+    const data = record(await request("PATCH", `/support/tickets/${encodeURIComponent(ticketId)}`, { status }));
+    const ticket = supportTicketFrom(data.ticket);
+    if (ticket.id !== ticketId) throw new ApiError("The support status could not be confirmed.", 502);
+    return { ticket };
+  },
   async sendOtp(phone: string, _role?: Role, dialCode?: string): Promise<{ expiresIn: number; resendAfter: number; otpLength: number }> {
     const result = await request<{ expiresIn: number; resendAfter?: number; retryAfterSeconds?: number; otpLength?: number }>("POST", "/auth/otp/request", phonePayload(phone, dialCode), { auth: false });
     // Older backend releases use six digits and do not return this field.
@@ -268,9 +297,9 @@ export const api = {
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
   async officialChat(page = 1) { return officialChatFrom(await request("GET", `/chats/official?${queryString({ page, limit: 20 })}`)); },
   async readOfficialChat(input: OfficialReadPatch) { return notificationReadFrom(await request("POST", "/chats/official/read", input)); },
-  registerPushDevice: (token: string) => {
+  registerPushDevice: (token: string, notificationProtocol?: "binzo.push.v1") => {
     const version = Number(getAppUpdateAuth().appVersionCode);
-    return request<void>("POST", "/notifications/devices", { token, platform: "android", ...(Number.isSafeInteger(version) && version > 0 ? { appVersionCode: version } : {}) });
+    return request<void>("POST", "/notifications/devices", { token, platform: "android", ...(notificationProtocol === "binzo.push.v1" ? { notificationProtocol } : {}), ...(Number.isSafeInteger(version) && version > 0 ? { appVersionCode: version } : {}) });
   },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),

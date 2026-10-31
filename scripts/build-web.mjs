@@ -132,6 +132,7 @@ const page = (demo, hosted = false) =>
   read("web/leaderboard.css") +
   read("web/referral.css") +
   read("web/agency.css") +
+  read("web/support.css") +
   read("web/wallet.css") +
   read("web/coin-packages.css") +
   read("web/gift-picker.css") +
@@ -179,6 +180,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/chat-photo.js") +
   "\n" + read("web/chat-gift-playback.js") +
   "\n" + read("web/profile.js") +
+  "\n" + read("web/support.js") +
   "\n" + read("web/themes.js") +
   "\n" + read("web/notifications.js") +
   "\n" + read("web/navigation.js") +

@@ -2,6 +2,7 @@ import * as Notifications from "expo-notifications";
 import { AppState, Linking, Platform } from "react-native";
 import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
 import { queuePermissionRequest } from "./permission-requests";
+export { syncPushAccount, dismissIncomingCallNotification, pushDeliveryProtocol } from "./native-push-notifications";
 
 /* Device push through Firebase Cloud Messaging. The backend sends notification
    messages to this channel (backend/src/services/push/fcm.client.ts), so
@@ -45,15 +46,19 @@ function ensureChannels(): Promise<void> {
 /** Creates the channel and reports notification taps, including the one that launched the app. */
 export function startPush(onOpen: (target: NotificationTarget) => void, belongsToCurrentAccount?: (recipientId?: string) => boolean): () => void {
   if (!supported()) return () => {};
-  // In the foreground the inbox bell updates over the socket; a heads-up
-  // banner would cover calls and live rooms, so only add it to the tray.
+  // Android channel settings still control sound/DND. Valid messages and calls
+  // need visible heads-up alerts while another app screen is in the foreground.
   Notifications.setNotificationHandler({
     handleNotification: async notification => {
-      const target = notificationTargetFrom(notification.request.content.data);
-      const current = !!target && (!belongsToCurrentAccount || belongsToCurrentAccount(target.recipientId));
+      const data = notification.request.content.data;
+      const target = notificationTargetFrom(data);
+      const validExpiry = data?.expiresAt === undefined || !!target?.expiresAt;
+      const validCall = data?.category !== "calls" || data?.targetType !== "call" || target?.targetType === "call" && !!target.expiresAt;
+      const current = !!target && validExpiry && validCall && data?.action !== "call-ended" && (!belongsToCurrentAccount || belongsToCurrentAccount(target.recipientId));
       const expired = !!target?.expiresAt && Date.parse(target.expiresAt) <= Date.now();
-      return { shouldShowBanner: false, shouldShowList: current && !expired,
-        shouldPlaySound: current && !expired && target?.category === "calls" && target.targetType === "call", shouldSetBadge: false };
+      return { shouldShowBanner: current && !expired, shouldShowList: current && !expired,
+        shouldPlaySound: current && !expired, shouldSetBadge: false,
+        ...(target?.category === "calls" || target?.category === "messages" ? { priority: target.category === "calls" ? Notifications.AndroidNotificationPriority.MAX : Notifications.AndroidNotificationPriority.HIGH } : {}) };
     },
   });
   void ensureChannels().catch(() => {});

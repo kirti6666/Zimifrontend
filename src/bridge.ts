@@ -18,10 +18,11 @@ import { approvedHost } from "./host-access";
 import { LIVE_STREAMING_ENABLED } from "./features";
 import { beginUpdateActivity } from "./app-update-activity";
 import type { OfficialChatData, OfficialReadPatch } from "./api/types";
-import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
+import { clearDeliveredPush, dismissIncomingCallNotification, onPushTokenChange, pushDeliveryProtocol, registerPush, startPush, syncPushAccount, type PushMode, type PushStatus } from "./push";
 import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
 import { notifyAppUpdate } from "./app-update-events";
 import { openDevicePermissionSettings, readDevicePermissions, requestDevicePermissions, type DevicePermissions } from "./device-permissions";
+import { createSupportBridge, type SupportWebMessage, type SupportAppMessage } from "./support-bridge";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -31,6 +32,7 @@ import { openDevicePermissionSettings, readDevicePermissions, requestDevicePermi
 
 /* Screens -> app. */
 export type WebMessage =
+  | SupportWebMessage
   | { type: "ready"; data: { demo: boolean } }
   | { type: "app.exit.request"; data: Record<string, never> }
   | { type: "app.launched"; data: Record<string, never> }
@@ -137,6 +139,7 @@ export type WebMessage =
    wallet.balance, verification.status) come straight from the server socket. */
 export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
+  | SupportAppMessage
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
   | { type: "app.back"; data: Record<string, never> }
@@ -272,7 +275,7 @@ export type AppMessage =
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
   | { type: "call.failed"; data: { message: string; callId?: string; code?: string; requiredCoins?: number; invitationId?: string; requestId?: number } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
-  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
+  | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" | "host_unavailable" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
@@ -309,6 +312,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
   let loadingStreamLink: { revision: number; epoch: number } | undefined;
   let accountId: string | undefined;
+  let nativePushOwner: string | null | undefined;
+  let nativePushReady: Promise<void> = Promise.resolve();
+  const syncNativePush = (owner: string | null, preferences?: ProfileSettings["preferences"]) => {
+    nativePushOwner = owner;
+    nativePushReady = nativePushReady.catch(() => {}).then(() => syncPushAccount(owner, preferences));
+    return nativePushReady;
+  };
+  const registerPushDevice = (token: string) => {
+    const protocol = pushDeliveryProtocol();
+    return protocol ? api.registerPushDevice(token, protocol) : api.registerPushDevice(token);
+  };
   let hostStatus: string | undefined;
   let hostAccount: Account | undefined;
   let accountRole: ServerRole | undefined;
@@ -406,7 +420,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
     callActivities.clear();
   };
   const current = (version: number) => !closed && version === epoch;
-  const emit = (message: AppMessage) => { if (!closed) post(message); };
+  const emit = (message: AppMessage) => {
+    if (closed) return;
+    if (message.type === "call.connected" || message.type === "call.ended") void dismissIncomingCallNotification(message.data.callId).catch(() => {});
+    post(message);
+  };
+  const support = createSupportBridge({ api, emit, snapshot: () => ({
+    key: `${epoch}:${getSessionVersion()}:${documentRevision}:${accountId ?? ""}`,
+    available: !closed && sessionAvailable && !!accountId && !!getCachedToken() && webReady && !restoring,
+    foreground: appActive,
+  }) });
   const stopConnection = onConnectionChanged(data => {
     if (webReady) emit({ type: "connection.status", data });
   });
@@ -495,11 +518,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
+    if (accountId !== account.user.id) { support.reset(); if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
     accountId = account.user.id; hostStatus = account.user.hostStatus; hostAccount = account;
+    if (nativePushOwner !== accountId) void syncNativePush(accountId).catch(() => {});
     hostChecking = false;
     if (publish) publishHostAccess();
   };
@@ -749,9 +773,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const syncPush = async (mode: PushMode) => {
     const version = epoch, sessionVersion = getSessionVersion();
     const applicable = () => current(version) && sessionVersion === getSessionVersion() && sessionAvailable;
+    try { await nativePushReady; } catch { return; }
+    if (!applicable()) return;
     const status = await registerPush(token => {
       if (!applicable()) throw new Error("Device registration was retired");
-      return api.registerPushDevice(token);
+      return registerPushDevice(token);
     }, mode, applicable);
     if (!current(version) || sessionVersion !== getSessionVersion() || status === pushStatus) return;
     pushStatus = status;
@@ -760,6 +786,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const withPushStatus = (settings: ProfileSettings): ProfileSettings =>
     ({ ...settings, capabilities: { ...settings.capabilities, nativePushRegistered: pushStatus === "registered", nativePushStatus: pushStatus } });
   const emitProfileSettings = (settings: ProfileSettings) => {
+    if (accountId) void syncNativePush(accountId, settings.preferences).catch(() => {});
     // Restore/login only register permission already granted. Registration's
     // setup screen and the explicit Enable action own permission dialogs.
     if (settings.capabilities.pushNotifications && pushSession !== getSessionVersion() && !liveOnboarding) {
@@ -931,6 +958,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const activity = AppState?.addEventListener("change", state => {
     if (closed) return;
     appActive = state === "active";
+    support.foreground();
     stopLive.setActive?.(appActive && !liveOnboarding);
     if (chatLease) { chatLease.revision++; flushChatActivity(); }
     if (!appActive) {
@@ -998,6 +1026,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } else if (!hostChecking) invalidateHostAccess(true);
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
+      if (event.type === "support.updated") { support.changed(typeof event.data?.ticketId === "string" ? event.data.ticketId : undefined); return; }
       if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(1, true), "chats.reload"); return; }
       if (event.type === "account.updated" || event.type === "profile.updated") {
         profileRevision++;
@@ -1088,10 +1117,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
-    if (!onboarding) { void loadLists(); void restorePendingPurchases(); }
+    if (!onboarding) { void loadLists(); void restorePendingPurchases(); void support.unread(); }
     void flushStreamLink(); flushPushOpen();
   };
   const unsubscribe = onSessionExpired(() => {
+    support.reset();
+    void syncNativePush(null).catch(() => {});
+    clearDeliveredPush();
     resetUpdateActivities();
     sessionAvailable = false;
     accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
@@ -1109,7 +1141,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     try {
       const token = await getToken();
       if (!current(version)) return;
-      if (!token) { void forgetAccountTheme(); emit({ type: "session.none", data: {} }); return; }
+      if (!token) { void syncNativePush(null).catch(() => {}); void forgetAccountTheme(); emit({ type: "session.none", data: {} }); return; }
       let revision = hostRevision;
       let account = await api.me();
       while (current(version) && sessionVersion === getSessionVersion() && revision !== hostRevision) {
@@ -1122,7 +1154,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; void flushStreamLink(); flushPushOpen(); }
+    } finally { restoring = false; void support.unread(); void flushStreamLink(); flushPushOpen(); }
   };
 
   async function handle(msg: WebMessage) {
@@ -1226,6 +1258,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "notifications.unread": return updateNotifications({ ids: msg.data.ids, read: false }, msg.data.requestId);
       case "notifications.readAll": return updateNotifications({ all: true, read: true }, msg.data.requestId);
       case "official.load": return loadOfficial(msg.data.page ?? 1, msg.data.requestId);
+      case "support.activity": case "support.load": case "support.open": case "support.create": case "support.send": case "support.read": case "support.status":
+        return support.handle(msg);
       case "official.read": {
         const { requestId, ...input } = msg.data;
         return readOfficial(input, requestId);
@@ -1442,6 +1476,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.logout": {
+        support.reset();
+        const nativeClearing = syncNativePush(null);
         pushOpenPending = undefined;pushOpenRevision++;
         resetUpdateActivities();
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
@@ -1459,7 +1495,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         // invalidation is synchronous; this captured credential cannot revoke
         // a newer login, and network completion never clears its session.
         if (token) void api.logout(token).catch(() => {});
-        try { await clearing; }
+        try { await Promise.all([clearing, nativeClearing]); }
         catch (error) {
           if (current(logoutEpoch) && getSessionVersion() === clearedVersion) operationError(error, msg.type);
         }
@@ -1943,6 +1979,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "call.decline": {
+        void dismissIncomingCallNotification(msg.data.callId).catch(() => {});
         rememberCancelledCall(msg.data.callId);
         if (activeCall === msg.data.callId) { activeCall = undefined; activeHostCall = false; callGeneration++; }
         return quietly(api.declineCall(msg.data.callId).finally(() => finishCallActivity(msg.data.callId)), msg.type);
@@ -1967,6 +2004,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return quietly(api.endVerificationCall(msg.data.callId).finally(() => finishCallActivity(msg.data.callId)), msg.type);
       }
       case "call.end": {
+        if (msg.data.callId) void dismissIncomingCallNotification(msg.data.callId).catch(() => {});
         if (msg.data.callId && msg.data.callId === verifyCall?.callId) {
           const verificationId = msg.data.callId;
           // The call media failed on this device.
@@ -2093,11 +2131,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
     pushOpenPending = target;pushOpenRevision++;void flushPushOpen();
   }, recipientId => sessionAvailable && !!accountId && (!recipientId || recipientId === accountId));
   const stopPushToken = onPushTokenChange(token => {
-    if (pushSession === getSessionVersion() && sessionAvailable) void api.registerPushDevice(token).catch(() => {});
+    if (pushSession === getSessionVersion() && sessionAvailable) {
+      const version = epoch, sessionVersion = getSessionVersion();
+      void nativePushReady.then(() => { if (current(version) && sessionVersion === getSessionVersion() && sessionAvailable) return registerPushDevice(token); }).catch(() => {});
+    }
   });
 
   return {
-    documentLoading: () => { setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { support.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
@@ -2130,6 +2171,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
       if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
     },
-    close: () => { closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
+    close: () => { support.reset(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }

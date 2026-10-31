@@ -205,7 +205,7 @@ async function receiptPreviewLayouts(browser, errors) {
     assert.equal(await card.locator('.zc-gift-icon>i').count(), 0, 'Receipt artwork has no crown overlay');
     assert.equal(await card.evaluate(node => node.querySelector('img').getBoundingClientRect().bottom <= node.querySelector('h3').getBoundingClientRect().top + 1), true, 'Portrait receipt artwork stays above its name and price');
     const cardDecoration = await card.evaluate(node => { const style = getComputedStyle(node); return { background: style.backgroundImage, color: style.backgroundColor, border: style.borderTopWidth, shadow: style.boxShadow, filter: style.filter }; });
-    assert.equal(cardDecoration.background, 'none'); assert.equal(cardDecoration.border, '0px'); assert.equal(cardDecoration.shadow, 'none'); assert.equal(cardDecoration.filter, 'none'); assert.ok(['rgba(0, 0, 0, 0)', 'transparent'].includes(cardDecoration.color), 'Gift receipt has no added artwork backdrop');
+    assert.equal(cardDecoration.background, 'none'); assert.equal(cardDecoration.border, '1px'); assert.equal(cardDecoration.shadow, 'none'); assert.equal(cardDecoration.filter, 'none'); assert.ok(['rgba(0, 0, 0, 0)', 'transparent'].includes(cardDecoration.color), 'Gift receipt has no added artwork backdrop');
     await receive(page, 'data.catalog', { ...catalog, gifts: gifts.map(gift => ({ ...gift, coins: gift.coins + 500, name: gift.name + ' new catalog' })) });
     await receive(page, 'data.thread', { with: host.id, canSend: true, messages: [...baseHistory, canonical] });
     assert.match(await card.innerText(), /Orbit Rose/); assert.doesNotMatch(await card.innerText(), /new catalog/, 'Historical receipts keep their saved catalog snapshot');

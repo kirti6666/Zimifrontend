@@ -1602,12 +1602,13 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
+ const supportFocus=window.ZimiSupport?.capture();
  const postFocus=window.ZimiPostCreate?.capture();
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
@@ -1634,7 +1635,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in
@@ -1697,7 +1698,7 @@ Native.on("profile.account",d=>{if(d.user?.id!==S.user?.id)return;obApplyAccount
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
-Native.on("operation.error",d=>{if(d.code==='INSUFFICIENT_COINS')window.ZimiCoins?.requireRecharge();else appNotice(d.message);if(d.action==="presence.set")refresh()});
+Native.on("operation.error",d=>{if(String(d.action||'').startsWith('support.'))return;if(d.code==='INSUFFICIENT_COINS')window.ZimiCoins?.requireRecharge();else appNotice(d.message);if(d.action==="presence.set")refresh()});
 Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);if(S.v==='editprofile')go(S.editBack||"profile");else refresh();appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
@@ -1769,9 +1770,9 @@ Native.on("call.ended",d=>{const id=d.callId;
   if(c.from.callId===id){c.fromEnded=true;return}
   if(c.to.callId===id)return hcSwitchFailed(`${first(c.to.n)} ended the call before it connected`)}
  if(S.v==="incoming"&&S.memberRing?.callId===id){const m=S.memberRing;S.memberRing=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();appNotice(`Missed call from ${first(g(m.id)?.n||"a creator")}`);return ringReturn()}
- if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
+ if(S.v==="dialback"&&(!S.callId||S.callId===id)){S.callId=null;if(window.ZimiMedia)window.ZimiMedia.stop();return dialReturn(d.reason==='host_unavailable'?'Host can’t accept the call.':`${first(S.caller?.n||"They")} didn't pick up. Try again later.`)}
  S.callEnd={callId:id,coins:d.coins,reason:d.reason};
- if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr='The call was not answered. Please try again later.';r();return}
+ if(S.v==='dial'&&(!S.callId||S.callId===id)){S.callId=null;go('precall',S.h);S.pcerr=d.reason==='host_unavailable'?'Host can’t accept the call.':'The call was not answered. Please try again later.';r();return}
  if(S.inc&&S.inc.callId===id)return missInc();
  if(S.queuedInc?.callId===id){addMissed(S.queuedInc);S.queuedInc=null;return}
  if(S.v==="ring"&&S.caller.callId===id){S.acceptingCall=false;addMissed(S.caller);go(S.ringBack||"waiting");return ringQueued()}
