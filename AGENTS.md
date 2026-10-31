@@ -113,8 +113,10 @@ keeps it identical to the original Next.js version.
   both below its hosts.
 - Never show a host as offline. `hostFrom` in `web/aurora-runtime.js` marks
   every host online and lets members call an offline host (the server rings
-  until the call is missed); only an online host's own call settings make
-  calls unavailable. New screens must read `h.on`/`h.available`, never the
+  until the call is missed). Members may manually call any approved host,
+  including admin-created profiles, regardless of the host's availability toggle.
+  The server checks approval, blocks and coins; a host must sign in to answer.
+  New screens must read `h.on`/`h.available`, never the
   raw `online` field.
 - The bottom tabs are Home, Chat, Profile and Settings (the chat route remains
   `chats`). Explore is removed; old Explore routes resolve to Home. `all-creators`

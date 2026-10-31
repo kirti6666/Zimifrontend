@@ -36,7 +36,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
     clearDeliveredPush: () => { push.cleared++; },
   };
   class ApiError extends Error {
-    constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
+    constructor(message, status, code, retryAfterSeconds, requiredCoins) { super(message); Object.assign(this, { status, code, retryAfterSeconds, requiredCoins }); }
   }
   const connectionListeners = new Set();
   let connectionStatus;
@@ -1912,6 +1912,20 @@ test('creator search uses its own latest request and preserves the home category
   for (const data of [{ q: 'x'.repeat(101) }, { q: 'valid', page: 0 }, { q: 42 }]) {
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'hosts.search', data })), null);
   }
+  h.bridge.close();
+});
+
+test('insufficient outgoing call coins reach the recharge screen with the server requirement and refresh the wallet', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const before = h.count('wallet');
+  h.overrides.startCall = () => { throw new h.ApiError('Recharge to call.', 402, 'INSUFFICIENT_COINS', undefined, 80); };
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.deepEqual(plain(h.find('call.failed').at(-1).data), { message: 'Recharge to call.', code: 'INSUFFICIENT_COINS', requiredCoins: 80 });
+  assert.equal(h.count('wallet'), before + 1);
+  assert.equal(h.find('call.created').length, 0);
+  assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), false);
   h.bridge.close();
 });
 

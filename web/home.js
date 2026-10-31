@@ -165,10 +165,13 @@ function hostCallMember(id,voice,person={}){
   homePrepareCall('dialback',id);
 }
 function homeCallUnavailable(id){return !g(id)||(!DEMO&&!g(id).available)}
+function homeCallRequiredCoins(h){return Math.max((h?.rate||0)+(h?.fee||0),S.callFunds?.hostId===h?.id?S.callFunds.requiredCoins:0)}
 function homeCallFundsReady(h){
   if(!h)return false;
-  if(h.rate>0&&!coinWalletReady()){r();return false}
-  if(h.rate>0&&S.bal<h.rate){r();return false}
+  const need=homeCallRequiredCoins(h);
+  if(need>0&&!coinWalletReady()){r();return false}
+  if(need>0&&S.bal<need){S.pcerr=`You need at least ${n(need)} coins. Recharge your wallet to call.`;r();return false}
+  S.callFunds=null;
   return true;
 }
 function homeStartCall(voice=false){

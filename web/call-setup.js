@@ -12,7 +12,7 @@ function zpcScreen(){
   if(live)CallSetup.mode='video';
   const busy=!!Home.preparingCall,voice=!live&&(busy?!!Home.preparingVoice:CallSetup.mode==='voice');
   const available=!!h.available&&(!live||h.stream?.id===Home.dashboardSetup.streamId);
-  const need=(h.rate||0)+(h.fee||0),walletPending=need>0&&!coinWalletReady(),walletError=walletPending&&!!ContentLoading.wallet.error;
+  const need=homeCallRequiredCoins(h),walletPending=need>0&&!coinWalletReady(),walletError=walletPending&&!!ContentLoading.wallet.error;
   // A paid call needs the entry fee and one minute of coins to start; the server enforces the same rule.
   const short=available&&!busy&&!walletPending&&need>0&&S.bal<need;
   const modes=live?[['video','vid','Video call','Request a private call']]:[['video','vid','Video call','Face to face'],['voice','ph','Voice call','Just your voices']];

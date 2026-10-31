@@ -1640,13 +1640,15 @@ function r(){
    the short keys the screens use. */
 const PEOPLE={};
 const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997;return x};
-/* Nobody is ever shown a host as offline. The server still rings an offline host until the call
-   is missed, so for members only an online host's own call settings make calls unavailable.
+/* Members can ring every approved host, including admin-created and offline profiles.
+   The server validates approval, blocks, wallet balance and the final call price.
    `ready` keeps the server's own availability for lists that promise an instant answer. */
 function isHostPayload(p){return p.serverRole==="host"||p.role==="host"||p.verified===true}
 function hostShownOnline(p){return isHostPayload(p)||!!p.online}
-function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&p.online!==true&&!isHost()}
+function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&!isHost()}
 function hostFrom(p){const id=String(p.id);
+ // A fresh server quote supersedes a previous insufficient-coins response.
+ if(S.callFunds?.hostId===id&&Number.isFinite(p.ratePerMin)&&Number.isFinite(p.entryFee))S.callFunds=null;
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
   ...(Object.prototype.hasOwnProperty.call(p,'country')?{country:typeof p.country==='string'&&p.country.trim().length<=100&&!/[\u0000-\u001f\u007f]/.test(p.country)?p.country.trim():''}:{}),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
@@ -1710,7 +1712,7 @@ Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
 // Capture the authenticated payload before refresh: later module handlers also
 // consume this event, so reading their caches here would lag by one response.
 Native.on("wallet.balance",d=>{const owner=S.user?.id;if(owner)S.walletSnapshot={owner,data:{...(S.walletSnapshot?.owner===owner?S.walletSnapshot.data:{}),...d}};else S.walletSnapshot=null;if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)A().earn=d.earned;refresh()});
-for(const type of ['session','auth.ok','session.none','session.expired'])Native.on(type,()=>{S.walletSnapshot=null});
+for(const type of ['session','auth.ok','session.none','session.expired'])Native.on(type,()=>{S.walletSnapshot=null;S.callFunds=null});
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
@@ -1732,7 +1734,7 @@ Native.on("call.failed",d=>{
  /* A minimized call fails where it would on screen: a ringing one returns with the reason. */
  if(S.bgCall)callRestore(!["dial","dialback"].includes(S.bgCall.view));
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
- if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
+ if(S.v==="dial"){const id=S.h;if(d.code==='INSUFFICIENT_COINS')S.callFunds={hostId:id,requiredCoins:Number.isSafeInteger(d.requiredCoins)&&d.requiredCoins>0?d.requiredCoins:S.bal+1};go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")dialReturn(d.message||"The call didn't go through. Try again.");
  else if(S.v==="incoming"&&d.callId&&S.memberRing?.callId===d.callId){S.memberRing.error=d.message||"The call couldn't be answered. Try again.";r()}
  else if(S.v==="ring"){appNotice(d.message||"The call didn't connect. Please try again.");r()}});

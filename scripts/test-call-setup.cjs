@@ -250,11 +250,12 @@ async function assertLayout(page, label) {
     await button(page, 'Cancel call').click();
     await page.evaluate(id => go('precall', id), hostId);
 
-    const unavailable = await startPending(page);
+    const availabilityChanged = await startPending(page);
     await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: true }));
-    await release(page, unavailable);
-    assert.equal((await sent(page, 'call.start')).length, 3, 'A creator turning calls off cancels pending preparation');
-    assert.equal(await button(page, 'Currently unavailable').isDisabled(), true);
+    await page.evaluate(index => __media.requests[index].release(), availabilityChanged);
+    await page.waitForFunction(() => __sent.filter(message => message.type === 'call.start').length === 4);
+    assert.equal((await sent(page, 'call.start')).at(-1).data.to, hostId, 'An approved host turning availability off does not cancel a member call');
+    await button(page, 'Cancel call').click();
     await receive(page, 'data.home', homeData());
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'Availability refresh updates the open setup');
     await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: false }));
@@ -264,12 +265,14 @@ async function assertLayout(page, label) {
     await receive(page, 'data.hosts', { hosts: [host, other] });
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A creator list update preserves server availability');
     await receive(page, 'data.hosts', { hosts: [{ ...host, availableForCall: false }, other] });
-    assert.equal(await button(page, 'Currently unavailable').isDisabled(), true);
-    await button(page, 'Explore creators').click();
-    assert.equal(await page.evaluate(() => S.v), 'home', 'Explore is removed, so its route opens Home');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'Availability off never disables manual calls to approved hosts');
+    await button(page, 'Back').click();
+    await page.locator(`.zh-creator-card[data-host-id="${hostId}"] .zh-creator-call`).click();
+    assert.equal(await page.evaluate(() => S.v), 'precall', 'The Home card opens setup even with availability off');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true);
     assert.equal(await page.evaluate(() => __media.tracks.every(track => track.readyState === 'ended')), true);
     assert.deepEqual(errors, [], 'All setup states run without uncaught browser errors');
-    console.log('PASS: full-height themed call setup, responsive identity/fallback, blocked live routing, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, ringback and full-screen camera preview while dialing, creator changes, unavailable refresh and Explore.');
+    console.log('PASS: themed call setup, explicit media consent, cancellation and late cleanup, permission retry, video/voice payloads, ringback, creator changes, offline and availability-off host calls.');
   } finally {
     await browser.close();
   }

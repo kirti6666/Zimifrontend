@@ -263,7 +263,7 @@ export type AppMessage =
   | { type: "agency.loaded" | "agency.verified" | "agency.joined"; data: import("./api/types").HostAgencyStatus & { requestId: number } }
   | { type: "agency.error"; data: { action: "agency.load" | "agency.verify" | "agency.join"; message: string; requestId: number } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
-  | { type: "call.failed"; data: { message: string; callId?: string; code?: string; invitationId?: string; requestId?: number } }
+  | { type: "call.failed"; data: { message: string; callId?: string; code?: string; requiredCoins?: number; invitationId?: string; requestId?: number } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
   | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
   | { type: "verify.incoming"; data: { callId: string } }
@@ -1824,7 +1824,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
           holdCallActivity(result.callId, intent.activity);
           emit({ type: "call.created", data: { callId: activeCall, to: result.to, voice: result.voice, ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
           if (result.connected && intent.callId !== result.callId) emit({ type: "call.connected", data: { ...result, initiator: true, peerId: result.to } });
-        } catch (error) { if (current(version) && intent.generation === callGeneration) emit({ type: "call.failed", data: { message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}), ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } }); }
+        } catch (error) {
+          if (current(version) && intent.generation === callGeneration) {
+            emit({ type: "call.failed", data: { message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}), ...(error instanceof ApiError && error.requiredCoins ? { requiredCoins: error.requiredCoins } : {}), ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
+            if (error instanceof ApiError && error.code === "INSUFFICIENT_COINS") quietly(refreshWallet(), "wallet.load");
+          }
+        }
         finally { if (![...callActivities.values()].includes(intent.activity)) intent.activity.finish(); if (pendingOutgoing === intent) pendingOutgoing = undefined; verifyCall = undefined; }
         return;
       }

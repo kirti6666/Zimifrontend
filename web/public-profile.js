@@ -130,7 +130,7 @@ function zuHostCall(voice){
   hostCallMember(p.id,voice,{name:p.name,avatarUrl:p.avatarUrl,city:p.city,gender:p.gender});
 }
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
-function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&p.availableForCall&&!zuOffline())homeCall(p.id)}
+function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&!zuOffline())homeCall(p.id)}
 function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
 function zuWatch(){const p=Zu.profile;if(window.ZIMI_LIVE_STREAMING_ENABLED&&p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
 
@@ -142,7 +142,7 @@ function zuSkeleton(kind='profile'){
 function zuStatus(p){
   if(Zu.loading||Zu.error)return '';
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
-  const callable=zuApproved(p)&&p.availableForCall;
+  const callable=zuApproved(p)&&zuMember();
   return `<span class="zu-presence ${callable||p.online?'is-online':''}"><i></i>${callable?'Available for a call':p.online?'Online':'Currently offline'}</span>`;
 }
 function zuAvatar(p){
@@ -196,10 +196,10 @@ function zuContent(p){
 function zuActions(p){
   if(!p||Zu.error)return '';
   if(zuSelf())return '';
-  const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
+  const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
-  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
-    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
+  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>YOUR NEXT CONVERSATION</span><strong>${Zu.loading?'Checking call rate…':Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'}</strong></div>`:''}
+    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>Start video call</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();

@@ -11,6 +11,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code?: string,
     readonly retryAfterSeconds?: number,
+    readonly requiredCoins?: number,
   ) {
     super(message);
     this.name = "ApiError";
@@ -121,7 +122,8 @@ function responseError(response: Response, body: unknown): ApiError {
   // User-facing failures never contain HTML, stack traces, or oversized server responses.
   const message = response.status >= 500 && mediaMessage ? mediaMessage :
     response.status < 500 && raw.length > 0 && raw.length <= 500 && !/[<>\x00-\x08]/.test(raw) ? raw : fallback;
-  return new ApiError(message, response.status, code, retryDelay(response, body));
+  const requiredCoins = code === "INSUFFICIENT_COINS" && object(body) && Number.isSafeInteger(body.requiredCoins) && Number(body.requiredCoins) > 0 ? Number(body.requiredCoins) : undefined;
+  return new ApiError(message, response.status, code, retryDelay(response, body), requiredCoins);
 }
 
 async function exchange<T>(method: Method, path: string, body?: unknown, token?: string | null): Promise<T> {
