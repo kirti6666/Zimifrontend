@@ -20,6 +20,11 @@ const hostAccount = { user: { id: id(2), name: 'Gift playback host', role: 'host
 const fan = { id: id(1), name: member.user.name, role: 'sender', serverRole: 'user', online: true, verified: false };
 const otherHost = { ...host, id: id(3), name: 'Another host' };
 const artUrl = 'https://media.fixture.test/original-rose.webp';
+const shapeArtwork = new Map([
+  ['portrait', [300, 900]], ['landscape', [1200, 450]], ['square', [800, 800]],
+].map(([name, [width, height]]) => [`https://media.fixture.test/${name}.svg`, {
+  width, height, body: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect x="2" y="2" width="${width - 4}" height="${height - 4}" fill="#ef078533" stroke="#ef0785" stroke-width="4"/><path d="M0 0L${width} ${height}M${width} 0L0 ${height}" stroke="#42a5f5" stroke-width="3"/></svg>`),
+}]));
 const gift = { id: id(100), name: 'Original Rose', emoji: '🌹', mediaUrl: artUrl, coins: 37, durationMs: 700 };
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
 const stage = page => page.locator('#zc-gift-playback');
@@ -39,6 +44,8 @@ async function makePage(browser, errors, messages = history, account = member, p
   await page.route(/^https?:\/\//, route => {
     if (!route.request().url().startsWith('https://media.fixture.test/')) return route.abort();
     if (route.request().resourceType() === 'fetch') page._giftFetches.push(route.request().url());
+    const shape=shapeArtwork.get(route.request().url());
+    if(shape)return route.fulfill({status:200,headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:shape.body});
     return route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*' }, contentType: actualArt ? 'image/webp' : 'image/png', body: actualArt || png });
   });
   await page.addInitScript(() => { window.__sent = []; window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) }; });
@@ -54,14 +61,35 @@ async function makePage(browser, errors, messages = history, account = member, p
   return page;
 }
 
-async function expectPlaying(page, transfer) {
+async function expectFullStage(page) {
+  const geometry=await stage(page).evaluate(node=>{
+    const rect=element=>{const box=element.getBoundingClientRect();return {left:box.left,right:box.right,top:box.top,bottom:box.bottom,width:box.width,height:box.height}};
+    const image=node.querySelector('img'),viewport=window.visualViewport,app=rect(document.querySelector('.app')),style=getComputedStyle(image);
+    return {stage:rect(node),app,image:rect(image),viewport:{left:viewport?.offsetLeft||0,top:viewport?.offsetTop||0,width:viewport?.width||innerWidth,height:viewport?.height||innerHeight},natural:{width:image.naturalWidth,height:image.naturalHeight},fit:style.objectFit,position:style.objectPosition,transform:style.transform,clip:style.clipPath,overflow:getComputedStyle(node).overflow};
+  });
+  const expected={left:Math.max(geometry.app.left,geometry.viewport.left),top:Math.max(geometry.app.top,geometry.viewport.top),right:Math.min(geometry.app.right,geometry.viewport.left+geometry.viewport.width),bottom:Math.min(geometry.app.bottom,geometry.viewport.top+geometry.viewport.height)};
+  for(const edge of ['left','top','right','bottom']){
+    assert.ok(Math.abs(geometry.stage[edge]-expected[edge])<1,`Playback fills the visible app ${edge} edge`);
+    assert.ok(Math.abs(geometry.image[edge]-geometry.stage[edge])<1,`Original artwork can use the full stage ${edge} edge without a size cap`);
+  }
+  assert.equal(geometry.fit,'contain','Portrait, landscape and square gifts keep the entire source frame');
+  assert.equal(geometry.position,'50% 50%','Letterboxed artwork stays centered');
+  assert.equal(geometry.transform,'none','Artwork has no zoom or translation that could cut off its sides');
+  assert.equal(geometry.clip,'none');assert.equal(geometry.overflow,'visible','The playback portal adds no clipping box');
+  assert.ok(geometry.natural.width>0&&geometry.natural.height>0);
+  const scale=Math.min(geometry.stage.width/geometry.natural.width,geometry.stage.height/geometry.natural.height);
+  const rendered={width:geometry.natural.width*scale,height:geometry.natural.height*scale};
+  assert.ok(rendered.width<=geometry.stage.width+1&&rendered.height<=geometry.stage.height+1,'The complete original frame fits on screen');
+  assert.ok(Math.abs(rendered.width-geometry.stage.width)<1||Math.abs(rendered.height-geometry.stage.height)<1,'Artwork expands to the available width or height');
+  return {...geometry,rendered};
+}
+async function expectPlaying(page, transfer, mediaUrl=artUrl) {
   await stage(page).waitFor({ state: 'visible' });
   await page.waitForFunction(transfer => document.querySelector('#zc-gift-playback img')?.dataset.transferId === transfer && document.querySelector('#zc-gift-playback')?.dataset.state === 'playing', id(2000 + transfer));
   assert.equal(await page.locator('#zc-gift-playback:visible').count(), 1, 'Only one center animation plays at a time');
-  assert.equal(await stage(page).locator('img').getAttribute('data-media-url'), artUrl, 'Center playback uses the original server media');
+  assert.equal(await stage(page).locator('img').getAttribute('data-media-url'), mediaUrl, 'Center playback uses the original server media');
   assert.match(await stage(page).locator('img').getAttribute('src'), /^blob:/, 'CORS-allowed original artwork gets a fresh animation resource');
-  const geometry = await stage(page).evaluate(node => { const p=node.getBoundingClientRect(),f=document.getElementById('tf').getBoundingClientRect(); return { p:{left:p.left,right:p.right,top:p.top,bottom:p.bottom}, f:{left:f.left,right:f.right,top:f.top,bottom:f.bottom} }; });
-  assert.ok(geometry.p.left >= geometry.f.left-1 && geometry.p.right <= geometry.f.right+1 && geometry.p.top >= geometry.f.top-1 && geometry.p.bottom <= geometry.f.bottom+1, 'Center playback stays inside conversation history, clear of header and composer');
+  await expectFullStage(page);
   assert.equal(await stage(page).getAttribute('aria-hidden'), 'true');
 }
 async function expectIdle(page, label) {
@@ -89,7 +117,7 @@ async function assertComposer(page, before) {
 (async () => {
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
-  const errors = [], checks = [];
+  const errors = [], checks = [], geometryChecks=[];
   try {
     const old = receipt(1);
     const page = await makePage(browser, errors, [...history, old]);
@@ -180,6 +208,36 @@ async function assertComposer(page, before) {
     checks.push('background/hidden/wrong-thread suppression');
     await receiver.close();
 
+    const geometryPage=await makePage(browser,errors,history.slice(0,2));
+    let transfer=20;
+    for(const [media,shape] of shapeArtwork){
+      await geometryPage.evaluate(()=>ZimiChatGifts.reset());
+      const shaped=receipt(transfer);shaped.gift.mediaUrl=media;shaped.gift.durationMs=600000;
+      await receive(geometryPage,'gift.sent',ack(shaped));await expectPlaying(geometryPage,transfer,media);
+      await stage(geometryPage).locator('img').evaluate(image=>{window.__shapeImage=image});
+      for(const viewport of [{width:320,height:844},{width:390,height:844},{width:844,height:390},{width:768,height:1024}]){
+        await geometryPage.setViewportSize(viewport);await geometryPage.evaluate(()=>r());
+        const geometry=await expectFullStage(geometryPage);
+        assert.deepEqual(geometry.natural,{width:shape.width,height:shape.height},'The uploaded source aspect ratio is preserved');
+        assert.equal(await stage(geometryPage).locator('img').evaluate(image=>image===window.__shapeImage),true,'Orientation changes preserve the running image');
+        geometryChecks.push({media,viewport,...geometry});
+      }
+      transfer++;
+    }
+    await geometryPage.setViewportSize({width:390,height:844});
+    await geometryPage.evaluate(()=>{
+      window.__originalVisualViewport=window.visualViewport;
+      Object.defineProperty(window,'visualViewport',{configurable:true,value:{offsetLeft:0,offsetTop:120,width:390,height:420}});
+      window.dispatchEvent(new Event('resize'));
+    });
+    geometryChecks.push({keyboardViewport:true,...await expectFullStage(geometryPage)});
+    await geometryPage.evaluate(()=>{
+      Object.defineProperty(window,'visualViewport',{configurable:true,value:window.__originalVisualViewport});
+      window.dispatchEvent(new Event('resize'));
+    });
+    await geometryPage.close();
+    checks.push('full visible app portrait/landscape/square geometry at phone/landscape/tablet sizes','keyboard visual viewport intersection');
+
     // Capture the supplied transparent animation separately at its real duration.
     const visualPage = await makePage(browser,errors,history.slice(0,2));
     await visualPage.locator('#ti').fill('Keep chatting while the original gift plays');
@@ -197,7 +255,7 @@ async function assertComposer(page, before) {
     assert.equal(await visualPage.evaluate(async url=>{try{await fetch(url);return true}catch{return false}},visualUrl),false,'Logout revokes active playback Blob URL');
     checks.push('original Rose animation screenshot', 'logout clears playback');
     assert.deepEqual(errors, []);
-    fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify({ actualArtwork: actualArt ? { path: artPath, bytes: actualArt.length } : null, checks, effects, blobProof, originalMediaFetches:page._giftFetches.length, pageErrors: errors }, null, 2));
-    console.log('PASS chat gift playback: confirmed once, ordered queue, history/failure suppression, stable media node, typing/anchor preservation, navigation/logout/background cleanup, transparent original artwork.');
+    fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify({ actualArtwork: actualArt ? { path: artPath, bytes: actualArt.length } : null, checks, effects, blobProof, geometryChecks, originalMediaFetches:page._giftFetches.length, pageErrors: errors }, null, 2));
+    console.log('PASS chat gift playback: full-screen uncropped portrait/landscape/square artwork, confirmed once, ordered queue, history/failure suppression, stable media node, typing/anchor preservation, navigation/logout/background cleanup, transparent original artwork.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

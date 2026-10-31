@@ -28,7 +28,9 @@ window.ZimiChatGifts=(()=>{
   function obstructed(){return !!(Home.giftTo||document.querySelector('#zc-photo-viewer,.zc-overlay,.zc-message-menu,.zh-sheet-backdrop'))}
   function position(){
     if(!portal)return;
-    const box=document.getElementById('tf')?.getBoundingClientRect();
+    // Use the whole visible app, including the header and composer. Confining
+    // artwork to the scrolling message list makes full-screen gifts look cut off.
+    const box=document.querySelector('.app')?.getBoundingClientRect();
     if(!box||box.width<1||box.height<1){portal.hidden=true;return}
     const viewport=window.visualViewport;
     const left=Math.max(box.left,viewport?.offsetLeft||0),top=Math.max(box.top,viewport?.offsetTop||0);
