@@ -122,7 +122,15 @@ async function geometry(page, width, dark) {
     assert.equal(await page.evaluate(() => S.bal), 10000, 'Only authoritative wallet events change balance');
     await receive(page, 'wallet.balance', { coins: 0 });
     await receive(page, 'data.catalog', catalog);
-    assert.equal(await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).isDisabled(), true, 'Insufficient balance prevents another gift send');
+    const recharge = page.getByRole('dialog', { name: 'Recharge to continue', exact: true });
+    await recharge.waitFor();
+    await recharge.getByRole('button', { name: 'Not now', exact: true }).click();
+    const beforeRecharge = (await sent(page, 'gift.send')).length;
+    assert.equal(await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).isEnabled(), true, 'Insufficient balance offers recharge');
+    await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).click();
+    await recharge.waitFor();
+    assert.equal((await sent(page, 'gift.send')).length, beforeRecharge, 'The local balance guard opens recharge without another gift send');
+    await recharge.getByRole('button', { name: 'Not now', exact: true }).click();
     await sheet(page).getByRole('button', { name: 'Close gifts', exact: true }).click();
     await receive(page, 'wallet.balance', { coins: 10000 });
 

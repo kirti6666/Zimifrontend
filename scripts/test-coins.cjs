@@ -238,7 +238,12 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     await receive(page, 'data.loading', { resource: 'wallet', loading: false, error: 'Wallet could not be loaded' });
     assert.equal(await button(page, 'Send gift').isEnabled(), false, 'A failed wallet read cannot send a gift');
     await balance(page, 10);
-    assert.equal(await button(page, 'Send gift').isEnabled(), false, 'Insufficient balance cannot send a gift');
+    assert.equal(await button(page, 'Send gift').isEnabled(), true, 'Insufficient balance offers recharge from Send');
+    await button(page, 'Send gift').click();
+    const recharge = page.getByRole('dialog', { name: 'Recharge to continue', exact: true });
+    await recharge.waitFor();
+    assert.equal((await sent(page, 'gift.send')).length, 0, 'A short balance does not send the gift');
+    await button(recharge, 'Not now').click();
     await button(giftDialog(page), 'Add coins').click();
     assert.equal(await page.evaluate(() => S.v), 'thread', 'Top up stays in the conversation');
     assert.equal(await page.evaluate(() => Home.giftTo), creator.id, 'Top up retains the recipient');

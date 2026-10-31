@@ -13,7 +13,7 @@ html:root .zg-reference .zg-art>img{width:100%;height:72px}
 /* Playback uses the whole call surface. Fit every frame inside it without
    cropping wide artwork or forcing portrait animations into a small slot. */
 html:root .zr-gift-celebration{inset:0;background:transparent;overflow:visible;animation:none;opacity:1;pointer-events:none}
-html:root .zr-room .zr-gift-celebration .zr-gift-stage-art{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;transform:none;animation:none!important;opacity:1}
+html:root :is(.zr-room .zr-gift-celebration,#zr-gift-playback) .zr-gift-stage-art{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;transform:none;animation:none!important;opacity:1;display:grid;place-items:center}
 html:root .zr-gift-celebration .zr-gift-stage-art>img{display:block;width:100%;height:100%;object-fit:contain;object-position:center}
 html:root .fxg{position:absolute;left:50%;top:46%;width:min(78vw,320px);height:min(62vh,560px);margin:0;transform:translate(-50%,-50%);animation:none!important;opacity:1}
 html:root .fxg>img{width:100%;height:100%;object-fit:contain}
@@ -28,7 +28,10 @@ html:root .zc-gift-icon>img{height:154px}
 html:root .zc-quick-gift-art>img{height:52px}
 /* One original gift animation across the visible app. The portal is
    transparent, outside message layout and below sheets; typing stays usable. */
-html:root #zc-gift-playback{position:fixed;z-index:40;display:flex;align-items:center;justify-content:center;overflow:visible;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important}
-html:root #zc-gift-playback[hidden]{display:none}
-html:root #zc-gift-playback::before,html:root #zc-gift-playback::after{content:none!important;display:none!important}
-html:root #zc-gift-playback>.zc-gift-playback-art{display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
+html:root :is(#zc-gift-playback,#zr-gift-playback){position:fixed;inset:auto;z-index:40;display:flex;align-items:center;justify-content:center;overflow:visible;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important}
+html:root :is(#zc-gift-playback,#zr-gift-playback)[hidden]{display:none}
+html:root :is(#zc-gift-playback,#zr-gift-playback)::before,html:root :is(#zc-gift-playback,#zr-gift-playback)::after{content:none!important;display:none!important}
+/* Match the conversation's side gutters while keeping the preview centered. */
+html:root #zc-gift-playback{box-sizing:border-box;padding-inline:max(14px,calc(50% - 380px))}
+html:root :is(#zc-gift-playback>.zc-gift-playback-art,#zr-gift-playback .zr-gift-stage-art>img){display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
+html:root #zr-gift-playback .zr-gift-stage-art>span{font-size:clamp(100px,40vmin,240px);line-height:1}

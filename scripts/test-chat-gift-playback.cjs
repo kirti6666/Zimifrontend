@@ -64,23 +64,26 @@ async function makePage(browser, errors, messages = history, account = member, p
 async function expectFullStage(page) {
   const geometry=await stage(page).evaluate(node=>{
     const rect=element=>{const box=element.getBoundingClientRect();return {left:box.left,right:box.right,top:box.top,bottom:box.bottom,width:box.width,height:box.height}};
-    const image=node.querySelector('img'),viewport=window.visualViewport,app=rect(document.querySelector('.app')),style=getComputedStyle(image);
-    return {stage:rect(node),app,image:rect(image),viewport:{left:viewport?.offsetLeft||0,top:viewport?.offsetTop||0,width:viewport?.width||innerWidth,height:viewport?.height||innerHeight},natural:{width:image.naturalWidth,height:image.naturalHeight},fit:style.objectFit,position:style.objectPosition,transform:style.transform,clip:style.clipPath,overflow:getComputedStyle(node).overflow};
+    const image=node.querySelector('img'),viewport=window.visualViewport,app=rect(document.querySelector('.app')),style=getComputedStyle(image),stageStyle=getComputedStyle(node);
+    return {stage:rect(node),app,image:rect(image),padding:{left:parseFloat(stageStyle.paddingLeft),right:parseFloat(stageStyle.paddingRight)},viewport:{left:viewport?.offsetLeft||0,top:viewport?.offsetTop||0,width:viewport?.width||innerWidth,height:viewport?.height||innerHeight},natural:{width:image.naturalWidth,height:image.naturalHeight},fit:style.objectFit,position:style.objectPosition,transform:style.transform,clip:style.clipPath,overflow:getComputedStyle(node).overflow};
   });
   const expected={left:Math.max(geometry.app.left,geometry.viewport.left),top:Math.max(geometry.app.top,geometry.viewport.top),right:Math.min(geometry.app.right,geometry.viewport.left+geometry.viewport.width),bottom:Math.min(geometry.app.bottom,geometry.viewport.top+geometry.viewport.height)};
   for(const edge of ['left','top','right','bottom']){
     assert.ok(Math.abs(geometry.stage[edge]-expected[edge])<1,`Playback fills the visible app ${edge} edge`);
-    assert.ok(Math.abs(geometry.image[edge]-geometry.stage[edge])<1,`Original artwork can use the full stage ${edge} edge without a size cap`);
+    const inset=edge==='left'?geometry.padding.left:edge==='right'?-geometry.padding.right:0;
+    assert.ok(Math.abs(geometry.image[edge]-geometry.stage[edge]-inset)<1,`Original artwork respects the preview ${edge} spacing`);
   }
+  const gutter=Math.max(14,geometry.stage.width/2-380);
+  assert.ok(Math.abs(geometry.padding.left-gutter)<1&&Math.abs(geometry.padding.right-gutter)<1,'Preview has equal side gutters matching chat content');
   assert.equal(geometry.fit,'contain','Portrait, landscape and square gifts keep the entire source frame');
   assert.equal(geometry.position,'50% 50%','Letterboxed artwork stays centered');
   assert.equal(geometry.transform,'none','Artwork has no zoom or translation that could cut off its sides');
   assert.equal(geometry.clip,'none');assert.equal(geometry.overflow,'visible','The playback portal adds no clipping box');
   assert.ok(geometry.natural.width>0&&geometry.natural.height>0);
-  const scale=Math.min(geometry.stage.width/geometry.natural.width,geometry.stage.height/geometry.natural.height);
+  const scale=Math.min(geometry.image.width/geometry.natural.width,geometry.image.height/geometry.natural.height);
   const rendered={width:geometry.natural.width*scale,height:geometry.natural.height*scale};
-  assert.ok(rendered.width<=geometry.stage.width+1&&rendered.height<=geometry.stage.height+1,'The complete original frame fits on screen');
-  assert.ok(Math.abs(rendered.width-geometry.stage.width)<1||Math.abs(rendered.height-geometry.stage.height)<1,'Artwork expands to the available width or height');
+  assert.ok(rendered.width<=geometry.image.width+1&&rendered.height<=geometry.image.height+1,'The complete original frame fits inside the padded preview');
+  assert.ok(Math.abs(rendered.width-geometry.image.width)<1||Math.abs(rendered.height-geometry.image.height)<1,'Artwork expands to the available width or height inside its gutters');
   return {...geometry,rendered};
 }
 async function expectPlaying(page, transfer, mediaUrl=artUrl) {
@@ -126,6 +129,7 @@ async function assertComposer(page, before) {
     assert.equal(await stage(page).isVisible(), false, 'An echo of a gift already loaded from history never replays');
     await receive(page, 'operation.error', { action: 'gift.send', to: host.id, gift: gift.id, idempotencyKey: 'failed', status: 402, code: 'INSUFFICIENT_COINS', message: 'Fixture send failed' });
     assert.equal(await stage(page).isVisible(), false, 'Failed gift sends never play');
+    await page.getByRole('dialog',{name:'Recharge to continue',exact:true}).getByRole('button',{name:'Not now',exact:true}).click();
     checks.push('history and failures do not play');
 
     const before = await keepComposer(page), sent = receipt(2);
@@ -175,6 +179,59 @@ async function assertComposer(page, before) {
     assert.equal(page._giftFetches.length,1,'Queued plays reuse cached original bytes without another HTTP fetch');
     await expectIdle(page, 'The playback queue drains after both distinct gifts');
     checks.push('ordered distinct-transfer queue');
+
+    // An animation's duration belongs to playable artwork, not network latency.
+    let releaseSlow,signalSlow;
+    const slowReleased=new Promise(resolve=>{releaseSlow=resolve}),slowRequested=new Promise(resolve=>{signalSlow=resolve});
+    const slowUrl='https://media.fixture.test/delayed-artwork.svg';
+    await page.route(slowUrl,async route=>{
+      if(route.request().resourceType()==='fetch'){signalSlow();await slowReleased}
+      await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:shapeArtwork.values().next().value.body});
+    });
+    const delayed=receipt(14);delayed.gift.mediaUrl=slowUrl;delayed.gift.durationMs=500;
+    await receive(page,'gift.sent',ack(delayed));await slowRequested;
+    await page.waitForTimeout(650);
+    assert.equal(await stage(page).getAttribute('data-state'),'loading','The slow asset retains its pending transfer instead of timing out its display');
+    releaseSlow();await expectPlaying(page,14,slowUrl);
+    const delayedStart=Number(await stage(page).getAttribute('data-started-at'));
+    await expectIdle(page,'The slow gift plays its full supplied duration after loading');
+    assert.ok(Date.now()-delayedStart>=450,'Loading time is excluded from the display duration');
+    checks.push('post-load display duration');
+
+    // Opening a picker during loading must not use up an invisible animation.
+    let releaseSheetArt,signalSheetArt;
+    const sheetArtReleased=new Promise(resolve=>{releaseSheetArt=resolve}),sheetArtRequested=new Promise(resolve=>{signalSheetArt=resolve});
+    const sheetArtUrl='https://media.fixture.test/sheet-delayed-artwork.svg';
+    await page.route(sheetArtUrl,async route=>{
+      if(route.request().resourceType()==='fetch'){signalSheetArt();await sheetArtReleased}
+      await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:shapeArtwork.values().next().value.body});
+    });
+    const sheetDelayed=receipt(15);sheetDelayed.gift.mediaUrl=sheetArtUrl;sheetDelayed.gift.durationMs=500;
+    await receive(page,'gift.sent',ack(sheetDelayed));await sheetArtRequested;
+    await page.evaluate(()=>homeGifts(S.h));
+    const giftSheet=page.getByRole('dialog',{name:'Send a gift',exact:true});await giftSheet.waitFor();
+    releaseSheetArt();
+    await page.waitForFunction(()=>{const image=document.querySelector('#zc-gift-playback img');return image?.complete&&image.naturalWidth>0});
+    await page.waitForTimeout(650);
+    assert.equal(await stage(page).getAttribute('data-state'),'loading','Ready artwork waits behind the sheet instead of starting its display clock');
+    assert.equal(await stage(page).getAttribute('data-started-at'),null);
+    await giftSheet.getByRole('button',{name:'Close gifts',exact:true}).click();
+    await expectPlaying(page,15,sheetArtUrl);
+    const sheetDelayedStart=Number(await stage(page).getAttribute('data-started-at'));
+    await expectIdle(page,'Closing the sheet plays the waiting gift for its full duration');
+    assert.ok(Date.now()-sheetDelayedStart>=450,'Time hidden behind the sheet does not consume playback');
+    checks.push('loading interrupted by sheet waits before playback');
+
+    // Recharge closes its native dialog without redrawing the conversation.
+    // Queued gifts must resume from that DOM-only dismissal as well.
+    await receive(page,'operation.error',{action:'gift.send',code:'INSUFFICIENT_COINS',status:402,message:'Fixture requires recharge'});
+    const recharge=page.getByRole('dialog',{name:'Recharge to continue',exact:true});await recharge.waitFor();
+    await receive(page,'gift.sent',ack(receipt(16)));
+    assert.equal(await stage(page).isVisible(),false,'A gift waits behind the recharge dialog');
+    await recharge.getByRole('button',{name:'Not now',exact:true}).click();
+    await expectPlaying(page,16);
+    await expectIdle(page,'A queued gift starts automatically after DOM-only dialog dismissal');
+    checks.push('DOM-only recharge dismissal resumes queued playback');
 
     const receiver = await makePage(browser, errors, history, hostAccount, fan);
     const incomingGift = receipt(5, 5, { mine: false });

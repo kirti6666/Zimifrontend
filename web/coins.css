@@ -28,3 +28,11 @@
 @media(max-width:350px){.zw-coins{padding-left:14px;padding-right:14px}.zw-wallet{padding:16px}.zw-wallet-main>svg{width:62px;height:62px}.zw-wallet-main p{max-width:150px;line-height:1.6}.zw-gift-balance small{display:none}:root[data-theme-id] .zh-sheet.zw-sheet{padding-left:14px;padding-right:14px}.zw-embedded{padding-left:0;padding-right:0}.zw-buy{font-size:12px}.zw-buy>span{font-size:11px}}
 
 .zw-recovery{padding:14px;border:1px solid var(--line);border-radius:14px;margin:12px 0;background:var(--raised)}.zw-recovery p{font-size:12px;line-height:1.6;margin:0 0 10px;color:var(--muted)}.zw-recovery button{font-size:12px;min-height:40px}.zw-history>svg:last-child{transform:rotate(-90deg)}
+/* A compact, theme-aware recovery action shared by every paid feature. */
+.zw-recharge-dialog{position:fixed;inset:0;width:min(320px,calc(100% - 40px));height:fit-content;max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 40px);overflow:auto;margin:auto;padding:24px 20px 12px;border:1px solid var(--line);border-radius:10px;background:var(--canvas);color:var(--ink);text-align:center;box-shadow:none}
+.zw-recharge-dialog::backdrop{background:rgba(0,0,0,.4)}
+.zw-recharge-dialog h2{margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.4}
+.zw-recharge-dialog p{margin:0 0 20px;color:var(--muted);font-size:14px;line-height:1.5}
+.zw-recharge-dialog button{display:block;width:100%;min-height:44px;font-size:14px;font-weight:600}
+.zw-recharge-cancel{margin-top:4px;background:none;color:var(--muted)}
+.zw-recharge-dialog button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}

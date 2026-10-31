@@ -28,6 +28,7 @@
     "test:auth": "node scripts/test-api-client.cjs && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs",
     "test:render-security": "node scripts/test-render-security.cjs",
     "test:coins": "npm run build:web && node scripts/test-coins.cjs",
+    "test:recharge": "npm run build:web && node scripts/test-recharge.cjs",
     "test:coin-checkout": "npm run build:web && node scripts/test-coin-checkout.cjs",
     "test:payment-return": "npm run build:web && node scripts/test-payment-return.cjs",
     "test:wallet": "npm run build:web && node scripts/test-wallet.cjs",

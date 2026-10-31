@@ -97,6 +97,7 @@ async function noConnection(f) {
       const f = await open(browser, 0);
       await load(f, offer({ affordable: false })); await visible(f);
       await f.page.locator('#zci-invitation').getByRole('button', { name: 'Add coins', exact: true }).click();
+      await f.page.getByRole('dialog', { name: 'Recharge to continue', exact: true }).getByRole('button', { name: 'Recharge', exact: true }).click();
       assert.equal(await f.page.evaluate(() => S.v), 'coins');
       await noConnection(f);
       await f.receive('wallet.balance', { coins: 200, earningsPaise: 0 });

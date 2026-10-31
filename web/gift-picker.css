@@ -46,3 +46,5 @@ html:root .zg-reference .zw-send{min-height:42px;background:linear-gradient(135d
 @media(min-width:560px){html:root[data-theme-id] .zh-sheet.zw-sheet.zg-reference{border-radius:22px!important;margin-bottom:20px}}
 @media(max-width:350px){.zg-reference .zg-heading{padding-inline:12px;gap:6px}.zg-reference .zg-heading p{font-size:10.5px}.zg-reference .zg-balance{padding-inline:9px;font-size:12px}.zg-reference .zg-catalog{padding-inline:5px}.zg-reference .zg-art>img{width:48px;height:48px}.zg-reference .zw-gifts{column-gap:3px}}
 @media(prefers-reduced-motion:reduce){.zg-reference,.zg-reference button{animation:none!important;transition:none!important}}
+/* Keep the header glow inside the narrowest supported gift sheet. */
+html:root .zg-reference::before{width:min(340px,100%)}

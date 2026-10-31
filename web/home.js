@@ -170,7 +170,7 @@ function homeCallFundsReady(h){
   if(!h)return false;
   const need=homeCallRequiredCoins(h);
   if(need>0&&!coinWalletReady()){r();return false}
-  if(need>0&&S.bal<need){S.pcerr=`You need at least ${n(need)} coins. Recharge your wallet to call.`;r();return false}
+  if(need>0&&S.bal<need){coinRequireRecharge();return false}
   S.callFunds=null;
   return true;
 }

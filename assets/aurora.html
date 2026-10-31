@@ -4037,6 +4037,14 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 @media(max-width:350px){.zw-coins{padding-left:14px;padding-right:14px}.zw-wallet{padding:16px}.zw-wallet-main>svg{width:62px;height:62px}.zw-wallet-main p{max-width:150px;line-height:1.6}.zw-gift-balance small{display:none}:root[data-theme-id] .zh-sheet.zw-sheet{padding-left:14px;padding-right:14px}.zw-embedded{padding-left:0;padding-right:0}.zw-buy{font-size:12px}.zw-buy>span{font-size:11px}}
 
 .zw-recovery{padding:14px;border:1px solid var(--line);border-radius:14px;margin:12px 0;background:var(--raised)}.zw-recovery p{font-size:12px;line-height:1.6;margin:0 0 10px;color:var(--muted)}.zw-recovery button{font-size:12px;min-height:40px}.zw-history>svg:last-child{transform:rotate(-90deg)}
+/* A compact, theme-aware recovery action shared by every paid feature. */
+.zw-recharge-dialog{position:fixed;inset:0;width:min(320px,calc(100% - 40px));height:fit-content;max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 40px);overflow:auto;margin:auto;padding:24px 20px 12px;border:1px solid var(--line);border-radius:10px;background:var(--canvas);color:var(--ink);text-align:center;box-shadow:none}
+.zw-recharge-dialog::backdrop{background:rgba(0,0,0,.4)}
+.zw-recharge-dialog h2{margin:0 0 8px;font-size:18px;font-weight:600;line-height:1.4}
+.zw-recharge-dialog p{margin:0 0 20px;color:var(--muted);font-size:14px;line-height:1.5}
+.zw-recharge-dialog button{display:block;width:100%;min-height:44px;font-size:14px;font-weight:600}
+.zw-recharge-cancel{margin-top:4px;background:none;color:var(--muted)}
+.zw-recharge-dialog button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 /* A quiet inbox: compact date tabs and one readable list. Advanced controls
    are disclosed only when requested. All colors follow the account theme. */
 .zn-page{max-width:680px;margin:0 auto;padding:10px 18px 32px;color:var(--ink);font:13px/1.5 var(--theme-font,Inter,sans-serif);font-size:calc(13px * var(--theme-font-scale,1))}
@@ -4852,6 +4860,8 @@ html:root .zg-reference .zw-send{min-height:42px;background:linear-gradient(135d
 @media(min-width:560px){html:root[data-theme-id] .zh-sheet.zw-sheet.zg-reference{border-radius:22px!important;margin-bottom:20px}}
 @media(max-width:350px){.zg-reference .zg-heading{padding-inline:12px;gap:6px}.zg-reference .zg-heading p{font-size:10.5px}.zg-reference .zg-balance{padding-inline:9px;font-size:12px}.zg-reference .zg-catalog{padding-inline:5px}.zg-reference .zg-art>img{width:48px;height:48px}.zg-reference .zw-gifts{column-gap:3px}}
 @media(prefers-reduced-motion:reduce){.zg-reference,.zg-reference button{animation:none!important;transition:none!important}}
+/* Keep the header glow inside the narrowest supported gift sheet. */
+html:root .zg-reference::before{width:min(340px,100%)}
 /* Gift files contain their own artwork and animation. Keep every surface clear:
    no added glows, masks, framing, decorative layers or motion on the image. */
 html:root :is(.zc-gift-card,.zc-gift-icon,.zc-quick-gift-art,.zg-reference .zg-art,.gi .gl,.gbub,.zr-gift-emoji,.zr-gift-stage-art,.hs-gift-art,.hs-target-art,.fxg){background:transparent!important;background-image:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important}
@@ -4864,8 +4874,12 @@ html:root .zg-reference .zg-gift.selected>b{color:#ff9ace;text-decoration:underl
 html:root .zg-reference .zg-catalog{max-height:min(420px,calc(78dvh - 140px))}
 html:root .zg-reference .zw-gifts .zg-art{height:72px}
 html:root .zg-reference .zg-art>img{width:100%;height:72px}
-html:root .zr-gift-celebration{background:transparent;animation:none;opacity:1;pointer-events:none}
-html:root .zr-gift-celebration .zr-gift-stage-art,html:root .fxg{position:absolute;left:50%;top:46%;width:min(78vw,320px);height:min(62vh,560px);margin:0;transform:translate(-50%,-50%);animation:none!important;opacity:1}
+/* Playback uses the whole call surface. Fit every frame inside it without
+   cropping wide artwork or forcing portrait animations into a small slot. */
+html:root .zr-gift-celebration{inset:0;background:transparent;overflow:visible;animation:none;opacity:1;pointer-events:none}
+html:root :is(.zr-room .zr-gift-celebration,#zr-gift-playback) .zr-gift-stage-art{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;transform:none;animation:none!important;opacity:1;display:grid;place-items:center}
+html:root .zr-gift-celebration .zr-gift-stage-art>img{display:block;width:100%;height:100%;object-fit:contain;object-position:center}
+html:root .fxg{position:absolute;left:50%;top:46%;width:min(78vw,320px);height:min(62vh,560px);margin:0;transform:translate(-50%,-50%);animation:none!important;opacity:1}
 html:root .fxg>img{width:100%;height:100%;object-fit:contain}
 html:root .gbub .gl{animation:none;transform:none}
 html:root .hs-gift-options>button{background:transparent;border-color:transparent}
@@ -4876,12 +4890,15 @@ html:root :is(.zc-gift-icon,.zc-quick-gift-art,.hs-gift-art,.hs-target-art,.zr-g
 html:root :is(.zc-gift-icon,.zc-quick-gift-art,.zg-art,.hs-gift-art,.hs-target-art,.zr-gift-emoji,.zr-gift-stage-art)>img{min-width:0;min-height:0;max-width:100%;max-height:100%}
 html:root .zc-gift-icon>img{height:154px}
 html:root .zc-quick-gift-art>img{height:52px}
-/* One original gift animation in the visible chat history area. The portal is
+/* One original gift animation across the visible app. The portal is
    transparent, outside message layout and below sheets; typing stays usable. */
-html:root #zc-gift-playback{position:fixed;z-index:40;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important}
-html:root #zc-gift-playback[hidden]{display:none}
-html:root #zc-gift-playback::before,html:root #zc-gift-playback::after{content:none!important;display:none!important}
-html:root #zc-gift-playback>.zc-gift-playback-art{display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:360px;max-height:640px;object-fit:contain;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
+html:root :is(#zc-gift-playback,#zr-gift-playback){position:fixed;inset:auto;z-index:40;display:flex;align-items:center;justify-content:center;overflow:visible;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important}
+html:root :is(#zc-gift-playback,#zr-gift-playback)[hidden]{display:none}
+html:root :is(#zc-gift-playback,#zr-gift-playback)::before,html:root :is(#zc-gift-playback,#zr-gift-playback)::after{content:none!important;display:none!important}
+/* Match the conversation's side gutters while keeping the preview centered. */
+html:root #zc-gift-playback{box-sizing:border-box;padding-inline:max(14px,calc(50% - 380px))}
+html:root :is(#zc-gift-playback>.zc-gift-playback-art,#zr-gift-playback .zr-gift-stage-art>img){display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
+html:root #zr-gift-playback .zr-gift-stage-art>span{font-size:clamp(100px,40vmin,240px);line-height:1}
 .zci-dialog{position:fixed;inset:0;margin:auto;width:min(390px,calc(100% - 32px));max-height:calc(100dvh - 40px);overflow:auto;border:1px solid var(--line);background:var(--canvas);color:var(--ink);padding:20px;font-size:14px;line-height:1.6}
 .zci-dialog::backdrop{background:rgba(0,0,0,.4)}.zci-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.zci-label{font-size:12px;font-weight:600;color:var(--accent-ink)}.zci-dialog header button{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);background:var(--surface);color:var(--ink);flex:none}
 .zci-person{display:flex;align-items:center;gap:15px;margin-bottom:20px;min-width:0}.zci-person>div{min-width:0}.zci-person h2{font-size:22px;line-height:1.35;font-weight:600;margin:4px 0;overflow-wrap:anywhere}.zci-person p,.zci-person>div>span{font-size:12px;color:var(--muted)}.zci-dialog>p{color:var(--muted);font-size:13px;margin-bottom:16px}.zci-terms{display:grid;gap:10px;padding:15px;background:var(--surface);margin-bottom:16px;font-size:12px}.zci-terms>span{display:flex;align-items:center;justify-content:space-between;gap:12px}.zci-terms strong{font-weight:600}.zci-note{font-size:12px!important}
@@ -8578,7 +8595,7 @@ function vCall(){const h=g(S.h);
  <div class="fx" id="fl"></div>
  <div id="wn" style="position:relative;margin-top:auto;padding:0 14px"></div>
  <div class="lvfeed" id="rfeed"></div>
- <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button aria-label="Send ${l}"
    onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
 
  ${S.cmp?"":`<div class="lvbar">
@@ -8654,13 +8671,13 @@ function giftTray(){
     <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?esc(first(S.caller.n)):"the host"}</span></span>
     <button class="addc" onclick="go('coins')">${gem}${window.contentBalance?contentBalance():n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
-   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${giftSticker(l)?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
+   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${giftSticker(l)?"media":""}" onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
      ${giftSticker(l)?`<span class="gl"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gn">${l}</span><span class="gc">${gem}${n(v)}</span></button>`).join("")}</div>`}
   </div></div>`}
 
 function sendGift(l,e,v,k){
- if(S.bal<v)return;
+ if(S.bal<v)return coinRequireRecharge();
  if(!DEMO){Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});return}
  S.bal-=v; S.tray=0; S.sh=0;
  Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});
@@ -8737,7 +8754,7 @@ function nextCeleb(){
  setTimeout(()=>{el.remove();S.cel[c.kind]=2;S.celq.shift();
   if(S.v==="call"||S.v==="hcall")paintGoal();nextCeleb()},3000)}
 /* A sender tapping the asked-for gift sends it. */
-function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return go("coins");sendGift(l,e,v,k||"")}
+function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return coinRequireRecharge();sendGift(l,e,v,k||"")}
 
 /* Compact coin count for tight spots, in the same K / M style as the mission goals. */
 function kfmt(v){return v>=1e6?(v/1e6).toFixed(v>=1e7?1:2).replace(/\.0+$/,"")+"M":v>=1e5?(v/1e3).toFixed(1).replace(/\.0$/,"")+"K":n(v)}
@@ -9200,9 +9217,12 @@ function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
   ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
-   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall||short?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
  </div>`}
 async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)return;
+ if(m.topupRequired)return coinRequireRecharge(memberRingAddCoins);
+ if(m.rate>0&&!coinWalletReady())return;
+ if(m.rate>0&&S.bal<m.rate)return coinRequireRecharge(memberRingAddCoins);
  S.acceptingCall=true;m.error="";r();
  try{
   if(window.ZimiMedia?.prepare)await window.ZimiMedia.prepare(!m.voice);
@@ -9222,7 +9242,7 @@ function vHostCall(){const c=S.caller;
  <div style="margin-top:auto"></div>
 
  <div class="lvfeed" id="rfeed"></div>
- <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button aria-label="Send ${l}"
    onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
  ${S.cmp?`<div class="lvcomp">
    ${av(me,34,"none")}
@@ -9735,7 +9755,7 @@ Native.on("profile.account",d=>{if(d.user?.id!==S.user?.id)return;obApplyAccount
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
-Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set")refresh()});
+Native.on("operation.error",d=>{if(d.code==='INSUFFICIENT_COINS')window.ZimiCoins?.requireRecharge();else appNotice(d.message);if(d.action==="presence.set")refresh()});
 Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);if(S.v==='editprofile')go(S.editBack||"profile");else refresh();appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
@@ -9860,6 +9880,149 @@ function giftMotionUrl(name,mediaUrl){return giftStillUrl(name,mediaUrl)}
 function giftIsFree(gift){return gift?.coins===0}
 function giftPriceLabel(gift){return giftIsFree(gift)?'Free':n(gift?.coins)+' coins'}
 function giftPriceMarkup(gift,size=13){return giftIsFree(gift)?'Free':coinIcon(size)+' '+n(gift?.coins)}
+
+/* Keep original gift bytes cached and each playback image alive outside screen
+   redraws. Calls and conversations use the same loading, sizing and queue. */
+window.ZimiGiftPlayback=(()=>{
+  const artwork=new Map();
+  const maxBytes=64*1024*1024;
+  function originalFile(media){
+    const cached=artwork.get(media);
+    if(cached){artwork.delete(media);artwork.set(media,cached);return cached.promise}
+    const entry={bytes:0,promise:null};
+    entry.promise=(async()=>{
+      const response=await fetch(media,{cache:'force-cache',credentials:'omit'});
+      if(!response.ok||Number(response.headers.get('content-length'))>maxBytes)throw new Error('Gift artwork is unavailable');
+      const blob=await response.blob();
+      if(!blob.size||blob.size>maxBytes)throw new Error('Gift artwork is unavailable');
+      entry.bytes=blob.size;
+      if(artwork.get(media)===entry){
+        let bytes=[...artwork.values()].reduce((total,value)=>total+value.bytes,0);
+        for(const [key,value] of artwork){
+          if(artwork.size<=3&&bytes<=maxBytes)break;
+          if(key!==media){artwork.delete(key);bytes-=value.bytes}
+        }
+      }
+      return blob;
+    })().catch(error=>{if(artwork.get(media)===entry)artwork.delete(media);throw error});
+    artwork.set(media,entry);return entry.promise;
+  }
+  function duration(value,fallback=6400){
+    const time=Number(value);
+    return Number.isSafeInteger(time)&&time>0?Math.max(100,Math.min(time,600000)):fallback;
+  }
+  function create(options){
+    const queue=[];
+    let active=null,portal=null,timer=null,loadingTimer=null;
+    function release(item){
+      if(item?.image){item.image.onload=null;item.image.onerror=null}
+      if(item?.objectUrl)URL.revokeObjectURL(item.objectUrl);
+    }
+    function clear(){
+      clearTimeout(timer);clearTimeout(loadingTimer);timer=loadingTimer=null;
+      release(active);active=null;queue.length=0;portal?.remove();portal=null;
+      options.onClear?.();
+    }
+    function position(){
+      if(!portal)return;
+      const bounds=options.bounds?.()||document.querySelector('.app')?.getBoundingClientRect();
+      if(!bounds||bounds.width<1||bounds.height<1){portal.hidden=true;return}
+      const viewport=window.visualViewport;
+      const left=Math.max(bounds.left,viewport?.offsetLeft||0),top=Math.max(bounds.top,viewport?.offsetTop||0);
+      const right=Math.min(bounds.right,(viewport?.offsetLeft||0)+(viewport?.width||innerWidth));
+      const bottom=Math.min(bounds.bottom,(viewport?.offsetTop||0)+(viewport?.height||innerHeight));
+      Object.assign(portal.style,{left:left+'px',top:top+'px',width:Math.max(0,right-left)+'px',height:Math.max(0,bottom-top)+'px'});
+      portal.hidden=portal.dataset.state!=='playing'||!!options.obstructed?.()||right<=left||bottom<=top;
+    }
+    function finish(item){
+      if(active!==item)return;
+      clearTimeout(timer);clearTimeout(loadingTimer);timer=loadingTimer=null;
+      release(item);portal?.remove();portal=null;active=null;
+      options.onFinish?.(item);next();
+    }
+    async function source(item){
+      try{
+        const blob=await originalFile(item.media);
+        if(active!==item)return;
+        // A unique URL starts an animated WebP/GIF at frame one even when its
+        // original URL is also displayed in a picker or persisted receipt.
+        item.objectUrl=URL.createObjectURL(blob);item.image.src=item.objectUrl;
+      }catch{
+        if(active!==item)return;
+        // Image loading works on public servers without fetch CORS. Preserve
+        // signed URLs; unsigned public resources get a fresh playback identity.
+        let media=item.media;
+        try{const url=new URL(media);if(['https:','http:'].includes(url.protocol)&&!url.search){url.searchParams.set('_binzoGiftPlayback',item.transferId);media=url.href}}catch{}
+        item.image.src=media;
+      }
+    }
+    async function play(item){
+      if(active!==item||item.at||item.decoding)return;
+      if(!item.ready){
+        item.decoding=true;
+        if(item.image){try{await item.image.decode?.()}catch{}}
+        item.decoding=false;item.ready=true;
+      }
+      if(active!==item)return;
+      if(!options.available(item)){clear();return}
+      clearTimeout(loadingTimer);loadingTimer=null;
+      if(options.obstructed?.())return;
+      item.at=Date.now();item.durationMs=duration(item.durationMs,item.media?6400:2400);
+      portal.dataset.state='playing';portal.dataset.startedAt=String(item.at);position();
+      // Start the lifetime only after the artwork is ready, so slow downloads
+      // cannot consume the animation's visible playback time.
+      item.timer=timer=setTimeout(()=>finish(item),item.durationMs);
+      options.onStart?.(item);
+    }
+    function next(){
+      if(active||!queue.length)return;
+      if(!options.available(queue[0])){clear();return}
+      if(options.obstructed?.())return;
+      const item=queue.shift();active=item;
+      portal=document.createElement('div');portal.id=options.id;portal.className=options.className||'';
+      portal.setAttribute('aria-hidden','true');portal.dataset.state='loading';portal.dataset.transferId=item.transferId;portal.hidden=true;
+      const art=options.artClass?document.createElement('div'):portal;
+      if(art!==portal){art.className=options.artClass;portal.appendChild(art)}
+      if(item.media){
+        const image=item.image=document.createElement('img');
+        image.className=options.imageClass||'';image.alt='';image.draggable=false;image.decoding='async';
+        image.dataset.transferId=item.transferId;image.dataset.mediaUrl=item.media;
+        image.onload=()=>play(item);image.onerror=()=>finish(item);art.appendChild(image);
+      }else{
+        const emoji=document.createElement('span');emoji.textContent=item.emoji||'🎁';art.appendChild(emoji);
+      }
+      document.body.appendChild(portal);position();
+      loadingTimer=setTimeout(()=>finish(item),15000);
+      if(item.media)source(item);else play(item);
+      if(queue[0]?.media)originalFile(queue[0].media).catch(()=>{});
+    }
+    function sync(){
+      if((active&&!options.available(active))||(queue.length&&!options.available(queue[0]))){clear();return}
+      if(active?.ready&&!active.at)play(active);
+      position();next();
+    }
+    function enqueue(data){
+      if(!options.available(data))return;
+      queue.push({...data,receivedAt:Date.now()});
+      // Warm only the next gift, without competing decoders or a burst of
+      // downloads while a video call is using the network.
+      if(queue.length===1&&data.media)originalFile(data.media).catch(()=>{});
+      next();
+    }
+    window.addEventListener('resize',position);
+    window.visualViewport?.addEventListener('resize',position);
+    window.visualViewport?.addEventListener('scroll',position);
+    Native.on('keyboard',()=>requestAnimationFrame(position));
+    // Some sheets/dialogs close by removing their own DOM, without r(). Resume
+    // waiting gifts then as well; ignore our own portal's visibility updates.
+    new MutationObserver(changes=>{
+      if(!active&&!queue.length)return;
+      if(changes.some(change=>!portal||!portal.contains(change.target)))sync();
+    }).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open','hidden']});
+    return {enqueue,sync,clear,get active(){return active},get element(){return portal}};
+  }
+  return {create,duration,resetCache:()=>artwork.clear()};
+})();
 
 /* Host capability is captured only from native account data. Presentation state
    such as S.role and A().kyc cannot turn it on. The backend authorizes every action. */
@@ -10336,7 +10499,7 @@ function homeCallFundsReady(h){
   if(!h)return false;
   const need=homeCallRequiredCoins(h);
   if(need>0&&!coinWalletReady()){r();return false}
-  if(need>0&&S.bal<need){S.pcerr=`You need at least ${n(need)} coins. Recharge your wallet to call.`;r();return false}
+  if(need>0&&S.bal<need){coinRequireRecharge();return false}
   S.callFunds=null;
   return true;
 }
@@ -10851,7 +11014,37 @@ window.ZimiAgency={open:zagOpen,linked:zagLinked,header:zagHeader,render:zagView
 ZimiHome.views.agency=zagView;
 
 /* One currency mark and one purchase/gift workflow across all app surfaces. */
-const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
+const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null,checkoutPrompt:null,rechargePrompt:null,orders:new Map(),dismissedOrders:new Set(),returnedOrders:new Set(),receipts:new Map(),confirmed:new Set()};
+/* One refusal prompt for paid actions, including an authoritative server refusal
+   after a locally sufficient balance. Opening it never spends or retries coins. */
+function coinRequireRecharge(proceed=null){
+ if(CoinUI.rechargePrompt)return;
+ if(typeof ctRechargeClose==='function')ctRechargeClose();
+ const focus=document.activeElement;
+ CoinUI.rechargePrompt={proceed,focus,id:focus?.id,label:focus?.getAttribute('aria-label')};
+ const dialog=document.createElement('dialog');dialog.id='zw-recharge-dialog';dialog.className='zw-recharge-dialog';
+ dialog.setAttribute('aria-labelledby','zw-recharge-title');dialog.setAttribute('aria-describedby','zw-recharge-text');
+ dialog.innerHTML=`<h2 id="zw-recharge-title">Recharge to continue</h2><p id="zw-recharge-text">Add coins to use this feature.</p><button type="button" class="zh-primary zw-recharge-primary" onclick="coinRechargeContinue()">Recharge</button><button type="button" class="zw-recharge-cancel" onclick="coinCloseRecharge()">Not now</button>`;
+ dialog.addEventListener('cancel',event=>{event.preventDefault();coinCloseRecharge()});
+ dialog.addEventListener('close',()=>{if(document.getElementById(dialog.id)===dialog)coinCloseRecharge()});
+ document.body.append(dialog);dialog.showModal();dialog.querySelector('.zw-recharge-primary').focus();
+}
+function coinCloseRecharge(restore=true){
+ const prompt=CoinUI.rechargePrompt;CoinUI.rechargePrompt=null;
+ const dialog=document.getElementById('zw-recharge-dialog');if(dialog){dialog.close();dialog.remove()}
+ if(!restore||!prompt)return;
+ const target=prompt.focus?.isConnected?prompt.focus:prompt.id?document.getElementById(prompt.id):Array.from(document.querySelectorAll('button[aria-label]')).find(button=>button.getAttribute('aria-label')===prompt.label);
+ target?.focus({preventScroll:true});
+}
+function coinRechargeContinue(){
+ const prompt=CoinUI.rechargePrompt;if(!prompt)return;coinCloseRecharge(false);
+ if(prompt.proceed)return prompt.proceed();
+ if(S.v==='incoming'&&S.memberRing)return memberRingAddCoins();
+ if(['call','voice','hcall','dial','dialback'].includes(S.v)){
+  callMinimize();if(['call','voice','hcall','dial','dialback'].includes(S.v))return;
+ }
+ Home.giftTo=null;CoinUI.topup=false;S.tray=0;S.sh=0;go('coins');
+}
 function coinPaint(){const catalog=document.querySelector('.zg-catalog');if(catalog)CoinUI.giftScroll=catalog.scrollTop;if(Home.giftTo||S.v==='coins')r()}
 function coinWalletReady(){return DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error)}
 function coinHasPendingPayment(){return coinPendingPayment()||Array.from(CoinUI.orders.values()).some(p=>p.status==='PENDING'&&!CoinUI.dismissedOrders.has(p.merchantOrderId))}
@@ -10995,17 +11188,18 @@ function homeGiftSheet(){
  if(!Home.giftTo)return '';
  if(CoinUI.topup)return `<div class="zh-sheet-backdrop zw-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zw-topup" role="dialog" aria-modal="true" aria-label="Add coins"><div class="zw-topup-heading">${backButton('coinLeaveTopup()',{label:'Back to gifts'})}<h2>Add coins</h2><button class="zw-icon-button" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',20)}</button></div>${homeCoins(true)}</section></div>`;
  const recover=Home.giftAttempt?.to===Home.giftTo&&Home.giftAttempt?.gift===CoinUI.giftId,gift=Home.gifts.find(x=>x.id===CoinUI.giftId)||(recover?CoinUI.receipts.get(Home.giftAttempt.idempotencyKey):null),ready=giftIsFree(gift)||coinWalletReady(),surface=DEMO?null:contentPending('catalog')?contentSkeleton('gifts','Loading gifts',12):ContentLoading.catalog.error?contentError('catalog'):null,short=gift&&ready?Math.max(0,gift.coins-S.bal):0;
- const footer=gift||Home.giftBusy||Home.giftAttempt?`<div class="zw-gift-footer"><p aria-live="polite">${Home.giftBusy?'Confirming your gift…':short?`You need ${n(short)} more coins for this gift.`:giftIsFree(gift)?'No coins needed.':gift&&ready?`${n(S.bal-gift.coins)} coins remaining after sending`:gift?'Waiting for your balance…':'Select a gift to see the total.'}</p><button type="button" class="zh-primary zw-send" aria-label="Send gift" onclick="homeSendGift()" ${Home.giftBusy||(!recover&&(!gift||!ready||surface||short||Home.giftAttempt))?'disabled':''}>${hi('gift',19)} ${Home.giftBusy?'Sending…':gift?`Send ${esc(gift.name)} · ${giftPriceLabel(gift)}`:'Choose a gift'}</button></div>`:'';
+ const footer=gift||Home.giftBusy||Home.giftAttempt?`<div class="zw-gift-footer"><p aria-live="polite">${Home.giftBusy?'Confirming your gift…':short?`You need ${n(short)} more coins for this gift.`:giftIsFree(gift)?'No coins needed.':gift&&ready?`${n(S.bal-gift.coins)} coins remaining after sending`:gift?'Waiting for your balance…':'Select a gift to see the total.'}</p><button type="button" class="zh-primary zw-send" aria-label="Send gift" onclick="homeSendGift()" ${Home.giftBusy||(!recover&&(!gift||!ready||surface||Home.giftAttempt))?'disabled':''}>${hi('gift',19)} ${Home.giftBusy?'Sending…':gift?`Send ${esc(gift.name)} · ${giftPriceLabel(gift)}`:'Choose a gift'}</button></div>`:'';
  return `<div class="zh-sheet-backdrop zw-backdrop zg-reference-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zg-reference" role="dialog" aria-modal="true" aria-label="Send a gift"><header class="zg-heading"><div class="zg-heading-copy"><h2>Send a gift</h2><p>Coins go straight to the host</p></div><button type="button" class="zg-balance" aria-label="Add coins" onclick="homeGiftTopup()">${coinIcon(17)}<span>${contentBalance()}</span>${hi('plus',13)}</button><button type="button" class="zg-close" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',19)}</button></header><div class="zg-catalog">${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${homeGiftDisplayOrder().map(homeGiftTile).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${!ready&&!contentPending('wallet')?`<p class="zw-error" role="alert">Refresh your balance before sending. <button onclick="coinRefresh()">Retry</button></p>`:''}</div>${footer}</section></div>`;
 }
 function homeCloseGifts(e){if(e&&e.target!==e.currentTarget)return;if(CoinUI.topup)coinClosePurchase();Home.giftTo=null;S.tray=0;if(S.sh==='gift')S.sh=0;CoinUI.topup=false;r();const saved=CoinUI.focus;if(saved){const target=saved.id?document.getElementById(saved.id):Array.from(document.querySelectorAll('button[aria-label]')).find(x=>x.getAttribute('aria-label')===saved.label);target?.focus({preventScroll:true})}}
 function homeSendGift(id=CoinUI.giftId){
  if(Home.giftAttempt&&Home.giftAttempt.to===Home.giftTo&&Home.giftAttempt.gift===id)return homeRetryGift();
  const gift=Home.gifts.find(x=>x.id===id),to=Home.giftTo;
- if(!to||!gift||Home.giftBusy||(!giftIsFree(gift)&&(!coinWalletReady()||S.bal<gift.coins))||window.ZimiOffline?.isOffline()||(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error)))return;
+ if(!to||!gift||Home.giftBusy||(!giftIsFree(gift)&&!coinWalletReady())||window.ZimiOffline?.isOffline()||(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error)))return;
  const previous=Home.giftAttempt;
  // An uncertain delivery must be retried with its original payload, even after leaving a room.
  if(previous&&(previous.to!==to||previous.gift!==id)){CoinUI.giftError='Your previous gift is still unconfirmed. Open that gift and retry to check its delivery.';coinPaint();return}
+ if(!giftIsFree(gift)&&S.bal<gift.coins)return coinRequireRecharge();
  if(!previous)Home.giftAttempt={to,gift:id,idempotencyKey:crypto.randomUUID(),coins:gift.coins,inCall:['call','voice','hcall'].includes(S.v),...(Home.stream?.id&&S.v==='live'?{streamId:Home.stream.id}:{})};
  const attempt=Home.giftAttempt;CoinUI.receipts.set(attempt.idempotencyKey,{...gift,_callId:attempt.inCall?(S.callId||(DEMO?'preview-call':null)):null});Home.giftBusy=true;CoinUI.giftError='';coinPaint();
  if(DEMO){S.bal-=gift.coins;Home.giftBusy=false;Home.giftAttempt=null;Home.giftTo=null;S.tray=0;S.sh=0;r();window.zcThreadGift?.(to,gift,attempt);coinCallGiftFeedback({...attempt,coins:gift.coins});if(S.v==='live')window.zrReceiveGift?.({senderId:'you',senderName:'You',giftName:gift.name,emoji:gift.emoji,coins:gift.coins});appNotice('Preview gift sent');return}
@@ -11031,13 +11225,14 @@ Native.on('wallet.checkout',d=>coinAcceptPayment(d,true));
 Native.on('wallet.purchase',d=>coinAcceptPayment(d));
 Native.on('wallet.payment-returned',coinPaymentReturned);
 Native.on('operation.error',d=>{
- if(d.action==='gift.send'&&coinGiftMatches(d)){Home.giftBusy=false;CoinUI.giftError=d.message||'Delivery could not be confirmed. Retry this gift.';if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){Home.giftAttempt=null;if(d.code==='INSUFFICIENT_COINS')coinRefresh()}coinPaint()}
+ if(d.action==='gift.send'&&coinGiftMatches(d)){Home.giftBusy=false;CoinUI.giftError=d.code==='INSUFFICIENT_COINS'?'':d.message||'Delivery could not be confirmed. Retry this gift.';if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){Home.giftAttempt=null;if(d.code==='INSUFFICIENT_COINS')coinRefresh()}coinPaint()}
  if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint();if(routeRejected)paymentRoutesLoad()}
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });
-document.addEventListener('aurora:navigate',()=>{if(S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup))coinClosePurchase();if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
-document.addEventListener('keydown',e=>{if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
-window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
+Native.on('call.failed',d=>{if(d.code==='INSUFFICIENT_COINS'&&!isHost())coinRequireRecharge()});
+document.addEventListener('aurora:navigate',()=>{coinCloseRecharge(false);if(S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup))coinClosePurchase();if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
+document.addEventListener('keydown',e=>{if(CoinUI.rechargePrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseRecharge()}return}if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
+window.ZimiCoins={requireRecharge:coinRequireRecharge,giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!CoinUI.rechargePrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
 
 /* Real media stays in the WebView. The authenticated native bridge carries
    signaling only; camera/microphone capture begins from an explicit action. */
@@ -11767,7 +11962,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
 const Room = {
   key: '', sheet: '', requests: [], ownRequestId: null, queueCount: 0,
   queueLoading: false, queueError: '', busy: false, transition: null,
-  likes: 0, supporters: [], received: 0, gift: null, giftIds: new Set(), reactionIds: new Set(),
+  likes: 0, supporters: [], received: 0, gift: null, lastGift: null, giftIds: new Set(), reactionIds: new Set(),
   giftMotion: null, giftTimer: null,
   goal: 17000, goalTitle: 'Studio Mic Upgrade', goalEnabled: false,
   draft: '', chatOpen: false, effects: 'original', playbackMuted: false, reactionAt: 0,
@@ -11792,7 +11987,7 @@ function zrEnsure(){
   if(!key||Room.key===key)return;
   zrClearGiftMotion();
   Room.shareLink='';
-  Object.assign(Room,{key,sheet:'',requests:[],ownRequestId:null,queueCount:0,queueLoading:false,queueError:'',busy:false,likes:0,supporters:[],received:0,gift:null,giftIds:new Set(),reactionIds:new Set(),draft:'',chatOpen:false,playbackMuted:false,goalEnabled:false,confirm:'',effects:'original',startedAt:Date.parse(Home.stream?.createdAt)||Date.now()});
+  Object.assign(Room,{key,sheet:'',requests:[],ownRequestId:null,queueCount:0,queueLoading:false,queueError:'',busy:false,likes:0,supporters:[],received:0,gift:null,lastGift:null,giftIds:new Set(),reactionIds:new Set(),draft:'',chatOpen:false,playbackMuted:false,goalEnabled:false,confirm:'',effects:'original',startedAt:Date.parse(Home.stream?.createdAt)||Date.now()});
   if(DEMO&&S.v==='live')zrDemoRoom();
 }
 function zrAvatar(p,size=34){return avc(p||{n:'Viewer',seed:12},size)}
@@ -11803,27 +11998,39 @@ function zrIdentity(p,host,call){
 }
 function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p?homeCover(p,true):''}${voice?`<div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>Just you. Just a conversation.</span></div><audio data-zimi-remote autoplay></audio>`:`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO&&!zrIsCall()?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
 function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl);return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${giftIsFree(gift)?'Free gift':(gift.sent?'':'+')+n(gift.coins)+' coins '+(gift.sent?'sent':'received')}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
-/* Keep the event's original clock across screen redraws. Negative animation delay
-   resumes the celebration instead of replaying it when chat or controls change. */
-function zrGiftCelebration(){
-  const motion=Room.giftMotion,gift=Room.gift;
-  if(!motion||!gift||motion.key!==Room.key)return '';
-  const elapsed=Math.max(0,Date.now()-motion.at);
-  if(elapsed>=motion.life)return '';
-  const sticker=!!giftSticker(gift.giftName),media=giftMotionUrl(gift.giftName,gift.mediaUrl),large=!sticker&&gift.coins>=19999;
-  return `<div class="zr-gift-celebration ${large?'is-large':''} ${sticker?'is-sticker':''}" aria-hidden="true" style="--gift-age:-${elapsed}ms;--gift-life:${motion.life}ms">
-    <div class="zr-gift-stage-art">${media?`<img src="${media}" alt="">`:`<span>${esc(gift.emoji||'🎁')}</span>`}</div>
-  </div>`;
-}
+/* Playback lives outside the HTML rebuilt by r(), keeping the same decoded
+   animation running while chat, wallet updates and call controls redraw. */
+function zrGiftCelebration(){return ''}
+let zrGiftForeground=true;
+const CallGiftPlayback=window.ZimiGiftPlayback.create({
+  id:'zr-gift-playback',className:'zr-gift-celebration',artClass:'zr-gift-stage-art',
+  available:item=>zrGiftForeground&&!document.hidden&&(zrIsCall()||S.v==='live')&&item.key===Room.key&&item.key===(S.v==='live'?Home.stream?.id:S.callId||'preview-call'),
+  obstructed:()=>!!(Home.giftTo||Room.sheet||document.querySelector('.zr-sheet-backdrop,.zr-options-backdrop,.zh-sheet-backdrop,dialog[open]')),
+  bounds:()=>document.querySelector('.zr-room')?.getBoundingClientRect(),
+  onStart:item=>{
+    Room.gift=item.gift;Room.giftMotion={key:item.key,at:item.at,life:item.durationMs};Room.giftTimer=item.timer;
+    // A loaded/queued gift only changes its banner. Leave the camera and the
+    // call's controls in place while its full-area animation starts.
+    document.querySelectorAll('.zr-gift-alert').forEach(el=>el.remove());
+    document.querySelector('.zr-room .zr-top')?.insertAdjacentHTML('beforeend',zrGiftBanner());
+  },
+  onFinish:item=>{
+    if(Room.gift!==item.gift)return;
+    Room.gift=null;Room.giftMotion=null;Room.giftTimer=null;
+    document.querySelectorAll('.zr-gift-alert').forEach(el=>el.remove());
+  },
+  onClear:()=>{
+    Room.gift=null;Room.giftMotion=null;Room.giftTimer=null;
+    document.querySelectorAll('.zr-gift-alert').forEach(el=>el.remove());
+  }
+});
 function zrClearGiftMotion(){
-  clearTimeout(Room.giftTimer);Room.giftTimer=null;Room.giftMotion=null;Room.gift=null;
-  document.querySelectorAll('.zr-gift-celebration,.zr-gift-alert').forEach(el=>el.remove());
+  CallGiftPlayback.clear();Room.lastGift=null;
 }
-function zrStartGiftMotion(){
-  clearTimeout(Room.giftTimer);
-  const motion={key:Room.key,at:Date.now(),life:Room.gift.mediaUrl?8000:giftSticker(Room.gift.giftName)?4800:2400};
-  Room.giftMotion=motion;
-  Room.giftTimer=setTimeout(()=>{if(Room.giftMotion===motion)zrClearGiftMotion()},motion.life);
+function zrStartGiftMotion(gift=Room.gift,transferId=''){
+  if(!gift||!zrGiftForeground||document.hidden)return;
+  const media=giftMotionUrl(gift.giftName,gift.mediaUrl),catalog=Home.gifts.find(item=>item.name===gift.giftName&&giftMotionUrl(item.name,item.mediaUrl)===media);
+  CallGiftPlayback.enqueue({key:Room.key,gift:{...gift},media,emoji:gift.emoji||'🎁',durationMs:gift.durationMs??catalog?.durationMs,transferId:String(transferId||crypto.randomUUID()),receivedAt:Date.now()});
 }
 function zrSupporterStrip(){return `<div class="zr-supporters">${Room.supporters.slice(0,2).map((p,i)=>`<button onclick="zrOpen('supporters')">${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl,gender:p.gender},23)}<b class="zr-rank">${i+1}</b><strong>${esc(p.name)}</strong><span>${homeCompact(p.coins)}</span></button>`).join('')}<button class="zr-explore" onclick="zrOpen('supporters')">${hi('cup',14)} Supporters ${hi('chev',12)}</button></div>`}
 function zrGoal(){if(!Room.goalEnabled)return '';const percent=Math.min(100,Math.round(Room.received/Room.goal*100));return `<button class="zr-goal" onclick="zrOpen('goal')" aria-label="Edit session gift goal"><span>${hi('mic',15)}<strong>Goal: ${esc(Room.goalTitle)}</strong><small>${homeCompact(Room.received)} / ${homeCompact(Room.goal)} coins (${percent}%)</small></span><span class="zr-progress" role="progressbar" aria-label="Session gift goal" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></span></button>`}
@@ -11956,6 +12163,7 @@ async function zrShare(copy=false){if(!DEMO){if(Home.stream)Native.send('stream.
 function zrCapture(){const input=document.activeElement;if(input&&['rmsg','home-stream-message'].includes(input.id)){Room.draft=input.value;return {id:input.id,start:input.selectionStart,end:input.selectionEnd}}return null}
 function zrAfter(focus){
   zrLinkSheet();
+  CallGiftPlayback.sync();
   const room=document.querySelector('.zr-room');document.documentElement.classList.toggle('zr-active',!!room);if(!room)return;
   if(focus&&!Room.sheet&&!Home.giftTo){const input=document.getElementById(focus.id);if(input){input.value=Room.draft;input.focus({preventScroll:true});input.setSelectionRange(focus.start,focus.end)}}
   const sheet=document.querySelector('.zr-sheet,.zr-host-options');if(sheet&&!sheet.contains(document.activeElement))sheet.querySelector('button,input')?.focus({preventScroll:true});
@@ -11981,11 +12189,12 @@ function zrReceiveGift(d){
   const id=d.id||d._id||d.transactionId;if(id&&Room.giftIds.has(id))return;if(id){Room.giftIds.add(id);if(Room.giftIds.size>500)Room.giftIds.delete(Room.giftIds.values().next().value)}
   const coins=Number(d.totalCoins??d.coins??d.amount)||0,gift=typeof d.gift==='object'?d.gift:null;
   const name=d.senderName||d.from?.name||d.sender?.name||d.name||'A supporter',userId=d.senderId||d.from?.id||d.from||d.sender?.id||name;
-  const previous=Room.gift;Room.gift={name,sent:userId==='you',giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,durationMs:d.durationMs??gift?.durationMs,coins,combo:previous?.name===name?previous.combo+1:1};
+  const previous=Room.lastGift,eventGift={name,sent:userId==='you',giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,durationMs:d.durationMs??gift?.durationMs,coins,combo:previous?.name===name?previous.combo+1:1};
+  Room.lastGift=eventGift;
   Room.received+=coins;let p=Room.supporters.find(x=>x.id===userId);if(p)p.coins+=coins;else Room.supporters.push({id:userId,name,coins,avatarUrl:d.senderAvatarUrl||d.sender?.avatarUrl,gender:d.senderGender||d.sender?.gender});Room.supporters.sort((a,b)=>b.coins-a.coins);
-  if(zrIsCall()){S.rmsgs.push(['gift',name,`sent ${Room.gift.emoji} ${Room.gift.giftName}`]);if(S.v==='hcall'){S.earned=(S.earned||0)+coins;S.recvN=(S.recvN||0)+1;S.gifted=(S.gifted||0)+coins}}
+  if(zrIsCall()){S.rmsgs.push(['gift',name,`sent ${eventGift.emoji} ${eventGift.giftName}`]);if(S.v==='hcall'){S.earned=(S.earned||0)+coins;S.recvN=(S.recvN||0)+1;S.gifted=(S.gifted||0)+coins}}
   if(S.v==='hcall'&&userId!=='you'&&typeof hsReceiveGift==='function')hsReceiveGift(d);
-  zrStartGiftMotion();
+  zrStartGiftMotion(eventGift,id);
   if(S.v==='live'||zrIsCall())r();
 }
 Native.on('gift.received',d=>{if(zrIsCall())zrReceiveGift(d)});
@@ -12015,6 +12224,10 @@ Native.on('stream.privateCall',async d=>{
   catch(error){if(Room.transition===d.callId){Native.send('call.end',{callId:d.callId,reason:'media_failed'});if(zrIsCall())endCall(true);appNotice(error.message)}}
 });
 ['session.none','session.expired'].forEach(type=>Native.on(type,()=>{zrClearGiftMotion();Room.key='';Room.transition=null;Room.sheet='';Room.draft='';Room.shareLink='';zrLinkDismiss()}));
+Native.on('app.background',()=>{zrGiftForeground=false;zrClearGiftMotion()});
+Native.on('app.foreground',()=>{zrGiftForeground=true;CallGiftPlayback.sync()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)zrClearGiftMotion();else CallGiftPlayback.sync()});
+window.addEventListener('pagehide',zrClearGiftMotion);
 document.addEventListener('aurora:navigate',()=>{if(S.v==='live'){zrEnsure();if(!DEMO&&!Home.streamBusy)zrLoadQueue()}else if(!zrIsCall()){zrClearGiftMotion();Room.sheet='';Room.key='';Room.transition=null;Room.draft=''}});
 document.addEventListener('keydown',event=>{
   const dialog=document.querySelector('.zr-link-overlay .zr-sheet')||document.querySelector('.zr-sheet,.zr-host-options');if(!dialog)return;
@@ -12071,7 +12284,7 @@ function zpcScreen(){
       ${need>0&&!short?`<p class="zpc-cost-note">At least ${n(need)} coins to start${h.rate?' &middot; billed by the second':''}${h.fee?` &middot; the entry fee is charged when ${esc(first(h.n))} picks up and isn’t refunded`:''}</p>`:''}
       ${busy?`<div class="zpc-preparing" role="status" aria-live="polite" aria-label="Preparing ${voice?'voice':'video'} call" aria-busy="true"><div class="zpc-preparing-icon" aria-hidden="true">${hi(voice?'mic':'vid',22)}</div><div><strong>Allow ${permission}</strong><p>Check your device's permission prompt to continue.</p><span class="zpc-progress-skeleton" aria-hidden="true"><i class="zh-skeleton-shape"></i></span></div></div>`:S.pcerr?`<div class="zpc-error" role="alert">${hi('info',19)}<div><strong>Let's try that again</strong><p>${esc(S.pcerr)}</p></div></div>`:!available?`<div class="zpc-unavailable-note">${hi('clock',19)}<p>This creator isn't taking calls right now.<br><span>Explore creators who are ready to connect.</span></p></div>`:walletPending?`<div class="zpc-unavailable-note" role="status">${hi(walletError?'info':'coins',19)}<p>${walletError?'Your balance could not be loaded.':'Checking your coin balance...'}<br><span>${walletError?'Retry to confirm you have enough coins.':'Your call will be ready to confirm once it loads.'}</span></p></div>`:short?`<div class="zpc-unavailable-note" role="status">${hi('info',19)}<p>You need at least ${n(need)} coins ${h.fee?`for the ${n(h.fee)}-coin entry fee and one minute`:'for a one-minute call'}.<br><span>${h.rate?'Calls are billed by the second while you talk.':'The entry fee is charged when the creator picks up.'}</span></p></div>`:live?`<div class="zpc-permission-note">${hi('shield',20)}<p>Send a private video call request. <span>Your camera and microphone activate when the host accepts.</span></p></div>`:`<div class="zpc-permission-note">${hi('shield',20)}<p>${voice?'Your microphone activates':'Your camera and microphone activate'} when you start. <span>You can turn ${voice?'it':'them'} off at any time.</span></p></div>`}
     </div>
-    <footer class="zpc-actions">${short?`<button class="zpc-primary" onclick="${automatic?'window.ZimiCallInvitations.review()':"go('coins')"}">${hi('coins',21)} <span>Buy coins to call</span>${hi('arrow',18)}</button>`:`<button class="zpc-primary" onclick="${live?'homeDashboardConfirmCall()':`homeStartCall(${voice})`}" ${busy||!available||walletPending?'disabled':''}>${hi(voice?'ph':'vid',21)} <span>${busy?voice?'Preparing microphone...':'Preparing camera...':!available?'Currently unavailable':automatic?'Review automatic invitation':live?'Request video call':voice?'Start voice call':'Start video call'}</span>${!busy&&available&&!walletPending?hi('arrow',18):''}</button>`}${walletError&&available?`<button class="zpc-secondary" onclick="contentRetry('wallet')">Retry balance</button>`:''}${busy?'<button class="zpc-cancel" onclick="homeCancelPrepare()">Cancel preparation</button>':!available?'<button class="zpc-secondary" onclick="go(\'explore\')">Explore creators '+hi('arrow',16)+'</button>':`<p class="zpc-footer-note">${hi('lock',11)} ${live?'The host accepts before your call starts.':'Your time. Your conversation.'}</p>`}${DEMO?'<span class="zpc-demo">Interactive preview &middot; no real call is placed</span>':''}</footer>
+    <footer class="zpc-actions">${short?`<button class="zpc-primary" onclick="${automatic?'coinRequireRecharge(()=>window.ZimiCallInvitations.topup())':'coinRequireRecharge()'}">${hi('coins',21)} <span>Buy coins to call</span>${hi('arrow',18)}</button>`:`<button class="zpc-primary" onclick="${live?'homeDashboardConfirmCall()':`homeStartCall(${voice})`}" ${busy||!available||walletPending?'disabled':''}>${hi(voice?'ph':'vid',21)} <span>${busy?voice?'Preparing microphone...':'Preparing camera...':!available?'Currently unavailable':automatic?'Review automatic invitation':live?'Request video call':voice?'Start voice call':'Start video call'}</span>${!busy&&available&&!walletPending?hi('arrow',18):''}</button>`}${walletError&&available?`<button class="zpc-secondary" onclick="contentRetry('wallet')">Retry balance</button>`:''}${busy?'<button class="zpc-cancel" onclick="homeCancelPrepare()">Cancel preparation</button>':!available?'<button class="zpc-secondary" onclick="go(\'explore\')">Explore creators '+hi('arrow',16)+'</button>':`<p class="zpc-footer-note">${hi('lock',11)} ${live?'The host accepts before your call starts.':'Your time. Your conversation.'}</p>`}${DEMO?'<span class="zpc-demo">Interactive preview &middot; no real call is placed</span>':''}</footer>
   </section>`;
 }
 function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open}
@@ -13626,20 +13839,22 @@ window.ZimiChatPhoto = (() => {
   return { open, close, sync, download, reset, toggleZoom, sendReply, photoReply, updateReply: controls, zoomBy: delta => { if (current) zoom(current.scale + delta); }, retry: () => { if (current) load(current); } };
 })();
 
-/* Confirmed chat gifts play once over the conversation, like the supplied
-   reference. The original file supplies all artwork and motion. This portal
-   lives outside screen redraws and never changes chat DOM, focus or scrolling. */
+/* Confirmed gifts play once over the conversation. The shared player lives
+   outside screen redraws and never changes chat DOM, focus or scrolling. */
 window.ZimiChatGifts=(()=>{
-  const seen=new Map(),queue=[],artwork=new Map();
-  let owner='',active=null,timer=null,loadingTimer=null,portal=null,foreground=true;
+  const seen=new Map();
+  let owner='',foreground=true;
   const account=()=>String(S.user?.id||S.user?._id||(DEMO?'preview':''));
   const thread=()=>S.v==='thread'&&S.h?String(S.h):'';
+  const available=peer=>!!account()&&foreground&&!document.hidden&&thread()===peer;
+  const player=ZimiGiftPlayback.create({
+    id:'zc-gift-playback',imageClass:'zc-gift-playback-art',
+    available:item=>available(item.peer),
+    obstructed:()=>!!(Home.giftTo||document.querySelector('#zc-photo-viewer,.zc-overlay,.zc-message-menu,.zh-sheet-backdrop,dialog[open]'))
+  });
   function clear(reset=false){
-    clearTimeout(timer);clearTimeout(loadingTimer);timer=loadingTimer=null;
-    if(active?.image){active.image.onload=null;active.image.onerror=null}
-    if(active?.objectUrl)URL.revokeObjectURL(active.objectUrl);
-    active=null;queue.length=0;portal?.remove();portal=null;
-    if(reset){seen.clear();artwork.clear()}
+    player.clear();
+    if(reset){seen.clear();ZimiGiftPlayback.resetCache()}
   }
   function identity(peer,message,receipt){
     const transfer=message.gift?.transferId||receipt.id||receipt.transactionId;
@@ -13652,118 +13867,28 @@ window.ZimiChatGifts=(()=>{
     while(seen.size>2000)seen.delete(seen.keys().next().value);
     return duplicate;
   }
-  function available(peer){return !!account()&&foreground&&!document.hidden&&thread()===peer}
-  function obstructed(){return !!(Home.giftTo||document.querySelector('#zc-photo-viewer,.zc-overlay,.zc-message-menu,.zh-sheet-backdrop'))}
-  function position(){
-    if(!portal)return;
-    const box=document.getElementById('tf')?.getBoundingClientRect();
-    if(!box||box.width<1||box.height<1){portal.hidden=true;return}
-    const viewport=window.visualViewport;
-    const left=Math.max(box.left,viewport?.offsetLeft||0),top=Math.max(box.top,viewport?.offsetTop||0);
-    const right=Math.min(box.right,(viewport?.offsetLeft||0)+(viewport?.width||innerWidth));
-    const bottom=Math.min(box.bottom,(viewport?.offsetTop||0)+(viewport?.height||innerHeight));
-    Object.assign(portal.style,{left:left+'px',top:top+'px',width:Math.max(0,right-left)+'px',height:Math.max(0,bottom-top)+'px'});
-    portal.hidden=obstructed()||right<=left||bottom<=top;
-  }
-  function finish(item){
-    if(active!==item)return;
-    clearTimeout(timer);clearTimeout(loadingTimer);timer=loadingTimer=null;
-    item.image.onload=null;item.image.onerror=null;
-    if(item.objectUrl)URL.revokeObjectURL(item.objectUrl);
-    portal?.remove();portal=null;active=null;
-    next();
-  }
-  function originalFile(media){
-    const cached=artwork.get(media);
-    if(cached){artwork.delete(media);artwork.set(media,cached);return cached.promise}
-    const entry={bytes:0,promise:null};
-    entry.promise=(async()=>{
-      const response=await fetch(media,{cache:'force-cache',credentials:'omit'});
-      if(!response.ok||Number(response.headers.get('content-length'))>64*1024*1024)throw new Error('Gift artwork is unavailable');
-      const blob=await response.blob();
-      if(!blob.size||blob.size>64*1024*1024)throw new Error('Gift artwork is unavailable');
-      entry.bytes=blob.size;
-      if(artwork.get(media)===entry){
-        let bytes=[...artwork.values()].reduce((total,value)=>total+value.bytes,0);
-        for(const [key,value] of artwork){
-          if(artwork.size<=3&&bytes<=64*1024*1024)break;
-          if(key!==media){artwork.delete(key);bytes-=value.bytes}
-        }
-      }
-      return blob;
-    })().catch(error=>{if(artwork.get(media)===entry)artwork.delete(media);throw error});
-    artwork.set(media,entry);return entry.promise;
-  }
-  async function source(item){
-    try{
-      const blob=await originalFile(item.media);
-      if(active!==item)return;
-      // Chromium can share a WebP timeline with the picker/receipt using its
-      // original URL. A fresh Blob URL starts at frame one without altering or
-      // re-downloading the cached original bytes for each confirmed gift.
-      item.objectUrl=URL.createObjectURL(blob);item.image.src=item.objectUrl;
-    }catch{
-      if(active!==item)return;
-      // Public buckets without CORS still support direct image loading. Use a
-      // fresh public resource URL there; never modify signed query parameters.
-      let media=item.media;
-      try{const url=new URL(media);if(['https:','http:'].includes(url.protocol)&&!url.search){url.searchParams.set('_binzoGiftPlayback',item.transferId);media=url.href}}catch{}
-      item.image.src=media;
-    }
-  }
-  function next(){
-    if(active||!queue.length)return;
-    if(!available(queue[0].peer)){clear();return}
-    if(obstructed())return;
-    while(queue.length&&Date.now()-queue[0].receivedAt>60000)queue.shift();
-    const item=queue.shift();if(!item)return;
-    active=item;
-    portal=document.createElement('div');portal.id='zc-gift-playback';
-    portal.setAttribute('aria-hidden','true');portal.dataset.state='loading';
-    portal.dataset.transferId=item.transferId;
-    const image=item.image=document.createElement('img');
-    image.className='zc-gift-playback-art';image.alt='';image.draggable=false;
-    image.dataset.transferId=item.transferId;image.dataset.mediaUrl=item.media;image.decoding='async';
-    image.onload=()=>{
-      if(active!==item)return;
-      if(!available(item.peer)){clear();return}
-      clearTimeout(loadingTimer);loadingTimer=null;
-      portal.dataset.state='playing';portal.dataset.startedAt=String(Date.now());
-      position();timer=setTimeout(()=>finish(item),item.durationMs);
-    };
-    image.onerror=()=>finish(item);
-    portal.appendChild(image);document.body.appendChild(portal);position();
-    // A broken/slow asset cannot hold up later confirmed gifts indefinitely.
-    loadingTimer=setTimeout(()=>finish(item),15000);
-    source(item);
-  }
   function sync(){
     const current=account();
     if(owner!==current){clear(true);owner=current}
-    if((active&&!available(active.peer))||(queue.length&&!available(queue[0].peer))){clear();return}
-    position();next();
+    player.sync();
   }
   function accept(peer,message,receipt={}){
     sync();peer=String(peer||'');
     if(!peer||message?.kind!=='gift'||message.deleted||!message.gift)return;
     const keys=identity(peer,message,receipt);if(!keys.length||remember(keys))return;
-    // History is never offered here; receipts in another chat or in background
-    // stay in history and cannot replay later when the person returns.
+    // History, other conversations and background arrivals never replay later.
     if(!available(peer))return;
     const gift=message.gift,media=giftMotionUrl(gift.name,gift.mediaUrl||gift.image||'');
     if(!media)return;
     const catalog=Home.gifts.find(item=>String(item.id)===String(gift.giftId));
     const catalogDuration=catalog&&giftMotionUrl(catalog.name,catalog.mediaUrl)===media?catalog.durationMs:undefined;
-    const duration=Number(gift.durationMs??catalogDuration);
-    const durationMs=Number.isSafeInteger(duration)&&duration>0?Math.max(100,Math.min(duration,600000)):6400;
-    if(queue.length>=12)queue.shift();
-    queue.push({peer,media,durationMs,receivedAt:Date.now(),transferId:String(gift.transferId||receipt.id||message.id||receipt.idempotencyKey)});
-    next();
+    player.enqueue({peer,media,durationMs:gift.durationMs??catalogDuration,
+      transferId:String(gift.transferId||receipt.id||message.id||receipt.idempotencyKey)});
   }
   Native.on('chat.message',message=>{
     if(message.kind==='gift')accept(message.from,{...message,mine:false});
   });
-  // Older servers can notify a recipient without a canonical chat message yet.
+  // Older servers may notify a recipient before the canonical chat message.
   // This event is visual only; the persisted bubble still comes from history.
   Native.on('gift.received',receipt=>{
     if(receipt.streamId)return;
@@ -13778,13 +13903,9 @@ window.ZimiChatGifts=(()=>{
   Native.on('app.foreground',()=>{foreground=true;sync()});
   ['session.none','session.expired'].forEach(type=>Native.on(type,()=>{clear(true);owner=''}));
   Native.on('session',sync);
-  Native.on('keyboard',()=>requestAnimationFrame(position));
   document.addEventListener('visibilitychange',()=>{if(document.hidden)clear();else sync()});
   document.addEventListener('aurora:navigate',sync);
   window.addEventListener('pagehide',()=>clear());
-  window.addEventListener('resize',position);
-  window.visualViewport?.addEventListener('resize',position);
-  window.visualViewport?.addEventListener('scroll',position);
   const afterRender=window.ZimiHome.afterRender;
   window.ZimiHome.afterRender=()=>{afterRender();sync()};
   return {accept,sync,reset:()=>{clear(true);owner=account()}};
@@ -15856,7 +15977,7 @@ function zciPaint(){
   const invitation=CallInvitations.invitation,host=invitation.host,ready=coinWalletReady(),short=ready&&S.bal<invitation.requiredCoins;
   let dialog=document.getElementById('zci-invitation');const creating=!dialog;
   if(!dialog){dialog=document.createElement('dialog');dialog.id='zci-invitation';dialog.className='zci-dialog';dialog.setAttribute('aria-labelledby','zci-title');dialog.addEventListener('cancel',event=>{event.preventDefault();if(!CallInvitations.busy)zciDismiss()});document.body.append(dialog)}
-  dialog.innerHTML=`<header><span class="zci-label">Automatic call invitation</span><button type="button" aria-label="Close automatic invitation" onclick="zciDismiss()" ${CallInvitations.busy?'disabled':''}>${hi('close',20)}</button></header><div class="zci-person">${hcIdentityAvatar({id:host.id,n:host.name,avatarUrl:host.avatarUrl},76)}<div><span>Suggested host</span><h2 id="zci-title">${esc(host.name)}</h2>${host.city?`<p>${esc(host.city)}</p>`:''}</div></div><p>BinzoLive suggested this available host. This is an automatic invitation, not an incoming call from the host.</p><div class="zci-terms"><span>Video call <strong>${n(invitation.coinsPerMinute)} coins/min</strong></span>${invitation.entryFeeCoins?`<span>Entry fee <strong>${n(invitation.entryFeeCoins)} coins</strong></span>`:''}<span>Your balance <strong>${contentBalance()} coins</strong></span></div><p class="zci-note">${ready?short?`You need at least ${n(invitation.requiredCoins)} coins. Buying coins does not start a call.`:'Connect rings the real host. Charges begin only if the host answers.':'Checking your verified coin balance before connecting.'}</p>${CallInvitations.error?`<p class="zci-error" role="alert">${esc(CallInvitations.error)}</p>`:''}<button type="button" class="zci-primary" onclick="${short?'zciTopup()':'zciConnect()'}" ${CallInvitations.busy||!ready?'disabled':''}>${CallInvitations.busy==='connect'?'Preparing connection…':short?'Add coins':'Connect'}</button><button type="button" class="zci-secondary" onclick="zciDismiss()" ${CallInvitations.busy?'disabled':''}>Not now</button><button type="button" class="zci-mute" onclick="zciDismiss(true)" ${CallInvitations.busy?'disabled':''}>Don't show automatic invitations</button>`;
+  dialog.innerHTML=`<header><span class="zci-label">Automatic call invitation</span><button type="button" aria-label="Close automatic invitation" onclick="zciDismiss()" ${CallInvitations.busy?'disabled':''}>${hi('close',20)}</button></header><div class="zci-person">${hcIdentityAvatar({id:host.id,n:host.name,avatarUrl:host.avatarUrl},76)}<div><span>Suggested host</span><h2 id="zci-title">${esc(host.name)}</h2>${host.city?`<p>${esc(host.city)}</p>`:''}</div></div><p>BinzoLive suggested this available host. This is an automatic invitation, not an incoming call from the host.</p><div class="zci-terms"><span>Video call <strong>${n(invitation.coinsPerMinute)} coins/min</strong></span>${invitation.entryFeeCoins?`<span>Entry fee <strong>${n(invitation.entryFeeCoins)} coins</strong></span>`:''}<span>Your balance <strong>${contentBalance()} coins</strong></span></div><p class="zci-note">${ready?short?`You need at least ${n(invitation.requiredCoins)} coins. Buying coins does not start a call.`:'Connect rings the real host. Charges begin only if the host answers.':'Checking your verified coin balance before connecting.'}</p>${CallInvitations.error?`<p class="zci-error" role="alert">${esc(CallInvitations.error)}</p>`:''}<button type="button" class="zci-primary" onclick="${short?'coinRequireRecharge(zciTopup)':'zciConnect()'}" ${CallInvitations.busy||!ready?'disabled':''}>${CallInvitations.busy==='connect'?'Preparing connection…':short?'Add coins':'Connect'}</button><button type="button" class="zci-secondary" onclick="zciDismiss()" ${CallInvitations.busy?'disabled':''}>Not now</button><button type="button" class="zci-mute" onclick="zciDismiss(true)" ${CallInvitations.busy?'disabled':''}>Don't show automatic invitations</button>`;
   if(creating)dialog.showModal();
 }
 function zciDismiss(mute=false){
@@ -15868,7 +15989,7 @@ function zciDismiss(mute=false){
 }
 async function zciConnect(){
   const invitation=CallInvitations.invitation,owner=zciOwner();if(!zciIdle(true)||!zciValid(invitation)||CallInvitations.busy||!coinWalletReady())return;
-  if(S.bal<invitation.requiredCoins)return zciTopup();
+  if(S.bal<invitation.requiredCoins)return coinRequireRecharge(zciTopup);
   CallInvitations.busy='connect';CallInvitations.error='';const requestId=CallInvitations.pending=++CallInvitations.request;zciPaint();
   try{
     await window.ZimiMedia.prepare(true);
@@ -15879,7 +16000,7 @@ async function zciConnect(){
     zciClose();S.allowPreparedCall=true;try{go('dial',host.id)}finally{S.allowPreparedCall=false}
   }catch(error){if(owner!==zciOwner()||CallInvitations.pending!==requestId)return;CallInvitations.busy='';CallInvitations.error=error?.message||'Camera and microphone access could not be prepared.';zciPaint()}
 }
-function zciTopup(){if(!zciValid()||CallInvitations.busy)return;const invitation=CallInvitations.invitation;CallInvitations.topup={kind:'automatic',id:invitation.id,owner:zciOwner(),until:invitation.expiresAt};zciClose();go('coins')}
+function zciTopup(){if(CallInvitations.busy)return;if(!zciValid()){zciClose();go('coins');return}const invitation=CallInvitations.invitation;CallInvitations.topup={kind:'automatic',id:invitation.id,owner:zciOwner(),until:invitation.expiresAt};zciClose();go('coins')}
 function zciReturnFromCoins(){const context=CallInvitations.topup;if(!context||context.owner!==zciOwner()||CallInvitations.busy)return;if(context.kind==='incoming')return zciReturnToIncoming();CallInvitations.topup=null;go('home');zciRequest(true)}
 function zciReview(){if(CallInvitations.busy)return;go('home');zciRequest(true)}
 function zciTopupIncoming(){
@@ -16003,6 +16124,7 @@ function ctPaintTargets() {
    only once the repeat time has passed since it was last shown or dismissed. */
 function ctRechargeRule() { return CallTargets.recharge || (DEMO ? CT_PREVIEW_RECHARGE : null); }
 function ctRechargeCheck() {
+  if (CoinUI.rechargePrompt) { ctRechargeClose(); return; }
   const rule = ctRechargeRule(), dialog = document.getElementById('ct-recharge');
   if (!ctMemberCall() || !rule?.enabled || !coinWalletReady()) { ctRechargeClose(); return; }
   if (dialog) { if (S.bal > rule.thresholdCoins) ctRechargeClose(); else ctRechargePaint(dialog); return; }

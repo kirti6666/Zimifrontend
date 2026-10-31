@@ -536,7 +536,7 @@ function vCall(){const h=g(S.h);
  <div class="fx" id="fl"></div>
  <div id="wn" style="position:relative;margin-top:auto;padding:0 14px"></div>
  <div class="lvfeed" id="rfeed"></div>
- <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button aria-label="Send ${l}"
    onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
 
  ${S.cmp?"":`<div class="lvbar">
@@ -612,13 +612,13 @@ function giftTray(){
     <span><span class="tt">Send a gift</span><br><span class="sub">Coins go straight to ${S.v==="hcall"?esc(first(S.caller.n)):"the host"}</span></span>
     <button class="addc" onclick="go('coins')">${gem}${window.contentBalance?contentBalance():n(S.bal)} &nbsp;+</button>
     <button class="xbtn" aria-label="Close" onclick="S.tray=0;r()">&times;</button></div>
-   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${giftSticker(l)?"media":""}" ${S.bal<v?"disabled":""} onclick="sendGift('${l}','${e}',${v},'${k||""}')">
+   ${loading("gifts",420)?skGifts(12):`<div class="ggrid fade">${GIFTS.map(([l,e,v,k])=>`<button class="gi ${tier(v)} ${giftSticker(l)?"media":""}" onclick="sendGift('${l}','${e}',${v},'${k||""}')">
      ${lab(v)?`<span class="tier">${lab(v)}</span>`:""}
      ${giftSticker(l)?`<span class="gl"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="gl">${e}</span>`}<span class="gn">${l}</span><span class="gc">${gem}${n(v)}</span></button>`).join("")}</div>`}
   </div></div>`}
 
 function sendGift(l,e,v,k){
- if(S.bal<v)return;
+ if(S.bal<v)return coinRequireRecharge();
  if(!DEMO){Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});return}
  S.bal-=v; S.tray=0; S.sh=0;
  Native.send("gift.send",{to:S.v==="hcall"?S.caller.id:S.h,gift:l,coins:v,inCall:S.v!=="thread"});
@@ -695,7 +695,7 @@ function nextCeleb(){
  setTimeout(()=>{el.remove();S.cel[c.kind]=2;S.celq.shift();
   if(S.v==="call"||S.v==="hcall")paintGoal();nextCeleb()},3000)}
 /* A sender tapping the asked-for gift sends it. */
-function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return go("coins");sendGift(l,e,v,k||"")}
+function sendAsk(){const [l,e,v,k]=GIFTS[S.fav];if(S.bal<v)return coinRequireRecharge();sendGift(l,e,v,k||"")}
 
 /* Compact coin count for tight spots, in the same K / M style as the mission goals. */
 function kfmt(v){return v>=1e6?(v/1e6).toFixed(v>=1e7?1:2).replace(/\.0+$/,"")+"M":v>=1e5?(v/1e3).toFixed(1).replace(/\.0$/,"")+"K":n(v)}
@@ -1158,9 +1158,12 @@ function vMemberRing(){const m=S.memberRing,h=m&&g(m.id);if(!h)return "";
   ${m.error?`<span class="ring-connecting-note" role="alert">${esc(m.error)}</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineMemberRing()">${I("ph",25)}</button><span>Decline</span></span>
-   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall||short?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
+   <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptMemberRing()">${I(m.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
  </div>`}
 async function acceptMemberRing(){const m=S.memberRing;if(!m||S.acceptingCall)return;
+ if(m.topupRequired)return coinRequireRecharge(memberRingAddCoins);
+ if(m.rate>0&&!coinWalletReady())return;
+ if(m.rate>0&&S.bal<m.rate)return coinRequireRecharge(memberRingAddCoins);
  S.acceptingCall=true;m.error="";r();
  try{
   if(window.ZimiMedia?.prepare)await window.ZimiMedia.prepare(!m.voice);
@@ -1180,7 +1183,7 @@ function vHostCall(){const c=S.caller;
  <div style="margin-top:auto"></div>
 
  <div class="lvfeed" id="rfeed"></div>
- <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button ${S.bal<v?"disabled":""} aria-label="Send ${l}"
+ <div class="lvstrip">${GIFTS.map(([l,e,v,k])=>`<button aria-label="Send ${l}"
    onclick="sendGift('${l}','${e}',${v},'${k||""}')">${giftSticker(l)?`<span class="em media"><img src="${giftStillUrl(l)}" alt=""></span>`:`<span class="em">${e}</span>`}<span class="pr">${gem}${n(v)}</span></button>`).join("")}</div>
  ${S.cmp?`<div class="lvcomp">
    ${av(me,34,"none")}
@@ -1693,7 +1696,7 @@ Native.on("profile.account",d=>{if(d.user?.id!==S.user?.id)return;obApplyAccount
 Native.on("data.error",d=>{S.dataError=d.message;refresh()});
 Native.on("data.loaded",()=>{S.dataError="";refresh()});
 Native.on("realtime.status",d=>{S.realtimeError=d.connected?"":d.message||"Live updates are reconnecting…";refresh()});
-Native.on("operation.error",d=>{appNotice(d.message);if(d.action==="presence.set")refresh()});
+Native.on("operation.error",d=>{if(d.code==='INSUFFICIENT_COINS')window.ZimiCoins?.requireRecharge();else appNotice(d.message);if(d.action==="presence.set")refresh()});
 Native.on("profile.saved",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError="";S.mediaDirty={};if(d.account)obApplyAccount(d.account);if(S.v==='editprofile')go(S.editBack||"profile");else refresh();appNotice("Profile saved.");obHaptic("success")});
 Native.on("profile.error",d=>{if(d.onboarding||(d.requestId!==undefined&&d.requestId!==S.profileRequestId))return;S.profileSaving=false;S.mediaError=d.message||"Your changes could not be saved. Please try again.";r();obHaptic("error")});
 Native.on("profile.progress",d=>{if(!S.profileSaving||d.requestId!==S.profileRequestId)return;S.profileProgress=d.done<d.total?`Uploading photo ${d.done+1} of ${d.total}…`:"Saving profile…";if(S.v==="editprofile")r()});
