@@ -1,6 +1,5 @@
 import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AppState, BackHandler, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
-import * as Haptics from "expo-haptics";
 import * as ScreenCapture from "expo-screen-capture";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -74,7 +73,6 @@ export function AppContent() {
   const [launched, setLaunched] = useState(false);
   const [launchVisible, setLaunchVisible] = useState(true);
   const webRef = useRef<WebView>(null);
-  const lastHapticAt = useRef(0);
   const webReady = useRef(false);
   const exitConfirmation = useRef<object | null>(null);
 
@@ -154,21 +152,8 @@ export function AppContent() {
       const next: NativePalette = { ink: msg.data.ink, primary: msg.data.primary, contrast: msg.data.contrast, surface: msg.data.surface, raised: msg.data.raised };
       setPalette(previous => Object.keys(next).every(key => previous[key as keyof NativePalette] === next[key as keyof NativePalette]) ? previous : next);
     } else if (msg.type === "ui.haptic") {
-      // Guard against bursts of pointer events; OS settings still decide if
-      // tactile feedback is available on this device.
-      const now = Date.now();
-      if ((msg.data.kind === "selection" || msg.data.kind === "light") && now - lastHapticAt.current < 45) return;
-      lastHapticAt.current = now;
-      let feedback: Promise<void>;
-      switch (msg.data.kind) {
-        case "selection": feedback = Haptics.selectionAsync(); break;
-        case "success": feedback = Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); break;
-        case "error": feedback = Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); break;
-        case "light": feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); break;
-        default: return;
-      }
-      // Unavailable haptics must never interrupt the UI or network actions.
-      void feedback.catch(() => {});
+      // Older page bundles may still send this message. UI feedback is visual.
+      return;
     } else if (msg.type === "screen.secure") {
       // Video calls and chats: screenshots and screen recordings show nothing while they are open.
       void (msg.data.on ? ScreenCapture.preventScreenCaptureAsync(PRIVATE_SCREEN) : ScreenCapture.allowScreenCaptureAsync(PRIVATE_SCREEN)).catch(() => {});

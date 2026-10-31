@@ -756,7 +756,7 @@ test('the app page alone turns screenshot protection on and off for private scre
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 
-test('Android origin-only WebView messages reach OTP and haptic handlers', async () => {
+test('Android origin-only WebView messages reach OTP while legacy UI haptic messages stay silent', async () => {
   const h = harness();
   const tree = h.load('App.tsx').AppContent();
   function findWeb(node) {
@@ -771,10 +771,10 @@ test('Android origin-only WebView messages reach OTP and haptic handlers', async
   const url = 'https://aurora.localhost';
   assert.equal(web.props.onShouldStartLoadWithRequest({ url }), true);
   web.props.onMessage({ nativeEvent: { url, data: JSON.stringify(sendMessage()) } });
-  web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type: 'ui.haptic', data: { kind: 'success' } }) } });
+  for (const kind of ['selection', 'light', 'success', 'error']) web.props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type: 'ui.haptic', data: { kind } }) } });
   await settle();
   assert.equal(h.count('sendOtp'), 1, 'Android messages must dispatch a real OTP request');
-  assert.deepEqual(h.haptics, ['success']);
+  assert.deepEqual(h.haptics, [], 'Click and action feedback must never vibrate');
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 

@@ -690,7 +690,6 @@ function nextCeleb(){
  el.innerHTML=`<div class="celcard"><span class="celico">${c.kind==="ask"?"&#127873;":"&#127942;"}</span>
   <b>Congratulations!</b><span>${esc(c.text)}</span></div>`;
  document.querySelector(".app").appendChild(el);
- if(navigator.vibrate)try{navigator.vibrate(120)}catch(e){}
  setTimeout(()=>{el.classList.add("out")},2600);
  setTimeout(()=>{el.remove();S.cel[c.kind]=2;S.celq.shift();
   if(S.v==="call"||S.v==="hcall")paintGoal();nextCeleb()},3000)}

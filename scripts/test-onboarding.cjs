@@ -491,7 +491,7 @@ async function nativeFlow() {
   assert.equal(saves[0].data.adultConfirmed, true, 'Adult confirmation must reach the validated backend profile');
   assert.equal(saves[0].data.preferredRole, 'member', 'Member preference is metadata, not a permission grant');
   assert.equal(saves[0].data.gender, 'female', 'The chosen gender is saved with the profile');
-  assert.equal(await page.evaluate(() => window.__messages.some(message => message.type === 'ui.haptic')), true, 'Touch interactions must reach the native haptic bridge');
+  assert.equal(await page.evaluate(() => window.__messages.some(message => message.type === 'ui.haptic')), false, 'Signup interactions must not request vibration');
   console.log('PASS native bridge: send/verify acknowledgements, delivery error, save error/retry, completion');
 }
 
