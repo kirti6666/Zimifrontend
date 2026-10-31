@@ -3374,6 +3374,47 @@ test('a tapped notification opens the inbox once a signed-in, onboarded screen c
   h.bridge.close();
 });
 
+test('notification navigation resolves server-owned targets, checks recipient and discards work after logout', async () => {
+  const h = harness(), self = '507f1f77bcf86cd799439011', peer = '507f1f77bcf86cd799439012', postId = '507f1f77bcf86cd799439013';
+  h.overrides.me = () => ({ ...account(self), requiresOnboarding: false });
+  h.overrides.publicProfile = id => ({ id, name: 'Verified peer', role: 'host' });
+  h.overrides.notificationPost = id => ({ ownerId: peer, post: { id, kind: 'photo', url: 'https://cdn.example.test/photo.jpg' } });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.push.open({ targetType: 'thread', targetId: peer, recipientId: peer, category: 'messages' }); await settle();
+  assert.equal(h.count('publicProfile'), 0, 'Another account cannot resolve this notification');
+  h.push.open({ targetType: 'thread', targetId: peer, recipientId: self, category: 'messages' }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.profile.name, 'Verified peer');
+  h.bridge.handle({ type: 'notifications.open', data: { targetType: 'post', targetId: postId, category: 'likes' } }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.post.id, postId);
+  assert.equal(h.find('push.opened').at(-1).data.ownerId, peer);
+  for (const notificationPreferences of [{ messages: false }, { quietHours: { enabled: true, timeZone: 'Asia/Kolkata', startHour: 22, endHour: 8 } }]) assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.settings.save', data: { notificationPreferences, requestId: 1 } })));
+  for (const notificationPreferences of [{ calls: 1 }, { quietHours: { startHour: 24 } }, { quietHours: { timeZone: 'Invalid/Time' } }, { admin: true }]) assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.settings.save', data: { notificationPreferences, requestId: 1 } })), null);
+  const pending = deferred(); h.overrides.publicProfile = () => pending.promise;
+  h.push.open({ targetType: 'thread', targetId: peer, recipientId: self }); await settle();
+  const opened = h.find('push.opened').length;
+  h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); pending.resolve({ id: peer, name: 'Late peer' }); await settle();
+  assert.equal(h.find('push.opened').length, opened, 'A late profile cannot navigate the replacement signed-out session'); h.bridge.close();
+});
+
+test('notification call taps recheck the active incoming call and never accept automatically', async () => {
+  const h = harness(), self = '507f1f77bcf86cd799439011', peer = '507f1f77bcf86cd799439012', callId = '507f1f77bcf86cd799439013';
+  h.overrides.me = () => ({ ...approvedAccount(self), requiresOnboarding: false });
+  h.overrides.notificationCall = id => ({ callId: id, from: { id: peer, name: 'Caller' }, voice: true });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.push.open({ targetType: 'call', targetId: callId, recipientId: self, category: 'calls', expiresAt: new Date(Date.now() + 30000).toISOString() }); await settle();
+  assert.equal(h.count('notificationCall'), 1); assert.equal(h.find('call.incoming').at(-1).data.callId, callId);
+  assert.equal(h.count('acceptCall'), 0); assert.equal(h.count('startCall'), 0);
+  h.overrides.notificationCall = () => null;
+  h.push.open({ targetType: 'call', targetId: callId, recipientId: self, category: 'calls' }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.targetType, 'call', 'A finished call opens history');
+  h.overrides.publicProfile = id => ({ id, name: 'Missed caller', role: 'sender' });
+  h.push.open({ targetType: 'call', targetId: callId, actorId: peer, recipientId: self, category: 'calls' }); await settle();
+  assert.equal(h.find('push.opened').at(-1).data.targetType, 'creator');assert.equal(h.find('push.opened').at(-1).data.profile.name, 'Missed caller');
+  const count = h.count('notificationCall');
+  h.push.open({ targetType: 'call', targetId: callId, recipientId: self, category: 'calls', expiresAt: new Date(0).toISOString() }); await settle();
+  assert.equal(h.count('notificationCall'), count); assert.equal(h.find('push.opened').at(-1).data.targetType, 'inbox'); h.bridge.close();
+});
+
 test('automatic invitations use a strict quoted endpoint and never start or accept on wallet refresh', async () => {
   const h = harness(), created = deferred();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false, user: { ...account().user, serverRole: 'user' } });

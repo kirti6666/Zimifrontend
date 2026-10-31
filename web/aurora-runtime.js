@@ -1083,14 +1083,14 @@ function vDial(){
  /* A redraw continues the rings in step with the ringback tone (web/call-ringback.js). */
  const phase=window.ZimiRingback?window.ZimiRingback.phase():0;
  const tool=(icon,label,text,action,pressed)=>`<span class="rbtn"><button class="zr-round dialtool" aria-label="${label}" ${pressed==null?"":`aria-pressed="${pressed}"`} onclick="${action}">${I(icon,22)}</button><span aria-hidden="true">${text}</span></span>`;
- return `<div class="ringscr dial ${video?"is-video":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
+ return `<div class="ringscr dial ${video?"is-video":""} ${voice?"is-voice":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
   <div class="ringbg" aria-hidden="true">${voice?"":`${DEMO?art(me.seed+2):""}<video data-zimi-local autoplay muted playsinline></video><i class="dialscrim"></i>`}</div>
   ${backButton("callMinimize()",{label:"Minimize call",media:video,slot:"dialmin"})}
   <span class="ringeye">${I(voice?"ph":"vid",13)}${voice?"Voice":"Video"} call</span>
   <div class="ringorb">${avc(p,video?72:104)}</div>
   <h2>${esc(p.n)}</h2><p class="dialstatus">Calling<span class="dialdots" aria-hidden="true"><i></i><i></i><i></i></span></p>
   ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
-  <div class="ringact ${voice?"":"dialdock"}">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())+tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
+  <div class="ringact dialdock">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())}${tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
  </div>`}
 
 function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}

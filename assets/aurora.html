@@ -3334,6 +3334,26 @@ html:root[data-theme="dark"] .zc-thread{
 @media(max-width:360px){.zr-call-reference .zr-top,.zr-call-reference .zr-bottom{padding-inline:10px}.zr-call-reference .zr-call-toolbar{gap:6px}.zr-call-reference .zr-host-clock{padding-inline:7px;gap:5px}.zr-call-reference .zr-session-earned>small{font-size:7px;letter-spacing:.25px}.zr-call-reference .zr-session-earned>b{font-size:12px}.zr-call-reference .zr-call-dock{gap:7px}.zr-call-reference .zr-call-dock>.zr-round,.zr-call-reference .zr-call-dock .zr-hangup{width:42px;height:42px;flex-basis:42px}.zr-call-reference .zr-call-person{gap:6px}.zr-call-reference .zr-call-person>.hc-identity-avatar{width:32px!important;height:32px!important}.zr-call-reference .zr-call-person strong{font-size:12px}}
 @media(max-height:660px){.zr-call-reference .zr-call-feed{max-height:65px}.zr-call-reference .zr-bottom{padding-top:6px}.zr-call-reference .zr-pip{width:73px;height:102px}.zr-call-reference .zr-gift-celebration.is-large .zr-gift-stage-art{width:136px;height:136px;margin:-68px 0 0 -68px}.zr-call-reference .zr-gift-celebration.is-large .zr-gift-stage-art>span{font-size:108px}}
 @media(prefers-reduced-motion:reduce){.zr-call-reference .zr-host-options{animation:none}}
+/* Voice calls reserve real space for identity and the two control rows, so
+   long headers, chat and short screens cannot cover the caller's name. */
+.zr-call.zr-voice-call{display:flex;flex-direction:column;background:var(--canvas)}
+.zr-voice-call>.zr-top,.zr-voice-call>.zr-bottom{flex:none}
+.zr-voice-call>.zr-bottom{margin-top:0}
+.zr-voice-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px 20px;overflow:hidden}
+.zr-voice-call .zr-voice-stage .zr-voice{position:static;inset:auto;min-width:0;max-width:100%;gap:12px;text-align:center}
+.zr-voice-call .zr-voice-stage .zr-voice>.av{width:104px!important;height:104px!important;flex:none}
+.zr-voice-call .zr-voice-stage h2{max-width:100%;margin:0;font-size:24px;font-weight:600;line-height:1.25;letter-spacing:-.4px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.zr-voice-call .zr-voice-stage .zr-voice>span{display:flex;align-items:center;justify-content:center;gap:6px;max-width:100%;font-size:13px;line-height:1.4;color:var(--muted)}
+.zr-voice-controls{display:flex;align-items:flex-start;justify-content:center;gap:32px;padding:14px 0 2px}
+.zr-voice-control{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:62px}
+.zr-voice-controls .zr-round{width:52px;height:52px;flex-basis:52px;background:var(--raised);color:var(--ink)}
+.zr-voice-controls .zr-round[aria-pressed=true]{background:var(--accent);color:var(--cta-ink)}
+.zr-voice-controls .zr-hangup{display:grid;place-items:center;padding:0;background:var(--theme-danger);color:#fff}
+.zr-voice-controls .zr-hangup>svg{width:24px;height:24px;padding:0;background:none;color:inherit}
+.zr-voice-control>small{font-size:12px;line-height:1.3;color:var(--muted)}
+.zr-voice-call .zr-call-person{max-width:none}
+@media(max-height:660px){.zr-voice-stage{padding-block:6px}.zr-voice-call .zr-voice-stage .zr-voice{gap:8px}.zr-voice-call .zr-voice-stage .zr-voice>.av{width:76px!important;height:76px!important}.zr-voice-call .zr-voice-stage h2{font-size:20px}.zr-voice-controls{padding-top:10px;gap:28px}}
+@media(max-height:460px){.zr-voice-call .zr-call-feed,.zr-voice-call .hs-gift-rail{display:none}.zr-voice-call .zr-voice-stage .zr-voice{flex-direction:row;gap:12px}.zr-voice-call .zr-voice-stage .zr-voice>.av{width:44px!important;height:44px!important}.zr-voice-call .zr-voice-stage h2{font-size:18px;-webkit-line-clamp:1}.zr-voice-call .zr-voice-stage .zr-voice>span{display:none}.zr-voice-controls{padding-top:6px}.zr-voice-controls .zr-round{width:44px;height:44px;flex-basis:44px}.zr-voice-control>small{font-size:11px}}
 /* Private-call preparation uses the same semantic palette and typography as every app screen. */
 :root.zpc-active .app{background:var(--canvas);color:var(--ink)}:root.zpc-active #top{display:none}:root.zpc-active #scroll-root{overflow:auto;overscroll-behavior:contain}:root.zpc-active #scroll-root>#screen{height:100%;min-height:100%;padding:0!important;overflow:visible!important}:root.zpc-active #app-notice{pointer-events:none}
 .zi-icon[data-icon=info]{--zi-tap:zi-bounce;--zi-time:560ms}
@@ -3420,6 +3440,13 @@ html:root[data-theme="dark"] .zc-thread{
   .ringscr.dial .ringorb::before{opacity:.5;transform:scale(1.08)}
   .ringscr.dial :is(.voiceend,.dialtool){transition:none}
 }
+.ringscr.dial.is-voice{padding:76px 20px max(24px,calc(var(--safe-bottom) + 16px))}
+.ringscr.dial.is-voice .ringeye{margin:0 0 auto}
+.ringscr.dial.is-voice .ringorb{margin-top:32px}
+.ringscr.dial.is-voice h2{margin-top:28px;text-align:center}
+.ringscr.dial.is-voice .ringact{gap:36px;padding-top:32px}
+.ringscr.dial.is-voice .dialnote{max-width:100%;text-align:center;line-height:1.5}
+@media(max-height:460px){.ringscr.dial.is-voice{padding:26px 20px 16px}.ringscr.dial.is-voice .ringeye{margin-bottom:14px}.ringscr.dial.is-voice .ringorb{margin-top:0}.ringscr.dial.is-voice .ringorb>.av{width:64px!important;height:64px!important}.ringscr.dial.is-voice h2{font-size:20px;margin-top:16px}.ringscr.dial.is-voice .dialnote{margin-top:8px}.ringscr.dial.is-voice .ringact{padding-top:16px}}
 /* The ongoing-call bar (web/ongoing-call.js): a theme-accent card above every other screen
    while a call is minimized. It sits in the app's flow, so it never covers a header. */
 .zoc{position:relative;z-index:30;display:flex;flex:none;align-items:center;gap:8px;margin:8px 12px 0;padding:6px 6px 6px 8px;background:var(--accent);color:var(--cta-ink);font-family:var(--theme-font,Inter,Arial,sans-serif);animation:zoc-in .18s ease-out}
@@ -9143,14 +9170,14 @@ function vDial(){
  /* A redraw continues the rings in step with the ringback tone (web/call-ringback.js). */
  const phase=window.ZimiRingback?window.ZimiRingback.phase():0;
  const tool=(icon,label,text,action,pressed)=>`<span class="rbtn"><button class="zr-round dialtool" aria-label="${label}" ${pressed==null?"":`aria-pressed="${pressed}"`} onclick="${action}">${I(icon,22)}</button><span aria-hidden="true">${text}</span></span>`;
- return `<div class="ringscr dial ${video?"is-video":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
+ return `<div class="ringscr dial ${video?"is-video":""} ${voice?"is-voice":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
   <div class="ringbg" aria-hidden="true">${voice?"":`${DEMO?art(me.seed+2):""}<video data-zimi-local autoplay muted playsinline></video><i class="dialscrim"></i>`}</div>
   ${backButton("callMinimize()",{label:"Minimize call",media:video,slot:"dialmin"})}
   <span class="ringeye">${I(voice?"ph":"vid",13)}${voice?"Voice":"Video"} call</span>
   <div class="ringorb">${avc(p,video?72:104)}</div>
   <h2>${esc(p.n)}</h2><p class="dialstatus">Calling<span class="dialdots" aria-hidden="true"><i></i><i></i><i></i></span></p>
   ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
-  <div class="ringact ${voice?"":"dialdock"}">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())+tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
+  <div class="ringact dialdock">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())}${tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
  </div>`}
 
 function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
@@ -10462,7 +10489,7 @@ function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A li
 function homeScreen(){return homeDashboard()}
 
 function homeOpen(id){if(!window.ZIMI_LIVE_STREAMING_ENABLED){const h=g(id);if(!h)return;return h.available&&!isHost()?homeCall(id):go('host',id)}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
-function homeCall(id){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');go('precall',id)}
+function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
 function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return appNotice('Live streaming is temporarily unavailable. Go online for 1:1 calls from your creator settings.');if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
 function homeClaim(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
@@ -10531,7 +10558,7 @@ function homeCancelPrepare(message='',paint=true){
   S.allowPreparedCall=false;S.pcerr=message;
   // stop() also invalidates getUserMedia promises; any late stream is released
   // by the media layer without interfering with a newer capture.
-  window.ZimiMedia?.stop();pending.cancel();
+  window.ZimiMedia?.stop();window.ZimiRingback?.release();pending.cancel();
   if(paint&&S.v===pending.screen)r();
 }
 function homeValidatePreparingPeer(){
@@ -10544,6 +10571,7 @@ async function homePrepareCall(view,id){
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
   if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
+  window.ZimiRingback?.prime();
   const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
   const cancelled=new Promise(resolve=>{pending.cancel=()=>resolve(false)});
@@ -10562,6 +10590,7 @@ async function homePrepareCall(view,id){
     if(view==='dial'&&(isHost()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
     clearTimeout(pending.timer);homeCallPreparation=null;
     Home.preparingCall=false;Home.preparingVoice=false;Home.mediaStatus='Connecting…';
+    document.getElementById('app-notice')?.remove();
     S.nextCallVoice=voice;S.allowPreparedCall=true;
     try{go(view,target)}finally{S.allowPreparedCall=false}
   }catch(error){
@@ -11997,7 +12026,12 @@ function zrStatus(){return `${zrIsCall()?`<div class="zr-network" data-zimi-netw
 function zrIdentity(p,host,call){
   return `<header class="zr-header"><div class="zr-identity">${zrAvatar(p)}<div class="zr-person"><strong>${esc(p?.n||'Live creator')}</strong><span><i></i>${call?'PRIVATE CALL':'LIVE'}${host&&!call?' <b data-room-clock>00:00</b>':''}</span></div>${!host&&!call?`<button class="zr-follow ${S.following[p?.id]?'is-following':''}" onclick="toggleFollow('${domId(p?.id||'')}',event)" aria-label="${S.following[p?.id]?'Unfollow':'Follow'} ${esc(p?.n||'creator')}">${S.following[p?.id]?'Following':'+ Follow'}</button>`:''}</div><div class="zr-header-right">${call?`<span class="zr-pill zr-timer">${hi('lock',12)} <span id="ck">${clock(S.sec)}</span></span>`:host?`<button class="zr-pill zr-earnings" onclick="zrOpen('supporters')" aria-label="Session gifts">${hi('coin',13)} ${homeCompact(Room.received)}</button>`:''}${!call?`<button class="zr-pill zr-viewers" onclick="zrOpen('audience')" aria-label="Live viewers">${hi('eye',14)} <span data-room-viewers>${homeCompact(Home.stream.viewers)}</span></button>`:''}${zrRound('close',call?'End call':host?'End broadcast':'Leave live',"zrExit()",'zr-close')}</div></header>`;
 }
-function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p?homeCover(p,true):''}${voice?`<div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>Just you. Just a conversation.</span></div><audio data-zimi-remote autoplay></audio>`:`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO&&!zrIsCall()?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
+function zrBackdrop(p,local,voice=false){return `<div class="zr-video ${local?'zr-local':''} ${voice?'zr-audio':''}" data-effect="${Room.effects}">${DEMO&&p&&!voice?homeCover(p,true):''}${voice?'<audio data-zimi-remote autoplay></audio>':`<video ${local?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`}${!voice&&!DEMO&&!zrIsCall()?'<div class="zr-video-wait">'+hi('vid',30)+'<span data-zimi-media-status>'+esc(Home.mediaStatus||'Connecting video…')+'</span></div>':''}<div class="zr-shade"></div></div>`}
+function zrVoiceStage(p){return `<div class="zr-voice-stage"><div class="zr-voice">${zrAvatar(p,104)}<h2>${esc(p?.n||'Your connection')}</h2><span>${hi('ph',14)} Voice call${S.mic?'':' · Microphone muted'}</span></div></div>`}
+function zrVoiceControls(host){
+ const control=(icon,label,text,action,muted)=>`<span class="zr-voice-control"><button type="button" class="zr-round" aria-label="${label}" aria-pressed="${muted}" onclick="${action}">${hi(icon,23)}</button><small>${text}</small></span>`;
+ return `<div class="zr-voice-controls" role="group" aria-label="Voice call controls">${control(S.mic?'mic':'micoff',S.mic?'Mute microphone':'Unmute microphone',S.mic?'Mute':'Unmute','zrMic()',!S.mic)}<span class="zr-voice-control"><button type="button" class="zr-round zr-hangup" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${hi('ph',24)}</button><small>End call</small></span>${control(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Unmute caller':'Mute caller',Room.playbackMuted?'Sound off':'Sound on','zrSound()',Room.playbackMuted)}</div>`;
+}
 function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl);return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${giftIsFree(gift)?'Free gift':(gift.sent?'':'+')+n(gift.coins)+' coins '+(gift.sent?'sent':'received')}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
 /* Playback lives outside the HTML rebuilt by r(), keeping the same decoded
    animation running while chat, wallet updates and call controls redraw. */
@@ -12068,15 +12102,15 @@ function zrHostReferenceCall(p,voice){
       <div class="zr-host-clock"><span class="zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-clock-divider" aria-hidden="true"></span>${hcVisPill()}</div>
       <span class="zr-session-earned" title="${n(Math.round(S.earned||0))} coins this session"><small>This session</small><b id="earn">${coinIcon(14)}+${kfmt(Math.round(S.earned||0))}</b></span>
       ${zrRound('callmore','Call options',"zrOpen('host-options')",'zr-host-more')}
-    </header><div class="zr-call-stats">${typeof hsTargets==='function'?hsTargets():''}</div>${hcFeeChip()}${zrGiftBanner()}</div>
+    </header><div class="zr-call-stats">${typeof hsTargets==='function'?hsTargets():''}</div>${hcFeeChip()}${zrGiftBanner()}</div>${voice?zrVoiceStage(p):''}
     <div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>
       ${Room.chatOpen?zrCallComposer():`${typeof hsGiftRail==='function'?hsGiftRail():''}
       <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
         <div class="zr-call-person">${hcIdentityAvatar(p,38)}<div><strong>${esc(p.n)}</strong></div></div>
         <button type="button" class="zr-call-target" onclick="hsOpenSheet('gift-target')" aria-label="Choose gift target">${hi('plus',15)}</button>
-        <button type="button" class="zr-hangup" onclick="hostEnd('end')" aria-label="End call">${hi('ph',23)}</button>
+        ${voice?'':`<button type="button" class="zr-hangup" onclick="hostEnd('end')" aria-label="End call">${hi('ph',23)}</button>`}
         ${zrRound('gift','Gift target',"hsOpenSheet('gift-target')",'zr-dock-controls')}
-      </div>`}${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
+      </div>`}${voice?zrVoiceControls(true):''}${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
     </div>${zrGiftCelebration()}${zrSheet()}${typeof hsSheet==='function'?hsSheet():''}${hcCallExtras()}</section>`;
 }
 function zrHostOptions(){
@@ -12094,14 +12128,14 @@ function zrCall(host){
   if(host)return zrHostReferenceCall(p,voice);
   return `<section class="zh-room zr-room zr-call zr-sender-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}
     <div class="zr-top"><header class="zr-call-toolbar">${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${typeof ctSenderTargets==='function'?ctSenderTargets():''}${zrGiftBanner()}</div>
-    ${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}
+    ${voice?zrVoiceStage(p):`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`}
     <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():`
       <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
         <div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small></span></div></div>
         <button type="button" class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>
-        <button type="button" class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',23)}</button>
+        ${voice?'':`<button type="button" class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',23)}</button>`}
         ${zrRound('gift','Send a gift',`homeGifts('${domId(p.id)}')`,'zr-call-gift')}
-      </div>`}${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
+      </div>`}${voice?zrVoiceControls(false):''}${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
     </div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 function zrOpen(sheet){Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r()}
@@ -12252,7 +12286,7 @@ if(DEMO&&callPreview){S.scam=1;S.mic=1;Home.mediaStatus='Design preview'}
 
 /* A quiet, readable preflight for real private calls. Capture starts only from
    the primary action; home.js owns permission requests and their cancellation. */
-const CallSetup = { mode: 'video', peerId: '', wasOpen: false };
+const CallSetup = { mode: 'video', peerId: '', wasOpen: false, intent: null };
 Object.assign(homeIcons,{arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>'});
 function zpcMode(mode){if(Home.preparingCall||(window.ZIMI_LIVE_STREAMING_ENABLED&&Home.dashboardSetup?.streamId)||!['video','voice'].includes(mode))return;CallSetup.mode=mode;S.pcerr='';r();document.querySelector(`[data-call-mode="${mode}"]`)?.focus({preventScroll:true})}
 function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}">`:face(h)}
@@ -12289,7 +12323,7 @@ function zpcScreen(){
   </section>`;
 }
 function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open}
-document.addEventListener('aurora:navigate',()=>{if(S.v==='precall'&&!Home.preparingCall){CallSetup.mode='video';CallSetup.peerId=S.h;r()}});
+document.addEventListener('aurora:navigate',()=>{const intent=CallSetup.intent;CallSetup.intent=null;if(S.v==='precall'&&!Home.preparingCall){CallSetup.mode=intent?.peerId===S.h?intent.mode:'video';CallSetup.peerId=S.h;r()}});
 if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const offline=previewMode==='precall-offline';
   const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Khan',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':PREVIEW_HOSTS[5],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});
@@ -12303,11 +12337,11 @@ if(DEMO&&['precall','precall-offline'].includes(previewMode)){
    file ships. The dial screen's rings keep the same 3s cycle through phase(). */
 window.ZimiRingback=(()=>{
   const CYCLE=3,BURSTS=[[0,.4],[.6,.4]],LEVEL=.2;
-  let context=null,tone=null,timer=0,next=0,began=0,foreground=true;
+  let context=null,tone=null,timer=0,next=0,began=0,foreground=true,releaseRequested=false,releaseTimer=0,audioVersion=0;
   // A minimized ringing call (web/ongoing-call.js) keeps ringing behind other screens.
   const wanted=()=>(['dial','dialback'].includes(S.v)||['dial','dialback'].includes(S.bgCall?.view))&&foreground&&!document.hidden;
   function audio(){
-    if(context)return context;
+    if(context&&context.state!=='closed')return context;
     const Context=window.AudioContext||window.webkitAudioContext;
     try{context=Context?new Context():null}catch{context=null}
     // A browser that held the tone until a tap starts it in step with the rings.
@@ -12319,6 +12353,21 @@ window.ZimiRingback=(()=>{
       tone.level.gain.cancelScheduledValues(0);tone.level.gain.value=0;next=context.currentTime+(CYCLE-phase())%CYCLE;queue();
     };
     return context;
+  }
+  // Claim audio output from the explicit Start/Connect tap, before microphone
+  // permission awaits lose that gesture. Preparing remains completely silent.
+  function prime(){
+    audioVersion++;
+    releaseRequested=false;clearTimeout(releaseTimer);
+    const c=audio();if(!c)return;
+    if(c.state==='suspended')c.resume().then(()=>{if(releaseRequested)release()}).catch(()=>{});
+  }
+  function release(){
+    if(tone||wanted())return;
+    releaseRequested=true;clearTimeout(releaseTimer);
+    const c=context;if(!c)return;
+    // Let a previous ring's short fade finish before releasing the device.
+    releaseTimer=setTimeout(()=>{if(releaseRequested&&!tone&&!wanted()&&c.state==='running')c.suspend().catch(()=>{})},150);
   }
   // Bursts are queued a cycle ahead, so a busy screen cannot open gaps in the tone.
   function queue(){
@@ -12333,6 +12382,7 @@ window.ZimiRingback=(()=>{
     }
   }
   function play(){
+    releaseRequested=false;clearTimeout(releaseTimer);
     const c=audio();if(!c)return;
     if(c.state==='suspended')c.resume().catch(()=>{});
     const level=c.createGain();level.gain.value=0;level.connect(c.destination);
@@ -12341,19 +12391,19 @@ window.ZimiRingback=(()=>{
   }
   function silence(){
     clearInterval(timer);timer=0;if(!tone)return;
-    const {level,voices}=tone,c=context,t=c.currentTime;tone=null;
+    const {level,voices}=tone,c=context,t=c.currentTime,version=audioVersion;tone=null;
     level.gain.cancelScheduledValues(t);level.gain.setValueAtTime(level.gain.value,t);level.gain.linearRampToValueAtTime(0,t+.04);
     voices.forEach(o=>o.stop(t+.05));
     // Release the audio output once nothing rings.
-    setTimeout(()=>{level.disconnect();if(!tone&&c.state==='running')c.suspend().catch(()=>{})},150);
+    setTimeout(()=>{level.disconnect();if(!tone&&audioVersion===version&&c.state==='running')c.suspend().catch(()=>{})},150);
   }
   function sync(){
-    if(wanted()){if(!began){began=performance.now();play()}}
-    else if(began){began=0;silence()}
+    if(wanted()){if(!began)began=performance.now();if(!tone)play()}
+    else{began=0;silence()}
   }
   /** Seconds into the current ring cycle; 0 before ringing starts. */
   function phase(){return began?((performance.now()-began)/1000)%CYCLE:0}
-  function unlock(){if(tone&&context.state==='suspended')context.resume().catch(()=>{})}
+  function unlock(){if(tone&&context.state==='suspended')prime();else if(wanted())sync()}
   document.addEventListener('pointerup',unlock,{capture:true,passive:true});
   document.addEventListener('keydown',unlock,{capture:true,passive:true});
   document.addEventListener('aurora:navigate',sync);
@@ -12363,7 +12413,7 @@ window.ZimiRingback=(()=>{
   if(screen&&typeof MutationObserver!=='undefined')new MutationObserver(sync).observe(screen,{childList:true});
   Native.on('app.background',()=>{foreground=false;sync()});
   Native.on('app.foreground',()=>{foreground=true;sync()});
-  return {sync,phase,playing:()=>!!tone};
+  return {prime,release,sync,phase,playing:()=>!!tone};
 })();
 
 /* A call keeps going when its screen is left. Back on a calling or call screen minimizes the
@@ -13122,7 +13172,7 @@ function zcConfirmMessage(d,kind){
 /* Inbox rows carry identity and presence; a known creator record adds rate and live status. */
 function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'BinzoLive member',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
 function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
-function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}')">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:zcPeerIsMember(h)?zcHostCallButtons(h):''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
+function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}',true)">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:zcPeerIsMember(h)?zcHostCallButtons(h):''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
 /* A host may call a member at any time, by voice or video. */
 function zcPeerIsMember(h){return h?.serverRole==='user'||(!!h&&!h.verified&&h.role!=='host'&&h.serverRole!=='host')}
 function zcHostCallButtons(h){const id=domId(h.id);return `<button id="zc-host-voice" aria-label="Voice call" onclick="zcHostCall('${id}',true)">${hi('ph',22)}</button><button id="zc-host-video" class="zc-thread-video" aria-label="Video call" onclick="zcHostCall('${id}',false)">${hi('vid',22)}</button>`}
@@ -13985,10 +14035,15 @@ function zpGo(view){if(ZProfile.deactivating)return;zpClose();go(view)}
 function zpViewPublic(){const id=S.user?.id||ZProfile.data?.profile?.id;if(!id)return;zpClose();go(isApprovedHost()?'host':'user',id)}
 // Asks Android again, or opens system settings once it stops asking.
 function zpEnablePush(){if(!DEMO)Native.send('push.enable',{})}
+function zpNotificationDraft(value){const p=value||{};return {calls:p.calls!==false,messages:p.messages!==false,likes:p.likes!==false,comments:p.comments!==false,gifts:p.gifts!==false,appUpdates:p.appUpdates!==false,liveAlerts:p.liveAlerts!==false,earningsAlerts:p.earningsAlerts===true,quietHours:{enabled:false,startHour:22,endHour:8,timeZone:'Asia/Kolkata',...p.quietHours}}}
+function zpDraft(data){return {...data?.preferences,notificationPreferences:zpNotificationDraft(data?.preferences?.notificationPreferences),languages:[...(data?.profile?.languages||[])],city:data?.profile?.city||'',country:data?.profile?.country||'',...data?.privacy}}
+function zpNotificationToggle(label,key){const p=ZProfile.draft.notificationPreferences;return zpToggle(label,`notificationPreferences.${key}`,p[key])}
+function zpQuietHours(){const q=ZProfile.draft.notificationPreferences.quietHours,disabled=ZProfile.saving?'disabled':'',hours=selected=>Array.from({length:24},(_,hour)=>`<option value="${hour}" ${hour===selected?'selected':''}>${String(hour).padStart(2,'0')}:00</option>`).join('');let zones=['Asia/Kolkata','UTC'];try{zones=Intl.supportedValuesOf('timeZone')}catch{}zones=[...new Set([q.timeZone,...zones])];return `${zpToggle('Quiet hours (except calls)','notificationPreferences.quietHours.enabled',q.enabled)}<label class="zp-field">From<select aria-label="Quiet hours start" onchange="ZProfile.draft.notificationPreferences.quietHours.startHour=Number(this.value)" ${disabled}>${hours(q.startHour)}</select></label><label class="zp-field">Until<select aria-label="Quiet hours end" onchange="ZProfile.draft.notificationPreferences.quietHours.endHour=Number(this.value)" ${disabled}>${hours(q.endHour)}</select></label><label class="zp-field">Time zone<select aria-label="Quiet hours time zone" onchange="ZProfile.draft.notificationPreferences.quietHours.timeZone=this.value" ${disabled}>${zones.map(zone=>`<option value="${esc(zone)}" ${zone===q.timeZone?'selected':''}>${esc(zone.replaceAll('_',' '))}</option>`).join('')}</select></label>`}
+function zpNotificationsContent(cap){const available=cap.pushNotifications===true&&cap.nativePushRegistered===true,blocked=cap.pushNotifications===true&&cap.nativePushStatus==='denied';return `${zpToggle('Push notifications','pushNotifications',ZProfile.draft.pushNotifications,!available)}${[['Calls','calls'],['Messages','messages'],['Likes','likes'],['Comments','comments'],['Gifts','gifts'],['App updates','appUpdates']].map(([label,key])=>zpNotificationToggle(label,key)).join('')}${!isApprovedHost()?zpNotificationToggle(window.ZIMI_LIVE_STREAMING_ENABLED?'Following creators going live':'Following creators coming online','liveAlerts'):''}${isApprovedHost()&&cap.earningsAlerts===true?zpNotificationToggle('Creator earning inspiration','earningsAlerts'):''}${zpQuietHours()}${zpSaveButton()}${available?'':blocked?'<p class="zp-note">Notifications are turned off for BinzoLive on this phone. Your updates are still in the notification inbox.</p><button class="zp-secondary" onclick="zpEnablePush()">Turn on notifications</button>':'<p class="zp-note">Push notifications are not available on this device yet. Your updates are available in the notification inbox.</p>'}<button class="zp-secondary" onclick="zpGo(\'notifications\')">Open notifications</button>`}
 function zpOpen(kind){
   if(ZProfile.deactivating)return;
   if(kind==='appearance'&&window.ZimiThemes)return window.ZimiThemes.open();
-  zpClose();ZProfile.dialog=kind;ZProfile.dialogLoading=!ZProfile.data||zpPending();ZProfile.saveError='';ZProfile.draft={...(ZProfile.data?.preferences||{}),languages:[...(ZProfile.data?.profile?.languages||[])],city:ZProfile.data?.profile?.city||'',country:ZProfile.data?.profile?.country||'',...(ZProfile.data?.privacy||{})};
+  zpClose();ZProfile.dialog=kind;ZProfile.dialogLoading=!ZProfile.data||zpPending();ZProfile.saveError='';ZProfile.draft=zpDraft(ZProfile.data);
   const el=document.createElement('dialog');el.id='zp-dialog';el.className='zp-dialog';el.setAttribute('aria-labelledby','zp-dialog-title');document.body.append(el);
   el.addEventListener('cancel',event=>{if(ZProfile.deactivating)event.preventDefault()});
   el.addEventListener('close',()=>{el.remove();if(!document.getElementById('zp-dialog'))ZProfile.dialog=''});el.addEventListener('click',e=>{if(e.target===el){const b=el.getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)zpClose()}});
@@ -14010,7 +14065,7 @@ function zpDialogContent(kind){
   }
   if(kind==='language')return `<fieldset class="zp-languages"><legend>Spoken languages</legend>${[...new Set([...LANGS,...(p.languages||[])])].map((lang,index)=>`<label><input type="checkbox" data-zp-language="${index}" value="${esc(lang)}" ${draft.languages.includes(lang)?'checked':''} ${ZProfile.saving?'disabled':''} onchange="zpLanguage(this)"><span>${esc(lang)}</span></label>`).join('')}</fieldset><label class="zp-field">City / region<input maxlength="100" aria-label="City / region" value="${esc(draft.city)}" oninput="ZProfile.draft.city=this.value" ${ZProfile.saving?'disabled':''}></label><label class="zp-field">Country<input maxlength="100" autocomplete="country-name" aria-label="Country" value="${esc(draft.country)}" oninput="ZProfile.draft.country=this.value" ${ZProfile.saving?'disabled':''}></label>${zpSaveButton()}`;
 
-  if(kind==='notifications'){const available=cap.pushNotifications===true&&cap.nativePushRegistered===true,blocked=cap.pushNotifications===true&&cap.nativePushStatus==='denied';return `${zpToggle('Push notifications','pushNotifications',draft.pushNotifications, !available)}${available?zpSaveButton():blocked?'<p class="zp-note">Notifications are turned off for BinzoLive on this phone. Your updates are still in the notification inbox.</p><button class="zp-secondary" onclick="zpEnablePush()">Turn on notifications</button>':'<p class="zp-note">Push notifications are not available on this device yet. Your updates are available in the notification inbox.</p>'}<button class="zp-secondary" onclick="zpGo('notifications')">Open notifications</button>`}
+  if(kind==='notifications')return zpNotificationsContent(cap);
   if(kind==='security')return `<div class="zp-detail"><span>Phone number</span><b>${esc(p.maskedPhone||'Not available')}</b><small>${p.isPhoneVerified?'Verified for sign-in':'Not verified'}</small></div><div class="zp-detail"><span>Contact email</span><b>${esc(S.user?.email||'Not added')}</b></div><p>Sign-in uses a one-time code sent to your registered phone. Never share your code with anyone.</p><button class="zp-secondary" onclick="zpOpen('logout')">Sign out of this device</button>`;
   if(kind==='privacy')return `${zpToggle('Discoverable profile','discoverable',draft.discoverable!==false)}${zpToggle('Show activity status','showActivity',draft.showActivity!==false)}${zpSaveButton('zpPrivacySave()')}<div class="zp-blocked-list" role="group" aria-label="Blocked accounts">${zpBlockedContent()}</div>`;
   if(kind==='gifts'){const surface=contentSurface('transactions','rows','Loading gift history');if(surface)return surface;const gifts=TXNS.filter(x=>x[3]==='gift');return gifts.length?`<div class="zp-history">${gifts.map(txRow).join('')}</div><button class="zp-secondary" onclick="zpGo('transactions')">All transactions</button>`:'<div class="zp-empty">'+hi('gift',34)+'<h3>No gifts yet</h3><p>Your gift transactions will appear here.</p></div>'}
@@ -14032,7 +14087,7 @@ function zpDeactivated(d){if(d.requestId!==ZProfile.deactivateRequestId)return;Z
 Native.on('account.deactivated',zpDeactivated);
 Native.on('account.deactivate.error',d=>{if(d.requestId!==ZProfile.deactivateRequestId)return;ZProfile.deactivating=false;ZProfile.saveError=d.message||'Could not deactivate your account. Please try again.';zpPaintDialog()});
 function zpLanguage(input){const languages=ZProfile.draft.languages;if(input.checked){if(languages.length>=8){input.checked=false;appNotice('Choose up to 8 languages.');return}languages.push(input.value)}else ZProfile.draft.languages=languages.filter(x=>x!==input.value)}
-function zpSave(){if(ZProfile.saving||!ZProfile.data)return;const d=ZProfile.draft,k=ZProfile.dialog,payload=k==='language'?{languages:d.languages,city:d.city.trim(),country:d.country.trim()}:k==='notifications'?{pushNotifications:!!d.pushNotifications}:null;if(!payload)return;ZProfile.saveError='';ZProfile.saving=true;const requestId=++ZProfile.requestId;zpPaintDialog();if(DEMO){zpApply({...ZProfile.data,preferences:{...ZProfile.data.preferences,...payload},profile:{...ZProfile.data.profile,...(payload.languages?{languages:payload.languages,city:payload.city,country:payload.country}:{})}});ZProfile.saving=false;zpClose();r();appNotice('Preview preferences saved.');return}Native.send('profile.settings.save',{...payload,requestId})}
+function zpSave(){if(ZProfile.saving||!ZProfile.data)return;const d=ZProfile.draft,k=ZProfile.dialog,payload=k==='language'?{languages:d.languages,city:d.city.trim(),country:d.country.trim()}:k==='notifications'?{pushNotifications:!!d.pushNotifications,notificationPreferences:zpNotificationDraft(d.notificationPreferences)}:null;if(!payload)return;ZProfile.saveError='';ZProfile.saving=true;const requestId=++ZProfile.requestId;zpPaintDialog();if(DEMO){zpApply({...ZProfile.data,preferences:{...ZProfile.data.preferences,...payload},profile:{...ZProfile.data.profile,...(payload.languages?{languages:payload.languages,city:payload.city,country:payload.country}:{})}});ZProfile.saving=false;zpClose();r();appNotice('Preview preferences saved.');return}Native.send('profile.settings.save',{...payload,requestId})}
 function zpPrivacySave(){if(ZProfile.privacyBusy)return;ZProfile.privacyBusy=true;ZProfile.saveError='';const data={discoverable:!!ZProfile.draft.discoverable,showActivity:!!ZProfile.draft.showActivity,requestId:++ZProfile.requestId};zpPaintDialog();if(DEMO){ZProfile.data.privacy={...ZProfile.data.privacy,...data};ZProfile.privacyBusy=false;zpClose();r();return}Native.send('privacy.save',data)}
 function zpBlockedLoad(more=false){if(DEMO)return;const page=more?ZProfile.blockedPage+1:1;contentStart('blocked',{page});Native.send('blocked.load',{page});zpPaintDialog()}
 function zpBlockedContent(){if(contentPending('blocked')&&ContentLoading.blocked.page===1)return contentSkeleton('rows','Loading blocked accounts',2);if(ContentLoading.blocked.error)return `<div class="zh-error" role="alert">${esc(ContentLoading.blocked.error)}<button onclick="zpBlockedLoad()">Retry</button></div>`;return `${ZProfile.blocked.length?`<div class="zp-blocked">${ZProfile.blocked.map(u=>`<div><span>${esc(u.name||'BinzoLive member')}</span><button onclick="zpUnblock('${domId(u.id)}')" ${ZProfile.blockBusy?'disabled':''}>${ZProfile.blockBusy===u.id?'Updating…':'Unblock'}</button></div>`).join('')}</div>`:'<p class="zp-note">No blocked accounts.</p>'}${contentPending('blocked')?contentSkeleton('rows','Loading more blocked accounts',1):ZProfile.blockedTotal>ZProfile.blocked.length?'<button class="zp-secondary" onclick="zpBlockedLoad(true)">Load more</button>':''}`}
@@ -14054,7 +14109,7 @@ const zpPreviousAfterRender=window.ZimiHome.afterRender;
 window.ZimiHome.afterRender=()=>{zpPreviousAfterRender();if(zpActive()){if(['account','payments','privacy-menu','general','creator'].includes(ZProfile.dialog))zpPaintDialog();if(!ZProfile.requested&&!DEMO){ZProfile.requested=true;queueMicrotask(zpLoad)}}};
 document.addEventListener('aurora:navigate',()=>{if(!zpActive())zpClose()});
 matchMedia('(prefers-color-scheme: light)').addEventListener?.('change',()=>{zpTheme()});
-Native.on('data.profileSettings',data=>{zpApply(data);if(zpActive())r();if(ZProfile.dialog&&ZProfile.dialogLoading&&!ZProfile.saving&&!ZProfile.privacyBusy){ZProfile.dialogLoading=false;ZProfile.draft={...data.preferences,...data.privacy,languages:[...data.profile.languages],city:data.profile.city||'',country:data.profile.country||''};zpPaintDialog()}else if(ZProfile.dialog==='notifications'&&!ZProfile.saving)zpPaintDialog()});
+Native.on('data.profileSettings',data=>{zpApply(data);if(zpActive())r();if(ZProfile.dialog&&ZProfile.dialogLoading&&!ZProfile.saving&&!ZProfile.privacyBusy){ZProfile.dialogLoading=false;ZProfile.draft=zpDraft(data);zpPaintDialog()}else if(ZProfile.dialog==='notifications'&&!ZProfile.saving)zpPaintDialog()});
 Native.on('profile.settings.saved',d=>{if(d.requestId!==ZProfile.requestId)return;zpApply(d.settings);ZProfile.saving=false;zpClose();if(zpActive())r();appNotice('Preferences saved.')});
 Native.on('profile.settings.error',d=>{if(d.requestId!==ZProfile.requestId)return;ZProfile.saving=false;ZProfile.saveError=d.message;zpPaintDialog()});
 Native.on('privacy.saved',d=>{if(d.requestId!==ZProfile.requestId)return;if(ZProfile.data)ZProfile.data.privacy=d.privacy;ZProfile.privacyBusy=false;zpClose();if(zpActive())r();appNotice('Privacy settings saved.')});
@@ -14207,7 +14262,7 @@ if(DEMO){ZThemes.catalog={selectedThemeId:ZThemeOriginal.id,premium:{active:fals
 
 /* The inbox queries the server before paging. Read state changes only after an
    acknowledgment; personal and announcement audiences come from the API. */
-const ZNotices={q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,limit:20,total:0,totalCount:0,loaded:false,sequence:0,requestId:0,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,detail:null,accountId:'',changed:false,filtersOpen:false,selecting:false};
+const ZNotices={q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,limit:20,total:0,totalCount:0,loaded:false,sequence:0,requestId:0,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,detail:null,accountId:'',changed:false,filtersOpen:false,selecting:false,pendingTarget:null,postTarget:null};
 function znAccepts(data){return data.requestId==null||data.requestId===ZNotices.requestId}
 function znBusy(){return !DEMO&&contentPending('notifications')}
 ZimiPullRefresh.register('notifications',{refresh:()=>znLoad(),busy:()=>znBusy()||ZNotices.pending});
@@ -14360,6 +14415,10 @@ function znDetails(id){
   dialog.addEventListener('close',()=>{dialog.remove();if(document.getElementById('zn-detail'))return;ZNotices.detail=null;const row=[...document.querySelectorAll('.zh-notification[data-notification-id]')].find(node=>node.dataset.notificationId===id);row?.querySelector('.zn-notice-main')?.focus({preventScroll:true})});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)znCloseDetail()}});
   document.body.append(dialog);dialog.showModal();znPaintDetailStatus();
+  if(item.targetType&&item.targetType!=='inbox'){
+    const open=document.createElement('button');open.type='button';open.className='zn-primary';open.textContent=znTargetLabel(item.targetType);
+    open.onclick=()=>znRequestTarget(item);dialog.querySelector('.zn-detail-content').append(open);
+  }
   if(!item.read&&!ZNotices.pending)znUpdate(true,[id]);
 }
 function znPaintDetailStatus(){
@@ -14368,18 +14427,60 @@ function znPaintDetailStatus(){
   el.innerHTML=`<span>${status}</span><button class="zn-detail-toggle" aria-label="Mark as ${item.read?'unread':'read'}: ${esc(item.title)}" ${ZNotices.pending?'disabled':''} onclick="znUpdate(!ZNotices.detail.read,[ZNotices.detail.id])">Mark as ${item.read?'unread':'read'}</button>`;
 }
 function znCloseDetail(){const dialog=document.getElementById('zn-detail');if(dialog){dialog.close();dialog.remove()}ZNotices.detail=null}
-function znReset(){clearTimeout(ZNotices.timer);znCloseDetail();Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,total:0,totalCount:0,loaded:false,requestId:++ZNotices.sequence,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,changed:false,accountId:'',filtersOpen:false,selecting:false});Home.notifications=[];Home.unreadCount=0}
+function znReset(){clearTimeout(ZNotices.timer);znCloseDetail();Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,total:0,totalCount:0,loaded:false,requestId:++ZNotices.sequence,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,changed:false,accountId:'',filtersOpen:false,selecting:false,pendingTarget:null,postTarget:null});Home.notifications=[];Home.unreadCount=0}
 window.ZimiNotifications={open:znOpen,load:znLoad,receive:znReceive,accepts:znAccepts,reset:znReset};
 ZimiHome.views.notifications=znView;
 const znPreviousAfterRender=ZimiHome.afterRender;
 ZimiHome.afterRender=()=>{znPreviousAfterRender();znAfterRender()};
 Native.on('notifications.saved',znSaved);Native.on('notifications.error',znError);
-// A tapped push opens the inbox, but never pulls someone out of a call or live room.
-Native.on('push.opened',()=>{if(['live','broadcast','setup','precall','call','voice','dial','dialback','waiting','ring','hcall'].includes(S.v)||(typeof ZVerify!=='undefined'&&ZVerify.state)){ZNotices.changed=true;return}znOpen()});
+function znTargetLabel(type){return {thread:'Open conversation',call:'View call',post:'View post',creator:'View creator',host:'Open call studio',appUpdate:'Check for updates'}[type]||'Open notification'}
+function znRequestTarget(item){
+  const payload={};for(const key of ['notificationId','category','targetType','targetId','actorId','recipientId','expiresAt'])if(item[key]!=null)payload[key]=item[key];
+  payload.notificationId=item.notificationId||item.id;znCloseDetail();
+  if(DEMO)znRouteTarget(payload);else Native.send('notifications.open',payload);
+}
+function znTargetBusy(){return ['live','broadcast','setup','precall','call','voice','dial','dialback','waiting','ring','incoming','hcall'].includes(S.v)||(typeof ZVerify!=='undefined'&&!!ZVerify.state)||!!S.connecting||!!S.inc||!!window.Room?.transition}
+function znRouteTarget(data={}){
+  if(data.recipientId&&data.recipientId!==S.user?.id)return;
+  if(data.targetType==='call'&&data.targetId&&(S.callId===data.targetId||S.bgCall?.callId===data.targetId)){
+    if(S.bgCall)callRestore();return;
+  }
+  // Keep the connected call's media and clock in the ongoing bar while opening
+  // another update. Incoming/connecting calls wait until their controls settle.
+  if(['call','voice','hcall'].includes(S.v)&&!S.bgCall&&!S.connecting&&!S.inc&&!window.Room?.transition&&!(typeof ZVerify!=='undefined'&&ZVerify.state)){
+    ZNotices.pendingTarget=null;callMinimize();
+  }
+  if(znTargetBusy()){ZNotices.pendingTarget=data;ZNotices.changed=true;return}
+  ZNotices.pendingTarget=null;
+  if(data.expiresAt&&Date.parse(data.expiresAt)<=Date.now()){znOpen();return}
+  if(data.profile&&typeof zuRemember==='function')zuRemember(data.profile);
+  const id=typeof data.targetId==='string'&&/^[a-f\d]{24}$/i.test(data.targetId)?data.targetId:'';
+  if(data.targetType==='thread'&&id){zcOpen(id);return}
+  if(data.targetType==='creator'&&id){go('host',id);return}
+  if(data.targetType==='host'&&isApprovedHost()){go('setup');return}
+  if(data.targetType==='call'){go('calls');return}
+  if(data.targetType==='post'&&id&&data.post?.id===id&&data.ownerId){
+    ZNotices.postTarget={id,ownerId:data.ownerId,post:data.post};go(data.ownerId===S.user?.id?'profile':'host',data.ownerId);queueMicrotask(znTryPostTarget);return;
+  }
+  if(data.targetType==='appUpdate'){appNotice('Checking for app updates…');return}
+  znOpen();
+}
+function znTryPostTarget(){
+  const target=ZNotices.postTarget;if(!target||typeof Zu==='undefined'||Zu.id!==target.ownerId||!zuActive()||Zu.loading||!Zu.profile||Zu.postsLoading)return;
+  let index=Zu.posts.findIndex(post=>post.id===target.id);
+  if(index<0){Zu.posts.unshift(target.post);Zu.total=Math.max(Zu.total,Zu.posts.length);index=0}
+  ZNotices.postTarget=null;zuOpenPhoto(index);
+}
+Native.on('push.opened',znRouteTarget);
+for(const type of ['data.publicProfile','data.publicPosts','data.loading'])Native.on(type,()=>queueMicrotask(znTryPostTarget));
 Native.on('notifications.changed',()=>{ZNotices.changed=true;if(S.v!=='notifications'||ZNotices.pending)return;if(ZNotices.selected.size||ZNotices.detail||document.activeElement?.id==='zn-search'||znBusy()){r();return}znLoad()});
 Native.on('session.none',znReset);Native.on('session.expired',znReset);
 for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(ZNotices.accountId&&ZNotices.accountId!==id)znReset();ZNotices.accountId=id});
-document.addEventListener('aurora:navigate',()=>{if(S.v!=='notifications'){clearTimeout(ZNotices.timer);ZNotices.timer=null;znCloseDetail()}});
+document.addEventListener('aurora:navigate',()=>{
+  if(S.v!=='notifications'){clearTimeout(ZNotices.timer);ZNotices.timer=null;znCloseDetail()}
+  if(ZNotices.postTarget&&!['host','profile'].includes(S.v))ZNotices.postTarget=null;
+  if(ZNotices.pendingTarget&&['home','chats','profile','settings','notifications'].includes(S.v)&&!znTargetBusy())queueMicrotask(()=>{if(ZNotices.pendingTarget&&!znTargetBusy())znRouteTarget(ZNotices.pendingTarget)});
+});
 if(DEMO){
   const now=Date.now();ZNotices.demo=[
     {id:'demo-note-1',title:'A space that feels like you',body:'Your notification center brings personal updates and community announcements together. Use filters to find what you need, or catch up at your own pace.',audience:'personal',read:false,createdAt:new Date(now-12*60000).toISOString()},
@@ -15991,6 +16092,7 @@ function zciDismiss(mute=false){
 async function zciConnect(){
   const invitation=CallInvitations.invitation,owner=zciOwner();if(!zciIdle(true)||!zciValid(invitation)||CallInvitations.busy||!coinWalletReady())return;
   if(S.bal<invitation.requiredCoins)return coinRequireRecharge(zciTopup);
+  window.ZimiRingback?.prime();
   CallInvitations.busy='connect';CallInvitations.error='';const requestId=CallInvitations.pending=++CallInvitations.request;zciPaint();
   try{
     await window.ZimiMedia.prepare(true);
@@ -15999,7 +16101,7 @@ async function zciConnect(){
     const host=knowHost({id:invitation.host.id,name:invitation.host.name,avatarUrl:invitation.host.avatarUrl,city:invitation.host.city,ratePerMin:invitation.coinsPerMinute,entryFee:invitation.entryFeeCoins,online:true,availableForCall:true,verified:true,role:'host'});
     S.automaticCall={invitationId:invitation.id,hostId:host.id};S.callInvitationIntent={id:invitation.id,hostId:host.id,requestId,expectedCoinsPerMinute:invitation.coinsPerMinute,expectedEntryFeeCoins:invitation.entryFeeCoins};S.nextCallVoice=false;S.callId=null;
     zciClose();S.allowPreparedCall=true;try{go('dial',host.id)}finally{S.allowPreparedCall=false}
-  }catch(error){if(owner!==zciOwner()||CallInvitations.pending!==requestId)return;CallInvitations.busy='';CallInvitations.error=error?.message||'Camera and microphone access could not be prepared.';zciPaint()}
+  }catch(error){if(owner!==zciOwner()||CallInvitations.pending!==requestId)return;CallInvitations.busy='';window.ZimiRingback?.release();CallInvitations.error=error?.message||'Camera and microphone access could not be prepared.';zciPaint()}
 }
 function zciTopup(){if(CallInvitations.busy)return;if(!zciValid()){zciClose();go('coins');return}const invitation=CallInvitations.invitation;CallInvitations.topup={kind:'automatic',id:invitation.id,owner:zciOwner(),until:invitation.expiresAt};zciClose();go('coins')}
 function zciReturnFromCoins(){const context=CallInvitations.topup;if(!context||context.owner!==zciOwner()||CallInvitations.busy)return;if(context.kind==='incoming')return zciReturnToIncoming();CallInvitations.topup=null;go('home');zciRequest(true)}

@@ -206,8 +206,37 @@ async function run() {
     await receive(page, 'data.profileSettings', pushCapabilities('registered'));
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), false, 'The open dialog updates once the phone allows notifications');
     assert.equal(await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).count(), 0);
+    for(const name of ['Calls','Messages','Likes','Comments','Gifts','App updates','Following creators coming online','Quiet hours (except calls)'])assert.equal(await notifications.getByRole('checkbox',{name,exact:true}).count(),1);
+    assert.equal(await notifications.getByRole('checkbox',{name:'Creator earning inspiration',exact:true}).count(),0,'Members cannot opt into host earning alerts');
+    await notifications.getByRole('checkbox',{name:'Messages',exact:true}).uncheck();
+    await notifications.getByRole('checkbox',{name:'Quiet hours (except calls)',exact:true}).check();
+    await notifications.getByRole('combobox',{name:'Quiet hours start',exact:true}).selectOption('21');
+    assert.equal(await page.evaluate(()=>ZProfile.data.preferences.notificationPreferences?.messages),undefined,'Editing nested preferences cannot mutate the saved account before acknowledgment');
+    await notifications.getByRole('button',{name:'Save preferences',exact:true}).click();
+    const notificationSave=await lastSent(page,'profile.settings.save');
+    assert.equal(notificationSave.notificationPreferences.messages,false);assert.equal(notificationSave.notificationPreferences.quietHours.enabled,true);assert.equal(notificationSave.notificationPreferences.quietHours.startHour,21);assert.equal(notificationSave.notificationPreferences.earningsAlerts,false);
+    await receive(page,'profile.settings.saved',{requestId:notificationSave.requestId,settings:{...pushCapabilities('registered'),preferences:{...saved.preferences,notificationPreferences:notificationSave.notificationPreferences}}});
+    assert.equal(await notifications.count(),0,'Notification preferences wait for the server acknowledgment');
+    await receive(page,'session',approved);await settleSettings(page,{...pushCapabilities('registered'),capabilities:{...pushCapabilities('registered').capabilities,earningsAlerts:true}});await page.evaluate(()=>znPreferences());
+    assert.equal(await notifications.getByRole('checkbox',{name:'Creator earning inspiration',exact:true}).isChecked(),false,'Competitive earning alerts are opt-in for approved hosts');
+    assert.equal(await notifications.getByRole('checkbox',{name:'Following creators coming online',exact:true}).count(),0);
+    const checkNotificationLayout=async role=>{
+      for(const mode of ['light','dark']){
+        await page.setViewportSize({width:320,height:568});await page.evaluate(dark=>ZimiThemes.setDark(dark),mode==='dark');
+        await notifications.evaluate(dialog=>{dialog.scrollTop=0;dialog.querySelector('.zp-dialog-body').scrollTop=0});
+        assert.equal(await notifications.evaluate(dialog=>dialog.scrollWidth>dialog.clientWidth+1),false,`${role} preferences fit 320px in ${mode} mode`);
+        await page.screenshot({path:path.join(os.tmpdir(),`zimi-notification-preferences-${role}-${mode}-top.png`)});
+        const save=notifications.getByRole('button',{name:'Save preferences',exact:true});await save.scrollIntoViewIfNeeded();
+        const bounds=await save.boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=568,`${role} preferences Save remains reachable on a small screen`);
+        await page.screenshot({path:path.join(os.tmpdir(),`zimi-notification-preferences-${role}-${mode}-bottom.png`)});
+      }
+      await page.setViewportSize({width:373,height:1600});await page.evaluate(()=>ZimiThemes.setDark(false));
+    };
+    await checkNotificationLayout('host');
     await close();
-    await settleSettings(page, saved);
+    await receive(page,'session',account);
+    await readyProfile();
+    await page.evaluate(()=>znPreferences());await checkNotificationLayout('sender');await close();
     await openMenu('Privacy & Terms');
     await row('Privacy & Blocked Users').click();
     const privacy = dialog('Privacy & Blocked Users');
@@ -262,8 +291,9 @@ async function run() {
       if (button === 'Community Guidelines') await openMenu('Privacy & Terms');
       await row(button).click(); await dialog(title).waitFor(); assert.ok((await dialog(title).innerText()).length > 100); await close();
     }
-    // A tapped push opens the inbox, but never navigates away from a call or live room.
-    for (const view of ['hcall', 'live']) {
+    // Ringing calls and live rooms defer a tap until navigation is safe.
+    // Connected/minimized call navigation is covered with real media in test-ongoing-call.
+    for (const view of ['incoming', 'live']) {
       await page.evaluate(value => { S.v = value; }, view);
       await receive(page, 'push.opened');
       assert.equal(await page.evaluate(() => S.v), view, `A push tap leaves ${view} on screen`);

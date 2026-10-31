@@ -1,4 +1,6 @@
 import type { WebMessage } from "./bridge";
+import { validNotificationPreferencesPatch } from "./notification-preferences";
+import { notificationTargetFrom } from "./notification-target";
 
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -49,8 +51,9 @@ const notificationQuery = (data: Record<string, unknown>) => Object.keys(data).e
   (data.since === undefined || data.before === undefined || Date.parse(data.since as string) < Date.parse(data.before as string));
 const settingsPatch = (data: Record<string, unknown>) => {
   const keys = Object.keys(data).filter(key => key !== "requestId");
-  return keys.length > 0 && keys.every(key => ["pushNotifications", "matchCategory", "appearance", "languages", "city", "country"].includes(key)) &&
+  return keys.length > 0 && keys.every(key => ["pushNotifications", "notificationPreferences", "matchCategory", "appearance", "languages", "city", "country"].includes(key)) &&
     (data.pushNotifications === undefined || boolean(data.pushNotifications)) &&
+    (data.notificationPreferences === undefined || validNotificationPreferencesPatch(data.notificationPreferences)) &&
     (data.matchCategory === undefined || data.matchCategory === null || category(data.matchCategory)) &&
     (data.appearance === undefined || ["dark", "light", "system"].includes(String(data.appearance))) &&
     (data.city === undefined || (typeof data.city === "string" && data.city.length <= 100)) &&
@@ -84,6 +87,12 @@ export function parseWebMessage(raw: string): WebMessage | null {
       Object.keys(d).every(key => ["code", "requestId"].includes(key)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "notifications.load": valid = notificationQuery(d); break;
+    case "notifications.open": {
+      const target = notificationTargetFrom(d);
+      valid = !!target && target.targetType === d.targetType && (d.targetId === undefined || target.targetId === d.targetId) &&
+        Object.keys(d).every(key => ["notificationId", "category", "targetType", "targetId", "actorId", "recipientId", "expiresAt"].includes(key));
+      break;
+    }
     case "official.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
     case "official.read": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && ((notificationIds(d.ids) && d.all === undefined) || (d.all === true && d.ids === undefined)) && Object.keys(d).every(key => ["ids", "all", "requestId"].includes(key)); break;
     case "catalog.load": case "rtc.config": valid = true; break;

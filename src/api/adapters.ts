@@ -1,5 +1,7 @@
 import { ApiError } from "./client";
 import { compareChatMessages } from "./chat-order";
+import { notificationPreferencesFrom } from "../notification-preferences";
+import { notificationTargetFrom } from "../notification-target";
 import type { ChatGift } from "./types";
 import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
 import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
@@ -149,7 +151,8 @@ export function homeFrom(value: unknown): HomeData {
     speedMatchEnabled: data.speedMatchEnabled === true, bonus: data.bonus ? missionFrom(data.bonus) : null, unreadCount: count(data.unreadNotifications) };
 }
 export function notificationsFrom(value: unknown): NotificationsData {
-  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: idOf(note.userId) ? "personal" as const : "announcements" as const }));
+  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: idOf(note.userId) ? "personal" as const : "announcements" as const,
+    ...(note.targetType ? notificationTargetFrom(note) ?? {} : {}) }));
   return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length,
     total: typeof data.total === "number" ? count(data.total) : list.length, totalCount: typeof data.totalCount === "number" ? count(data.totalCount) : typeof data.total === "number" ? count(data.total) : list.length,
     page: count(data.page) || 1, limit: count(data.limit) || 100 };
@@ -179,19 +182,20 @@ export function privacyFrom(value: unknown): PrivacySettings {
 }
 export function profileSettingsFrom(value: unknown): ProfileSettings {
   const data = record(value), profile = record(data.profile), stats = record(data.stats), preferences = record(data.preferences), capabilities = record(data.capabilities);
+  const notificationPreferences = notificationPreferencesFrom(preferences.notificationPreferences);
   const statKeys = ["fans", "following", "giftsSent", "giftsReceived", "coinsSent", "coinsReceived"] as const;
   if (!idOf(profile) || statKeys.some(key => !Number.isSafeInteger(stats[key]) || Number(stats[key]) < 0) ||
     typeof preferences.pushNotifications !== "boolean" || (preferences.matchCategory !== null && typeof preferences.matchCategory !== "string") ||
-    !["dark", "light", "system"].includes(String(preferences.appearance))) throw new ApiError("Your account settings could not be loaded. Try again.", 502);
+    !notificationPreferences || !["dark", "light", "system"].includes(String(preferences.appearance))) throw new ApiError("Your account settings could not be loaded. Try again.", 502);
   return {
     profile: { id: idOf(profile), name: string(profile.name), bio: string(profile.bio), city: string(profile.city), ...countryField(profile), languages: stringList(profile.languages), maskedPhone: string(profile.maskedPhone), countryCode: string(profile.countryCode), isPhoneVerified: profile.isPhoneVerified === true, createdAt: string(profile.createdAt) },
     stats: { fans: stats.fans as number, following: stats.following as number, giftsSent: stats.giftsSent as number, giftsReceived: stats.giftsReceived as number, coinsSent: stats.coinsSent as number, coinsReceived: stats.coinsReceived as number },
     standing: { level: count(record(data.standing ?? {}).level), crown: record(data.standing ?? {}).crown === true },
-    preferences: { pushNotifications: preferences.pushNotifications, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
+    preferences: { pushNotifications: preferences.pushNotifications, notificationPreferences, matchCategory: preferences.matchCategory as string | null, appearance: preferences.appearance as ProfileSettings["preferences"]["appearance"] },
     privacy: privacyFrom(data.privacy), categories: stringList(data.categories),
     // Backend worker availability alone must not be presented as notifications
     // on this device; the bridge fills in this device's registration.
-    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, nativePushStatus: "unavailable", liveAlerts: capabilities.liveAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
+    capabilities: { pushNotifications: capabilities.pushNotifications === true, nativePushRegistered: false, nativePushStatus: "unavailable", liveAlerts: capabilities.liveAlerts === true, earningsAlerts: capabilities.earningsAlerts === true, interfaceLanguages: stringList(capabilities.interfaceLanguages), currency: string(capabilities.currency) },
   };
 }
 export function blockedUsersFrom(value: unknown): BlockedUsers {

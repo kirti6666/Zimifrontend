@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { Linking, Platform } from "react-native";
+import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
 
 /* Device push through Firebase Cloud Messaging. The backend sends notification
    messages to this channel (backend/src/services/push/fcm.client.ts), so
@@ -15,28 +16,52 @@ export type PushMode = "silent" | "prompt" | "settings";
 const CHANNEL = "default";
 const DEVELOPMENT = typeof __DEV__ !== "undefined" && __DEV__;
 const supported = () => Platform.OS === "android";
+let channelsReady: Promise<void> | undefined;
+/** Android 13 needs channels before permission/token registration. The OS lets
+ * people independently change sound and visibility for each kind of alert. */
+function ensureChannels(): Promise<void> {
+  if (!supported()) return Promise.resolve();
+  if (!channelsReady) channelsReady = Promise.all([
+    [CHANNEL, "General", Notifications.AndroidImportance.DEFAULT],
+    ["calls", "Incoming calls", Notifications.AndroidImportance.MAX],
+    ["messages", "Messages", Notifications.AndroidImportance.HIGH],
+    ["activity", "Likes, comments and gifts", Notifications.AndroidImportance.DEFAULT],
+    ["updates", "App updates", Notifications.AndroidImportance.DEFAULT],
+    ["live-alerts", "Creator availability", Notifications.AndroidImportance.DEFAULT],
+    ["earnings-alerts", "Creator earning inspiration", Notifications.AndroidImportance.DEFAULT],
+  ].map(([channel, name, importance]) => Notifications.setNotificationChannelAsync(String(channel), {
+    name: String(name), importance: importance as Notifications.AndroidImportance,
+    sound: "default", lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+    ...(channel === "calls" ? { vibrationPattern: [0, 300, 200, 300] } : {}),
+  }))).then(() => {}).catch(error => { channelsReady = undefined; throw error; });
+  return channelsReady;
+}
 
 /** Creates the channel and reports notification taps, including the one that launched the app. */
-export function startPush(onOpen: () => void): () => void {
+export function startPush(onOpen: (target: NotificationTarget) => void, belongsToCurrentAccount?: (recipientId?: string) => boolean): () => void {
   if (!supported()) return () => {};
   // In the foreground the inbox bell updates over the socket; a heads-up
   // banner would cover calls and live rooms, so only add it to the tray.
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({ shouldShowBanner: false, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
+    handleNotification: async notification => {
+      const target = notificationTargetFrom(notification.request.content.data);
+      const current = !!target && (!belongsToCurrentAccount || belongsToCurrentAccount(target.recipientId));
+      const expired = !!target?.expiresAt && Date.parse(target.expiresAt) <= Date.now();
+      return { shouldShowBanner: false, shouldShowList: current && !expired,
+        shouldPlaySound: current && !expired && target?.category === "calls" && target.targetType === "call", shouldSetBadge: false };
+    },
   });
-  void Notifications.setNotificationChannelAsync(CHANNEL, {
-    name: "General",
-    importance: Notifications.AndroidImportance.HIGH,
-  }).catch(() => {});
-  let handled: string | undefined;
+  void ensureChannels().catch(() => {});
+  const handled = new Set<string>();
   const opened = (response: Notifications.NotificationResponse | null) => {
     if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
     // The launch response can arrive through both the listener and the query.
     const id = response.notification.request.identifier;
-    if (id === handled) return;
-    handled = id;
+    if (handled.has(id)) return;
+    handled.add(id);if (handled.size > 128) handled.delete(handled.values().next().value!);
     void Notifications.clearLastNotificationResponseAsync().catch(() => {});
-    onOpen();
+    const target = notificationTargetFrom(response.notification.request.content.data);
+    if (target) onOpen(target);
   };
   const subscription = Notifications.addNotificationResponseReceivedListener(opened);
   void Notifications.getLastNotificationResponseAsync().then(opened).catch(() => {});
@@ -47,6 +72,7 @@ export function startPush(onOpen: () => void): () => void {
 export async function registerPush(save: (token: string) => Promise<void>, mode: PushMode): Promise<PushStatus> {
   if (!supported()) return "unavailable";
   try {
+    await ensureChannels();
     let permission = await Notifications.getPermissionsAsync();
     if (!permission.granted && permission.canAskAgain && mode !== "silent") {
       permission = await Notifications.requestPermissionsAsync();

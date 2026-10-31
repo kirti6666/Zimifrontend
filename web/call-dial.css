@@ -65,3 +65,10 @@
   .ringscr.dial .ringorb::before{opacity:.5;transform:scale(1.08)}
   .ringscr.dial :is(.voiceend,.dialtool){transition:none}
 }
+.ringscr.dial.is-voice{padding:76px 20px max(24px,calc(var(--safe-bottom) + 16px))}
+.ringscr.dial.is-voice .ringeye{margin:0 0 auto}
+.ringscr.dial.is-voice .ringorb{margin-top:32px}
+.ringscr.dial.is-voice h2{margin-top:28px;text-align:center}
+.ringscr.dial.is-voice .ringact{gap:36px;padding-top:32px}
+.ringscr.dial.is-voice .dialnote{max-width:100%;text-align:center;line-height:1.5}
+@media(max-height:460px){.ringscr.dial.is-voice{padding:26px 20px 16px}.ringscr.dial.is-voice .ringeye{margin-bottom:14px}.ringscr.dial.is-voice .ringorb{margin-top:0}.ringscr.dial.is-voice .ringorb>.av{width:64px!important;height:64px!important}.ringscr.dial.is-voice h2{font-size:20px;margin-top:16px}.ringscr.dial.is-voice .dialnote{margin-top:8px}.ringscr.dial.is-voice .ringact{padding-top:16px}}

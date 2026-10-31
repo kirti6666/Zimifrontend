@@ -1,6 +1,6 @@
 /* The inbox queries the server before paging. Read state changes only after an
    acknowledgment; personal and announcement audiences come from the API. */
-const ZNotices={q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,limit:20,total:0,totalCount:0,loaded:false,sequence:0,requestId:0,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,detail:null,accountId:'',changed:false,filtersOpen:false,selecting:false};
+const ZNotices={q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,limit:20,total:0,totalCount:0,loaded:false,sequence:0,requestId:0,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,detail:null,accountId:'',changed:false,filtersOpen:false,selecting:false,pendingTarget:null,postTarget:null};
 function znAccepts(data){return data.requestId==null||data.requestId===ZNotices.requestId}
 function znBusy(){return !DEMO&&contentPending('notifications')}
 ZimiPullRefresh.register('notifications',{refresh:()=>znLoad(),busy:()=>znBusy()||ZNotices.pending});
@@ -153,6 +153,10 @@ function znDetails(id){
   dialog.addEventListener('close',()=>{dialog.remove();if(document.getElementById('zn-detail'))return;ZNotices.detail=null;const row=[...document.querySelectorAll('.zh-notification[data-notification-id]')].find(node=>node.dataset.notificationId===id);row?.querySelector('.zn-notice-main')?.focus({preventScroll:true})});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)znCloseDetail()}});
   document.body.append(dialog);dialog.showModal();znPaintDetailStatus();
+  if(item.targetType&&item.targetType!=='inbox'){
+    const open=document.createElement('button');open.type='button';open.className='zn-primary';open.textContent=znTargetLabel(item.targetType);
+    open.onclick=()=>znRequestTarget(item);dialog.querySelector('.zn-detail-content').append(open);
+  }
   if(!item.read&&!ZNotices.pending)znUpdate(true,[id]);
 }
 function znPaintDetailStatus(){
@@ -161,18 +165,60 @@ function znPaintDetailStatus(){
   el.innerHTML=`<span>${status}</span><button class="zn-detail-toggle" aria-label="Mark as ${item.read?'unread':'read'}: ${esc(item.title)}" ${ZNotices.pending?'disabled':''} onclick="znUpdate(!ZNotices.detail.read,[ZNotices.detail.id])">Mark as ${item.read?'unread':'read'}</button>`;
 }
 function znCloseDetail(){const dialog=document.getElementById('zn-detail');if(dialog){dialog.close();dialog.remove()}ZNotices.detail=null}
-function znReset(){clearTimeout(ZNotices.timer);znCloseDetail();Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,total:0,totalCount:0,loaded:false,requestId:++ZNotices.sequence,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,changed:false,accountId:'',filtersOpen:false,selecting:false});Home.notifications=[];Home.unreadCount=0}
+function znReset(){clearTimeout(ZNotices.timer);znCloseDetail();Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',page:1,total:0,totalCount:0,loaded:false,requestId:++ZNotices.sequence,selected:new Set(),pending:null,lastMutation:null,mutationError:'',message:'',timer:null,focus:null,changed:false,accountId:'',filtersOpen:false,selecting:false,pendingTarget:null,postTarget:null});Home.notifications=[];Home.unreadCount=0}
 window.ZimiNotifications={open:znOpen,load:znLoad,receive:znReceive,accepts:znAccepts,reset:znReset};
 ZimiHome.views.notifications=znView;
 const znPreviousAfterRender=ZimiHome.afterRender;
 ZimiHome.afterRender=()=>{znPreviousAfterRender();znAfterRender()};
 Native.on('notifications.saved',znSaved);Native.on('notifications.error',znError);
-// A tapped push opens the inbox, but never pulls someone out of a call or live room.
-Native.on('push.opened',()=>{if(['live','broadcast','setup','precall','call','voice','dial','dialback','waiting','ring','hcall'].includes(S.v)||(typeof ZVerify!=='undefined'&&ZVerify.state)){ZNotices.changed=true;return}znOpen()});
+function znTargetLabel(type){return {thread:'Open conversation',call:'View call',post:'View post',creator:'View creator',host:'Open call studio',appUpdate:'Check for updates'}[type]||'Open notification'}
+function znRequestTarget(item){
+  const payload={};for(const key of ['notificationId','category','targetType','targetId','actorId','recipientId','expiresAt'])if(item[key]!=null)payload[key]=item[key];
+  payload.notificationId=item.notificationId||item.id;znCloseDetail();
+  if(DEMO)znRouteTarget(payload);else Native.send('notifications.open',payload);
+}
+function znTargetBusy(){return ['live','broadcast','setup','precall','call','voice','dial','dialback','waiting','ring','incoming','hcall'].includes(S.v)||(typeof ZVerify!=='undefined'&&!!ZVerify.state)||!!S.connecting||!!S.inc||!!window.Room?.transition}
+function znRouteTarget(data={}){
+  if(data.recipientId&&data.recipientId!==S.user?.id)return;
+  if(data.targetType==='call'&&data.targetId&&(S.callId===data.targetId||S.bgCall?.callId===data.targetId)){
+    if(S.bgCall)callRestore();return;
+  }
+  // Keep the connected call's media and clock in the ongoing bar while opening
+  // another update. Incoming/connecting calls wait until their controls settle.
+  if(['call','voice','hcall'].includes(S.v)&&!S.bgCall&&!S.connecting&&!S.inc&&!window.Room?.transition&&!(typeof ZVerify!=='undefined'&&ZVerify.state)){
+    ZNotices.pendingTarget=null;callMinimize();
+  }
+  if(znTargetBusy()){ZNotices.pendingTarget=data;ZNotices.changed=true;return}
+  ZNotices.pendingTarget=null;
+  if(data.expiresAt&&Date.parse(data.expiresAt)<=Date.now()){znOpen();return}
+  if(data.profile&&typeof zuRemember==='function')zuRemember(data.profile);
+  const id=typeof data.targetId==='string'&&/^[a-f\d]{24}$/i.test(data.targetId)?data.targetId:'';
+  if(data.targetType==='thread'&&id){zcOpen(id);return}
+  if(data.targetType==='creator'&&id){go('host',id);return}
+  if(data.targetType==='host'&&isApprovedHost()){go('setup');return}
+  if(data.targetType==='call'){go('calls');return}
+  if(data.targetType==='post'&&id&&data.post?.id===id&&data.ownerId){
+    ZNotices.postTarget={id,ownerId:data.ownerId,post:data.post};go(data.ownerId===S.user?.id?'profile':'host',data.ownerId);queueMicrotask(znTryPostTarget);return;
+  }
+  if(data.targetType==='appUpdate'){appNotice('Checking for app updates…');return}
+  znOpen();
+}
+function znTryPostTarget(){
+  const target=ZNotices.postTarget;if(!target||typeof Zu==='undefined'||Zu.id!==target.ownerId||!zuActive()||Zu.loading||!Zu.profile||Zu.postsLoading)return;
+  let index=Zu.posts.findIndex(post=>post.id===target.id);
+  if(index<0){Zu.posts.unshift(target.post);Zu.total=Math.max(Zu.total,Zu.posts.length);index=0}
+  ZNotices.postTarget=null;zuOpenPhoto(index);
+}
+Native.on('push.opened',znRouteTarget);
+for(const type of ['data.publicProfile','data.publicPosts','data.loading'])Native.on(type,()=>queueMicrotask(znTryPostTarget));
 Native.on('notifications.changed',()=>{ZNotices.changed=true;if(S.v!=='notifications'||ZNotices.pending)return;if(ZNotices.selected.size||ZNotices.detail||document.activeElement?.id==='zn-search'||znBusy()){r();return}znLoad()});
 Native.on('session.none',znReset);Native.on('session.expired',znReset);
 for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(ZNotices.accountId&&ZNotices.accountId!==id)znReset();ZNotices.accountId=id});
-document.addEventListener('aurora:navigate',()=>{if(S.v!=='notifications'){clearTimeout(ZNotices.timer);ZNotices.timer=null;znCloseDetail()}});
+document.addEventListener('aurora:navigate',()=>{
+  if(S.v!=='notifications'){clearTimeout(ZNotices.timer);ZNotices.timer=null;znCloseDetail()}
+  if(ZNotices.postTarget&&!['host','profile'].includes(S.v))ZNotices.postTarget=null;
+  if(ZNotices.pendingTarget&&['home','chats','profile','settings','notifications'].includes(S.v)&&!znTargetBusy())queueMicrotask(()=>{if(ZNotices.pendingTarget&&!znTargetBusy())znRouteTarget(ZNotices.pendingTarget)});
+});
 if(DEMO){
   const now=Date.now();ZNotices.demo=[
     {id:'demo-note-1',title:'A space that feels like you',body:'Your notification center brings personal updates and community announcements together. Use filters to find what you need, or catch up at your own pace.',audience:'personal',read:false,createdAt:new Date(now-12*60000).toISOString()},

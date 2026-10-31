@@ -1,6 +1,6 @@
 /* A quiet, readable preflight for real private calls. Capture starts only from
    the primary action; home.js owns permission requests and their cancellation. */
-const CallSetup = { mode: 'video', peerId: '', wasOpen: false };
+const CallSetup = { mode: 'video', peerId: '', wasOpen: false, intent: null };
 Object.assign(homeIcons,{arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>'});
 function zpcMode(mode){if(Home.preparingCall||(window.ZIMI_LIVE_STREAMING_ENABLED&&Home.dashboardSetup?.streamId)||!['video','voice'].includes(mode))return;CallSetup.mode=mode;S.pcerr='';r();document.querySelector(`[data-call-mode="${mode}"]`)?.focus({preventScroll:true})}
 function zpcPortrait(h){const src=imageSrc(h.avatarUrl||h.coverUrl);return src?`<img src="${src}" alt="${esc(h.n)}" data-face="${faceKind(h)}">`:face(h)}
@@ -37,7 +37,7 @@ function zpcScreen(){
   </section>`;
 }
 function zpcAfter(){const open=S.v==='precall';document.documentElement.classList.toggle('zpc-active',open);if(open&&!CallSetup.wasOpen)document.getElementById('scroll-root').scrollTop=0;CallSetup.wasOpen=open}
-document.addEventListener('aurora:navigate',()=>{if(S.v==='precall'&&!Home.preparingCall){CallSetup.mode='video';CallSetup.peerId=S.h;r()}});
+document.addEventListener('aurora:navigate',()=>{const intent=CallSetup.intent;CallSetup.intent=null;if(S.v==='precall'&&!Home.preparingCall){CallSetup.mode=intent?.peerId===S.h?intent.mode:'video';CallSetup.peerId=S.h;r()}});
 if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const offline=previewMode==='precall-offline';
   const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Khan',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':PREVIEW_HOSTS[5],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});

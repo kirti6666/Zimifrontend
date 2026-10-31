@@ -42,6 +42,7 @@ function zciDismiss(mute=false){
 async function zciConnect(){
   const invitation=CallInvitations.invitation,owner=zciOwner();if(!zciIdle(true)||!zciValid(invitation)||CallInvitations.busy||!coinWalletReady())return;
   if(S.bal<invitation.requiredCoins)return coinRequireRecharge(zciTopup);
+  window.ZimiRingback?.prime();
   CallInvitations.busy='connect';CallInvitations.error='';const requestId=CallInvitations.pending=++CallInvitations.request;zciPaint();
   try{
     await window.ZimiMedia.prepare(true);
@@ -50,7 +51,7 @@ async function zciConnect(){
     const host=knowHost({id:invitation.host.id,name:invitation.host.name,avatarUrl:invitation.host.avatarUrl,city:invitation.host.city,ratePerMin:invitation.coinsPerMinute,entryFee:invitation.entryFeeCoins,online:true,availableForCall:true,verified:true,role:'host'});
     S.automaticCall={invitationId:invitation.id,hostId:host.id};S.callInvitationIntent={id:invitation.id,hostId:host.id,requestId,expectedCoinsPerMinute:invitation.coinsPerMinute,expectedEntryFeeCoins:invitation.entryFeeCoins};S.nextCallVoice=false;S.callId=null;
     zciClose();S.allowPreparedCall=true;try{go('dial',host.id)}finally{S.allowPreparedCall=false}
-  }catch(error){if(owner!==zciOwner()||CallInvitations.pending!==requestId)return;CallInvitations.busy='';CallInvitations.error=error?.message||'Camera and microphone access could not be prepared.';zciPaint()}
+  }catch(error){if(owner!==zciOwner()||CallInvitations.pending!==requestId)return;CallInvitations.busy='';window.ZimiRingback?.release();CallInvitations.error=error?.message||'Camera and microphone access could not be prepared.';zciPaint()}
 }
 function zciTopup(){if(CallInvitations.busy)return;if(!zciValid()){zciClose();go('coins');return}const invitation=CallInvitations.invitation;CallInvitations.topup={kind:'automatic',id:invitation.id,owner:zciOwner(),until:invitation.expiresAt};zciClose();go('coins')}
 function zciReturnFromCoins(){const context=CallInvitations.topup;if(!context||context.owner!==zciOwner()||CallInvitations.busy)return;if(context.kind==='incoming')return zciReturnToIncoming();CallInvitations.topup=null;go('home');zciRequest(true)}

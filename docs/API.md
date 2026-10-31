@@ -485,10 +485,43 @@ daily cap per member and optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
+## Push notifications
+
+Android uses native FCM device tokens registered through authenticated
+`POST /notifications/devices`; registrations belong to the current login session.
+Logout clears the tray and retires the device registration. The backend also
+checks that the session is still valid before sending.
+
+Calls, messages, post likes/comments, received gifts and published app updates
+produce durable notifications. Senders can receive alerts when followed approved
+creators go online for private calls. Streaming remains disabled. Approved hosts
+can opt in to earning inspiration based on another eligible creator's real
+completed session; these alerts are limited to one per recipient every 24 hours.
+
+The inbox opens Notification preferences. `PATCH /account/settings` accepts
+`pushNotifications` and a partial nested `notificationPreferences` object:
+`calls`, `messages`, `likes`, `comments`, `gifts`, `appUpdates`, `liveAlerts`,
+`earningsAlerts`, and `quietHours: {enabled, startHour, endHour, timeZone}`.
+Hours use 0–23 and the time zone is an IANA identifier. Categories default on
+except earning inspiration, which requires opt-in. Quiet hours delay non-call
+pushes; expired or no-longer-relevant alerts are discarded. Android also exposes
+separate call, message, activity, update, availability and earning channels.
+
+Payload navigation is limited to inbox, thread, call, post, creator, host and
+app-update targets. Native validates IDs, account ownership and expiry, then
+loads authenticated server state. A call tap never accepts the call; it displays
+only a still-ringing incoming call. Missed calls open the caller's profile.
+Updates invoke the existing native update-policy check. Connected calls can be
+minimized before navigation without losing their media or timer.
+
+Firebase server setup and validation-only commands are documented in
+[backend/PUSH_SETUP.md](../../backend/PUSH_SETUP.md). A new Android build is needed
+for these native changes; production server credentials must also be configured.
+
 ## Not covered yet
 
-- Incoming calls while the app is closed: needs push notifications and the
-  Android incoming-call screen in the React Native shell.
+- A full-screen native incoming-call screen while the app is closed. Android
+  currently shows a notification; tapping it opens the verified call in the app.
 - Coin purchases use PayPlus checkout. Coins are credited only by the server,
   after `POST /coins/purchase/verify` or the signed PayPlus webhook. Google
   Play's payments policy may require Play Billing (or its alternative billing

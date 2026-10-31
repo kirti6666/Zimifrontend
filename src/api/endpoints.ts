@@ -1,4 +1,5 @@
 import { ApiError, request } from "./client";
+import { getAppUpdateAuth } from "../app-update-events";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
 import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
@@ -247,6 +248,13 @@ export const api = {
     return profile;
   },
   async publicPosts(id: string, page = 1) { return publicPostsFrom(await request("GET", `/users/${encodeURIComponent(id)}/posts?page=${page}&limit=12`)); },
+  async notificationPost(id: string) {
+    const version = getSessionVersion();
+    const raw = record(await request("GET", `/posts/${encodeURIComponent(id)}`));ensureSession(version);
+    const ownerId = idOf(raw.userId);
+    if (!/^[a-f\d]{24}$/i.test(ownerId)) throw new ApiError("This post could not be opened.", 502);
+    return { ownerId, post: postFrom(raw) };
+  },
   async saveProfileSettings(input: ProfileSettingsPatch) {
     return queueProfileWrite(getSessionVersion(), async () => profileSettingsFrom(await request("PATCH", "/account/settings", input)));
   },
@@ -260,7 +268,10 @@ export const api = {
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
   async officialChat(page = 1) { return officialChatFrom(await request("GET", `/chats/official?${queryString({ page, limit: 20 })}`)); },
   async readOfficialChat(input: OfficialReadPatch) { return notificationReadFrom(await request("POST", "/chats/official/read", input)); },
-  registerPushDevice: (token: string) => request<void>("POST", "/notifications/devices", { token }),
+  registerPushDevice: (token: string) => {
+    const version = Number(getAppUpdateAuth().appVersionCode);
+    return request<void>("POST", "/notifications/devices", { token, platform: "android", ...(Number.isSafeInteger(version) && version > 0 ? { appVersionCode: version } : {}) });
+  },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
   async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
@@ -316,6 +327,17 @@ export const api = {
   async thread(withId: string, knownIds?: string[]) { const id = await selfId(); const known = knownIds?.filter(id => /^[a-f\d]{24}$/i.test(id)).slice(-200); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}${known?.length ? `?knownIds=${encodeURIComponent(known.join(","))}` : ""}`), id); },
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
+  async notificationCall(id: string) {
+    const version = getSessionVersion(), self = await selfId();ensureSession(version);
+    const raw = await request<unknown>("GET", "/calls/active");ensureSession(version);
+    if (!raw || typeof raw !== "object") return null;
+    const call = record(raw), callerId = idOf(call.callerId);
+    if (idOf(call) !== id || call.status !== "ringing" || idOf(call.calleeId) !== self || !callerId ||
+      !["audio", "video"].includes(String(call.kind)) || !Number.isFinite(Date.parse(String(call.expiresAt))) || Date.parse(String(call.expiresAt)) <= Date.now()) return null;
+    const caller = await api.publicProfile(callerId);ensureSession(version);
+    if (Date.parse(String(call.expiresAt)) <= Date.now()) return null;
+    return { callId: id, from: { id: callerId, name: caller.name, avatarUrl: caller.avatarUrl, city: caller.city, gender: caller.gender }, voice: call.kind === "audio", fromHost: call.hostInitiated === true, ...callPrice(call) };
+  },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async referral() { return referralFrom(await request("GET", "/referrals/me")); },
   async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },

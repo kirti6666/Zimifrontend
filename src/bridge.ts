@@ -19,6 +19,8 @@ import { LIVE_STREAMING_ENABLED } from "./features";
 import { beginUpdateActivity } from "./app-update-activity";
 import type { OfficialChatData, OfficialReadPatch } from "./api/types";
 import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
+import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
+import { notifyAppUpdate } from "./app-update-events";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -42,6 +44,7 @@ export type WebMessage =
   | { type: "notifications.read"; data: { ids: string[]; requestId?: number } }
   | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
   | { type: "notifications.readAll"; data: { requestId: number } }
+  | { type: "notifications.open"; data: NotificationTarget }
   | { type: "official.load"; data: { page?: number; requestId: number } }
   | { type: "official.read"; data: OfficialReadPatch & { requestId: number } }
   | { type: "call.match"; data: { category?: string } }
@@ -176,7 +179,7 @@ export type AppMessage =
   | { type: "official.saved"; data: OfficialReadPatch & NotificationReadResult & { read: true; requestId: number } }
   | { type: "official.error"; data: { requestId: number; message: string; action: "load" | "read" } }
   | { type: "official.changed"; data: Record<string, never> }
-  | { type: "push.opened"; data: Record<string, never> }
+  | { type: "push.opened"; data: NotificationTarget & { ownerId?: string; post?: UserPost; profile?: PublicProfile } }
   | { type: "data.catalog"; data: Catalog }
   | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
   | { type: "data.themes"; data: ThemeCatalog }
@@ -737,7 +740,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let pushStatus: PushStatus = "unavailable";
   let pushSession: number | undefined;
   let pushPrompted = false;
-  let pushOpenPending = false;
+  let pushOpenPending: NotificationTarget | undefined;
+  let pushOpenRevision = 0;
   const syncPush = async (mode: PushMode) => {
     const version = epoch, sessionVersion = getSessionVersion();
     const status = await registerPush(token => api.registerPushDevice(token), mode);
@@ -757,11 +761,44 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }
     emit({ type: "data.profileSettings", data: withPushStatus(settings) });
   };
-  /** Opens the inbox for a tapped notification once a signed-in screen can show it. */
-  const flushPushOpen = () => {
+  /** A tap is only navigation; authoritative endpoints recheck sensitive targets. */
+  const flushPushOpen = async () => {
     if (!pushOpenPending || !webReady || !sessionAvailable || restoring || liveOnboarding || hostAccount?.requiresOnboarding) return;
-    pushOpenPending = false;
-    emit({ type: "push.opened", data: {} });
+    const target = pushOpenPending, version = epoch, sessionVersion = getSessionVersion(), revision = pushOpenRevision;
+    pushOpenPending = undefined;
+    if (target.recipientId && target.recipientId !== accountId) return;
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && revision === pushOpenRevision && sessionAvailable;
+    if (target.expiresAt && Date.parse(target.expiresAt) <= Date.now() && activeCall !== target.targetId) {
+      emit({ type: "push.opened", data: { targetType: "inbox", notificationId: target.notificationId } });return;
+    }
+    try {
+      if (target.targetType === "appUpdate") {
+        notifyAppUpdate(false);
+      } else if (target.targetType === "thread" && target.targetId) {
+        const profile = await api.publicProfile(target.targetId);
+        if (applicable()) emit({ type: "push.opened", data: { ...target, profile } });
+        return;
+      } else if (target.targetType === "post" && target.targetId) {
+        const post = await api.notificationPost(target.targetId);
+        if (applicable()) emit({ type: "push.opened", data: { ...target, ...post } });
+        return;
+      } else if (target.targetType === "call" && target.targetId && !activeCall && !pendingOutgoing && !verifyCall) {
+        const incoming = await api.notificationCall(target.targetId);
+        if (!applicable()) return;
+        if (incoming && (hasHostAccess() || accountRole === "user" && incoming.fromHost)) {
+          holdCallActivity(incoming.callId);
+          emit({ type: "call.incoming", data: incoming });return;
+        }
+        if (target.actorId) {
+          const profile = await api.publicProfile(target.actorId);
+          if (applicable()) emit({ type: "push.opened", data: { ...target, targetType: "creator", targetId: target.actorId, profile } });
+          return;
+        }
+      }
+      if (applicable()) emit({ type: "push.opened", data: target });
+    } catch {
+      if (applicable()) emit({ type: "push.opened", data: { targetType: "inbox", notificationId: target.notificationId } });
+    }
   };
   const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), emitProfileSettings);
   const loadPublicProfile = (id: string, requestId?: number) => {
@@ -1127,6 +1164,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "push.enable": if (sessionAvailable && pushSession === getSessionVersion()) await syncPush("settings"); return;
+      case "notifications.open": {
+        const target = notificationTargetFrom({ ...msg.data, recipientId: accountId });
+        if (target && sessionAvailable && !liveOnboarding) { pushOpenPending = target;pushOpenRevision++;await flushPushOpen(); }
+        return;
+      }
       case "home.reload": return loadHome(msg.data);
       case "hosts.search": {
         const q = msg.data.q, page = msg.data.page ?? 1;
@@ -1358,6 +1400,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.logout": {
+        pushOpenPending = undefined;pushOpenRevision++;
         resetUpdateActivities();
         sessionAvailable = false; pendingStreamLink = undefined; linkRevision++;
         accountRole = undefined; chatPeers.clear(); threadPermissions.clear();
@@ -2002,7 +2045,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (openStreamLink(event.url)) runtimeLinkReceived = true;
   });
   void Linking.getInitialURL().then(url => { if (!runtimeLinkReceived && !closed) openStreamLink(url); }).catch(() => {});
-  const stopPush = startPush(() => { pushOpenPending = true; flushPushOpen(); });
+  const stopPush = startPush(data => {
+    const target = notificationTargetFrom(data);
+    if (!target) return;
+    pushOpenPending = target;pushOpenRevision++;void flushPushOpen();
+  }, recipientId => sessionAvailable && !!accountId && (!recipientId || recipientId === accountId));
   const stopPushToken = onPushTokenChange(token => {
     if (pushSession === getSessionVersion() && sessionAvailable) void api.registerPushDevice(token).catch(() => {});
   });

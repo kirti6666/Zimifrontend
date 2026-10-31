@@ -636,6 +636,16 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const publicPosts = await api.publicPosts('host-id', 2);
   assert.equal(publicPosts.posts[0].caption, 'A song for today'); assert.equal(publicPosts.total, 13); assert.equal(publicPosts.page, 2);
   assert.throws(() => adapters.publicPostsFrom({ items: [], total: undefined, page: 1, limit: 12 }), /could not be loaded/);
+  const pushPeer = '507f1f77bcf86cd799439012', pushCallId = '507f1f77bcf86cd799439013', pushPostId = '507f1f77bcf86cd799439014';
+  const activeRing = { _id: pushCallId, callerId: pushPeer, calleeId: 'member-id', status: 'ringing', kind: 'audio', hostInitiated: true, coinsPerMinute: 35, expiresAt: new Date(Date.now() + 30000).toISOString() };
+  expect('GET', '/calls/active', activeRing); expect('GET', `/users/${pushPeer}`, { ...publicHost, _id: pushPeer });
+  const notificationCall = await api.notificationCall(pushCallId);
+  assert.equal(notificationCall.from.id, pushPeer); assert.equal(notificationCall.voice, true); assert.equal(notificationCall.fromHost, true);
+  for(const changed of [{status:'ended'},{calleeId:'other-account'},{_id:'different-call'},{expiresAt:new Date(0).toISOString()},{kind:'unknown'}]){
+    expect('GET','/calls/active',{...activeRing,...changed});assert.equal(await api.notificationCall(pushCallId),null,'Expired, completed, unrelated or malformed calls never become incoming rings');
+  }
+  expect('GET', `/posts/${pushPostId}`, { _id: pushPostId, userId: pushPeer, kind: 'photo', mediaUrl: 'https://cdn.example.test/target.jpg', caption: 'Targeted post' });
+  const notificationPost=await api.notificationPost(pushPostId);assert.equal(notificationPost.ownerId,pushPeer);assert.equal(notificationPost.post.id,pushPostId);
   finished();
   reset();
   await assert.rejects(api.sendGift('host-id','Rose',10), /No coins were spent/);
@@ -684,6 +694,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(settings.stats.fans, 42); assert.equal(settings.stats.coinsReceived, 950); assert.equal(settings.preferences.appearance, 'system');
   assert.equal(settings.profile.maskedPhone, '+91 ••••••3210'); assert.equal(settings.profile.countryCode, '+91'); assert.equal(settings.profile.isPhoneVerified, true);
   assert.equal(settings.capabilities.pushNotifications, true); assert.equal(settings.capabilities.nativePushRegistered, false, 'Server worker availability is not device push registration');
+  assert.equal(settings.preferences.notificationPreferences.earningsAlerts,false,'Earning inspiration starts opt-in even for an older server');
+  assert.equal(settings.preferences.notificationPreferences.quietHours.timeZone,'Asia/Kolkata');
+  const granular={messages:false,earningsAlerts:true,quietHours:{enabled:true,startHour:21,endHour:7,timeZone:'UTC'}};
+  assert.equal(adapters.profileSettingsFrom({...serverSettings,preferences:{...serverSettings.preferences,notificationPreferences:granular}}).preferences.notificationPreferences.messages,false);
+  assert.throws(()=>adapters.profileSettingsFrom({...serverSettings,preferences:{...serverSettings.preferences,notificationPreferences:{calls:'false'}}}),/settings could not be loaded/);
   assert.equal(JSON.stringify(settings).includes('9876543210'), false, 'Only the masked phone may reach the settings WebView');
   assert.equal(settings.profile.role, undefined); assert.equal(settings.profile.isVerifiedHost, undefined, 'Settings summaries cannot grant host authority');
   assert.throws(() => adapters.profileSettingsFrom({ ...serverSettings, stats: {} }), /settings could not be loaded/, 'Missing statistics must not become fabricated zero values');
