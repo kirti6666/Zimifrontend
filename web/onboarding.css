@@ -191,8 +191,8 @@ html:root .ob-welcome .ob-card > img, html:root .ob-welcome .ob-card::after { bo
 .ob-hearts svg:nth-child(2) { left: 10%; width: 10px; height: 10px; color: var(--ob-soft); animation-delay: 1.2s; }
 .ob-hearts svg:nth-child(3) { left: 75%; width: 12px; height: 12px; animation-delay: 2.4s; }
 .ob-deck-controls { position: absolute; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 8px; bottom: -8px; left: 0; right: 0; }
-.ob-deck-controls > button { width: 44px; height: 44px; border-color: transparent; background: transparent; color: var(--ob-muted); backdrop-filter: none; -webkit-backdrop-filter: none; }
-.ob-deck-controls > button svg { width: 16px; height: 16px; }
+.ob-welcome .ob-deck-controls > button.ob-icon { flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px !important; padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.ob-welcome .ob-deck-controls > button.ob-icon > svg { width: 18px; height: 18px; stroke-width: 1.5; }
 .ob-dots { display: flex; align-items: center; }
 .ob-dots button { display: flex; align-items: center; justify-content: center; width: 30px; min-width: 30px; height: 44px; padding: 0; }
 .ob-dots button::before { content: ""; width: 6px; height: 6px; border-radius: 10px; background: color-mix(in srgb, var(--ob-text) 26%, transparent); transition: width .25s, background-color .25s; }
