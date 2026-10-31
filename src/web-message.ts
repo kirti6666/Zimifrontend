@@ -168,6 +168,12 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "call.invitation.dismiss": valid = identifier(d.id) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
     case "call.topup.hold": case "call.topup.review": valid = identifier(d.callId) && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["callId", "requestId"].includes(key)); break;
     case "call.accept": case "call.decline": case "verify.accept": case "verify.end": valid = identifier(d.callId); break;
+    case "call.targets.load": valid = identifier(d.callId) && Object.keys(d).every(key => key === "callId"); break;
+    case "call.targets.set": valid = identifier(d.callId) && (d.giftId === null || identifier(d.giftId)) &&
+      Number.isInteger(d.giftCount) && Number(d.giftCount) >= 1 && Number(d.giftCount) <= 1000 &&
+      Number.isInteger(d.giftProgress) && Number(d.giftProgress) >= 0 && Number(d.giftProgress) <= 1000000 &&
+      Number.isInteger(d.goalCoins) && Number(d.goalCoins) >= 1 && Number(d.goalCoins) <= 1e9 && giftAmount(d.earnedCoins) &&
+      Object.keys(d).every(key => ["callId", "giftId", "giftCount", "giftProgress", "goalCoins", "earnedCoins"].includes(key)); break;
     case "call.end": valid = (d.callId === undefined || identifier(d.callId)) && optionalText(d.reason, 300); break;
     case "payout.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
       (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 1000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;

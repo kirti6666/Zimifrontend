@@ -137,6 +137,7 @@ const page = (demo, hosted = false) =>
   read("web/gift-picker.css") +
   read("web/gift-art.css") +
   read("web/call-invitations.css") +
+  read("web/call-targets.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -191,6 +192,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/tactile.js") +
   "\n" + read("web/card-video.js") +
   "\n" + read("web/call-invitations.js") +
+  "\n" + read("web/call-targets.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

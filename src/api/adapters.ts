@@ -2,7 +2,7 @@ import { ApiError } from "./client";
 import { compareChatMessages } from "./chat-order";
 import type { ChatGift } from "./types";
 import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
-import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -359,7 +359,26 @@ export function walletFrom(value: unknown): Wallet {
     reservedPaise: finite(wallet.reservedPaise),
     minimumWithdrawalPaise: Number.isSafeInteger(wallet.minimumWithdrawalPaise) && Number(wallet.minimumWithdrawalPaise) > 0 ? Number(wallet.minimumWithdrawalPaise) : undefined,
     withdrawalsEnabled: wallet.withdrawalsEnabled === true,
+    ...(rechargePromptFrom(wallet.rechargePrompt) ? { rechargePrompt: rechargePromptFrom(wallet.rechargePrompt) } : {}),
   };
+}
+const wholeNumber = (value: unknown, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= max;
+function rechargePromptFrom(value: unknown): RechargePrompt | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const prompt = record(value);
+  if (typeof prompt.enabled !== "boolean" || !wholeNumber(prompt.thresholdCoins) || !wholeNumber(prompt.lastRechargeCoins) ||
+    !wholeNumber(prompt.delaySeconds, 3600) || !wholeNumber(prompt.repeatSeconds, 86400)) return undefined;
+  return { enabled: prompt.enabled, thresholdCoins: Number(prompt.thresholdCoins), lastRechargeCoins: Number(prompt.lastRechargeCoins),
+    delaySeconds: Number(prompt.delaySeconds), repeatSeconds: Math.max(30, Number(prompt.repeatSeconds)) };
+}
+/** A host's shared targets; null until the host shares them. */
+export function callTargetsFrom(value: unknown): CallTargets | null {
+  if (value == null) return null;
+  const data = record(value), callId = idOf(data.callId);
+  if (!callId || !wholeNumber(data.giftCount, 1000) || Number(data.giftCount) < 1 || !wholeNumber(data.giftProgress, 1000000) ||
+    !wholeNumber(data.goalCoins, 1e9) || Number(data.goalCoins) < 1 || !wholeNumber(data.earnedCoins)) throw new ApiError("Call targets could not be loaded.", 502);
+  const gift = data.gift && typeof data.gift === "object" ? catalogFrom({ items: [data.gift] }, { items: [] }).gifts[0] ?? null : null;
+  return { callId, gift: gift?.id ? gift : null, giftCount: Number(data.giftCount), giftProgress: Number(data.giftProgress), goalCoins: Number(data.goalCoins), earnedCoins: Number(data.earnedCoins) };
 }
 export function payoutFrom(value: unknown): Payout {
   const payout = record(value), id = idOf(payout);

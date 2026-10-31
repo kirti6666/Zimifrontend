@@ -141,6 +141,7 @@ Native.on('creator.card.saved',d=>{
 });
 Native.on('creator.card.error',d=>{if(d.requestId!==HostStudio.cardRequestId)return;HostStudio.cardSaving=false;HostStudio.cardError=d.message||'Could not save the image. Try again.';if(HostStudio.sheet==='card-image'&&hsAllowed())hsPaintSheet()});
 function hsTargets() {
+  if (typeof ctShareTargets === 'function') ctShareTargets();
   const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
   return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
 }

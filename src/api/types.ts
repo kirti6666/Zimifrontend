@@ -404,7 +404,13 @@ export interface Wallet {
   minimumWithdrawalPaise?: number;
   withdrawalsEnabled?: boolean;
   earned?: number;
+  rechargePrompt?: RechargePrompt;
 }
+/** Staff-set rule for the low-balance Recharge pop-up on a member's call screen. */
+export interface RechargePrompt { enabled: boolean; thresholdCoins: number; lastRechargeCoins: number; delaySeconds: number; repeatSeconds: number; }
+/** A host's gift and mission targets, shared with the member in their call. */
+export interface CallTargets { callId: string; gift: Gift | null; giftCount: number; giftProgress: number; goalCoins: number; earnedCoins: number; }
+export interface CallTargetsInput { giftId: string | null; giftCount: number; giftProgress: number; goalCoins: number; earnedCoins: number; }
 
 export interface Payout {
   id: string;

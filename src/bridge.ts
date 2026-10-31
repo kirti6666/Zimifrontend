@@ -117,6 +117,8 @@ export type WebMessage =
   | { type: "call.invitation.dismiss"; data: { id: string; requestId: number } }
   | { type: "call.topup.hold" | "call.topup.review"; data: { callId: string; requestId: number } }
   | { type: "call.accept"; data: { callId: string } }
+  | { type: "call.targets.load"; data: { callId: string } }
+  | { type: "call.targets.set"; data: import("./api/types").CallTargetsInput & { callId: string } }
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
@@ -234,6 +236,7 @@ export type AppMessage =
   | { type: "call.topup.reviewed"; data: { callId: string; ringing: boolean; until?: string; rate?: number; requestId: number } }
   | { type: "call.topup.error"; data: { callId: string; message: string; requestId: number } }
   | { type: "call.topup.waiting"; data: { callId: string; until: string } }
+  | { type: "call.targets"; data: import("./api/types").CallTargets }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
   | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
@@ -1002,6 +1005,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         void api.declineCall(callId).catch(() => {}); return;
       }
+      // A host's targets belong to the call on screen; a late update from an earlier call is dropped.
+      if (event.type === "call.targets" && callId !== activeCall) return;
       if (event.type === "call.ended" && typeof callId === "string") {
         rememberCancelledCall(callId);
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
@@ -1766,6 +1771,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (msg.type === "call.invitation.load" && msg.data.active && relevant()) await refreshWallet();
           if (relevant()) emit({ type: msg.type === "call.invitation.load" ? "call.invitation.loaded" : "call.invitation.dismissed", data: { invitation, requestId: msg.data.requestId } });
         } catch (error) { if (relevant()) emit({ type: "call.invitation.error", data: { requestId: msg.data.requestId, message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } }); }
+        return;
+      }
+      case "call.targets.load": case "call.targets.set": {
+        const { callId, ...targets } = msg.data;
+        if (callId !== activeCall) return;
+        try {
+          const result = msg.type === "call.targets.load" ? await api.callTargets(callId) : await api.setCallTargets(callId, targets as import("./api/types").CallTargetsInput);
+          if (msg.type === "call.targets.load" && result && current(version) && callId === activeCall) emit({ type: "call.targets", data: result });
+        } catch { /* Targets only encourage gifts; the call carries on without them. */ }
         return;
       }
       case "call.topup.hold": case "call.topup.review": {

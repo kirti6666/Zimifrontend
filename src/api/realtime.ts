@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { callerFrom, callPrice, coinCount, genderOf, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callerFrom, callPrice, callTargetsFrom, coinCount, genderOf, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 import { getAppUpdateAuth, notifyAppUpdate } from "../app-update-events";
@@ -131,6 +131,9 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
       });
       if (gift.coins > 0) refreshWallet();
     } catch { /* Ignore malformed events. */ }
+  });
+  socket.on("call:targets", payload => {
+    try { const targets = callTargetsFrom(payload); if (targets) emit("call.targets", { ...targets }); } catch { /* Ignore malformed targets. */ }
   });
   socket.on("host:reviewed", payload => {
     try { const hostStatus = string(record(payload).status); emit("verification.status", { status: verificationOf(hostStatus), hostStatus }); } catch { /* Ignore malformed events. */ }

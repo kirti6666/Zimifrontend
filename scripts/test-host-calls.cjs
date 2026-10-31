@@ -76,6 +76,15 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await page.waitForFunction(() => __sent.some(message => message.type === 'call.accept' && message.data.callId === 'c1'));
     await receive('call.connected', { callId: 'c1', initiator: false, peerId: 'm1', voice: false, ...terms, earlyEnds: earlyEnds(2) });
     await page.waitForFunction(() => S.v === 'hcall');
+    // The caller sees the host's targets; they are shared once per change, never per redraw.
+    await page.waitForFunction(() => __sent.some(message => message.type === 'call.targets.set'));
+    assert.deepEqual(await sent('call.targets.set'), [{ callId: 'c1', giftId: null, giftCount: 10, giftProgress: 0, goalCoins: 1000000, earnedCoins: 0 }], 'The host shares their targets with the caller');
+    await receive('gift.received', { id: 'targets-gift', callId: 'c1', from: 'm1', senderName: 'Riya Sharma', giftName: 'Rose', emoji: '🌹', coins: 99 });
+    await page.waitForFunction(() => __sent.filter(message => message.type === 'call.targets.set').length === 2);
+    assert.equal((await sent('call.targets.set')).at(-1).earnedCoins, 99, 'Gifts move the shared mission progress');
+    await page.evaluate(() => { for (let i = 0; i < 5; i++) r(); });
+    await page.waitForTimeout(700);
+    assert.equal((await sent('call.targets.set')).length, 2, 'Redraws without changes send nothing');
     await page.locator('.hc-incoming').waitFor();
     assert.match(await page.locator('.hc-incoming').innerText(), /Meera[\s\S]*Voice/);
     await page.getByRole('button', { name: 'Decline Meera' }).click();
@@ -104,6 +113,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await receive('call.connected', { callId: 'c2', initiator: false, peerId: 'm2', voice: false, ...terms, earlyEnds: earlyEnds(3) });
     await page.waitForFunction(() => !S.connecting);
     assert.deepEqual(await page.evaluate(() => [S.caller.n, S.callId, S.callersN, S.early]), ['Kabir Das', 'c2', 2, 3]);
+    await page.waitForFunction(() => __sent.some(message => message.type === 'call.targets.set' && message.data.callId === 'c2'));
 
     // After the hold the fee is the host's; a caller still ringing when the call ends rings next.
     await page.evaluate(() => { S.sec = S.cstart + 60; hostTick(); });

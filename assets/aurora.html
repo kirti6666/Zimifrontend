@@ -4886,6 +4886,20 @@ html:root #zc-gift-playback>.zc-gift-playback-art{display:block;width:100%;heigh
 .zci-person{display:flex;align-items:center;gap:15px;margin-bottom:20px;min-width:0}.zci-person>div{min-width:0}.zci-person h2{font-size:22px;line-height:1.35;font-weight:600;margin:4px 0;overflow-wrap:anywhere}.zci-person p,.zci-person>div>span{font-size:12px;color:var(--muted)}.zci-dialog>p{color:var(--muted);font-size:13px;margin-bottom:16px}.zci-terms{display:grid;gap:10px;padding:15px;background:var(--surface);margin-bottom:16px;font-size:12px}.zci-terms>span{display:flex;align-items:center;justify-content:space-between;gap:12px}.zci-terms strong{font-weight:600}.zci-note{font-size:12px!important}
 .zci-primary,.zci-secondary{display:block;width:100%;min-height:46px;padding:11px 14px;font:inherit;font-weight:600;margin-top:10px}.zci-primary{background:var(--cta);color:var(--cta-ink)}.zci-secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line)}.zci-mute{display:block;width:100%;min-height:40px;font-size:11px;color:var(--muted);background:none;margin-top:8px}.zci-dialog button:disabled{opacity:.55}.zci-error{color:var(--theme-danger)!important}
 .zci-checkout-context{padding:16px;background:var(--surface);border:1px solid var(--line);margin:0 0 20px;font-size:12px;line-height:1.6;color:var(--ink)}.zci-checkout-context>strong{font-size:14px;font-weight:600}.zci-checkout-context p{color:var(--muted);margin:8px 0}.zci-checkout-context button{min-height:42px;padding:10px 12px;border:1px solid var(--line);color:var(--accent-ink);font-weight:600}.zci-checkout-context button:disabled{opacity:.55}.zci-source{font-size:11px;color:var(--muted);padding:10px 14px;text-align:center}.zci-host-waiting{font-size:12px;line-height:1.6;color:var(--muted);padding:14px 20px;text-align:center}
+/* The host's targets replace the call rate on the member's call screen, laid out like the host's own row. */
+.zr-sender-call .zr-call-stats.ct-call-targets{display:block;max-width:none}
+.ct-call-targets .hs-targets.ct-mission-only{grid-template-columns:minmax(0,1fr);max-width:185px}
+/* Low-balance Recharge pop-up over a member's call. */
+.ct-recharge{position:fixed;inset:0;margin:auto;width:min(340px,calc(100% - 40px));height:fit-content;max-height:calc(100dvh - 40px);overflow:auto;padding:22px 20px 14px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);text-align:center;font-size:14px;line-height:1.5}
+.ct-recharge::backdrop{background:rgba(0,0,0,.4)}
+.ct-recharge-coin{display:flex;justify-content:center;margin-bottom:10px}
+.ct-recharge h2{margin:0 0 6px;font-size:18px;font-weight:600;line-height:1.35}
+.ct-recharge p{margin:0 0 16px;color:var(--muted);font-size:13px}
+.ct-recharge p b{color:var(--ink);font-weight:600}
+.ct-recharge-primary,.ct-recharge-later{display:block;width:100%;min-height:46px;padding:11px 14px;font:inherit;font-weight:600}
+.ct-recharge-primary{background:var(--cta);color:var(--cta-ink)}
+.ct-recharge-later{min-height:42px;margin-top:6px;background:none;color:var(--muted)}
+.ct-recharge button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -11811,7 +11825,6 @@ function zrLive(){
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
-function zrCallStats(){return `<div class="zr-call-stats"><div class="zr-call-stat"><span class="zr-stat-icon">${hi('ph',19)}</span><div><span class="zr-stat-label">CALL RATE</span><strong>${S.callRate?`${coinIcon(14)} ${n(S.callRate)} <small>/ min</small>`:'Free call'}</strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div></div>`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
 function zrCallChat(){Room.chatOpen=!Room.chatOpen;r();if(Room.chatOpen)document.getElementById('rmsg')?.focus();else document.querySelector('.zr-call-chat-toggle')?.focus({preventScroll:true})}
 function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" enterkeyhint="send" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
@@ -11855,7 +11868,7 @@ function zrCall(host){
   if(!p)return '<div class="zh-empty">This call has ended.<button onclick="go(\'home\')">Back to Home</button></div>';
   if(host)return zrHostReferenceCall(p,voice);
   return `<section class="zh-room zr-room zr-call zr-sender-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}
-    <div class="zr-top"><header class="zr-call-toolbar">${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${zrCallStats()}${zrGiftBanner()}</div>
+    <div class="zr-top"><header class="zr-call-toolbar">${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${typeof ctSenderTargets==='function'?ctSenderTargets():''}${zrGiftBanner()}</div>
     ${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}
     <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():`
       <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
@@ -12580,6 +12593,7 @@ Native.on('creator.card.saved',d=>{
 });
 Native.on('creator.card.error',d=>{if(d.requestId!==HostStudio.cardRequestId)return;HostStudio.cardSaving=false;HostStudio.cardError=d.message||'Could not save the image. Try again.';if(HostStudio.sheet==='card-image'&&hsAllowed())hsPaintSheet()});
 function hsTargets() {
+  if (typeof ctShareTargets === 'function') ctShareTargets();
   const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
   return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
 }
@@ -15916,6 +15930,107 @@ document.addEventListener('aurora:navigate',()=>{if(S.v!=='home')zciClose();queu
 const zciPreviousAfter=ZimiHome.afterRender;ZimiHome.afterRender=()=>{zciPreviousAfter();zciAfter()};
 window.ZimiCallInvitations={request:zciRequest,connect:zciConnect,dismiss:zciDismiss,topup:zciTopup,review:zciReview,returnFromCoins:zciReturnFromCoins,topupIncoming:zciTopupIncoming,returnToIncoming:zciReturnToIncoming,coinsContext:zciCoinsContext,sourceBadge:zciSourceBadge,reset:zciReset,
   receiveIncoming(data){if(CallInvitations.topup?.kind==='incoming'&&CallInvitations.topup.callId===data.callId&&S.memberRing?.callId===data.callId){if(data.rate!==undefined)S.memberRing.rate=data.rate;return true}return false}};
+
+/* The member's call screen shows the host's gift and mission targets in place of the call
+   rate, so gifts visibly help the host. Hosts share their targets whenever they change.
+   Staff set when the low-balance Recharge pop-up appears; the server sends the threshold. */
+const CallTargets = { data: null, loading: '', sent: '', shareTimer: 0, recharge: null, shownAt: 0 };
+const CT_PREVIEW_RECHARGE = { enabled: true, thresholdCoins: 500, lastRechargeCoins: 0, delaySeconds: 10, repeatSeconds: 180 };
+
+function ctMemberCall() { return ['call', 'voice'].includes(S.v) && (!!S.callId || DEMO); }
+
+/* Host: called while the targets render, so every change reaches the member once. */
+function ctShareTargets() {
+  if (DEMO || S.v !== 'hcall' || !S.callId) return;
+  clearTimeout(CallTargets.shareTimer);
+  CallTargets.shareTimer = setTimeout(() => {
+    if (S.v !== 'hcall' || !S.callId || S.connecting) return;
+    const gift = hsTargetGift();
+    const targets = {
+      callId: S.callId, giftId: /^[a-f\d]{24}$/i.test(gift?.id || '') ? gift.id : null, giftCount: HostStudio.giftCount,
+      giftProgress: Math.min(1000000, hsGiftProgress(gift)), goalCoins: HostStudio.goal, earnedCoins: Math.max(0, Math.floor(HostStudio.receivedCoins)),
+    };
+    const key = JSON.stringify(targets);
+    if (key === CallTargets.sent) return;
+    CallTargets.sent = key; Native.send('call.targets.set', targets);
+  }, 500);
+}
+
+/* Member */
+function ctTargets() {
+  const data = CallTargets.data?.callId === S.callId ? CallTargets.data : null;
+  if (data || !DEMO) return data;
+  const gift = (Array.isArray(Home.gifts) && Home.gifts[0]) || { id: 'preview-rose', name: 'Rose', emoji: '🌹', coins: 99 };
+  return { callId: S.callId, gift, giftCount: 10, giftProgress: 3, goalCoins: 1000000, earnedCoins: 420000 };
+}
+function ctSenderTargets() {
+  const data = ctTargets(), host = zrPerson();
+  if (!data || !host) return '<div class="zr-call-stats ct-call-targets"></div>';
+  const gift = data.gift, name = esc(first(host.n)), mission = hsPercent(data.earnedCoins, data.goalCoins);
+  const giftCard = gift ? `<button type="button" class="hs-target-card" onclick="ctGive()" aria-label="Send ${esc(gift.name)} to help ${name} reach the gift target, ${n(data.giftProgress)} of ${n(data.giftCount)}"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(data.giftProgress)}/${n(data.giftCount)}</b></span><strong>${giftPriceMarkup(gift, 10)}</strong><i class="hs-target-track"><em style="width:${hsPercent(data.giftProgress, data.giftCount)}%"></em></i></span></button>` : '';
+  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
+}
+/* Opens the gift panel, with the target gift chosen when the member tapped that card. */
+function ctGive(mission = false) {
+  const host = zrPerson(), gift = ctTargets()?.gift;
+  if (!host) return;
+  homeGifts(host.id);
+  if (!mission && gift?.id && !Home.giftBusy) homeSelectGift(gift.id);
+}
+function ctPaintTargets() {
+  const node = document.querySelector('.ct-call-targets');
+  if (node) node.outerHTML = ctSenderTargets(); else r();
+}
+
+/* Recharge pop-up: at or under the staff threshold, after the call's first seconds, and again
+   only once the repeat time has passed since it was last shown or dismissed. */
+function ctRechargeRule() { return CallTargets.recharge || (DEMO ? CT_PREVIEW_RECHARGE : null); }
+function ctRechargeCheck() {
+  const rule = ctRechargeRule(), dialog = document.getElementById('ct-recharge');
+  if (!ctMemberCall() || !rule?.enabled || !coinWalletReady()) { ctRechargeClose(); return; }
+  if (dialog) { if (S.bal > rule.thresholdCoins) ctRechargeClose(); else ctRechargePaint(dialog); return; }
+  if (S.bal > rule.thresholdCoins || S.sec < rule.delaySeconds || Date.now() - CallTargets.shownAt < rule.repeatSeconds * 1000) return;
+  // Someone already adding coins or answering another prompt is not interrupted.
+  if (Home.giftTo || document.querySelector('dialog[open]')) return;
+  const next = document.createElement('dialog');
+  next.id = 'ct-recharge'; next.className = 'ct-recharge';
+  next.setAttribute('aria-labelledby', 'ct-recharge-title'); next.setAttribute('aria-describedby', 'ct-recharge-text');
+  next.addEventListener('cancel', event => { event.preventDefault(); ctRechargeLater(); });
+  ctRechargePaint(next); document.body.append(next);
+  CallTargets.shownAt = Date.now();
+  next.showModal(); next.querySelector('.ct-recharge-primary')?.focus();
+}
+function ctRechargePaint(dialog) {
+  const host = zrPerson(), rate = S.callRate || 0, key = `${S.bal}:${rate}:${host?.id || ''}`;
+  if (dialog.dataset.key === key) return;
+  const minutes = rate ? Math.floor(S.bal / rate) : 0, focused = dialog.contains(document.activeElement) ? document.activeElement.className : '';
+  const left = rate ? (minutes < 1 ? 'Less than a minute of calling left.' : `About ${n(minutes)} min of calling left.`) : '';
+  dialog.dataset.key = key;
+  dialog.innerHTML = `<span class="ct-recharge-coin" aria-hidden="true">${coinIcon(40)}</span><h2 id="ct-recharge-title">Recharge to keep talking</h2><p id="ct-recharge-text">Only <b>${n(S.bal)} coins</b> left. ${left} Add coins so your call with ${esc(first(host?.n || 'your host'))} doesn't end.</p><button type="button" class="ct-recharge-primary" onclick="ctRecharge()">Recharge</button><button type="button" class="ct-recharge-later" onclick="ctRechargeLater()">Not now</button>`;
+  if (focused) dialog.querySelector(`.${focused.split(' ')[0]}`)?.focus();
+}
+function ctRechargeClose() {
+  const dialog = document.getElementById('ct-recharge');
+  if (!dialog) return;
+  if (dialog.open) dialog.close();
+  dialog.remove();
+}
+function ctRechargeLater() { CallTargets.shownAt = Date.now(); ctRechargeClose(); }
+function ctRecharge() { CallTargets.shownAt = Date.now(); ctRechargeClose(); zrCallTopup(); }
+
+Native.on('call.connected', d => {
+  if (!ctMemberCall() || d.callId !== S.callId || DEMO || CallTargets.loading === d.callId) return;
+  CallTargets.loading = d.callId; Native.send('call.targets.load', { callId: d.callId });
+});
+Native.on('call.targets', d => {
+  if (!d || d.callId !== S.callId) return;
+  CallTargets.data = d;
+  if (ctMemberCall()) ctPaintTargets();
+});
+Native.on('wallet.balance', d => { if (d.rechargePrompt) CallTargets.recharge = d.rechargePrompt; ctRechargeCheck(); });
+Native.on('session', d => { if (CallTargets.owner !== d.user?.id) Object.assign(CallTargets, { owner: d.user?.id, data: null, loading: '', sent: '', recharge: null, shownAt: 0 }); });
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => { ctRechargeClose(); Object.assign(CallTargets, { owner: '', data: null, loading: '', sent: '', recharge: null, shownAt: 0 }); }));
+setInterval(ctRechargeCheck, 1000);
 
 r();
 Native.send('ready',{demo:DEMO});

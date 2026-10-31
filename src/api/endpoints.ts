@@ -10,6 +10,8 @@ import type { RelationshipKind, Relationships } from "./types";
 import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
 import type { HostAgencyStatus } from "./types";
 import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
+import { callTargetsFrom } from "./adapters";
+import type { CallTargetsInput } from "./types";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -332,6 +334,8 @@ export const api = {
       throw new ApiError("This invitation's call price changed. Review the current price before connecting.", 409, "CALL_PRICE_CHANGED");
     return { callId: idOf(call), to: idOf(call.calleeId), voice: false, invitationId: id, connected: call.status === "accepted", ...callPrice(call) };
   },
+  async callTargets(callId: string) { return callTargetsFrom(await request("GET", `/calls/${encodeURIComponent(callId)}/targets`)); },
+  async setCallTargets(callId: string, targets: CallTargetsInput) { return callTargetsFrom(await request("PUT", `/calls/${encodeURIComponent(callId)}/targets`, targets)); },
   async holdIncomingForTopup(callId: string) { return topupHoldFrom(await request("POST", `/calls/${encodeURIComponent(callId)}/topup-hold`, {}), callId); },
   async reviewIncomingTopup(callId: string) {
     const data = record(await request("GET", `/calls/${encodeURIComponent(callId)}`));
