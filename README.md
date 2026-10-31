@@ -2,6 +2,51 @@
 
 A React Native (Expo) app with creator discovery, private 1:1 video and voice calls, gifts, coin recharge, chats, profiles, settings, and Lenis-powered smooth scrolling.
 
+## Facebetter face effects
+
+Private video calls process outgoing camera frames with Facebetter 2.2.1:
+camera → beauty engine → canvas video track → WebRTC. The local preview and
+the other caller receive the same processed video; microphone audio stays on
+its original track. Beauty, makeup, five bundled filters, five face stickers
+and image adjustments are available from **More options → Beauty & filters**.
+Strength sliders and selections are saved on the device. Reset sends the
+original camera again. Camera flips, camera/mic toggles and minimized calls
+preserve the processing pipeline. Voice calls do not start the beauty engine.
+Available effects depend on the project's Facebetter subscription; paid
+sticker support requires Pro+.
+
+Setup:
+
+1. In `../backend/.env`, set `FACEBETTER_APP_ID` to
+   `a7ff6c85d2384c666eced1f8f4e99f77` and add `FACEBETTER_APP_KEY` from the
+   Facebetter dashboard. Restart the backend. The App Key never enters the app.
+2. Bind **Web Origin / Domain** to `https://aurora.localhost` in Facebetter.
+   Calls run in the WebView, so this integration uses Facebetter's Web SDK
+   even on Android. The Android package is `com.aurora.liveapp` if a separate
+   native SDK binding is needed later.
+3. Add `https://aurora.localhost` to backend `CORS_ORIGIN`. The app loads the
+   pinned runtime from `${EXPO_PUBLIC_API_URL}/facebetter/runtime/2.2.1/`.
+   The first use downloads about 11 MB; versioned resources are cacheable.
+4. Run `npm run build:web` and rebuild/install the app normally. On two
+   physical devices, start a video call, select Smooth/a sticker/a filter,
+   and confirm the remote video changes. Check camera flip, camera off,
+   Reset and hang-up. A valid subscription and matching origin are required.
+
+Effects load asynchronously while the call continues. Missing credentials,
+license errors or unsupported devices leave the original camera usable and
+show an error with **Retry effects** in the effects sheet. No images are sent
+to the token endpoint; frame processing runs locally. Live broadcast release
+flags remain governed by the current release configuration.
+
+Implementation: `web/beauty.js`, `web/media.js`, native `beauty.auth` bridge,
+and backend `POST /api/v1/facebetter/auth`. Official integration details:
+[Facebetter Web video pipeline](https://docs.facebetter.net/web/third-party-integration)
+and [authentication](https://docs.facebetter.net/intro/license).
+
+Run `npm run test:facebetter` for local SDK-adapter, controls and actual WebRTC
+transport checks with fake devices and mocked licenses. These checks do not
+claim to validate the production subscription or physical-device performance.
+
 Android supports mandatory updates published from the admin APK release panel.
 Install the updater bootstrap build once, then future releases download and
 open Android's installer in the app. There is no skip action. See the

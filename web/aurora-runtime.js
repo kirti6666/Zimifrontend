@@ -32,8 +32,8 @@ const FAVN=[5,10,20,50];
 const BEAUTY={
  "Beauty":[["Original","&#9711;",0],["Smooth","&#128167;",1],["Tone","&#9680;",1],["Clearness","&#9678;",1],["Face","&#9723;",1],["Slim","&#9724;",1]],
  "Makeup":[["None","&#9711;",0],["Honey pink","&#128139;",1],["Orange soda","&#128139;",1],["Grapefruit","&#128139;",1],["Watermelon","&#128139;",1],["Red velvet","&#128139;",1]],
- "Sticker":[["None","&#9711;",0],["Reindeer","&#129418;",0],["Ski goggles","&#127958;",0],["Bunny ears","&#128048;",0],["Love","&#128150;",0],["Crown","&#128081;",0]],
- "Filters":[["Original","&#9711;",0],["CT","&#127912;",1],["Warm yellow","&#127774;",1],["Journey","&#127756;",1],["Film","&#127909;",1],["Blue","&#127756;",1]],
+ "Sticker":[["None","&#9711;",0],["Fox","&#129418;",0],["Glasses","&#128083;",0],["Kiss","&#128139;",0],["Mustache","&#129492;",0],["Fan club","&#128150;",0]],
+ "Filters":[["Original","&#9711;",0],["Natural","&#127912;",1],["Milk tea","&#127774;",1],["Rose","&#127801;",1],["Japanese","&#127909;",1],["Vivid","&#127756;",1]],
  "Image quality":[["Original","&#9711;",0],["Temperature","&#127777;",1],["Tints","&#127912;",1],["Luminance","&#9728;",1],["Saturation","&#9681;",1],["Contrast","&#9680;",1]]
 };
 const TASKS=[["Stream 60 minutes","0 / 60 min","5,000"],["Receive 20 gifts","0 / 20","2,000"],["Reach 500 viewers","0 / 500","1,500"]];
@@ -453,9 +453,11 @@ function fxSheet(){
  return shWrap("Beauty and effects",S.v==="setup"?"Applies to your camera before your next call":"Changes apply now and stay on for your next calls",
  `<div class="dtabs">${Object.keys(BEAUTY).map(k=>`<button class="${S.btab===k?"on":""}" onclick="S.btab='${k}';r()">${k}</button>`).join("")}
    <button class="rst" onclick="resetFx()">Reset</button></div>
-  <div class="dopts">${opts.map(([l,e],i)=>`<button class="dopt ${sel===i?"on":""}" onclick="pickFx(${i})">
+  <div class="dopts">${opts.map(([l,e],i)=>`<button class="dopt ${sel===i?"on":""}" aria-pressed="${sel===i}" onclick="pickFx(${i})">
     <span class="dcirc">${e}</span><span class="dlab">${l}</span></button>`).join("")}</div>
-  ${adj?`<div class="slid"><input type="range" min="0" max="100" value="60" aria-label="${opts[sel][0]} strength"></div>`:""}`)}
+  ${adj?`<div class="slid"><input type="range" min="0" max="100" value="${window.ZimiBeauty?ZimiBeauty.strength(S.btab,sel):60}" oninput="setFxStrength(this.value)" aria-label="${opts[sel][0]} strength"></div>`:""}
+  <p data-zimi-beauty-status role="status" aria-live="polite">${esc(window.ZimiBeauty?ZimiBeauty.getState().message:'')}</p>
+  <button class="rst" data-zimi-beauty-retry onclick="ZimiBeauty.sync()" ${!window.ZimiBeauty||ZimiBeauty.getState().status!=='error'?'hidden':''}>Retry effects</button>`)}
 
 function missionSheet(){
  const goal=S.goal, prog=S.gifted||0, pct=Math.min(100,goal?prog/goal*100:0);
@@ -480,8 +482,9 @@ function giftSheet(){
   <div class="gchip" style="margin-top:10px">${FAVN.map(c=>`<button class="${S.favn===c?"on":""}" onclick="S.favn=${c};r()">${c} &times;</button>`).join("")}</div>
   <div class="pnum" style="margin-top:9px"><span>${f[1]} ${f[0]}</span><span>${S.favGot||0} / ${S.favn} &middot; ${n(f[2]*S.favn)} coins</span></div>`)}
 
-function pickFx(i){S.bsel[S.btab]=i;r()}
-function resetFx(){S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,"Image quality":0};r()}
+function pickFx(i){S.bsel[S.btab]=i;if(window.ZimiBeauty)ZimiBeauty.sync();r()}
+function setFxStrength(value){if(window.ZimiBeauty)ZimiBeauty.setStrength(S.btab,S.bsel[S.btab],value)}
+function resetFx(){S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,"Image quality":0};if(window.ZimiBeauty)ZimiBeauty.reset();r()}
 
 /* A rough on-screen stand-in for the chosen beauty filter, so changes are visible. */
 function fxCss(){
@@ -493,7 +496,7 @@ function video(p){
  if(p===me&&!camOn())return `<div class="vcoff">${I("camoff",22)}<span>Camera off</span></div>`;
  if(!DEMO&&window.ZimiMedia)return `<video class="zh-call-video ${p===me?'zh-call-local':''}" ${p===me?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>`;
  return p===me?`<div style="position:absolute;inset:0;filter:${fxCss()||"none"}">${art(p.seed)}</div>`:art(p.seed)}
-function fxOn(){return Object.values(S.bsel).some(Boolean)}
+function fxOn(){return window.ZimiBeauty&&!DEMO?ZimiBeauty.getState().status==='ready':Object.values(S.bsel).some(Boolean)}
 /* One ⋯ button under the video tile; beauty, mute and camera live in its menu. */
 function more(){
  const warn=!S.mic||!camOn();

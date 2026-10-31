@@ -40,6 +40,7 @@ const HEAD = (hosted) => `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <meta name="description" content="Connect with creators through private one-to-one video and voice calls." />
 <title>BinzoLive</title>
+<script type="text/plain" id="facebetter-effect-license">${read("web/facebetter/LICENSE")}</script>
 ${hosted ? WEB_ICON_HEAD : `<link rel="icon" type="image/png" href="${brandIcon}" />`}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
@@ -166,6 +167,9 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/referral.js") +
   "\n" + read("web/agency.js") +
   "\n" + read("web/coins.js") +
+  "\n" + read("node_modules/facebetter/dist/facebetter.js").replace(/[ \t]+$/gm, "") +
+  "\n" + read("web/beauty.js").replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) =>
+    readFileSync(join(root, `web/facebetter/effects/${name}.fbd`)).toString("base64")) +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +

@@ -303,6 +303,13 @@ export const api = {
   },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
+  async beautyAuth() {
+    const data = record(await request("POST", "/facebetter/auth"));
+    if (typeof data.licenseToken !== "string" || !data.licenseToken.trim() || data.licenseToken.length > 128 * 1024) {
+      throw new ApiError("Beauty effects could not be started. Please try again.", 502);
+    }
+    return { licenseToken: data.licenseToken };
+  },
   async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
   async streamMessages(streamId: string) { return items(await request("GET", `/streams/${encodeURIComponent(streamId)}/messages?limit=50`)).map(streamChatFrom).reverse(); },
   async startStream(input: { title: string; category: string; kind?: "video" | "audio" }) {

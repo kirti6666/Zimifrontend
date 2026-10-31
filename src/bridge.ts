@@ -44,6 +44,7 @@ export type WebMessage =
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
   | { type: "catalog.load" | "rtc.config"; data: Record<string, never> }
+  | { type: "beauty.auth"; data: { requestId: number } }
   | { type: "notifications.load"; data: NotificationsQuery & { requestId?: number } }
   | { type: "notifications.read"; data: { ids: string[]; requestId?: number } }
   | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
@@ -223,6 +224,7 @@ export type AppMessage =
   | { type: "ads.opened" | "ads.retired"; data: { id: string } }
   | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number; message?: Message | null; giftDetails?: import("./api/types").Gift & { transferId: string; quantity: number } } }
   | { type: "rtc.config"; data: RtcConfig }
+  | { type: "beauty.auth"; data: { requestId: number; licenseToken: string } }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string; from: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string; from: string } }
   | { type: "stream.peer" | "stream.peerLeft"; data: { streamId: string; userId: string } }
@@ -1292,6 +1294,21 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "relationships.load": return loadRelationships(msg.data.kind, msg.data.page ?? 1, msg.data.requestId);
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }
+      case "beauty.auth": {
+        const { requestId } = msg.data, sessionVersion = getSessionVersion(), document = documentRevision, owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && owner === accountId;
+        if (!sessionAvailable || !owner || !getCachedToken()) {
+          operationError(new ApiError("Sign in before using beauty effects.", 401), msg.type, { requestId });
+          return;
+        }
+        try {
+          const data = await api.beautyAuth();
+          if (applicable() && sessionAvailable) emit({ type: "beauty.auth", data: { ...data, requestId } });
+        } catch (error) {
+          if (applicable()) operationError(error, msg.type, { requestId });
+        }
+        return;
+      }
       case "rtc.signal": case "stream.signal": case "stream.ready": {
         if (msg.type === "rtc.signal" && msg.data.callId === verifyCall?.callId) {
           const { callId, ...signal } = msg.data;

@@ -69,6 +69,14 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
+  const licenseToken = JSON.stringify({ token: 'signed-facebetter-license' });
+  expect('POST', '/facebetter/auth', { licenseToken });
+  assert.deepEqual(plain(await api.beautyAuth()), { licenseToken }, 'Facebetter receives the complete license response text');
+  for (const licenseToken of [undefined, '', '   ', 123, 'x'.repeat(128 * 1024 + 1)]) {
+    expect('POST', '/facebetter/auth', { licenseToken });
+    await assert.rejects(api.beautyAuth(), /Beauty effects could not be started/);
+  }
+  finished();
   const supportId='507f1f77bcf86cd799439041',supportMessageId='507f1f77bcf86cd799439042',supportOwner='507f1f77bcf86cd799439043',supportNow='2026-10-31T10:00:00.000Z';
   const supportTicket={id:supportId,subject:'Call audio problem',category:'calls',status:'open',priority:'normal',requester:{id:supportOwner,name:'Support fixture',role:'host',avatar:null},assignee:null,lastMessage:{body:'Please help',senderType:'user',createdAt:supportNow},unreadUser:0,unreadStaff:1,createdAt:supportNow,updatedAt:supportNow,lastMessageAt:supportNow};
   const supportMessage={id:supportMessageId,ticketId:supportId,body:'Please help',senderType:'user',senderName:'Support fixture',clientMessageId:'support-test-one',createdAt:supportNow};

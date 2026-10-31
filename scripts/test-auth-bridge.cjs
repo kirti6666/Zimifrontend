@@ -145,6 +145,49 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 
+test('Facebetter auth validates requests and returns only the correlated license token', async () => {
+  const h = harness(), licenseToken = '{"token":"signed-facebetter-license"}';
+  for (const data of [{}, { requestId: 0 }, { requestId: -1 }, { requestId: 1.5 }, { requestId: '1' }, { requestId: 1, appKey: 'forged' }]) {
+    assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'beauty.auth', data })), null);
+    h.bridge.handle({ type: 'beauty.auth', data });
+  }
+  assert.equal(h.count('beautyAuth'), 0);
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  h.overrides.beautyAuth = () => ({ licenseToken });
+  h.bridge.handle({ type: 'beauty.auth', data: { requestId: 17 } }); await settle();
+  assert.equal(h.count('beautyAuth'), 1);
+  assert.deepEqual(plain(h.find('beauty.auth').at(-1).data), { requestId: 17, licenseToken });
+  h.overrides.beautyAuth = () => { throw new h.ApiError('Beauty effects are unavailable.', 503); };
+  h.bridge.handle({ type: 'beauty.auth', data: { requestId: 18 } }); await settle();
+  assert.deepEqual(plain(h.find('operation.error').at(-1).data), { action: 'beauty.auth', requestId: 18, message: 'Beauty effects are unavailable.', status: 503 });
+  h.bridge.close();
+});
+
+test('Facebetter auth requires an account and discards late licenses and errors after account or document changes', async () => {
+  const signedOut = harness();
+  signedOut.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+  signedOut.bridge.handle({ type: 'beauty.auth', data: { requestId: 1 } }); await settle();
+  assert.equal(signedOut.count('beautyAuth'), 0);
+  assert.equal(signedOut.find('operation.error').at(-1).data.requestId, 1);
+  signedOut.bridge.close();
+  for (const change of ['session', 'document']) for (const fail of [false, true]) {
+    const h = harness(), pending = deferred();
+    await h.session.setSessionTokens(tokenPair());
+    h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
+    h.overrides.beautyAuth = () => pending.promise;
+    h.bridge.handle({ type: 'beauty.auth', data: { requestId: 21 } }); await settle();
+    if (change === 'session') await h.session.setSessionTokens(tokenPair('bob'));
+    else { h.bridge.documentLoading(); h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle(); }
+    if (fail) pending.reject(new h.ApiError('Old beauty error', 503));
+    else pending.resolve({ licenseToken: 'old-private-license' });
+    await settle();
+    assert.equal(h.find('beauty.auth').length, 0);
+    assert.equal(h.find('operation.error').filter(event => event.data.action === 'beauty.auth').length, 0);
+    h.bridge.close();
+  }
+});
+
 test('support routes remain available to members and pending hosts and live invalidation refreshes only their active view', async () => {
   const h=harness(),self='507f1f77bcf86cd799439031',ticketId='507f1f77bcf86cd799439032',messageId='507f1f77bcf86cd799439033';
   const ticket={id:ticketId,subject:'Need support',status:'open',unreadUser:1,updatedAt:'2026-10-31T10:00:00Z'};
