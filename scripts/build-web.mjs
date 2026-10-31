@@ -110,6 +110,8 @@ const page = (demo, hosted = false) =>
   read("web/icons.css") +
   read("web/live-room.css") +
   read("web/call-setup.css") +
+  read("web/call-dial.css") +
+  read("web/ongoing-call.css") +
   read("web/host-calls.css") +
   read("web/host-studio.css") +
   read("web/verification-call.css") +
@@ -135,6 +137,7 @@ const page = (demo, hosted = false) =>
   read("web/gift-picker.css") +
   read("web/gift-art.css") +
   read("web/call-invitations.css") +
+  read("web/call-targets.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -164,6 +167,8 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +
+  "\n" + read("web/call-ringback.js") +
+  "\n" + read("web/ongoing-call.js") +
   "\n" + read("web/host-calls.js") +
   "\n" + read("web/host-studio.js") +
   "\n" + read("web/verification-call.js") +
@@ -187,6 +192,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/tactile.js") +
   "\n" + read("web/card-video.js") +
   "\n" + read("web/call-invitations.js") +
+  "\n" + read("web/call-targets.js") +
   "\nr();\nNative.send('ready',{demo:DEMO});\n" +
   TAIL;
 

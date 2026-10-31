@@ -1,0 +1,14 @@
+/* The host's targets replace the call rate on the member's call screen, laid out like the host's own row. */
+.zr-sender-call .zr-call-stats.ct-call-targets{display:block;max-width:none}
+.ct-call-targets .hs-targets.ct-mission-only{grid-template-columns:minmax(0,1fr);max-width:185px}
+/* Low-balance Recharge pop-up over a member's call. */
+.ct-recharge{position:fixed;inset:0;margin:auto;width:min(340px,calc(100% - 40px));height:fit-content;max-height:calc(100dvh - 40px);overflow:auto;padding:22px 20px 14px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);text-align:center;font-size:14px;line-height:1.5}
+.ct-recharge::backdrop{background:rgba(0,0,0,.4)}
+.ct-recharge-coin{display:flex;justify-content:center;margin-bottom:10px}
+.ct-recharge h2{margin:0 0 6px;font-size:18px;font-weight:600;line-height:1.35}
+.ct-recharge p{margin:0 0 16px;color:var(--muted);font-size:13px}
+.ct-recharge p b{color:var(--ink);font-weight:600}
+.ct-recharge-primary,.ct-recharge-later{display:block;width:100%;min-height:46px;padding:11px 14px;font:inherit;font-weight:600}
+.ct-recharge-primary{background:var(--cta);color:var(--cta-ink)}
+.ct-recharge-later{min-height:42px;margin-top:6px;background:none;color:var(--muted)}
+.ct-recharge button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}

@@ -36,7 +36,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
     clearDeliveredPush: () => { push.cleared++; },
   };
   class ApiError extends Error {
-    constructor(message, status, code, retryAfterSeconds) { super(message); Object.assign(this, { status, code, retryAfterSeconds }); }
+    constructor(message, status, code, retryAfterSeconds, requiredCoins) { super(message); Object.assign(this, { status, code, retryAfterSeconds, requiredCoins }); }
   }
   const connectionListeners = new Set();
   let connectionStatus;
@@ -1912,6 +1912,20 @@ test('creator search uses its own latest request and preserves the home category
   for (const data of [{ q: 'x'.repeat(101) }, { q: 'valid', page: 0 }, { q: 42 }]) {
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'hosts.search', data })), null);
   }
+  h.bridge.close();
+});
+
+test('insufficient outgoing call coins reach the recharge screen with the server requirement and refresh the wallet', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const before = h.count('wallet');
+  h.overrides.startCall = () => { throw new h.ApiError('Recharge to call.', 402, 'INSUFFICIENT_COINS', undefined, 80); };
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.deepEqual(plain(h.find('call.failed').at(-1).data), { message: 'Recharge to call.', code: 'INSUFFICIENT_COINS', requiredCoins: 80 });
+  assert.equal(h.count('wallet'), before + 1);
+  assert.equal(h.find('call.created').length, 0);
+  assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), false);
   h.bridge.close();
 });
 
@@ -3802,5 +3816,33 @@ test('Home feeds, the leaderboard and Refer a Friend pass the message check and 
   h.bridge.handle({ type: 'referral.share', data: {} }); await settle();
   assert.equal(h.shares.length, 1);
   assert.equal(h.shares[0].message, 'Join me on BinzoLive! Use my code AB2CD3 when you sign up and get 100 free coins. https://binzolive.com/?ref=AB2CD3');
+  h.bridge.close();
+});
+
+test('call targets reach only the call on screen and target messages need that active call', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const targets = { callId: 'target-call', gift: null, giftCount: 10, giftProgress: 2, goalCoins: 1000000, earnedCoins: 300 };
+  h.live[0].onEvent({ type: 'call.targets', data: targets });
+  assert.equal(h.find('call.targets').length, 0, 'Targets before the call connects are dropped');
+  h.bridge.handle({ type: 'call.targets.load', data: { callId: 'target-call' } }); await settle();
+  assert.equal(h.count('callTargets'), 0, 'No target read without an active call');
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'target-call', initiator: true } });
+  h.live[0].onEvent({ type: 'call.targets', data: targets });
+  h.live[0].onEvent({ type: 'call.targets', data: { ...targets, callId: 'old-call' } });
+  assert.deepEqual(h.find('call.targets').map(post => post.data.callId), ['target-call'], 'Only the active call hears its targets');
+  h.overrides.callTargets = () => ({ ...targets, earnedCoins: 900 });
+  h.bridge.handle({ type: 'call.targets.load', data: { callId: 'target-call' } }); await settle();
+  assert.equal(h.find('call.targets').at(-1).data.earnedCoins, 900, 'A member reopening the call reads the latest targets');
+  const input = { giftId: '507f1f77bcf86cd799439031', giftCount: 10, giftProgress: 2, goalCoins: 1000000, earnedCoins: 300 };
+  h.overrides.setCallTargets = () => { throw new h.ApiError('Only the host shares call targets', 403); };
+  const before = h.posts.length;
+  h.bridge.handle({ type: 'call.targets.set', data: { callId: 'target-call', ...input } }); await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(h.calls.find(call => call.name === 'setCallTargets').args)), ['target-call', input]);
+  assert.equal(h.posts.length, before, 'A refused target update stays quiet');
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'call.targets.set', data: { callId: 'target-call', ...input, giftCount: 0 } })), null);
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'call.targets.set', data: { callId: 'target-call', ...input, extra: 1 } })), null);
+  assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'call.targets.load', data: { callId: 'target-call', extra: 1 } })), null);
   h.bridge.close();
 });

@@ -199,14 +199,37 @@ async function assertLayout(page, label) {
     assert.deepEqual((await sent(page, 'call.start')).at(-1).data, { to: hostId, voice: false });
     assert.equal(await page.evaluate(() => __media.requests.at(-1).constraints.video !== false), true);
     assert.equal(await page.evaluate(() => __media.tracks.filter(track => track.readyState === 'live').length), 2);
+    // While the call rings, the caller hears ringback over their own camera: full screen,
+    // mirrored like a mirror, with straight edges and flip, camera and mute beside Cancel.
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), true, 'Ringback plays while the video call rings');
+    await page.waitForFunction(() => { const video = document.querySelector('.ringscr.dial.is-video .ringbg video[data-zimi-local]'); return video?.videoWidth > 0 && !video.paused; });
+    const selfView = await page.evaluate(() => {
+      const video = document.querySelector('.ringscr.dial video[data-zimi-local]'), box = video.getBoundingClientRect(), style = getComputedStyle(video);
+      return { live: video.srcObject.getVideoTracks().some(track => track.readyState === 'live' && track.enabled), fills: box.width >= innerWidth && box.height >= innerHeight, mirrored: style.transform === 'matrix(-1, 0, 0, 1, 0, 0)', corners: style.borderRadius };
+    });
+    assert.deepEqual(selfView, { live: true, fills: true, mirrored: true, corners: '0px' }, 'The caller sees their own camera full screen while it rings');
+    assert.deepEqual(await page.locator('.ringscr.dial .dialtool').evaluateAll(tools => tools.map(tool => tool.getAttribute('aria-label'))), ['Flip camera', 'Turn camera off', 'Mute microphone']);
+    await button(page, 'Turn camera off').click();
+    assert.equal(await page.locator('.ringscr.dial.is-video').count(), 0, 'Turning the camera off leaves the calling screen without the preview');
+    assert.equal(await page.evaluate(() => __media.tracks.some(track => track.kind === 'video' && track.readyState === 'live' && track.enabled)), false, 'The camera is off for the call too');
+    assert.match(await page.locator('.ringscr.dial .ringeye').innerText(), /video call/i);
+    await button(page, 'Turn camera on').click();
+    await page.locator('.ringscr.dial.is-video').waitFor();
     await button(page, 'Cancel call').click();
     await page.waitForFunction(() => __media.tracks.every(track => track.readyState === 'ended'));
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), false, 'Cancelling silences the ringback');
     await button(page, 'Voice call').click();
     await button(page, 'Start voice call').click();
     await page.waitForFunction(() => __sent.filter(message => message.type === 'call.start').length === 2);
     assert.deepEqual((await sent(page, 'call.start')).at(-1).data, { to: hostId, voice: true });
     assert.equal(await page.evaluate(() => __media.requests.at(-1).constraints.video), false, 'Voice requests microphone only');
     assert.equal(await page.evaluate(() => __media.tracks.filter(track => track.readyState === 'live' && track.kind === 'video').length), 0);
+    assert.match(await page.locator('.ringscr.dial .ringeye').innerText(), /voice call/i);
+    assert.equal(await page.locator('.ringscr.dial video, .ringscr.dial .dialtool').count(), 0, 'A voice call rings without a camera preview or camera controls');
+    await receive(page, 'app.background', {});
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), false, 'Ringback stops when the app leaves the foreground');
+    await receive(page, 'app.foreground', {});
+    assert.equal(await page.evaluate(() => ZimiRingback.playing()), true, 'Ringback resumes while the call still rings');
     await button(page, 'Cancel call').click();
 
     const left = await startPending(page);
@@ -227,11 +250,12 @@ async function assertLayout(page, label) {
     await button(page, 'Cancel call').click();
     await page.evaluate(id => go('precall', id), hostId);
 
-    const unavailable = await startPending(page);
+    const availabilityChanged = await startPending(page);
     await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: true }));
-    await release(page, unavailable);
-    assert.equal((await sent(page, 'call.start')).length, 3, 'A creator turning calls off cancels pending preparation');
-    assert.equal(await button(page, 'Currently unavailable').isDisabled(), true);
+    await page.evaluate(index => __media.requests[index].release(), availabilityChanged);
+    await page.waitForFunction(() => __sent.filter(message => message.type === 'call.start').length === 4);
+    assert.equal((await sent(page, 'call.start')).at(-1).data.to, hostId, 'An approved host turning availability off does not cancel a member call');
+    await button(page, 'Cancel call').click();
     await receive(page, 'data.home', homeData());
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'Availability refresh updates the open setup');
     await receive(page, 'data.home', homeData({ ...host, availableForCall: false, online: false }));
@@ -241,12 +265,14 @@ async function assertLayout(page, label) {
     await receive(page, 'data.hosts', { hosts: [host, other] });
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A creator list update preserves server availability');
     await receive(page, 'data.hosts', { hosts: [{ ...host, availableForCall: false }, other] });
-    assert.equal(await button(page, 'Currently unavailable').isDisabled(), true);
-    await button(page, 'Explore creators').click();
-    assert.equal(await page.evaluate(() => S.v), 'home', 'Explore is removed, so its route opens Home');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'Availability off never disables manual calls to approved hosts');
+    await button(page, 'Back').click();
+    await page.locator(`.zh-creator-card[data-host-id="${hostId}"] .zh-creator-call`).click();
+    assert.equal(await page.evaluate(() => S.v), 'precall', 'The Home card opens setup even with availability off');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true);
     assert.equal(await page.evaluate(() => __media.tracks.every(track => track.readyState === 'ended')), true);
     assert.deepEqual(errors, [], 'All setup states run without uncaught browser errors');
-    console.log('PASS: full-height themed call setup, responsive identity/fallback, blocked live routing, explicit media consent, cancellation and late capture cleanup, permission retry, video/voice payloads, creator changes, unavailable refresh and Explore.');
+    console.log('PASS: themed call setup, explicit media consent, cancellation and late cleanup, permission retry, video/voice payloads, ringback, creator changes, offline and availability-off host calls.');
   } finally {
     await browser.close();
   }

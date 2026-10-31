@@ -1769,7 +1769,7 @@ button.gpill[onclick]{cursor:pointer}
 .ob-shell svg, .ob-dialog svg { display: block; flex: 0 0 auto; }
 .ob-shell a, .ob-dialog a { color: var(--ob-soft); text-underline-offset: 3px; }
 
-/* Step chrome: back, progress and help sit on frosted glass. */
+/* Back, readable setup progress and help use the same header on every step. */
 .ob-header, .ob-main, .ob-actions, .ob-footer { width: 100%; max-width: 500px; margin-inline: auto; }
 .ob-header { display: flex; align-items: center; gap: 14px; min-height: 40px; margin-bottom: 30px; }
 /* Round preview controls; navigation uses the shared .zb-back component. */
@@ -1787,7 +1787,8 @@ button.gpill[onclick]{cursor:pointer}
   background: var(--surface);
 }
 .ob-icon:not(.zb-back) svg { width: 21px; height: 21px; }
-.ob-progress { display: flex; align-items: center; flex: 1; gap: 6px; }
+.ob-progress { position: relative; display: flex; align-items: center; flex: 1; gap: 6px; min-width: 0; padding-bottom: 16px; }
+.ob-progress::after { content: attr(data-label); position: absolute; left: 0; bottom: 0; color: var(--ob-muted); font-size: 10px; line-height: 12px; font-weight: 500; white-space: nowrap; }
 .ob-progress span { position: relative; display: block; height: 5px; flex: 1; border-radius: 8px; background: var(--ob-edge); overflow: hidden; transition: box-shadow .3s; }
 .ob-progress span::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, var(--ob-pink), color-mix(in srgb, var(--ob-pink) 55%, var(--ob-soft))); transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
 .ob-progress .done::after, .ob-progress .current::after { transform: none; }
@@ -1813,7 +1814,7 @@ button.gpill[onclick]{cursor:pointer}
   text-transform: uppercase;
 }
 .ob-eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--ob-pink); border-radius: 50%; box-shadow: 0 0 10px var(--ob-glow); }
-.ob-heading h1, h1.ob-heading { margin: 0; font-size: clamp(29px, 8vw, 40px); line-height: 1.1; font-weight: 750; letter-spacing: -.045em; color: var(--ob-text); text-wrap: balance; }
+.ob-heading h1, h1.ob-heading { margin: 0; font-size: 28px; line-height: 1.18; font-weight: 600; letter-spacing: -.035em; color: var(--ob-text); text-wrap: balance; }
 /* One accent word per headline, painted with the theme's own gradient. */
 .ob-heading em, .ob-hero-heading em { font-style: normal; background: linear-gradient(100deg, var(--ob-pink), var(--ob-soft)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .ob-description { margin: 10px 0 0; color: var(--ob-muted); font-size: 14px; line-height: 1.6; font-weight: 450; }
@@ -1866,7 +1867,7 @@ button.gpill[onclick]{cursor:pointer}
 .ob-top-login { min-height: 40px !important; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 13px !important; font-weight: 700 !important; }
 .ob-welcome-grid { display: grid; grid-template-areas: "showcase" "intro" "actions"; grid-template-columns: minmax(0, 1fr); gap: 18px; width: 100%; max-width: 480px; margin: auto; }
 .ob-intro { grid-area: intro; text-align: center; }
-.ob-hero-heading { margin: 0; font-size: clamp(32px, 9.2vw, 44px); line-height: 1.04; letter-spacing: -.05em; font-weight: 800; text-wrap: balance; }
+.ob-hero-heading { margin: 0; font-size: clamp(32px, 9.2vw, 44px); line-height: 1.04; letter-spacing: -.05em; font-weight: 800; text-wrap: balance; overflow-wrap: anywhere; }
 .ob-intro .ob-description { max-width: 320px; margin: 10px auto 0; font-size: 14px; line-height: 1.55; }
 .ob-showcase { grid-area: showcase; position: relative; height: clamp(260px, 38dvh, 340px); width: 100%; max-width: 420px; margin: 0 auto; perspective: 1100px; touch-action: pan-y; }
 /* Portraits are artwork: they keep a dark scrim and white type in every theme. */
@@ -1903,18 +1904,13 @@ button.gpill[onclick]{cursor:pointer}
 .ob-hearts svg:nth-child(2) { left: 10%; width: 10px; height: 10px; color: var(--ob-soft); animation-delay: 1.2s; }
 .ob-hearts svg:nth-child(3) { left: 75%; width: 12px; height: 12px; animation-delay: 2.4s; }
 .ob-deck-controls { position: absolute; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 8px; bottom: -8px; left: 0; right: 0; }
-.ob-deck-controls > button { width: 44px; height: 44px; border-color: transparent; background: transparent; color: var(--ob-muted); backdrop-filter: none; -webkit-backdrop-filter: none; }
-.ob-deck-controls > button svg { width: 16px; height: 16px; }
+.ob-welcome .ob-deck-controls > button.ob-icon { flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px !important; padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.ob-welcome .ob-deck-controls > button.ob-icon > svg { width: 18px; height: 18px; stroke-width: 1.5; }
 .ob-dots { display: flex; align-items: center; }
 .ob-dots button { display: flex; align-items: center; justify-content: center; width: 30px; min-width: 30px; height: 44px; padding: 0; }
 .ob-dots button::before { content: ""; width: 6px; height: 6px; border-radius: 10px; background: color-mix(in srgb, var(--ob-text) 26%, transparent); transition: width .25s, background-color .25s; }
 .ob-dots button.selected::before { width: 22px; background: var(--ob-pink); }
 .ob-welcome-actions { grid-area: actions; width: 100%; display: flex; flex-direction: column; gap: 10px; }
-.ob-role-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-.ob-role-switch button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 44px; padding: 9px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 12.5px !important; font-weight: 650 !important; letter-spacing: -.01em; }
-.ob-role-switch button svg { width: 15px; height: 15px; }
-.ob-role-switch button.selected { color: var(--ob-text); background: var(--ob-raised); border-color: var(--ob-edge); box-shadow: 0 8px 18px -12px var(--ob-shadow); }
-.ob-role-switch button.selected svg { color: var(--ob-pink); }
 .ob-trust { display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--ob-faint); font-size: 11px; font-weight: 550; line-height: 1.5; }
 .ob-trust > span { display: inline-flex; align-items: center; gap: 6px; }
 .ob-trust svg { width: 12px; height: 12px; color: var(--ob-soft); }
@@ -1953,27 +1949,35 @@ button.gpill[onclick]{cursor:pointer}
 .ob-email-status.taken, .ob-email-status.invalid { color: var(--ob-danger); font-weight: 550; animation: ob-error-in .25s ease-out; }
 .ob-email-status.available { color: var(--ob-soft); font-weight: 650; }
 .ob-email-status svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
-.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
-.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1px solid var(--ob-edge); border-radius: 16px; background: var(--ob-field); color: var(--ob-text); font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s, transform .18s; }
-.ob-otp input:focus { border-color: var(--ob-pink); }
-.ob-otp input.filled { border-color: color-mix(in srgb, var(--ob-pink) 55%, transparent); background-color: color-mix(in srgb, var(--ob-pink) 10%, var(--ob-surface)); }
-.ob-resend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-top: 16px; font-size: 13px; line-height: 1.6; color: var(--ob-faint); }
-.ob-resend button { min-height: 44px; padding: 10px 6px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
+/* The number being verified, with Edit beside it, kept together on one line. */
+.ob-sent-to { display: inline-flex; flex-wrap: nowrap; align-items: baseline; gap: 8px; white-space: nowrap; }
+.ob-sent-to strong { color: var(--ob-text); font-weight: 650; }
+.ob-shell .ob-description .ob-edit-number { min-height: 0; margin: -10px -6px; padding: 10px 6px; color: var(--ob-soft); font-size: inherit; font-weight: 650; line-height: inherit; }
+.ob-shell .ob-description .ob-edit-number:disabled { opacity: .5; }
+/* Code cells share the column evenly in the shared 10px boxes; only the cell being
+   typed in takes the accent. */
+.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 88px)); gap: min(10px, 2.5vw); }
+.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1.5px solid var(--ob-edge); background: var(--ob-field); color: var(--ob-text); font-size: 26px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s; }
+.ob-otp input.filled { background: var(--ob-bg); border-color: color-mix(in srgb, var(--ob-text) 30%, transparent); }
+.ob-otp input:focus { background: var(--ob-bg); border-color: var(--ob-pink); }
+.ob-otp:has([aria-invalid="true"]) input { border-color: var(--ob-danger); }
+.ob-otp input:disabled { opacity: .6; }
+.ob-resend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--ob-muted); }
+.ob-resend b { color: var(--ob-text); font-weight: 650; font-variant-numeric: tabular-nums; }
+.ob-resend button { min-height: 44px; margin-block: -10px; padding: 10px 4px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
 .ob-resend button:disabled { color: var(--ob-faint); }
-.ob-change-number { display: inline-flex; align-items: center; gap: 6px; padding: 5px 0; color: var(--ob-soft); }
-.ob-change-number + .ob-otp { margin-top: 12px; }
-.ob-demo-note { justify-content: center; margin-top: 8px; font-size: 10px; }
+.ob-demo-note { margin-top: 8px; font-size: 10px; }
 .ob-options { display: flex; gap: 8px; flex-wrap: wrap; }
 .ob-options button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 15px; border: 1px solid var(--ob-edge); border-radius: 999px; color: var(--ob-text); background: var(--ob-field); font-size: 13px; font-weight: 600; }
 .ob-options button.selected { color: var(--ob-on-pink); border-color: var(--ob-pink); background: var(--ob-pink); box-shadow: 0 8px 18px -12px var(--ob-glow); }
-/* "I am": three choices in one row; the longest label gets the most room. */
-.ob-field.ob-inline { flex-direction: row; align-items: center; gap: 12px; }
+/* Gender choices wrap by their text width when system text is enlarged. */
+.ob-field.ob-inline { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; }
 .ob-inline > .ob-label { flex: none; }
-.ob-inline > .ob-segment { flex: 1; min-width: 0; }
-.ob-segment { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-field); }
+.ob-inline > .ob-segment { flex: 1 1 180px; min-width: 0; }
+.ob-segment { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-field); }
 .ob-segment:focus { outline: none; }
 .ob-segment[aria-invalid="true"] { border-color: var(--ob-danger); }
-.ob-segment button { min-width: 0; min-height: 40px !important; padding: 6px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 13px !important; font-weight: 650 !important; line-height: 1.2; }
+.ob-segment button { flex: 1 1 max-content; min-width: min-content; max-width: 100%; min-height: 40px !important; padding: 6px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 13px !important; font-weight: 650 !important; line-height: 1.2; white-space: normal; }
 .ob-segment button.selected { color: var(--ob-on-pink); background: var(--ob-pink); box-shadow: 0 6px 14px -10px var(--ob-glow); }
 .ob-check { display: flex; align-items: flex-start; gap: 11px; color: var(--ob-muted); font-size: 13px; line-height: 1.55; cursor: pointer; padding: 8px 0; min-height: 44px; }
 .ob-check input { accent-color: var(--ob-pink); width: 20px; height: 20px; flex: 0 0 20px; margin: 0; border-radius: 6px; }
@@ -2073,7 +2077,7 @@ button.gpill[onclick]{cursor:pointer}
   .ob-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 20px 34px -16px var(--ob-glow), 0 3px 8px -4px var(--ob-glow), inset 0 1px 0 rgb(255 255 255 / .22); }
   .ob-secondary:hover, .ob-icon:not(.zb-back):hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
   .ob-text-button:hover, .ob-resend button:hover:not(:disabled) { color: var(--ob-text); }
-  .ob-role-switch button:hover:not(.selected), .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
+  .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
   .ob-upload:hover { border-color: var(--ob-pink); }
   .ob-thumb:hover { border-color: var(--ob-pink); }
 }
@@ -2088,7 +2092,7 @@ button.gpill[onclick]{cursor:pointer}
   .ob-footer { margin-bottom: auto; }
   .ob-shell:not(.ob-welcome) .ob-header { margin-top: auto; }
   .ob-shell:not(.ob-welcome)::after { content: ""; flex: 1; min-height: 25px; }
-  .ob-heading h1, h1.ob-heading { font-size: 40px; }
+  .ob-heading h1, h1.ob-heading { font-size: 32px; }
   .ob-description { font-size: 15px; }
   .ob-interest { padding: 13px 18px; font-size: 14px !important; }
   .ob-photo-layout { min-height: 310px; grid-template-columns: 1fr 2fr; }
@@ -2145,7 +2149,6 @@ button.gpill[onclick]{cursor:pointer}
   .ob-intro .ob-description { font-size: 13px; }
   .ob-brand { font-size: 23px; }
   .ob-top-login { padding: 0 15px; }
-  .ob-role-switch button { font-size: 12px !important; gap: 5px; }
   .ob-segment button { font-size: 12px !important; padding-inline: 4px; }
   .ob-interest { padding: 10px 12px; font-size: 12.5px !important; gap: 6px; }
   .ob-interests { gap: 8px 6px; }
@@ -2153,7 +2156,7 @@ button.gpill[onclick]{cursor:pointer}
   .ob-country { padding: 0 11px; gap: 4px; }
   .ob-phone-field input { padding-inline: 12px !important; font-size: 17px !important; }
   .ob-otp { gap: 6px; }
-  .ob-otp input { height: 56px; border-radius: 14px; font-size: 23px; }
+  .ob-otp input { font-size: 23px; }
   .ob-photo-layout { gap: 9px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 239px; border-radius: 20px; }
   .ob-upload b { font-size: 13px; }
@@ -2183,7 +2186,6 @@ button.gpill[onclick]{cursor:pointer}
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 48px; padding-block: 11px; }
   .ob-options button { padding-block: 8px; }
   .ob-check { padding: 4px 0; }
-  .ob-otp input { height: 56px; }
   .ob-photo-layout { min-height: 0; margin-top: 18px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 220px; }
   .ob-preview-heading { margin: 16px 0 10px; }
@@ -2205,6 +2207,7 @@ button.gpill[onclick]{cursor:pointer}
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 44px; padding-block: 9px; }
   .ob-segment { padding: 3px; }
   .ob-segment button { min-height: 36px !important; padding-block: 4px; }
+  .ob-otp input { height: 56px; }
   .ob-actions { padding-top: 12px; }
   .ob-actions .ob-primary { min-height: 52px; }
   .ob-error { margin-top: 8px; padding: 7px 12px; }
@@ -2218,6 +2221,23 @@ button.gpill[onclick]{cursor:pointer}
   .ob-header { margin-top: 0 !important; margin-bottom: 20px; }
   .ob-welcome-grid { max-width: 500px; margin-top: 10px; }
   .ob-showcase { height: 300px; }
+}
+
+/* Keep the welcome action at the bottom of the available phone/tablet space.
+   Auto margins balance the artwork above it; short screens can still scroll. */
+@media (max-width: 899px) {
+  .ob-welcome { padding: max(20px, var(--safe-top)) max(20px, var(--safe-right)) max(20px, var(--safe-bottom)) max(20px, var(--safe-left)); }
+  .ob-welcome-top { flex-shrink: 0; margin-bottom: 20px; }
+  .ob-welcome-grid { display: flex; flex: 1; flex-direction: column; gap: 20px; margin: 0 auto; }
+  .ob-welcome .ob-showcase { order: 0; flex: none; margin-top: auto; }
+  .ob-welcome .ob-intro { order: 1; flex: none; }
+  .ob-welcome-actions { order: 2; flex: none; margin-top: auto; padding-top: 20px; }
+}
+@media (max-height: 740px) and (max-width: 599px) {
+  .ob-welcome { padding-top: max(16px, var(--safe-top)); padding-bottom: max(16px, var(--safe-bottom)); }
+  .ob-welcome-top { margin-bottom: 16px; }
+  .ob-welcome-grid { gap: 16px; }
+  .ob-welcome-actions { padding-top: 12px; }
 }
 
 /* Session recovery and shared app notices. */
@@ -2348,7 +2368,7 @@ button.gpill[onclick]{cursor:pointer}
 .zh-creator-card>.zh-card-video{z-index:-2}
 .zh-creator-shade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,0) 26%,rgba(0,0,0,0) 58%,rgba(0,0,0,.72))}
 .zh-creator-hit{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:transparent}
-.zh-creator-status{position:absolute;top:7px;left:7px;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 14px);padding:3px 8px;background:rgba(0,0,0,.42);color:#fff;font-size:12px;font-weight:500;line-height:1.4;white-space:nowrap;pointer-events:none}
+.zh-creator-status{position:absolute;top:0;left:0;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 14px);padding:4px 10px;background:rgba(0,0,0,.42);color:#fff;font-size:12px;font-weight:500;line-height:1.4;white-space:nowrap;pointer-events:none}
 .zh-creator-status>i{width:6px;height:6px;flex:none;border-radius:50%;background:var(--online)}
 .zh-creator-status.is-live>i{background:var(--live)}
 .zh-creator-bottom{position:absolute;left:10px;right:7px;bottom:7px;display:flex;align-items:center;gap:6px;pointer-events:none}
@@ -2365,8 +2385,9 @@ button.gpill[onclick]{cursor:pointer}
 /* India's flag is drawn in CSS so it looks the same on every device: a plain 3:2 rectangle
    with square corners (in the flat straight list), in its own colors in every theme. */
 .zh-flag{display:inline-block;flex:none;width:18px;height:12px;background:radial-gradient(circle at 50% 50%,#06038d 0 1.5px,transparent 1.9px),linear-gradient(#ff9933 0 33.4%,#fff 33.4% 66.6%,#138808 66.6%)}
+.zh-flag-emoji{display:inline-block;flex:none;font-size:15px;line-height:1;font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif}
 .zh-flag.zh-flag-chip{width:21px;height:14px;background:radial-gradient(circle at 50% 50%,#06038d 0 1.8px,transparent 2.2px),linear-gradient(#ff9933 0 33.4%,#fff 33.4% 66.6%,#138808 66.6%)}
-@media(min-width:600px){.zh-creator-status{top:10px;left:10px;font-size:13px;padding:4px 10px}.zh-creator-bottom{left:12px;right:10px;bottom:10px;gap:8px}.zh-creator-name{font-size:17px}.zh-creator-call{width:44px;height:44px}}
+@media(min-width:600px){.zh-creator-status{font-size:13px;padding:5px 12px}.zh-creator-bottom{left:12px;right:10px;bottom:10px;gap:8px}.zh-creator-name{font-size:17px}.zh-creator-call{width:44px;height:44px}}
 @media(max-width:359px){.zh-creator-status{font-size:11px;padding:2px 7px}.zh-creator-bottom{left:8px;right:6px;bottom:6px;gap:4px}.zh-creator-name{font-size:13px;gap:4px}.zh-creator-call{width:30px;height:30px}}
 @media(prefers-reduced-motion:reduce){.zh-creator-card>.zh-photo{transition:none!important;transform:none!important}}
 .zh-bonus{display:flex;align-items:center;gap:10px;background:#331c2b;border-radius:14px;padding:12px;margin:24px 0 0}
@@ -2607,6 +2628,14 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-meta>b{font-weight:600;color:var(--theme-danger,#ff8a9a)}
 .zc-tick{display:inline-flex}
 .zc-tick.read{color:var(--accent-ink)}
+/* A call in the conversation: its kind, then how long it lasted or how it ended. */
+.zc-call-bubble{display:flex;align-items:center;gap:10px;min-width:156px;padding-block:10px;white-space:normal}
+.zc-call-icon{display:grid;flex:none;place-items:center;width:36px;height:36px;background:color-mix(in srgb,currentColor 14%,transparent)}
+.zc-call-icon svg{width:18px;height:18px}
+.zc-call-copy{display:flex;flex-direction:column;gap:1px;min-width:0;line-height:1.3}
+.zc-call-copy b{font-size:14px;font-weight:600}
+.zc-call-copy small{display:flex;align-items:center;gap:4px;font-size:12px;opacity:.8;font-variant-numeric:tabular-nums}
+.zc-call-bubble.is-missed .zc-call-icon,.zc-call-bubble.is-missed small{color:var(--theme-danger,#e5486a);opacity:1}
 
 .zc-msg-gift .zc-msg-stack{width:210px;max-width:80%}
 .zc-gift-card{width:100%;padding:4px;background:transparent;border:0;box-shadow:none}
@@ -3133,8 +3162,8 @@ html:root[data-theme="dark"] .zc-thread{
 :root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
 .zr-call .zr-video{background:var(--media-canvas)}
 .zr-call .zr-video>video,.zr-call .zr-pip>video{object-fit:contain;object-position:center}
-/* The sender's main video fills the call viewport behind the floating controls. */
-.zr-sender-call .zr-video>video{object-fit:cover}
+/* Remote video fills either participant's stage or PiP with centered, proportional cropping. */
+.zr-call .zr-video>video[data-zimi-remote],.zr-call .zr-pip>video[data-zimi-remote]{object-fit:cover;object-position:center}
 .zr-call .zr-shade{display:none}
 .zr-call .zr-top{background:transparent;padding-bottom:8px}
 .zr-call:not(.zr-voice-call)>:is(.zr-top,.zr-bottom,.zr-pip,.zr-video){--room-ink:var(--call-ink);--room-muted:var(--call-muted);--room-glass:var(--call-control);color:var(--room-ink)}
@@ -3203,7 +3232,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zr-call-dock .zr-hangup>svg{padding:0;background:none;border-radius:0;width:22px;height:22px;color:var(--canvas)}
 .zr-call-dock>.zr-dock-controls{background:var(--room-ink);color:var(--canvas)}
 .zr-call-composer{margin:0 0 10px}
-.zr-call-composer .zr-compose{background:var(--surface);border:1px solid var(--line);height:43px}
+.zr-call-composer .zr-compose{--room-ink:var(--ink);--room-muted:var(--muted);background:var(--surface);color:var(--ink);border:1px solid var(--line);height:43px}
 .zr-call-composer .zr-compose:focus-within{border-color:var(--accent)}
 .zr-call .zr-sheet .zr-call-controls{margin:18px 0 24px;gap:6px;max-width:none}
 .zr-call .zr-sheet .zr-tool>span{width:46px;height:46px;background:var(--raised)}
@@ -3247,7 +3276,7 @@ html:root[data-theme="dark"] .zc-thread{
 
 /* The host's call follows the host studio reference: their own camera on the full stage, the
    caller in the corner, compact targets and controls. Colours stay with the selected theme. */
-.zr-call-reference .zr-reference-stage>video[data-zimi-shape=landscape]{object-fit:contain}
+.zr-call-reference .zr-reference-stage>video[data-zimi-local][data-zimi-shape=landscape]{object-fit:contain}
 .zr-call-reference .zr-reference-stage.camera-off>video{visibility:hidden}
 .zr-call-reference .zr-camera-off{position:absolute;inset:26% 0 32%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--room-muted)}
 .zr-call-reference .zr-top{padding:0 14px}
@@ -3268,7 +3297,6 @@ html:root[data-theme="dark"] .zc-thread{
 .zr-call-reference .hc-fee{min-height:25px;margin-top:9px;padding:4px 10px;gap:5px;font-size:10px;line-height:1.5}
 .zr-call-reference .hc-fee b{color:var(--accent-ink)}
 .zr-call-reference .zr-pip{top:126px;right:12px;width:84px;height:116px;padding:0;border:2px solid color-mix(in srgb,var(--room-ink) 40%,transparent);border-radius:14px;background:var(--media-canvas)}
-.zr-call-reference .zr-pip>video{object-fit:contain}
 .zr-call-reference .zr-top>.zr-gift-alert{position:absolute;width:1px;height:1px;min-height:0;overflow:hidden;clip-path:inset(50%);padding:0;margin:0;border:0;white-space:nowrap}
 .zr-call-reference .zr-bottom{padding:12px 14px max(10px,var(--safe-bottom))}
 .zr-call-reference .zr-status{margin:0 0 7px;max-width:calc(100% - 16px);font-size:10px;line-height:1.4;color:var(--room-muted)}
@@ -3324,6 +3352,91 @@ html:root[data-theme="dark"] .zc-thread{
 
 .zpc-modes.zpc-video-only{grid-template-columns:minmax(0,1fr)}
 .zpc-cost-note{margin:10px 0 0;text-align:center;font-size:calc(10px * var(--theme-font-scale,1));color:var(--muted);line-height:1.6}
+/* Outgoing call: the incoming ring's quiet stage. The avatar rings, its small double
+   nudge and the "Calling" dots keep time with the ringback tone's 3s cycle;
+   web/call-ringback.js supplies --dial-phase so a redraw continues the cycle. */
+.ringscr.dial{justify-content:flex-start;padding:max(40px,8dvh) 24px max(36px,calc(var(--safe-bottom) + 24px));overflow-y:auto;overscroll-behavior:contain}
+.ringscr.dial .ringbg{inset:0;opacity:1;filter:none;transform:none;background:radial-gradient(ellipse 75% 45% at 50% 40%,color-mix(in srgb,var(--accent) 14%,transparent),transparent);animation:dial-glow 3s ease-in-out var(--dial-phase,0s) infinite}
+.ringscr.dial .ringeye{z-index:1;gap:6px;margin:auto 0 48px;border:1px solid var(--line);font-size:10px;letter-spacing:.09em}
+.ringscr.dial .ringeye svg{width:13px;height:13px;color:var(--accent-ink)}
+.ringscr.dial .ringorb{isolation:isolate;margin:0;animation:dial-nudge 3s ease-in-out var(--dial-phase,0s) infinite}
+.ringscr.dial .ringorb::before,.ringscr.dial .ringorb::after{content:"";position:absolute;inset:-14px;z-index:-1;border:1.5px solid color-mix(in srgb,var(--accent) 50%,transparent);opacity:0;animation:dial-ripple 3s cubic-bezier(.2,.6,.35,1) var(--dial-phase,0s) infinite}
+.ringscr.dial .ringorb::after{animation-delay:calc(var(--dial-phase,0s) + .6s)}
+.ringscr.dial h2{max-width:100%;margin-top:40px;overflow-wrap:anywhere;font-size:26px;line-height:1.2;letter-spacing:-.5px}
+.ringscr.dial .dialstatus{display:inline-flex;align-items:baseline;margin-top:6px;font-size:14px}
+.dialdots{display:inline-flex;align-items:baseline;gap:3px;margin-left:3px}
+.dialdots i{width:4px;height:4px;background:currentColor;opacity:.25;animation:dial-dot 1.5s ease-in-out var(--dial-phase,0s) infinite}
+.dialdots i:nth-child(2){animation-delay:calc(var(--dial-phase,0s) + .2s)}
+.dialdots i:nth-child(3){animation-delay:calc(var(--dial-phase,0s) + .4s)}
+.ringscr.dial .dialnote{margin-top:18px;border:1px solid var(--line)}
+.ringscr.dial .ringact{margin-top:auto;padding-top:40px}
+.ringscr.dial .rbtn{color:var(--muted)}
+/* Back minimizes a ringing call; it keeps ringing behind other screens (web/ongoing-call.js). */
+.ringscr.dial>.dialmin{position:absolute;top:16px;left:16px;z-index:2}
+.ringscr.dial .voiceend{width:64px;height:64px;transition:transform .18s}
+.ringscr.dial .voiceend:active{transform:scale(.94)}
+/* Video calls: flip, camera and mute sit beside Cancel, like the call's own dock. */
+.ringscr.dial .dialdock{gap:18px;align-items:flex-end}
+.ringscr.dial .dialtool{width:52px;height:52px;flex:0 0 52px;border:1px solid var(--line);background:var(--surface);color:var(--ink);transition:transform .18s,background-color .18s,color .18s}
+.ringscr.dial .dialtool[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:var(--canvas)}
+.ringscr.dial .dialtool:active{transform:scale(.94)}
+.ringscr.dial .dialtool svg{width:22px;height:22px}
+/* Beside the tools, Cancel matches their size. */
+.ringscr.dial .dialdock .voiceend{width:52px;height:52px}
+.ringscr.dial .dialdock .voiceend svg{width:22px;height:22px}
+/* The caller sees their own camera full screen while it rings: portrait frames fill the
+   screen, landscape frames sit whole on the media canvas and the front camera is mirrored,
+   as on the host stage. The camera is the call's own HD capture, never zoomed or filtered.
+   White type rides on scrims, as on other camera stages, and the avatar shrinks to keep
+   the caller's face clear. */
+.ringscr.dial.is-video{color:#fff}
+.ringscr.dial.is-video .ringbg{background:var(--media-canvas);animation:none}
+.ringscr.dial .ringbg>:is(video,svg){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
+.ringscr.dial .ringbg>video[data-zimi-facing=user]{transform:scaleX(-1)}
+.ringscr.dial .ringbg>video[data-zimi-shape=landscape]{object-fit:contain}
+.dialscrim{position:absolute;inset:0;background:linear-gradient(180deg,rgb(0 0 0 / .62),rgb(0 0 0 / .28) 30%,transparent 48%,transparent 58%,rgb(0 0 0 / .62))}
+.ringscr.dial:not(.is-video) .ringbg>video{visibility:hidden}
+.ringscr.dial:not(.is-video) .ringbg>:is(svg,.dialscrim){display:none}
+.ringscr.dial.is-video .ringeye{display:none}
+.ringscr.dial.is-video .ringorb{margin-top:max(8px,2dvh)}
+.ringscr.dial.is-video .ringorb::before,.ringscr.dial.is-video .ringorb::after{border-color:color-mix(in srgb,var(--accent) 40%,#fff)}
+.ringscr.dial.is-video h2{margin-top:28px;font-size:24px;color:#fff}
+.ringscr.dial.is-video .dialstatus{color:rgb(255 255 255 / .85)}
+.ringscr.dial.is-video .dialnote{margin-top:auto;border-color:rgb(255 255 255 / .22);background:rgb(0 0 0 / .35);color:#fff}
+.ringscr.dial.is-video .dialnote+.ringact{margin-top:18px;padding-top:0}
+.ringscr.dial.is-video .rbtn{color:rgb(255 255 255 / .9)}
+.ringscr.dial.is-video .dialtool{border-color:transparent}
+/* Two rings leave the avatar 0.6s apart, like the tone's two bursts, then the stage rests;
+   the call label sits above them. */
+@keyframes dial-ripple{0%{transform:scale(.96);opacity:.85}70%,100%{transform:scale(1.5);opacity:0}}
+@keyframes dial-nudge{0%,13%,20%,33%,100%{transform:none}6.5%,26.5%{transform:scale(1.035)}}
+@keyframes dial-dot{0%,100%{opacity:.25;transform:none}35%{opacity:1;transform:translateY(-2px)}}
+@keyframes dial-glow{0%,100%{opacity:.7}20%{opacity:1}}
+@media(max-height:600px){.ringscr.dial{padding-top:24px}.ringscr.dial .ringeye{margin-bottom:32px}.ringscr.dial h2{margin-top:30px}.ringscr.dial .ringact{padding-top:24px}}
+@media(prefers-reduced-motion:reduce){
+  .ringscr.dial .ringbg,.ringscr.dial .ringorb,.ringscr.dial .ringorb::before,.ringscr.dial .ringorb::after,.dialdots i{animation:none}
+  .dialdots i{opacity:1}
+  .ringscr.dial .ringorb::before{opacity:.5;transform:scale(1.08)}
+  .ringscr.dial :is(.voiceend,.dialtool){transition:none}
+}
+/* The ongoing-call bar (web/ongoing-call.js): a theme-accent card above every other screen
+   while a call is minimized. It sits in the app's flow, so it never covers a header. */
+.zoc{position:relative;z-index:30;display:flex;flex:none;align-items:center;gap:8px;margin:8px 12px 0;padding:6px 6px 6px 8px;background:var(--accent);color:var(--cta-ink);font-family:var(--theme-font,Inter,Arial,sans-serif);animation:zoc-in .18s ease-out}
+.zoc-return{display:flex;flex:1;align-items:center;gap:10px;min-width:0;min-height:44px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.zoc-return:focus-visible{outline:2px solid var(--cta-ink);outline-offset:2px}
+.zoc-media{position:relative;display:grid;flex:none;place-items:center;width:40px;height:40px;overflow:hidden}
+.zoc-media>video{width:100%;height:100%;object-fit:cover;background:rgb(0 0 0 / .22)}
+.zoc-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.zoc-text strong{overflow:hidden;font-size:14px;font-weight:650;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+.zoc-status{display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.3;opacity:.92;font-variant-numeric:tabular-nums;white-space:nowrap}
+.zoc-status i{width:7px;height:7px;flex:none;background:currentColor;animation:zoc-live 1.6s ease-in-out infinite}
+.zoc-cta{margin-left:auto;padding-left:6px;font-size:12px;font-weight:650;opacity:.92}
+.zoc .voiceend{width:40px;height:40px;flex:0 0 40px;border:2px solid color-mix(in srgb,var(--cta-ink) 70%,transparent)}
+.zoc .voiceend svg{width:20px;height:20px}
+@keyframes zoc-in{from{opacity:0;transform:translateY(-6px)}}
+@keyframes zoc-live{50%{opacity:.35}}
+@media(max-width:340px){.zoc-cta{display:none}}
+@media(prefers-reduced-motion:reduce){.zoc,.zoc-status i{animation:none}}
 /* Creator call flow: setup before going online, a second caller during a call, and the session summary.
    Colours come from the selected theme, like the call room in live-room.css; the layout follows the host studio reference. */
 :root:has(.hc-setup,.hc-waiting,.hc-summary) .app{background:var(--canvas)}
@@ -4774,6 +4887,20 @@ html:root #zc-gift-playback>.zc-gift-playback-art{display:block;width:100%;heigh
 .zci-person{display:flex;align-items:center;gap:15px;margin-bottom:20px;min-width:0}.zci-person>div{min-width:0}.zci-person h2{font-size:22px;line-height:1.35;font-weight:600;margin:4px 0;overflow-wrap:anywhere}.zci-person p,.zci-person>div>span{font-size:12px;color:var(--muted)}.zci-dialog>p{color:var(--muted);font-size:13px;margin-bottom:16px}.zci-terms{display:grid;gap:10px;padding:15px;background:var(--surface);margin-bottom:16px;font-size:12px}.zci-terms>span{display:flex;align-items:center;justify-content:space-between;gap:12px}.zci-terms strong{font-weight:600}.zci-note{font-size:12px!important}
 .zci-primary,.zci-secondary{display:block;width:100%;min-height:46px;padding:11px 14px;font:inherit;font-weight:600;margin-top:10px}.zci-primary{background:var(--cta);color:var(--cta-ink)}.zci-secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line)}.zci-mute{display:block;width:100%;min-height:40px;font-size:11px;color:var(--muted);background:none;margin-top:8px}.zci-dialog button:disabled{opacity:.55}.zci-error{color:var(--theme-danger)!important}
 .zci-checkout-context{padding:16px;background:var(--surface);border:1px solid var(--line);margin:0 0 20px;font-size:12px;line-height:1.6;color:var(--ink)}.zci-checkout-context>strong{font-size:14px;font-weight:600}.zci-checkout-context p{color:var(--muted);margin:8px 0}.zci-checkout-context button{min-height:42px;padding:10px 12px;border:1px solid var(--line);color:var(--accent-ink);font-weight:600}.zci-checkout-context button:disabled{opacity:.55}.zci-source{font-size:11px;color:var(--muted);padding:10px 14px;text-align:center}.zci-host-waiting{font-size:12px;line-height:1.6;color:var(--muted);padding:14px 20px;text-align:center}
+/* The host's targets replace the call rate on the member's call screen, laid out like the host's own row. */
+.zr-sender-call .zr-call-stats.ct-call-targets{display:block;max-width:none}
+.ct-call-targets .hs-targets.ct-mission-only{grid-template-columns:minmax(0,1fr);max-width:185px}
+/* Low-balance Recharge pop-up over a member's call. */
+.ct-recharge{position:fixed;inset:0;margin:auto;width:min(340px,calc(100% - 40px));height:fit-content;max-height:calc(100dvh - 40px);overflow:auto;padding:22px 20px 14px;border:1px solid var(--line);background:var(--canvas);color:var(--ink);text-align:center;font-size:14px;line-height:1.5}
+.ct-recharge::backdrop{background:rgba(0,0,0,.4)}
+.ct-recharge-coin{display:flex;justify-content:center;margin-bottom:10px}
+.ct-recharge h2{margin:0 0 6px;font-size:18px;font-weight:600;line-height:1.35}
+.ct-recharge p{margin:0 0 16px;color:var(--muted);font-size:13px}
+.ct-recharge p b{color:var(--ink);font-weight:600}
+.ct-recharge-primary,.ct-recharge-later{display:block;width:100%;min-height:46px;padding:11px 14px;font:inherit;font-weight:600}
+.ct-recharge-primary{background:var(--cta);color:var(--cta-ink)}
+.ct-recharge-later{min-height:42px;margin-top:6px;background:none;color:var(--muted)}
+.ct-recharge button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -4814,7 +4941,7 @@ html:root #zc-gift-playback>.zc-gift-playback-art{display:block;width:100%;heigh
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.0.11";
+window.ZIMI_APP_VERSION = "1.1.1";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -7384,20 +7511,14 @@ function obAfterRender() {
 function obStart(mode = "signup") {
   if (S.sessionState) return;
   clearInterval(S.otpT); clearTimeout(obRequestTimer);
-  const role = S.wsel || "sender";
-  if (mode === "signup" && S.auth.verified && (S.auth.creatorIntent ? "host" : "sender") === role) return go("login");
-  S.role = role;
+  // Everyone enters through the same sign-in. Creator access comes from the
+  // authenticated account, including an unfinished setup restored by the server.
+  S.wsel = "sender";
+  if (mode === "signup" && S.auth.mode === "signup" && S.auth.verified) return go("login");
+  S.role = "sender";
   S.notice = "";
-  S.auth = { step: "phone", mode, creatorIntent: role === "host", phone: "", code: "", langs: [], interests: [], photos: [], featured: 0 };
+  S.auth = { step: "phone", mode, creatorIntent: false, phone: "", code: "", langs: [], interests: [], photos: [], featured: 0 };
   go("login");
-}
-function obSelectRole(role, button) {
-  S.wsel = role;
-  document.querySelectorAll(".ob-role-switch button").forEach(b => {
-    const selected = b === button; b.classList.toggle("selected", selected); b.setAttribute("aria-pressed", String(selected));
-  });
-  const cta = document.getElementById("ob-start");
-  if (cta) cta.innerHTML = (role === "host" ? "Start creating" : "Find your people") + obArrow();
 }
 function obDeckMarkup() {
   const index = S.obDeck || 0, enter = S.obDeckEnter ? ` ob-enter-${S.obDeckEnter}` : "";
@@ -7435,7 +7556,6 @@ function obDeck(value, absolute) {
 }
 function obWelcome() {
   if (S.sessionState) return obRestoreScreen();
-  const host = S.wsel === "host";
   return `<section class="ob-shell ob-welcome" aria-label="Welcome to BinzoLive">
     ${S.notice ? `<p class="ob-session-notice" role="status">${esc(S.notice)}</p>` : ""}
     <header class="ob-welcome-top"><div class="ob-brand"><img class="ob-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="96" height="38" decoding="async"></div><button class="ob-top-login" onclick="obStart('login')">Log in</button></header>
@@ -7444,11 +7564,8 @@ function obWelcome() {
         <h1 class="ob-hero-heading">A little hello.<br><em>A real connection.</em></h1>
         <p class="ob-description">Meet creators who get your vibe.<br>One call can make your day.</p></div>
       <div class="ob-showcase" aria-label="Community previews">${obDeckMarkup()}</div>
-      <div class="ob-welcome-actions"><div class="ob-role-switch" aria-label="Choose your account type">
-        <button class="${host ? "" : "selected"}" aria-pressed="${!host}" onclick="obSelectRole('sender',this)">${I("heart", 17)} I'm here to connect</button>
-        <button class="${host ? "selected" : ""}" aria-pressed="${host}" onclick="obSelectRole('host',this)">${I("vid", 17)} I'm a creator</button></div>
-        <button id="ob-start" class="ob-primary" onclick="obStart('signup')">${host ? "Start creating" : "Find your people"}${obArrow()}</button>
-        <p class="za-welcome-note">Hosts join with their own one-time agency joining code, then complete verification.</p>
+      <div class="ob-welcome-actions">
+        <button id="ob-start" class="ob-primary" onclick="obStart('signup')">Find your people${obArrow()}</button>
         <div class="ob-trust"><span>${I("lock", 13)} 18+ community</span>${OB_MODELS ? "<span>&middot; Photos posed by models</span>" : ""}</div></div>
     </div><p class="ob-desktop-note">A small hello. A world of possibilities.</p>
   </section>`;
@@ -7518,7 +7635,7 @@ function obOtpSent(data = {}) {
 }
 function obResendText() {
   const left = Math.max(obWait("auth.sendOtp"), Math.ceil(((S.auth.resendAt || 0) - Date.now()) / 1000), 0);
-  return left ? `Request a new code in <b>${obDuration(left)}</b>` : `<span>Didn’t receive it?</span> <button class="ob-text-button" onclick="obResend()" ${S.auth.busy ? "disabled" : ""}>Send a new code</button>`;
+  return left ? `Resend code in <b>${obDuration(left)}</b>` : `<span>Didn’t receive it?</span> <button class="ob-text-button" onclick="obResend()" ${S.auth.busy ? "disabled" : ""}>Send a new code</button>`;
 }
 function obResend() {
   if (S.auth.busy || Date.now() < S.auth.resendAt || obWait("auth.sendOtp")) return;
@@ -7730,9 +7847,9 @@ function obErrorMarkup() { return `<p class="ob-error" id="ob-error" role="alert
 function obButton(text, handler, disabled = false) {
   const kind = handler === "obSendOtp()" ? "auth.sendOtp" : handler === "obVerifyOtp()" ? "auth.verifyOtp" : "";
   const left = kind ? obWait(kind) : 0, idle = kind === "auth.sendOtp" ? "Send my code" : "Verify & continue";
-  return `<button ${kind ? `id="ob-auth-submit" data-idle-label="${idle}"` : ""} class="ob-primary" ${disabled || left ? "disabled" : ""} onclick="${handler}">${S.auth.busy || S.auth.uploading ? '<span class="ob-spinner" aria-hidden="true"></span>' : ""}${left && !S.auth.busy ? `Try again in ${obDuration(left)}` : text}${S.auth.busy || S.auth.uploading || left ? "" : obArrow()}</button>`;
+  return `<button ${kind ? `id="ob-auth-submit" data-idle-label="${idle}"` : ""} class="ob-primary" aria-busy="${!!(S.auth.busy || S.auth.uploading)}" ${disabled || left ? "disabled" : ""} onclick="${handler}">${S.auth.busy || S.auth.uploading ? '<span class="ob-spinner" aria-hidden="true"></span>' : ""}${left && !S.auth.busy ? `Try again in ${obDuration(left)}` : text}${S.auth.busy || S.auth.uploading || left ? "" : obArrow()}</button>`;
 }
-function obLanguages() { return `<div class="ob-options">${LANGS.map(value => { const selected = S.auth.langs.includes(value); return `<button type="button" class="${selected ? "selected" : ""}" aria-pressed="${selected}" onclick="obToggleLanguage('${value}',this)">${value}</button>`; }).join("")}</div>`; }
+function obLanguages() { return `<div class="ob-options">${LANGS.map(value => { const selected = S.auth.langs.includes(value); return `<button type="button" class="${selected ? "selected" : ""}" aria-pressed="${selected}" onclick="obToggleLanguage('${value}',this)" ${S.auth.busy ? "disabled" : ""}>${value}</button>`; }).join("")}</div>`; }
 function obPhotoContent() {
   const a = S.auth, count = a.photos.length, index = a.featured || 0;
   return `<input hidden id="ob-photos" type="file" accept="image/*" multiple onchange="obUpload(event)"><input hidden id="ob-camera" type="file" accept="image/*" capture="user" onchange="obUpload(event)">
@@ -7749,37 +7866,40 @@ function obLogin() {
   if (a.step === "choose") a.step = "phone";
   if (a.step === "sprofile") a.step = "profile";
   const step = a.step, number = ({ phone: 1, otp: 1, profile: 2, photos: 3, interests: 4 })[step] || 1;
+  const stepLabel = ({ phone: "Verify your phone", otp: "Verify your phone", profile: "Your profile", photos: "Your photos", interests: "Your interests" })[step] || "Account setup";
   let title, description = "", content, actions;
   if (step === "phone") {
-    title = !signup ? "Good to see you <em>again</em>." : host ? "Your creator <em>journey</em> starts here." : "Your next <em>hello</em> starts here.";
-    description = "Enter your number. We’ll text you a code to get you in.";
+    title = !signup ? "Welcome <em>back</em>." : "Let’s get you <em>connected</em>.";
+    description = "Enter your mobile number to receive a verification code.";
     content = `<form class="ob-form" onsubmit="event.preventDefault();obSendOtp()"><label class="ob-label" for="ph">Mobile number</label><div class="ob-phone-field">${obCountryButton(!!a.busy)}<input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="${obPhonePlaceholder()}" maxlength="18" value="${esc(a.phone || "")}" aria-describedby="ob-phone-hint ob-error" oninput="obPhoneInput(this)" ${a.busy ? "disabled" : ""}></div><p class="ob-field-hint" id="ob-phone-hint">${I("lock", 13)} Used to verify your account.</p><button type="submit" hidden tabindex="-1">Send code</button></form>`;
     actions = obButton(a.busy ? "Sending your code…" : "Send my code", "obSendOtp()", !!a.busy) + `<button class="ob-text-button" onclick="obShowHelp()">Need a hand? <b>Get help</b></button>`;
   } else if (step === "otp") {
     const length = obOtpLength();
-    title = "Check your <em>messages</em>."; description = `Enter the ${length}-digit code sent to <strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong>.`;
-    content = `<button class="ob-text-button ob-change-number" onclick="obBack()" ${a.busy ? "disabled" : ""}>${I("back", 16)} Edit phone number</button><div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
+    title = "Verify your <em>number</em>.";
+    // The number and its Edit link wrap together, so the link never strands on its own line.
+    description = `Enter the ${length}-digit code sent to <span class="ob-sent-to"><strong>${esc(obCountry().dial)} ${esc(obNational(a.phone))}</strong><button class="ob-edit-number" onclick="obBack()" aria-label="Edit phone number" ${a.busy ? "disabled" : ""}>Edit</button></span>`;
+    content = `<div class="ob-otp" style="--otp-length:${length}" onpaste="obOtpPaste(event)">${Array.from({ length }, (_, i) => `<input id="o${i}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="${i ? "off" : "one-time-code"}" maxlength="${length}" value="${esc((a.code || "")[i] || "")}" aria-label="Code digit ${i + 1}" aria-describedby="ob-error" onfocus="this.select()" oninput="obOtpInput(this,${i})" onkeydown="obOtpKey(event,${i})" ${a.busy ? "disabled" : ""}>`).join("")}</div><div id="rs" class="ob-resend">${obResendText()}</div>${DEMO ? `<p class="ob-field-hint ob-demo-note">Preview mode &middot; Enter any ${length} digits to explore.</p>` : ""}`;
     actions = obButton(a.busy ? "Checking your code…" : "Verify & continue", "obVerifyOtp()", !!a.busy);
   } else if (step === "profile") {
-    title = "Let’s make it <em>yours</em>.";
-    content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "What should we call you?"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error"></div>
-      <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="obEmailInput(this)" onblur="obCheckEmail(obEmailKey(this.value))" aria-describedby="ob-email-status ob-error" ${["taken", "invalid"].includes(obEmailState()) ? 'aria-invalid="true"' : ""}><p class="ob-email-status ${obEmailState()}" id="ob-email-status" aria-live="polite">${obEmailStatusText(obEmailState())}</p></div>
-      <div class="ob-field ob-inline"><span class="ob-label" id="pg-label">I am</span><div class="ob-segment" id="pg" role="group" aria-labelledby="pg-label" aria-describedby="ob-error" tabindex="-1">${GENDERS.map(([value, label]) => `<button type="button" class="${a.gender === value ? "selected" : ""}" aria-pressed="${a.gender === value}" onclick="obPickGender('${value}',this)">${label}</button>`).join("")}</div></div>
-      ${host ? `<div class="ob-field"><label for="pc">Your thing</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error"><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
+    title = "Make it <em>yours</em>.";
+    content = `<form class="ob-form" onsubmit="event.preventDefault();obNextProfile()"><div class="ob-field"><label for="pn">${host ? "Creator name" : "Your name"}</label><input id="pn" autocomplete="nickname" maxlength="32" placeholder="Your name" value="${esc(a.name || "")}" oninput="S.auth.name=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}></div>
+      <div class="ob-field"><label for="pe">Email address</label><input id="pe" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="100" placeholder="you@example.com" value="${esc(a.email || "")}" oninput="obEmailInput(this)" onblur="obCheckEmail(obEmailKey(this.value))" aria-describedby="ob-email-status ob-error" ${["taken", "invalid"].includes(obEmailState()) ? 'aria-invalid="true"' : ""} ${a.busy ? "disabled" : ""}><p class="ob-email-status ${obEmailState()}" id="ob-email-status" aria-live="polite">${obEmailStatusText(obEmailState())}</p></div>
+      <div class="ob-field ob-inline"><span class="ob-label" id="pg-label">Gender</span><div class="ob-segment" id="pg" role="group" aria-labelledby="pg-label" aria-describedby="ob-error" tabindex="-1">${GENDERS.map(([value, label]) => `<button type="button" class="${a.gender === value ? "selected" : ""}" aria-pressed="${a.gender === value}" onclick="obPickGender('${value}',this)" ${a.busy ? "disabled" : ""}>${label}</button>`).join("")}</div></div>
+      ${host ? `<div class="ob-field"><label for="pc">Creator category</label><select id="pc" onchange="S.auth.cat=this.value" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}><option value="" disabled ${a.cat ? "" : "selected"}>Choose a category</option>${CATS.map(c => `<option value="${c}" ${a.cat === c ? "selected" : ""}>${c}</option>`).join("")}</select></div>` : ""}
       <div><span class="ob-label">Languages you speak ${host ? "" : '<small>Optional</small>'}</span>${obLanguages()}</div>
-      <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error"><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
+      <label class="ob-check"><input id="p18" type="checkbox" ${a.adult ? "checked" : ""} onchange="S.auth.adult=this.checked" aria-describedby="ob-error" ${a.busy ? "disabled" : ""}><span>I’m 18 or older.</span></label><button hidden type="submit" tabindex="-1">Continue</button></form>`;
     actions = obButton(a.busy === "auth.emailCheck" ? "Checking your email…" : "Next, your photos", "obNextProfile()", !!a.busy);
   } else if (step === "photos") {
-    title = "Put a face to your <em>hello</em>."; description = "Add at least three clear photos of yourself.";
+    title = "Add your <em>photos</em>."; description = "Choose at least three clear photos. Your featured photo appears first.";
     content = obPhotoContent(); actions = obButton(a.uploading ? "Preparing your photos…" : "Looking good. Continue", "obNextPhotos()", a.uploading || a.photos.length < MIN_PHOTOS);
   } else {
-    title = "Find your kind of <em>energy</em>."; description = `<span id="ob-interest-count" aria-live="polite">${obInterestCount()}</span>`;
+    title = "Share your <em>interests</em>."; description = `<span id="ob-interest-count" aria-live="polite">${obInterestCount()}</span>`;
     content = `<div class="ob-interests" aria-label="Your interests">${OB_INTERESTS.map(([emoji, label], i) => `<button class="ob-interest ${a.interests.includes(label) ? "selected" : ""}" aria-pressed="${a.interests.includes(label)}" onclick="obToggleInterest(${i},this)" ${a.busy ? "disabled" : ""}><span aria-hidden="true">${emoji}</span>${label}<span class="ob-chip-check" aria-hidden="true">${I("check", 13)}</span></button>`).join("")}</div>`;
     actions = obButton(a.busy ? "Making it yours…" : host ? "Finish my creator profile" : "Let’s meet your people", "obFinish()", !!a.busy) + `<button class="ob-secondary" onclick="obFinish(true)" ${a.busy ? "disabled" : ""}>Skip for now</button>`;
   }
   return `<section class="ob-shell" data-ob-step="${step}" aria-label="${signup ? "Create your BinzoLive account" : "Log in to BinzoLive"}">
     <header class="ob-header">${backButton("obBack()", {attrs: a.busy || a.uploading ? "disabled" : ""})}
-      ${signup ? `<div class="ob-progress" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="Step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : `<span class="ob-login-label"><img class="ob-login-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="66" height="26" decoding="async"></span>`}
+      ${signup ? `<div class="ob-progress" data-label="${stepLabel} · ${number} of 4" role="progressbar" aria-label="Account setup" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${number}" aria-valuetext="${stepLabel}, step ${number} of 4">${[1, 2, 3, 4].map(i => `<span class="${i < number ? "done" : i === number ? "current" : ""}"></span>`).join("")}</div>` : `<span class="ob-login-label"><img class="ob-login-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="66" height="26" decoding="async"></span>`}
       <button class="ob-support" onclick="obShowHelp()">Help</button></header>
     <div class="ob-main">
       <h1 class="ob-heading" tabindex="-1">${title}</h1>${description ? `<p class="ob-description">${description}</p>` : ""}
@@ -8096,6 +8216,8 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
+ if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
@@ -8109,11 +8231,13 @@ function go(v,id){
   if(v==='voice'&&!S.callId){S.nextCallVoice=true;v='dial'}
   if(['dial','dialback'].includes(v)&&!S.allowPreparedCall)return homePrepareCall(v,id);
  }
- if(S.t){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
+ /* A minimized call keeps its clock running behind other screens. */
+ if(S.t&&!S.bgCall){clearInterval(S.t);S.t=null}if(S.rt){clearTimeout(S.rt);S.rt=null}
  clearTimeout(S.wt);clearTimeout(S.it);clearTimeout(S.ct);S.inc=null;S.connecting=null;S.cmp=0;S.sh=0;
  if(v==="setup"&&isHost()&&A().kyc!=="verified")v="kyc";
  if(v==="kyc"){S.kerr=0;S.creatorSetup=true}
- if(v==="precall"){S.scam=0;S.nextCallVoice=false;if(S.automaticCall?.hostId!==(id||S.h))S.automaticCall=null}
+ /* Opening a call setup never changes a minimized call's camera or kind. */
+ if(v==="precall"&&!S.bgCall){S.scam=0;S.nextCallVoice=false;if(S.automaticCall?.hostId!==(id||S.h))S.automaticCall=null}
  /* targets are set before going online; a fresh setup brings both cards back */
  if(v==="setup")S.hcel={ask:0,mission:0};
  if(v==="call"||v==="voice")S.cel={ask:0,mission:0};
@@ -8994,13 +9118,21 @@ function vPrecall(){
 
 /* ringing out: no "busy" state, a host on another call still gets the ring */
 function vDial(){
- const out=S.v==="dialback",p=out?S.caller:g(S.h);
- return `<div class="ringscr">
-  <div class="ringbg">${art(p.seed)}</div>
-  <div class="ringorb">${avc(p,104)}</div>
-  <h2>${esc(p.n)}</h2><p>Calling&hellip;</p>
+ const out=S.v==="dialback",p=out?S.caller:g(S.h),voice=out?!!p.voice:!!S.nextCallVoice;
+ /* A video call rings over the caller's own camera, full screen. The video stays in the page
+    while the camera is off, so turning it back on is instant, and moves into the call on answer. */
+ const video=!voice&&!!camOn()&&(DEMO||!!window.ZimiMedia?.hasVideo?.());
+ /* A redraw continues the rings in step with the ringback tone (web/call-ringback.js). */
+ const phase=window.ZimiRingback?window.ZimiRingback.phase():0;
+ const tool=(icon,label,text,action,pressed)=>`<span class="rbtn"><button class="zr-round dialtool" aria-label="${label}" ${pressed==null?"":`aria-pressed="${pressed}"`} onclick="${action}">${I(icon,22)}</button><span aria-hidden="true">${text}</span></span>`;
+ return `<div class="ringscr dial ${video?"is-video":""}" style="--dial-phase:-${phase.toFixed(2)}s" role="region" aria-label="Calling ${esc(p.n)}">
+  <div class="ringbg" aria-hidden="true">${voice?"":`${DEMO?art(me.seed+2):""}<video data-zimi-local autoplay muted playsinline></video><i class="dialscrim"></i>`}</div>
+  ${backButton("callMinimize()",{label:"Minimize call",media:video,slot:"dialmin"})}
+  <span class="ringeye">${I(voice?"ph":"vid",13)}${voice?"Voice":"Video"} call</span>
+  <div class="ringorb">${avc(p,video?72:104)}</div>
+  <h2>${esc(p.n)}</h2><p class="dialstatus">Calling<span class="dialdots" aria-hidden="true"><i></i><i></i><i></i></span></p>
   ${out?"":`<span class="dialnote">${I("wal",13)} ${n(p.fee)} coins charged only if ${esc(first(p.n))} picks up</span>`}
-  <div class="ringact"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button></div>
+  <div class="ringact ${voice?"":"dialdock"}">${voice?"":tool("flip","Flip camera","Flip","zrFlip()")+tool(camOn()?"vid":"camoff",camOn()?"Turn camera off":"Turn camera on","Camera","zrCamera()",!camOn())+tool(S.mic?"mic":"micoff",S.mic?"Mute microphone":"Unmute microphone","Mute","zrMic()",!S.mic)}<span class="rbtn"><button class="voiceend" aria-label="Cancel call" onclick="cancelDial()">${I("ph",25)}</button><span aria-hidden="true">Cancel</span></span></div>
  </div>`}
 
 function cancelDial(){if(window.ZimiMedia)window.ZimiMedia.stop();Native.send("call.end",{reason:"cancelled"});S.callId=null;if(S.v==="dialback")dialReturn();else go("precall",S.h)}
@@ -9050,7 +9182,7 @@ function vRing(){const c=S.caller;
 function memberIncoming(d){
  if(window.ZimiCallInvitations?.receiveIncoming(d))return;
  /* S.callId outlives a finished call, so only the screen tells whether the member is busy. */
- const busy=["dial","call","voice","incoming"].includes(S.v)||window.Home?.preparingCall;
+ const busy=["dial","call","voice","incoming"].includes(S.v)||!!S.bgCall||window.Home?.preparingCall;
  if(busy&&S.memberRing?.callId!==d.callId){Native.send("call.decline",{callId:d.callId});return}
  const from=d.from||{},h=knowHost({id:from.id,name:from.name,avatarUrl:from.avatarUrl,city:from.city,gender:from.gender,verified:true,role:"host",serverRole:"host"});
  S.memberRing={callId:d.callId,id:h.id,voice:!!d.voice,rate:d.rate||0,error:""};
@@ -9510,7 +9642,7 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call");if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
@@ -9550,13 +9682,15 @@ function r(){
    the short keys the screens use. */
 const PEOPLE={};
 const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997;return x};
-/* Nobody is ever shown a host as offline. The server still rings an offline host until the call
-   is missed, so for members only an online host's own call settings make calls unavailable.
+/* Members can ring every approved host, including admin-created and offline profiles.
+   The server validates approval, blocks, wallet balance and the final call price.
    `ready` keeps the server's own availability for lists that promise an instant answer. */
 function isHostPayload(p){return p.serverRole==="host"||p.role==="host"||p.verified===true}
 function hostShownOnline(p){return isHostPayload(p)||!!p.online}
-function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&p.online!==true&&!isHost()}
+function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&!isHost()}
 function hostFrom(p){const id=String(p.id);
+ // A fresh server quote supersedes a previous insufficient-coins response.
+ if(S.callFunds?.hostId===id&&Number.isFinite(p.ratePerMin)&&Number.isFinite(p.entryFee))S.callFunds=null;
  return {id,n:p.name||"Creator",c:p.city||"",cat:p.category||"",tag:p.tag||p.category||"",lang:(p.languages||[]).join(", "),
   ...(Object.prototype.hasOwnProperty.call(p,'country')?{country:typeof p.country==='string'&&p.country.trim().length<=100&&!/[\u0000-\u001f\u007f]/.test(p.country)?p.country.trim():''}:{}),
   role:p.role,serverRole:p.serverRole,verified:p.verified===true,available:hostCallable(p),ready:p.availableForCall===true,
@@ -9620,10 +9754,14 @@ Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
 // Capture the authenticated payload before refresh: later module handlers also
 // consume this event, so reading their caches here would lag by one response.
 Native.on("wallet.balance",d=>{const owner=S.user?.id;if(owner)S.walletSnapshot={owner,data:{...(S.walletSnapshot?.owner===owner?S.walletSnapshot.data:{}),...d}};else S.walletSnapshot=null;if(d.coins!=null)S.bal=d.coins;if(d.earned!=null)A().earn=d.earned;refresh()});
-for(const type of ['session','auth.ok','session.none','session.expired'])Native.on(type,()=>{S.walletSnapshot=null});
+for(const type of ['session','auth.ok','session.none','session.expired'])Native.on(type,()=>{S.walletSnapshot=null;S.callFunds=null});
 Native.on("verification.status",d=>{S.kycBusy=false;A().kyc=d.status==="rejected"?"none":d.status;S.kerr=d.message||(d.status==="rejected"?"Your application needs an update before it can be approved.":"");if(!DEMO&&d.status==="verified"&&!isHost()){Native.send("session.resume");return}refresh();obHaptic(d.message?"error":"success")});
 
 Native.on("call.connected",d=>{
+ /* An answer to a minimized outgoing call opens the call screen. */
+ if(["dial","dialback"].includes(S.bgCall?.view))callRestore(false);
+ /* A minimized host call only takes its own updated terms. */
+ if(S.bgCall?.view==="hcall"){if(d.callId===S.bgCall.callId)hcCallTerms(d);return}
  /* A host mid-call only hears about the call they are on or switching to. */
  if(S.v==="hcall"&&d.callId!==S.callId&&d.callId!==S.connecting?.to.callId)return;
  S.callRate=d.rate||0;
@@ -9635,14 +9773,19 @@ Native.on("call.connected",d=>{
  /* The answer and the realtime event both report the call; the answer adds today's early endings. */
  else if(S.v==="hcall")hcCallTerms(d)});
 Native.on("call.failed",d=>{
+ /* A minimized call fails where it would on screen: a ringing one returns with the reason. */
+ if(S.bgCall)callRestore(!["dial","dialback"].includes(S.bgCall.view));
  S.callId=null;S.acceptingCall=false;if(window.ZimiMedia)window.ZimiMedia.stop();
- if(S.v==="dial"){const id=S.h;go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
+ if(S.v==="dial"){const id=S.h;if(d.code==='INSUFFICIENT_COINS')S.callFunds={hostId:id,requiredCoins:Number.isSafeInteger(d.requiredCoins)&&d.requiredCoins>0?d.requiredCoins:S.bal+1};go("precall",id);S.pcerr=d.message||"The call didn't go through. Try again.";r()}
  else if(S.v==="dialback")dialReturn(d.message||"The call didn't go through. Try again.");
  else if(S.v==="incoming"&&d.callId&&S.memberRing?.callId===d.callId){S.memberRing.error=d.message||"The call couldn't be answered. Try again.";r()}
  else if(S.v==="ring"){appNotice(d.message||"The call didn't connect. Please try again.");r()}});
 Native.on("call.incoming",d=>{if(d.fromHost&&!isHost())return memberIncoming(d);if(window.ZimiHostAccess&&!isApprovedHost()){Native.send("call.decline",{callId:d.callId});return}const c=personFrom({...d.from,callId:d.callId});
  if(window.ZimiHome&&S.v==='live'&&Home.hosting){Native.send('call.decline',{callId:d.callId});appNotice('Finish your live session before accepting a private call.');return}
  c.voice=!!d.voice;c.rate=d.rate||0;c.fee=d.entryFee||0;c.hold=d.feeHoldSeconds||0;
+ /* A minimized host call comes back to show the banner; other minimized calls ignore it, as on screen. */
+ if(S.bgCall?.view==="hcall"){callRestore();return ringIncoming(c)}
+ if(S.bgCall)return;
  /* Already in a call: the new caller rings as a banner, never a busy signal. */
  if(S.v==="hcall")return ringIncoming(c);
  /* One ring screen at a time: a caller arriving meanwhile rings once that one is answered or declined. */
@@ -9655,6 +9798,8 @@ function ringQueued(){const q=S.queuedInc;if(!q)return;S.queuedInc=null;
  S.acceptingCall=false;S.caller=q;go("ring")}
 /* the other side hung up, or a ringing call was given up */
 Native.on("call.ended",d=>{const id=d.callId;
+ /* A minimized call ends as it would on screen: a summary, or the unanswered notice. */
+ if(ongoingMatches(id))callRestore(false);
  /* The server's charge replaces the summary's estimate once it arrives. */
  if(S.v==='summary'&&S.sum?.callId===id){if(d.coins!=null)S.sum.coins=d.coins;if(d.reason==='out_of_coins')S.sum.outOfCoins=true;return r()}
  /* Switching: the call being left ends first; the new caller hanging up leaves the host where they were. */
@@ -10062,8 +10207,19 @@ function homeCardCover(h){return homeCover({...h,coverUrl:h.creatorCardUrl||h.av
 function homeCardVideo(h){return h.video?`<span class="zh-card-video" data-video="${h.video}" aria-hidden="true"></span>`:''}
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeCountry(h){const country=typeof h.country==='string'?h.country.trim():'';return country.length<=100&&!/[\u0000-\u001f\u007f]/.test(country)?country:''}
-// India is the only flag for now (drawn in CSS, so it looks the same on every device); other countries show their name.
-function homeFlag(country,className='',decorative=false){return /^india$/i.test(country)?`<span class="zh-flag zh-flag-in ${className}" ${decorative?'aria-hidden="true"':'role="img" aria-label="India"'}></span>`:''}
+// Country names to ISO codes, by the sign-in country list's English and device-language names and aliases.
+let homeCountryCodes=null;
+function homeCountryIso(country){
+  if(!homeCountryCodes){homeCountryCodes=new Map();for(const {iso} of OB_COUNTRIES)for(const name of [iso,obCountryName(iso),obCountryName(iso,obEnglishNames),...(OB_COUNTRY_ALIASES[iso]||'').split(',')])if(name)homeCountryCodes.set(obFold(name),iso)}
+  return homeCountryCodes.get(obFold(country))||'';
+}
+/* A rectangular flag, never a circle: India is drawn in CSS, so it looks the same on every device; other
+   countries use the system flag. A country the list doesn't know shows its name instead. */
+function homeFlag(country,className='',decorative=false){
+  const iso=homeCountryIso(country);if(!iso)return '';
+  const label=decorative?'aria-hidden="true"':`role="img" aria-label="${esc(obCountryName(iso,obEnglishNames))}"`;
+  return iso==='IN'?`<span class="zh-flag zh-flag-in ${className}" ${label}></span>`:`<span class="zh-flag-emoji ${className}" ${label}>${obFlag(iso)}</span>`;
+}
 function homeCountryLabel(h){const country=homeCountry(h),flag=homeFlag(country);return country?`<span class="zh-creator-country ${flag?'has-flag':''}" data-creator-country title="${esc(country)}">${flag||esc(country)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
 function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:h.on?'<span class="zh-badge zh-offline zh-online"><i></i> Online</span>':'<span class="zh-badge zh-offline">Offline</span>'}
@@ -10125,7 +10281,7 @@ function homeMatch(){if(homeContentPending())return `<div class="zh-match">${con
    always active. Tapping the photo opens the profile; chat belongs on the profile. */
 function homeTile(h){
   const id=domId(h.id),live=!!h.stream;
-  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
+  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}">${live?'<i></i>LIVE':h.on?'Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
 }
 function homeBonus(){if(!isApprovedHost())return '';if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
 // Like the reference, campaign banners rotate after the first two rows of hosts; a sponsored
@@ -10168,21 +10324,25 @@ let homeCallPreparation = null;
    The server checks the permission again; the member pays the host's rate once they answer. */
 function hostCallMember(id,voice,person={}){
   if(!isApprovedHost()){window.ZimiHostAccess?.guard();return}
-  if(Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
+  if(S.bgCall||Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
   S.caller=personFrom({id,name:person.name,avatarUrl:person.avatarUrl,city:person.city,gender:person.gender});
   S.nextCallVoice=!!voice;S.dialFrom={view:S.v,id:S.v==='user'?S.u:['thread','host'].includes(S.v)?S.h:undefined};
   if(DEMO)return go('dialback',id);
   homePrepareCall('dialback',id);
 }
 function homeCallUnavailable(id){return !g(id)||(!DEMO&&!g(id).available)}
+function homeCallRequiredCoins(h){return Math.max((h?.rate||0)+(h?.fee||0),S.callFunds?.hostId===h?.id?S.callFunds.requiredCoins:0)}
 function homeCallFundsReady(h){
   if(!h)return false;
-  if(h.rate>0&&!coinWalletReady()){r();return false}
-  if(h.rate>0&&S.bal<h.rate){r();return false}
+  const need=homeCallRequiredCoins(h);
+  if(need>0&&!coinWalletReady()){r();return false}
+  if(need>0&&S.bal<need){S.pcerr=`You need at least ${n(need)} coins. Recharge your wallet to call.`;r();return false}
+  S.callFunds=null;
   return true;
 }
 function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
+  if(S.bgCall)return appNotice('Finish your current call first.');
   if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
   if(isHost()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
@@ -10195,6 +10355,8 @@ function homeStartCall(voice=false){
   }
   if(!homeCallFundsReady(g(S.h)))return;
   S.nextCallVoice=!!voice;S.callId=null;S.pcerr='';
+  // A video call rings with the camera on, in the preview as in the app (homePrepareCall).
+  if(!voice)S.scam=1;
   return go('dial',S.h);
 }
 function homeCancelPrepare(message='',paint=true){
@@ -10999,7 +11161,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   function cameraEnabled() {
     if (active && active.kind === 'call' && active.voice) return false;
     if (typeof S === 'undefined') return true;
-    const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v);
+    const inCall = active && active.kind === 'call' || ['precall', 'dial', 'dialback', 'call', 'hcall', 'ring', 'switch'].includes(S.v) || !!S.bgCall;
     return inCall && typeof camOn === 'function' ? !!camOn() : S.cam !== 0;
   }
   /* data-zimi-shape lets full-screen stages fill the screen with portrait frames and show
@@ -11101,6 +11263,8 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     attach();
     return playbackMuted;
   }
+  /** Whether this device's camera is capturing (it may still be turned off for the call). */
+  function hasVideo() { return !!local && local.getVideoTracks().some(track => track.readyState === 'live'); }
   function getState() {
     return {
       facingMode, playbackMuted, switchingCamera: !!cameraSwitch, connectionQuality: quality,
@@ -11574,6 +11738,8 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
     }
   });
   document.addEventListener('aurora:navigate', () => {
+    // A minimized call (web/ongoing-call.js) keeps its camera, microphone and connection.
+    if (typeof S !== 'undefined' && S.bgCall) { attach(); return; }
     const view = typeof S !== 'undefined' ? S.v : '';
     if (!mediaViews.has(view) || (active && active.kind === 'stream' && view !== 'live') || (active && active.kind === 'call' && !['call', 'hcall', 'voice', 'switch'].includes(view))) stop();
     else attach();
@@ -11593,7 +11759,7 @@ window.ZimiCoins={giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=
   window.addEventListener('online', resume);
   window.addEventListener('offline', () => { if (active?.kind === 'call') setQuality('reconnecting'); });
   Native.on('app.foreground', resume);
-  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState };
+  window.ZimiMedia = { prepare, attach, render, openStream, stop, handoff, flipCamera, setPlaybackMuted, isPlaybackMuted: () => playbackMuted, getState, hasVideo };
 })();
 
 /* Live rooms share the authenticated native transport and WebRTC media layer.
@@ -11676,10 +11842,9 @@ function zrLive(){
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
-function zrCallStats(){return `<div class="zr-call-stats"><div class="zr-call-stat"><span class="zr-stat-icon">${hi('ph',19)}</span><div><span class="zr-stat-label">CALL RATE</span><strong>${S.callRate?`${coinIcon(14)} ${n(S.callRate)} <small>/ min</small>`:'Free call'}</strong><span class="zr-stat-track" aria-hidden="true"><i></i></span></div></div></div>`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
 function zrCallChat(){Room.chatOpen=!Room.chatOpen;r();if(Room.chatOpen)document.getElementById('rmsg')?.focus();else document.querySelector('.zr-call-chat-toggle')?.focus({preventScroll:true})}
-function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
+function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" enterkeyhint="send" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
 /* A host starts with their own camera on the main stage, as in the setup preview.
    Swapping changes only the two media elements' placement, never their tracks. */
 function zrHostStage(p,voice){
@@ -11691,19 +11856,19 @@ function zrHostStage(p,voice){
 function zrHostReferenceCall(p,voice){
   return `<section class="zh-room zr-room zr-call zr-call-reference ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrHostStage(p,voice)}
     <div class="zr-top"><header class="zr-call-toolbar">
-      ${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}
+      ${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}
       <div class="zr-host-clock"><span class="zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-clock-divider" aria-hidden="true"></span>${hcVisPill()}</div>
       <span class="zr-session-earned" title="${n(Math.round(S.earned||0))} coins this session"><small>This session</small><b id="earn">${coinIcon(14)}+${kfmt(Math.round(S.earned||0))}</b></span>
       ${zrRound('callmore','Call options',"zrOpen('host-options')",'zr-host-more')}
     </header><div class="zr-call-stats">${typeof hsTargets==='function'?hsTargets():''}</div>${hcFeeChip()}${zrGiftBanner()}</div>
     <div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>
-      ${typeof hsGiftRail==='function'?hsGiftRail():''}${Room.chatOpen?zrCallComposer():''}
-      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button>
+      ${Room.chatOpen?zrCallComposer():`${typeof hsGiftRail==='function'?hsGiftRail():''}
+      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
         <div class="zr-call-person">${hcIdentityAvatar(p,38)}<div><strong>${esc(p.n)}</strong></div></div>
         <button type="button" class="zr-call-target" onclick="hsOpenSheet('gift-target')" aria-label="Choose gift target">${hi('plus',15)}</button>
         <button type="button" class="zr-hangup" onclick="hostEnd('end')" aria-label="End call">${hi('ph',23)}</button>
         ${zrRound('gift','Gift target',"hsOpenSheet('gift-target')",'zr-dock-controls')}
-      </div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
+      </div>`}${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
     </div>${zrGiftCelebration()}${zrSheet()}${typeof hsSheet==='function'?hsSheet():''}${hcCallExtras()}</section>`;
 }
 function zrHostOptions(){
@@ -11720,15 +11885,15 @@ function zrCall(host){
   if(!p)return '<div class="zh-empty">This call has ended.<button onclick="go(\'home\')">Back to Home</button></div>';
   if(host)return zrHostReferenceCall(p,voice);
   return `<section class="zh-room zr-room zr-call zr-sender-call ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrBackdrop(p,false,voice)}
-    <div class="zr-top"><header class="zr-call-toolbar">${backButton('zrExit()',{label:'Leave call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${zrCallStats()}${zrGiftBanner()}</div>
+    <div class="zr-top"><header class="zr-call-toolbar">${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${typeof ctSenderTargets==='function'?ctSenderTargets():''}${zrGiftBanner()}</div>
     ${!voice?`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`:''}
-    <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():''}
-      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle ${Room.chatOpen?'is-active':''}" onclick="zrCallChat()" aria-label="${Room.chatOpen?'Hide':'Open'} call chat" aria-expanded="${Room.chatOpen}" aria-controls="zr-call-composer">${hi('chat',21)}</button>
+    <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():`
+      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
         <div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small></span></div></div>
         <button type="button" class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>
         <button type="button" class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',23)}</button>
         ${zrRound('gift','Send a gift',`homeGifts('${domId(p.id)}')`,'zr-call-gift')}
-      </div>${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
+      </div>`}${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
     </div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 function zrOpen(sheet){Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r()}
@@ -11775,7 +11940,8 @@ function zrSound(){Room.playbackMuted=!Room.playbackMuted;window.ZimiMedia?.setP
 function zrDraftChanged(){document.querySelector('.zr-send')?.classList.toggle('has-draft',!!Room.draft.trim())}
 function zrSendMessage(){
   const input=document.getElementById(zrIsCall()?'rmsg':'home-stream-message');if(!input?.value.trim())return;
-  if(zrIsCall())rsay();else homeSendStreamMessage();Room.draft='';const next=document.getElementById(zrIsCall()?'rmsg':'home-stream-message');if(next){next.value='';next.focus()}zrDraftChanged();
+  if(zrIsCall()){rsay();Room.draft='';Room.chatOpen=false;input.blur();r();return}
+  homeSendStreamMessage();Room.draft='';const next=document.getElementById(zrIsCall()?'rmsg':'home-stream-message');if(next){next.value='';next.focus()}zrDraftChanged();
 }
 function zrEmoji(emoji){Room.draft=(Room.draft+emoji).slice(0,500);Room.sheet='';r();document.getElementById(zrIsCall()?'rmsg':'home-stream-message')?.focus()}
 function zrLoadQueue(){if(!Home.stream)return;if(DEMO)return;Room.queueLoading=true;Room.queueError='';Native.send('stream.requests.load',{streamId:Home.stream.id})}
@@ -11884,7 +12050,7 @@ function zpcScreen(){
   if(live)CallSetup.mode='video';
   const busy=!!Home.preparingCall,voice=!live&&(busy?!!Home.preparingVoice:CallSetup.mode==='voice');
   const available=!!h.available&&(!live||h.stream?.id===Home.dashboardSetup.streamId);
-  const need=(h.rate||0)+(h.fee||0),walletPending=need>0&&!coinWalletReady(),walletError=walletPending&&!!ContentLoading.wallet.error;
+  const need=homeCallRequiredCoins(h),walletPending=need>0&&!coinWalletReady(),walletError=walletPending&&!!ContentLoading.wallet.error;
   // A paid call needs the entry fee and one minute of coins to start; the server enforces the same rule.
   const short=available&&!busy&&!walletPending&&need>0&&S.bal<need;
   const modes=live?[['video','vid','Video call','Request a private call']]:[['video','vid','Video call','Face to face'],['voice','ph','Voice call','Just your voices']];
@@ -11915,6 +12081,179 @@ if(DEMO&&['precall','precall-offline'].includes(previewMode)){
   const h=homeRemember({id:'preview-sara',name:offline?'[Test] Sara':'Sara Khan',category:'Fitness',city:'Mumbai',avatarUrl:offline?'':PREVIEW_HOSTS[5],coverUrl:'',online:!offline,verified:true,availableForCall:!offline,ratePerMin:0,entryFee:0});
   S.v='precall';S.h=h.id;S.loggedIn=1;S.bal=offline?0:1250;
 }
+
+/* Outgoing calls ring audibly. While the dial screen (or its minimized call) waits for an answer, the
+   classic double ringback plays (400 + 450 Hz: 0.4s on, 0.2s off, 0.4s on, 2s
+   off); it stops as soon as the call is answered, cancelled, declined, missed or
+   fails, or the app leaves the foreground. Web Audio draws the tone, so no sound
+   file ships. The dial screen's rings keep the same 3s cycle through phase(). */
+window.ZimiRingback=(()=>{
+  const CYCLE=3,BURSTS=[[0,.4],[.6,.4]],LEVEL=.2;
+  let context=null,tone=null,timer=0,next=0,began=0,foreground=true;
+  // A minimized ringing call (web/ongoing-call.js) keeps ringing behind other screens.
+  const wanted=()=>(['dial','dialback'].includes(S.v)||['dial','dialback'].includes(S.bgCall?.view))&&foreground&&!document.hidden;
+  function audio(){
+    if(context)return context;
+    const Context=window.AudioContext||window.webkitAudioContext;
+    try{context=Context?new Context():null}catch{context=null}
+    // A browser that held the tone until a tap starts it in step with the rings.
+    // A context that simply took a moment to start is already on time.
+    if(context)context.onstatechange=()=>{
+      if(!tone||context.state!=='running')return;
+      const late=(performance.now()-began)/1000-(context.currentTime-tone.start);
+      if(late<.3)return;
+      tone.level.gain.cancelScheduledValues(0);tone.level.gain.value=0;next=context.currentTime+(CYCLE-phase())%CYCLE;queue();
+    };
+    return context;
+  }
+  // Bursts are queued a cycle ahead, so a busy screen cannot open gaps in the tone.
+  function queue(){
+    const level=tone.level.gain;
+    while(next<context.currentTime+CYCLE){
+      for(const [at,length] of BURSTS){
+        const t=next+at;
+        level.setValueAtTime(0,t);level.linearRampToValueAtTime(LEVEL,t+.02);
+        level.setValueAtTime(LEVEL,t+length-.02);level.linearRampToValueAtTime(0,t+length);
+      }
+      next+=CYCLE;
+    }
+  }
+  function play(){
+    const c=audio();if(!c)return;
+    if(c.state==='suspended')c.resume().catch(()=>{});
+    const level=c.createGain();level.gain.value=0;level.connect(c.destination);
+    const voices=[400,450].map(frequency=>{const o=c.createOscillator();o.frequency.value=frequency;o.connect(level);o.start();return o});
+    tone={level,voices,start:c.currentTime};next=c.currentTime+.01;queue();timer=setInterval(queue,500);
+  }
+  function silence(){
+    clearInterval(timer);timer=0;if(!tone)return;
+    const {level,voices}=tone,c=context,t=c.currentTime;tone=null;
+    level.gain.cancelScheduledValues(t);level.gain.setValueAtTime(level.gain.value,t);level.gain.linearRampToValueAtTime(0,t+.04);
+    voices.forEach(o=>o.stop(t+.05));
+    // Release the audio output once nothing rings.
+    setTimeout(()=>{level.disconnect();if(!tone&&c.state==='running')c.suspend().catch(()=>{})},150);
+  }
+  function sync(){
+    if(wanted()){if(!began){began=performance.now();play()}}
+    else if(began){began=0;silence()}
+  }
+  /** Seconds into the current ring cycle; 0 before ringing starts. */
+  function phase(){return began?((performance.now()-began)/1000)%CYCLE:0}
+  function unlock(){if(tone&&context.state==='suspended')context.resume().catch(()=>{})}
+  document.addEventListener('pointerup',unlock,{capture:true,passive:true});
+  document.addEventListener('keydown',unlock,{capture:true,passive:true});
+  document.addEventListener('aurora:navigate',sync);
+  document.addEventListener('visibilitychange',sync);
+  // Leaving the screen without navigation (a redraw that changes the view) also stops it.
+  const screen=document.getElementById('screen');
+  if(screen&&typeof MutationObserver!=='undefined')new MutationObserver(sync).observe(screen,{childList:true});
+  Native.on('app.background',()=>{foreground=false;sync()});
+  Native.on('app.foreground',()=>{foreground=true;sync()});
+  return {sync,phase,playing:()=>!!tone};
+})();
+
+/* A call keeps going when its screen is left. Back on a calling or call screen minimizes the
+   call (S.bgCall) instead of ending it: a bar across the top of every other screen shows it is
+   still on, keeps the other person's audio playing (and shows their video small), and a tap
+   returns to the call exactly as it was, with its clock, chat and camera. The red buttons still
+   end it. While one call is minimized no other call can start, and an answer to a minimized
+   outgoing call opens the call screen. */
+const CALL_VIEWS = ['dial', 'dialback', 'call', 'voice', 'hcall'];
+const Ongoing = { timer: 0, pickup: 0 };
+
+function callMinimize() {
+  if (!CALL_VIEWS.includes(S.v) || S.bgCall) return;
+  if (window.Room?.transition) return appNotice('Your call is connecting. Please wait for the call controls.');
+  if (S.connecting || S.inc) return appNotice('Answer or decline the incoming call first.');
+  const view = S.v, host = view === 'hcall' || view === 'dialback';
+  const voice = host ? !!S.caller?.voice : view === 'voice' || view === 'dial' && !!S.nextCallVoice;
+  S.confirm = 0; if (window.Room) Room.sheet = '';
+  S.bgCall = { view, h: S.h, caller: S.caller, voice, callId: view === 'hcall' ? S.caller?.callId : S.callId };
+  // The preview has no server: the other side picks up after a moment, as it does on the call screen.
+  if (DEMO && (view === 'dial' || view === 'dialback')) Ongoing.pickup = setTimeout(() => {
+    if (S.bgCall?.view !== view) return;
+    callRestore(false); go(view === 'dialback' ? 'hcall' : voice ? 'voice' : 'call', S.h);
+  }, 2000);
+  go('home');
+}
+
+/** Puts the minimized call back on screen. Without paint, only its state returns, for a caller
+    that navigates next (an answer, an ending). */
+function callRestore(paint = true) {
+  const call = S.bgCall; if (!call) return false;
+  S.bgCall = null; clearTimeout(Ongoing.pickup); ongoingPaint();
+  const change = paint ? window.ZimiNavigation?.before(call.view) : null;
+  S.v = call.view; S.h = call.h; S.caller = call.caller; S.tray = 0; S.more = 0; S.sh = 0;
+  // The host's gift targets carry on rather than restarting as for a new call.
+  if (call.view === 'hcall' && typeof HostStudio !== 'undefined') HostStudio.lastView = 'hcall';
+  if (paint) {
+    r(); document.getElementById('screen').scrollTop = 0;
+    document.dispatchEvent(new CustomEvent('aurora:navigate')); window.ZimiNavigation?.after(change);
+  }
+  return true;
+}
+
+/** Whether a server event about call `id` is about the minimized call. */
+function ongoingMatches(id) {
+  const call = S.bgCall; if (!call) return false;
+  return call.view === 'hcall' ? call.caller?.callId === id : !S.callId || S.callId === id;
+}
+
+/* The bar's red button ends the call as the call screen's would: a ringing call is cancelled
+   where the person is; a connected one ends on its summary (a host may still confirm an early end). */
+function ongoingHangup(event) {
+  event?.stopPropagation(); const call = S.bgCall; if (!call) return;
+  if (call.view === 'dial' || call.view === 'dialback') {
+    S.bgCall = null; clearTimeout(Ongoing.pickup); window.ZimiMedia?.stop();
+    Native.send('call.end', { reason: 'cancelled' }); S.callId = null; S.dialFrom = null;
+    ongoingPaint(); window.ZimiRingback?.sync(); appNotice('Call cancelled'); r(); return;
+  }
+  if (call.view === 'hcall') { callRestore(); return hostEnd('end'); }
+  callRestore(false); endCall();
+}
+
+function ongoingPerson(call) { return call.view === 'hcall' || call.view === 'dialback' ? call.caller : g(call.h); }
+function ongoingStatus(call) {
+  if (call.view === 'dial' || call.view === 'dialback') return 'Calling…';
+  return `${call.voice ? 'Voice call' : 'Video call'} · ${clock(S.sec || 0)}`;
+}
+function ongoingPaint() {
+  const call = S.bgCall, old = document.getElementById('zimi-ongoing');
+  if (!call || CALL_VIEWS.includes(S.v) || !S.loggedIn) {
+    if (old) old.remove();
+    clearInterval(Ongoing.timer); Ongoing.timer = 0; return;
+  }
+  const p = ongoingPerson(call) || { n: 'Your call' }, ringing = call.view === 'dial' || call.view === 'dialback';
+  // Redraw only when the call's shape changes, so the playing media keeps its decoder.
+  const key = `${call.view}:${call.voice}:${p.id || p.n}`;
+  if (!old || old.dataset.key !== key) {
+    const media = ringing ? avc(p, 40) : call.voice ? `${avc(p, 40)}<audio data-zimi-remote autoplay hidden></audio>` : '<video data-zimi-remote autoplay playsinline></video>';
+    const html = `<div id="zimi-ongoing" class="zoc ${ringing ? 'is-ringing' : ''}" data-key="${esc(key)}" role="region" aria-label="Ongoing call">
+      <button type="button" class="zoc-return" onclick="callRestore()" aria-label="Return to your call with ${esc(p.n)}"><span class="zoc-media">${media}</span><span class="zoc-text"><strong>${esc(p.n)}</strong><span class="zoc-status"><i aria-hidden="true"></i><span class="zoc-time">${ongoingStatus(call)}</span></span></span><span class="zoc-cta" aria-hidden="true">Return</span></button>
+      <button type="button" class="voiceend" onclick="ongoingHangup(event)" aria-label="End call">${I('ph', 20)}</button></div>`;
+    if (old) old.outerHTML = html; else document.querySelector('.app')?.insertAdjacentHTML('afterbegin', html);
+    window.ZimiMedia?.attach();
+  }
+  if (!Ongoing.timer) Ongoing.timer = setInterval(() => {
+    const time = document.querySelector('#zimi-ongoing .zoc-time');
+    if (time && S.bgCall) time.textContent = ongoingStatus(S.bgCall);
+  }, 1000);
+}
+
+/* A host's gifts still count towards the session while its call is minimized. */
+Native.on('gift.received', d => {
+  const call = S.bgCall; if (call?.view !== 'hcall' || d.callId && d.callId !== call.callId) return;
+  const id = d.id || d._id || d.transactionId;
+  if (id && window.Room?.giftIds) { if (Room.giftIds.has(id)) return; Room.giftIds.add(id); }
+  const coins = Number(d.totalCoins ?? d.coins ?? d.amount) || 0;
+  S.earned = (S.earned || 0) + coins; S.recvN = (S.recvN || 0) + 1; S.gifted = (S.gifted || 0) + coins;
+  S.rmsgs.push(['gift', d.senderName || d.from?.name || first(call.caller?.n || 'Your caller'), `sent ${d.emoji || '🎁'} ${d.giftName || 'a gift'}`]);
+});
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => {
+  if (!S.bgCall) return;
+  S.bgCall = null; clearTimeout(Ongoing.pickup); window.ZimiMedia?.stop(); ongoingPaint(); window.ZimiRingback?.sync();
+}));
+document.addEventListener('aurora:navigate', ongoingPaint);
 
 /* The creator side of private calls: getting ready and going online, a second caller ringing
    while a call is in progress (decline or switch, never a busy signal), and the entry fee
@@ -11997,7 +12336,7 @@ function hcWaitingView() {
   return `<section class="hc-waiting" style="${hcSceneStyle('waiting')}" aria-label="Online and waiting for calls">
     <div class="hc-waiting-main"><div class="hc-host-avatar is-waiting">${hcIdentityAvatar(me, 104)}<i aria-hidden="true"></i><i aria-hidden="true"></i></div>
     <h1>You’re online</h1><p class="hc-waiting-status">Waiting for callers… ${S.vis ? 'you’re visible on Home.' : 'you’re hidden from Home.'}</p>
-    <p class="hc-waiting-note">You stay online when you switch apps or come back later. Tap Go offline when you want to stop receiving calls.</p>
+    <p class="hc-waiting-note">Members can call your profile at any time. Stay in the app to answer their calls.</p>
     <div class="hc-waiting-actions"><button type="button" class="hc-primary" onclick="go('home')">Browse the app</button>
     <button type="button" class="hc-offline" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Going offline…' : 'Go offline'}</button></div></div>
     </section>`;
@@ -12271,6 +12610,7 @@ Native.on('creator.card.saved',d=>{
 });
 Native.on('creator.card.error',d=>{if(d.requestId!==HostStudio.cardRequestId)return;HostStudio.cardSaving=false;HostStudio.cardError=d.message||'Could not save the image. Try again.';if(HostStudio.sheet==='card-image'&&hsAllowed())hsPaintSheet()});
 function hsTargets() {
+  if (typeof ctShareTargets === 'function') ctShareTargets();
   const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
   return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
 }
@@ -12590,7 +12930,23 @@ function zcBubble(m,h){
  const body=m.deleted?`<div class="bub zc-deleted">${m.mine?'You deleted this message':'This message was deleted'}</div>`:m.kind==='gift'?zcGiftCard(m,h):m.kind==='voice'?zcVoiceMemo(m):m.kind==='image'?zcPhotoBubble(m,open):`<div class="bub"${open}>${escChat(m.text)}</div>`;
  return `<div class="zc-msg ${m.mine?'mine':'theirs'} zc-msg-${m.kind||'text'}" id="zc-m-${domId(m.id)}">${m.mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack"${actionable?` data-message-id="${domId(m.id)}"`:''}>${actionable?`<span class="zc-swipe-cue" aria-hidden="true">${ci('reply',18)}</span>`:''}${!m.deleted?zcQuote(m.reply,h,m.mine):''}${body}${meta}</div></div>`
 }
-function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;if(!S.msgs.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return S.msgs.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+zcBubble(m,h)}).join('')}
+/* Each call with this person shows in the conversation at its time, from this account's side
+   (the server's call history): outgoing on the right, incoming on the left, with how long it
+   lasted or how it ended. It refreshes when the bridge re-reads calls after one ends. */
+function zcCallBubble(call,h){
+ const voice=call.kind==='voice',mine=call.direction!=='incoming',talked=!!call.duration&&!/^0+:00$/.test(call.duration);
+ const detail=talked?call.duration:call.status==='declined'?'Declined':call.status==='missed'?(mine?'No answer':'Missed'):['ringing','accepted'].includes(call.status)?'Ongoing':mine?'Cancelled':'Missed';
+ const missed=!mine&&!talked&&detail==='Missed',title=`${voice?'Voice':'Video'} call`;
+ return `<div class="zc-msg ${mine?'mine':'theirs'} zc-msg-call" role="note" aria-label="${esc(`${mine?'Outgoing':'Incoming'} ${title.toLowerCase()}, ${detail}`)}">${mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack"><div class="bub zc-call-bubble ${missed?'is-missed':''}"><span class="zc-call-icon">${hi(voice?'ph':'vid',18)}</span><span class="zc-call-copy"><b>${title}</b><small>${ci(mine?'callOut':'callIn',13)}${esc(detail)}</small></span></div><span class="zc-meta"><time datetime="${esc(call.at)}">${esc(zcClock(call))}</time></span></div></div>`;
+}
+function zcThreadTimeline(h){
+ const calls=CALLS.filter(call=>String(call.id)===String(h.id)&&Date.parse(call.at||'')).map(call=>({kind:'call',call,at:call.at})).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
+ if(!calls.length)return S.msgs;
+ const rows=[];let next=0;
+ for(const m of S.msgs){const at=Date.parse(m.at||'');if(at)while(next<calls.length&&Date.parse(calls[next].at)<=at)rows.push(calls[next++]);rows.push(m)}
+ return rows.concat(calls.slice(next));
+}
+function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;const rows=zcThreadTimeline(h);if(!rows.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return rows.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+(m.kind==='call'?zcCallBubble(m.call,h):zcBubble(m,h))}).join('')}
 /* The gift catalog, one tap from the composer. A tap opens the gift sheet with that gift chosen,
    so coins are only spent from its Send button. Members only, as with the composer's gift button. */
 function zcCanGift(h){return (DEMO?!isHost():zcSelfRole()==='user')&&!Chats.rows.find(c=>c.user.id===h.id)?.bot}
@@ -13973,8 +14329,9 @@ window.ZimiNavigation=(()=>{
     if(S.v==='thread'&&(Chats.reply||Chats.editing)){zcCancelContext();return}
     if(Home.preparingCall){homeCancelPrepare();return}
     if(Room.transition){appNotice('Your call is connecting. Please wait for the call controls.');return}
-    if(['live','call','voice','hcall'].includes(S.v)){zrExit();return}
-    if(['dial','dialback'].includes(S.v)){cancelDial();return}
+    if(S.v==='live'){zrExit();return}
+    // Back keeps a call going behind other screens; its red button ends it (web/ongoing-call.js).
+    if(['call','voice','hcall','dial','dialback'].includes(S.v)){callMinimize();return}
     if(S.v==='ring'){window.ZimiMedia?.stop();declineRing();return}
     if(S.v==='incoming'){declineMemberRing();return}
     if(S.v==='login'){if(S.auth)obBack();return}
@@ -13982,6 +14339,8 @@ window.ZimiNavigation=(()=>{
     // routes), and respect disabled Back controls during an in-flight save.
     const control=[...document.querySelectorAll('#top .zb-back,#screen .zb-back')].find(button=>button.getClientRects().length&&!button.closest('[hidden],[inert]'));
     if(control){if(!control.disabled)control.click();return}
+    // Leaving the app would drop a minimized call, so the root returns to it instead.
+    if(S.bgCall&&['home','welcome'].includes(S.v)){callRestore();return}
     if(['home','welcome'].includes(S.v)){Native.send('app.exit.request');return}
     if(S.v==='summary')S.callId=null;
     go(S.loggedIn?'home':'welcome');
@@ -14348,7 +14707,7 @@ function zuHostCall(voice){
   hostCallMember(p.id,voice,{name:p.name,avatarUrl:p.avatarUrl,city:p.city,gender:p.gender});
 }
 function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p.id))go('thread',p.id)}
-function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&p.availableForCall&&!zuOffline())homeCall(p.id)}
+function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&!zuOffline())homeCall(p.id)}
 function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
 function zuWatch(){const p=Zu.profile;if(window.ZIMI_LIVE_STREAMING_ENABLED&&p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
 
@@ -14360,7 +14719,7 @@ function zuSkeleton(kind='profile'){
 function zuStatus(p){
   if(Zu.loading||Zu.error)return '';
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
-  const callable=zuApproved(p)&&p.availableForCall;
+  const callable=zuApproved(p)&&zuMember();
   return `<span class="zu-presence ${callable||p.online?'is-online':''}"><i></i>${callable?'Available for a call':p.online?'Online':'Currently offline'}</span>`;
 }
 function zuAvatar(p){
@@ -14414,10 +14773,10 @@ function zuContent(p){
 function zuActions(p){
   if(!p||Zu.error)return '';
   if(zuSelf())return '';
-  const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&p.availableForCall&&!zuOffline();
+  const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
-  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>${ready&&p.availableForCall?'YOUR NEXT CONVERSATION':'CONNECT WHEN THEY’RE BACK'}</span><strong>${Zu.loading?'Checking availability…':p.availableForCall?(Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'):'Not available for calls'}</strong></div>`:''}
-    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>${ready&&!p.availableForCall?'Unavailable':'Start video call'}</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
+  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>YOUR NEXT CONVERSATION</span><strong>${Zu.loading?'Checking call rate…':Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'}</strong></div>`:''}
+    <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>Start video call</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
@@ -15471,7 +15830,7 @@ window.ZimiCardVideo = (() => {
 const CallInvitations={owner:'',invitation:null,requested:false,request:0,pending:0,busy:'',error:'',foreground:true,realtimeReady:false,readyAt:0,nullRetried:false,retryTimer:null,topup:null,ended:new Set(),timer:null};
 function zciOwner(){return S.loggedIn?S.user?.id||'':''}
 function zciMuted(){try{return localStorage.getItem('binzo.automaticCalls.muted.'+zciOwner())==='1'}catch{return false}}
-function zciIdle(ownDialog=false){return !!zciOwner()&&!isHost()&&S.v==='home'&&CallInvitations.foreground&&!document.hidden&&!homeContentPending()&&!Home.preparingCall&&!Home.matching&&!Home.checkoutBusy&&!Home.checkoutAttempt&&!CoinUI.checkoutPrompt&&!coinHasPendingPayment()&&!Home.giftTo&&!S.memberRing&&!S.inc&&!S.queuedInc&&!S.connecting&&!S.acceptingCall&&!ZVerify.state&&!window.ZimiChatVoice?.active()&&!document.querySelector(ownDialog?'dialog[open]:not(#zci-invitation)':'dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable=true]')}
+function zciIdle(ownDialog=false){return !!zciOwner()&&!isHost()&&S.v==='home'&&!S.bgCall&&CallInvitations.foreground&&!document.hidden&&!homeContentPending()&&!Home.preparingCall&&!Home.matching&&!Home.checkoutBusy&&!Home.checkoutAttempt&&!CoinUI.checkoutPrompt&&!coinHasPendingPayment()&&!Home.giftTo&&!S.memberRing&&!S.inc&&!S.queuedInc&&!S.connecting&&!S.acceptingCall&&!ZVerify.state&&!window.ZimiChatVoice?.active()&&!document.querySelector(ownDialog?'dialog[open]:not(#zci-invitation)':'dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable=true]')}
 function zciValid(invitation=CallInvitations.invitation){return !!invitation&&invitation.source==='automatic'&&invitation.label==='Automatic call invitation'&&invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()}
 function zciClose(){const dialog=document.getElementById('zci-invitation');if(dialog){dialog.close();dialog.remove()}}
 function zciWatchDeadline(){
@@ -15588,6 +15947,107 @@ document.addEventListener('aurora:navigate',()=>{if(S.v!=='home')zciClose();queu
 const zciPreviousAfter=ZimiHome.afterRender;ZimiHome.afterRender=()=>{zciPreviousAfter();zciAfter()};
 window.ZimiCallInvitations={request:zciRequest,connect:zciConnect,dismiss:zciDismiss,topup:zciTopup,review:zciReview,returnFromCoins:zciReturnFromCoins,topupIncoming:zciTopupIncoming,returnToIncoming:zciReturnToIncoming,coinsContext:zciCoinsContext,sourceBadge:zciSourceBadge,reset:zciReset,
   receiveIncoming(data){if(CallInvitations.topup?.kind==='incoming'&&CallInvitations.topup.callId===data.callId&&S.memberRing?.callId===data.callId){if(data.rate!==undefined)S.memberRing.rate=data.rate;return true}return false}};
+
+/* The member's call screen shows the host's gift and mission targets in place of the call
+   rate, so gifts visibly help the host. Hosts share their targets whenever they change.
+   Staff set when the low-balance Recharge pop-up appears; the server sends the threshold. */
+const CallTargets = { data: null, loading: '', sent: '', shareTimer: 0, recharge: null, shownAt: 0 };
+const CT_PREVIEW_RECHARGE = { enabled: true, thresholdCoins: 500, lastRechargeCoins: 0, delaySeconds: 10, repeatSeconds: 180 };
+
+function ctMemberCall() { return ['call', 'voice'].includes(S.v) && (!!S.callId || DEMO); }
+
+/* Host: called while the targets render, so every change reaches the member once. */
+function ctShareTargets() {
+  if (DEMO || S.v !== 'hcall' || !S.callId) return;
+  clearTimeout(CallTargets.shareTimer);
+  CallTargets.shareTimer = setTimeout(() => {
+    if (S.v !== 'hcall' || !S.callId || S.connecting) return;
+    const gift = hsTargetGift();
+    const targets = {
+      callId: S.callId, giftId: /^[a-f\d]{24}$/i.test(gift?.id || '') ? gift.id : null, giftCount: HostStudio.giftCount,
+      giftProgress: Math.min(1000000, hsGiftProgress(gift)), goalCoins: HostStudio.goal, earnedCoins: Math.max(0, Math.floor(HostStudio.receivedCoins)),
+    };
+    const key = JSON.stringify(targets);
+    if (key === CallTargets.sent) return;
+    CallTargets.sent = key; Native.send('call.targets.set', targets);
+  }, 500);
+}
+
+/* Member */
+function ctTargets() {
+  const data = CallTargets.data?.callId === S.callId ? CallTargets.data : null;
+  if (data || !DEMO) return data;
+  const gift = (Array.isArray(Home.gifts) && Home.gifts[0]) || { id: 'preview-rose', name: 'Rose', emoji: '🌹', coins: 99 };
+  return { callId: S.callId, gift, giftCount: 10, giftProgress: 3, goalCoins: 1000000, earnedCoins: 420000 };
+}
+function ctSenderTargets() {
+  const data = ctTargets(), host = zrPerson();
+  if (!data || !host) return '<div class="zr-call-stats ct-call-targets"></div>';
+  const gift = data.gift, name = esc(first(host.n)), mission = hsPercent(data.earnedCoins, data.goalCoins);
+  const giftCard = gift ? `<button type="button" class="hs-target-card" onclick="ctGive()" aria-label="Send ${esc(gift.name)} to help ${name} reach the gift target, ${n(data.giftProgress)} of ${n(data.giftCount)}"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(data.giftProgress)}/${n(data.giftCount)}</b></span><strong>${giftPriceMarkup(gift, 10)}</strong><i class="hs-target-track"><em style="width:${hsPercent(data.giftProgress, data.giftCount)}%"></em></i></span></button>` : '';
+  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
+}
+/* Opens the gift panel, with the target gift chosen when the member tapped that card. */
+function ctGive(mission = false) {
+  const host = zrPerson(), gift = ctTargets()?.gift;
+  if (!host) return;
+  homeGifts(host.id);
+  if (!mission && gift?.id && !Home.giftBusy) homeSelectGift(gift.id);
+}
+function ctPaintTargets() {
+  const node = document.querySelector('.ct-call-targets');
+  if (node) node.outerHTML = ctSenderTargets(); else r();
+}
+
+/* Recharge pop-up: at or under the staff threshold, after the call's first seconds, and again
+   only once the repeat time has passed since it was last shown or dismissed. */
+function ctRechargeRule() { return CallTargets.recharge || (DEMO ? CT_PREVIEW_RECHARGE : null); }
+function ctRechargeCheck() {
+  const rule = ctRechargeRule(), dialog = document.getElementById('ct-recharge');
+  if (!ctMemberCall() || !rule?.enabled || !coinWalletReady()) { ctRechargeClose(); return; }
+  if (dialog) { if (S.bal > rule.thresholdCoins) ctRechargeClose(); else ctRechargePaint(dialog); return; }
+  if (S.bal > rule.thresholdCoins || S.sec < rule.delaySeconds || Date.now() - CallTargets.shownAt < rule.repeatSeconds * 1000) return;
+  // Someone already adding coins or answering another prompt is not interrupted.
+  if (Home.giftTo || document.querySelector('dialog[open]')) return;
+  const next = document.createElement('dialog');
+  next.id = 'ct-recharge'; next.className = 'ct-recharge';
+  next.setAttribute('aria-labelledby', 'ct-recharge-title'); next.setAttribute('aria-describedby', 'ct-recharge-text');
+  next.addEventListener('cancel', event => { event.preventDefault(); ctRechargeLater(); });
+  ctRechargePaint(next); document.body.append(next);
+  CallTargets.shownAt = Date.now();
+  next.showModal(); next.querySelector('.ct-recharge-primary')?.focus();
+}
+function ctRechargePaint(dialog) {
+  const host = zrPerson(), rate = S.callRate || 0, key = `${S.bal}:${rate}:${host?.id || ''}`;
+  if (dialog.dataset.key === key) return;
+  const minutes = rate ? Math.floor(S.bal / rate) : 0, focused = dialog.contains(document.activeElement) ? document.activeElement.className : '';
+  const left = rate ? (minutes < 1 ? 'Less than a minute of calling left.' : `About ${n(minutes)} min of calling left.`) : '';
+  dialog.dataset.key = key;
+  dialog.innerHTML = `<span class="ct-recharge-coin" aria-hidden="true">${coinIcon(40)}</span><h2 id="ct-recharge-title">Recharge to keep talking</h2><p id="ct-recharge-text">Only <b>${n(S.bal)} coins</b> left. ${left} Add coins so your call with ${esc(first(host?.n || 'your host'))} doesn't end.</p><button type="button" class="ct-recharge-primary" onclick="ctRecharge()">Recharge</button><button type="button" class="ct-recharge-later" onclick="ctRechargeLater()">Not now</button>`;
+  if (focused) dialog.querySelector(`.${focused.split(' ')[0]}`)?.focus();
+}
+function ctRechargeClose() {
+  const dialog = document.getElementById('ct-recharge');
+  if (!dialog) return;
+  if (dialog.open) dialog.close();
+  dialog.remove();
+}
+function ctRechargeLater() { CallTargets.shownAt = Date.now(); ctRechargeClose(); }
+function ctRecharge() { CallTargets.shownAt = Date.now(); ctRechargeClose(); zrCallTopup(); }
+
+Native.on('call.connected', d => {
+  if (!ctMemberCall() || d.callId !== S.callId || DEMO || CallTargets.loading === d.callId) return;
+  CallTargets.loading = d.callId; Native.send('call.targets.load', { callId: d.callId });
+});
+Native.on('call.targets', d => {
+  if (!d || d.callId !== S.callId) return;
+  CallTargets.data = d;
+  if (ctMemberCall()) ctPaintTargets();
+});
+Native.on('wallet.balance', d => { if (d.rechargePrompt) CallTargets.recharge = d.rechargePrompt; ctRechargeCheck(); });
+Native.on('session', d => { if (CallTargets.owner !== d.user?.id) Object.assign(CallTargets, { owner: d.user?.id, data: null, loading: '', sent: '', recharge: null, shownAt: 0 }); });
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => { ctRechargeClose(); Object.assign(CallTargets, { owner: '', data: null, loading: '', sent: '', recharge: null, shownAt: 0 }); }));
+setInterval(ctRechargeCheck, 1000);
 
 r();
 Native.send('ready',{demo:DEMO});

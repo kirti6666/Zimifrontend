@@ -202,6 +202,12 @@ refusal refreshes a stale wallet and leaves the member to choose Accept.
 incoming screen. Host cancellation or expiry wins over late callbacks, and the
 member must still explicitly Accept. No hold failure declines or answers a call.
 
+Members can manually ring any active, approved host, including admin-created
+profiles before their first OTP sign-in, regardless of presence or the host's
+request toggle. The host must sign in before answering. Blocks, approval and
+the caller's active-call reservation still apply; automatic matching retains
+its availability checks.
+
 Staff set the price in coins per minute in the admin dashboard (0 keeps calls free).
 A call keeps the price it was placed at. The server bills whole seconds once the host
 answers, `ceil(seconds × price / 60)` coins, charging every 10 seconds while the call

@@ -311,7 +311,11 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await sentCount('chat.open'), openedBeforeIncoming + 1, 'Other conversations and in-call events do not mark the active thread read');
     await settle('data.thread', { with: mira.id, messages: [{ mine: true, text: 'Seen already', createdAt: at(3), status: 'read' }, { mine: true, text: 'Not seen yet', createdAt: at(2), status: 'sent' }, { mine: false, text: 'Reply from Mira', createdAt: at(1) }], readAt: new Date().toISOString() }, 'thread');
     assert.deepEqual(await page.locator('#tf .zc-tick').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Read', 'Sent'], 'Read ticks follow the server read state of own messages');
-    assert.equal(await page.locator('.zc-thread-day').textContent(), 'Today');
+    // Calls with this person sit in the conversation at their time, from this account's side.
+    assert.deepEqual(await page.locator('.zc-thread-day').allTextContents(), ['Yesterday', 'Today']);
+    assert.deepEqual(await page.locator('#tf .zc-msg').evaluateAll(nodes => nodes.map(node => node.classList.contains('zc-msg-call') ? node.getAttribute('aria-label') : node.querySelector('.bub').innerText.trim())),
+      ['A real thread response', 'A new message in the active thread', 'An in-call message', 'Outgoing video call, Declined', 'Outgoing video call, 7:05', 'Seen already', 'Not seen yet', 'Reply from Mira'], 'Calls sit between dated messages by time');
+    assert.equal(await page.locator('#tf .zc-msg-call [data-message-id], #tf .zc-msg-call .zc-tick').count(), 0, 'Call entries are not messages: no menu, reply or ticks');
     assert.equal(await page.locator('.zc-voice, .zc-gift-card, .zc-thread-live').count(), 0, 'Production threads show only server history, without preview content');
     assert.equal(await page.locator('.zc-thread-header small').textContent(), 'Online', 'An unknown call rate is never presented as a price');
     await draft.fill('Hello Mira');
@@ -335,7 +339,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     assert.equal(await page.locator('.zc-gift-card').count(), 1, 'A confirmed gift stays in the thread across history refreshes');
     assert.equal(await page.locator('#app-notice').textContent(), 'Gift sent!');
     await page.evaluate(() => document.getElementById('app-notice')?.remove()); // the toast would cover later steps for 7s
-    console.log('PASS chats: thread read ticks, no suggested messages, failed sends and confirmed gift cards');
+    console.log('PASS chats: thread read ticks, calls in the conversation by time, no suggested messages, failed sends and confirmed gift cards');
     await navigate('chats');
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
     const picker = page.getByRole('dialog', { name: 'New conversation', exact: true });

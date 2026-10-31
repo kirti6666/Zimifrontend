@@ -25,11 +25,11 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
 
 async function checkLayout(page, label, voice = false) {
   const result = await page.locator('.zr-call').evaluate(room => {
-    const box = room.getBoundingClientRect(), dock = room.querySelector('.zr-call-dock').getBoundingClientRect();
+    const box = room.getBoundingClientRect(), dock = (room.querySelector('.zr-call-dock') || room.querySelector('.zr-call-composer')).getBoundingClientRect();
     const top = room.querySelector('.zr-call-stats').getBoundingClientRect(), pip = room.querySelector('.zr-pip')?.getBoundingClientRect();
     const stage = room.querySelector('.zr-video').getBoundingClientRect();
     const theme = ztCurrent(), color = value => { const swatch = document.createElement('span'); swatch.style.color = value; room.append(swatch); const result = getComputedStyle(swatch).color; swatch.remove(); return result; };
-    const controls = [...room.querySelectorAll('.zr-call-toolbar button,.zr-call-dock>button')].map(el => ({ label: el.getAttribute('aria-label'), rect: el.getBoundingClientRect() }));
+    const controls = [...room.querySelectorAll('.zr-call-toolbar button,.zr-call-dock>button,.zr-call-composer>button')].map(el => ({ label: el.getAttribute('aria-label'), rect: el.getBoundingClientRect() }));
     return {
       overflow: document.documentElement.scrollWidth > innerWidth + 1 || room.scrollWidth > room.clientWidth + 1,
       bottomVisible: dock.bottom <= innerHeight + 1 && dock.top >= top.bottom,
@@ -44,8 +44,8 @@ async function checkLayout(page, label, voice = false) {
       fullStage: Math.abs(stage.left-box.left)<1 && Math.abs(stage.top-box.top)<1 && Math.abs(stage.width-box.width)<1 && Math.abs(stage.height-box.height)<1 && Math.abs(box.width-innerWidth)<1,
       opaqueChrome: [...room.querySelectorAll('.zr-top,.zr-bottom,.zr-call-stat,.hs-target-card')].filter(el=>getComputedStyle(el).backgroundColor!=='rgba(0, 0, 0, 0)').map(el=>el.className),
       incorrectVideoFit: [...room.querySelectorAll('video')].filter(el=>{
-        const fillStage=room.classList.contains('zr-sender-call')&&el.parentElement.classList.contains('zr-video');
-        return getComputedStyle(el).objectFit!==(fillStage?'cover':'contain')||getComputedStyle(el).objectPosition!=='50% 50%';
+        const remote=el.hasAttribute('data-zimi-remote');
+        return getComputedStyle(el).objectFit!==(remote?'cover':'contain')||getComputedStyle(el).objectPosition!=='50% 50%';
       }).map(el=>el.outerHTML),
       blurred: [room,...room.querySelectorAll('*')].filter(el=>{const style=getComputedStyle(el);return style.backdropFilter!=='none'||/blur\(/.test(style.filter)}).map(el=>el.className),
       overlayColor: getComputedStyle(room.querySelector('.zr-top')).color,
@@ -62,7 +62,7 @@ async function checkLayout(page, label, voice = false) {
   assert.equal(result.primaryTabs, 0, `${label}: main tabs are absent in calls`);
   assert.equal(result.fullStage, true, `${label}: the camera stage reaches every screen edge behind the controls`);
   assert.deepEqual(result.opaqueChrome, [], `${label}: header, footer and stats remain transparent`);
-  assert.deepEqual(result.incorrectVideoFit, [], `${label}: sender video fills the stage and previews preserve their framing`);
+  assert.deepEqual(result.incorrectVideoFit, [], `${label}: remote video fills its container and local previews preserve their framing`);
   assert.deepEqual(result.blurred, [], `${label}: camera, overlays and dialogs never blur the screen`);
   assert.equal(result.overlayColor, voice ? result.expectedColor : 'rgb(255, 255, 255)', `${label}: video controls remain readable in every theme`);
   if (voice) assert.equal(result.pip, null, `${label}: voice calls have no camera preview`);
@@ -142,7 +142,39 @@ async function screenshotCall(page, name) {
     await page.evaluate(() => { window.__lastCameraTime=document.querySelector('video[data-zimi-local]').currentTime; });
     await page.waitForFunction(() => document.querySelector('video[data-zimi-local]').currentTime > __lastCameraTime, { timeout: 5000 });
     assert.equal(await page.locator('.zr-call-heading,.zr-gift-rail').count(), 0, 'Sender call has no heading, disclaimer or inline gift strip');
-    assert.equal(await page.locator('.zr-call-stat').count(), 1, 'Only the call rate remains in sender stats');
+    assert.equal(await page.locator('.zr-call-stat').count(), 0, 'The call rate is not shown in sender stats');
+    assert.equal(await page.locator('.ct-call-targets .hs-target-card').count(), 0, 'Targets appear only once the host shares them');
+    const strawberry = catalog.gifts[2];
+    await receive(page, 'call.targets', { callId: 'another-call', gift: null, giftCount: 5, giftProgress: 0, goalCoins: 100000, earnedCoins: 0 });
+    assert.equal(await page.locator('.ct-call-targets .hs-target-card').count(), 0, "Another call's targets are ignored");
+    await receive(page, 'call.targets', { callId: 'layout-member-call', gift: { ...strawberry, mediaUrl: '' }, giftCount: 10, giftProgress: 4, goalCoins: 1000000, earnedCoins: 52000 });
+    assert.match(await page.locator('.ct-call-targets').innerText(), /GIFT TARGET\s*4\/10[\s\S]*299[\s\S]*MISSION\s*5%[\s\S]*52,000\s*\/ 1M/, "The host's gift and mission targets replace the call rate");
+    await checkLayout(page, 'sender targets');
+    await page.getByRole('button', { name: 'Send Strawberry to help Aanya reach the gift target, 4 of 10', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => [Home.giftTo, CoinUI.giftId]), [creator.id, strawberry.id], 'The gift target card opens gifts with that gift chosen');
+    await page.evaluate(() => homeCloseGifts());
+    // Coins at or under the staff threshold bring up Recharge after the call's first seconds, then wait the repeat time.
+    await receive(page, 'wallet.balance', { coins: 400, earningsPaise: 0, rechargePrompt: { enabled: true, thresholdCoins: 500, lastRechargeCoins: 5000, delaySeconds: 0, repeatSeconds: 60 } });
+    const recharge = page.getByRole('dialog', { name: 'Recharge to keep talking', exact: true });
+    await recharge.waitFor();
+    assert.match(await recharge.innerText(), /Only 400 coins left\. About 6 min of calling left\./);
+    await button(page, 'Not now').click();
+    await receive(page, 'wallet.balance', { coins: 390 });
+    await page.waitForTimeout(1200);
+    assert.equal(await recharge.count(), 0, 'Dismissing waits the repeat time while coins stay low');
+    await page.evaluate(() => { CallTargets.shownAt = Date.now() - 61000; });
+    await recharge.waitFor();
+    await receive(page, 'wallet.balance', { coins: 900 });
+    assert.equal(await recharge.count(), 0, 'A recharge above the threshold closes the pop-up');
+    await receive(page, 'wallet.balance', { coins: 450 });
+    await page.evaluate(() => { CallTargets.shownAt = 0; });
+    await recharge.waitFor();
+    await button(page, 'Recharge').click();
+    await receive(page, 'data.catalog', catalog);
+    await page.getByRole('dialog', { name: 'Add coins', exact: true }).waitFor();
+    assert.equal(await recharge.count(), 0);
+    await button(page, 'Close gifts').click();
+    await receive(page, 'wallet.balance', { coins: 1250, rechargePrompt: { enabled: true, thresholdCoins: 500, lastRechargeCoins: 5000, delaySeconds: 0, repeatSeconds: 60 } });
     assert.doesNotMatch(await page.locator('.zr-call').innerText(), /GIFTS SENT|Content is user-generated|BinzoLive/);
     assert.equal(await button(page, 'Call controls').count(), 0, 'Controls are available through the three-dot menu only');
     assert.equal(await page.locator('.zr-hangup + .zr-call-gift[aria-label="Send a gift"]').count(), 1, 'Gift button sits next to End call');
@@ -191,13 +223,23 @@ async function screenshotCall(page, name) {
     await page.keyboard.press('Escape');
 
     await button(page, 'Open call chat').click();
+    const callChat = page.getByRole('textbox', { name: 'Call message', exact: true });
+    assert.equal(await callChat.evaluate(input => input === document.activeElement), true, 'Opening call chat focuses the message box for the keyboard');
+    const visibleBottom = () => page.locator('.zr-bottom').evaluate(bottom => [...bottom.querySelectorAll('button,input')].filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden').map(el => el.getAttribute('aria-label')));
+    assert.deepEqual(await visibleBottom(), ['Call message', 'Add emoji', 'Close call chat'], 'Call chat shows only the message box, emoji and close');
+    assert.equal(await page.locator('.zr-call-dock').count(), 0, 'Call chat hides the message, account, add-coins, end-call and gift controls');
     await page.setViewportSize({ width: 390, height: 500 });
     await checkLayout(page, 'chat with reduced keyboard viewport');
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole('textbox', { name: 'Call message', exact: true }).fill('Hello from the private call');
+    await callChat.fill('Hello from the private call');
+    assert.deepEqual(await visibleBottom(), ['Call message', 'Send message', 'Close call chat'], 'A draft swaps emoji for send');
     await button(page, 'Send message').click();
     const chat = (await sent(page, 'chat.send')).at(-1);
     assert.deepEqual(chat.data, { to: creator.id, text: 'Hello from the private call', inCall: true });
+    assert.equal(await page.locator('.zr-call-composer').count(), 0, 'Sending closes the call chat box');
+    assert.equal(await page.evaluate(() => ['rmsg'].includes(document.activeElement?.id) || document.activeElement?.tagName === 'INPUT'), false, 'Sending drops the keyboard');
+    assert.equal(await page.locator('.zr-call-dock').count(), 1, 'The call controls return after sending');
+    assert.match(await page.locator('#rfeed').innerText(), /Hello from the private call/, 'The sent message stays in the call feed');
     await receive(page, 'chat.message', { id: 'private-reply', from: creator.id, name: creator.name, text: 'Glad you made it' });
     assert.match(await page.locator('#rfeed').innerText(), /Glad you made it/);
 
@@ -227,7 +269,8 @@ async function screenshotCall(page, name) {
     await receive(page, 'wallet.balance', { coins: 1151 });
     assert.equal(await page.evaluate(() => S.v), 'call', 'Gift confirmation keeps the call open');
     assert.deepEqual(await page.evaluate(() => [S.giftN,S.gifted]), [1,99], 'Confirmed gifts still update call accounting');
-    assert.doesNotMatch(await page.locator('.zr-call-stats').innerText(), /GIFTS SENT|99/, 'Gift totals stay off the sender screen');
+    assert.doesNotMatch(await page.locator('.zr-call-stats').innerText(), /GIFTS SENT/, 'Gift totals stay off the sender screen');
+    assert.match(await page.locator('.zr-call-stats').innerText(), /GIFT TARGET\s*4\/10/, "Only the host's shared progress moves the targets");
     await page.evaluate(() => zrCallTopup());
     await receive(page, 'data.catalog', catalog);
     await page.getByRole('dialog', { name: 'Add coins', exact: true }).waitFor();

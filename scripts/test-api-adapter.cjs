@@ -568,6 +568,22 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(plain(await api.wallet()), { coins: 200, earningsPaise: 123450, reservedPaise: 2000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
   const invalidPayoutConfig = adapters.walletFrom({ coins: 0, earningsPaise: 100, minimumWithdrawalPaise: 1.5, withdrawalsEnabled: 'true' });
   assert.equal(invalidPayoutConfig.minimumWithdrawalPaise, undefined); assert.equal(invalidPayoutConfig.withdrawalsEnabled, false);
+  const rechargePrompt = { enabled: true, thresholdCoins: 999, lastRechargeCoins: 10000, delaySeconds: 10, repeatSeconds: 180 };
+  assert.deepEqual(plain(adapters.walletFrom({ coins: 800, earningsPaise: 0, rechargePrompt }).rechargePrompt), rechargePrompt, 'The staff Recharge rule reaches the call screen');
+  for (const broken of [{ ...rechargePrompt, enabled: 'yes' }, { ...rechargePrompt, thresholdCoins: -1 }, { ...rechargePrompt, repeatSeconds: 1.5 }, { ...rechargePrompt, delaySeconds: 3601 }, 'on'])
+    assert.equal(adapters.walletFrom({ coins: 800, earningsPaise: 0, rechargePrompt: broken }).rechargePrompt, undefined, 'A malformed Recharge rule is dropped, never guessed');
+  const targetsDto = { callId: 'call-1', gift: { _id: 'gift-1', name: 'Rose', emoji: '🌹', coins: 99, media: { url: 'https://cdn.example/rose.webp' } }, giftCount: 10, giftProgress: 3, goalCoins: 1000000, earnedCoins: 4200, updatedAt: '2026-10-31T08:00:00.000Z' };
+  const targets = { callId: 'call-1', gift: { id: 'gift-1', name: 'Rose', emoji: '🌹', coins: 99, mediaUrl: 'https://cdn.example/rose.webp' }, giftCount: 10, giftProgress: 3, goalCoins: 1000000, earnedCoins: 4200 };
+  expect('GET', '/calls/call-1/targets', targetsDto);
+  assert.deepEqual(plain(await api.callTargets('call-1')), targets, 'Members read the host targets for their call');
+  expect('GET', '/calls/call-1/targets', null);
+  assert.equal(await api.callTargets('call-1'), null, 'No targets until the host shares them');
+  const targetsInput = { giftId: 'gift-1', giftCount: 10, giftProgress: 3, goalCoins: 1000000, earnedCoins: 4200 };
+  expect('PUT', '/calls/call-1/targets', targetsDto, body => assert.deepEqual(body, targetsInput));
+  assert.deepEqual(plain(await api.setCallTargets('call-1', targetsInput)), targets);
+  assert.equal(adapters.callTargetsFrom({ ...targetsDto, gift: null }).gift, null, 'A mission-only target has no gift');
+  for (const broken of [{ ...targetsDto, giftCount: 0 }, { ...targetsDto, goalCoins: 0 }, { ...targetsDto, earnedCoins: -1 }, { ...targetsDto, callId: '' }])
+    assert.throws(() => adapters.callTargetsFrom(broken), /targets/);
   const payoutDto = { _id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: '2026-10-22T08:00:00.000Z', reason: 'Reviewed', payoutReference: 'bank-reference', userId: 'private-owner' };
   const payoutReceipt = { id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: payoutDto.createdAt, reason: 'Reviewed', payoutReference: 'bank-reference' };
   expect('GET', '/wallet/withdrawals?page=2&limit=20', { items: [payoutDto], total: 21, page: 2, limit: 20 });

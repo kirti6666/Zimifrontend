@@ -102,6 +102,7 @@ async function run() {
     const first = await navigate(page);
     assert.ok(first.requestId != null, 'Profile loads have a correlation identifier');
     assert.ok(await skeletons(page).count() > 0, 'Profile loading uses a labelled layout skeleton');
+    assert.equal(await button(page, 'Start video call').isDisabled(), true, 'Cached host identity cannot start a call before the profile read settles');
     assert.doesNotMatch(await page.locator('.zu-page').innerText(), /Lv\s+\d|66\d{6}|MVP/, 'No synthetic standing or account identifiers appear while loading');
     await receive(page, 'data.loading', { resource: 'publicProfile', id: creator.id, requestId: first.requestId, loading: false, error: 'This profile is temporarily unavailable.' });
     await page.getByRole('alert').filter({ hasText: 'This profile is temporarily unavailable.' }).waitFor();
@@ -165,11 +166,17 @@ async function run() {
     const readsBeforePresence = await sentCount(page, 'profile.load');
     const unavailable = { ...creator, online: true, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };
     await receive(page, 'data.home', { ...feed, hosts: [unavailable, other], featured: unavailable });
-    assert.equal(await button(page, 'Unavailable').isDisabled(), true, 'Live discovery updates the displayed creator availability');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A host availability toggle never prevents a member from opening a manual call');
+    assert.match(await page.locator('.zu-call-info').innerText(), /20\s+coins \/ min/, 'The server call rate remains visible when the host is not taking instant calls');
     assert.equal(await page.locator('.zu-stats strong').first().innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
     assert.equal(await button(page, 'Follow').isEnabled(), true, 'Discovery updates do not replace the profile relationship');
     assert.equal(await page.getByRole('button', { name: /^Open photo/ }).count(), 2, 'Presence changes preserve the loaded gallery');
     assert.equal(await sentCount(page, 'profile.load'), readsBeforePresence, 'A live presence update does not restart profile loading');
+    await button(page, 'Start video call').click();
+    assert.equal(await page.evaluate(() => S.v), 'precall', 'A host with availability off still opens member call setup');
+    assert.equal(await sentCount(page, 'call.start'), 0, 'Opening setup still requires confirmation before placing a paid call');
+    await page.evaluate(() => go('host', S.h));
+    await acceptProfile(page); await acceptPosts(page, creator, [photo, secondPhoto]);
     await receive(page, 'data.home', feed);
     assert.equal(await button(page, 'Start video call').isEnabled(), true);
     await receive(page, 'data.home', {...feed,hosts:[{...creator,stream:{id:'paused-live',status:'live',title:'Legacy broadcast',viewers:12}}]});

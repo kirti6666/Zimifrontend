@@ -179,7 +179,23 @@ function zcBubble(m,h){
  const body=m.deleted?`<div class="bub zc-deleted">${m.mine?'You deleted this message':'This message was deleted'}</div>`:m.kind==='gift'?zcGiftCard(m,h):m.kind==='voice'?zcVoiceMemo(m):m.kind==='image'?zcPhotoBubble(m,open):`<div class="bub"${open}>${escChat(m.text)}</div>`;
  return `<div class="zc-msg ${m.mine?'mine':'theirs'} zc-msg-${m.kind||'text'}" id="zc-m-${domId(m.id)}">${m.mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack"${actionable?` data-message-id="${domId(m.id)}"`:''}>${actionable?`<span class="zc-swipe-cue" aria-hidden="true">${ci('reply',18)}</span>`:''}${!m.deleted?zcQuote(m.reply,h,m.mine):''}${body}${meta}</div></div>`
 }
-function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;if(!S.msgs.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return S.msgs.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+zcBubble(m,h)}).join('')}
+/* Each call with this person shows in the conversation at its time, from this account's side
+   (the server's call history): outgoing on the right, incoming on the left, with how long it
+   lasted or how it ended. It refreshes when the bridge re-reads calls after one ends. */
+function zcCallBubble(call,h){
+ const voice=call.kind==='voice',mine=call.direction!=='incoming',talked=!!call.duration&&!/^0+:00$/.test(call.duration);
+ const detail=talked?call.duration:call.status==='declined'?'Declined':call.status==='missed'?(mine?'No answer':'Missed'):['ringing','accepted'].includes(call.status)?'Ongoing':mine?'Cancelled':'Missed';
+ const missed=!mine&&!talked&&detail==='Missed',title=`${voice?'Voice':'Video'} call`;
+ return `<div class="zc-msg ${mine?'mine':'theirs'} zc-msg-call" role="note" aria-label="${esc(`${mine?'Outgoing':'Incoming'} ${title.toLowerCase()}, ${detail}`)}">${mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack"><div class="bub zc-call-bubble ${missed?'is-missed':''}"><span class="zc-call-icon">${hi(voice?'ph':'vid',18)}</span><span class="zc-call-copy"><b>${title}</b><small>${ci(mine?'callOut':'callIn',13)}${esc(detail)}</small></span></div><span class="zc-meta"><time datetime="${esc(call.at)}">${esc(zcClock(call))}</time></span></div></div>`;
+}
+function zcThreadTimeline(h){
+ const calls=CALLS.filter(call=>String(call.id)===String(h.id)&&Date.parse(call.at||'')).map(call=>({kind:'call',call,at:call.at})).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
+ if(!calls.length)return S.msgs;
+ const rows=[];let next=0;
+ for(const m of S.msgs){const at=Date.parse(m.at||'');if(at)while(next<calls.length&&Date.parse(calls[next].at)<=at)rows.push(calls[next++]);rows.push(m)}
+ return rows.concat(calls.slice(next));
+}
+function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;const rows=zcThreadTimeline(h);if(!rows.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return rows.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+(m.kind==='call'?zcCallBubble(m.call,h):zcBubble(m,h))}).join('')}
 /* The gift catalog, one tap from the composer. A tap opens the gift sheet with that gift chosen,
    so coins are only spent from its Send button. Members only, as with the composer's gift button. */
 function zcCanGift(h){return (DEMO?!isHost():zcSelfRole()==='user')&&!Chats.rows.find(c=>c.user.id===h.id)?.bot}

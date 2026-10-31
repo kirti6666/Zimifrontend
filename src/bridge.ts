@@ -117,6 +117,8 @@ export type WebMessage =
   | { type: "call.invitation.dismiss"; data: { id: string; requestId: number } }
   | { type: "call.topup.hold" | "call.topup.review"; data: { callId: string; requestId: number } }
   | { type: "call.accept"; data: { callId: string } }
+  | { type: "call.targets.load"; data: { callId: string } }
+  | { type: "call.targets.set"; data: import("./api/types").CallTargetsInput & { callId: string } }
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
@@ -234,6 +236,7 @@ export type AppMessage =
   | { type: "call.topup.reviewed"; data: { callId: string; ringing: boolean; until?: string; rate?: number; requestId: number } }
   | { type: "call.topup.error"; data: { callId: string; message: string; requestId: number } }
   | { type: "call.topup.waiting"; data: { callId: string; until: string } }
+  | { type: "call.targets"; data: import("./api/types").CallTargets }
   | { type: "wallet.checkout" | "wallet.purchase"; data: Purchase }
   | { type: "wallet.payment-returned"; data: { merchantOrderId: string; status: "PENDING" | "FAILED" | "REVERTED" | "SUCCESS" | "UNKNOWN"; idempotencyKey?: string; packId?: string } }
   | { type: "data.chats"; data: Awaited<ReturnType<typeof api.chats>> }
@@ -260,7 +263,7 @@ export type AppMessage =
   | { type: "agency.loaded" | "agency.verified" | "agency.joined"; data: import("./api/types").HostAgencyStatus & { requestId: number } }
   | { type: "agency.error"; data: { action: "agency.load" | "agency.verify" | "agency.join"; message: string; requestId: number } }
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
-  | { type: "call.failed"; data: { message: string; callId?: string; code?: string; invitationId?: string; requestId?: number } }
+  | { type: "call.failed"; data: { message: string; callId?: string; code?: string; requiredCoins?: number; invitationId?: string; requestId?: number } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
   | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" } }
   | { type: "verify.incoming"; data: { callId: string } }
@@ -1002,6 +1005,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         void api.declineCall(callId).catch(() => {}); return;
       }
+      // A host's targets belong to the call on screen; a late update from an earlier call is dropped.
+      if (event.type === "call.targets" && callId !== activeCall) return;
       if (event.type === "call.ended" && typeof callId === "string") {
         rememberCancelledCall(callId);
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
@@ -1768,6 +1773,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } catch (error) { if (relevant()) emit({ type: "call.invitation.error", data: { requestId: msg.data.requestId, message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } }); }
         return;
       }
+      case "call.targets.load": case "call.targets.set": {
+        const { callId, ...targets } = msg.data;
+        if (callId !== activeCall) return;
+        try {
+          const result = msg.type === "call.targets.load" ? await api.callTargets(callId) : await api.setCallTargets(callId, targets as import("./api/types").CallTargetsInput);
+          if (msg.type === "call.targets.load" && result && current(version) && callId === activeCall) emit({ type: "call.targets", data: result });
+        } catch { /* Targets only encourage gifts; the call carries on without them. */ }
+        return;
+      }
       case "call.topup.hold": case "call.topup.review": {
         const document = documentRevision, sessionVersion = getSessionVersion();
         const relevant = () => current(version) && document === documentRevision && sessionVersion === getSessionVersion();
@@ -1810,7 +1824,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
           holdCallActivity(result.callId, intent.activity);
           emit({ type: "call.created", data: { callId: activeCall, to: result.to, voice: result.voice, ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
           if (result.connected && intent.callId !== result.callId) emit({ type: "call.connected", data: { ...result, initiator: true, peerId: result.to } });
-        } catch (error) { if (current(version) && intent.generation === callGeneration) emit({ type: "call.failed", data: { message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}), ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } }); }
+        } catch (error) {
+          if (current(version) && intent.generation === callGeneration) {
+            emit({ type: "call.failed", data: { message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}), ...(error instanceof ApiError && error.requiredCoins ? { requiredCoins: error.requiredCoins } : {}), ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
+            if (error instanceof ApiError && error.code === "INSUFFICIENT_COINS") quietly(refreshWallet(), "wallet.load");
+          }
+        }
         finally { if (![...callActivities.values()].includes(intent.activity)) intent.activity.finish(); if (pendingOutgoing === intent) pendingOutgoing = undefined; verifyCall = undefined; }
         return;
       }

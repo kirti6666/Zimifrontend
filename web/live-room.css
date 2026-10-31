@@ -50,8 +50,8 @@
 :root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
 .zr-call .zr-video{background:var(--media-canvas)}
 .zr-call .zr-video>video,.zr-call .zr-pip>video{object-fit:contain;object-position:center}
-/* The sender's main video fills the call viewport behind the floating controls. */
-.zr-sender-call .zr-video>video{object-fit:cover}
+/* Remote video fills either participant's stage or PiP with centered, proportional cropping. */
+.zr-call .zr-video>video[data-zimi-remote],.zr-call .zr-pip>video[data-zimi-remote]{object-fit:cover;object-position:center}
 .zr-call .zr-shade{display:none}
 .zr-call .zr-top{background:transparent;padding-bottom:8px}
 .zr-call:not(.zr-voice-call)>:is(.zr-top,.zr-bottom,.zr-pip,.zr-video){--room-ink:var(--call-ink);--room-muted:var(--call-muted);--room-glass:var(--call-control);color:var(--room-ink)}
@@ -120,7 +120,7 @@
 .zr-call-dock .zr-hangup>svg{padding:0;background:none;border-radius:0;width:22px;height:22px;color:var(--canvas)}
 .zr-call-dock>.zr-dock-controls{background:var(--room-ink);color:var(--canvas)}
 .zr-call-composer{margin:0 0 10px}
-.zr-call-composer .zr-compose{background:var(--surface);border:1px solid var(--line);height:43px}
+.zr-call-composer .zr-compose{--room-ink:var(--ink);--room-muted:var(--muted);background:var(--surface);color:var(--ink);border:1px solid var(--line);height:43px}
 .zr-call-composer .zr-compose:focus-within{border-color:var(--accent)}
 .zr-call .zr-sheet .zr-call-controls{margin:18px 0 24px;gap:6px;max-width:none}
 .zr-call .zr-sheet .zr-tool>span{width:46px;height:46px;background:var(--raised)}
@@ -164,7 +164,7 @@
 
 /* The host's call follows the host studio reference: their own camera on the full stage, the
    caller in the corner, compact targets and controls. Colours stay with the selected theme. */
-.zr-call-reference .zr-reference-stage>video[data-zimi-shape=landscape]{object-fit:contain}
+.zr-call-reference .zr-reference-stage>video[data-zimi-local][data-zimi-shape=landscape]{object-fit:contain}
 .zr-call-reference .zr-reference-stage.camera-off>video{visibility:hidden}
 .zr-call-reference .zr-camera-off{position:absolute;inset:26% 0 32%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--room-muted)}
 .zr-call-reference .zr-top{padding:0 14px}
@@ -185,7 +185,6 @@
 .zr-call-reference .hc-fee{min-height:25px;margin-top:9px;padding:4px 10px;gap:5px;font-size:10px;line-height:1.5}
 .zr-call-reference .hc-fee b{color:var(--accent-ink)}
 .zr-call-reference .zr-pip{top:126px;right:12px;width:84px;height:116px;padding:0;border:2px solid color-mix(in srgb,var(--room-ink) 40%,transparent);border-radius:14px;background:var(--media-canvas)}
-.zr-call-reference .zr-pip>video{object-fit:contain}
 .zr-call-reference .zr-top>.zr-gift-alert{position:absolute;width:1px;height:1px;min-height:0;overflow:hidden;clip-path:inset(50%);padding:0;margin:0;border:0;white-space:nowrap}
 .zr-call-reference .zr-bottom{padding:12px 14px max(10px,var(--safe-bottom))}
 .zr-call-reference .zr-status{margin:0 0 7px;max-width:calc(100% - 16px);font-size:10px;line-height:1.4;color:var(--room-muted)}

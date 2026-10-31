@@ -37,10 +37,14 @@ const receive = (page, type, data = {}) => page.evaluate(message => Native.recei
 const acceptFeed = async page => { await receive(page, 'data.home', feed); await receive(page, 'data.loading', { resource: 'home', loading: false, page: 1 }); };
 const card = (page, n) => page.locator(`article[data-host-id="${id(n)}"]`);
 async function assertCountries(page) {
-  // India shows as a round flag named India; other countries show their name.
+  // Every known country shows a rectangular flag named for it: India drawn in CSS, others the system flag.
   assert.equal(await card(page, 1).locator('[data-creator-country] [role="img"]').getAttribute('aria-label'), 'India');
+  assert.equal(await card(page, 1).locator('[data-creator-country] .zh-flag-in').count(), 1);
   assert.equal(await card(page, 1).locator('[data-creator-country]').getAttribute('title'), 'India');
-  for (const [n, country] of [[2, 'United Arab Emirates'], [3, 'Côte d’Ivoire']]) assert.equal(await card(page, n).locator('[data-creator-country]').innerText(), country);
+  for (const [n, country, flag] of [[2, 'United Arab Emirates', '🇦🇪'], [3, 'Côte d’Ivoire', '🇨🇮']]) {
+    assert.equal(await card(page, n).locator('[data-creator-country] [role="img"]').getAttribute('aria-label'), country);
+    assert.equal(await card(page, n).locator('[data-creator-country]').innerText(), flag);
+  }
   for (const n of [4, 5, 6]) assert.equal(await card(page, n).locator('[data-creator-country]').count(), 0, 'Missing/empty/malformed country has no city or phone-prefix fallback');
   for (const n of [1, 2, 3, 4, 5, 6]) {
     assert.equal(await card(page, n).getByRole('button', { name: 'Video call ' + creators[n-1].name, exact: true }).isEnabled(), true);
@@ -105,7 +109,12 @@ async function assertCountries(page) {
     assert.deepEqual(partial, { retained: 'India', cleared: '' }, 'Partial updates retain country while explicit clearing hides it');
     const escaped = await page.evaluate(() => { const node = document.createElement('div'); node.innerHTML = homeCountryLabel({ country: '<img src=x onerror=alert(1)>' }); return { text: node.innerText, images: node.querySelectorAll('img').length }; });
     assert.equal(escaped.images, 0); assert.equal(escaped.text, '<img src=x onerror=alert(1)>');
+    const spellings = await page.evaluate(() => ['bharat', ' india ', 'NP', 'nepal', 'Philippines', 'Atlantis'].map(country => {
+      const node = document.createElement('div'); node.innerHTML = homeCountryLabel({ country });
+      return node.querySelector('[role="img"]')?.getAttribute('aria-label') || node.innerText;
+    }));
+    assert.deepEqual(spellings, ['India', 'India', 'Nepal', 'Nepal', 'Philippines', 'Atlantis'], 'Aliases and codes find their flag; an unknown country keeps its name');
     assert.deepEqual(errors, []);
-    console.log('PASS creator country UI: Home/Following/All Creators/Search, India flag and other country names, light/dark at 320/390px, hidden missing data, escaping and unchanged call/status');
+    console.log('PASS creator country UI: Home/Following/All Creators/Search, flags for every known country, light/dark at 320/390px, hidden missing data, escaping and unchanged call/status');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

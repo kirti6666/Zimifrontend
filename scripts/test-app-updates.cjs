@@ -141,7 +141,8 @@ test('the update gate reveals checking, mandatory and error screens after layout
   let hidden = 0;
   const jsx = (type, props) => ({ type, props });
   const h = modules({
-    react: { useEffect() {} },
+    react: { useEffect() {}, useState: value => [value, () => {}] },
+    '../assets/brand/logo.png': 'brand-logo',
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'react-native': { StyleSheet: { create: styles => styles } },
     'react-native-safe-area-context': { SafeAreaProvider: 'provider', SafeAreaView: 'safe-area' },

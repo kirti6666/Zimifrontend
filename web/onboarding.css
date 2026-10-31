@@ -53,7 +53,7 @@
 .ob-shell svg, .ob-dialog svg { display: block; flex: 0 0 auto; }
 .ob-shell a, .ob-dialog a { color: var(--ob-soft); text-underline-offset: 3px; }
 
-/* Step chrome: back, progress and help sit on frosted glass. */
+/* Back, readable setup progress and help use the same header on every step. */
 .ob-header, .ob-main, .ob-actions, .ob-footer { width: 100%; max-width: 500px; margin-inline: auto; }
 .ob-header { display: flex; align-items: center; gap: 14px; min-height: 40px; margin-bottom: 30px; }
 /* Round preview controls; navigation uses the shared .zb-back component. */
@@ -71,7 +71,8 @@
   background: var(--surface);
 }
 .ob-icon:not(.zb-back) svg { width: 21px; height: 21px; }
-.ob-progress { display: flex; align-items: center; flex: 1; gap: 6px; }
+.ob-progress { position: relative; display: flex; align-items: center; flex: 1; gap: 6px; min-width: 0; padding-bottom: 16px; }
+.ob-progress::after { content: attr(data-label); position: absolute; left: 0; bottom: 0; color: var(--ob-muted); font-size: 10px; line-height: 12px; font-weight: 500; white-space: nowrap; }
 .ob-progress span { position: relative; display: block; height: 5px; flex: 1; border-radius: 8px; background: var(--ob-edge); overflow: hidden; transition: box-shadow .3s; }
 .ob-progress span::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, var(--ob-pink), color-mix(in srgb, var(--ob-pink) 55%, var(--ob-soft))); transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
 .ob-progress .done::after, .ob-progress .current::after { transform: none; }
@@ -97,7 +98,7 @@
   text-transform: uppercase;
 }
 .ob-eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--ob-pink); border-radius: 50%; box-shadow: 0 0 10px var(--ob-glow); }
-.ob-heading h1, h1.ob-heading { margin: 0; font-size: clamp(29px, 8vw, 40px); line-height: 1.1; font-weight: 750; letter-spacing: -.045em; color: var(--ob-text); text-wrap: balance; }
+.ob-heading h1, h1.ob-heading { margin: 0; font-size: 28px; line-height: 1.18; font-weight: 600; letter-spacing: -.035em; color: var(--ob-text); text-wrap: balance; }
 /* One accent word per headline, painted with the theme's own gradient. */
 .ob-heading em, .ob-hero-heading em { font-style: normal; background: linear-gradient(100deg, var(--ob-pink), var(--ob-soft)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .ob-description { margin: 10px 0 0; color: var(--ob-muted); font-size: 14px; line-height: 1.6; font-weight: 450; }
@@ -150,7 +151,7 @@
 .ob-top-login { min-height: 40px !important; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 13px !important; font-weight: 700 !important; }
 .ob-welcome-grid { display: grid; grid-template-areas: "showcase" "intro" "actions"; grid-template-columns: minmax(0, 1fr); gap: 18px; width: 100%; max-width: 480px; margin: auto; }
 .ob-intro { grid-area: intro; text-align: center; }
-.ob-hero-heading { margin: 0; font-size: clamp(32px, 9.2vw, 44px); line-height: 1.04; letter-spacing: -.05em; font-weight: 800; text-wrap: balance; }
+.ob-hero-heading { margin: 0; font-size: clamp(32px, 9.2vw, 44px); line-height: 1.04; letter-spacing: -.05em; font-weight: 800; text-wrap: balance; overflow-wrap: anywhere; }
 .ob-intro .ob-description { max-width: 320px; margin: 10px auto 0; font-size: 14px; line-height: 1.55; }
 .ob-showcase { grid-area: showcase; position: relative; height: clamp(260px, 38dvh, 340px); width: 100%; max-width: 420px; margin: 0 auto; perspective: 1100px; touch-action: pan-y; }
 /* Portraits are artwork: they keep a dark scrim and white type in every theme. */
@@ -187,18 +188,13 @@
 .ob-hearts svg:nth-child(2) { left: 10%; width: 10px; height: 10px; color: var(--ob-soft); animation-delay: 1.2s; }
 .ob-hearts svg:nth-child(3) { left: 75%; width: 12px; height: 12px; animation-delay: 2.4s; }
 .ob-deck-controls { position: absolute; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 8px; bottom: -8px; left: 0; right: 0; }
-.ob-deck-controls > button { width: 44px; height: 44px; border-color: transparent; background: transparent; color: var(--ob-muted); backdrop-filter: none; -webkit-backdrop-filter: none; }
-.ob-deck-controls > button svg { width: 16px; height: 16px; }
+.ob-welcome .ob-deck-controls > button.ob-icon { flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px !important; padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.ob-welcome .ob-deck-controls > button.ob-icon > svg { width: 18px; height: 18px; stroke-width: 1.5; }
 .ob-dots { display: flex; align-items: center; }
 .ob-dots button { display: flex; align-items: center; justify-content: center; width: 30px; min-width: 30px; height: 44px; padding: 0; }
 .ob-dots button::before { content: ""; width: 6px; height: 6px; border-radius: 10px; background: color-mix(in srgb, var(--ob-text) 26%, transparent); transition: width .25s, background-color .25s; }
 .ob-dots button.selected::before { width: 22px; background: var(--ob-pink); }
 .ob-welcome-actions { grid-area: actions; width: 100%; display: flex; flex-direction: column; gap: 10px; }
-.ob-role-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-.ob-role-switch button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 44px; padding: 9px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 12.5px !important; font-weight: 650 !important; letter-spacing: -.01em; }
-.ob-role-switch button svg { width: 15px; height: 15px; }
-.ob-role-switch button.selected { color: var(--ob-text); background: var(--ob-raised); border-color: var(--ob-edge); box-shadow: 0 8px 18px -12px var(--ob-shadow); }
-.ob-role-switch button.selected svg { color: var(--ob-pink); }
 .ob-trust { display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--ob-faint); font-size: 11px; font-weight: 550; line-height: 1.5; }
 .ob-trust > span { display: inline-flex; align-items: center; gap: 6px; }
 .ob-trust svg { width: 12px; height: 12px; color: var(--ob-soft); }
@@ -237,27 +233,35 @@
 .ob-email-status.taken, .ob-email-status.invalid { color: var(--ob-danger); font-weight: 550; animation: ob-error-in .25s ease-out; }
 .ob-email-status.available { color: var(--ob-soft); font-weight: 650; }
 .ob-email-status svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
-.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
-.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1px solid var(--ob-edge); border-radius: 16px; background: var(--ob-field); color: var(--ob-text); font-size: 26px; font-weight: 750; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s, transform .18s; }
-.ob-otp input:focus { border-color: var(--ob-pink); }
-.ob-otp input.filled { border-color: color-mix(in srgb, var(--ob-pink) 55%, transparent); background-color: color-mix(in srgb, var(--ob-pink) 10%, var(--ob-surface)); }
-.ob-resend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-top: 16px; font-size: 13px; line-height: 1.6; color: var(--ob-faint); }
-.ob-resend button { min-height: 44px; padding: 10px 6px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
+/* The number being verified, with Edit beside it, kept together on one line. */
+.ob-sent-to { display: inline-flex; flex-wrap: nowrap; align-items: baseline; gap: 8px; white-space: nowrap; }
+.ob-sent-to strong { color: var(--ob-text); font-weight: 650; }
+.ob-shell .ob-description .ob-edit-number { min-height: 0; margin: -10px -6px; padding: 10px 6px; color: var(--ob-soft); font-size: inherit; font-weight: 650; line-height: inherit; }
+.ob-shell .ob-description .ob-edit-number:disabled { opacity: .5; }
+/* Code cells share the column evenly in the shared 10px boxes; only the cell being
+   typed in takes the accent. */
+.ob-otp { display: grid; grid-template-columns: repeat(var(--otp-length, 6), minmax(0, 88px)); gap: min(10px, 2.5vw); }
+.ob-otp input { width: 100%; min-width: 0; height: 62px; padding: 0; text-align: center; border: 1.5px solid var(--ob-edge); background: var(--ob-field); color: var(--ob-text); font-size: 26px; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; caret-color: var(--ob-pink); outline: none; transition: background-color .18s, border-color .18s; }
+.ob-otp input.filled { background: var(--ob-bg); border-color: color-mix(in srgb, var(--ob-text) 30%, transparent); }
+.ob-otp input:focus { background: var(--ob-bg); border-color: var(--ob-pink); }
+.ob-otp:has([aria-invalid="true"]) input { border-color: var(--ob-danger); }
+.ob-otp input:disabled { opacity: .6; }
+.ob-resend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--ob-muted); }
+.ob-resend b { color: var(--ob-text); font-weight: 650; font-variant-numeric: tabular-nums; }
+.ob-resend button { min-height: 44px; margin-block: -10px; padding: 10px 4px; color: var(--ob-soft); font-size: 13px; font-weight: 700; }
 .ob-resend button:disabled { color: var(--ob-faint); }
-.ob-change-number { display: inline-flex; align-items: center; gap: 6px; padding: 5px 0; color: var(--ob-soft); }
-.ob-change-number + .ob-otp { margin-top: 12px; }
-.ob-demo-note { justify-content: center; margin-top: 8px; font-size: 10px; }
+.ob-demo-note { margin-top: 8px; font-size: 10px; }
 .ob-options { display: flex; gap: 8px; flex-wrap: wrap; }
 .ob-options button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 15px; border: 1px solid var(--ob-edge); border-radius: 999px; color: var(--ob-text); background: var(--ob-field); font-size: 13px; font-weight: 600; }
 .ob-options button.selected { color: var(--ob-on-pink); border-color: var(--ob-pink); background: var(--ob-pink); box-shadow: 0 8px 18px -12px var(--ob-glow); }
-/* "I am": three choices in one row; the longest label gets the most room. */
-.ob-field.ob-inline { flex-direction: row; align-items: center; gap: 12px; }
+/* Gender choices wrap by their text width when system text is enlarged. */
+.ob-field.ob-inline { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; }
 .ob-inline > .ob-label { flex: none; }
-.ob-inline > .ob-segment { flex: 1; min-width: 0; }
-.ob-segment { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-field); }
+.ob-inline > .ob-segment { flex: 1 1 180px; min-width: 0; }
+.ob-segment { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--ob-edge); border-radius: 999px; background: var(--ob-field); }
 .ob-segment:focus { outline: none; }
 .ob-segment[aria-invalid="true"] { border-color: var(--ob-danger); }
-.ob-segment button { min-width: 0; min-height: 40px !important; padding: 6px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 13px !important; font-weight: 650 !important; line-height: 1.2; }
+.ob-segment button { flex: 1 1 max-content; min-width: min-content; max-width: 100%; min-height: 40px !important; padding: 6px 8px; border: 1px solid transparent; border-radius: 999px; color: var(--ob-muted); font-size: 13px !important; font-weight: 650 !important; line-height: 1.2; white-space: normal; }
 .ob-segment button.selected { color: var(--ob-on-pink); background: var(--ob-pink); box-shadow: 0 6px 14px -10px var(--ob-glow); }
 .ob-check { display: flex; align-items: flex-start; gap: 11px; color: var(--ob-muted); font-size: 13px; line-height: 1.55; cursor: pointer; padding: 8px 0; min-height: 44px; }
 .ob-check input { accent-color: var(--ob-pink); width: 20px; height: 20px; flex: 0 0 20px; margin: 0; border-radius: 6px; }
@@ -357,7 +361,7 @@
   .ob-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 20px 34px -16px var(--ob-glow), 0 3px 8px -4px var(--ob-glow), inset 0 1px 0 rgb(255 255 255 / .22); }
   .ob-secondary:hover, .ob-icon:not(.zb-back):hover, .ob-top-login:hover, .ob-support:hover, .ob-options button:hover:not(.selected), .ob-interest:hover:not(.selected) { border-color: color-mix(in srgb, var(--ob-pink) 45%, transparent); }
   .ob-text-button:hover, .ob-resend button:hover:not(:disabled) { color: var(--ob-text); }
-  .ob-role-switch button:hover:not(.selected), .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
+  .ob-segment button:hover:not(.selected) { color: var(--ob-text); }
   .ob-upload:hover { border-color: var(--ob-pink); }
   .ob-thumb:hover { border-color: var(--ob-pink); }
 }
@@ -372,7 +376,7 @@
   .ob-footer { margin-bottom: auto; }
   .ob-shell:not(.ob-welcome) .ob-header { margin-top: auto; }
   .ob-shell:not(.ob-welcome)::after { content: ""; flex: 1; min-height: 25px; }
-  .ob-heading h1, h1.ob-heading { font-size: 40px; }
+  .ob-heading h1, h1.ob-heading { font-size: 32px; }
   .ob-description { font-size: 15px; }
   .ob-interest { padding: 13px 18px; font-size: 14px !important; }
   .ob-photo-layout { min-height: 310px; grid-template-columns: 1fr 2fr; }
@@ -429,7 +433,6 @@
   .ob-intro .ob-description { font-size: 13px; }
   .ob-brand { font-size: 23px; }
   .ob-top-login { padding: 0 15px; }
-  .ob-role-switch button { font-size: 12px !important; gap: 5px; }
   .ob-segment button { font-size: 12px !important; padding-inline: 4px; }
   .ob-interest { padding: 10px 12px; font-size: 12.5px !important; gap: 6px; }
   .ob-interests { gap: 8px 6px; }
@@ -437,7 +440,7 @@
   .ob-country { padding: 0 11px; gap: 4px; }
   .ob-phone-field input { padding-inline: 12px !important; font-size: 17px !important; }
   .ob-otp { gap: 6px; }
-  .ob-otp input { height: 56px; border-radius: 14px; font-size: 23px; }
+  .ob-otp input { font-size: 23px; }
   .ob-photo-layout { gap: 9px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 239px; border-radius: 20px; }
   .ob-upload b { font-size: 13px; }
@@ -467,7 +470,6 @@
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 48px; padding-block: 11px; }
   .ob-options button { padding-block: 8px; }
   .ob-check { padding: 4px 0; }
-  .ob-otp input { height: 56px; }
   .ob-photo-layout { min-height: 0; margin-top: 18px; }
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 220px; }
   .ob-preview-heading { margin: 16px 0 10px; }
@@ -489,6 +491,7 @@
   .ob-field input:not([type="checkbox"]), .ob-field select, .ob-phone-field > input, .ob-country { min-height: 44px; padding-block: 9px; }
   .ob-segment { padding: 3px; }
   .ob-segment button { min-height: 36px !important; padding-block: 4px; }
+  .ob-otp input { height: 56px; }
   .ob-actions { padding-top: 12px; }
   .ob-actions .ob-primary { min-height: 52px; }
   .ob-error { margin-top: 8px; padding: 7px 12px; }
@@ -502,6 +505,23 @@
   .ob-header { margin-top: 0 !important; margin-bottom: 20px; }
   .ob-welcome-grid { max-width: 500px; margin-top: 10px; }
   .ob-showcase { height: 300px; }
+}
+
+/* Keep the welcome action at the bottom of the available phone/tablet space.
+   Auto margins balance the artwork above it; short screens can still scroll. */
+@media (max-width: 899px) {
+  .ob-welcome { padding: max(20px, var(--safe-top)) max(20px, var(--safe-right)) max(20px, var(--safe-bottom)) max(20px, var(--safe-left)); }
+  .ob-welcome-top { flex-shrink: 0; margin-bottom: 20px; }
+  .ob-welcome-grid { display: flex; flex: 1; flex-direction: column; gap: 20px; margin: 0 auto; }
+  .ob-welcome .ob-showcase { order: 0; flex: none; margin-top: auto; }
+  .ob-welcome .ob-intro { order: 1; flex: none; }
+  .ob-welcome-actions { order: 2; flex: none; margin-top: auto; padding-top: 20px; }
+}
+@media (max-height: 740px) and (max-width: 599px) {
+  .ob-welcome { padding-top: max(16px, var(--safe-top)); padding-bottom: max(16px, var(--safe-bottom)); }
+  .ob-welcome-top { margin-bottom: 16px; }
+  .ob-welcome-grid { gap: 16px; }
+  .ob-welcome-actions { padding-top: 12px; }
 }
 
 /* Session recovery and shared app notices. */

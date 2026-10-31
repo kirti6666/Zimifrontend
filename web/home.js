@@ -41,8 +41,19 @@ function homeCardCover(h){return homeCover({...h,coverUrl:h.creatorCardUrl||h.av
 function homeCardVideo(h){return h.video?`<span class="zh-card-video" data-video="${h.video}" aria-hidden="true"></span>`:''}
 function homeVerified(h){return h.verified?`<span class="zh-verified" aria-label="Verified creator">${hi('verified',16)}</span>`:''}
 function homeCountry(h){const country=typeof h.country==='string'?h.country.trim():'';return country.length<=100&&!/[\u0000-\u001f\u007f]/.test(country)?country:''}
-// India is the only flag for now (drawn in CSS, so it looks the same on every device); other countries show their name.
-function homeFlag(country,className='',decorative=false){return /^india$/i.test(country)?`<span class="zh-flag zh-flag-in ${className}" ${decorative?'aria-hidden="true"':'role="img" aria-label="India"'}></span>`:''}
+// Country names to ISO codes, by the sign-in country list's English and device-language names and aliases.
+let homeCountryCodes=null;
+function homeCountryIso(country){
+  if(!homeCountryCodes){homeCountryCodes=new Map();for(const {iso} of OB_COUNTRIES)for(const name of [iso,obCountryName(iso),obCountryName(iso,obEnglishNames),...(OB_COUNTRY_ALIASES[iso]||'').split(',')])if(name)homeCountryCodes.set(obFold(name),iso)}
+  return homeCountryCodes.get(obFold(country))||'';
+}
+/* A rectangular flag, never a circle: India is drawn in CSS, so it looks the same on every device; other
+   countries use the system flag. A country the list doesn't know shows its name instead. */
+function homeFlag(country,className='',decorative=false){
+  const iso=homeCountryIso(country);if(!iso)return '';
+  const label=decorative?'aria-hidden="true"':`role="img" aria-label="${esc(obCountryName(iso,obEnglishNames))}"`;
+  return iso==='IN'?`<span class="zh-flag zh-flag-in ${className}" ${label}></span>`:`<span class="zh-flag-emoji ${className}" ${label}>${obFlag(iso)}</span>`;
+}
 function homeCountryLabel(h){const country=homeCountry(h),flag=homeFlag(country);return country?`<span class="zh-creator-country ${flag?'has-flag':''}" data-creator-country title="${esc(country)}">${flag||esc(country)}</span>`:''}
 function homeRate(h){return h.rate>0?`${hi('rings',13)} ${n(h.rate)} / min`:'Free'}
 function homeBadge(h){return h.stream?'<span class="zh-badge zh-live"><i></i> LIVE</span>':h.available?`<span class="zh-badge zh-ready">${hi('bolt',11)} Ready 1:1</span>`:h.on?'<span class="zh-badge zh-offline zh-online"><i></i> Online</span>':'<span class="zh-badge zh-offline">Offline</span>'}
@@ -104,7 +115,7 @@ function homeMatch(){if(homeContentPending())return `<div class="zh-match">${con
    always active. Tapping the photo opens the profile; chat belongs on the profile. */
 function homeTile(h){
   const id=domId(h.id),live=!!h.stream;
-  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}"><i></i>${live?'LIVE':h.on?'Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
+  return `<article class="zh-creator-card" data-host-id="${esc(h.id)}">${homeCardCover(h)}${homeCardVideo(h)}<div class="zh-creator-shade"></div><button type="button" class="zh-creator-hit" aria-label="View ${esc(h.n)} profile" onclick="go('host','${id}')"></button><span class="zh-creator-status ${live?'is-live':''}">${live?'<i></i>LIVE':h.on?'Online':'Offline'}</span><div class="zh-creator-bottom"><h3 class="zh-creator-name"><span>${esc(h.n)}</span>${homeCountryLabel(h)}</h3><button type="button" class="zh-creator-call" aria-label="Video call ${esc(h.n)}" onclick="homeCall('${id}')">${hi('vid',17)}</button></div></article>`;
 }
 function homeBonus(){if(!isApprovedHost())return '';if(homeContentPending())return contentSkeleton('rows','Loading creator rewards',1);if(homeContentError())return '';const b=Home.bonus;if(!b)return '';return `<aside class="zh-bonus"><span class="zh-bonus-icon">${hi('gift',20)}</span><div><h3>${esc(b.title)}</h3><p>${b.claimed?'Reward claimed':`+${n(b.rewardCoins)} coins · ${esc(b.description||`${Math.min(b.progress,b.target)} / ${b.target} completed`)}`}</p></div><button onclick="homeClaim()" ${b.claimed||Home.claiming?'disabled':''}>${b.claimed?'Claimed':Home.claiming?'…':b.progress>=b.target?'Claim':'View'}</button></aside>`}
 // Like the reference, campaign banners rotate after the first two rows of hosts; a sponsored
@@ -147,21 +158,25 @@ let homeCallPreparation = null;
    The server checks the permission again; the member pays the host's rate once they answer. */
 function hostCallMember(id,voice,person={}){
   if(!isApprovedHost()){window.ZimiHostAccess?.guard();return}
-  if(Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
+  if(S.bgCall||Home.preparingCall||['dial','dialback','call','voice','hcall','ring','incoming'].includes(S.v))return appNotice('Finish your current call first.');
   S.caller=personFrom({id,name:person.name,avatarUrl:person.avatarUrl,city:person.city,gender:person.gender});
   S.nextCallVoice=!!voice;S.dialFrom={view:S.v,id:S.v==='user'?S.u:['thread','host'].includes(S.v)?S.h:undefined};
   if(DEMO)return go('dialback',id);
   homePrepareCall('dialback',id);
 }
 function homeCallUnavailable(id){return !g(id)||(!DEMO&&!g(id).available)}
+function homeCallRequiredCoins(h){return Math.max((h?.rate||0)+(h?.fee||0),S.callFunds?.hostId===h?.id?S.callFunds.requiredCoins:0)}
 function homeCallFundsReady(h){
   if(!h)return false;
-  if(h.rate>0&&!coinWalletReady()){r();return false}
-  if(h.rate>0&&S.bal<h.rate){r();return false}
+  const need=homeCallRequiredCoins(h);
+  if(need>0&&!coinWalletReady()){r();return false}
+  if(need>0&&S.bal<need){S.pcerr=`You need at least ${n(need)} coins. Recharge your wallet to call.`;r();return false}
+  S.callFunds=null;
   return true;
 }
 function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
+  if(S.bgCall)return appNotice('Finish your current call first.');
   if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
   if(isHost()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
@@ -174,6 +189,8 @@ function homeStartCall(voice=false){
   }
   if(!homeCallFundsReady(g(S.h)))return;
   S.nextCallVoice=!!voice;S.callId=null;S.pcerr='';
+  // A video call rings with the camera on, in the preview as in the app (homePrepareCall).
+  if(!voice)S.scam=1;
   return go('dial',S.h);
 }
 function homeCancelPrepare(message='',paint=true){

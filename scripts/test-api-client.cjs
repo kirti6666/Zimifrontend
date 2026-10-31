@@ -71,6 +71,19 @@ function harness(options = {}) {
   };
 }
 
+test('insufficient call coins retain only a valid server recharge requirement', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokens());
+  for (const [requiredCoins, expected] of [[80, 80], [-1, undefined], ['80', undefined], [1.5, undefined]]) {
+    h.setFetch(() => json(402, { success: false, code: 'INSUFFICIENT_COINS', message: 'Recharge to call.', requiredCoins }));
+    await assert.rejects(h.client.request('POST', '/calls', { calleeId: 'host', kind: 'video' }), error => {
+      assert.equal(error.code, 'INSUFFICIENT_COINS');
+      assert.equal(error.requiredCoins, expected);
+      return true;
+    });
+  }
+});
+
 test('concurrent 401s share one refresh, atomically store rotation, and retry once', async () => {
   const h = harness();
   const first = tokens();
