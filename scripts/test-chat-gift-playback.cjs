@@ -73,8 +73,8 @@ async function expectFullStage(page) {
     const inset=edge==='left'?geometry.padding.left:edge==='right'?-geometry.padding.right:0;
     assert.ok(Math.abs(geometry.image[edge]-geometry.stage[edge]-inset)<1,`Original artwork respects the preview ${edge} spacing`);
   }
-  const gutter=Math.max(14,geometry.stage.width/2-380);
-  assert.ok(Math.abs(geometry.padding.left-gutter)<1&&Math.abs(geometry.padding.right-gutter)<1,'Preview has equal side gutters matching chat content');
+  assert.equal(geometry.padding.left,0,'Gift playback has no added left padding');
+  assert.equal(geometry.padding.right,0,'Gift playback has no added right padding');
   assert.equal(geometry.fit,'contain','Portrait, landscape and square gifts keep the entire source frame');
   assert.equal(geometry.position,'50% 50%','Letterboxed artwork stays centered');
   assert.equal(geometry.transform,'none','Artwork has no zoom or translation that could cut off its sides');
@@ -82,8 +82,8 @@ async function expectFullStage(page) {
   assert.ok(geometry.natural.width>0&&geometry.natural.height>0);
   const scale=Math.min(geometry.image.width/geometry.natural.width,geometry.image.height/geometry.natural.height);
   const rendered={width:geometry.natural.width*scale,height:geometry.natural.height*scale};
-  assert.ok(rendered.width<=geometry.image.width+1&&rendered.height<=geometry.image.height+1,'The complete original frame fits inside the padded preview');
-  assert.ok(Math.abs(rendered.width-geometry.image.width)<1||Math.abs(rendered.height-geometry.image.height)<1,'Artwork expands to the available width or height inside its gutters');
+  assert.ok(rendered.width<=geometry.image.width+1&&rendered.height<=geometry.image.height+1,'The complete original frame fits inside the preview');
+  assert.ok(Math.abs(rendered.width-geometry.image.width)<1||Math.abs(rendered.height-geometry.image.height)<1,'Artwork expands to the available width or height');
   return {...geometry,rendered};
 }
 async function expectPlaying(page, transfer, mediaUrl=artUrl) {

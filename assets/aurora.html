@@ -2637,15 +2637,16 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-call-copy small{display:flex;align-items:center;gap:4px;font-size:12px;opacity:.8;font-variant-numeric:tabular-nums}
 .zc-call-bubble.is-missed .zc-call-icon,.zc-call-bubble.is-missed small{color:var(--theme-danger,#e5486a);opacity:1}
 
-.zc-msg-gift .zc-msg-stack{width:210px;max-width:80%}
-.zc-gift-card{width:100%;padding:4px;background:transparent;border:0;box-shadow:none}
+.zc-msg-gift .zc-msg-stack{width:fit-content;max-width:min(80%,240px)}
+.zc-gift-card{width:100%;padding:0;background:transparent;border:0;box-shadow:none}
 .zc-gift-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
 .zc-gift-top>span{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted)}
 .zc-gift-top>b{font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .zc-gift-body{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;text-align:center}
 .zc-gift-body>div{min-width:0;max-width:100%}
-.zc-gift-icon{display:grid;place-items:center;width:100%;height:154px;font-size:54px;line-height:1}
-.zc-gift-icon>img{display:block;width:100%;height:100%;object-fit:contain}
+.zc-gift-icon{display:block;width:100%;height:auto;font-size:54px;line-height:1}
+.zc-gift-icon>img{display:block;width:auto;height:auto;max-width:100%;max-height:320px;margin:0;object-fit:contain}
+.zc-gift-icon>span{display:grid;place-items:center;min-width:120px;min-height:120px}
 .zc-gift-body h3{font-size:14px;font-weight:650;line-height:1.3;overflow-wrap:anywhere}
 .zc-gift-value{display:inline-flex;align-items:center;gap:4px;margin-top:3px;font-size:12px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
 .zc-gift-value>span{font-weight:400;color:var(--muted)}
@@ -4888,15 +4889,15 @@ html:root .hs-gift-options>button.is-on>small{text-decoration:underline;text-und
    cannot push the animation into the gift name, coin price or input. */
 html:root :is(.zc-gift-icon,.zc-quick-gift-art,.hs-gift-art,.hs-target-art,.zr-gift-emoji,.zr-gift-stage-art){grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
 html:root :is(.zc-gift-icon,.zc-quick-gift-art,.zg-art,.hs-gift-art,.hs-target-art,.zr-gift-emoji,.zr-gift-stage-art)>img{min-width:0;min-height:0;max-width:100%;max-height:100%}
-html:root .zc-gift-icon>img{height:154px}
+/* Receipt artwork keeps its natural shape instead of letterboxing in a short slot. */
+html:root .zc-gift-icon>img{width:auto;height:auto;max-height:320px;margin:0}
 html:root .zc-quick-gift-art>img{height:52px}
 /* One original gift animation across the visible app. The portal is
    transparent, outside message layout and below sheets; typing stays usable. */
 html:root :is(#zc-gift-playback,#zr-gift-playback){position:fixed;inset:auto;z-index:40;display:flex;align-items:center;justify-content:center;overflow:visible;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important}
 html:root :is(#zc-gift-playback,#zr-gift-playback)[hidden]{display:none}
 html:root :is(#zc-gift-playback,#zr-gift-playback)::before,html:root :is(#zc-gift-playback,#zr-gift-playback)::after{content:none!important;display:none!important}
-/* Match the conversation's side gutters while keeping the preview centered. */
-html:root #zc-gift-playback{box-sizing:border-box;padding-inline:max(14px,calc(50% - 380px))}
+html:root #zc-gift-playback{padding:0}
 html:root :is(#zc-gift-playback>.zc-gift-playback-art,#zr-gift-playback .zr-gift-stage-art>img){display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;object-fit:contain;object-position:center;pointer-events:none!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important;animation:none!important;opacity:1}
 html:root #zr-gift-playback .zr-gift-stage-art>span{font-size:clamp(100px,40vmin,240px);line-height:1}
 .zci-dialog{position:fixed;inset:0;margin:auto;width:min(390px,calc(100% - 32px));max-height:calc(100dvh - 40px);overflow:auto;border:1px solid var(--line);background:var(--canvas);color:var(--ink);padding:20px;font-size:14px;line-height:1.6}
