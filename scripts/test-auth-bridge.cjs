@@ -27,13 +27,20 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const push = { status: 'registered', token: 'fcm:device-token', modes: [], cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
   const pushModule = {
     startPush: onOpen => { push.open = onOpen; return () => { push.stopped++; }; },
-    registerPush: async (save, mode) => {
+    registerPush: async (save, mode, isCurrent) => {
       push.modes.push(mode);
+      if (overrides.registerPush) return overrides.registerPush(save, mode, isCurrent);
       if (push.status !== 'registered') return push.status;
       try { await save(push.token); return 'registered'; } catch { return 'unavailable'; }
     },
     onPushTokenChange: listener => { push.tokenListener = listener; return () => { push.tokenListener = undefined; }; },
     clearDeliveredPush: () => { push.cleared++; },
+  };
+  const devicePermissions = { value: { camera: 'denied', microphone: 'denied', notifications: 'denied' }, actions: [] };
+  const devicePermissionModule = {
+    readDevicePermissions: async () => { devicePermissions.actions.push('read'); return overrides.readDevicePermissions ? overrides.readDevicePermissions() : { ...devicePermissions.value }; },
+    requestDevicePermissions: async isCurrent => { devicePermissions.actions.push('request'); return overrides.requestDevicePermissions ? overrides.requestDevicePermissions(isCurrent) : { ...devicePermissions.value }; },
+    openDevicePermissionSettings: async isCurrent => { devicePermissions.actions.push('settings'); if (overrides.openDevicePermissionSettings) await overrides.openDevicePermissionSettings(isCurrent); },
   };
   class ApiError extends Error {
     constructor(message, status, code, retryAfterSeconds, requiredCoins) { super(message); Object.assign(this, { status, code, retryAfterSeconds, requiredCoins }); }
@@ -92,6 +99,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
       if (id === './push') return pushModule;
+      if (id === './device-permissions') return devicePermissionModule;
       if (id === './features') return { LIVE_STREAMING_ENABLED: liveStreaming };
       if (id === './chat-photo-download') return { downloadChatPhoto: async (to, messageId, current) => { calls.push({ name: 'downloadChatPhoto', args: [to, messageId, current] }); if (overrides.downloadChatPhoto) return overrides.downloadChatPhoto(to, messageId, current); } };
       if (id === './api/realtime') return { VERIFY_PEER: 'zimi-team', connectRealtime: (token, onEvent, userId, initiallyActive) => {
@@ -127,7 +135,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push, devicePermissions };
 }
 
 // Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
@@ -3292,6 +3300,90 @@ const pushSettings = (serverPush = true) => { const settings = profileSettings()
 const signedIn = (id = 'alice') => ({ ...account(id), requiresOnboarding: false, tokens: tokenPair(id), isNew: false });
 const pushCapability = h => h.find('data.profileSettings').at(-1).data.capabilities;
 
+test('registration permission setup waits for server-confirmed profile completion and only prompts after Allow', async () => {
+  const h=harness();
+  h.overrides.profileSettings=()=>pushSettings(true); h.push.status='denied';
+  h.bridge.handle(verifyMessage()); await settle();
+  h.bridge.handle({type:'permissions.request',data:{requestId:1}}); await settle();
+  assert.equal(h.devicePermissions.actions.length,0,'Unfinished registration cannot trigger the setup prompt');
+  assert.match(h.find('permissions.error').at(-1).data.message,/Finish your profile/);
+  h.bridge.handle({type:'permissions.load',data:{requestId:2}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read'],'Status reads never request access');
+  h.overrides.saveProfile=()=>({...account(),requiresOnboarding:false});
+  h.bridge.handle({type:'profile.save',data:{onboarding:true,name:'Alice'}}); await settle();
+  assert.deepEqual(h.push.modes,['silent'],'Completion does not race the explanation screen with an OS prompt');
+  h.devicePermissions.value={camera:'denied',microphone:'granted',notifications:'granted'}; h.push.status='registered';
+  h.bridge.handle({type:'permissions.request',data:{requestId:3}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read','request']);
+  assert.deepEqual(plain(h.find('permissions.status').at(-1).data),{permissions:h.devicePermissions.value,requestId:3});
+  assert.ok(h.push.modes.every(mode=>mode==='silent'),'FCM registration reuses the explicit permission grant');
+  assert.equal(h.count('registerPushDevice'),1); h.bridge.close();
+});
+
+test('permission setup cancellation retires later dialogs and ignores late results without blocking account access', async () => {
+  const h=harness(),request=deferred(); let isCurrent;
+  h.overrides.verifyOtp=()=>signedIn();
+  h.overrides.requestDevicePermissions=current=>{isCurrent=current;return request.promise;};
+  h.bridge.handle(verifyMessage()); await settle();
+  h.bridge.handle({type:'permissions.request',data:{requestId:4}}); await settle();
+  assert.equal(isCurrent(),true);
+  h.bridge.handle({type:'permissions.request',data:{requestId:5}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['request'],'Repeated taps cannot start another prompt');
+  h.bridge.handle({type:'permissions.cancel',data:{requestId:99}}); assert.equal(isCurrent(),true,'An unrelated request cannot cancel this action');
+  h.bridge.handle({type:'permissions.cancel',data:{requestId:4}}); assert.equal(isCurrent(),false);
+  request.resolve({camera:'granted',microphone:'granted',notifications:'granted'}); await settle();
+  assert.equal(h.find('permissions.status').length,0,'A skipped screen cannot be reopened by a late result');
+  assert.equal(h.count('registerPushDevice'),0); assert.ok(h.session.getCachedToken(),'Skipping keeps the authenticated session');
+  h.bridge.close();
+});
+
+test('permission results are owned by the signed-in account and WebView document', async () => {
+  const h=harness(),request=deferred(); let isCurrent;
+  h.overrides.verifyOtp=()=>signedIn();
+  h.overrides.requestDevicePermissions=current=>{isCurrent=current;return request.promise;};
+  h.bridge.handle(verifyMessage()); await settle();
+  h.bridge.handle({type:'permissions.request',data:{requestId:8}}); await settle();
+  h.bridge.documentLoading(); assert.equal(isCurrent(),false,'Reload retires queued permission dialogs');
+  request.resolve({camera:'granted',microphone:'granted',notifications:'granted'}); await settle();
+  assert.equal(h.find('permissions.status').length,0); assert.equal(h.count('registerPushDevice'),0);
+  const second=deferred(); h.overrides.requestDevicePermissions=current=>{isCurrent=current;return second.promise;};
+  h.bridge.handle({type:'permissions.request',data:{requestId:9}}); await settle();
+  h.bridge.handle({type:'auth.logout',data:{}}); await settle(); assert.equal(isCurrent(),false);
+  h.overrides.verifyOtp=()=>signedIn('bob'); h.bridge.handle(verifyMessage(2)); await settle();
+  second.resolve({camera:'granted',microphone:'granted',notifications:'granted'}); await settle();
+  assert.equal(h.find('permissions.status').length,0); assert.equal(h.count('registerPushDevice'),0); h.bridge.close();
+});
+
+test('permission Settings is explicit, signed-in and foreground-only; protocol accepts only correlated known actions', async () => {
+  const h=harness();
+  for(const type of ['permissions.load','permissions.request','permissions.settings','permissions.cancel']) {
+    assert.ok(h.webMessages.parseWebMessage(JSON.stringify({type,data:{requestId:1}})));
+    for(const data of [{},{requestId:0},{requestId:-1},{requestId:1,permission:'contacts'},{requestId:1,userId:'forged'}]) assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type,data})),null);
+  }
+  h.bridge.handle({type:'permissions.request',data:{requestId:1}}); await settle();
+  assert.equal(h.devicePermissions.actions.length,0);
+  h.overrides.verifyOtp=()=>signedIn(); h.bridge.handle(verifyMessage()); await settle();
+  h.devicePermissions.value={camera:'blocked',microphone:'blocked',notifications:'blocked'};
+  h.bridge.handle({type:'permissions.load',data:{requestId:2}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read'],'Blocked permissions never auto-open Settings');
+  h.activities.forEach(listener=>listener('background'));
+  h.bridge.handle({type:'permissions.settings',data:{requestId:3}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read']);
+  h.activities.forEach(listener=>listener('active'));
+  h.bridge.handle({type:'permissions.settings',data:{requestId:4}}); await settle();
+  assert.deepEqual(h.devicePermissions.actions,['read','settings','read']); h.bridge.close();
+});
+
+test('retired FCM registration cannot save a device to a different account after a delayed permission/token result', async () => {
+  const h=harness(),registration=deferred(); let save,isCurrent;
+  h.overrides.verifyOtp=()=>signedIn(); h.overrides.profileSettings=()=>pushSettings(true);
+  h.overrides.registerPush=async(callback,_mode,current)=>{save=callback;isCurrent=current;await registration.promise;try{await callback('late-token');return 'registered';}catch{return 'unavailable';}};
+  h.bridge.handle(verifyMessage()); await settle(); assert.equal(isCurrent(),true);
+  h.bridge.handle({type:'auth.logout',data:{}}); await settle(); assert.equal(isCurrent(),false);
+  registration.resolve(); await settle();
+  assert.equal(h.count('registerPushDevice'),0); assert.ok(save); h.bridge.close();
+});
+
 test('push registers each session only when the server can send, and settings report this device', async () => {
   const h = harness();
   h.overrides.verifyOtp = () => signedIn();
@@ -3302,7 +3394,7 @@ test('push registers each session only when the server can send, and settings re
 
   h.overrides.profileSettings = () => pushSettings(true);
   h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
-  assert.deepEqual(h.push.modes, ['prompt']);
+  assert.deepEqual(h.push.modes, ['silent']);
   assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').map(call => call.args), [['fcm:device-token']]);
   assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [true, 'registered']);
   h.bridge.handle({ type: 'profile.settings.load', data: {} }); await settle();
@@ -3315,7 +3407,7 @@ test('push registers each session only when the server can send, and settings re
 
   h.overrides.verifyOtp = () => signedIn('bob');
   h.bridge.handle(verifyMessage(2)); await settle();
-  assert.deepEqual(h.push.modes, ['prompt', 'silent'], 'A later account re-registers without prompting again');
+  assert.deepEqual(h.push.modes, ['silent', 'silent'], 'Each account re-registers without prompting on login');
   assert.equal(h.count('registerPushDevice'), 2);
   h.push.tokenListener('fcm:rotated'); await settle();
   assert.deepEqual(h.calls.filter(call => call.name === 'registerPushDevice').at(-1).args, ['fcm:rotated']);
@@ -3332,7 +3424,7 @@ test('denied permission is reported, retried silently in the foreground and can 
   h.bridge.handle(verifyMessage()); await settle();
   assert.deepEqual([pushCapability(h).nativePushRegistered, pushCapability(h).nativePushStatus], [false, 'denied']);
   h.activities.forEach(listener => listener('active')); await settle();
-  assert.deepEqual(h.push.modes, ['prompt', 'silent']);
+  assert.deepEqual(h.push.modes, ['silent', 'silent']);
 
   assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: {} })));
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'push.enable', data: { token: 'injected' } })), null);

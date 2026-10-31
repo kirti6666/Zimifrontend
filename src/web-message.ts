@@ -80,6 +80,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "app.exit.request": case "app.launched": valid = Object.keys(d).length === 0; break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
     case "connection.check": case "wallet.load": case "transactions.load": case "push.enable": valid = Object.keys(d).length === 0; break;
+    case "permissions.load": case "permissions.request": case "permissions.settings": case "permissions.cancel":
+      valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
     case "home.reload": valid = (d.category === undefined || category(d.category)) && (d.q === undefined || (typeof d.q === "string" && d.q.length <= 100)) && (d.mode === undefined || ["popular", "instant", "online", "following", "foryou", "new"].includes(String(d.mode))) && (d.country === undefined || (typeof d.country === "string" && d.country.trim().length > 0 && d.country.length <= 100)) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "leaderboard.load": valid = ["daily", "weekly", "all"].includes(String(d.period)) && Object.keys(d).every(key => key === "period"); break;
     case "referral.load": case "referral.share": valid = Object.keys(d).length === 0; break;

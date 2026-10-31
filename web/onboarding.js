@@ -23,6 +23,107 @@ let obEmailTimer = 0, obEmailSequence = 0, obEmailWaiting = null, obEmailGateTim
 const OB_EMAIL_TAKEN = "This email is already used by another account. Try a different one.";
 const OB_EMAIL_INVALID = "Add a valid email address.";
 const obLimits = {};
+const OB_PERMISSION_KEY = "binzolive.permissions.pending.";
+const OB_PERMISSION_ITEMS = [
+  ["camera", "Camera", "For video calls and taking a photo.", "vid"],
+  ["microphone", "Microphone", "For voice messages and calls.", "mic"],
+  ["notifications", "Notifications", "For incoming calls, messages and gifts.", "bell"],
+];
+let obPermissionSetup = null;
+function obPermissionOwner(account) { const id = account?.user?.id || S.user?.id; return typeof id === "string" && id.length <= 100 ? id : ""; }
+function obRememberPermissionIntro(account) {
+  const owner = obPermissionOwner(account); if (!owner || DEMO) return;
+  try { localStorage.setItem(OB_PERMISSION_KEY + owner, "1"); } catch {}
+}
+function obResetPermissionSetup() {
+  const state = obPermissionSetup;
+  if (state) {
+    clearTimeout(state.timer);
+    if (["request", "settings"].includes(state.busy)) Native.send("permissions.cancel", { requestId: state.requestId });
+  }
+  obPermissionSetup = null;
+}
+function obPermissionPaint() {
+  if (!obPermissionSetup || S.v !== "login" || S.auth.step !== "permissions") return;
+  const focus = document.activeElement?.id; r();
+  if (focus) document.getElementById(focus)?.focus({ preventScroll: true });
+}
+function obPermissionAsk(action) {
+  const state = obPermissionSetup;
+  if (!state || state.busy || state.owner !== (S.user?.id || (DEMO ? "preview" : ""))) return;
+  if (DEMO) { state.error = "Device permissions are available in the Android app."; obPermissionPaint(); return; }
+  state.busy = action; state.error = ""; state.requestId = ++obSequence;
+  const requestId = state.requestId;
+  state.timer = null;
+  // Native permission dialogs belong to the user; only leaving this step
+  // cancels their sequence. Status reads and settings launch remain bounded.
+  if (action !== "request") state.timer = setTimeout(() => {
+    if (obPermissionSetup !== state || state.requestId !== requestId) return;
+    if (["request", "settings"].includes(state.busy)) Native.send("permissions.cancel", { requestId });
+    state.busy = ""; state.requestId = null;
+    state.error = "We couldn't check access. Try again, or continue and set it up later."; obPermissionPaint();
+  }, 20000);
+  Native.send("permissions." + action, { requestId }); obPermissionPaint();
+}
+function obStartPermissionSetup(account, creator) {
+  obResetPermissionSetup();
+  const owner = obPermissionOwner(account) || (DEMO ? "preview" : "");
+  if (!owner) return false;
+  obPermissionSetup = { owner, creator: !!creator, permissions: Object.fromEntries(OB_PERMISSION_ITEMS.map(([key]) => [key, DEMO ? "unavailable" : null])), busy: "", requestId: null, error: "", attempted: false, timer: null };
+  S.auth = { step: "permissions", mode: "signup", creatorIntent: !!creator }; S.loggedIn = 0;
+  if (S.v === "login") r(); else go("login");
+  if (!DEMO) obPermissionAsk("load");
+  return true;
+}
+/** Only an unfinished registration's account marker can resume this step. */
+function obResumePermissionSetup(account) {
+  const owner = obPermissionOwner(account);
+  if (!owner || account.requiresOnboarding || DEMO) return false;
+  let pending = false; try { pending = localStorage.getItem(OB_PERMISSION_KEY + owner) === "1"; } catch {}
+  return pending && obStartPermissionSetup(account, S.creatorSetup && !isHost());
+}
+function obFinishPermissions() {
+  const state = obPermissionSetup; if (!state) return;
+  if (!DEMO) { try { localStorage.removeItem(OB_PERMISSION_KEY + state.owner); } catch {} }
+  obResetPermissionSetup(); S.loggedIn = 1; S.auth = { step: "phone" };
+  go(state.creator ? "kyc" : "home");
+}
+function obPermissionRefresh() { if (obPermissionSetup && !obPermissionSetup.busy && document.visibilityState !== "hidden") obPermissionAsk("load"); }
+function obPermissionsView() {
+  const state = obPermissionSetup; if (!state) return "";
+  const loading = state.busy === "load", blocked = Object.values(state.permissions).includes("blocked");
+  const canRequest = Object.values(state.permissions).some(value => value === "denied");
+  const labels = { granted: "Allowed", denied: "Not allowed", blocked: "Blocked in settings", unavailable: "Not available" };
+  return `<section class="ob-shell ob-permissions" data-ob-step="permissions" aria-labelledby="ob-permissions-title"><div class="ob-main">
+    <p class="ob-permission-ready">Your account is ready</p><h1 class="ob-heading" id="ob-permissions-title" tabindex="-1">Set up app access</h1>
+    <p class="ob-permission-intro">Choose what BinzoLive can use. You can change this later in your phone's settings.</p>
+    <ul class="ob-permission-list" ${loading ? 'role="status" aria-label="Checking device access" aria-busy="true"' : ''}>${OB_PERMISSION_ITEMS.map(([key, title, copy, icon]) => `<li><span class="ob-permission-icon" aria-hidden="true">${icon === "bell" ? hi(icon, 21) : I(icon, 21)}</span><div><h2>${title}</h2><p>${copy}</p><span class="ob-permission-status ${state.permissions[key] === "granted" ? "is-granted" : ""}" ${loading ? 'aria-hidden="true"' : ''}>${loading ? '<i class="ob-permission-skeleton"></i>' : labels[state.permissions[key]] || "Not checked"}</span></div></li>`).join("")}</ul>
+    <p class="ob-permission-photos">Photos stay your choice. Choose a photo when you upload.</p>
+    ${DEMO ? '<p class="ob-permission-note">Device permissions are available in the Android app.</p>' : ''}
+    ${blocked ? '<p class="ob-permission-note">Some access is blocked. You can change it in your phone\'s settings.</p>' : ''}
+    <p id="ob-permission-error" class="ob-error" role="alert" ${state.error ? '' : 'hidden'}>${esc(state.error)}</p>
+    <p class="ob-permission-wait" aria-live="polite">${state.busy === "request" ? "Choose your access in the phone's permission dialogs." : state.busy === "settings" ? "Return here when you're finished in settings." : ""}</p>
+    </div><div class="ob-actions">
+    ${!DEMO && canRequest ? `<button id="ob-permission-allow" class="ob-primary" onclick="obPermissionAsk('request')" ${state.busy ? "disabled" : ""}>Allow access</button>` : ''}
+    ${blocked ? `<button id="ob-permission-settings" class="ob-permission-secondary" onclick="obPermissionAsk('settings')" ${state.busy ? "disabled" : ""}>Open settings</button>` : ''}
+    ${state.error ? `<button id="ob-permission-retry" class="ob-permission-secondary" onclick="obPermissionAsk('load')" ${state.busy ? "disabled" : ""}>Try again</button>` : ''}
+    <button id="ob-permission-continue" class="${canRequest || loading ? "ob-text-button" : "ob-primary"}" onclick="obFinishPermissions()">${state.attempted || !canRequest && !loading ? "Continue" : "Not now"}</button>
+    <p class="ob-permission-later">You can keep going with any choice.</p></div></section>`;
+}
+Native.on("permissions.status", data => {
+  const state = obPermissionSetup;
+  if (!state || data.requestId !== state.requestId || state.owner !== S.user?.id) return;
+  const allowed = ["granted", "denied", "blocked", "unavailable"];
+  if (!data.permissions || OB_PERMISSION_ITEMS.some(([key]) => !allowed.includes(data.permissions[key]))) return;
+  clearTimeout(state.timer); if (state.busy === "request") state.attempted = true;
+  state.permissions = Object.fromEntries(OB_PERMISSION_ITEMS.map(([key]) => [key, data.permissions[key]])); state.busy = ""; state.requestId = null; state.error = ""; obPermissionPaint();
+});
+Native.on("permissions.error", data => {
+  const state = obPermissionSetup; if (!state || data.requestId !== state.requestId || state.owner !== S.user?.id) return;
+  clearTimeout(state.timer); state.busy = ""; state.requestId = null; state.error = data.message || "Device access couldn't be checked. Try again or continue."; obPermissionPaint();
+});
+Native.on("session.none", obResetPermissionSetup); Native.on("session.expired", obResetPermissionSetup);
+Native.on("app.foreground", obPermissionRefresh); document.addEventListener("visibilitychange", obPermissionRefresh);
 const obIsCreator = () => !!S.auth.creatorIntent || isHost();
 const obMatches = data => data.requestId === undefined || data.requestId === S.auth.requestId;
 const obDuration = seconds => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -58,7 +159,7 @@ function obAuthError(data) {
 function obPhotoUrl(value) { return typeof value === "string" && (/^https:\/\/[^\s"'<>]+$/.test(value) || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)) ? value : ""; }
 function obApplyAccount(account, keepDraft = false) {
   const u = account.user || {}, editing = keepDraft && S.v === 'editprofile' && S.user?.id === u.id;
-  if(S.user?.id!==u.id){window.ZimiAgency?.reset();window.ZimiChats?.reset();window.ZimiCallInvitations?.reset()}
+  if(S.user?.id!==u.id){obResetPermissionSetup();window.ZimiAgency?.reset();window.ZimiChats?.reset();window.ZimiCallInvitations?.reset()}
   S.user = u;
   window.ZimiThemes?.account(u.id);
   if (u.role === "host" || u.role === "sender") S.role = u.role;
@@ -77,10 +178,12 @@ function obResetProfileDraft() {
 }
 function obResumeOnboarding(account, desiredCreator) {
   const u = account.user || {};
+  obRememberPermissionIntro(account);
   S.auth = { step: "profile", mode: "signup", verified: true, creatorIntent: !!desiredCreator || u.onboardingPreference === "creator", name: u.name || "", email: u.email || "", langs: u.languages || [], interests: u.interests || [], photos: (u.photos || []).map(p => obPhotoUrl(p.url)).filter(Boolean), featured: 0, adult: !!u.adultConfirmed, cat: u.category || "", gender: u.gender || "" };
   S.loggedIn = 0; go("login");
 }
 function obResetSession(message = "") {
+  obResetPermissionSetup();
   window.ZimiAgency?.reset();
   window.ZimiHostAccess?.reset();
   if(window.ZimiHome)homeReset();
@@ -189,6 +292,7 @@ function obStep(step, backward = false) {
 }
 function obBack() {
   const a = S.auth;
+  if (a.step === "permissions") return obFinishPermissions();
   if (a.busy || a.uploading) return;
   if (a.step === "interests") return obStep("photos", true);
   if (a.step === "photos") return obStep("profile", true);
@@ -455,6 +559,8 @@ function obComplete(account) {
   me.n = a.name; S.editName = a.name; me.gender = a.gender; S.editGender = a.gender; S.avatarData = a.photos[a.featured || 0]; S.interests = a.interests.slice();
   if (account) obApplyAccount(account);
   if (creator) { me.tag = a.cat; S.creatorSetup = true; S.fromSignup = 1; S.kf = { ...S.kf, name: a.name, email: a.email, langs: a.langs, category: a.cat, bio: "", photos: account ? (account.user.photos || []).map(p => p.url) : a.photos }; }
+  if (account?.requiresOnboarding) return obResumeOnboarding(account, creator);
+  if (obStartPermissionSetup(account, creator)) return;
   S.loggedIn = 1; S.auth = { step: "phone" }; go(creator ? "kyc" : "home");
 }
 function obErrorMarkup() { return `<p class="ob-error" id="ob-error" role="alert" ${S.auth.err ? "" : "hidden"}>${esc(S.auth.err || "")}</p>`; }
@@ -476,6 +582,7 @@ function obPhotoContent() {
     <div class="ob-photo-status" aria-live="polite"><span>${count} of ${MAX_PHOTOS} photos</span><span class="${count >= MIN_PHOTOS ? "ready" : ""}">${count >= MIN_PHOTOS ? "● Looking good" : `${MIN_PHOTOS - count} more to get started`}</span></div>`;
 }
 function obLogin() {
+  if (S.auth.step === "permissions") return obPermissionsView();
   const a = S.auth, signup = a.mode === "signup", host = obIsCreator();
   if (a.step === "choose") a.step = "phone";
   if (a.step === "sprofile") a.step = "profile";

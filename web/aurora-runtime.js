@@ -1681,6 +1681,7 @@ Native.on("session.expired",d=>obResetSession(d.message||"Your session has expir
 Native.on("session",d=>{
  S.sessionState="";obApplyAccount(d);
  if(d.requiresOnboarding)return obResumeOnboarding(d);
+ if(obResumePermissionSetup(d))return;
  S.loggedIn=1;S.kf={name:me.n,bio:me.about,langs:(d.user||{}).languages||[]};
  go(S.creatorSetup&&!isHost()?"kyc":"home");
 });
@@ -1689,6 +1690,7 @@ Native.on("auth.ok",d=>{
  clearInterval(S.otpT);clearTimeout(obRequestTimer);S.auth.busy=false;S.sessionState="";
  const creator=S.auth.creatorIntent;obApplyAccount(d);
  if(d.requiresOnboarding){obResumeOnboarding(d,creator);obHaptic("success");return}
+ if(obResumePermissionSetup(d))return;
  S.auth.mode="login";S.auth.creatorIntent=creator;signedIn();
 });
 Native.on("auth.error",obAuthError);

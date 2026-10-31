@@ -37,7 +37,7 @@ function harness(os = 'android') {
     const filename = path.resolve(root, file); if (cache.has(filename)) return cache.get(filename).exports;
     const module = { exports: {} }; cache.set(filename, module);
     const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-    const requireMock = id => id === 'expo-notifications' ? notifications : id === 'react-native' ? { Platform: { OS: os }, Linking: { openSettings: async () => { calls.push(['settings']); } } } : load(path.relative(root, path.resolve(path.dirname(filename), id + '.ts')));
+    const requireMock = id => id === 'expo-notifications' ? notifications : id === 'react-native' ? { Platform: { OS: os }, AppState: { currentState: 'active' }, Linking: { openSettings: async () => { calls.push(['settings']); } } } : load(path.relative(root, path.resolve(path.dirname(filename), id + '.ts')));
     vm.runInContext(`(function(require,module,exports){${compiled}\n})`, context)(requireMock, module, module.exports); return module.exports;
   };
   return { push: load('src/push.ts'), target: load('src/notification-target.ts'), preferences: load('src/notification-preferences.ts'), state, calls };

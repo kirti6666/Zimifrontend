@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
-import { Linking, Platform } from "react-native";
+import { AppState, Linking, Platform } from "react-native";
 import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
+import { queuePermissionRequest } from "./permission-requests";
 
 /* Device push through Firebase Cloud Messaging. The backend sends notification
    messages to this channel (backend/src/services/push/fcm.client.ts), so
@@ -10,6 +11,8 @@ import { notificationTargetFrom, type NotificationTarget } from "./notification-
    this build does not include. */
 
 export type PushStatus = "registered" | "denied" | "unavailable";
+/** Device permission is separate from having a registered FCM token. */
+export type PushPermissionStatus = "granted" | "denied" | "blocked" | "unavailable";
 /** silent: never prompt. prompt: ask if Android still allows it. settings: ask, else open system settings. */
 export type PushMode = "silent" | "prompt" | "settings";
 
@@ -70,20 +73,43 @@ export function startPush(onOpen: (target: NotificationTarget) => void, belongsT
   return () => subscription.remove();
 }
 
-/** Gets this device's FCM token and hands it to `save`. Never throws. */
-export async function registerPush(save: (token: string) => Promise<void>, mode: PushMode): Promise<PushStatus> {
+const permissionStatus = (permission: { granted: boolean; canAskAgain: boolean }): PushPermissionStatus =>
+  permission.granted ? "granted" : permission.canAskAgain ? "denied" : "blocked";
+
+/** Reads the phone's notification permission without prompting or requiring FCM. */
+export async function readPushPermission(): Promise<PushPermissionStatus> {
   if (!supported()) return "unavailable";
   try {
-    await ensureChannels();
-    let permission = await Notifications.getPermissionsAsync();
-    if (!permission.granted && permission.canAskAgain && mode !== "silent") {
-      permission = await Notifications.requestPermissionsAsync();
-    } else if (!permission.granted && mode === "settings") {
-      // Android stops showing the dialog after repeated denials.
-      await Linking.openSettings();
-    }
-    if (!permission.granted) return "denied";
+    return permissionStatus(await Notifications.getPermissionsAsync());
+  } catch { return "unavailable"; }
+}
+
+/** Only an explicit prompt/settings action may open a native dialog. Requests
+ * re-read permission inside the shared queue, so concurrent callers cannot
+ * display multiple camera/microphone/notification dialogs at the same time. */
+export function requestPushPermission(mode: PushMode, isCurrent: () => boolean = () => true): Promise<PushPermissionStatus> {
+  return queuePermissionRequest(async () => {
+    if (!supported()) return "unavailable";
+    try {
+      await ensureChannels();
+      let permission = await Notifications.getPermissionsAsync();
+      if (!permission.granted && mode !== "silent" && AppState.currentState === "active" && isCurrent()) {
+        if (permission.canAskAgain) permission = await Notifications.requestPermissionsAsync();
+        else if (mode === "settings") await Linking.openSettings();
+      }
+      return permissionStatus(permission);
+    } catch { return "unavailable"; }
+  });
+}
+
+/** Gets this device's FCM token and hands it to `save`. Never throws. */
+export async function registerPush(save: (token: string) => Promise<void>, mode: PushMode, isCurrent: () => boolean = () => true): Promise<PushStatus> {
+  const permission = await requestPushPermission(mode, isCurrent);
+  if (permission !== "granted") return permission === "unavailable" ? "unavailable" : "denied";
+  try {
+    if (!isCurrent()) return "unavailable";
     const { data } = await Notifications.getDevicePushTokenAsync();
+    if (!isCurrent()) return "unavailable";
     if (typeof data !== "string" || !data) return "unavailable";
     await save(data);
     return "registered";

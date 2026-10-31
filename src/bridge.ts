@@ -21,6 +21,7 @@ import type { OfficialChatData, OfficialReadPatch } from "./api/types";
 import { clearDeliveredPush, onPushTokenChange, registerPush, startPush, type PushMode, type PushStatus } from "./push";
 import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
 import { notifyAppUpdate } from "./app-update-events";
+import { openDevicePermissionSettings, readDevicePermissions, requestDevicePermissions, type DevicePermissions } from "./device-permissions";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -36,6 +37,7 @@ export type WebMessage =
   | { type: "session.resume"; data: Record<string, never> }
   | { type: "data.reload"; data: Record<string, never> }
   | { type: "push.enable"; data: Record<string, never> }
+  | { type: "permissions.load" | "permissions.request" | "permissions.settings" | "permissions.cancel"; data: { requestId: number } }
   | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
@@ -142,6 +144,8 @@ export type AppMessage =
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
   | { type: "session.error" | "session.expired"; data: { message: string } }
   | { type: "auth.ok"; data: Account & { isNew: boolean; requestId?: number } }
+  | { type: "permissions.status"; data: { permissions: DevicePermissions; requestId: number } }
+  | { type: "permissions.error"; data: { message: string; requestId: number } }
   | { type: "auth.otpSent"; data: { phone: string; resendAfter: number; expiresIn: number; otpLength: number; requestId?: number } }
   | { type: "auth.error"; data: { message: string; code?: string; retryAfterSeconds?: number; action?: string; requestId?: number } }
   | { type: "profile.saved"; data: { onboarding: boolean; account?: Account; requestId?: number } }
@@ -739,12 +743,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
   // the device decides whether it can receive it.
   let pushStatus: PushStatus = "unavailable";
   let pushSession: number | undefined;
-  let pushPrompted = false;
+  let permissionAction: { requestId: number; document: number; sessionVersion: number; epoch: number; retired: boolean } | undefined;
   let pushOpenPending: NotificationTarget | undefined;
   let pushOpenRevision = 0;
   const syncPush = async (mode: PushMode) => {
     const version = epoch, sessionVersion = getSessionVersion();
-    const status = await registerPush(token => api.registerPushDevice(token), mode);
+    const applicable = () => current(version) && sessionVersion === getSessionVersion() && sessionAvailable;
+    const status = await registerPush(token => {
+      if (!applicable()) throw new Error("Device registration was retired");
+      return api.registerPushDevice(token);
+    }, mode, applicable);
     if (!current(version) || sessionVersion !== getSessionVersion() || status === pushStatus) return;
     pushStatus = status;
     quietly(loadProfileSettings(), "profile.settings.load");
@@ -752,12 +760,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const withPushStatus = (settings: ProfileSettings): ProfileSettings =>
     ({ ...settings, capabilities: { ...settings.capabilities, nativePushRegistered: pushStatus === "registered", nativePushStatus: pushStatus } });
   const emitProfileSettings = (settings: ProfileSettings) => {
-    // Register once per signed-in session, and never spend Android's one-time
-    // permission prompt while the server cannot send.
+    // Restore/login only register permission already granted. Registration's
+    // setup screen and the explicit Enable action own permission dialogs.
     if (settings.capabilities.pushNotifications && pushSession !== getSessionVersion() && !liveOnboarding) {
       pushSession = getSessionVersion();
-      void syncPush(pushPrompted ? "silent" : "prompt");
-      pushPrompted = true;
+      void syncPush("silent");
     }
     emit({ type: "data.profileSettings", data: withPushStatus(settings) });
   };
@@ -1164,6 +1171,41 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
       case "push.enable": if (sessionAvailable && pushSession === getSessionVersion()) await syncPush("settings"); return;
+      case "permissions.cancel": {
+        if (permissionAction?.requestId === msg.data.requestId && permissionAction.document === documentRevision &&
+          permissionAction.sessionVersion === getSessionVersion() && permissionAction.epoch === version) permissionAction.retired = true;
+        return;
+      }
+      case "permissions.load": case "permissions.request": case "permissions.settings": {
+        const { requestId } = msg.data, sessionVersion = getSessionVersion(), document = documentRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && sessionAvailable;
+        const fail = (message: string) => { if (current(version) && document === documentRevision) emit({ type: "permissions.error", data: { message, requestId } }); };
+        if (!sessionAvailable || !accountId || !getCachedToken()) { fail("Sign in before setting up device access."); return; }
+        const action = msg.type !== "permissions.load";
+        if (action && (liveOnboarding || hostAccount?.requiresOnboarding)) { fail("Finish your profile before setting up device access."); return; }
+        if (action && !appActive) { fail("Return to the app to allow device access."); return; }
+        if (action && (activeCall || pendingOutgoing || verifyCall || activeStream)) { fail("Finish your call before changing device access."); return; }
+        if (action && permissionAction && !permissionAction.retired && permissionAction.epoch === version && permissionAction.document === document && permissionAction.sessionVersion === sessionVersion) {
+          fail("A permission request is already open. Finish it to continue."); return;
+        }
+        const owner = action ? { requestId, document, sessionVersion, epoch: version, retired: false } : undefined;
+        if (owner) permissionAction = owner;
+        const owned = () => applicable() && !owner?.retired;
+        try {
+          if (msg.type === "permissions.settings") await openDevicePermissionSettings(owned);
+          if (!owned()) return;
+          const permissions = msg.type === "permissions.request" ? await requestDevicePermissions(owned) : await readDevicePermissions();
+          if (!owned()) return;
+          emit({ type: "permissions.status", data: { permissions, requestId } });
+          if (permissions.notifications === "granted" && (pushSession !== sessionVersion || pushStatus !== "registered")) {
+            pushSession = sessionVersion;
+            void syncPush("silent");
+          }
+        } catch {
+          if (owned()) fail("Device access could not be checked. You can continue and try again later.");
+        } finally { if (owner && permissionAction === owner) permissionAction = undefined; }
+        return;
+      }
       case "notifications.open": {
         const target = notificationTargetFrom({ ...msg.data, recipientId: accountId });
         if (target && sessionAvailable && !liveOnboarding) { pushOpenPending = target;pushOpenRevision++;await flushPushOpen(); }

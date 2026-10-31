@@ -18,6 +18,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test:onboarding": "node scripts/test-onboarding.cjs",
+    "test:permissions": "npm run build:web && node scripts/test-device-permissions.cjs && node scripts/test-push.cjs && node --test --test-name-pattern=\"permission|retired FCM\" scripts/test-auth-bridge.cjs && node scripts/test-registration-permissions.cjs",
     "test:agency": "npm run build:web && node scripts/test-agency.cjs",
     "test:chat-order": "npm run build:web && node scripts/test-chat-order.cjs",
     "test:chat-gifts": "npm run build:web && node scripts/test-chat-gifts.cjs && node scripts/test-chat-gift-playback.cjs && node scripts/test-free-gifts.cjs",

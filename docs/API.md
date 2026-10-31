@@ -485,6 +485,31 @@ daily cap per member and optional impression or click budgets.
 - Each card is labelled “Sponsored” and has an **About this ad** dialog that names
   the advertiser and destination and links to Premium.
 
+## Registration device access
+
+After the server confirms profile completion, Android registration offers a
+device-access screen for camera, microphone and notifications. Only its explicit
+Allow access action opens system prompts. Continue/Not now completes setup with
+any permission choice. A pending per-account marker resumes interrupted setup;
+completed returning accounts have no automatic permission dialog. Photo uploads
+use the system picker, with camera access requested when taking a photo.
+
+The WebView sends `permissions.load`, `permissions.request`, or
+`permissions.settings` with a positive `requestId`. Native replies with
+`permissions.status: {requestId, permissions: {camera, microphone, notifications}}`
+or `permissions.error: {requestId, message}`. Statuses are `granted`, `denied`,
+`blocked`, and `unavailable`. Settings opens only from an explicit recovery
+action. `permissions.cancel: {requestId}` retires later dialogs when setup is
+skipped or closed. Responses and queued requests retire with their account or
+WebView document. Camera/microphone and notification prompts share one native
+queue; checking or requesting access never starts a camera or audio recording.
+
+OS notification permission and FCM registration are separate states. A granted
+permission triggers silent device registration. Login and session restoration
+also register silently; the existing inbox Enable action can explicitly ask or
+open Settings. Native upfront permission setup currently supports Android;
+unsupported platforms report unavailable.
+
 ## Push notifications
 
 Android uses native FCM device tokens registered through authenticated
