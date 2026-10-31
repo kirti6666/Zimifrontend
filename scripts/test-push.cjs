@@ -9,10 +9,19 @@ const root = path.resolve(__dirname, '..');
 const self = '507f1f77bcf86cd799439011', peer = '507f1f77bcf86cd799439012';
 const settle = async () => { await new Promise(resolve => setImmediate(resolve)); };
 function harness(os = 'android') {
-  const calls = [], state = { permission: { granted: true, canAskAgain: true }, token: 'fcm:local-fixture' };
+  const calls = [], state = { permission: { granted: true, canAskAgain: true }, token: 'fcm:local-fixture', nativeSoundErrors: [], channelSounds: new Map() };
   const notifications = {
-    AndroidImportance: { DEFAULT: 3, HIGH: 4, MAX: 5 }, AndroidNotificationVisibility: { PRIVATE: 0 }, DEFAULT_ACTION_IDENTIFIER: 'default',
-    setNotificationChannelAsync: async (id, options) => { calls.push(['channel', id, options]); },
+    AndroidImportance: { DEFAULT: 5, HIGH: 6, MAX: 7 }, AndroidNotificationVisibility: { PRIVATE: 2 }, DEFAULT_ACTION_IDENTIFIER: 'default',
+    setNotificationChannelAsync: async (id, options) => {
+      calls.push(['channel', id, options]);
+      // Expo 57 AndroidXNotificationsChannelManager.customSoundExists treats
+      // every provided string as a raw resource filename, even "default".
+      // This app bundles no custom sounds. Missing sound keeps the system
+      // default; explicit null is accepted but deliberately makes it silent.
+      if (Object.hasOwn(options, 'sound') && options.sound !== null) state.nativeSoundErrors.push(`Custom sound '${options.sound}' not found in native app`);
+      const sound = Object.hasOwn(options, 'sound') && options.sound === null ? null : 'default';
+      state.channelSounds.set(id, sound);return { ...options, id, sound };
+    },
     setNotificationHandler: handler => { state.handler = handler; },
     addNotificationResponseReceivedListener: listener => { state.open = listener; return { remove: () => { state.removed = true; } }; },
     getLastNotificationResponseAsync: async () => state.last || null,
@@ -34,6 +43,16 @@ function harness(os = 'android') {
   return { push: load('src/push.ts'), target: load('src/notification-target.ts'), preferences: load('src/notification-preferences.ts'), state, calls };
 }
 const response = (identifier, data, actionIdentifier = 'default') => ({ actionIdentifier, notification: { request: { identifier, content: { data } } } });
+test('Expo 57 Android channels retain the system sound without requesting a missing custom resource', async () => {
+  const h = harness(), stop = h.push.startPush(() => {});
+  await settle();
+  assert.equal(await h.push.registerPush(async () => {}, 'silent'), 'registered');
+  assert.deepEqual(h.state.nativeSoundErrors, [], 'Channel initialization must not emit the native custom-sound error');
+  assert.equal(h.state.channelSounds.size, 7);
+  for (const [id, sound] of h.state.channelSounds) assert.equal(sound, 'default', `${id} retains the system sound instead of being silenced`);
+  assert.equal(h.calls.filter(call => call[0] === 'channel').length, 7, 'Starting listeners and registering share one initialization');
+  stop();
+});
 test('Android creates category channels before asking permission and registers only granted FCM tokens', async () => {
   const h = harness(), saved = [];
   assert.equal(await h.push.registerPush(async token => saved.push(token), 'prompt'), 'registered');

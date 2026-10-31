@@ -31,7 +31,9 @@ function ensureChannels(): Promise<void> {
     ["earnings-alerts", "Creator earning inspiration", Notifications.AndroidImportance.DEFAULT],
   ].map(([channel, name, importance]) => Notifications.setNotificationChannelAsync(String(channel), {
     name: String(name), importance: importance as Notifications.AndroidImportance,
-    sound: "default", lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+    // Expo 57 treats a sound string as a bundled filename. Omit it to keep
+    // Android's default system notification sound; null would make it silent.
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
     ...(channel === "calls" ? { vibrationPattern: [0, 300, 200, 300] } : {}),
   }))).then(() => {}).catch(error => { channelsReady = undefined; throw error; });
   return channelsReady;
