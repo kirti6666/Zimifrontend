@@ -10,9 +10,9 @@
   box-shadow:none!important;
   text-shadow:none!important;
 }
-/* Preserve the original 10px button shape across component/theme overrides. */
-:root :is(button,[role=button],[role=tab],[role=switch],input[type=button],input[type=submit],input[type=reset]) {
-  border-radius:10px!important;
+/* Full rounding makes wide actions pills and square actions circles. */
+:root :is(button,[role=button],[role=tab],[role=switch],input[type=button],input[type=submit],input[type=reset]):not(:is(.zr-pip,.pip,.zu-photo,.zc-photo,.za-campaign-slide,.hc-card-image,.ob-thumb,.hpcard,.zt-card,.zh-creator-hit,.zw-packs>button)) {
+  border-radius:999px!important;
 }
 html,body,.app,#top,#scroll-root,#screen {
   background-color:var(--canvas)!important;
@@ -316,10 +316,8 @@ html,body,.app,#top,#scroll-root,#screen {
 :root[data-theme-id] button.zb-back>svg {width:21px;height:21px}
 :root[data-theme-id] button.zb-back.on-media {border-color:rgb(255 255 255 / .55);background:rgb(12 4 9 / .36);color:#fff}
 
-/* Every element keeps the shared 10px corner except where a circle reads
-   better: Back and the close/more buttons beside it, every call action,
-   avatars with their badges and rings, and switches. Keep this list in step
-   with ROUND in scripts/flat-corners.cjs. */
+/* Buttons use full rounding; avatars, their badges/rings, and switches also
+   stay circular. Keep these selectors in step with ROUND in flat-corners.cjs. */
 html:root :is(
   .zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zr-round,
   .zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline,
@@ -346,3 +344,20 @@ html:root{border-radius:0!important}
 html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
+
+/* App-root specificity keeps every action fully rounded even when later
+   store, sheet or theme rules supply their own important corner values.
+   Body also covers native-dialog and viewer portals mounted outside the app.
+   Content surfaces implemented as buttons (video previews, photos, preview
+   cards and coin packages) retain their framing; action buttons still round.
+   Content framing and underlines keep their existing geometry. A large length
+   avoids the ellipses produced by 100%. Keep the content exclusions in step
+   with BUTTONS in scripts/flat-corners.cjs. */
+html:root :is(body,.app,#screen,#nav,#top) :is(button,[role=button],[role=tab],[role=switch],input[type=button],input[type=submit],input[type=reset]):not(:is(.zr-pip,.pip,.zu-photo,.zc-photo,.za-campaign-slide,.hc-card-image,.ob-thumb,.hpcard,.zt-card,.zh-creator-hit,.zw-packs>button)){border-radius:999px!important}
+
+/* Text entry follows the action buttons' pill shape, including portal forms.
+   Multiline fields use softer corners so their first/last lines stay readable.
+   Keep these selectors in step with FIELDS and MULTILINE in flat-corners.cjs. */
+html:root :is(body,.app,#screen,#nav,#top) :is(input:not(:is([type=checkbox],[type=radio],[type=range],[type=file],[type=color],[type=hidden],[type=button],[type=submit],[type=reset],[type=image])),select:not([multiple])){border-radius:999px!important}
+html:root :is(body,.app,#screen,#nav,#top) :is(.srch>div,.sfield,.zc-search,.zc-compose-search,.zc-composer-field,.zh-search-header>div,.zr-compose,.zn-search,.zc-photo-reply-bar){border-radius:999px!important}
+html:root :is(body,.app,#screen,#nav,#top) :is(textarea,select[multiple]){border-radius:24px!important}

@@ -108,10 +108,11 @@ async function noOverflow(page, label) {
   assert.ok(dimensions.screen <= dimensions.screenWidth + 1, `${label}: onboarding has horizontal overflow ${JSON.stringify(dimensions)}`);
 }
 
-async function startSignup(page, role = 'sender') {
-  await page.locator(`button[onclick="obSelectRole('${role}',this)"]`).click();
+async function startSignup(page) {
+  assert.equal(await page.locator('.ob-role-switch').count(), 0, 'Welcome starts one signup flow without a role choice');
   await page.locator('#ob-start').click();
   await step(page, 'phone');
+  assert.equal((await state(page)).creatorIntent, false, 'Fresh signup always begins as a member');
 }
 
 async function enterPhone(page) {
@@ -185,7 +186,7 @@ async function fillBasics(page, host = false) {
   await page.locator('#p18').check();
   if (host) {
     // Category/language are required for creators; choose visible controls.
-    await page.getByLabel('Your thing').selectOption('Music');
+    await page.getByLabel('Creator category').selectOption('Music');
     await page.getByRole('button', { name: 'English', exact: true }).click();
   }
   await action(page, 'obNextProfile').click();
@@ -298,7 +299,9 @@ async function previewFlow() {
   await page.mouse.up();
   assert.equal(await page.getByRole('button', { name: 'Show preview 3', exact: true }).getAttribute('aria-pressed'), 'true', 'Horizontal swipes must change the community preview');
   assert.equal(await page.locator('.ob-card-main').evaluate(element => getComputedStyle(element).animationName), 'none', 'Reduced motion must disable decorative animation');
+  await page.evaluate(() => { S.wsel = 'host'; });
   await startSignup(page);
+  assert.equal(await page.evaluate(() => S.role), 'sender', 'A previous welcome role selection cannot elevate a new signup');
   await page.getByRole('button', { name: 'Help', exact: true }).click();
   await page.getByRole('dialog').waitFor();
   for (let i = 0; i < 6; i++) {
@@ -409,9 +412,10 @@ async function responsiveChecks(page) {
 
 async function hostFlow() {
   const page = await openPage();
-  await startSignup(page, 'host');
-  await enterPhone(page);
-  await enterCode(page);
+  // Creator setup is restored from account data, never selected on the welcome screen.
+  await page.evaluate(() => obResumeOnboarding({ user: { id: 'resumed-creator', role: 'sender', onboardingPreference: 'creator' } }, false));
+  await step(page, 'profile');
+  assert.equal(await page.evaluate(() => S.role), 'sender', 'Restoring creator setup cannot grant host permissions');
   await fillBasics(page, true);
   await uploadPhotos(page);
   await action(page, 'obNextPhotos').click();
@@ -421,7 +425,7 @@ async function hostFlow() {
   assert.equal(verification.name, 'Creator Test', 'Creator verification must reuse the display name');
   assert.equal(verification.email, 'onboarding@example.test', 'Creator verification must reuse the email');
   assert.equal(verification.photos.length, 3, 'Creator verification must reuse uploaded photos');
-  console.log('PASS creator signup: role requirements and verification prefill');
+  console.log('PASS resumed creator setup: account preference, requirements and verification prefill');
 }
 
 async function joinHostAgency(page, native = false) {
@@ -550,14 +554,14 @@ async function nativeSessionRecovery() {
 
 async function nativeCreatorFlow() {
   const page = await openPage(true);
-  await startSignup(page, 'host');
+  await startSignup(page);
   await enterPhone(page);
   await receive(page, 'auth.otpSent', { phone: '+919876543210', resendAfter: 60 });
   await enterCode(page);
-  await receive(page, 'auth.ok', { isNew: true, requiresOnboarding: true, verification: 'none', user: { id: 'new-creator', name: '', role: 'sender', hostStatus: 'none' } });
+  await receive(page, 'auth.ok', { isNew: true, requiresOnboarding: true, verification: 'none', user: { id: 'new-creator', name: '', role: 'sender', hostStatus: 'none', onboardingPreference: 'creator' } });
   await step(page, 'profile');
-  assert.equal((await state(page)).creatorIntent, true, 'Creator choice survives a server member role during signup');
-  assert.equal(await page.evaluate(() => S.role), 'sender', 'Creator choice cannot elevate server permissions');
+  assert.equal((await state(page)).creatorIntent, true, 'A server creator preference restores the creator setup flow');
+  assert.equal(await page.evaluate(() => S.role), 'sender', 'Creator setup cannot elevate server permissions');
   await fillBasics(page, true);
   await uploadPhotos(page);
   await action(page, 'obNextPhotos').click();
@@ -714,6 +718,8 @@ async function enlargedTextChecks(page) {
       for (const [element, size] of sizes) element.style.setProperty('font-size', `${size}px`, 'important');
     });
     await noOverflow(page, `${name} with 200% text`);
+    const clippedChoices = await page.locator('.ob-segment button').evaluateAll(buttons => buttons.filter(button => button.scrollWidth > button.clientWidth + 1).map(button => button.textContent));
+    assert.deepEqual(clippedChoices, [], `${name}: enlarged gender labels remain fully readable`);
     const cta = page.locator('.ob-actions .ob-primary');
     await cta.scrollIntoViewIfNeeded();
     const bounds = await cta.boundingBox();

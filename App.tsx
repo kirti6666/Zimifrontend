@@ -273,6 +273,6 @@ const styles = StyleSheet.create({
   center: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", padding: 24 },
   failTitle: { fontSize: 17, fontWeight: "700", marginBottom: 8 },
   failBody: { fontSize: 13, opacity: 0.7, textAlign: "center", marginBottom: 20 },
-  retry: { borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10 },
+  retry: { borderRadius: 999, paddingHorizontal: 22, paddingVertical: 10 },
   retryText: { fontWeight: "700", fontSize: 14 },
 });

@@ -18,10 +18,13 @@ keeps it identical to the original Next.js version.
 - `web/` — the actual UI. `aurora-runtime.js` renders every screen by assigning
   HTML strings, styled by `aurora.css`.
 - `web/flat.css` — the final shared design layer: a pure white canvas, no box,
-  text or filter shadows, and 10px corners on every element except its round
-  list: the bordered 44px Back button and the close/more buttons beside it,
-  every call button, avatars and switches are always circles. Keep that list in
-  step with `ROUND` in `scripts/flat-corners.cjs`. Lines never get rounded
+  text or filter shadows, and 10px corners on content. All app buttons and
+  single-line text fields/selects use fully rounded pill corners. Multiline
+  fields use 24px corners to preserve readable text. Square icon buttons, the bordered 44px Back button,
+  avatars and switches are circles. Native retry/update buttons follow the same
+  rule. Media/preview containers retain their content framing, with round action
+  buttons over them. Keep the round list in step with `ROUND` in
+  `scripts/flat-corners.cjs`. Lines never get rounded
   ends: dividers, single-side borders, tab and navigation underlines and
   edge-to-edge surfaces (the post feed, page shells) and country flags keep square
   corners via the straight list in `web/flat.css`, mirrored by `STRAIGHT` in
@@ -54,7 +57,9 @@ keeps it identical to the original Next.js version.
   share a compact neutral cover fallback and unboxed stats, with no eyebrow.
 - Motion uses brief press feedback and 180ms content fades. Avoid bounce,
   floating decoration, confetti, animated navigation chrome and list reveals.
-  The launch logo fades without rings or zoom. Respect reduced-motion settings.
+  The launch logo fades and rises gently into place, then fades out once the
+  first screen is ready. Finish its introduction before exiting, without an
+  artificial loading timer, rings or zoom. Respect reduced-motion settings.
 - `web/profile.js` / `web/profile.css` ? Profile & Settings. Use authenticated
   account summaries for identity, counts and preferences; never copy sample
   balances, VIP levels or host ratings into production.

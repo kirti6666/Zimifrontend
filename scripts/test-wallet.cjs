@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {chromium}=require('playwright');
+const {MULTILINE,ROUND}=require('./flat-corners.cjs');
 const root=path.resolve(__dirname,'..');
 const member={user:{id:'507f1f77bcf86cd799439001',name:'Wallet member',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false,isPhoneVerified:true},verification:'none',requiresOnboarding:false};
 const host={...member,user:{...member.user,id:'507f1f77bcf86cd799439011',name:'Wallet creator',role:'host',serverRole:'host',hostStatus:'approved',isVerifiedHost:true},verification:'verified'};
@@ -15,8 +16,8 @@ const go=(page,view)=>page.evaluate(view=>go(view),view);
 const button=(page,name)=>page.getByRole('button',{name,exact:true});
 const requests=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type===type),type);
 async function audit(page,label){
- const state=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth+1,pageOverflow:document.querySelector('.zwallet-page').scrollWidth>document.querySelector('.zwallet-page').clientWidth+1,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,shadows:[...document.querySelectorAll('.zwallet-page,.zwallet-page *')].filter(el=>el.getClientRects().length).filter(el=>{const c=getComputedStyle(el);return c.boxShadow!=='none'||c.textShadow!=='none'||c.filter.includes('drop-shadow')||c.borderRadius!=='10px'}).map(el=>el.className||el.tagName)}));
- assert.equal(state.overflow,false,`${label}: no document overflow`);assert.equal(state.pageOverflow,false,`${label}: no wallet overflow`);assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: white background`);assert.deepEqual(state.shadows,[],`${label}: flat 10px controls`);
+ const state=await page.evaluate(({multiline,round})=>({overflow:document.documentElement.scrollWidth>innerWidth+1,pageOverflow:document.querySelector('.zwallet-page').scrollWidth>document.querySelector('.zwallet-page').clientWidth+1,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,shadows:[...document.querySelectorAll('.zwallet-page,.zwallet-page *')].filter(el=>el.getClientRects().length).filter(el=>{const c=getComputedStyle(el);return c.boxShadow!=='none'||c.textShadow!=='none'||c.filter.includes('drop-shadow')||c.borderRadius!==(el.matches(multiline)?'24px':el.matches(round)?'999px':'10px')}).map(el=>el.className||el.tagName)}),{multiline:MULTILINE,round:ROUND});
+ assert.equal(state.overflow,false,`${label}: no document overflow`);assert.equal(state.pageOverflow,false,`${label}: no wallet overflow`);assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: white background`);assert.deepEqual(state.shadows,[],`${label}: rounded controls/fields and 10px cards`);
 }
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});

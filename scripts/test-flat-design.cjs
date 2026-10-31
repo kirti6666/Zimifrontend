@@ -5,29 +5,29 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
-const { ROUND, STRAIGHT } = require('./flat-corners.cjs');
+const { MULTILINE, ROUND, STRAIGHT } = require('./flat-corners.cjs');
 const root = path.resolve(__dirname, '..');
 const account = { user: { id:'507f1f77bcf86cd799439001', name:'Asha Sharma', role:'sender', serverRole:'user', hostStatus:'none', isVerifiedHost:false, isPhoneVerified:true, city:'Pune' }, verification:'none', requiresOnboarding:false };
 const settings = { profile:{...account.user,bio:'Here for good conversations.',languages:['Hindi','English'],maskedPhone:'+91 *******3210'},stats:{fans:17,following:5,giftsSent:4,giftsReceived:9},standing:{},preferences:{pushNotifications:false,matchCategory:null},privacy:{discoverable:true,showActivity:true,allowRequests:false},categories:['Music','Talk'],capabilities:{pushNotifications:false} };
 const receive = (page,type,data) => page.evaluate(message=>Native.receive(message),{type,data});
 const navigate = (page,view) => page.evaluate(view=>go(view),view);
 async function audit(page,label){
-  const state = await page.evaluate(({round,straight})=>{
+  const state = await page.evaluate(({multiline,round,straight})=>{
     // Coin packages keep the requested grid and pill geometry while sharing
     // the account palette and the app's standard Back button.
     const nodes=[document.documentElement,...document.querySelectorAll('body,body *')].filter(el=>el.getClientRects().length&&!el.closest('.zw-coins,.zw-page-header,.zw-checkout-footer'));
     const wrong=nodes.flatMap(el=>{
       const c=getComputedStyle(el),name=el.id||el.classList?.value||el.tagName;
-      const radiusOK=c.borderRadius==='10px'||c.borderRadius==='999px'&&el.matches(round)||c.borderRadius==='0px'&&el.matches(straight);
+      const radiusOK=el.matches(multiline)?c.borderRadius==='24px':el.matches(round)?c.borderRadius==='999px':c.borderRadius==='10px'||c.borderRadius==='0px'&&el.matches(straight);
       return [c.boxShadow!=='none'&&`${name}: shadow`,c.textShadow!=='none'&&`${name}: text shadow`,c.filter.includes('drop-shadow')&&`${name}: filter shadow`,!radiusOK&&`${name}: radius ${c.borderRadius}`].filter(Boolean);
     });
     const reference=document.querySelector('.zw-coins.zw-reference');
     return {wrong,canvas:getComputedStyle(document.querySelector('.app')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth+1,coinMode:document.documentElement.classList.contains('zw-app'),reference:reference?{card:getComputedStyle(reference.querySelector('.zw-packs>button')).borderRadius,price:getComputedStyle(reference.querySelector('.zw-packs>button>b')).borderRadius,cta:getComputedStyle(reference.querySelector('.zw-buy')).borderRadius}:null};
-  },{round:ROUND,straight:STRAIGHT});
-  assert.deepEqual(state.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
+  },{multiline:MULTILINE,round:ROUND,straight:STRAIGHT});
+  assert.deepEqual(state.wrong,[],`${label}: rounded controls/fields, 10px cards, straight structural edges, and no shadows`);
   assert.equal(state.coinMode,!!state.reference,`${label}: coin layout class belongs only to the coin page`);
   assert.equal(state.canvas,'rgb(255, 255, 255)',`${label}: active light theme is retained on every page`);
-  if(state.reference)assert.deepEqual(state.reference,{card:'15px',price:'8px',cta:'999px'},`${label}: reference card, price and purchase-button geometry`);
+  if(state.reference)assert.deepEqual(state.reference,{card:'15px',price:'8px',cta:'999px'},`${label}: original package card and price geometry, with a fully rounded purchase action`);
   assert.equal(state.overflow,false,`${label}: fits viewport`);
 }
 (async()=>{
@@ -86,6 +86,6 @@ async function audit(page,label){
     await audit(page,'saved dark theme');
     assert.equal(await page.evaluate(()=>document.documentElement.dataset.canvas),'#ffffff');
     assert.deepEqual(errors,[],'No browser errors');
-    console.log('PASS flat design: separate Settings tab, live balance and Add coins, reference coin geometry with active theme, settings drilldowns and shared white canvas/10px corners/no shadows across 10 screens at 320/390/768/1280px');
+    console.log('PASS flat design: separate Settings tab, live balance and Add coins, fully rounded buttons, active coin theme, settings drilldowns and shared white canvas/10px card corners/no shadows across 10 screens at 320/390/768/1280px');
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
