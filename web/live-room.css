@@ -120,7 +120,7 @@
 .zr-call-dock .zr-hangup>svg{padding:0;background:none;border-radius:0;width:22px;height:22px;color:var(--canvas)}
 .zr-call-dock>.zr-dock-controls{background:var(--room-ink);color:var(--canvas)}
 .zr-call-composer{margin:0 0 10px}
-.zr-call-composer .zr-compose{background:var(--surface);border:1px solid var(--line);height:43px}
+.zr-call-composer .zr-compose{--room-ink:var(--ink);--room-muted:var(--muted);background:var(--surface);color:var(--ink);border:1px solid var(--line);height:43px}
 .zr-call-composer .zr-compose:focus-within{border-color:var(--accent)}
 .zr-call .zr-sheet .zr-call-controls{margin:18px 0 24px;gap:6px;max-width:none}
 .zr-call .zr-sheet .zr-tool>span{width:46px;height:46px;background:var(--raised)}

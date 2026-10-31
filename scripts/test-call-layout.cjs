@@ -25,11 +25,11 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
 
 async function checkLayout(page, label, voice = false) {
   const result = await page.locator('.zr-call').evaluate(room => {
-    const box = room.getBoundingClientRect(), dock = room.querySelector('.zr-call-dock').getBoundingClientRect();
+    const box = room.getBoundingClientRect(), dock = (room.querySelector('.zr-call-dock') || room.querySelector('.zr-call-composer')).getBoundingClientRect();
     const top = room.querySelector('.zr-call-stats').getBoundingClientRect(), pip = room.querySelector('.zr-pip')?.getBoundingClientRect();
     const stage = room.querySelector('.zr-video').getBoundingClientRect();
     const theme = ztCurrent(), color = value => { const swatch = document.createElement('span'); swatch.style.color = value; room.append(swatch); const result = getComputedStyle(swatch).color; swatch.remove(); return result; };
-    const controls = [...room.querySelectorAll('.zr-call-toolbar button,.zr-call-dock>button')].map(el => ({ label: el.getAttribute('aria-label'), rect: el.getBoundingClientRect() }));
+    const controls = [...room.querySelectorAll('.zr-call-toolbar button,.zr-call-dock>button,.zr-call-composer>button')].map(el => ({ label: el.getAttribute('aria-label'), rect: el.getBoundingClientRect() }));
     return {
       overflow: document.documentElement.scrollWidth > innerWidth + 1 || room.scrollWidth > room.clientWidth + 1,
       bottomVisible: dock.bottom <= innerHeight + 1 && dock.top >= top.bottom,
@@ -191,13 +191,23 @@ async function screenshotCall(page, name) {
     await page.keyboard.press('Escape');
 
     await button(page, 'Open call chat').click();
+    const callChat = page.getByRole('textbox', { name: 'Call message', exact: true });
+    assert.equal(await callChat.evaluate(input => input === document.activeElement), true, 'Opening call chat focuses the message box for the keyboard');
+    const visibleBottom = () => page.locator('.zr-bottom').evaluate(bottom => [...bottom.querySelectorAll('button,input')].filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden').map(el => el.getAttribute('aria-label')));
+    assert.deepEqual(await visibleBottom(), ['Call message', 'Add emoji', 'Close call chat'], 'Call chat shows only the message box, emoji and close');
+    assert.equal(await page.locator('.zr-call-dock').count(), 0, 'Call chat hides the message, account, add-coins, end-call and gift controls');
     await page.setViewportSize({ width: 390, height: 500 });
     await checkLayout(page, 'chat with reduced keyboard viewport');
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole('textbox', { name: 'Call message', exact: true }).fill('Hello from the private call');
+    await callChat.fill('Hello from the private call');
+    assert.deepEqual(await visibleBottom(), ['Call message', 'Send message', 'Close call chat'], 'A draft swaps emoji for send');
     await button(page, 'Send message').click();
     const chat = (await sent(page, 'chat.send')).at(-1);
     assert.deepEqual(chat.data, { to: creator.id, text: 'Hello from the private call', inCall: true });
+    assert.equal(await page.locator('.zr-call-composer').count(), 0, 'Sending closes the call chat box');
+    assert.equal(await page.evaluate(() => ['rmsg'].includes(document.activeElement?.id) || document.activeElement?.tagName === 'INPUT'), false, 'Sending drops the keyboard');
+    assert.equal(await page.locator('.zr-call-dock').count(), 1, 'The call controls return after sending');
+    assert.match(await page.locator('#rfeed').innerText(), /Hello from the private call/, 'The sent message stays in the call feed');
     await receive(page, 'chat.message', { id: 'private-reply', from: creator.id, name: creator.name, text: 'Glad you made it' });
     assert.match(await page.locator('#rfeed').innerText(), /Glad you made it/);
 
