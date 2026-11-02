@@ -66,7 +66,7 @@ const files = {
       await page.addScriptTag({ content: `const DEMO=false, S={bsel:{Beauty:1,Makeup:0,Sticker:0,Filters:0,'Image quality':0}}, BEAUTY={Beauty:Array(6),Makeup:Array(6),Sticker:Array(6),Filters:Array(6),'Image quality':Array(6)};
         const Native={handlers:{},on(type,handler){(this.handlers[type]||=[]).push(handler)},send(type,data){if(type==='beauty.auth')this.handlers[type].forEach(handler=>handler({requestId:data.requestId,licenseToken:'invalid-facebetter-runtime-smoke-token'}))}};
         window.ZIMI_FACEBETTER_RUNTIME=${JSON.stringify(origin+'/runtime/2.2.1/')};` });
-      await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8') });
+      await page.addScriptTag({ content: "window.ZIMI_FACEBETTER_PLAN='pro+';\n" + fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8') });
       let controller = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8');
       controller = controller.replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) => fs.readFileSync(path.join(root, 'web/facebetter/effects', name+'.fbd')).toString('base64'));
       await page.addScriptTag({ content: controller });
@@ -91,7 +91,7 @@ const files = {
             if(index===0)S.bsel.Beauty=1;
             ZimiBeauty.sync();
             const next=await ZimiBeauty.create(source);
-            if(!next)result.failures.push({tab,index,state:ZimiBeauty.getState(),sdkError:sdkErrors.at(-1)});
+            if(!next)result.failures.push({tab,index,state:ZimiBeauty.getState(),selectedSticker:ZimiBeauty.getParams().stickerId,sdkError:sdkErrors.at(-1)});
             else {
               if(handle!==next)handle?.destroy();handle=next;
               const output=handle.engine.processImage(new ImageData(160,120),160,120,Facebetter.FrameType.Video,Facebetter.MirrorMode.None);
@@ -108,8 +108,9 @@ const files = {
       assert.equal(integration.state.status,'ready');
       assert.equal(integration.outputLive,true);
       assert.equal(integration.rawSurvivesDestroy,true);
-      const invalidTokenRefusals=integration.failures.filter(failure=>failure.tab==='Sticker'&&failure.index>0&&failure.sdkError?.method==='setSticker'&&failure.sdkError.code===-5);
-      assert.equal(invalidTokenRefusals.length,5,'The intentionally invalid token refuses these five sticker selections');
+      const invalidTokenRefusals=integration.failures.filter(failure=>failure.tab==='Sticker'&&failure.index>0&&failure.state.warning?.method==='setSticker'&&failure.state.warning.code===-5&&failure.selectedSticker===null);
+      assert.equal(invalidTokenRefusals.length,5,JSON.stringify({description:'The invalid-token fixture isolates all five refused stickers instead of claiming they were applied',failures:integration.failures.map(({tab,index,state,selectedSticker,sdkError})=>({tab,index,state,selectedSticker,code:sdkError?.code,method:sdkError?.method})),compatible:integration.compatiblePresets}));
+      for(const refusal of invalidTokenRefusals)assert.match(refusal.state.message,/sticker could not load and was turned off/i);
       assert.ok(logs.some(message=>/Sticker requires Pro\+ \(plan=free\)/.test(message)),'The SDK reports this refusal for the invalid-token fixture; valid Free licenses may have different entitlements');
       assert.deepEqual(integration.failures.filter(failure=>!invalidTokenRefusals.includes(failure)),[],'Every other setter/enum/resource call is accepted and returns correctly sized ImageData; visual changes are not asserted');
       assert.equal(integration.compatiblePresets.length,25);

@@ -25,6 +25,7 @@ const receive = (page, type, data) => page.evaluate(message => Native.receive(me
     page.on('pageerror', error => errors.push(error.message));
     await page.route('https://**/*', route => route.abort());
     await page.addInitScript(() => {
+      window.ZIMI_FACEBETTER_PLAN = 'pro+';
       window.__sent = []; window.__captures = 0;
       window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) };
       const acquire = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
@@ -105,6 +106,20 @@ const receive = (page, type, data) => page.evaluate(message => Native.receive(me
         if (!item) return false;
         const a = rail.getBoundingClientRect(), b = item.getBoundingClientRect();
         return Math.abs((b.left + b.width / 2) - (a.left + a.width / 2)) < 4;
+      }).catch(async error => {
+        const diagnostic = await rail.evaluate((node, expected) => {
+          const bounds = node.getBoundingClientRect();
+          return { expected, selected: ZimiBeauty.getParams().filterId, scrollLeft: node.scrollLeft,
+            width: node.clientWidth, scrollWidth: node.scrollWidth, writes: window.__normalWrites,
+            moves: window.__normalMoves, focused: document.activeElement?.dataset.zimiFilterId,
+            items: [...node.querySelectorAll('[data-zimi-filter-id]')].map(item => ({
+              id: item.dataset.zimiFilterId, pressed: item.getAttribute('aria-pressed'),
+              delta: item.getBoundingClientRect().left + item.getBoundingClientRect().width / 2 - bounds.left - bounds.width / 2,
+            })) };
+        }, id);
+        fs.writeFileSync(path.join(artifacts, 'alignment-failure.json'), JSON.stringify(diagnostic, null, 2));
+        console.error('Carousel alignment failure:', JSON.stringify(diagnostic));
+        throw error;
       });
       assert.equal(await rail.locator('[aria-pressed="true"]').count(), 1, 'Exactly one filter is selected');
       assert.equal((await page.locator('[data-zimi-filter-name]').innerText()).trim(), await rail.locator('[aria-pressed="true"]').getAttribute('aria-label'), 'The current caption names the selected filter');

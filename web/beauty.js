@@ -11,7 +11,8 @@
     fox: '__FB_EFFECT_fox__', black_glass: '__FB_EFFECT_black_glass__',
     kiss2: '__FB_EFFECT_kiss2__', mustache: '__FB_EFFECT_mustache__', fan_club: '__FB_EFFECT_fan_club__'
   };
-  const decoded = new Map(), downloads = new Map();
+  const decoded = new Map(), downloads = new Map(), failedSelections = new WeakMap();
+  let recovery = null, isolatedSelections = 0, selectionWarning = null;
   // Keep optional effects within a mobile call's pixel and main-thread budget.
   // The camera itself retains its original capture size and framing.
   const EFFECT_FRAME_INTERVAL = 1000 / 24;
@@ -82,7 +83,19 @@
     const details={code,stage:errorStages.has(error?.stage)?error.stage:errorStages.has(stage)?stage:'transport'};
     const operation=errorMethods.has(method)?method:error?.method;
     if(errorMethods.has(operation))details.method=operation;
-    return Object.assign(new Error('Effects operation failed.'),details);
+    const safe=Object.assign(new Error('Effects operation failed.'),details);
+    if(error&&typeof error==='object'&&failedSelections.has(error))failedSelections.set(safe,failedSelections.get(error));
+    return safe;
+  }
+  function selectionError(error, snapshot) {
+    const key=(error.code===-5||error.code==='RESOURCE_LOAD_FAILED')&&['apply','resource'].includes(error.stage)
+      ? ({setFilter:'filterId',setSticker:'stickerId',set3DSticker:'stickerId'}[error.method]) : null;
+    if(key&&snapshot[key])failedSelections.set(error,{key,value:snapshot[key]});
+    return error;
+  }
+  function getFailedEffect() {
+    if(state.status!=='error'||!recovery||recovery.revision!==revision||params[recovery.key]!==recovery.value)return null;
+    return recovery.key==='stickerId'?'sticker':'filter';
   }
   function effectCall(engine, stage, method, ...args) {
     try {
@@ -92,6 +105,7 @@
   }
   const bipolar = new Set(['brightness','contrast','saturation','colorTemperature','colorTint']);
   const validParam = (key, value) => {
+    if (!catalog.isLicensed(key)) return false;
     if (Object.hasOwn(options,key)) return options[key].some(x=>x.id===value);
     if (key==='filterId') return value===null || catalog.FILTER_IDS.includes(value);
     if (key==='stickerId') return value===null || catalog.STICKERS.some(x=>x.id===value);
@@ -105,7 +119,7 @@
     if (!saved || typeof saved!=='object') return;
     for (const [key,value] of Object.entries(saved)) {
       if (key==='reshape' || key==='bodyReshape') {
-        if (value && typeof value==='object') for (const [id,amount] of Object.entries(value)) {
+        if (catalog.isLicensed(key) && value && typeof value==='object') for (const [id,amount] of Object.entries(value)) {
           if (Object.hasOwn(params[key],id) && Number.isFinite(amount) && amount>=(key==='reshape'?-1:0) && amount<=1) params[key][id]=amount;
         }
       } else if (validParam(key,value)) params[key]=value;
@@ -130,7 +144,12 @@
   try { restore(JSON.parse(localStorage.getItem(STORAGE)||'null')); } catch (_) {}
 
   function publish(status, message, error) {
-    state = { status, message, ...(error?{error:{code:error.code,stage:error.stage,...(error.method?{method:error.method}:{})}}:{}) };
+    if(status!=='error')recovery=null;
+    if(selectionWarning&&status!=='error') {
+      const prefix=`The selected ${selectionWarning.effect} could not load and was turned off.`;
+      message=prefix+' '+(status==='ready'?'Your remaining effects are applied to the camera you share.':status==='off'?'Your original camera is shared.':message);
+    }
+    state = { status, message, ...(error?{error:{code:error.code,stage:error.stage,...(error.method?{method:error.method}:{})}}:{}),...(selectionWarning?{warning:{...selectionWarning}}:{}) };
     document.querySelectorAll('[data-zimi-beauty-status]').forEach(el => { el.textContent = message; });
     document.querySelectorAll('[data-zimi-beauty-retry]').forEach(el => { el.hidden = status !== 'error'; });
     document.dispatchEvent(new CustomEvent('zimi:beauty-state', {detail:{...state}}));
@@ -156,6 +175,13 @@
     params.reshape[sdk.Reshape.FaceThin]=beauty===5?b*.5:0;
     if (beauty) { params.skinOnly=true;params.smoothingStyle=sdk.SmoothingStyle.Natural; }
     if (makeup) params.lipstickColor=[0,sdk.LipstickColor.GentlePink,sdk.LipstickColor.CoralOrange,sdk.LipstickColor.Peach,sdk.LipstickColor.Berry,sdk.LipstickColor.RetroRed][makeup];
+    licensedOnly();
+  }
+  // Groups outside the Facebetter plan are hidden from the picker. Keep legacy
+  // choices for them neutral too, so a hidden effect never starts the engine.
+  function licensedOnly() {
+    const neutral=catalog.createDefaultParams();
+    for (const key of Object.keys(params)) if (!catalog.isLicensed(key)) params[key]=neutral[key];
   }
   function wanted(p=params) {
     return Object.keys(levels).some(key=>p[key]!==0) || Object.values(p.reshape).some(Boolean) ||
@@ -181,7 +207,7 @@
   }
   async function prepareEffects(handle,p,version) {
     const ids=[p.filterId,p.stickerId].filter(Boolean);
-    await Promise.all(ids.map(async id=>{try{if(!bytes(id))decoded.set(id,await download('effects/'+id+'.fbd'))}catch(error){throw effectError(error,'resource',catalog.FILTER_IDS.includes(id)?'setFilter':catalog.STICKERS.find(x=>x.id===id)?.kind==='3d'?'set3DSticker':'setSticker')}}));
+    await Promise.all(ids.map(async id=>{try{if(!bytes(id))decoded.set(id,await download('effects/'+id+'.fbd'))}catch(error){throw selectionError(effectError(error,'resource',catalog.FILTER_IDS.includes(id)?'setFilter':catalog.STICKERS.find(x=>x.id===id)?.kind==='3d'?'set3DSticker':'setSticker'),p)}}));
     if (p.bgPreset && !decoded.has('bg:'+p.bgPreset)) {
       try { decoded.set('bg:'+p.bgPreset,await download('backgrounds/'+p.bgPreset+'.jpg')); }
       catch(error) { throw effectError(error,'resource','setVirtualBackground'); }
@@ -209,7 +235,7 @@
   function apply(owner,p=params) {
     const handle = owner.engine.isWorker === true ? { ...owner } : owner;
     const engine=handle.engine,prev=handle.params||catalog.createDefaultParams();
-    const invoke=(method,...args)=>effectCall(engine,'apply',method,...args);
+    const invoke=(method,...args)=>{try{return effectCall(engine,'apply',method,...args)}catch(error){throw selectionError(error,p)}};
     if (engine.isWorker === true) engine.beginBatch();
     // Avoid invoking unused licensed features even to set an initial zero.
     for (const [key,method] of Object.entries(levels)) if (p[key]!==0 || prev[key]!==0) invoke(method,p[key]);
@@ -245,7 +271,7 @@
     handle.params=JSON.parse(JSON.stringify(p));
     if (engine.isWorker === true) return engine.commitBatch().then(() => {
       owner.params = handle.params;owner.filter = handle.filter;owner.sticker = handle.sticker;
-    });
+    }).catch(error=>{throw selectionError(error,p)});
   }
   async function update(handle) {
     if (handle.updating) return handle.updating;
@@ -376,6 +402,28 @@
   function unavailable(error) {
     failed = true;
     const safe=effectError(error),original='Your original camera is shared.';
+    const selected=failedSelections.get(safe);
+    // An optional resource must not disable independent skin/color beauty.
+    // Retire the failed handle, then reapply on a fresh engine without only
+    // the exact selection that failed. Authorization failures never enter here.
+    if(selected&&params[selected.key]===selected.value) {
+      params[selected.key]=null;
+      if(typeof S!=='undefined')legacySelection=JSON.stringify({selection:S.bsel,strengths});
+      revise();save();isolatedSelections++;failed=false;recovery=null;
+      selectionWarning={effect:selected.key==='stickerId'?'sticker':'filter',code:safe.code,stage:safe.stage,method:safe.method};
+      publish(wanted()?'loading':'off','Restoring your remaining effects…');
+      void window.ZimiMedia?.refreshBeauty();
+      return;
+    }
+    if(selected) {
+      // The failed batch targeted an obsolete choice. Preserve the user's
+      // newer selection, but replace the partially applied engine before retry.
+      failed=false;recovery=null;isolatedSelections++;
+      publish('loading','Preparing your latest effects…');
+      void window.ZimiMedia?.refreshBeauty();
+      return;
+    }
+    recovery=selected&&params[selected.key]===selected.value?{...selected,revision}:null;
     const resource=safe.method?.includes('Sticker')?'sticker':safe.method?.includes('Filter')?'filter':safe.method?.includes('Background')?'background':'effect resource';
     const message=[-3,'LICENSE_ERROR','LICENSE_VALIDATION_FAILED'].includes(safe.code)
       ? `Facebetter license validation failed. Retry effects. ${original}`
@@ -385,7 +433,19 @@
         : 'Effects are unavailable. Your call continues with the original camera.';
     publish('error',message,safe);
   }
-  function create(source) {
+  async function create(source) {
+    const version=epoch;
+    // At most a filter and a sticker can be isolated. Never loop on auth,
+    // init, frame failures or an unavailable camera, and never reuse an engine
+    // whose partially applied command batch failed.
+    for(let attempt=0;attempt<3;attempt++) {
+      const before=isolatedSelections;
+      const handle=await createOnce(source);
+      if(handle||before===isolatedSelections||version!==epoch||!wanted()||!source.getVideoTracks().some(track=>track.readyState==='live'))return handle;
+    }
+    return null;
+  }
+  function createOnce(source) {
     if (!wanted()) {
       publish('off', 'Effects off. Your original camera is shared.');
       return Promise.resolve(null);
@@ -628,22 +688,36 @@
     pending?.cancel?.();
     pending = null;
     current?.destroy();
-    failed = false;
+    failed = false;selectionWarning=null;
     publish('idle', 'Effects apply to your camera during video calls.');
   }
   window.ZimiBeauty = {
-    create, sync, stop, strength, unavailable, getState: () => ({ ...state }), isEnabled:()=>wanted(),
+    create, sync, stop, strength, unavailable, getState: () => ({ ...state }), isEnabled:()=>wanted(),getFailedEffect,
     getParams:()=>JSON.parse(JSON.stringify(params)),
-    setParam(key,value) {
+    setParam(key,value,activate=false) {
       if(!validParam(key,value))return;
       if(typeof S!=='undefined')legacySelection=JSON.stringify({selection:S.bsel,strengths});
       params[key]=value;
+      if(activate===true) {
+        if(key==='filterId'&&value&&params.filterIntensity===0)params.filterIntensity=.8;
+        const level={smoothingStyle:'smoothing',whiteningStyle:'whitening'}[key];
+        if(level&&params[level]===0)params[level]=.6;
+      }
+      if((key==='filterId'||key==='stickerId')&&value!==null)selectionWarning=null;
       if(key==='bgPreset'&&value)params.bgBlur=0;
       if(key==='bgBlur'&&value>0)params.bgPreset=null;
       sync();
     },
+    removeFailedEffect() {
+      if(!getFailedEffect())return false;
+      const key=recovery.key;recovery=null;
+      if(typeof S!=='undefined')legacySelection=JSON.stringify({selection:S.bsel,strengths});
+      params[key]=null;
+      sync();
+      return true;
+    },
     setShape(kind,key,value) {
-      if(!['reshape','bodyReshape'].includes(kind) || !Object.hasOwn(params[kind],key) ||
+      if(!['reshape','bodyReshape'].includes(kind) || !catalog.isLicensed(kind) || !Object.hasOwn(params[kind],key) ||
         !Number.isFinite(value) || value<(kind==='reshape'?-1:0) || value>1)return;
       if(typeof S!=='undefined')legacySelection=JSON.stringify({selection:S.bsel,strengths});
       params[kind][key]=value;sync();
@@ -654,7 +728,7 @@
       sync();
     },
     reset() {
-      params=catalog.createDefaultParams();strengths={};
+      params=catalog.createDefaultParams();strengths={};selectionWarning=null;
       if(typeof S!=='undefined')S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,'Image quality':0};
       legacySelection=JSON.stringify({selection:typeof S==='undefined'?{}:S.bsel,strengths});
       sync();

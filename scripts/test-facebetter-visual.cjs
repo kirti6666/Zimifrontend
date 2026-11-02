@@ -42,7 +42,7 @@ const files = {
     // SDK/provider diagnostics can contain license data; never forward them.
     page.on('pageerror', () => { pageErrors++; });
     await page.goto(origin);
-    const catalog = fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
+    const catalog = "window.ZIMI_FACEBETTER_PLAN='pro+';\n" + fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
     const controller = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8').replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) => fs.readFileSync(path.join(root, 'web/facebetter/effects', name + '.fbd')).toString('base64'));
     const result = await page.evaluate(async ({ licenseToken, catalog, controller, origin }) => {
       const sdk = window.Facebetter, width = 160, height = 120;

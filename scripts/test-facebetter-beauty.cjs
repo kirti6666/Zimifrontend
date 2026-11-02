@@ -8,7 +8,8 @@ const { once } = require('node:events');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const wrapper = fs.readFileSync(path.join(root, 'node_modules/facebetter/dist/facebetter.js'), 'utf8');
-const catalog = fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
+// Exercise every effect group; test-facebetter-ui covers the shipped Basic plan.
+const catalog = "window.ZIMI_FACEBETTER_PLAN='pro+';\n" + fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
 const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
   .replace(/__FB_EFFECT_[a-z0-9_]+__/g, Buffer.from([70, 66, 68, 1]).toString('base64'));
 
@@ -169,6 +170,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     const ui = await context.newPage();
     ui.on('pageerror',error=>errors.push(error.message));
     await ui.route('https://**/*',route=>route.abort());
+    await ui.addInitScript(() => { window.ZIMI_FACEBETTER_PLAN = 'pro+'; });
     await ui.goto(`http://127.0.0.1:${server.address().port}/ui?preview=call`);
     await ui.waitForFunction(()=>!!window.ZimiBeauty);
     // Mount the shipped sheet with its real handlers; keep unrelated preview

@@ -17,17 +17,20 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
   const errors = [];
   fs.mkdirSync(artifacts, { recursive: true });
   try {
-    async function open(hosting) {
+    async function open(hosting, plan = 'pro+', saved = null) {
       const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
       page.setDefaultTimeout(7000);
       page.on('pageerror', error => errors.push(error.message));
       await page.route('https://**/*', route => route.abort());
-      await page.addInitScript(() => {
+      await page.addInitScript(({ plan, saved }) => {
+        // Exercise every effect group unless a check asks for the shipped plan.
+        if (plan) window.ZIMI_FACEBETTER_PLAN = plan;
+        if (saved) localStorage.setItem('zimi.beauty.v2', saved);
         window.__sent = []; window.__captureCount = 0;
         window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) };
         const acquire = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = constraints => { __captureCount++; return acquire(constraints); };
-      });
+      }, { plan, saved });
       await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href);
       await receive(page, 'session', { user: hosting ? creator : member, verification: hosting ? 'verified' : 'none', requiresOnboarding: false });
       await receive(page, 'data.home', { hosts: [creator], stage: [], total: 1, page: 1, categories: ['Music'] });
@@ -35,6 +38,7 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
       await page.evaluate(() => {
         // Keep this suite about the UI: settings still call the real controller,
         // while the processor/transport suites test track replacement and auth.
+        window.__restoredBeauty = ZimiBeauty.getParams();
         window.__beautyRefreshes = 0;
         ZimiMedia.refreshBeauty = async () => { __beautyRefreshes++; };
         ZimiBeauty.reset();
@@ -185,7 +189,41 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
     assert.equal(await button(sender, 'Beauty and filters').count(), 0, 'Member voice calls hide camera effects');
     assert.equal(await sender.evaluate(() => { Room.sheet = 'beauty'; return zrSheet(); }), '', 'A voice call cannot open the camera picker through a stale action');
     await sender.close();
+
+    // The shipped Basic plan offers only skin beauty and colour grading.
+    // Choices saved under the free plan must not keep a hidden effect running.
+    const saved = { smoothing: .3, brightness: .2, filterId: 'natural', stickerId: 'kiss2', lipstick: .5, bgBlur: .5, reshape: Object.fromEntries(Array.from({ length: 40 }, (_, id) => [id, .4])) };
+    const basic = await open(true, null, JSON.stringify(saved));
+    const effects = p => ({ smoothing: p.smoothing, brightness: p.brightness, filter: p.filterId, sticker: p.stickerId, lipstick: p.lipstick, blur: p.bgBlur, reshape: Object.values(p.reshape).some(Boolean) });
+    assert.deepEqual(await basic.evaluate(() => ({ plan: ZimiBeautyCatalog.PLAN, p: __restoredBeauty })).then(({ plan, p }) => ({ plan, ...effects(p) })),
+      { plan: 'basic', smoothing: .3, brightness: .2, filter: null, sticker: null, lipstick: 0, blur: 0, reshape: false }, 'Basic restores saved skin and colour settings but drops hidden effects');
+    await button(basic, 'Get ready to go online').click();
+    await button(basic, 'Beauty and filters').click();
+    assert.deepEqual(await basic.locator('[data-zimi-beauty-picker] [data-zimi-beauty-tab]').evaluateAll(nodes => nodes.map(node => [node.dataset.zimiBeautyTab, node.getAttribute('aria-pressed')])),
+      [['skin', 'true'], ['color', 'false']], 'Basic offers only Skin and Color, opening on Skin');
+    assert.equal(await basic.locator('[data-zimi-filter-rail]').count(), 0, 'Basic hides the LUT filter rail');
+    const icons = selector => basic.locator(`[data-zimi-beauty-picker] ${selector}`).evaluateAll(nodes => nodes.map(node => [node.innerText.trim(), !!node.querySelector('svg')]));
+    assert.deepEqual(await icons('[data-zimi-beauty-tab]'), [['Skin', true], ['Color', true]], 'Tabs carry icons');
+    assert.deepEqual(await icons('[data-zimi-beauty-feature]'), [['Smooth', true], ['Blemish', true], ['Whiten', true], ['Rosy', true], ['Clarity', true]], 'Skin offers one icon per adjustment');
+    const skinOnly = basic.getByRole('switch', { name: 'Apply to skin only', exact: true });
+    await skinOnly.click();
+    assert.deepEqual({ on: await basic.evaluate(() => ZimiBeauty.getParams().skinOnly), checked: await skinOnly.getAttribute('aria-checked') }, { on: true, checked: 'true' }, 'The skin-only switch reaches the controller');
+    await skinOnly.click();
+    await basic.locator('[data-zimi-beauty-tab="color"]').click();
+    assert.deepEqual(await icons('[data-zimi-beauty-feature]'), [['Brightness', true], ['Contrast', true], ['Saturation', true], ['Warmth', true], ['Tint', true]], 'Color offers one icon per adjustment');
+    await basic.locator('[data-zimi-beauty-param="brightness"]').evaluate(input => { input.value = '-25'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+    assert.deepEqual({ value: await basic.locator('[data-zimi-beauty-value="brightness"]').textContent(), dot: await basic.locator('[data-zimi-beauty-feature="brightness"]').evaluate(node => node.hasAttribute('data-active')) },
+      { value: '-25%', dot: true }, 'Color adjustments show a signed value and mark the changed icon');
+    const attempted = await basic.evaluate(() => {
+      for (const [key, value] of [['filterId', 'natural'], ['stickerId', 'fox'], ['lipstick', .5], ['bgBlur', .5]]) ZimiBeauty.setParam(key, value);
+      ZimiBeauty.setShape('reshape', Object.keys(ZimiBeauty.getParams().reshape)[0], .5);
+      return ZimiBeauty.getParams();
+    });
+    const { smoothing: _, ...attemptedEffects } = effects(attempted);
+    assert.deepEqual(attemptedEffects, { brightness: -.25, filter: null, sticker: null, lipstick: 0, blur: 0, reshape: false }, 'Colour sliders work while hidden effects cannot be set directly');
+    assert.equal(await basic.evaluate(() => __sent.filter(message => message.type === 'beauty.auth').length), 0, 'Opening Basic controls does not request a license');
+    await basic.close();
     assert.deepEqual(errors, [], 'No browser exceptions');
-    console.log('PASS Facebetter UI: filter-first nonmodal camera docks, setup/host/member Android Back, swapped host preview, portrait/landscape themes, SDK controls, live media preservation, persisted selections, errors/reset and voice-call exclusion.');
+    console.log('PASS Facebetter UI: filter-first nonmodal camera docks, setup/host/member Android Back, swapped host preview, portrait/landscape themes, SDK controls, live media preservation, persisted selections, errors/reset, voice-call exclusion and Basic-plan gating.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

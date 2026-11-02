@@ -10,7 +10,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const runtime = '/api/v1/facebetter/runtime/2.2.1/';
 const wrapper = fs.readFileSync(path.join(root, 'node_modules/facebetter/dist/facebetter.js'), 'utf8');
-const catalog = fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
+// Exercise every effect group; test-facebetter-ui covers the shipped Basic plan.
+const catalog = "window.ZIMI_FACEBETTER_PLAN='pro+';\n" + fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
+const controls = fs.readFileSync(path.join(root, 'web/beauty-controls.js'), 'utf8');
 const processor = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
   .replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, id) => Buffer.from(`asset:effects/${id}.fbd`).toString('base64'));
 
@@ -55,7 +57,7 @@ const processor = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
         window.ZimiMedia={refreshBeauty:async()=>{refreshes++}};
         const RealEngine=Facebetter.BeautyEffectEngine;
         class Engine {
-          constructor(config){this.config=config;this.calls=[];this.destroyed=false;engines.push(this)}
+          constructor(config){this.config=config;this.calls=[];this.destroyed=false;this.source=window.raw;engines.push(this)}
           async setLogConfig(){}
           async init(){this.initialized=true}
           setCallbacks(callbacks){if(!this.initialized)throw new Error('Callbacks registered before init');this.callbacks=callbacks}
@@ -87,6 +89,10 @@ const processor = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     async function close(page) { await page.evaluate(() => finish()); await page.close(); }
 
     const page = await fixture();
+    assert.deepEqual(await page.evaluate(() => {
+      const owners = Object.keys(ZimiBeautyCatalog.createDefaultParams()).map(key => Object.entries(ZimiBeautyCatalog.TAB_PARAMS).filter(([, keys]) => keys.includes(key)).map(([tab]) => tab));
+      return { unmapped: owners.filter(tabs => tabs.length !== 1).length, tabs: Object.keys(ZimiBeautyCatalog.TAB_PARAMS).join(), catalogTabs: ZimiBeautyCatalog.TABS.map(tab => tab.id).join() };
+    }), { unmapped: 0, tabs: 'skin,color,reshape,makeup,filter,sticker,body,background', catalogTabs: 'skin,color,reshape,makeup,filter,sticker,body,background' }, 'Every SDK setting belongs to exactly one plan-gated tab');
     assert.equal(await page.evaluate(() => ZimiBeauty.isEnabled()), false, 'Original camera is the SDK default');
     assert.equal(await page.evaluate(() => { ZimiBeauty.setParam('smoothing', .35); return sent.length; }), 0, 'Choosing settings does not request a license before camera capture');
     assert.equal(await page.evaluate(() => start()), true);
@@ -192,14 +198,60 @@ const processor = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     await close(page);
 
     const failure = await fixture(undefined, 'effects/initial_heart.fbd');
-    assert.deepEqual(await failure.evaluate(async () => {ZimiBeauty.setParam('smoothing',.2);ZimiBeauty.setParam('filterId','initial_heart');const ready=await start();return {ready,status:ZimiBeauty.getState().status,raw:raw.getTracks().every(track=>track.readyState==='live'),destroyed:engines[0].destroyed,retry:!document.querySelector('[data-zimi-beauty-retry]').hidden}}), {ready:false,status:'error',raw:true,destroyed:true,retry:true}, 'A failed optional asset retains the live original camera and microphone');
+    assert.deepEqual(await failure.evaluate(async () => {ZimiBeauty.setParam('smoothing',.2);ZimiBeauty.setParam('filterId','initial_heart');const ready=await start();return {ready,status:ZimiBeauty.getState().status,warning:ZimiBeauty.getState().warning,filter:ZimiBeauty.getParams().filterId,smoothing:ZimiBeauty.getParams().smoothing,raw:raw.getTracks().every(track=>track.readyState==='live'),destroyed:engines[0].destroyed,engines:engines.length,sameRaw:engines.every(engine=>engine.source===raw),retry:!document.querySelector('[data-zimi-beauty-retry]').hidden}}), {ready:true,status:'ready',warning:{effect:'filter',code:'RESOURCE_LOAD_FAILED',stage:'resource',method:'setFilter'},filter:null,smoothing:.2,raw:true,destroyed:true,engines:2,sameRaw:true,retry:false}, 'A failed optional download visibly isolates only that filter and automatically reapplies smoothing on a fresh engine with the same camera/audio');
     await close(failure);
     const licensed = await fixture();
     assert.deepEqual(await licensed.evaluate(async () => {window.failMethod='setWhitening';ZimiBeauty.setParam('whitening',.2);const ready=await start();return {ready,message:ZimiBeauty.getState().message,error:ZimiBeauty.getState().error,raw:raw.getTracks().every(track=>track.readyState==='live')}}), {ready:false,message:'Facebetter license validation failed. Retry effects. Your original camera is shared.',error:{code:-3,stage:'apply',method:'setWhitening'},raw:true}, 'SDK license-invalid -3 retains the operation and preserves source media');
+    assert.deepEqual(await licensed.evaluate(()=>({effect:ZimiBeauty.getFailedEffect(),removed:ZimiBeauty.removeFailedEffect(),whitening:ZimiBeauty.getParams().whitening})),{effect:null,removed:false,whitening:.2},'Global license failures never offer selected-effect removal');
     await close(licensed);
     const resource = await fixture();
-    assert.deepEqual(await resource.evaluate(async () => {window.failMethod='setFilter';window.failCode=-5;ZimiBeauty.setParam('filterId','natural');const ready=await start();return {ready,message:ZimiBeauty.getState().message,error:ZimiBeauty.getState().error,raw:raw.getTracks().every(track=>track.readyState==='live')}}), {ready:false,message:'The selected filter could not load. Retry effects. Your original camera is shared.',error:{code:-5,stage:'apply',method:'setFilter'},raw:true}, 'SDK resource I/O -5 names the selected filter without making a license or paid-plan claim');
+    await resource.addScriptTag({content:controls});await resource.evaluate(()=>{const picker=document.createElement('div');picker.innerHTML=ZimiBeauty.picker();document.body.append(picker);ZimiBeauty.afterRender()});
+    assert.deepEqual(await resource.evaluate(async () => {window.failMethod='setFilter';window.failCode=-5;ZimiBeauty.setParam('smoothing',.35);ZimiBeauty.setParam('lipstick',.2);ZimiBeauty.setParam('stickerId','black_glass');ZimiBeauty.setParam('filterId','natural');const ready=await start();return {ready,status:ZimiBeauty.getState().status,warning:ZimiBeauty.getState().warning,raw:raw.getTracks().every(track=>track.readyState==='live'),filter:ZimiBeauty.getParams().filterId,smoothing:ZimiBeauty.getParams().smoothing,lipstick:ZimiBeauty.getParams().lipstick,sticker:ZimiBeauty.getParams().stickerId,engines:engines.length,oldDestroyed:engines[0].destroyed,sameRaw:engines.every(engine=>engine.source===raw),sameAudio:handle.stream.getAudioTracks()[0]===engines[0].source.getAudioTracks()[0]}}), {ready:true,status:'ready',warning:{effect:'filter',code:-5,stage:'apply',method:'setFilter'},raw:true,filter:null,smoothing:.35,lipstick:.2,sticker:'black_glass',engines:2,oldDestroyed:true,sameRaw:true,sameAudio:true}, 'SDK filter I/O failure retires its partial engine, retains independent skin/makeup/sticker settings and shares the same source camera/audio');
+    assert.match(await resource.locator('[data-zimi-beauty-picker] [data-zimi-beauty-status]').innerText(),/selected filter could not load and was turned off.*remaining effects are applied/i);
+    assert.equal(await resource.locator('[data-zimi-beauty-picker] [data-zimi-beauty-warning]').count(),1,'A live recovery warning is marked for visible wrapping without a modal');
+    assert.deepEqual(await resource.evaluate(()=>({effect:ZimiBeauty.getFailedEffect(),removed:ZimiBeauty.removeFailedEffect()})),{effect:null,removed:false},'Automatic isolation leaves no stale destructive recovery action');
+    assert.equal(await resource.locator('[data-zimi-filter-id=""]').getAttribute('aria-pressed'),'true','Async filter isolation immediately selects Original in the mounted rail');
     await close(resource);
+    const sticker = await fixture();await sticker.addScriptTag({content:controls});
+    await sticker.evaluate(()=>{ZimiBeauty.setParam('smoothing',.2);ZimiBeauty.setParam('stickerId','kiss2');ZimiBeauty.chooseTab('sticker');const picker=document.createElement('div');picker.innerHTML=ZimiBeauty.picker();document.body.append(picker);window.stickerChoice=document.querySelector('[data-zimi-beauty-option="stickerId:kiss2"]');window.noneChoice=document.querySelector('[data-zimi-beauty-option="stickerId:null"]');window.failMethod='setSticker';window.failCode=-5});
+    assert.equal(await sticker.locator('[data-zimi-beauty-option="stickerId:kiss2"]').getAttribute('aria-pressed'),'true');
+    assert.equal(await sticker.evaluate(()=>start()),true);
+    assert.deepEqual(await sticker.evaluate(()=>({selected:ZimiBeauty.getParams().stickerId,failedPressed:stickerChoice.getAttribute('aria-pressed'),nonePressed:noneChoice.getAttribute('aria-pressed'),sameFailedNode:stickerChoice===document.querySelector('[data-zimi-beauty-option="stickerId:kiss2"]'),sameNoneNode:noneChoice===document.querySelector('[data-zimi-beauty-option="stickerId:null"]'),warning:ZimiBeauty.getState().warning.effect})),{selected:null,failedPressed:'false',nonePressed:'true',sameFailedNode:true,sameNoneNode:true,warning:'sticker'},'Async sticker isolation updates None and failed-choice pressed state in place without replacing controls');
+    await close(sticker);
+    const stale = await fixture();
+    let releaseAsset,assetRequested;const heldAsset=new Promise(resolve=>{releaseAsset=resolve}),assetSeen=new Promise(resolve=>{assetRequested=resolve});
+    await stale.route('**/effects/initial_heart.fbd',async route=>{assetRequested();await heldAsset;await route.fulfill({status:503,body:'Old resource failure'})});
+    await stale.evaluate(()=>{ZimiBeauty.setParam('smoothing',.2);ZimiBeauty.setParam('filterId','initial_heart');window.pendingStart=start()});await assetSeen;
+    await stale.evaluate(()=>ZimiBeauty.setParam('filterId','vivid'));assert.equal(await stale.evaluate(()=>pendingStart),true);releaseAsset();await stale.waitForTimeout(30);
+    assert.deepEqual(await stale.evaluate(()=>({effect:ZimiBeauty.getFailedEffect(),removed:ZimiBeauty.removeFailedEffect(),filter:ZimiBeauty.getParams().filterId,status:ZimiBeauty.getState().status,warning:!!ZimiBeauty.getState().warning,engines:engines.length,sourceLive:raw.getTracks().every(track=>track.readyState==='live')})),{effect:null,removed:false,filter:'vivid',status:'ready',warning:false,engines:1,sourceLive:true},'A late obsolete download failure cannot isolate the newer filter or replace its healthy engine');
+    await close(stale);
+    const activation = await fixture();await activation.addScriptTag({content:controls});
+    await activation.evaluate(()=>{ZimiBeauty.setParam('filterIntensity',0);const picker=document.createElement('div');picker.innerHTML=ZimiBeauty.picker();document.body.append(picker);ZimiBeauty.afterRender();window.beforeLens=refreshes});
+    await activation.locator('[data-zimi-filter-id="natural"]').click();
+    assert.deepEqual(await activation.evaluate(()=>({filter:ZimiBeauty.getParams().filterId,intensity:ZimiBeauty.getParams().filterIntensity,refreshes:refreshes-beforeLens,requests:sent.length})),{filter:'natural',intensity:.8,refreshes:1,requests:0},'Explicit lens selection atomically activates a saved0% strength without capturing or authorizing');
+    assert.equal(await activation.locator('[data-zimi-beauty-param="filterIntensity"]').inputValue(),'80');
+    assert.equal(await activation.locator('[data-zimi-beauty-value="filterIntensity"]').textContent(),'80%');
+    await activation.evaluate(()=>{ZimiBeauty.setParam('filterIntensity',0);window.beforeLens=refreshes});await activation.locator('[data-zimi-filter-id="natural"]').click();
+    assert.deepEqual(await activation.evaluate(()=>({intensity:ZimiBeauty.getParams().filterIntensity,refreshes:refreshes-beforeLens})),{intensity:.8,refreshes:1},'Re-selecting the same lens at0% also activates exactly once');
+    await activation.locator('[data-zimi-beauty-tab="skin"]').click();
+    await activation.evaluate(()=>{window.smoothingInput=document.querySelector('[data-zimi-beauty-param="smoothing"]');window.beforeStyle=refreshes});
+    await activation.locator('[data-zimi-beauty-option^="smoothingStyle:"]').first().click();
+    assert.deepEqual(await activation.evaluate(()=>({amount:ZimiBeauty.getParams().smoothing,refreshes:refreshes-beforeStyle,sameInput:smoothingInput===document.querySelector('[data-zimi-beauty-param="smoothing"]'),value:smoothingInput.value,output:document.querySelector('[data-zimi-beauty-value="smoothing"]').value,pressed:document.querySelector('[data-zimi-beauty-option^="smoothingStyle:"]').getAttribute('aria-pressed'),requests:sent.length})),{amount:.6,refreshes:1,sameInput:true,value:'60',output:'60%',pressed:'true',requests:0},'Choosing a Skin smoothing style at0% atomically activates it and updates the existing slider without capture');
+    await activation.locator('[data-zimi-beauty-param="smoothing"]').evaluate(input=>{input.value='27';input.dispatchEvent(new Event('input',{bubbles:true}))});
+    await activation.locator('[data-zimi-beauty-option^="smoothingStyle:"]').nth(1).click();
+    assert.deepEqual(await activation.evaluate(()=>({amount:ZimiBeauty.getParams().smoothing,sameInput:smoothingInput===document.querySelector('[data-zimi-beauty-param="smoothing"]'),value:smoothingInput.value,output:document.querySelector('[data-zimi-beauty-value="smoothing"]').value})),{amount:.27,sameInput:true,value:'27',output:'27%'},'Changing Skin style preserves an existing nonzero strength and mounted dragging node');
+    await activation.evaluate(()=>{window.featureRow=document.querySelector('.zb-features')});
+    await activation.locator('[data-zimi-beauty-feature="whitening"]').click();
+    assert.deepEqual(await activation.evaluate(()=>{
+      const feature=key=>document.querySelector(`[data-zimi-beauty-feature="${key}"]`);
+      window.whiteningInput=document.querySelector('[data-zimi-beauty-param="whitening"]');
+      return {sameRow:featureRow===document.querySelector('.zb-features'),pressed:feature('whitening').getAttribute('aria-pressed'),sliders:[...document.querySelectorAll('[data-zimi-beauty-param]')].map(input=>input.dataset.zimiBeautyParam),smoothingDot:feature('smoothing').hasAttribute('data-active'),whiteningDot:feature('whitening').hasAttribute('data-active')};
+    }),{sameRow:true,pressed:'true',sliders:['whitening'],smoothingDot:true,whiteningDot:false},'An icon swaps in its own slider without redrawing the row, and dots mark applied adjustments');
+    await activation.locator('[data-zimi-beauty-option^="whiteningStyle:"]').first().click();
+    assert.deepEqual(await activation.evaluate(()=>({amount:ZimiBeauty.getParams().whitening,sameInput:whiteningInput===document.querySelector('[data-zimi-beauty-param="whitening"]'),value:whiteningInput.value,output:document.querySelector('[data-zimi-beauty-value="whitening"]').value,dot:document.querySelector('[data-zimi-beauty-feature="whitening"]').hasAttribute('data-active')})),{amount:.6,sameInput:true,value:'60',output:'60%',dot:true},'Choosing a Skin whitening style at0% activates and updates the existing slider');
+    await activation.evaluate(()=>{ZimiBeauty.setParam('whitening',.41);document.dispatchEvent(new CustomEvent('zimi:beauty-state'))});
+    assert.deepEqual(await activation.evaluate(()=>({sameInput:whiteningInput===document.querySelector('[data-zimi-beauty-param="whitening"]'),value:whiteningInput.value,output:document.querySelector('[data-zimi-beauty-value="whitening"]').value,fill:[whiteningInput.style.getPropertyValue('--zb-from'),whiteningInput.style.getPropertyValue('--zb-to')]})),{sameInput:true,value:'41',output:'41%',fill:['0','0.41']},'Beauty state updates synchronize visible strengths and the slider fill in place');
+    await close(activation);
     assert.deepEqual(pageErrors, []);
     console.log('Facebetter full catalog: 19 filters, 11 stickers, 26 face/9 body controls, makeup enums, backgrounds/chroma, resource ordering/cache, independent settings, persistence, validation and fallback passed.');
   } finally {
