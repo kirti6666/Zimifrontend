@@ -205,22 +205,43 @@ export interface NotificationsData { items: AppNotification[]; total: number; un
 export interface NotificationReadPatch { ids?: string[]; all?: true; read: boolean; }
 export interface NotificationReadResult { count: number; unreadCount: number; totalCount: number; }
 export const OFFICIAL_CHAT_ID = "bingo-live-official";
-export const OFFICIAL_CHAT_NAME = "Bingo Live Official";
-export interface OfficialChatData extends NotificationsData {
+export const OFFICIAL_CHAT_NAME = "BinzoLive";
+export interface OfficialMessage {
+  id: string;
+  kind: "announcement" | "support";
+  senderType: "user" | "official";
+  body: string;
+  title?: string;
+  createdAt: string;
+  read: boolean;
+  clientMessageId?: string;
+  ticketId?: string;
+  sequence?: number;
+}
+export interface OfficialChatData {
   id: typeof OFFICIAL_CHAT_ID;
   name: typeof OFFICIAL_CHAT_NAME;
   official: true;
-  canSend: false;
+  verified: true;
+  canSend: true;
+  messages: OfficialMessage[];
+  total: number;
+  unreadCount: number;
+  hasMore: boolean;
+  before: string | null;
 }
 export type OfficialReadPatch = { ids: string[]; all?: never } | { all: true; ids?: never };
 export interface OfficialChatSummary {
   id: typeof OFFICIAL_CHAT_ID;
   name: typeof OFFICIAL_CHAT_NAME;
   official: true;
-  canSend: false;
-  lastMessage: Pick<AppNotification, "id" | "title" | "body" | "createdAt"> | null;
+  verified: true;
+  canSend: true;
+  lastMessage: Pick<OfficialMessage, "id" | "body" | "createdAt" | "kind" | "senderType"> & { title?: string } | null;
   unread: number;
 }
+export interface OfficialReceipt { message: OfficialMessage; official: OfficialChatSummary; }
+export interface OfficialReadResult { read: true; official: OfficialChatSummary; }
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
 export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; gender?: Gender | null; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }

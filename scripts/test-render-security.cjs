@@ -14,7 +14,7 @@ const root = path.resolve(__dirname, '..');
     await page.route('**/*', route => route.abort());
     await page.setContent('<main><div id="top"></div><div id="screen"></div><div id="nav"></div></main>');
     await page.addScriptTag({ content: 'window.ZIMI_DEMO=false; window.ReactNativeWebView={postMessage(){}}; window.__xss=0;' });
-    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js', 'gift-stickers.js']) {
+    for (const file of ['bridge.js', 'onboarding.js', 'aurora-runtime.js', 'gift-stickers.js', 'host-access.js', 'loading.js', 'pull-refresh.js', 'coins.js']) {
       await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
     }
     const result = await page.evaluate(() => {
@@ -55,15 +55,15 @@ const root = path.resolve(__dirname, '..');
       S.q = attack; S.sq = attack; S.cache.chats = 1; S.v = 'search';
       const searchSafe = safeMarkup(topFor()) && testRoot.querySelector('#sq').value === attack && safeMarkup(searchRows());
       testRoot.innerHTML = '<div id="fl"></div>';
-      playGift('Gift', '&#127873;', 1, '', attack);
-      const caption = testRoot.querySelector('.fxtag');
-      const captionSafe = caption?.textContent === attack && !caption.querySelector('img,script');
+      playGift('Gift', attack, 1, '', attack);
+      const glyph = testRoot.querySelector('.fxg .em');
+      const giftGlyphSafe = glyph?.textContent === attack && !glyph.querySelector('img,script');
       S.v = 'hcall'; S.caller = { ...host, n: '<img/src=x/onerror=window.__xss++>' }; S.tray = 1; S.cache.gifts = 1;
       const traySafe = safeMarkup(giftTray()) && testRoot.textContent.includes(S.caller.n);
-      return { rendererResults, safeId, feedSafe, imageSafe, editSafe, gallerySafe, searchSafe, captionSafe, traySafe, executions: window.__xss };
+      return { rendererResults, safeId, feedSafe, imageSafe, editSafe, gallerySafe, searchSafe, giftGlyphSafe, traySafe, executions: window.__xss };
     });
     // The conversation thread is rendered by the chats layer, which builds on the home layer.
-    for (const file of ['host-access.js', 'loading.js', 'pull-refresh.js', 'coins.js', 'home.js', 'chats.js']) {
+    for (const file of ['home.js', 'chats.js']) {
       await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web', file), 'utf8') });
     }
     Object.assign(result, await page.evaluate(() => {
@@ -86,7 +86,7 @@ const root = path.resolve(__dirname, '..');
       assert.equal(item.safe, true, `${item.label} must escape markup and attributes`);
       assert.equal(item.textPreserved, true, `${item.label} must preserve readable text`);
     }
-    for (const key of ['safeId', 'chatSafe', 'feedSafe', 'imageSafe', 'editSafe', 'gallerySafe', 'searchSafe', 'captionSafe', 'traySafe']) assert.equal(result[key], true, key);
+    for (const key of ['safeId', 'chatSafe', 'feedSafe', 'imageSafe', 'editSafe', 'gallerySafe', 'searchSafe', 'giftGlyphSafe', 'traySafe']) assert.equal(result[key], true, key);
     assert.equal(result.executions, 0, 'rendered values must never execute JavaScript');
     assert.deepEqual(errors, [], 'renderers must not throw browser errors');
     console.log('PASS: 15 rendering surfaces escape untrusted text, identifiers and photo URLs; normal text remains unchanged.');

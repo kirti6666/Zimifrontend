@@ -2,6 +2,7 @@ import type { WebMessage } from "./bridge";
 import { validNotificationPreferencesPatch } from "./notification-preferences";
 import { notificationTargetFrom } from "./notification-target";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUSES } from "./api/support";
+import { officialCursor, officialMessageId } from "./api/official";
 
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -11,7 +12,7 @@ const boolean = (value: unknown) => typeof value === "boolean";
 const optionalColor = (value: unknown) => value === undefined || (typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value));
 const role = (value: unknown) => value === "sender" || value === "host";
 const giftAmount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 1e9;
-const identifier = (value: unknown) => text(value) && /^[a-zA-Z0-9_-]+$/.test(value as string);
+const identifier = (value: unknown) => text(value) && value !== "bingo-live-official" && /^[a-zA-Z0-9_-]+$/.test(value as string);
 const strings = (value: unknown, max: number) => Array.isArray(value) && value.length <= max && value.every(item => text(item, 100));
 const photoData = (value: unknown) => typeof value === "string" && value.length <= 2 * 1024 * 1024 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value);
 const audioData = (value: unknown) => {
@@ -104,7 +105,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
         Object.keys(d).every(key => ["notificationId", "category", "targetType", "targetId", "actorId", "recipientId", "expiresAt"].includes(key));
       break;
     }
-    case "official.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
+    case "official.activity": valid = boolean(d.active) && supportKeys(d, ["active"]);break;
+    case "official.load": valid = supportRequest(d) && (d.before === undefined || officialCursor(d.before)) && supportKeys(d, ["before", "requestId"]);break;
+    case "official.send": valid = supportRequest(d) && supportBody(d.body) && idempotency(d.clientMessageId) && supportKeys(d, ["body", "clientMessageId", "requestId"]);break;
     case "support.activity": valid = boolean(d.active) && (d.ticketId === undefined || supportId(d.ticketId)) && supportKeys(d, ["active", "ticketId"]);break;
     case "support.load": valid = supportRequest(d) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) &&
       (d.status === undefined || d.status === "all" || SUPPORT_STATUSES.includes(d.status as never)) && supportKeys(d, ["page", "status", "requestId"]);break;
@@ -114,7 +117,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "support.send": valid = supportRequest(d) && supportId(d.ticketId) && supportBody(d.body) && idempotency(d.clientMessageId) && supportKeys(d, ["ticketId", "body", "clientMessageId", "requestId"]);break;
     case "support.read": valid = supportRequest(d) && supportId(d.ticketId) && supportId(d.throughMessageId) && supportKeys(d, ["ticketId", "throughMessageId", "requestId"]);break;
     case "support.status": valid = supportRequest(d) && supportId(d.ticketId) && ["open", "resolved"].includes(String(d.status)) && supportKeys(d, ["ticketId", "status", "requestId"]);break;
-    case "official.read": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && ((notificationIds(d.ids) && d.all === undefined) || (d.all === true && d.ids === undefined)) && Object.keys(d).every(key => ["ids", "all", "requestId"].includes(key)); break;
+    case "official.read": valid = supportRequest(d) && ((Array.isArray(d.ids) && d.ids.length > 0 && d.ids.length <= 100 && d.ids.every(officialMessageId) && new Set(d.ids).size === d.ids.length && d.all === undefined) || (d.all === true && d.ids === undefined)) && supportKeys(d, ["ids", "all", "requestId"]);break;
     case "catalog.load": case "rtc.config": valid = true; break;
     case "themes.load": valid = Object.keys(d).length === 0; break;
     case "themes.select": valid = typeof d.themeId === "string" && /^[a-f\d]{24}$/i.test(d.themeId) && Object.keys(d).every(key => ["themeId", "requestId"].includes(key)); break;

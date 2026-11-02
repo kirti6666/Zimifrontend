@@ -190,7 +190,7 @@ function znRouteTarget(data={}){
   }
   if(znTargetBusy()){ZNotices.pendingTarget=data;ZNotices.changed=true;return}
   ZNotices.pendingTarget=null;
-  if(data.expiresAt&&Date.parse(data.expiresAt)<=Date.now()){znOpen();return}
+  if(data.expiresAt&&Date.parse(data.expiresAt)<=Date.now()){ZimiOfficialChat.open('chats');return}
   if(data.profile&&typeof zuRemember==='function')zuRemember(data.profile);
   const id=typeof data.targetId==='string'&&/^[a-f\d]{24}$/i.test(data.targetId)?data.targetId:'';
   if(data.targetType==='thread'&&id){zcOpen(id);return}
@@ -201,7 +201,7 @@ function znRouteTarget(data={}){
     ZNotices.postTarget={id,ownerId:data.ownerId,post:data.post};go(data.ownerId===S.user?.id?'profile':'host',data.ownerId);queueMicrotask(znTryPostTarget);return;
   }
   if(data.targetType==='appUpdate'){appNotice('Checking for app updates…');return}
-  znOpen();
+  ZimiOfficialChat.open('chats');
 }
 function znTryPostTarget(){
   const target=ZNotices.postTarget;if(!target||typeof Zu==='undefined'||Zu.id!==target.ownerId||!zuActive()||Zu.loading||!Zu.profile||Zu.postsLoading)return;

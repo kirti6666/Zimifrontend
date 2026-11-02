@@ -174,6 +174,8 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
+ if(['support','support-new','support-chat'].includes(v)&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open(S.v==='settings'?'settings':'chats');
+ if(v==='thread'&&id==='bingo-live-official'&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open('chats');
  /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
@@ -1601,13 +1603,14 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
  const supportFocus=window.ZimiSupport?.capture();
+ const officialFocus=window.ZimiOfficialChat?.capture();
  const postFocus=window.ZimiPostCreate?.capture();
  const roomFocus=window.zrCapture?.();
  obSyncTheme();
@@ -1634,7 +1637,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiOfficialChat?.after(officialFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in

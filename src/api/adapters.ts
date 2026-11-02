@@ -3,7 +3,8 @@ import { compareChatMessages } from "./chat-order";
 import { notificationPreferencesFrom } from "../notification-preferences";
 import { notificationTargetFrom } from "../notification-target";
 import type { ChatGift } from "./types";
-import { OFFICIAL_CHAT_ID, OFFICIAL_CHAT_NAME, type OfficialChatData, type OfficialChatSummary } from "./types";
+import { officialChatSummaryFrom } from "./official";
+export { officialChatFrom, officialChatSummaryFrom } from "./official";
 import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
 
 export type RecordValue = Record<string, unknown>;
@@ -161,19 +162,6 @@ export function notificationReadFrom(value: unknown): NotificationReadResult {
   const data = record(value);
   if ([data.count, data.unreadCount, data.totalCount].some(value => !Number.isSafeInteger(value) || Number(value) < 0) || Number(data.unreadCount) > Number(data.totalCount)) throw new ApiError("Your notification status could not be confirmed. Refresh and try again.", 502);
   return { count: data.count as number, unreadCount: data.unreadCount as number, totalCount: data.totalCount as number };
-}
-function officialIdentity(value: unknown) {
-  const data = record(value);
-  if (data.id !== OFFICIAL_CHAT_ID || data.official !== true || data.canSend !== false) throw new ApiError("The official conversation could not be verified. Refresh and try again.", 502);
-  return { data, identity: { id: OFFICIAL_CHAT_ID, name: OFFICIAL_CHAT_NAME, official: true, canSend: false } as const };
-}
-export function officialChatFrom(value: unknown): OfficialChatData {
-  const { data, identity } = officialIdentity(value);
-  return { ...notificationsFrom(data), ...identity };
-}
-export function officialChatSummaryFrom(value: unknown): OfficialChatSummary {
-  const { data, identity } = officialIdentity(value), last = data.lastMessage ? record(data.lastMessage) : null;
-  return { ...identity, unread: count(data.unread), lastMessage: last ? { id: idOf(last), title: string(last.title), body: string(last.body), createdAt: string(last.createdAt) } : null };
 }
 export function privacyFrom(value: unknown): PrivacySettings {
   const data = record(value);

@@ -44,7 +44,8 @@ const HEAD = (hosted) => `<!DOCTYPE html>
 ${hosted ? WEB_ICON_HEAD : `<link rel="icon" type="image/png" href="${brandIcon}" />`}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<!-- Optional fonts must not hold the classic app scripts or its first paint. -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
 <style>
 `;
 
@@ -135,6 +136,7 @@ const page = (demo, hosted = false) =>
   read("web/referral.css") +
   read("web/agency.css") +
   read("web/support.css") +
+  read("web/official-chat.css") +
   read("web/wallet.css") +
   read("web/coin-packages.css") +
   read("web/gift-picker.css") +
@@ -189,6 +191,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/chat-gift-playback.js") +
   "\n" + read("web/profile.js") +
   "\n" + read("web/support.js") +
+  "\n" + read("web/official-chat.js").replace("__OFFICIAL_AVATAR__", brandIcon) +
   "\n" + read("web/themes.js") +
   "\n" + read("web/notifications.js") +
   "\n" + read("web/navigation.js") +

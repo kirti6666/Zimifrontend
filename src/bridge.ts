@@ -19,7 +19,7 @@ import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
 import { LIVE_STREAMING_ENABLED } from "./features";
 import { beginUpdateActivity } from "./app-update-activity";
-import type { OfficialChatData, OfficialReadPatch } from "./api/types";
+import { createOfficialBridge, type OfficialWebMessage, type OfficialAppMessage } from "./official-bridge";
 import { clearDeliveredPush, dismissIncomingCallNotification, onPushTokenChange, pushDeliveryProtocol, registerPush, startPush, syncPushAccount, type PushMode, type PushStatus } from "./push";
 import { notificationTargetFrom, type NotificationTarget } from "./notification-target";
 import { notifyAppUpdate } from "./app-update-events";
@@ -35,6 +35,7 @@ import { createSupportBridge, type SupportWebMessage, type SupportAppMessage } f
 /* Screens -> app. */
 export type WebMessage =
   | SupportWebMessage
+  | OfficialWebMessage
   | { type: "ready"; data: { demo: boolean } }
   | { type: "app.exit.request"; data: Record<string, never> }
   | { type: "app.launched"; data: Record<string, never> }
@@ -52,8 +53,6 @@ export type WebMessage =
   | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
   | { type: "notifications.readAll"; data: { requestId: number } }
   | { type: "notifications.open"; data: NotificationTarget }
-  | { type: "official.load"; data: { page?: number; requestId: number } }
-  | { type: "official.read"; data: OfficialReadPatch & { requestId: number } }
   | { type: "call.match"; data: { category?: string } }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string } }
   | { type: "stream.signal"; data: RtcPayload & { streamId: string; to: string } }
@@ -143,6 +142,7 @@ export type WebMessage =
    wallet.balance, verification.status) come straight from the server socket. */
 export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
+  | OfficialAppMessage
   | SupportAppMessage
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
@@ -186,10 +186,6 @@ export type AppMessage =
   | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
   | { type: "notifications.error"; data: { requestId: number; message: string } }
   | { type: "notifications.changed"; data: Record<string, never> }
-  | { type: "data.official"; data: OfficialChatData & { requestId: number } }
-  | { type: "official.saved"; data: OfficialReadPatch & NotificationReadResult & { read: true; requestId: number } }
-  | { type: "official.error"; data: { requestId: number; message: string; action: "load" | "read" } }
-  | { type: "official.changed"; data: Record<string, never> }
   | { type: "push.opened"; data: NotificationTarget & { ownerId?: string; post?: UserPost; profile?: PublicProfile } }
   | { type: "data.catalog"; data: Catalog }
   | { type: "payments.routes"; data: PaymentRoutes & { requestId: number } }
@@ -313,7 +309,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let documentRevision = 0;
   let payoutReadRevision = 0;
   let paymentRoutesRevision = 0;
-  let officialLoadRevision = 0;
   const photoDownloads = new Map<string, Promise<void>>();
   let linkRevision = 0;
   let pendingStreamLink: { streamId: string; revision: number } | undefined;
@@ -439,6 +434,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
     available: !closed && sessionAvailable && !!accountId && !!getCachedToken() && webReady && !restoring,
     foreground: appActive,
   }) });
+  const official = createOfficialBridge({ api, emit, snapshot: () => ({
+    key: `${epoch}:${getSessionVersion()}:${documentRevision}:${accountId ?? ""}`,
+    available: !closed && sessionAvailable && !!accountId && !!getCachedToken() && webReady && !restoring,
+    foreground: appActive,
+  }), changed: () => { quietly(loadChats(), "chats.reload");quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload"); } });
   const stopConnection = onConnectionChanged(data => {
     if (webReady) emit({ type: "connection.status", data });
     if (data.connected) callRecovery?.sync(true);
@@ -528,7 +528,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-    if (accountId !== account.user.id) { support.reset(); if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
+    if (accountId !== account.user.id) { support.reset(); official.reset(); if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
@@ -749,31 +749,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (applicable()) emit({ type: "notifications.error", data: { requestId, message: errorMessage(error) } });
     }
   };
-  const loadOfficial = async (page: number, requestId: number) => {
-    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, revision = ++officialLoadRevision;
-    const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === officialLoadRevision;
-    try {
-      const data = await api.officialChat(page);
-      if (applicable()) emit({ type: "data.official", data: { ...data, requestId } });
-    } catch (error) {
-      if (applicable()) emit({ type: "official.error", data: { requestId, action: "load", message: errorMessage(error) } });
-    }
-  };
-  const readOfficial = async (input: OfficialReadPatch, requestId: number) => {
-    const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision;
-    const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision;
-    try {
-      const result = await api.readOfficialChat(input);
-      if (!applicable()) return;
-      // A pending history read may predate this committed receipt.
-      officialLoadRevision++;
-      emit({ type: "official.saved", data: { ...input, ...result, read: true, requestId } });
-      quietly(loadChats(), "chats.reload");
-      quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload");
-    } catch (error) {
-      if (applicable()) emit({ type: "official.error", data: { requestId, action: "read", message: errorMessage(error) } });
-    }
-  };
   const loadCatalog = () => readResource("catalog", () => api.catalog(), data => emit({ type: "data.catalog", data }));
   // The next launch paints this account's theme before the catalog arrives.
   const rememberTheme = (catalog: ThemeCatalog) => {
@@ -835,7 +810,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
       emit({ type: "push.opened", data: { targetType: "inbox", notificationId: target.notificationId } });return;
     }
     try {
-      if (target.targetType === "appUpdate") {
+      if (["inbox", "official", "support"].includes(target.targetType)) {
+        if (applicable()) emit({ type: "official.open", data: {} });return;
+      } else if (target.targetType === "appUpdate") {
         notifyAppUpdate(false);
       } else if (target.targetType === "thread" && target.targetId) {
         const profile = await api.publicProfile(target.targetId);
@@ -1014,7 +991,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const activity = AppState?.addEventListener("change", state => {
     if (closed) return;
     appActive = state === "active";
-    support.foreground();
+    official.foreground();
     stopLive.setActive?.(appActive && !liveOnboarding);
     if (chatLease) { chatLease.revision++; flushChatActivity(); }
     if (!appActive) {
@@ -1083,7 +1060,12 @@ export function createBridge(post: (msg: AppMessage) => void) {
         } else if (!hostChecking) invalidateHostAccess(true);
       }
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
-      if (event.type === "support.updated") { support.changed(typeof event.data?.ticketId === "string" ? event.data.ticketId : undefined); return; }
+      if (event.type === "support.updated") {
+        support.changed(typeof event.data?.ticketId === "string" ? event.data.ticketId : undefined);
+        official.changed();emit({ type: "notifications.changed", data: {} });
+        if (!liveOnboarding) quietly(loadChats(), "chats.reload");return;
+      }
+      if (event.type === "official.changed") { official.changed();return; }
       if (event.type === "chats.updated") { if (!liveOnboarding) quietly(loadChats(1, true), "chats.reload"); return; }
       if (event.type === "account.updated" || event.type === "profile.updated") {
         profileRevision++;
@@ -1161,6 +1143,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "home.updated") invalidateHome();
       if (event.type === "realtime.status" && event.data?.connected === true && !liveOnboarding) {
         callRecovery?.sync(true);
+        official.foreground();
         const reconnecting = connectedBefore;
         connectedBefore = true;
         if (activeStream) quietly(loadStreamRequests(activeStream.id), "stream.requests.load");
@@ -1173,11 +1156,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
-    if (!onboarding) { void loadLists(); void restorePendingPurchases(); void support.unread(); }
+    if (!onboarding) { void loadLists(); void restorePendingPurchases();  }
     void flushStreamLink(); flushPushOpen(); void flushNativeIncoming();
   };
   const unsubscribe = onSessionExpired(() => {
-    support.reset();
+    support.reset(); official.reset();
     void syncNativePush(null).catch(() => {});
     clearDeliveredPush();
     resetUpdateActivities();
@@ -1210,7 +1193,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; void support.unread(); void flushStreamLink(); flushPushOpen(); void flushNativeIncoming(); }
+    } finally { restoring = false;  void flushStreamLink(); flushPushOpen(); void flushNativeIncoming(); }
   };
 
   async function handle(msg: WebMessage) {
@@ -1313,13 +1296,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
         : updateNotifications({ ids: msg.data.ids, read: true }, msg.data.requestId);
       case "notifications.unread": return updateNotifications({ ids: msg.data.ids, read: false }, msg.data.requestId);
       case "notifications.readAll": return updateNotifications({ all: true, read: true }, msg.data.requestId);
-      case "official.load": return loadOfficial(msg.data.page ?? 1, msg.data.requestId);
+      case "official.activity": case "official.load": case "official.send": case "official.read": return official.handle(msg);
       case "support.activity": case "support.load": case "support.open": case "support.create": case "support.send": case "support.read": case "support.status":
         return support.handle(msg);
-      case "official.read": {
-        const { requestId, ...input } = msg.data;
-        return readOfficial(input, requestId);
-      }
       case "catalog.load": return loadCatalog();
       case "themes.load": return loadThemes();
       case "themes.select": {
@@ -1547,7 +1526,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.logout": {
-        support.reset();
+        support.reset(); official.reset();
         const nativeClearing = syncNativePush(null);
         pushOpenPending = undefined;pushOpenRevision++;
         resetUpdateActivities();
@@ -2212,7 +2191,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { support.reset(); callRecovery?.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { support.reset(); official.reset(); callRecovery?.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
@@ -2245,6 +2224,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
       if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
     },
-    close: () => { support.reset(); callRecovery?.close(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopIncomingActions(); stopPushToken(); stopLive(); },
+    close: () => { support.reset(); official.reset(); callRecovery?.close(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopIncomingActions(); stopPushToken(); stopLive(); },
   };
 }

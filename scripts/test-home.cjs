@@ -101,7 +101,12 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await buy.count(),1);
     await page.evaluate(()=>homeStartCall(false));
     assert.equal((await sent('call.start')).length,0,'The call handler enforces the current wallet balance');
-    await buy.click();assert.equal(await page.evaluate(()=>S.v),'coins');
+    const recharge = page.getByRole('dialog',{name:'Recharge to continue',exact:true});
+    await recharge.waitFor();
+    assert.equal(await page.evaluate(()=>S.v),'precall','A shortfall asks before leaving call confirmation');
+    await recharge.getByRole('button',{name:'Not now',exact:true}).click();
+    await buy.click();await recharge.getByRole('button',{name:'Recharge',exact:true}).click();
+    assert.equal(await page.evaluate(()=>S.v),'coins');
   },member,{...host,ratePerMin:25});
   await scenario(async({page,receive,sent,call})=>{
     await receive('data.loading',{resource:'wallet',loading:true});await call.click();
@@ -122,8 +127,11 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal((await sent('call.start')).length,1,'Free private calls work with a zero balance');
   });
   await scenario(async({page,sent,call})=>{
-    assert.equal(await call.isDisabled(),true);await page.evaluate(id=>homeDashboardCall(id),host.id);
-    assert.equal((await sent('call.start')).length,0,'Unavailable creators cannot be called directly');
+    assert.equal(await call.isEnabled(),true);await call.click();
+    assert.equal(await page.evaluate(()=>S.v),'precall','Availability-off creators still open the explicit call confirmation');
+    assert.equal((await sent('call.start')).length,0,'Manual calls still require confirmation');
+    await page.getByRole('button',{name:'Start video call',exact:true}).click();
+    assert.deepEqual(await sent('call.start'),[{to:host.id,voice:false}],'An approved creator can be manually called while their availability toggle is off');
   },member,{...host,availableForCall:false});
   await scenario(async({page,sent,call})=>{
     assert.equal(await call.count(),0,'Creator accounts have no member-only call action');await page.evaluate(id=>homeDashboardCall(id),host.id);
@@ -233,7 +241,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.getByRole('button',{name:'View '+busy.name+' profile',exact:true}).isEnabled(),true,'Unavailable hosts still open their profile, where chat is offered');
     assert.equal(await real.getByRole('button',{name:'View '+offline.name+' profile',exact:true}).isEnabled(),true,'Offline hosts still open their profile for messaging');
     await openProfile(busy);
-    assert.equal(await real.locator('#zu-call').isDisabled(),true,'An online host who turned calls off stays unavailable in the profile');
+    assert.equal(await real.locator('#zu-call').isEnabled(),true,'Members can manually call an approved host whose availability toggle is off');
     await real.getByRole('button',{name:'Back',exact:true}).click();
     await openProfile(offline);
     assert.equal(await real.locator('#zu-call').isEnabled(),true,'An offline host can still be called from their profile; the server rings until missed');

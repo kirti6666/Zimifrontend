@@ -287,10 +287,14 @@ async function run() {
     await gifts.getByRole('button', { name: 'All transactions', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'transactions');
     await readyProfile();
-    for (const [button, title] of [['Help & tips', 'Help Center'], ['Community Guidelines', 'Community Guidelines']]) {
-      if (button === 'Community Guidelines') await openMenu('Privacy & Terms');
-      await row(button).click(); await dialog(title).waitFor(); assert.ok((await dialog(title).innerText()).length > 100); await close();
-    }
+    await row('Help & support').click();
+    assert.equal(await page.evaluate(() => S.v), 'official-chat', 'Settings opens the verified official conversation');
+    await page.getByRole('heading', { name: /^BinzoLive/ }).waitFor();
+    assert.ok(await sentCount(page, 'official.load') > 0, 'The official thread requests private account history');
+    await readyProfile();
+    await openMenu('Privacy & Terms');
+    await row('Community Guidelines').click(); await dialog('Community Guidelines').waitFor();
+    assert.ok((await dialog('Community Guidelines').innerText()).length > 100); await close();
     // Ringing calls and live rooms defer a tap until navigation is safe.
     // Connected/minimized call navigation is covered with real media in test-ongoing-call.
     for (const view of ['incoming', 'live']) {
@@ -300,8 +304,8 @@ async function run() {
     }
     await navigate(page, 'home');
     await receive(page, 'push.opened');
-    assert.equal(await page.evaluate(() => S.v), 'notifications');
-    assert.ok(await sentCount(page, 'notifications.load') > 0, 'Opening from a push loads the current inbox');
+    assert.equal(await page.evaluate(() => S.v), 'official-chat');
+    assert.ok(await sentCount(page, 'official.load') > 0, 'An inbox push opens the verified official conversation');
     await readyProfile();
     console.log('PASS profile: capability-aware notifications, blocked account loading/unblock recovery, real privacy saves, gift history and support dialogs');
 

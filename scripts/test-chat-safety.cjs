@@ -29,7 +29,8 @@ const rohan = { id: id('13'), name: 'Rohan', role: 'sender', online: true, verif
 
     await page.evaluate(() => go('chats'));
     await receive('data.chats', { chats: [{ id: id('21'), user: mira, last: `my number is ${hidden}`, time: '1m ago', lastAt: new Date().toISOString(), unread: 1, lastKind: 'text', lastMine: false, lastStatus: 'sent', hasCalls: false }], total: 1, page: 1, limit: 50, unreadCount: 1, unreadConversations: 1 });
-    const row = page.locator('.zc-row').first();
+    // The official BinzoLive conversation stays pinned ahead of person chats.
+    const row = page.getByRole('button', { name: mira.name + ', 1 unread messages', exact: true });
     await row.locator('.chat-hidden').waitFor();
     const style = await row.locator('.chat-hidden').evaluate(node => ({ filter: getComputedStyle(node).filter, select: getComputedStyle(node).userSelect, label: node.getAttribute('aria-label') }));
     assert.match(style.filter, /blur/, 'Hidden text is blurred');

@@ -166,6 +166,15 @@ keeps it identical to the original Next.js version.
   is true (at least briefly, at most 15s) and then shrinks away. Error states
   keep a text Retry/Try again button.
 - Automated welcome messages show in chats without an automation label.
+- Chat includes a default, verified **BinzoLive** system conversation for every
+  member and host, including hosts awaiting approval. It combines app updates
+  with that account's private support messages. Keep it pinned in All, show it
+  in Unread only when needed, and open it from Settings > Help & support. Do not
+  add a separate Help & support row to the Chat list. Its legacy identity is
+  `bingo-live-official`; it is not a callable user, creator, gift recipient or
+  sign-in account. Official verification comes from the server identity, never
+  from a matching name. Staff reply through the existing Support inbox; private
+  support must never become a broadcast or cross-account conversation.
 - Chats has no "Online now" strip. Its tabs: All and Unread list conversations;
   Calls lists call history (`data.calls`: voice/video, direction, status) and
   Missed calls lists missed calls with Call back. Call rows use the full-width
