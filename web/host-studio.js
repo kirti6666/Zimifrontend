@@ -31,6 +31,10 @@ function hsReloadCatalog() {
 function hsOpenSheet(kind) {
   if (!['mission', 'gift-target', 'appearance', 'card-image'].includes(kind) || !hsAllowed()) return;
   if (kind === 'appearance' && S.v === 'hcall' && S.caller?.voice) return;
+  if (kind === 'appearance') {
+    window.ZimiBeauty?.openPicker();
+    if (typeof Room !== 'undefined') Room.chatOpen = false;
+  }
   const active = document.activeElement;
   HostStudio.opener = active?.getAttribute('aria-label') || active?.getAttribute('data-hs-focus') || null;
   HostStudio.focus = 'close'; HostStudio.sheet = kind; HostStudio.openedAt = Date.now();
@@ -43,7 +47,7 @@ function hsOpenSheet(kind) {
 function hsCloseSheet() {
   const opener = HostStudio.opener;
   HostStudio.sheet = ''; HostStudio.focus = ''; HostStudio.mounted = null; r();
-  if (opener) [...document.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === opener || button.dataset.hsFocus === opener)?.focus({ preventScroll: true });
+  if (opener) ([...document.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === opener || button.dataset.hsFocus === opener) || document.querySelector('button[aria-label="Call options"]'))?.focus({ preventScroll: true });
 }
 /* A choice inside an open sheet repaints only the sheet's body and the target cards, so the sheet
    does not slide in again and the camera or call behind it is left untouched. */
@@ -101,8 +105,7 @@ function hsSheet() {
     const src=imageSrc(HostStudio.cardDraft||S.user?.creatorCardUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
     body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:hi('user',48)}</div><label class="hs-card-choose">${zi('camera',18)} Choose image<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label>${HostStudio.cardPreparing?'<p role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}<button type="button" class="hc-primary" onclick="hsSaveCard()" ${!HostStudio.cardDraft||busy?'disabled':''}>${HostStudio.cardSaving?'Saving…':'Save card image'}</button>`;
   } else {
-    title = 'Beauty & filters'; subtitle = 'Changes apply to your camera and video calls';
-    body = window.ZimiBeauty?.picker() || '<p class="hs-sheet-note" role="status">Beauty effects are unavailable.</p>';
+    return window.ZimiBeauty?.panel('hsCloseSheet()', 'Close Beauty & filters') || '';
   }
   /* Redraws while the sheet is open resume its entrance instead of replaying it. */
   const age = Math.min(250, Math.max(0, Date.now() - HostStudio.openedAt));
@@ -172,6 +175,15 @@ function hsReset() {
   hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardPrepareId:null,cardError:'',cardRequestId:null });
 }
 function hsAfter() {
+  const panel = HostStudio.sheet === 'appearance' ? document.querySelector('[data-zimi-beauty-panel]') : null;
+  if (panel) {
+    HostStudio.mounted = panel;
+    if (HostStudio.focus === 'close') {
+      panel.querySelector('[data-zimi-beauty-close]')?.focus({ preventScroll: true });
+      HostStudio.focus = '';
+    }
+    return;
+  }
   const sheet = document.querySelector('.hs-sheet');
   if (!sheet) { HostStudio.mounted = null; return; }
   if (sheet === HostStudio.mounted && sheet.contains(document.activeElement)) return;

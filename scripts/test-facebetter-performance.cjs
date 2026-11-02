@@ -54,7 +54,7 @@ test('real canvas scheduling adapts, recovers and cleans up without repeating st
     class Engine{
      constructor(){this.destroyed=false;this.attempts=0;this.samples=[];this.calls=[];engines.push(this);return new Proxy(this,{get:(target,key)=>key in target?target[key]:(...args)=>target.calls.push({name:key,args})})}
      async setLogConfig(){}async init(){this.initialized=true}setCallbacks(callbacks){this.callbacks=callbacks}
-     processImage(input,width,height){this.attempts++;if(window.processingError)throw Object.assign(new Error('Synthetic license restriction'),{code:-5});if(this.destroyed)throw Error('Destroyed engine processed');const started=performance.now(),delay=window.delayOverride??4+width*height/7000;while(performance.now()-started<delay){}const result=new ImageData(new Uint8ClampedArray(input.data),width,height);this.samples.push({width,height,cost:performance.now()-started});return result}
+     processImage(input,width,height){this.attempts++;if(window.processingError)throw Object.assign(new Error('Synthetic invalid license'),{code:-3});if(this.destroyed)throw Error('Destroyed engine processed');const started=performance.now(),delay=window.delayOverride??4+width*height/7000;while(performance.now()-started<delay){}const result=new ImageData(new Uint8ClampedArray(input.data),width,height);this.samples.push({width,height,cost:performance.now()-started});return result}
      destroy(){this.destroyed=true;this.initialized=false}
     }
     Facebetter.BeautyEffectEngine=Engine;

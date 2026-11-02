@@ -176,6 +176,8 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     await ui.evaluate(()=>{window.testFx=document.createElement('div');document.body.append(testFx);window.r=()=>{testFx.innerHTML=fxSheet()};S.btab='Beauty';S.bsel.Beauty=1;S.sh='fx';r()});
     const sheet=ui.locator('#test-fx');
     await ui.evaluate(()=>testFx.id='test-fx');
+    assert.equal(await sheet.locator('[data-zimi-filter-rail]').count(),1,'The camera picker opens on swipe filters');
+    await sheet.locator('[data-zimi-beauty-tab="skin"]').click();
     const slider=sheet.getByRole('slider',{name:'Smoothing',exact:true});
     await slider.evaluate(el=>{el.value='27';el.dispatchEvent(new Event('input',{bubbles:true}))});
     assert.equal(await ui.evaluate(()=>ZimiBeauty.getParams().smoothing),.27,'The live strength slider updates the processor setting');

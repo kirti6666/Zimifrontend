@@ -22,7 +22,12 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
       page.setDefaultTimeout(7000);
       page.on('pageerror', error => errors.push(error.message));
       await page.route('https://**/*', route => route.abort());
-      await page.addInitScript(() => { window.__sent = []; window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) }; });
+      await page.addInitScript(() => {
+        window.__sent = []; window.__captureCount = 0;
+        window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) };
+        const acquire = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getUserMedia = constraints => { __captureCount++; return acquire(constraints); };
+      });
       await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href);
       await receive(page, 'session', { user: hosting ? creator : member, verification: hosting ? 'verified' : 'none', requiresOnboarding: false });
       await receive(page, 'data.home', { hosts: [creator], stage: [], total: 1, page: 1, categories: ['Music'] });
@@ -48,14 +53,49 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
       }, { hosting, voice, creator, member });
       if (!voice) await page.waitForFunction(() => document.querySelector('video[data-zimi-local]')?.readyState >= 2);
     }
+    async function nativeBackClosesPicker(page, label) {
+      await page.evaluate(() => {
+        window.__beautyBack = { view: S.v, callId: S.callId, bgCall: S.bgCall, captures: __captureCount, sent: __sent.length,
+          videos: [...document.querySelectorAll('video')].map(video => ({ video, stream: video.srcObject, tracks: video.srcObject?.getTracks() || [] })) };
+      });
+      await receive(page, 'app.back', {});
+      assert.equal(await page.locator('[data-zimi-beauty-panel]').count(), 0, label + ': Android Back closes the camera controls first');
+      assert.equal(await page.locator('.zb-previewing').count(), 0, label + ': Android Back restores the ordinary camera layout');
+      assert.deepEqual(await page.evaluate(() => ({ view: S.v === __beautyBack.view, call: S.callId === __beautyBack.callId, background: S.bgCall === __beautyBack.bgCall,
+        captures: __captureCount - __beautyBack.captures,
+        videos: __beautyBack.videos.length === document.querySelectorAll('video').length && __beautyBack.videos.every(({ video, stream, tracks }) => video.isConnected && video.srcObject === stream && tracks.every(track => track.readyState === 'live')),
+        ended: __sent.slice(__beautyBack.sent).some(message => /^call\.(end|cancel|decline)$/.test(message.type)) })),
+      { view: true, call: true, background: true, captures: 0, videos: true, ended: false }, label + ': Back preserves the route, call, live video and microphone instead of minimizing or ending');
+    }
+    async function landscapePreview(page, label) {
+      await page.setViewportSize({ width: 844, height: 390 });
+      const layout = await page.evaluate(() => {
+        const video = document.querySelector('video[data-zimi-local]'), dock = document.querySelector('[data-zimi-beauty-panel]');
+        const camera = video.getBoundingClientRect(), panel = dock.getBoundingClientRect();
+        const hit = document.elementFromPoint(camera.left + camera.width / 2, camera.top + camera.height / 2);
+        return { checks: { visible: camera.left >= 0 && camera.top >= 0 && camera.right <= innerWidth + 1 && camera.bottom <= innerHeight + 1 && camera.width >= 200 && camera.height >= 140,
+          separate: camera.right <= panel.left + 1 || camera.bottom <= panel.top + 1,
+          // Host main-stage video intentionally ignores pointer input; its
+          // containing call is the expected hit target in that branch.
+          unobscured: video.parentElement.contains(hit) || (hit === video.closest('.zr-call') && getComputedStyle(video.parentElement).pointerEvents === 'none'), framing: getComputedStyle(video).objectFit,
+          overflow: document.documentElement.scrollWidth > innerWidth + 1 }, debug: { camera: camera.toJSON(), panel: panel.toJSON(), hit: hit?.tagName + '.' + hit?.className, label: hit?.getAttribute('aria-label'), parent: video.parentElement.className, point: [camera.left + camera.width / 2, camera.top + camera.height / 2] } };
+      });
+      await page.screenshot({ path: path.join(artifacts, `facebetter-${label}-landscape.png`) });
+      assert.deepEqual(layout.checks, { visible: true, separate: true, unobscured: true, framing: 'contain', overflow: false }, label + ': Landscape leaves the whole local camera visible beside the dock: ' + JSON.stringify(layout.debug));
+    }
     async function exercisePicker(page, hosting) {
       const picker = page.locator('[data-zimi-beauty-picker]');
       assert.equal(await picker.count(), 1, 'The active route renders the shared Facebetter picker');
+      assert.equal(await page.locator('[data-zimi-beauty-panel]').count(), 1, 'Video effects open in a compact nonmodal camera dock');
+      assert.equal(await picker.locator('[data-zimi-beauty-tab="filter"]').getAttribute('aria-pressed'), 'true', 'Filters open first for immediate live preview');
+      assert.equal(await picker.locator('[data-zimi-filter-id]').count(), 20, 'Original and every SDK filter are available in the swipe rail');
+      assert.equal(await page.locator('.zr-call.zb-previewing').count(), 1, 'Opening the dock enlarges the existing local camera with CSS');
       assert.doesNotMatch(await picker.innerText(), /Preview only|caller sees the original/i);
       await page.evaluate(() => {
         window.__beautyStage = document.querySelector('.zr-call');
         window.__beautyVideos = [...__beautyStage.querySelectorAll('video')];
         window.__beautyStreams = __beautyVideos.map(video => video.srcObject);
+        window.__beautyCaptureCount = __captureCount;
         window.__beautyRenders = 0;
         window.__beautyOriginalRender = r;
         r = function () { __beautyRenders++; return __beautyOriginalRender.apply(this, arguments); };
@@ -68,7 +108,7 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
       await picker.locator('[data-zimi-beauty-option="filterId:natural"]').click();
       assert.equal(await page.evaluate(() => ZimiBeauty.getParams().filterId), 'natural', 'A filter selection reaches the real controller');
       assert.equal(await page.evaluate(() => __beautyRefreshes > 0), true, 'Selections request processed media updates');
-      assert.deepEqual(await page.evaluate(() => ({ renders: __beautyRenders, stage: __beautyStage === document.querySelector('.zr-call'), videos: __beautyVideos.every((video, i) => video.isConnected && video.srcObject === __beautyStreams[i] && (!__beautyStreams[i] || __beautyStreams[i].getTracks().every(track => track.readyState === 'live'))) })), { renders: 0, stage: true, videos: true }, 'Changing SDK controls leaves the camera, microphone, and call DOM running');
+      assert.deepEqual(await page.evaluate(() => ({ renders: __beautyRenders, stage: __beautyStage === document.querySelector('.zr-call'), captures: __captureCount - __beautyCaptureCount, videos: __beautyVideos.every((video, i) => video.isConnected && video.srcObject === __beautyStreams[i] && (!__beautyStreams[i] || __beautyStreams[i].getTracks().every(track => track.readyState === 'live'))) })), { renders: 0, stage: true, captures: 0, videos: true }, 'Changing SDK controls leaves the camera, microphone, and call DOM running');
       await page.evaluate(() => { r = __beautyOriginalRender; });
       for (const dark of [false, true]) {
         await page.evaluate(dark => ZimiThemes.setDark(dark), dark);
@@ -78,14 +118,21 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
           if (width === 390) await page.screenshot({ path: path.join(artifacts, `facebetter-${hosting ? 'host' : 'member'}-${dark ? 'dark' : 'light'}.png`) });
         }
       }
+      await landscapePreview(page, hosting ? 'host' : 'member');
+      assert.equal(await page.evaluate(() => __beautyVideos.every((video, i) => video.isConnected && video.srcObject === __beautyStreams[i])), true, 'Landscape resizing preserves the same camera elements and streams');
       await page.setViewportSize({ width: 390, height: 844 });
       await page.evaluate(() => ZimiBeauty.unavailable());
       assert.equal(await picker.locator('[data-zimi-beauty-retry]').isVisible(), true, 'SDK errors expose Retry in the active sheet');
+      await nativeBackClosesPicker(page, hosting ? 'Host video call' : 'Member video call');
+      await button(page, 'Call options').click();
+      await button(page, 'Beauty and filters').click();
       await button(page, hosting ? 'Close Beauty & filters' : 'Close panel').click();
+      assert.equal(await page.locator('.zr-call.zb-previewing').count(), 0, 'Closing controls restores the call layout');
       await button(page, 'Call options').click();
       await button(page, 'Beauty and filters').click();
       assert.equal(await page.evaluate(() => ZimiBeauty.getParams().smoothing), 0.37, 'Reopening preserves skin settings');
       assert.equal(await page.evaluate(() => ZimiBeauty.getParams().filterId), 'natural', 'Reopening preserves the selected SDK filter');
+      assert.equal(await picker.locator('[data-zimi-filter-id="natural"]').getAttribute('aria-pressed'), 'true', 'Reopening restores the selected carousel item');
       await button(page, 'Reset all').click();
       assert.equal(await page.evaluate(() => ZimiBeauty.isEnabled()), false, 'Reset clears SDK effects for the outgoing camera');
       await button(page, hosting ? 'Close Beauty & filters' : 'Close panel').click();
@@ -95,13 +142,33 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
     await button(host, 'Get ready to go online').click();
     await button(host, 'Beauty and filters').click();
     assert.equal(await host.locator('[data-zimi-beauty-picker]').count(), 1, 'Host setup opens the SDK picker from its star button');
+    assert.equal(await host.locator('[data-zimi-filter-rail]').count(), 1, 'Host setup starts with the swipe filter rail');
     assert.equal(await host.evaluate(() => ZimiMedia.hasVideo()), false, 'Opening beauty before a call never starts a camera');
     assert.equal(await host.evaluate(() => __sent.filter(message => message.type === 'beauty.auth').length), 0, 'Opening beauty before capture does not request a license');
+    await nativeBackClosesPicker(host, 'Host setup');
+    assert.equal(await host.evaluate(() => S.v), 'setup', 'Android Back from setup effects stays on setup');
+    assert.equal(await host.evaluate(() => ZimiMedia.hasVideo()), false, 'Closing setup effects does not capture a camera');
+    await button(host, 'Beauty and filters').click();
     await button(host, 'Close Beauty & filters').click();
     await startCall(host, true);
     await button(host, 'Call options').click();
     await button(host, 'Beauty and filters').click();
     await exercisePicker(host, true);
+    await host.evaluate(() => {
+      S.swap = true; r();
+      const video = document.querySelector('video[data-zimi-local]');
+      window.__swappedBeauty = { video, stream: video.srcObject, tracks: video.srcObject.getTracks(), captures: __captureCount };
+    });
+    await button(host, 'Call options').click();
+    await button(host, 'Beauty and filters').click();
+    assert.equal(await host.locator('button.zr-pip:has(video[data-zimi-local])').isDisabled(), true, 'The host swap action cannot displace the live camera while controls are open');
+    await landscapePreview(host, 'host-swapped');
+    await host.locator('[data-zimi-filter-id="natural"]').click();
+    assert.deepEqual(await host.evaluate(() => ({ swap: S.swap, video: __swappedBeauty.video === document.querySelector('video[data-zimi-local]'), stream: __swappedBeauty.video.srcObject === __swappedBeauty.stream, captures: __captureCount - __swappedBeauty.captures, live: __swappedBeauty.tracks.every(track => track.readyState === 'live') })),
+      { swap: true, video: true, stream: true, captures: 0, live: true }, 'Opening and using the host swapped-camera preview changes only layout, preserving S.swap and media');
+    await nativeBackClosesPicker(host, 'Swapped host video call');
+    assert.equal(await host.evaluate(() => S.swap), true, 'Closing the preview restores the chosen host swap state');
+    await host.setViewportSize({ width: 390, height: 844 });
     await startCall(host, true, true);
     await button(host, 'Call options').click();
     assert.equal(await button(host, 'Beauty and filters').count(), 0, 'Host voice calls hide camera effects');
@@ -119,6 +186,6 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
     assert.equal(await sender.evaluate(() => { Room.sheet = 'beauty'; return zrSheet(); }), '', 'A voice call cannot open the camera picker through a stale action');
     await sender.close();
     assert.deepEqual(errors, [], 'No browser exceptions');
-    console.log('PASS Facebetter UI: host setup and both video-call pickers, SDK controls, live media preservation, persisted selections, errors/reset, responsive themes, and voice-call exclusion.');
+    console.log('PASS Facebetter UI: filter-first nonmodal camera docks, setup/host/member Android Back, swapped host preview, portrait/landscape themes, SDK controls, live media preservation, persisted selections, errors/reset and voice-call exclusion.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

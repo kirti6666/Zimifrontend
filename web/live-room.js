@@ -140,9 +140,9 @@ function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-
    Swapping changes only the two media elements' placement, never their tracks. */
 function zrHostStage(p,voice){
   if(voice)return zrBackdrop(p,false,true);
-  const localMain=!S.swap,localPip=!!S.swap;
+  const localMain=!S.swap,localPip=!!S.swap,previewing=HostStudio.sheet==='appearance';
   return `<div class="zr-video zr-reference-stage ${localMain?'zr-local':''} ${localMain&&!S.cam?'camera-off':''}">${localMain?hcStageVideo():'<video data-zimi-remote autoplay playsinline></video>'}${localMain&&!S.cam?`<div class="zr-camera-off">${hcIdentityAvatar(me,104)}<span>Camera off</span></div>`:''}<div class="zr-shade"></div></div>
-    <button type="button" class="zr-pip ${localPip&&!S.cam?'camera-off':''}" aria-label="Swap videos" onclick="S.swap=!S.swap;r()"><video ${localPip?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>${localPip&&!S.cam?hi('camoff',21):''}<span>${localPip?'You':esc(first(p.n))}${localPip&&!S.mic?hi('micoff',12):''}</span></button>`;
+    <button type="button" class="zr-pip ${localPip&&!S.cam?'camera-off':''}" aria-label="${previewing?(localPip?'Your camera preview':'Caller video'):'Swap videos'}" ${previewing?'disabled':''} onclick="S.swap=!S.swap;r()"><video ${localPip?'data-zimi-local muted':'data-zimi-remote'} autoplay playsinline></video>${localPip&&!S.cam?hi('camoff',21):''}<span>${localPip?'You':esc(first(p.n))}${localPip&&!S.mic?hi('micoff',12):''}</span></button>`;
 }
 function zrHostReferenceCall(p,voice){
   return `<section class="zh-room zr-room zr-call zr-call-reference ${voice?'zr-voice-call':''}" aria-label="Private ${voice?'voice':'video'} call">${zrHostStage(p,voice)}
@@ -187,8 +187,8 @@ function zrCall(host){
       </div>`}${voice?zrVoiceControls(false):''}${DEMO?'<span class="zr-demo-note">Design preview · sample call</span>':''}
     </div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
-function zrOpen(sheet){Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r()}
-function zrClose(){Room.sheet='';Room.confirm='';S.confirm=0;r()}
+function zrOpen(sheet){if(sheet==='beauty'){if(!zrIsCall()||S.v==='voice'||zrPerson()?.voice)return;Room.beautyOpener=document.activeElement?.getAttribute('aria-label')||null;Room.chatOpen=false;window.ZimiBeauty?.openPicker()}Room.sheet=sheet;if(sheet==='queue')zrLoadQueue();r();if(sheet==='beauty')document.querySelector('[data-zimi-beauty-close]')?.focus({preventScroll:true})}
+function zrClose(){const beauty=Room.sheet==='beauty',opener=Room.beautyOpener;Room.sheet='';Room.confirm='';S.confirm=0;r();if(beauty)([...document.querySelectorAll('button')].find(button=>opener&&button.getAttribute('aria-label')===opener)||document.querySelector('button[aria-label="Call options"]'))?.focus({preventScroll:true})}
 function zrSheet(){
   const sheet=Room.sheet;if(!sheet)return '';const host=zrIsHost();let title='',content='';
   if(sheet==='host-options')return zrHostOptions();
@@ -197,7 +197,7 @@ function zrSheet(){
     title='Call controls';content=`<p class="zr-sheet-note">Just the two of you. Manage your microphone${voice?'':' and camera'} during this call.</p><div class="zr-call-controls">${zrTool(S.mic?'mic':'micoff',S.mic?'Mute':'Unmute',"zrMic()",'',!S.mic)}${!voice?zrTool(camOn()?'vid':'camoff',camOn()?'Camera off':'Camera on',"zrCamera()",'',!camOn())+zrTool('flip','Flip camera',"zrFlip()"):''}${zrTool(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Sound on':'Sound off',"zrSound()",'',Room.playbackMuted)}</div>${!voice?`<button type="button" class="zr-wide zr-secondary" onclick="zrOpen('beauty')" aria-label="Beauty and filters">${hi('star',18)} Beauty &amp; filters</button>`:''}<button class="zr-wide zr-danger" onclick="zrExit()">End call</button>`;
   }else if(sheet==='beauty'){
     if(!zrIsCall()||S.v==='voice'||zrPerson()?.voice)return '';
-    title='Beauty & filters';content=window.ZimiBeauty?.picker()||'<p class="zr-sheet-note" role="status">Beauty effects are unavailable.</p>';
+    return window.ZimiBeauty?.panel('zrClose()','Close panel')||'';
   }else if(sheet==='queue'){
     title=host?'1-on-1 call requests':'Your private call';
     content=`<p class="zr-sheet-note">${host?'Accepting a request ends your public live and starts a private video call.':'Your host will accept when they’re ready. The public live ends when the private call starts.'} ${host?'The current coin rate applies.':zrPrivateCallPrice()==='Free'?'This call is free.':zrPrivateCallPrice()+', with a one-minute minimum.'}</p>`;

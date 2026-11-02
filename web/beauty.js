@@ -1,5 +1,5 @@
-/* Facebetter processes the camera before WebRTC encoding. Credentials stay on
-   the server; the native bridge supplies a short-lived license token only. */
+/* Facebetter processes the camera before WebRTC encoding. App keys stay on
+   the server; the native bridge supplies only the SDK license payload. */
 (function () {
   'use strict';
   const STORAGE = 'zimi.beauty.v2', catalog = window.ZimiBeautyCatalog;
@@ -63,6 +63,33 @@
     eyebrowColor:catalog.EYEBROW_COLORS, eyelashStyle:catalog.EYELASH_STYLES, eyelashColor:catalog.EYELASH_COLORS,
     pupilColor:catalog.PUPIL_COLORS
   };
+  const errorStages = new Set(['auth','probe','init','apply','resource','frame','transport']);
+  const errorCodes = new Set(['TIMEOUT','NETWORK_ERROR','WASM_LOAD_ERROR','LICENSE_ERROR','ENGINE_CREATE_FAILED','UNKNOWN_ERROR',
+    'LICENSE_VALIDATION_FAILED','INITIALIZATION_FAILED','AUTH_FAILED','AUTH_TIMEOUT','RESOURCE_LOAD_FAILED',
+    'WORKER_UNSUPPORTED','WORKER_TRANSPORT','WORKER_CANCELLED','WORKER_BUSY','WORKER_OPERATION']);
+  const errorMethods = new Set([...Object.values(levels),'setBeautySkinOnly','setReshape','setBodyReshape','setFilter','clearFilter',
+    'setFilterIntensity','setSticker','clearSticker','set3DSticker','clear3DSticker','setChromaKey','clearChromaKey',
+    'setChromaKeySimilarity','setChromaKeySmoothness','setChromaKeyDesaturation','setVirtualBackground',
+    'setVirtualBackgroundBlur','clearVirtualBackground','setSubjectOutline','addResourcePack','init','setLogConfig','processImage']);
+  for (const key of Object.keys(options)) {
+    const group=key.replace(/Style$|Color$/,'');
+    errorMethods.add('set'+({eyeshadow:'EyeShadow',eyeliner:'EyeLiner'}[group]||group[0].toUpperCase()+group.slice(1))+key.slice(group.length));
+  }
+  // Provider messages can contain credentials. Keep only known codes and the
+  // operation we called; never retain an SDK message, stack, URL or arguments.
+  function effectError(error, stage, method) {
+    const code=Number.isInteger(error?.code)&&error.code>=-7&&error.code<=-1 || errorCodes.has(error?.code) ? error.code : 'UNKNOWN_ERROR';
+    const details={code,stage:errorStages.has(error?.stage)?error.stage:errorStages.has(stage)?stage:'transport'};
+    const operation=errorMethods.has(method)?method:error?.method;
+    if(errorMethods.has(operation))details.method=operation;
+    return Object.assign(new Error('Effects operation failed.'),details);
+  }
+  function effectCall(engine, stage, method, ...args) {
+    try {
+      const result=engine[method](...args);
+      return result&&typeof result.then==='function' ? result.catch(error=>{throw effectError(error,stage,method)}) : result;
+    } catch(error) { throw effectError(error,stage,method); }
+  }
   const bipolar = new Set(['brightness','contrast','saturation','colorTemperature','colorTint']);
   const validParam = (key, value) => {
     if (Object.hasOwn(options,key)) return options[key].some(x=>x.id===value);
@@ -102,8 +129,8 @@
   importLegacy();
   try { restore(JSON.parse(localStorage.getItem(STORAGE)||'null')); } catch (_) {}
 
-  function publish(status, message) {
-    state = { status, message };
+  function publish(status, message, error) {
+    state = { status, message, ...(error?{error:{code:error.code,stage:error.stage,...(error.method?{method:error.method}:{})}}:{}) };
     document.querySelectorAll('[data-zimi-beauty-status]').forEach(el => { el.textContent = message; });
     document.querySelectorAll('[data-zimi-beauty-retry]').forEach(el => { el.hidden = status !== 'error'; });
     document.dispatchEvent(new CustomEvent('zimi:beauty-state', {detail:{...state}}));
@@ -149,13 +176,16 @@
         if (!data.length || data.length>20*1024*1024) throw new Error('Invalid effect resource.');
         return data;
       } finally { clearTimeout(timer); }
-    })().catch(error=>{downloads.delete(file);throw error}));
+    })().catch(()=>{downloads.delete(file);throw effectError({code:'RESOURCE_LOAD_FAILED'},'resource')}));
     return downloads.get(file);
   }
   async function prepareEffects(handle,p,version) {
     const ids=[p.filterId,p.stickerId].filter(Boolean);
-    await Promise.all(ids.map(async id=>{if(!bytes(id))decoded.set(id,await download('effects/'+id+'.fbd'))}));
-    if (p.bgPreset && !decoded.has('bg:'+p.bgPreset)) decoded.set('bg:'+p.bgPreset,await download('backgrounds/'+p.bgPreset+'.jpg'));
+    await Promise.all(ids.map(async id=>{try{if(!bytes(id))decoded.set(id,await download('effects/'+id+'.fbd'))}catch(error){throw effectError(error,'resource',catalog.FILTER_IDS.includes(id)?'setFilter':catalog.STICKERS.find(x=>x.id===id)?.kind==='3d'?'set3DSticker':'setSticker')}}));
+    if (p.bgPreset && !decoded.has('bg:'+p.bgPreset)) {
+      try { decoded.set('bg:'+p.bgPreset,await download('backgrounds/'+p.bgPreset+'.jpg')); }
+      catch(error) { throw effectError(error,'resource','setVirtualBackground'); }
+    }
     const packs=[];
     if (catalog.STICKERS.find(x=>x.id===p.stickerId)?.kind==='3d') packs.push('resource_3d.fbd');
     if (Object.values(p.bodyReshape).some(Boolean)) packs.push('resource_body.fbd');
@@ -164,7 +194,7 @@
       if (!work) {
         const data=await download(pack);
         if(handle.destroyed || handle.epoch!==epoch || version!==revision) return;
-        work = Promise.resolve(handle.engine.addResourcePack(data));handle.packPromises.set(pack, work);
+        work = Promise.resolve(effectCall(handle.engine,'resource','addResourcePack',data));handle.packPromises.set(pack, work);
       }
       try { await work;if (!handle.destroyed && handle.epoch === epoch) handle.packs.add(pack); }
       finally { if (handle.packPromises.get(pack) === work) handle.packPromises.delete(pack); }
@@ -179,38 +209,39 @@
   function apply(owner,p=params) {
     const handle = owner.engine.isWorker === true ? { ...owner } : owner;
     const engine=handle.engine,prev=handle.params||catalog.createDefaultParams();
+    const invoke=(method,...args)=>effectCall(engine,'apply',method,...args);
     if (engine.isWorker === true) engine.beginBatch();
     // Avoid invoking unused licensed features even to set an initial zero.
-    for (const [key,method] of Object.entries(levels)) if (p[key]!==0 || prev[key]!==0) engine[method](p[key]);
+    for (const [key,method] of Object.entries(levels)) if (p[key]!==0 || prev[key]!==0) invoke(method,p[key]);
     for (const key of Object.keys(options)) {
       const group=key.replace(/Style$|Color$/,'');
       if (key==='smoothingStyle' ? p.smoothing>0 : key==='whiteningStyle' ? p.whitening>0 : p[group]>0) {
         const method='set'+({eyeshadow:'EyeShadow',eyeliner:'EyeLiner'}[group]||group[0].toUpperCase()+group.slice(1))+key.slice(group.length);
-        if (!handle.params || prev[key]!==p[key] || prev[group]===0) engine[method](p[key]);
+        if (!handle.params || prev[key]!==p[key] || prev[group]===0) invoke(method,p[key]);
       }
     }
-    engine.setBeautySkinOnly(p.skinOnly);
+    invoke('setBeautySkinOnly',p.skinOnly);
     for (const kind of ['reshape','bodyReshape']) for (const [id,value] of Object.entries(p[kind])) {
-      if (value!==0 || prev[kind][id]!==0) engine[kind==='reshape'?'setReshape':'setBodyReshape'](Number(id),value);
+      if (value!==0 || prev[kind][id]!==0) invoke(kind==='reshape'?'setReshape':'setBodyReshape',Number(id),value);
     }
     const filter=p.filterId,sticker=p.stickerId;
     if (filter !== handle.filter) {
-      if (filter) engine.setFilter(bytes(filter)); else if (handle.filter) engine.clearFilter();
+      if (filter) invoke('setFilter',bytes(filter)); else if (handle.filter) invoke('clearFilter');
       handle.filter = filter;
     }
-    if (filter) engine.setFilterIntensity(p.filterIntensity);
+    if (filter) invoke('setFilterIntensity',p.filterIntensity);
     if (sticker !== handle.sticker) {
       const was3d=catalog.STICKERS.find(x=>x.id===handle.sticker)?.kind==='3d';
-      if (handle.sticker) engine[was3d?'clear3DSticker':'clearSticker']();
-      if (sticker) engine[catalog.STICKERS.find(x=>x.id===sticker)?.kind==='3d'?'set3DSticker':'setSticker'](bytes(sticker));
+      if (handle.sticker) invoke(was3d?'clear3DSticker':'clearSticker');
+      if (sticker) invoke(catalog.STICKERS.find(x=>x.id===sticker)?.kind==='3d'?'set3DSticker':'setSticker',bytes(sticker));
       handle.sticker = sticker;
     }
-    if (p.chroma!==prev.chroma) { if(p.chroma===null)engine.clearChromaKey();else engine.setChromaKey(p.chroma); }
-    if (p.chroma!==null) { engine.setChromaKeySimilarity(p.chromaSimilarity);engine.setChromaKeySmoothness(p.chromaSmoothness);engine.setChromaKeyDesaturation(p.chromaDesaturation); }
-    if (p.bgBlur>0) engine.setVirtualBackgroundBlur(p.bgBlur);
-    else if(p.bgPreset && (p.bgPreset!==prev.bgPreset || prev.bgBlur>0 || !handle.params)) engine.setVirtualBackground(decoded.get('bg:'+p.bgPreset));
-    else if(!p.bgPreset && (prev.bgPreset || prev.bgBlur>0)) engine.clearVirtualBackground();
-    if(p.subjectOutline || prev.subjectOutline) engine.setSubjectOutline(p.subjectOutline);
+    if (p.chroma!==prev.chroma) { if(p.chroma===null)invoke('clearChromaKey');else invoke('setChromaKey',p.chroma); }
+    if (p.chroma!==null) { invoke('setChromaKeySimilarity',p.chromaSimilarity);invoke('setChromaKeySmoothness',p.chromaSmoothness);invoke('setChromaKeyDesaturation',p.chromaDesaturation); }
+    if (p.bgBlur>0) invoke('setVirtualBackgroundBlur',p.bgBlur);
+    else if(p.bgPreset && (p.bgPreset!==prev.bgPreset || prev.bgBlur>0 || !handle.params)) invoke('setVirtualBackground',decoded.get('bg:'+p.bgPreset));
+    else if(!p.bgPreset && (prev.bgPreset || prev.bgBlur>0)) invoke('clearVirtualBackground');
+    if(p.subjectOutline || prev.subjectOutline) invoke('setSubjectOutline',p.subjectOutline);
     handle.params=JSON.parse(JSON.stringify(p));
     if (engine.isWorker === true) return engine.commitBatch().then(() => {
       owner.params = handle.params;owner.filter = handle.filter;owner.sticker = handle.sticker;
@@ -254,7 +285,7 @@
   function license() {
     return new Promise((resolve, reject) => {
       const requestId = ++sequence;
-      const timer = setTimeout(() => finish(new Error('Effects authorization timed out.')), 15000);
+      const timer = setTimeout(() => finish(effectError({code:'AUTH_TIMEOUT'},'auth')), 15000);
       const finish = (error, token) => {
         if (pendingAuth?.requestId !== requestId) return;
         pendingAuth = null;
@@ -269,10 +300,10 @@
     if (data.requestId === pendingAuth?.requestId) pendingAuth.finish(null, data.licenseToken);
   });
   Native.on('operation.error', data => {
-    if (data.action === 'beauty.auth' && data.requestId === pendingAuth?.requestId) pendingAuth.finish(new Error('Effects authorization failed.'));
+    if (data.action === 'beauty.auth' && data.requestId === pendingAuth?.requestId) pendingAuth.finish(effectError({code:'AUTH_FAILED'},'auth'));
   });
 
-  function workerError(code) { return Object.assign(new Error(code === -5 ? 'Effects authorization failed.' : 'Effects worker unavailable.'), { code }); }
+  function workerError(code, stage='transport', method) { return effectError({code},stage,method); }
   function createWorkerEngine(token) {
     const url = URL.createObjectURL(new Blob([window.ZIMI_FACEBETTER_WORKER_SOURCE], { type: 'application/javascript' }));
     let worker;
@@ -289,7 +320,7 @@
     const rpc = (type, data = {}, transfer = [], timeout = 30000) => new Promise((resolve, reject) => {
       if (stopped) { reject(workerError('WORKER_CANCELLED'));return; }
       const id = ++next, timer = setTimeout(() => fail('WORKER_TRANSPORT'), timeout);
-      requests.set(id, { resolve, reject, timer });
+      requests.set(id, { resolve, reject, timer, type });
       try { worker.postMessage({ ...data, id, type }, transfer); } catch (_) { fail('WORKER_TRANSPORT'); }
     });
     worker.onmessage = ({ data }) => {
@@ -301,7 +332,7 @@
       }
       const request = requests.get(data?.id);if (!request) return;
       requests.delete(data.id);clearTimeout(request.timer);
-      if (data.ok === true) request.resolve(data);else request.reject(workerError(data.code));
+      if (data.ok === true) request.resolve(data);else request.reject(workerError(data.code,request.type,data.method));
     };
     worker.onerror = worker.onmessageerror = event => { event.preventDefault?.();fail('WORKER_TRANSPORT'); };
     engine.setLogConfig = async () => {};
@@ -344,9 +375,15 @@
 
   function unavailable(error) {
     failed = true;
-    publish('error', error?.code===-5
-      ? 'This effect needs an enabled Facebetter license. Choose another effect or retry.'
-      : 'Effects are unavailable. Your call continues with the original camera.');
+    const safe=effectError(error),original='Your original camera is shared.';
+    const resource=safe.method?.includes('Sticker')?'sticker':safe.method?.includes('Filter')?'filter':safe.method?.includes('Background')?'background':'effect resource';
+    const message=[-3,'LICENSE_ERROR','LICENSE_VALIDATION_FAILED'].includes(safe.code)
+      ? `Facebetter license validation failed. Retry effects. ${original}`
+      : safe.stage==='auth' ? `Effects authorization failed. Retry effects. ${original}`
+      : safe.code===-5 || safe.code==='RESOURCE_LOAD_FAILED' || safe.stage==='resource'
+        ? `The selected ${resource} could not load. Retry effects. ${original}`
+        : 'Effects are unavailable. Your call continues with the original camera.';
+    publish('error',message,safe);
   }
   function create(source) {
     if (!wanted()) {
@@ -403,14 +440,13 @@
         }
         if (!engine) {
           engine = new sdk.BeautyEffectEngine(new sdk.EngineConfig({ licenseToken: token }));
-          await engine.setLogConfig({ consoleEnabled: false, fileEnabled: false, level: 4 });await engine.init(initOptions);
+          await effectCall(engine,'init','setLogConfig',{ consoleEnabled: false, fileEnabled: false, level: 4 });await effectCall(engine,'init','init',initOptions);
         }
         if (disposed || !valid() || !wanted()) { engine.destroy();cleanup(); return null; }
         // The shipped 2.2.1 wrapper requires an initialized engine here.
         engine.setCallbacks({ onEngineEvent: code => {
           if (code === sdk.EngineEventCode.LicenseValidationFailed || code === sdk.EngineEventCode.InitializationFailed) {
-            engineFailure = new Error('Effects authorization failed.');
-            if (code === sdk.EngineEventCode.LicenseValidationFailed) engineFailure.code = -5;
+            engineFailure = effectError({code:code===sdk.EngineEventCode.LicenseValidationFailed?'LICENSE_VALIDATION_FAILED':'INITIALIZATION_FAILED'},'init');
           }
         } });
         if (engineFailure) throw engineFailure;
@@ -490,7 +526,7 @@
               // unmirrored pixels so text and the remote view remain natural.
               // SDK 2.2.1 creates a new full-size canvas for every video input.
               // Reuse our bounded readback canvas and pass ImageData directly.
-              let result = engine.processImage(input.getImageData(0, 0, inputCanvas.width, inputCanvas.height), inputCanvas.width, inputCanvas.height, sdk.FrameType.Video, sdk.MirrorMode.None);
+              let result = effectCall(engine,'frame','processImage',input.getImageData(0, 0, inputCanvas.width, inputCanvas.height), inputCanvas.width, inputCanvas.height, sdk.FrameType.Video, sdk.MirrorMode.None);
               const readbackDone = performance.now();
               if (engine.isWorker === true) result = await result;
               const responseAt = performance.now();
@@ -553,7 +589,7 @@
       } catch (error) {
         engine?.destroy();
         cleanup();
-        if (version === epoch) unavailable(error);
+        if (version === epoch) unavailable(effectError(error,'init'));
         return null;
       } finally {
         if (pending === task) pending = null;

@@ -271,6 +271,10 @@ keeps it identical to the original Next.js version.
   and discard stale results on selection/camera changes and cleanup. Do not
   count repeated output presentations as processed FPS or embed a test license.
   Run `npm run test:facebetter` and `npm run test:call-performance` after changes.
+  The camera-visible beauty dock uses a swipe-to-select filter carousel; keep
+  only one processed preview, retain call controls and native Back dismissal,
+  and preserve the host's camera-swap preference when enlarging the local video.
+  Its circular filter swatches are included in the shared ROUND contract.
 - Creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.

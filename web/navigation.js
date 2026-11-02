@@ -48,6 +48,8 @@ window.ZimiNavigation=(()=>{
       else homeCloseGifts();
       return;
     }
+    const beautyClose=document.querySelector('[data-zimi-beauty-close]');
+    if(beautyClose){beautyClose.click();return}
     if(Room.sheet){zrClose();return}
     if(Chats.menu){zcCloseMenu();return}
     if(Chats.composeOpen||Chats.filtersOpen){zcCloseDialogs();return}

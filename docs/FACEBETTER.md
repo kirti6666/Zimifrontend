@@ -8,7 +8,7 @@ The supplied [Android quick-start](https://docs.facebetter.net/android/quick-sta
 
 1. `web/media.js` captures the camera and microphone.
 2. `web/beauty.js` requests authorization through the native bridge before creating an engine. `src/bridge.ts` requires an active session and correlates each response to its request.
-3. The backend's `facebetter.service.ts` signs `v2|app_id|timestamp|nonce|web` with HMAC-SHA256 and sends the WebView user agent to the provider. App credentials stay on the backend. The raw provider JSON becomes `EngineConfig.licenseToken`.
+3. The backend's `facebetter.service.ts` serves the full configured `FACEBETTER_LICENSE_FILE` through the existing authenticated, uncached auth route. It reads the file again for each authorization and reports unavailable if an explicitly configured file cannot be read. When that setting is empty, it signs `v2|app_id|timestamp|nonce|web` with HMAC-SHA256 and forwards the WebView user agent to online authorization. App keys stay on the backend; the returned string becomes `EngineConfig.licenseToken`.
 4. The SDK loads pinned WASM/model resources and processes unmirrored `ImageData`. Compatible devices run the engine in a dedicated worker using `OffscreenCanvas`; unsupported worker startup falls back to the main-thread adapter. Processing starts at a 480-pixel long edge, adapts between 240 and 720 pixels with hysteresis, and targets at most 24 fresh frames per second. The original 1280 x 720 camera capture and full framing are retained. Actual throughput depends on device inference cost; the target is not a frame-rate guarantee.
 5. Processed pixels are painted into a canvas. Its captured video track feeds both the local preview and WebRTC senders; the original microphone track is retained. Preview mirroring belongs to the display CSS.
 6. Effect changes replace the outgoing video track before old resources are destroyed. Turning effects off restores the raw camera. Ending the session destroys the engine, captured output and rendering loop; media cleanup then stops the raw camera.
@@ -21,10 +21,20 @@ Private calls apply an initial 900 kbps / 24 fps / 720-pixel encoding ceiling be
 
 The [Web quick-start](https://docs.facebetter.net/web/quick-start), [authorization guide](https://docs.facebetter.net/intro/license), and [optional resource-pack guide](https://docs.facebetter.net/intro/resource-packs) apply to this path. The bundled UI includes the vendor demo's 19 portrait filters, 11 stickers and background/body controls. Optional models and larger assets load on selection; availability still depends on the provider's authorization and plan.
 
+## Live filter controls
+
+Video-call and host-setup beauty controls use a compact camera-visible dock. The existing local video is enlarged with CSS while the dock is open, and the remote video/audio stay mounted. No duplicate camera, video element or preview engine is created. Call end and setup actions remain reachable below the dock; closing it restores the ordinary video layout without changing host swap preference.
+
+Filters open as a horizontal carousel containing Original and the nineteen SDK filters. A settled touch swipe selects the nearest centered item; mouse drag, tap and keyboard arrows/Home/End use the same controller. Passing intermediate items does not authorize or process nineteen previews. Re-selecting the current filter does not submit another setting update. Original clears the portrait filter while preserving independent skin/makeup settings; Reset all clears every effect. Skin, reshape, makeup, stickers, body and background controls remain available with live preview.
+
+Opening the dock never starts capture or requests a license by itself. Host setup retains its explicit Check camera action. Voice calls exclude camera controls. Reduced motion, small-screen themes, live preview continuity and persisted selection are covered by `scripts/test-facebetter-ui.cjs` and `scripts/test-facebetter-carousel.cjs`.
+
+Release **1.1.10 / build 19** packages these controls. Touch swipe, mouse drag, tap, keyboard selection, native Back, swapped host preview, portrait/landscape themes and unchanged live media passed browser checks. The preview-pixel fixture is explicitly synthetic; actual SDK processing remains covered separately. The Facebetter and call-performance suites, six call/navigation suites and TypeScript checks passed. The signed, non-debuggable APK booted in Android 15 / WebView 124 with the new controls and production runtime. Evidence is under `artifacts/facebetter-carousel*` and `artifacts/filter-picker-1.1.10/`.
+
 ## Identity and resources
 
 - The WebView document origin is `https://aurora.localhost`. Web licensing must cover that origin. Binding only Android package `com.aurora.liveapp` does not authorize this browser engine.
-- The app uses online authorization. The separately supplied offline license was used only for verification; it was not embedded in the app or substituted for its online flow.
+- Local development now explicitly uses `FACEBETTER_LICENSE_FILE=../facebetter-offline.lic`, as requested. The native bridge still authenticates and correlates authorization requests; the SDK receives the full file contents, without embedding the license or App Key in the app bundle. An unset path retains online authorization. This is a server-delivered offline SDK license, not a network-free app startup.
 - Runtime/model/effect URLs live below `/api/v1/facebetter/runtime/2.2.1/`. They are public, credential-free resources and must have WebView-compatible CORS, MIME types and cross-origin resource policy. License issuance remains authenticated and uncached.
 - Three-dimensional stickers require `resource_3d.fbd`; pose-based body controls require `resource_body.fbd`. Load optional packs before their matching setters.
 - Use Web 2.2.1 enums and error codes. The Android 2.0 documentation's native numeric error codes and `ImageFrame` signatures do not apply to this adapter.
@@ -69,6 +79,16 @@ The regular Facebetter and call-performance suites and TypeScript checks passed.
 The signed, non-debuggable 1.1.9 APK booted in Android 15 / WebView 124 with its packaged worker and production HTTPS runtime, without a runtime override. One online token was minted by the existing backend service for that exact WebView user agent. The packaged Blob worker initialized at the real origin and changed synthetic pixels with brightness enabled; no license-validation failure was observed. The temporary token and signed helper were removed. No real user call or payment was made.
 
 Native worker compatibility and UI isolation passed, but software-emulator throughput remained low. This is not proof of smooth physical-phone video. See [the performance findings](VIDEO_PERFORMANCE.md) and sanitized `artifacts/video-performance/android-{worker,release-boot,online-worker}-results.json` for measurements and limits.
+
+## Investigation of the current license on 2 November 2026
+
+The actual project dashboard was read in Brave. It reports **Basic**, with Android package `com.aurora.liveapp` and Web origin `https://aurora.localhost` correctly bound. The latest supplied offline file also declares Basic in its readable metadata; the SDK remains responsible for signature and entitlement validation. The [official feature table](https://docs.facebetter.net/intro/pricing) includes skin/color beauty in Basic, LUT filters in Pro/Pro+, and stickers in Pro+. No subscription or credential binding was changed.
+
+Real SDK tests using the latest file were separate from mocked carousel tests: Initial Heart, First Love and Natural reached the engine at full strength but were pixel-identical to neutral on both a synthetic gradient and a bundled portrait. This occurred on main-thread and worker paths, while brightness changed the same images. The generated app selected the correct filter, downloaded matching resources and attached processed video. This is consistent with the documented Basic entitlement; a successful setter/`ready` status alone is not visual proof.
+
+Selecting `kiss2` reproduced code `-5` and raw-camera fallback; keeping it selected made subsequent filter attempts fail too, while choosing sticker None restored processing. Per [Web error handling](https://docs.facebetter.net/web/error-handling), `-5` is resource I/O, not proof of a subscription or license error. The app now preserves a safe code/stage/method diagnostic and distinguishes that case from `-3`, `LICENSE_ERROR` and actual license-validation callbacks. It does not bypass the vendor's licensing or hide a failed effect.
+
+The Web quick-start still contains an older statement about offline licenses. The [Auth & License guide](https://docs.facebetter.net/intro/license#offline-license), dashboard and actual pinned 2.2.1 behavior support passing the entire origin-bound `.lic` as `licenseToken`. Browser builds through 2.1.1 are excluded by the dashboard's guidance. Sanitized evidence is under `backend/artifacts/facebetter-integration-*` and `mobile-app/artifacts/facebetter-carousel/licensed-*`; these reports contain no license contents or App Keys.
 
 ## What native Android integration would require
 

@@ -20,3 +20,38 @@
 .zb-footer button{font-size:12px}
 .zb-picker [hidden]{display:none!important}
 .zb-picker :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Camera-visible controls: the call/setup owns the preview geometry and leaves
+   its primary actions below this dock. No fullscreen backdrop or camera copy. */
+.zb-camera-panel{position:absolute;z-index:92;left:0;right:0;bottom:var(--zb-panel-bottom,78px);width:var(--zb-panel-width,100%);height:var(--zb-panel-height,min(42dvh,320px));max-width:560px;margin-inline:auto;display:flex;flex-direction:column;overflow:hidden;padding:0 12px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit}
+.zb-panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;flex:none;padding:4px 0}
+.zb-panel-header h2{margin:0;font-size:14px;font-weight:600;line-height:1.4}
+.zb-panel-header p{margin:0;color:var(--muted);font-size:11px;line-height:1.4}
+.zb-panel-header button{width:44px;height:44px;min-width:44px;min-height:44px;padding:4px;border:0;background:var(--raised);color:var(--ink);font:inherit;font-size:12px;cursor:pointer}
+.zb-camera-panel>.zb-picker{display:flex;flex:1;min-height:0;flex-direction:column;overflow:hidden}
+.zb-camera-panel .zb-tabs{flex:none;gap:4px;padding-bottom:6px;min-height:36px}
+.zb-camera-panel .zb-tabs button{font-size:12px;min-height:32px;padding:5px 9px}
+.zb-camera-panel .zb-content{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;gap:10px;padding:2px 2px 8px}
+.zb-camera-panel .zb-footer{flex:none;flex-direction:row;align-items:center;gap:8px;margin-top:4px;min-height:34px}
+.zb-camera-panel .zb-footer p{flex:1;min-width:0;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zb-camera-panel .zb-footer>div{flex:none;gap:5px}
+.zb-camera-panel .zb-footer:has([data-zimi-beauty-retry]:not([hidden])) p{white-space:normal}
+.zb-camera-panel .zb-footer button{min-height:32px;padding:5px 8px;font-size:11px}
+.zb-filter-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex:none;padding-inline:4px}
+.zb-filter-heading strong{font-size:13px;font-weight:600}
+.zb-filter-heading>span{font-size:10px;color:var(--muted)}
+.zb-filter-rail{display:flex;align-items:center;gap:12px;overflow-x:auto;overflow-y:hidden;flex:none;min-height:90px;padding:5px calc(50% - 34px);scroll-snap-type:x mandatory;scroll-padding-inline:calc(50% - 34px);overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;cursor:grab;user-select:none;-webkit-user-select:none}
+.zb-filter-rail::-webkit-scrollbar{display:none}
+.zb-filter-rail.is-dragging{cursor:grabbing}
+.zb-picker button.zb-lens{flex:0 0 68px;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:80px;width:68px;padding:3px 0;border:0;background:transparent;color:var(--ink);scroll-snap-align:center;scroll-snap-stop:always;touch-action:pan-x}
+.zb-lens-swatch{display:grid;place-items:center;width:54px;height:54px;flex:none;background:var(--zb-lens-color,var(--raised));color:#292126;border:3px solid var(--surface);outline:2px solid transparent;outline-offset:1px;pointer-events:none}
+.zb-lens-swatch svg{width:32px;height:32px}
+.zb-lens-label{display:block;max-width:68px;font-size:10px;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:none}
+.zb-picker button.zb-lens[aria-pressed=true]{background:transparent;color:var(--accent-ink)}
+.zb-picker button.zb-lens[aria-pressed=true] .zb-lens-swatch{outline-color:var(--accent)}
+.zb-image-adjustments{font-size:12px}
+.zb-image-adjustments summary{padding-block:8px;cursor:pointer;color:var(--muted)}
+.zb-image-adjustments .zb-slider{margin-top:10px!important}
+.zb-slider input:disabled{opacity:.4}
+.zb-camera-panel :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.zb-filter-rail{scroll-behavior:auto}}

@@ -1637,7 +1637,7 @@ function r(){
  if(S.v==="search"){paintSearch();const i=document.getElementById("sq");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
  if(S.v==="post")scrollPost();
  if(S.v==="thread")paint();
- obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiOfficialChat?.after(officialFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
+ obAfterRender();if(window.ZimiHome)window.ZimiHome.afterRender();window.ZimiBeauty?.afterRender?.();if(window.ZimiMedia)window.ZimiMedia.attach();window.ZimiCardVideo?.attach();window.zcRestoreFocus?.(inboxFocus);window.ZimiSupport?.after(supportFocus);window.ZimiOfficialChat?.after(officialFocus);window.ZimiPostCreate?.after(postFocus);window.zrAfter?.(roomFocus);window.zpcAfter?.();zimiSecureScreen();window.ZimiOffline?.render();window.ZimiLaunch?.check()}
 
 /* ---- Server events, delivered by the app (src/bridge.ts) ----
    The preview never receives these; the app build starts empty and fills in

@@ -66,7 +66,7 @@ const processor = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
         for(let prototype=RealEngine.prototype;prototype;prototype=Object.getPrototypeOf(prototype))for(const method of Object.getOwnPropertyNames(prototype))if(/^(set|clear|addResourcePack)/.test(method))methods.add(method);
         for(const name of methods)if(!Object.hasOwn(Engine.prototype,name))Engine.prototype[name]=function(...args){
           this.calls.push({name,args:args.map(value=>value instanceof Uint8Array?new TextDecoder().decode(value):value)});
-          if(window.failMethod===name){const error=new Error('Fixture licensed capability unavailable');error.code=-5;throw error}
+          if(window.failMethod===name){const error=new Error('Private provider diagnostic');error.code=window.failCode??-3;throw error}
         };
         window.Facebetter.BeautyEffectEngine=Engine;
         window.lastCall=name=>engines.at(-1).calls.filter(call=>call.name===name).at(-1);
@@ -195,8 +195,11 @@ const processor = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     assert.deepEqual(await failure.evaluate(async () => {ZimiBeauty.setParam('smoothing',.2);ZimiBeauty.setParam('filterId','initial_heart');const ready=await start();return {ready,status:ZimiBeauty.getState().status,raw:raw.getTracks().every(track=>track.readyState==='live'),destroyed:engines[0].destroyed,retry:!document.querySelector('[data-zimi-beauty-retry]').hidden}}), {ready:false,status:'error',raw:true,destroyed:true,retry:true}, 'A failed optional asset retains the live original camera and microphone');
     await close(failure);
     const licensed = await fixture();
-    assert.deepEqual(await licensed.evaluate(async () => {window.failMethod='setWhitening';ZimiBeauty.setParam('whitening',.2);const ready=await start();return {ready,message:ZimiBeauty.getState().message,raw:raw.getTracks().every(track=>track.readyState==='live')}}), {ready:false,message:'This effect needs an enabled Facebetter license. Choose another effect or retry.',raw:true}, 'Unlicensed SDK capability reports the actionable error and preserves source media');
+    assert.deepEqual(await licensed.evaluate(async () => {window.failMethod='setWhitening';ZimiBeauty.setParam('whitening',.2);const ready=await start();return {ready,message:ZimiBeauty.getState().message,error:ZimiBeauty.getState().error,raw:raw.getTracks().every(track=>track.readyState==='live')}}), {ready:false,message:'Facebetter license validation failed. Retry effects. Your original camera is shared.',error:{code:-3,stage:'apply',method:'setWhitening'},raw:true}, 'SDK license-invalid -3 retains the operation and preserves source media');
     await close(licensed);
+    const resource = await fixture();
+    assert.deepEqual(await resource.evaluate(async () => {window.failMethod='setFilter';window.failCode=-5;ZimiBeauty.setParam('filterId','natural');const ready=await start();return {ready,message:ZimiBeauty.getState().message,error:ZimiBeauty.getState().error,raw:raw.getTracks().every(track=>track.readyState==='live')}}), {ready:false,message:'The selected filter could not load. Retry effects. Your original camera is shared.',error:{code:-5,stage:'apply',method:'setFilter'},raw:true}, 'SDK resource I/O -5 names the selected filter without making a license or paid-plan claim');
+    await close(resource);
     assert.deepEqual(pageErrors, []);
     console.log('Facebetter full catalog: 19 filters, 11 stickers, 26 face/9 body controls, makeup enums, backgrounds/chroma, resource ordering/cache, independent settings, persistence, validation and fallback passed.');
   } finally {
