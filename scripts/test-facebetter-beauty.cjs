@@ -99,7 +99,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
 
     const bounded = await fixture();
     await bounded.evaluate(()=>begin(1280,720));await bounded.evaluate(()=>authorize());await bounded.waitForFunction(()=>!!window.handle);
-    assert.deepEqual(await bounded.evaluate(()=>({width:engines[0].lastProcess.width,height:engines[0].lastProcess.height,raw:raw.getVideoTracks()[0].getSettings().width})),{width:960,height:540,raw:1280},'Effects bound CPU readback pixels while retaining camera capture and landscape framing');
+    assert.deepEqual(await bounded.evaluate(()=>({width:engines[0].lastProcess.width,height:engines[0].lastProcess.height,raw:raw.getVideoTracks()[0].getSettings().width})),{width:480,height:270,raw:1280},'Effects start with a mobile pixel budget while retaining camera capture and landscape framing');
     await bounded.evaluate(()=>{
       window.createdCanvases=0;const create=document.createElement.bind(document);
       document.createElement=(tag,...args)=>{if(tag==='canvas')createdCanvases++;return create(tag,...args)};
@@ -115,7 +115,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
       sourceCanvas.width=720;sourceCanvas.height=1280;
       const paint=sourceCanvas.getContext('2d');window.sourceTimer=setInterval(()=>paint.fillRect(0,0,720,1280),40);
     });
-    await bounded.waitForFunction(()=>engines[0].lastProcess.width===540&&engines[0].lastProcess.height===960);
+    await bounded.waitForFunction(()=>engines[0].lastProcess.width===270&&engines[0].lastProcess.height===480);
     assert.equal(await bounded.evaluate(()=>handle.stream.getVideoTracks()[0].readyState),'live','Camera orientation changes preserve the processed track');
     await bounded.evaluate(()=>{window.processDelay=45;window.beforeFrames=engines[0].processed});
     await bounded.waitForTimeout(900);

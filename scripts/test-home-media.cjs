@@ -185,8 +185,9 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     const sample = async (count=1) => {for(let i=0;i<count;i++)await pages.host.evaluate(async()=>{Native.receive('app.foreground',{});await new Promise(resolve=>setTimeout(resolve,70))})};
     const encoding = () => pages.host.evaluate(()=>{const {maxBitrate,maxFramerate,scaleResolutionDownBy}=peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').getParameters().encodings[0];return {maxBitrate,maxFramerate,scaleResolutionDownBy}});
     const high={maxBitrate:1800000,maxFramerate:24,scaleResolutionDownBy:1};
-    const balanced={maxBitrate:900000,maxFramerate:24,scaleResolutionDownBy:1.5};
-    const low={maxBitrate:450000,maxFramerate:18,scaleResolutionDownBy:2};
+    const sourceEdge=await pages.host.evaluate(()=>{const s=peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').track.getSettings();return Math.max(s.width,s.height)});
+    const balanced={maxBitrate:900000,maxFramerate:24,scaleResolutionDownBy:Math.max(1,sourceEdge/720)};
+    const low={maxBitrate:450000,maxFramerate:20,scaleResolutionDownBy:Math.max(1,sourceEdge/480)};
     await sample(3);
     assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','Normal bandwidth adaptation, old cumulative loss and an unused slow candidate do not report poor connection');
     assert.deepEqual(await encoding(),high);
@@ -246,6 +247,26 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     await pages.host.evaluate(()=>{const s=statsFixture.find(s=>s.id==='outbound');s.timestamp+=2000;s.framesEncoded=1;s.totalEncodeTime=0;s.packetsSent=1;s.totalPacketSendDelay=0});
     await sample(6);
     assert.deepEqual(await encoding(),high,'Counter resets and duplicate timestamps cannot manufacture encode/pacer overload');
+    await pages.host.evaluate(()=>{window.realPerformanceNow=performance.now.bind(performance);window.mediaClock=0;performance.now=()=>mediaClock;statsFixture.forEach(stat=>{stat.timestamp=20000});statsFixture.find(stat=>stat.id==='remote').fractionLost=.3});
+    await sample();await sample(3);
+    assert.deepEqual(await encoding(),high,'Repeated wholly stale reports do not manufacture sustained congestion');
+    await pages.host.evaluate(()=>{mediaClock+=2000;statsFixture.find(stat=>stat.id==='remote').timestamp+=2000});await sample();
+    assert.deepEqual(await encoding(),low,'Two fresh severe RTCP intervals still reduce quality when unchanged reports occur between them');
+    const freshLocal=async count=>{for(let index=0;index<count;index++){await pages.host.evaluate(()=>{mediaClock+=2000;const path=statsFixture.find(stat=>stat.id==='path'),outbound=statsFixture.find(stat=>stat.id==='outbound');path.timestamp+=2000;outbound.timestamp+=2000;outbound.framesEncoded+=40;outbound.totalEncodeTime+=.04;outbound.packetsSent+=100;outbound.totalPacketSendDelay+=.001});await sample()}};
+    await freshLocal(3);assert.deepEqual(await encoding(),low,'Fresh healthy local stats cannot immediately negate recent receiver-observed severe loss');
+    await pages.host.evaluate(()=>{const remote=statsFixture.find(stat=>stat.id==='remote');remote.timestamp+=6000;remote.fractionLost=0});await sample();
+    await freshLocal(2);assert.deepEqual(await encoding(),balanced,'Fresh healthy receiver feedback clears the held loss and allows immediate recovery hysteresis');
+    await freshLocal(3);assert.deepEqual(await encoding(),high);
+    await pages.host.evaluate(()=>{const remote=statsFixture.find(stat=>stat.id==='remote');remote.timestamp+=2000;remote.fractionLost=.3});await sample();await freshLocal(1);
+    assert.deepEqual(await encoding(),low,'Recent severe receiver feedback remains effective across mixed-freshness reports');
+    await pages.host.evaluate(()=>{mediaClock+=9000});await freshLocal(3);
+    assert.deepEqual(await encoding(),balanced,'Loss retention expires after eight seconds so genuinely recovered local media is not held indefinitely');
+    await freshLocal(3);assert.deepEqual(await encoding(),high);
+    await pages.host.evaluate(()=>{const remote=statsFixture.find(stat=>stat.id==='remote');remote.timestamp+=2000});await sample();await freshLocal(1);assert.deepEqual(await encoding(),low);
+    await pages.host.evaluate(()=>{window.removedRemote=statsFixture.splice(statsFixture.findIndex(stat=>stat.id==='remote'),1)[0]});await freshLocal(3);
+    assert.deepEqual(await encoding(),balanced,'A disappeared receiver SSRC immediately discards its held impairment instead of leaking into the next stream');
+    await freshLocal(3);assert.deepEqual(await encoding(),high);
+    await pages.host.evaluate(()=>{removedRemote.fractionLost=0;statsFixture.push(removedRemote);for(const stat of statsFixture)if(stat.type!=='outbound-rtp')delete stat.timestamp;performance.now=realPerformanceNow});
     await pages.host.evaluate(()=>{
       const sender=peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video');window.realParameters=sender.setParameters.bind(sender);window.preferenceRejections=0;
       sender.setParameters=params=>{if(params.degradationPreference){preferenceRejections++;return Promise.reject(new DOMException('Unsupported preference','NotSupportedError'))}return realParameters(params)};

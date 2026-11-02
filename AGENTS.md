@@ -263,6 +263,14 @@ keeps it identical to the original Next.js version.
   fills the screen: capture at 1280x720 with `resizeMode: 'none'` (portrait
   sizes made the browser crop and zoom), and let `data-zimi-shape` show a
   landscape camera whole instead of cropping it.
+- Facebetter uses Web SDK 2.2.1 in the WebView; see `docs/FACEBETTER.md` and
+  `docs/VIDEO_PERFORMANCE.md`. Preserve the original camera framing and audio.
+  Compatible devices use the bundled `web/beauty-worker.js` canvas adapter;
+  unsupported startup falls back to bounded main-thread processing. Keep one
+  frame in flight, acknowledge effect changes before caching applied state,
+  and discard stale results on selection/camera changes and cleanup. Do not
+  count repeated output presentations as processed FPS or embed a test license.
+  Run `npm run test:facebetter` and `npm run test:call-performance` after changes.
 - Creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.

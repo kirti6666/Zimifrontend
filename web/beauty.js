@@ -14,7 +14,33 @@
   const decoded = new Map(), downloads = new Map();
   // Keep optional effects within a mobile call's pixel and main-thread budget.
   // The camera itself retains its original capture size and framing.
-  const EFFECT_MAX_EDGE = 960, EFFECT_FRAME_INTERVAL = 1000 / 24;
+  const EFFECT_FRAME_INTERVAL = 1000 / 24;
+  function createFrameBudget() {
+    const edges = [240, 320, 400, 480, 600, 720];
+    let level = 3, costMs = 0, samples = 0, slow = 0, fast = 0, startedAt = null, changedAt = null, adjustments = 0;
+    return {
+      dimensions(width, height) {
+        const scale = Math.min(1, edges[level] / Math.max(width, height));
+        return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+      },
+      observe(cost, now) {
+        if (!Number.isFinite(cost) || cost < 0 || !Number.isFinite(now)) return;
+        startedAt ??= now;
+        costMs = samples++ ? costMs * .75 + cost * .25 : cost;
+        slow = cost > 32 ? slow + 1 : 0;
+        fast = cost < 14 && costMs < 18 ? fast + 1 : 0;
+        // Drop promptly under sustained pressure, with a minimum dwell time.
+        // Recover one step only after several seconds of consistently cheap work.
+        if (level > 0 && (changedAt === null || now - changedAt >= 1200) && (cost > 70 || slow >= 3)) {
+          level--;changedAt = now;adjustments++;slow = fast = 0;
+        } else if (level < edges.length - 1 && fast >= 24 && now - (changedAt ?? startedAt) >= 5000) {
+          level++;changedAt = now;adjustments++;slow = fast = 0;
+        }
+      },
+      snapshot() { return { maxEdge: edges[level], costMs, intervalMs: Math.max(EFFECT_FRAME_INTERVAL, costMs * 2.1), samples, adjustments }; }
+    };
+  }
+  // End of the pure frame-budget controller (also exercised with a virtual clock).
   let strengths = {}, epoch = 0, revision = 0, sequence = 0, pendingAuth = null, pending = null, current = null, failed = false;
   let params = catalog.createDefaultParams(), legacySelection = '';
   let changed, changedSignal=new Promise(resolve=>{changed=resolve});
@@ -134,9 +160,14 @@
     if (catalog.STICKERS.find(x=>x.id===p.stickerId)?.kind==='3d') packs.push('resource_3d.fbd');
     if (Object.values(p.bodyReshape).some(Boolean)) packs.push('resource_body.fbd');
     for (const pack of packs) if (!handle.packs.has(pack)) {
-      const data=await download(pack);
-      if(handle.destroyed || handle.epoch!==epoch || version!==revision) return;
-      handle.engine.addResourcePack(data);handle.packs.add(pack);
+      let work = handle.packPromises.get(pack);
+      if (!work) {
+        const data=await download(pack);
+        if(handle.destroyed || handle.epoch!==epoch || version!==revision) return;
+        work = Promise.resolve(handle.engine.addResourcePack(data));handle.packPromises.set(pack, work);
+      }
+      try { await work;if (!handle.destroyed && handle.epoch === epoch) handle.packs.add(pack); }
+      finally { if (handle.packPromises.get(pack) === work) handle.packPromises.delete(pack); }
     }
   }
   function resourcesReady(handle,p) {
@@ -145,8 +176,10 @@
       (catalog.STICKERS.find(x=>x.id===p.stickerId)?.kind!=='3d'||handle.packs.has('resource_3d.fbd')) &&
       (!Object.values(p.bodyReshape).some(Boolean)||handle.packs.has('resource_body.fbd'));
   }
-  function apply(handle,p=params) {
+  function apply(owner,p=params) {
+    const handle = owner.engine.isWorker === true ? { ...owner } : owner;
     const engine=handle.engine,prev=handle.params||catalog.createDefaultParams();
+    if (engine.isWorker === true) engine.beginBatch();
     // Avoid invoking unused licensed features even to set an initial zero.
     for (const [key,method] of Object.entries(levels)) if (p[key]!==0 || prev[key]!==0) engine[method](p[key]);
     for (const key of Object.keys(options)) {
@@ -179,6 +212,9 @@
     else if(!p.bgPreset && (prev.bgPreset || prev.bgBlur>0)) engine.clearVirtualBackground();
     if(p.subjectOutline || prev.subjectOutline) engine.setSubjectOutline(p.subjectOutline);
     handle.params=JSON.parse(JSON.stringify(p));
+    if (engine.isWorker === true) return engine.commitBatch().then(() => {
+      owner.params = handle.params;owner.filter = handle.filter;owner.sticker = handle.sticker;
+    });
   }
   async function update(handle) {
     if (handle.updating) return handle.updating;
@@ -201,12 +237,16 @@
         }
         if(handle.destroyed || handle.failed || handle.epoch!==epoch || !wanted())return null;
         if(!prepared)continue;
-        if(version===revision)apply(handle,snapshot);
+        if(version===revision) {
+          await apply(handle,snapshot);
+          handle.appliedRevision=version;
+        }
       } while(version!==revision);
       publish('ready','Face effects are applied to the camera you share.');
+      handle.wake?.();
       return handle;
     })().catch(error=>{
-      if(!handle.destroyed && handle.epoch===epoch){handle.failed=true;unavailable(error)}
+      if(!handle.destroyed && handle.epoch===epoch){handle.failed=true;handle.firstSettled?.(false);if(wanted())unavailable(error)}
       return null;
     }).finally(()=>{handle.updating=null});
     return handle.updating;
@@ -232,6 +272,76 @@
     if (data.action === 'beauty.auth' && data.requestId === pendingAuth?.requestId) pendingAuth.finish(new Error('Effects authorization failed.'));
   });
 
+  function workerError(code) { return Object.assign(new Error(code === -5 ? 'Effects authorization failed.' : 'Effects worker unavailable.'), { code }); }
+  function createWorkerEngine(token) {
+    const url = URL.createObjectURL(new Blob([window.ZIMI_FACEBETTER_WORKER_SOURCE], { type: 'application/javascript' }));
+    let worker;
+    try { worker = new Worker(url); } catch (_) { URL.revokeObjectURL(url);throw workerError('WORKER_TRANSPORT'); }
+    let next = 0, stopped = false, terminated = false, grace = 0, callbacks, progress;
+    const requests = new Map(), events = [];
+    const engine = { isWorker: true, initialized: false, processing: false, lastProcessMs: 0, commands: [] };
+    const terminate = () => {
+      if (terminated) return;terminated = true;clearTimeout(grace);
+      worker.onmessage = worker.onerror = worker.onmessageerror = null;worker.terminate();URL.revokeObjectURL(url);
+    };
+    const rejectAll = code => { for (const request of requests.values()) { clearTimeout(request.timer);request.reject(workerError(code)); }requests.clear(); };
+    const fail = code => { stopped = true;engine.initialized = false;rejectAll(code);terminate(); };
+    const rpc = (type, data = {}, transfer = [], timeout = 30000) => new Promise((resolve, reject) => {
+      if (stopped) { reject(workerError('WORKER_CANCELLED'));return; }
+      const id = ++next, timer = setTimeout(() => fail('WORKER_TRANSPORT'), timeout);
+      requests.set(id, { resolve, reject, timer });
+      try { worker.postMessage({ ...data, id, type }, transfer); } catch (_) { fail('WORKER_TRANSPORT'); }
+    });
+    worker.onmessage = ({ data }) => {
+      if (data?.type === 'destroyed') { terminate();return; }
+      if (stopped) return;
+      if (data?.type === 'progress') { progress?.({ percent: data.percent });return; }
+      if (data?.type === 'event') {
+        if (callbacks) callbacks.onEngineEvent?.(data.code);else events.push(data.code);return;
+      }
+      const request = requests.get(data?.id);if (!request) return;
+      requests.delete(data.id);clearTimeout(request.timer);
+      if (data.ok === true) request.resolve(data);else request.reject(workerError(data.code));
+    };
+    worker.onerror = worker.onmessageerror = event => { event.preventDefault?.();fail('WORKER_TRANSPORT'); };
+    engine.setLogConfig = async () => {};
+    engine.init = async options => {
+      const probe = await rpc('probe', {}, [], 3000);
+      if (probe.origin !== location.origin) throw workerError('WORKER_UNSUPPORTED');
+      const { onProgress, ...settings } = options;progress = onProgress;
+      await rpc('init', { token, options: settings }, [], (options.timeout || 60000) + 1000);
+      engine.initialized = true;
+    };
+    engine.setCallbacks = value => { callbacks = value;events.splice(0).forEach(code => callbacks.onEngineEvent?.(code)); };
+    engine.addResourcePack = bytes => rpc('resource', { bytes });
+    engine.beginBatch = () => { engine.commands = []; };
+    engine.commitBatch = () => { const commands = engine.commands;engine.commands = [];return rpc('apply', { commands }); };
+    const methods = new Set([...Object.values(levels), 'setBeautySkinOnly','setReshape','setBodyReshape','setFilter','clearFilter','setFilterIntensity','setSticker','clearSticker','set3DSticker','clear3DSticker','setChromaKey','clearChromaKey','setChromaKeySimilarity','setChromaKeySmoothness','setChromaKeyDesaturation','setVirtualBackground','setVirtualBackgroundBlur','clearVirtualBackground','setSubjectOutline']);
+    for (const key of Object.keys(options)) {
+      const group = key.replace(/Style$|Color$/, '');
+      methods.add('set' + ({ eyeshadow: 'EyeShadow', eyeliner: 'EyeLiner' }[group] || group[0].toUpperCase() + group.slice(1)) + key.slice(group.length));
+    }
+    methods.forEach(method => { engine[method] = (...args) => { engine.commands.push([method, args]); }; });
+    engine.processImage = async (input, width, height, frameType, mirrorMode) => {
+      if (engine.processing) throw workerError('WORKER_BUSY');
+      engine.processing = true;
+      try {
+        const result = await rpc('frame', { buffer: input.data.buffer, width, height, frameType, mirrorMode }, [input.data.buffer], 15000);
+        engine.lastProcessMs = result.costMs;
+        if (result.empty) return null;
+        if (!(result.buffer instanceof ArrayBuffer) || result.width !== width || result.height !== height || result.buffer.byteLength !== width * height * 4) throw workerError('WORKER_TRANSPORT');
+        return new ImageData(new Uint8ClampedArray(result.buffer), width, height);
+      } finally { engine.processing = false; }
+    };
+    engine.destroy = () => {
+      if (stopped) return;
+      const busy = requests.size > 0;stopped = true;engine.initialized = false;rejectAll('WORKER_CANCELLED');
+      if (busy) { terminate();return; }
+      try { worker.postMessage({ type: 'destroy' });grace = setTimeout(terminate, 100); } catch (_) { terminate(); }
+    };
+    return engine;
+  }
+
   function unavailable(error) {
     failed = true;
     publish('error', error?.code===-5
@@ -251,17 +361,22 @@
     const version = epoch;
     const task = { source, promise: null };
     task.promise = Promise.resolve().then(async () => {
-      let engine, video, inputCanvas, canvas, canvasStream, raf = 0, disposed = false;
+      let engine, video, inputCanvas, canvas, canvasStream, raf = 0, timer = 0, videoFrame = 0, disposed = false, settleFirst;
+      const firstPublished = new Promise(resolve => { settleFirst = resolve; });
       const cleanup = () => {
         if (disposed) return;
         disposed = true;
+        settleFirst(false);
         cancelAnimationFrame(raf);
+        clearTimeout(timer);
+        if (videoFrame && video?.cancelVideoFrameCallback) video.cancelVideoFrameCallback(videoFrame);
         if (video) { video.pause(); video.srcObject = null; video.remove(); }
         canvasStream?.getTracks().forEach(track => track.stop());
         if (inputCanvas) inputCanvas.width = inputCanvas.height = 0;
         if (canvas) canvas.width = canvas.height = 0;
         engine?.destroy();
       };
+      task.cancel = cleanup;
       const valid = () => version === epoch && source.getVideoTracks().some(track => track.readyState === 'live');
       try {
         if (!valid()) return null;
@@ -271,21 +386,34 @@
         publish('loading', 'Preparing face effects…');
         const token = await license();
         if (!valid()) return null;
-        engine = new sdk.BeautyEffectEngine(new sdk.EngineConfig({ licenseToken: token }));
-        let engineFailure = false;
-        await engine.setLogConfig({ consoleEnabled: false, fileEnabled: false, level: 4 });
-        await engine.init({
+        let engineFailure = null;
+        const initOptions = {
           timeout: 60000, wasmUrl: runtime + 'facebetter-core.js', assetBaseUrl: runtime,
           onProgress: ({ percent }) => {
             if (valid() && wanted()) publish('loading', `Preparing face effects… ${Math.min(100, Math.round(percent || 0))}%`);
           }
-        });
-        if (!valid() || !wanted()) { cleanup(); return null; }
+        };
+        if (typeof Worker === 'function' && typeof OffscreenCanvas === 'function' && typeof window.ZIMI_FACEBETTER_WORKER_SOURCE === 'string') {
+          try { engine = createWorkerEngine(token);await engine.init(initOptions); }
+          catch (error) {
+            engine?.destroy();engine = null;
+            if (!valid() || disposed) return null;
+            if (!['WORKER_UNSUPPORTED','WORKER_TRANSPORT','ENGINE_CREATE_FAILED'].includes(error.code)) throw error;
+          }
+        }
+        if (!engine) {
+          engine = new sdk.BeautyEffectEngine(new sdk.EngineConfig({ licenseToken: token }));
+          await engine.setLogConfig({ consoleEnabled: false, fileEnabled: false, level: 4 });await engine.init(initOptions);
+        }
+        if (disposed || !valid() || !wanted()) { engine.destroy();cleanup(); return null; }
         // The shipped 2.2.1 wrapper requires an initialized engine here.
         engine.setCallbacks({ onEngineEvent: code => {
-          if (code === sdk.EngineEventCode.LicenseValidationFailed || code === sdk.EngineEventCode.InitializationFailed) engineFailure = true;
+          if (code === sdk.EngineEventCode.LicenseValidationFailed || code === sdk.EngineEventCode.InitializationFailed) {
+            engineFailure = new Error('Effects authorization failed.');
+            if (code === sdk.EngineEventCode.LicenseValidationFailed) engineFailure.code = -5;
+          }
         } });
-        if (engineFailure) throw new Error('Effects authorization failed.');
+        if (engineFailure) throw engineFailure;
         video = document.createElement('video');
         video.muted = true; video.autoplay = true; video.playsInline = true;
         video.setAttribute('aria-hidden', 'true');
@@ -299,24 +427,45 @@
         canvas = document.createElement('canvas');
         const context = canvas.getContext('2d', { alpha: false });
         if (!input || !context || !video.videoWidth || !video.videoHeight) throw new Error('Camera frames unavailable.');
+        const budget = createFrameBudget();
         const resizeInput = () => {
-          const scale = Math.min(1, EFFECT_MAX_EDGE / Math.max(video.videoWidth, video.videoHeight));
-          const width = Math.max(1, Math.round(video.videoWidth * scale)), height = Math.max(1, Math.round(video.videoHeight * scale));
+          const { width, height } = budget.dimensions(video.videoWidth, video.videoHeight);
           if (inputCanvas.width !== width) inputCanvas.width = width;
           if (inputCanvas.height !== height) inputCanvas.height = height;
         };
         resizeInput();
         canvas.width = inputCanvas.width; canvas.height = inputCanvas.height;
-        canvasStream = canvas.captureStream(24);
-        const output = canvasStream.getVideoTracks()[0];
+        canvasStream = canvas.captureStream(0);
+        let output = canvasStream.getVideoTracks()[0];
+        if (typeof output.requestFrame !== 'function') {
+          canvasStream.getTracks().forEach(track => track.stop());
+          canvasStream = canvas.captureStream(24);output = canvasStream.getVideoTracks()[0];
+        }
+        const frameCallbacks = typeof video.requestVideoFrameCallback === 'function';
+        let frames = 0, newestFrame = video.getVideoPlaybackQuality?.().totalVideoFrames ?? (frameCallbacks ? -1 : video.currentTime), lastFrame = -1, nextAt = 0, missing = 0, drawing = false, started = false, cameraGeneration = 0, mainThreadMs = 0, droppedFrames = 0, targetIntervalMs = EFFECT_FRAME_INTERVAL;
+        const queueDraw = () => {
+          if (!started || disposed || handle.failed || !output.enabled || drawing || raf || timer) return;
+          if (engine.isWorker === true && handle.appliedRevision !== revision) return;
+          const delay = Math.max(0, nextAt - performance.now());
+          // A video callback already runs on the presentation clock. Adding
+          // another RAF quantizes a 24fps source onto a second 60Hz boundary.
+          if (frameCallbacks) {
+            if (delay > 2) timer = setTimeout(() => { timer = 0;draw(); }, delay);
+            else draw();
+          } else if (delay > 8) timer = setTimeout(() => { timer = 0;if (!disposed) raf = requestAnimationFrame(draw); }, delay);
+          else raf = requestAnimationFrame(draw);
+        };
         const handle = {
           source, engine, stream: new MediaStream([...source.getAudioTracks(), output]),
-          filter: undefined, sticker: undefined, packs: new Set(), epoch:version, destroyed: false, failed: false,
+          filter: undefined, sticker: undefined, packs: new Set(), packPromises: new Map(), epoch:version, destroyed: false, failed: false, firstSettled: settleFirst,
           setEnabled(enabled) {
+            if (output.enabled !== !!enabled) cameraGeneration++;
             source.getVideoTracks().forEach(track => { track.enabled = !!enabled; });
             output.enabled = !!enabled;
             if (!enabled) context.clearRect(0, 0, canvas.width, canvas.height);
+            else queueDraw();
           },
+          getPerformance() { return { ...budget.snapshot(), ...(engine.isWorker === true ? { intervalMs: targetIntervalMs } : {}), frames, width: canvas.width, height: canvas.height, sourceWidth: video.videoWidth, sourceHeight: video.videoHeight, frameCallbacks, worker: engine.isWorker === true, workerCostMs: engine.isWorker === true ? engine.lastProcessMs : 0, mainThreadMs, inFlight: drawing, droppedFrames }; },
           destroy() {
             handle.destroyed = true;
             if (current === handle) current = null;
@@ -325,49 +474,84 @@
         };
         task.cancel=()=>handle.destroy();
         if (!await update(handle) || !valid()) { handle.destroy();return null; }
-        let last = -Infinity, lastFrame = -1, processingCost = 0, interval = EFFECT_FRAME_INTERVAL, missing = 0;
-        const draw = now => {
-          if (disposed) return;
+        const draw = async () => {
+          raf = 0;
+          if (disposed || drawing || handle.failed) return;
+          drawing = true;
           try {
-            if (engineFailure) throw new Error('Effects stopped.');
-            const frame = video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.currentTime;
-            if (output.enabled && video.readyState >= 2 && now - last >= interval && frame !== lastFrame) {
-              last = now; lastFrame = frame;
-              const started = performance.now();
+            if (engineFailure) throw engineFailure;
+            const frame = frameCallbacks ? newestFrame : video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.currentTime;
+            if (output.enabled && video.readyState >= 2 && performance.now() + (frameCallbacks ? 2 : 0) >= nextAt && frame !== lastFrame) {
+              lastFrame = frame;
+              const started = performance.now(), frameRevision = revision, camera = cameraGeneration, sourceTrack = source.getVideoTracks()[0], sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
               resizeInput();
               input.drawImage(video, 0, 0, inputCanvas.width, inputCanvas.height);
               // Preview mirroring belongs to the existing video CSS. Encode
               // unmirrored pixels so text and the remote view remain natural.
               // SDK 2.2.1 creates a new full-size canvas for every video input.
               // Reuse our bounded readback canvas and pass ImageData directly.
-              const result = engine.processImage(input.getImageData(0, 0, inputCanvas.width, inputCanvas.height), inputCanvas.width, inputCanvas.height, sdk.FrameType.Video, sdk.MirrorMode.None);
+              let result = engine.processImage(input.getImageData(0, 0, inputCanvas.width, inputCanvas.height), inputCanvas.width, inputCanvas.height, sdk.FrameType.Video, sdk.MirrorMode.None);
+              const readbackDone = performance.now();
+              if (engine.isWorker === true) result = await result;
+              const responseAt = performance.now();
+              if (engineFailure) throw engineFailure;
+              if (!source.getVideoTracks()[0]?.enabled) { handle.setEnabled(false);settleFirst(true);droppedFrames++;return; }
+              if (disposed || handle.destroyed || !valid() || !wanted() || !output.enabled || sourceTrack !== source.getVideoTracks()[0] || camera !== cameraGeneration || frameRevision !== revision || sourceWidth !== video.videoWidth || sourceHeight !== video.videoHeight) { if(!valid())settleFirst(false);droppedFrames++;return; }
               if (result) {
                 missing = 0;
                 if (canvas.width !== result.width) canvas.width = result.width;
                 if (canvas.height !== result.height) canvas.height = result.height;
                 context.putImageData(result, 0, 0);
+                output.requestFrame?.();frames++;
+                settleFirst(true);
               } else if (++missing >= 30) throw new Error('Effects frames unavailable.');
               // Leave at least half the time for call controls, WebRTC and gift
               // rendering on slower devices; never queue or repeat stale frames.
-              const cost = performance.now() - started;
-              processingCost = processingCost ? processingCost * 0.75 + cost * 0.25 : cost;
-              interval = Math.max(EFFECT_FRAME_INTERVAL, processingCost * 2);
+              const finished = performance.now();
+              const cost = engine.isWorker === true ? engine.lastProcessMs : finished - started;
+              mainThreadMs = engine.isWorker === true ? readbackDone - started + finished - responseAt : cost;
+              // Worker latency does not occupy the UI thread. Keep one frame in
+              // flight without imposing the main-thread half-idle duty cycle.
+              budget.observe(cost, finished);
+              // Carry the deadline instead of resetting it after small callback
+              // jitter. A costly frame still gets more idle time than work time.
+              nextAt = engine.isWorker === true ? Math.max(started + EFFECT_FRAME_INTERVAL, finished + 1) : Math.max((nextAt || started) + budget.snapshot().intervalMs, finished + (finished - started) * 1.1);
+              targetIntervalMs = nextAt - started;
             }
-            raf = requestAnimationFrame(draw);
-          } catch (_) {
+          } catch (error) {
+            if (disposed || handle.destroyed || version !== epoch) return;
             handle.failed = true;
-            unavailable();
+            settleFirst(false);
+            clearTimeout(timer);timer = 0;
+            if (videoFrame && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(videoFrame);
+            videoFrame = 0;
+            if (wanted() && output.enabled && source.getVideoTracks()[0]?.enabled) unavailable(error);
             // Media replaces outgoing tracks before destroying this handle.
             void window.ZimiMedia?.refreshBeauty();
-          }
+          } finally { drawing = false;if (engine.isWorker === true && !disposed && !handle.failed && newestFrame !== lastFrame) queueDraw(); }
+          if (!frameCallbacks) queueDraw();
         };
         current = handle;
+        handle.wake = queueDraw;
+        if (frameCallbacks) {
+          const presented = (_now, metadata) => {
+            if (disposed || handle.failed) return;
+            // Keep the startup and callback counters in the same namespace.
+            // decoded/presented counters can differ when the browser drops frames.
+            newestFrame = video.getVideoPlaybackQuality?.().totalVideoFrames ?? metadata.presentedFrames ?? newestFrame + 1;
+            queueDraw();if (!disposed && !handle.failed) videoFrame = video.requestVideoFrameCallback(presented);
+          };
+          videoFrame = video.requestVideoFrameCallback(presented);
+        }
         handle.setEnabled(source.getVideoTracks()[0].enabled);
-        draw(performance.now());
-        if (failed) { handle.destroy(); return null; }
+        started = true;
+        void draw();
+        if (engine.isWorker === true && output.enabled) await firstPublished;
+        if (failed || disposed || !valid() || !wanted() || handle.failed) { handle.destroy(); return null; }
         publish('ready', 'Face effects are applied to the camera you share.');
         return handle;
       } catch (error) {
+        engine?.destroy();
         cleanup();
         if (version === epoch) unavailable(error);
         return null;
@@ -393,8 +577,9 @@
       publish('off', 'Effects off. Your original camera is shared.');
     }
     if (current && !current.destroyed && !current.failed) {
-      if(resourcesReady(current,params)) {
-        try { apply(current); } catch (error) { current.failed = true; unavailable(error); }
+      if(current.engine.isWorker === true) { if(wanted())void update(current); }
+      else if(resourcesReady(current,params)) {
+        try { apply(current);current.appliedRevision=revision; } catch (error) { current.failed = true; unavailable(error); }
       } else if(wanted())publish('loading','Preparing selected effects…');
     }
     if (typeof DEMO !== 'undefined' && DEMO) publish('idle', 'Preview only. Face effects run in connected video calls.');

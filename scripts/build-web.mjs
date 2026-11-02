@@ -171,6 +171,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/agency.js") +
   "\n" + read("web/coins.js") +
   "\n" + read("node_modules/facebetter/dist/facebetter.js").replace(/[ \t]+$/gm, "") +
+  "\nwindow.ZIMI_FACEBETTER_WORKER_SOURCE=" + JSON.stringify(read("node_modules/facebetter/dist/facebetter.js") + "\n" + read("web/beauty-worker.js")) + ";\n" +
   "\n" + read("web/beauty-catalog.js") +
   "\n" + read("web/beauty.js").replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) =>
     readFileSync(join(root, `web/facebetter/effects/${name}.fbd`)).toString("base64")) +

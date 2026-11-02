@@ -20,11 +20,12 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => Native.r
   try {
     browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'], ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
     const context = await browser.newContext();
-    const pages = { host: await context.newPage(), viewer: await context.newPage() }, errors = [];
+    const pages = { host: await context.newPage(), viewer: await context.newPage() }, errors = [],startup={};
     for (const [id, page] of Object.entries(pages)) {
       page.on('pageerror', error => errors.push(error.message));
       await page.exposeFunction('sendNative', async (type, data = {}) => {
         if (type === 'rtc.config') return receive(page, type, { iceServers: [] });
+        if(type==='rtc.signal'&&data.description?.type==='offer'&&!startup[id])startup[id]=await page.evaluate(()=>{const sender=peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video');return {encoding:sender.getParameters().encodings[0],settings:sender.track.getSettings(),preference:sender.getParameters().degradationPreference,codecs:peerConnections.at(-1).localDescription.sdp.match(/a=rtpmap:[^\r\n]+/g).filter(line=>!/(opus|red|rtx|ulpfec|telephone|ISAC|CN|G722|PCMU|PCMA)/i.test(line)).map(line=>line.replace(/^a=rtpmap:\d+ /,''))}});
         if (type === 'rtc.signal') return receive(pages[id === 'host' ? 'viewer' : 'host'], type, { ...data, from: id });
       });
       await page.goto(`http://127.0.0.1:${server.address().port}`);
@@ -34,8 +35,8 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => Native.r
         const camOn=()=>S.cam, appNotice=message=>{window.lastNotice=message};
         const PeerConnection=window.RTCPeerConnection;window.peerConnections=[];
         window.RTCPeerConnection=class extends PeerConnection{constructor(...args){super(...args);peerConnections.push(this)}};
-        const acquire=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);window.tracks=[];
-        navigator.mediaDevices.getUserMedia=async constraints=>{
+        const acquire=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);window.tracks=[];window.captureConstraints=[];window.parameterWrites=[];const applyParameters=RTCRtpSender.prototype.setParameters;RTCRtpSender.prototype.setParameters=function(parameters){parameterWrites.push(this.track?.kind);return applyParameters.call(this,parameters)};
+        navigator.mediaDevices.getUserMedia=async constraints=>{captureConstraints.push(constraints);
           const stream=await acquire(window.simulateCamera&&constraints.audio===false?{audio:false,video:true}:constraints);
           if(window.simulateCamera&&constraints.audio===false){const track=stream.getVideoTracks()[0],settings=track.getSettings.bind(track),mode=window.simulateCamera;track.getSettings=()=>({...settings(),facingMode:mode})}
           tracks.push(...stream.getTracks());return stream;
@@ -49,11 +50,11 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => Native.r
             if(!window.beautyEnabled)return null;
             const existing=beautyHandles.find(handle=>handle.raw===raw&&!handle.destroyed);
             if(existing)return existing;
-            const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;
+            const canvas=document.createElement('canvas');canvas.width=480;canvas.height=270;
             const paint=canvas.getContext('2d'),output=canvas.captureStream(12);
             const stream=new MediaStream([...output.getVideoTracks(),...raw.getAudioTracks()]);
-            const handle={raw,stream,destroyed:false,setEnabled(enabled){raw.getVideoTracks().forEach(track=>track.enabled=enabled);output.getVideoTracks().forEach(track=>track.enabled=enabled)},destroy(){if(this.destroyed)return;this.destroyed=true;clearInterval(this.timer);output.getTracks().forEach(track=>track.stop())}};
-            const draw=()=>{paint.fillStyle=raw.getVideoTracks()[0]?.getSettings().facingMode==='environment'?'#0000ff':'#00ff00';paint.fillRect(0,0,160,120)};
+            const handle={raw,stream,canvas,destroyed:false,setEnabled(enabled){raw.getVideoTracks().forEach(track=>track.enabled=enabled);output.getVideoTracks().forEach(track=>track.enabled=enabled)},destroy(){if(this.destroyed)return;this.destroyed=true;clearInterval(this.timer);output.getTracks().forEach(track=>track.stop())}};
+            const draw=()=>{paint.fillStyle=raw.getVideoTracks()[0]?.getSettings().facingMode==='environment'?'#0000ff':'#00ff00';paint.fillRect(0,0,canvas.width,canvas.height)};
             draw();handle.timer=setInterval(draw,80);beautyHandles.push(handle);return handle;
           },stop(){},sync(){}
         };
@@ -67,12 +68,23 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => Native.r
     await receive(pages.viewer, 'call.connected', { callId: 'beauty-call', initiator: false, peerId: 'host' });
     await receive(pages.host, 'call.connected', { callId: 'beauty-call', initiator: true, peerId: 'viewer' });
     await pages.viewer.waitForFunction(() => document.querySelector('[data-zimi-remote]').readyState >= 2);
+    assert.equal(startup.host.encoding.maxBitrate,900000,'Balanced bitrate is applied before the first offer is sent');assert.equal(startup.host.encoding.maxFramerate,24);assert.equal(startup.host.encoding.scaleResolutionDownBy,Math.max(1,Math.max(startup.host.settings.width,startup.host.settings.height)/720));assert.equal(startup.host.preference,'maintain-framerate');
+    const captureConstraints=await pages.host.evaluate(()=>window.captureConstraints[0].video);assert.deepEqual(captureConstraints,{facingMode:'user',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30},resizeMode:'none'},'Sender adaptation preserves uncropped raw camera capture constraints');
+    console.log('WebRTC default SDP video codecs:',JSON.stringify(startup.host.codecs));
+    const negotiated=await pages.host.evaluate(async()=>{const report=await peerConnections.at(-1).getStats(),outbound=[...report.values()].find(stat=>stat.type==='outbound-rtp'&&stat.kind==='video'),codec=outbound&&report.get(outbound.codecId);return {mimeType:codec?.mimeType||null,encoder:outbound?.encoderImplementation||null,powerEfficient:outbound?.powerEfficientEncoder??null}});console.log('WebRTC negotiated video encoder:',JSON.stringify(negotiated));
     const enabled = await pages.host.evaluate(async () => {
       const audio=rawSource.getAudioTracks()[0],raw=rawSource.getVideoTracks()[0];
       window.beautyEnabled=true;await ZimiMedia.refreshBeauty();
       return {processed:sender().track===currentBeauty().stream.getVideoTracks()[0],preview:document.querySelector('[data-zimi-local]').srcObject===currentBeauty().stream,audio:peerConnections.at(-1).getSenders().some(sender=>sender.track===audio),rawStillLive:raw.readyState==='live'};
     });
     assert.deepEqual(enabled, { processed: true, preview: true, audio: true, rawStillLive: true });
+    await pages.host.waitForFunction(()=>sender().getParameters().encodings[0].scaleResolutionDownBy===1);
+    assert.equal(await pages.host.evaluate(()=>sender().track.getSettings().width),480,'Already-small processor output is not scaled down twice');
+    await pages.host.evaluate(()=>{currentBeauty().canvas.width=960;currentBeauty().canvas.height=540});
+    await pages.host.waitForFunction(()=>Math.abs(sender().getParameters().encodings[0].scaleResolutionDownBy-960/720)<.0001);
+    assert.equal(await pages.host.evaluate(()=>sender().track===currentBeauty().stream.getVideoTracks()[0]),true,'Dynamic processing dimensions keep the same outgoing track');
+    await pages.host.evaluate(()=>{currentBeauty().canvas.width=480;currentBeauty().canvas.height=270});
+    await pages.host.waitForFunction(()=>sender().getParameters().encodings[0].scaleResolutionDownBy===1);
     await pages.viewer.waitForFunction(() => { const color=remotePixel();return color[1]>220&&color[0]<30&&color[2]<30; });
     assert.equal(await pages.host.evaluate(() => { S.cam=0;S.mic=0;ZimiMedia.attach();return [...rawSource.getTracks(),...currentBeauty().stream.getTracks()].every(track=>!track.enabled); }), true, 'Camera and microphone controls disable both raw and processed transmission');
     await pages.host.evaluate(() => { S.cam=1;S.mic=1;ZimiMedia.attach(); });
@@ -84,10 +96,17 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => Native.r
     assert.deepEqual(flipped, { mode: 'environment', stableOutput: true, sourceChanged: true, audioPreserved: true }, 'Camera switching updates the raw source while keeping the beauty track published');
     await pages.viewer.waitForFunction(() => { const color=remotePixel();return color[2]>220&&color[0]<30&&color[1]<30; });
     const disabled = await pages.host.evaluate(async () => {
-      const output=sender().track;window.beautyEnabled=false;await ZimiMedia.refreshBeauty();
+      const current=sender(),output=current.track,set=current.setParameters.bind(current);let release;
+      current.setParameters=async parameters=>{if(!release)await new Promise(resolve=>{release=resolve});return set(parameters)};
+      currentBeauty().canvas.width=960;currentBeauty().canvas.height=540;
+      const deadline=Date.now()+6000;while(!release&&Date.now()<deadline){Native.receive('app.foreground',{});await new Promise(resolve=>setTimeout(resolve,50))}
+      if(!release)throw new Error('A changed output size did not reapply sender parameters');
+      window.beautyEnabled=false;const reset=ZimiMedia.refreshBeauty();await new Promise(resolve=>setTimeout(resolve,20));
+      const replacementWaited=current.track===output&&output.readyState==='live';release();await reset;current.setParameters=set;
+      if(!replacementWaited)throw new Error('replaceTrack raced an unfinished sender parameters transaction');
       return {rawPublished:sender().track===rawSource.getVideoTracks()[0],preview:document.querySelector('[data-zimi-local]').srcObject===rawSource,outputStopped:output.readyState==='ended',rawLive:rawSource.getTracks().every(track=>track.readyState==='live')};
     });
-    assert.deepEqual(disabled, { rawPublished: true, preview: true, outputStopped: true, rawLive: true }, 'Reset returns both preview and peer to raw camera without losing microphone');
+    assert.deepEqual(disabled, { rawPublished: true, preview: true, outputStopped: true, rawLive: true }, 'Reset serializes with sender parameters and restores raw preview/peer without losing microphone');
     const sdkFailure = await pages.host.evaluate(async () => {
       window.beautyEnabled=true;window.failBeauty=true;const before=sender().track;await ZimiMedia.refreshBeauty();window.failBeauty=false;
       return sender().track===before&&before.readyState==='live';
@@ -101,14 +120,18 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => Native.r
     });
     assert.deepEqual(replacementFailure, { preserved: true, unusedStopped: true }, 'A refused processed track rolls back without ending the call');
     const pendingStop = await pages.host.evaluate(async () => {
+      const current=sender(),track=current.track,settings=track.getSettings.bind(track),set=current.setParameters.bind(current);let releaseParameters,parameterAttempts=0;
+      track.getSettings=()=>({...settings(),width:1920,height:1080});current.setParameters=async parameters=>{parameterAttempts++;await new Promise(resolve=>{releaseParameters=resolve});return set(parameters)};
+      const deadline=Date.now()+6000;while(!releaseParameters&&Date.now()<deadline){Native.receive('app.foreground',{});await new Promise(resolve=>setTimeout(resolve,50))}if(!releaseParameters)throw new Error('Pending sender tuning was not exercised');
       window.deferBeauty=true;const pending=ZimiMedia.refreshBeauty();
       while(!window.finishBeauty)await new Promise(resolve=>setTimeout(resolve,0));
-      ZimiMedia.stop();window.finishBeauty();await pending;
+      ZimiMedia.stop();releaseParameters();window.finishBeauty();await pending;await new Promise(resolve=>setTimeout(resolve,30));if(parameterAttempts!==1)throw new Error('Closed peer retried stale sender parameters');
       return {rawStopped:tracks.every(track=>track.readyState==='ended'),outputsStopped:beautyHandles.every(handle=>handle.destroyed&&handle.stream.getVideoTracks()[0].readyState==='ended'),previewCleared:document.querySelector('[data-zimi-local]').srcObject===null};
     });
     assert.deepEqual(pendingStop, { rawStopped: true, outputsStopped: true, previewCleared: true }, 'Hanging up during initialization releases even a late processor result');
     const voice = await pages.host.evaluate(async () => { S.v='precall';await ZimiMedia.prepare(false);await ZimiMedia.refreshBeauty();const stream=document.querySelector('[data-zimi-local]').srcObject;return {audio:stream.getAudioTracks().length,video:stream.getVideoTracks().length,processors:beautyHandles.filter(handle=>!handle.destroyed).length}; });
     assert.deepEqual(voice, { audio: 1, video: 0, processors: 0 }, 'Voice calls never create or publish a beauty video track');
+    assert.equal(await pages.host.evaluate(()=>parameterWrites.every(kind=>kind==='video')),true,'Video adaptation never rewrites microphone sender parameters');
     assert.deepEqual(errors, []);
     console.log('Facebetter media: processed pixels reach remote peer; audio, mute, camera flip, reset, SDK failure, replacement rollback, late initialization cleanup and voice calls passed.');
   } finally {

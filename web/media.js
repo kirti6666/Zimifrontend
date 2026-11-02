@@ -20,10 +20,12 @@
   // Keep motion smooth before reducing resolution. WebRTC still controls the
   // actual bitrate under these ceilings; a bandwidth-limited encoder is normal.
   const VIDEO_PROFILES = [
-    { maxBitrate: 450000, maxFramerate: 18, scaleResolutionDownBy: 2 },
-    { maxBitrate: 900000, maxFramerate: 24, scaleResolutionDownBy: 1.5 },
-    { maxBitrate: 1800000, maxFramerate: 24, scaleResolutionDownBy: 1 }
+    { maxBitrate: 450000, maxFramerate: 20, maxEdge: 480 },
+    { maxBitrate: 900000, maxFramerate: 24, maxEdge: 720 },
+    { maxBitrate: 1800000, maxFramerate: 24, maxEdge: 1280 }
   ];
+  const VIDEO_START_LEVEL = 1;
+  const REMOTE_IMPAIRMENT_MS = 8000;
   const MEDIA_SELECTOR = 'video[data-zimi-local], video[data-zimi-remote], audio[data-zimi-remote]';
 
   // Connect the new layout before moving videos, so moveBefore can preserve their
@@ -125,6 +127,7 @@
             beauty = next;
             previous?.destroy();
             attach();
+            retuneVideo();
           } catch (_) {
             // A failed optional effect must preserve the camera already in use.
             if (current(stream)) {
@@ -386,6 +389,7 @@
         acquired = null;
         committed = true;
         attach();
+        retuneVideo();
         if (switchFailure) throw new Error('The camera could not be switched. Your previous camera has been restored.');
         return facingMode;
       } catch (error) {
@@ -453,34 +457,69 @@
     // The remote path does not send a second call.end request.
     if (session.kind === 'call') Native.receive({ type: 'call.ended', data: { callId: session.id } });
   }
-  async function tuneVideo(peer, level) {
-    if (peer.tuning || peer.tuned === level) return;
-    peer.tuning = true;
-    try {
-      for (const sender of peer.pc.getSenders()) {
-        if (sender.track?.kind !== 'video' || !sender.getParameters || !sender.setParameters) continue;
-        let params = sender.getParameters();
-        if (!params.encodings?.length) continue;
-        params.encodings.forEach(encoding => Object.assign(encoding, VIDEO_PROFILES[level]));
-        // Camera motion should remain fluid while the encoder lowers resolution.
-        // Some older WebViews reject this optional preference: still apply the
-        // supported bitrate/size limits using a fresh parameters transaction.
-        if (peer.framePreference !== false) params.degradationPreference = 'maintain-framerate';
-        else delete params.degradationPreference;
-        try { await sender.setParameters(params); }
-        catch (error) {
-          if (peer.framePreference === false) throw error;
-          peer.framePreference = false;
-          params = sender.getParameters();
-          delete params.degradationPreference;
-          params.encodings.forEach(encoding => Object.assign(encoding, VIDEO_PROFILES[level]));
-          await sender.setParameters(params);
-        }
+  function videoEncoding(track, level) {
+    const profile = VIDEO_PROFILES[level], settings = track.getSettings?.() || {};
+    const edge = Math.max(settings.width || 0, settings.height || 0);
+    // Scale the full frame, never crop or upscale. An already-small processed
+    // camera must not be scaled down again by a fixed camera-size multiplier.
+    return { maxBitrate: profile.maxBitrate, maxFramerate: profile.maxFramerate,
+      scaleResolutionDownBy: Math.max(1, edge / profile.maxEdge) };
+  }
+  function tuneVideo(peer, level) {
+    peer.videoLevel = level;peer.tuneDirty = true;
+    if (peer.tuning) return peer.tuning;
+    const current = () => peers.get(peer.id) === peer && peer.pc.signalingState !== 'closed';
+    // Parameters transactions and replaceTrack must not invalidate each other.
+    // Coalesce later requests instead of dropping a reduction while one waits.
+    const job = serializeTracks(async () => {
+      while (peer.tuneDirty && current()) {
+        peer.tuneDirty = false;
+        const selected = peer.videoLevel, senders = peer.pc.getSenders().filter(sender => sender.track?.kind === 'video' && sender.getParameters && sender.setParameters);
+        const signature = selected + ':' + senders.map(sender => sender.track.id + ':' + videoEncoding(sender.track, selected).scaleResolutionDownBy).join(',');
+        if (signature === peer.videoSignature) continue;
+        let applied = 0;
+        try {
+          for (const sender of senders) {
+            if (!current()) return;
+            const track = sender.track, encoding = videoEncoding(track, selected);
+            let params = sender.getParameters();
+            if (!params.encodings?.length) continue;
+            params.encodings.forEach(value => Object.assign(value, encoding));
+            if (peer.framePreference !== false) params.degradationPreference = 'maintain-framerate';
+            else delete params.degradationPreference;
+            try { await sender.setParameters(params); }
+            catch (error) {
+              if (!current()) return;
+              if (peer.framePreference === false) throw error;
+              peer.framePreference = false;
+              params = sender.getParameters();
+              if (!params.encodings?.length) continue;
+              delete params.degradationPreference;
+              params.encodings.forEach(value => Object.assign(value, encoding));
+              await sender.setParameters(params);
+            }
+            if (!current()) return;
+            applied++;
+          }
+          if (applied === senders.length) {
+            peer.videoSignature = signature;
+            if (peer.tuned !== selected) peer.targetSamples = 0;
+            peer.tuned = selected;
+          }
+        } catch (_) { /* Unsupported limits fall back to browser congestion control; retry on the next sample. */ }
       }
-      peer.tuned = level;
-      peer.targetSamples = 0;
-    } catch (_) { /* Older WebViews still use WebRTC's built-in congestion control. */ }
-    finally { peer.tuning = false; }
+    });
+    peer.tuning = job;
+    const finished = () => {
+      if (peer.tuning !== job) return;
+      peer.tuning = null;
+      if (peer.tuneDirty && current()) void tuneVideo(peer, peer.videoLevel);
+    };
+    job.then(finished, finished);
+    return job;
+  }
+  function retuneVideo() {
+    peers.forEach(peer => { if (peer.adaptiveVideo) void tuneVideo(peer, peer.videoLevel ?? VIDEO_START_LEVEL); });
   }
   async function sampleQuality(session, id, peer) {
     if (active !== session || peers.get(id) !== peer || peer.sampling || !peer.pc.getStats) return;
@@ -489,25 +528,32 @@
       const report = await peer.pc.getStats();
       if (active !== session || peers.get(id) !== peer) return;
       let poor = navigator.onLine === false, outgoingPoor = poor, severe = false;
+      let freshReport = poor;
       let cpuLimited = false, availableBitrate;
-      const current = peer.tuned ?? 2;
+      const current = peer.tuned ?? VIDEO_START_LEVEL;
+      const sampledAt = performance.now();
+      const nextStats = new Map();
       let selectedPair;
       report.forEach(stat => {
         if (stat.type === 'transport' && stat.selectedCandidatePairId) selectedPair = stat.selectedCandidatePairId;
       });
       report.forEach(stat => {
         if (stat.type === 'candidate-pair' && (selectedPair ? stat.id === selectedPair : stat.state === 'succeeded' && stat.nominated)) {
+          const before = peer.stats.get(stat.id);
+          if (!before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp) freshReport = true;
+          nextStats.set(stat.id, { timestamp: stat.timestamp });
           if (stat.currentRoundTripTime > .6) poor = outgoingPoor = true;
           if (stat.currentRoundTripTime > 1.2) severe = true;
           if (stat.availableOutgoingBitrate > 0) availableBitrate = stat.availableOutgoingBitrate;
         }
         if (['inbound-rtp', 'remote-inbound-rtp'].includes(stat.type)) {
-          const before = peer.stats.get(stat.id);
-          let impaired = stat.jitter > .08 || stat.roundTripTime > .6;
+          const before = peer.stats.get(stat.id), fresh = !before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp;
+          if (fresh) freshReport = true;
+          let impaired = fresh && (stat.jitter > .08 || stat.roundTripTime > .6);
           // Remote receiver reports may omit packetsReceived. Their fractionLost
           // describes the last RTCP interval, unlike cumulative packetsLost.
-          let loss = stat.type === 'remote-inbound-rtp' ? stat.fractionLost || 0 : 0;
-          if (before) {
+          let loss = fresh && stat.type === 'remote-inbound-rtp' ? stat.fractionLost || 0 : 0;
+          if (before && fresh) {
             const received = Math.max(0, (stat.packetsReceived || 0) - before.received);
             const lost = Math.max(0, (stat.packetsLost || 0) - before.lost);
             if (typeof stat.packetsReceived === 'number' && received + lost >= 20) loss = Math.max(loss, lost / (received + lost));
@@ -516,14 +562,26 @@
           if (loss > .08) impaired = true;
           if (impaired) poor = true;
           // Receiving bad video must not also blur the video we send back.
-          if (stat.type === 'remote-inbound-rtp' && impaired) {
-            outgoingPoor = true;
-            if (loss > .2 || stat.roundTripTime > 1.2) severe = true;
+          let remotePoor = false, remoteSevere = false, impairedUntil = 0;
+          if (stat.type === 'remote-inbound-rtp') {
+            // Receiver reports arrive less often than local encoder/ICE stats.
+            // A healthy local poll cannot erase recent receiver-observed loss.
+            // Fresh healthy RTCP clears it; missing feedback expires promptly.
+            if (fresh) {
+              remotePoor = impaired;
+              remoteSevere = impaired && (loss > .2 || stat.roundTripTime > 1.2);
+              impairedUntil = impaired ? sampledAt + REMOTE_IMPAIRMENT_MS : 0;
+            } else if (before?.impairedUntil > sampledAt) {
+              remotePoor = !!before.remotePoor;remoteSevere = !!before.remoteSevere;impairedUntil = before.impairedUntil;
+            }
+            if (remotePoor) poor = outgoingPoor = true;
+            if (remoteSevere) severe = true;
           }
-          peer.stats.set(stat.id, { received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0 });
+          nextStats.set(stat.id, { timestamp: stat.timestamp, received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0, remotePoor, remoteSevere, impairedUntil });
         }
         if (stat.type === 'outbound-rtp' && (stat.kind === 'video' || stat.mediaType === 'video')) {
           const before = peer.stats.get(stat.id), videoOn = cameraEnabled() && stat.active !== false;
+          if (!before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp) freshReport = true;
           if (videoOn) {
             if (stat.qualityLimitationReason === 'cpu') cpuLimited = true;
             // These counters are cumulative. Use only a fresh, non-reset
@@ -546,10 +604,14 @@
               if (stat.framesPerSecond < 8) severe = true;
             }
           }
-          peer.stats.set(stat.id, { timestamp: stat.timestamp, frames: stat.framesEncoded, encode: stat.totalEncodeTime, packets: stat.packetsSent, delay: stat.totalPacketSendDelay });
+          nextStats.set(stat.id, { timestamp: stat.timestamp, frames: stat.framesEncoded, encode: stat.totalEncodeTime, packets: stat.packetsSent, delay: stat.totalPacketSendDelay });
         }
       });
+      peer.stats = nextStats;
       if (!peerConnected(peer.pc)) return;
+      // A repeated report supplies no evidence of either deterioration or
+      // recovery. Keep hysteresis counts, while still following resized tracks.
+      if (!freshReport) { await tuneVideo(peer, current); return; }
       // A low bandwidth estimate alone is not a failure: reducing our ceiling
       // again can prevent the estimator from probing upward after a brief dip.
       // Use it to size a reduction only when loss, jitter or delay confirms one.
@@ -565,6 +627,7 @@
       // Restore one step at a time after sustained recovery, avoiding repeated
       // jumps between a clear picture and the lowest quality on mobile data.
       else if (target > current && peer.targetSamples >= 3) await tuneVideo(peer, current + 1);
+      else await tuneVideo(peer, current);
     } catch (_) { /* A stats read may race call cleanup or be unsupported. */ }
     finally { peer.sampling = false; }
   }
@@ -575,7 +638,7 @@
     clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
     setQuality('good');
     status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
-    if (session.kind === 'call') void tuneVideo(peer, peer.tuned ?? 2);
+    if (session.kind === 'call') void tuneVideo(peer, peer.videoLevel ?? VIDEO_START_LEVEL);
   }
   function recoverPeer(session, id, peer) {
     if (active !== session || peers.get(id) !== peer || peer.recoveryTimer) return;
@@ -607,7 +670,7 @@
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
     const pc = new RTCPeerConnection(session.config);
-    const peer = { pc, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0, poorSamples: 0, targetSamples: 0 };
+    const peer = { id, pc, adaptiveVideo:session.kind === 'call', videoLevel:VIDEO_START_LEVEL, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0, poorSamples: 0, targetSamples: 0 };
     peers.set(id, peer);
     const published = outgoing();
     if ((session.kind === 'call' || session.hosting) && published) published.getTracks().forEach(track => pc.addTrack(track, published));
@@ -683,6 +746,8 @@
       const description = await peer.pc.createOffer();
       if (active !== session) return;
       await peer.pc.setLocalDescription(description);
+      if (session.kind === 'call') await tuneVideo(peer, peer.videoLevel);
+      if (active !== session || peers.get(id) !== peer) return;
       sendSignal(session, id, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
     });
   }
@@ -713,6 +778,8 @@
         if (description.type === 'offer') {
           const answer = await peer.pc.createAnswer();
           await peer.pc.setLocalDescription(answer);
+          if (session.kind === 'call') await tuneVideo(peer, peer.videoLevel);
+          if (active !== session || peers.get(from) !== peer) return;
           sendSignal(session, from, { description: { type: peer.pc.localDescription.type, sdp: peer.pc.localDescription.sdp } });
         }
       }
