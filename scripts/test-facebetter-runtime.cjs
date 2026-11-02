@@ -1,6 +1,7 @@
-/* Load the exact shipped browser SDK and pinned runtime without credentials.
-   Every external network request is blocked; an invalid test token exercises
-   runtime startup and the vendor's normal license rejection. */
+/* Credential-free API and frame-transport compatibility check for the pinned
+   browser SDK/runtime. An invalid token may initialize a pass-through engine;
+   successful setters and returned ImageData do NOT verify authorization or
+   visible effects. Use test:facebetter:visual with an explicit license for that. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -43,22 +44,24 @@ const files = {
       const canvas=document.createElement('canvas');
       const webgl=!!(canvas.getContext('webgl2')||canvas.getContext('webgl'));
       const progress=[],events=[];
-      let error=null, processed=null;
+      let error=null, returnedFrame=null;
       try {
         await engine.setLogConfig({ consoleEnabled:false,fileEnabled:false,level:4 });
         await engine.init({ timeout:30000,wasmUrl:runtime+'facebetter-core.js',assetBaseUrl:runtime,onProgress:({percent})=>progress.push(percent) });
         engine.setCallbacks({ onEngineEvent(code,message) { events.push({code,message}); } });
         const output=engine.processImage(new ImageData(160,120),160,120,sdk.FrameType.Video,sdk.MirrorMode.None);
-        processed=output?{width:output.width,height:output.height}:null;
+        returnedFrame=output?{width:output.width,height:output.height}:null;
       } catch (problem) { error={name:problem.name,code:problem.code,message:problem.message}; }
       const initialized=engine.initialized;
       engine.destroy();
-      return {webgl,initialized,processed,error,events,progressReached100:progress.some(value=>value>=100)};
+      return {webgl,initialized,returnedFrame,error,events,progressReached100:progress.some(value=>value>=100)};
     }, origin+'/runtime/2.2.1/');
     for (const asset of Object.keys(files)) assert.ok(requested.includes(asset), `${asset} was loaded from the pinned local runtime`);
     assert.equal(result.webgl,true,'Browser WebGL is available');
     assert.equal(result.progressReached100,true,'WASM and resource downloads finished');
-    assert.ok(result.initialized || result.error && /license|auth|engine/i.test(result.error.message), JSON.stringify(result));
+    assert.equal(result.error,null,'Pinned 2.2.1 must load and return frames; generic engine errors are not accepted as license refusals');
+    assert.equal(result.initialized,true,'The pinned invalid-token fixture initializes a pass-through engine');
+    assert.deepEqual(result.returnedFrame,{width:160,height:120},'Frame transport is verified even though visual effects are not authorized');
     if (result.initialized) {
       await page.addScriptTag({ content: `const DEMO=false, S={bsel:{Beauty:1,Makeup:0,Sticker:0,Filters:0,'Image quality':0}}, BEAUTY={Beauty:Array(6),Makeup:Array(6),Sticker:Array(6),Filters:Array(6),'Image quality':Array(6)};
         const Native={handlers:{},on(type,handler){(this.handlers[type]||=[]).push(handler)},send(type,data){if(type==='beauty.auth')this.handlers[type].forEach(handler=>handler({requestId:data.requestId,licenseToken:'invalid-facebetter-runtime-smoke-token'}))}};
@@ -80,7 +83,7 @@ const files = {
         try {
           let handle=await ZimiBeauty.create(source);
           await handle?.engine.setLogConfig({consoleEnabled:true,fileEnabled:false,level:0});
-          const result={handle:!!handle,state:ZimiBeauty.getState(),outputLive:!!handle&&handle.stream.getVideoTracks()[0].readyState==='live',presets:[],failures:[]};
+          const result={handle:!!handle,state:ZimiBeauty.getState(),outputLive:!!handle&&handle.stream.getVideoTracks()[0].readyState==='live',compatiblePresets:[],failures:[]};
           for(const tab of Object.keys(BEAUTY))for(let index=0;index<6;index++){
             S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,'Image quality':0};S.bsel[tab]=index;
             // Keep smoothing on for zero-index cases so every clearing setter
@@ -92,8 +95,8 @@ const files = {
             else {
               if(handle!==next)handle?.destroy();handle=next;
               const output=handle.engine.processImage(new ImageData(160,120),160,120,Facebetter.FrameType.Video,Facebetter.MirrorMode.None);
-              if(!output||output.width!==160||output.height!==120)result.failures.push({tab,index,error:'No processed ImageData'});
-              result.presets.push(tab+':'+index);
+              if(!output||output.width!==160||output.height!==120)result.failures.push({tab,index,error:'No returned ImageData'});
+              result.compatiblePresets.push(tab+':'+index);
             }
           }
           handle?.destroy();result.rawSurvivesDestroy=source.getVideoTracks()[0].readyState==='live';
@@ -101,18 +104,19 @@ const files = {
         } finally {clearInterval(timer);source.getTracks().forEach(track=>track.stop());ZimiBeauty.stop()}
       });
       assert.equal(integration.handle,true,JSON.stringify(integration));
+      // This is the controller's reported state, not proof of a valid license.
       assert.equal(integration.state.status,'ready');
       assert.equal(integration.outputLive,true);
       assert.equal(integration.rawSurvivesDestroy,true);
-      const restricted=integration.failures.filter(failure=>failure.tab==='Sticker'&&failure.index>0&&failure.sdkError?.method==='setSticker'&&failure.sdkError.code===-5);
-      assert.equal(restricted.length,5,'The intentionally invalid token receives Free-plan sticker restrictions');
-      assert.ok(logs.some(message=>/Sticker requires Pro\+ \(plan=free\)/.test(message)),'Real SDK logging identifies the sticker refusal as a subscription gate');
-      assert.deepEqual(integration.failures.filter(failure=>!restricted.includes(failure)),[],'Every other controller setter, enum preset and filter .fbd processes successfully');
-      assert.equal(integration.presets.length,25);
-      result.controller={status:integration.state.status,outputLive:integration.outputLive,rawSurvivesDestroy:integration.rawSurvivesDestroy,processedPresets:integration.presets.length,freePlanRestrictedStickers:restricted.length};
+      const invalidTokenRefusals=integration.failures.filter(failure=>failure.tab==='Sticker'&&failure.index>0&&failure.sdkError?.method==='setSticker'&&failure.sdkError.code===-5);
+      assert.equal(invalidTokenRefusals.length,5,'The intentionally invalid token refuses these five sticker selections');
+      assert.ok(logs.some(message=>/Sticker requires Pro\+ \(plan=free\)/.test(message)),'The SDK reports this refusal for the invalid-token fixture; valid Free licenses may have different entitlements');
+      assert.deepEqual(integration.failures.filter(failure=>!invalidTokenRefusals.includes(failure)),[],'Every other setter/enum/resource call is accepted and returns correctly sized ImageData; visual changes are not asserted');
+      assert.equal(integration.compatiblePresets.length,25);
+      result.controller={reportedStatus:integration.state.status,outputLive:integration.outputLive,rawSurvivesDestroy:integration.rawSurvivesDestroy,apiCompatiblePresets:integration.compatiblePresets.length,invalidTokenStickerRefusals:invalidTokenRefusals.length};
     }
     assert.deepEqual(errors,[]);
     assert.deepEqual(blocked,[],'Runtime startup needs no external requests or credential service');
-    console.log('Facebetter actual runtime smoke:',JSON.stringify(result));
+    console.log('Facebetter API/frame-transport compatibility only (authorization and visual effects NOT verified):',JSON.stringify({authorizationVerified:false,visualEffectsVerified:false,...result}));
   } finally { if(browser)await browser.close();server.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -27,6 +27,7 @@
     "test:native-updater": "node scripts/test-native-apk-updater.cjs",
     "test:media": "node scripts/test-api-adapter.cjs && node scripts/test-profile-media.cjs",
     "test:facebetter": "npm run build:web && node scripts/test-facebetter-beauty.cjs && node scripts/test-facebetter-catalog.cjs && node scripts/test-facebetter-races.cjs && node scripts/test-facebetter-ui.cjs && node scripts/test-facebetter-media.cjs && node scripts/test-facebetter-runtime.cjs && node --test --test-name-pattern=Facebetter scripts/test-auth-bridge.cjs && node scripts/test-api-adapter.cjs",
+    "test:facebetter:visual": "node scripts/test-facebetter-visual.cjs",
     "test:auth": "node scripts/test-api-client.cjs && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs",
     "test:render-security": "node scripts/test-render-security.cjs",
     "test:coins": "npm run build:web && node scripts/test-coins.cjs",
