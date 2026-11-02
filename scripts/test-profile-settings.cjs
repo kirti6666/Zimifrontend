@@ -288,9 +288,9 @@ async function run() {
     assert.equal(await page.evaluate(() => S.v), 'transactions');
     await readyProfile();
     await row('Help & support').click();
-    assert.equal(await page.evaluate(() => S.v), 'support', 'Settings opens the authenticated support center');
-    await page.getByRole('heading', { name: 'Help & support', exact: true }).waitFor();
-    assert.ok(await sentCount(page, 'support.load') > 0, 'The support page requests the account conversation list');
+    assert.equal(await page.evaluate(() => S.v), 'official-chat', 'Settings opens the verified official conversation');
+    await page.getByRole('heading', { name: /^BinzoLive/ }).waitFor();
+    assert.ok(await sentCount(page, 'official.load') > 0, 'The official thread requests private account history');
     await readyProfile();
     await openMenu('Privacy & Terms');
     await row('Community Guidelines').click(); await dialog('Community Guidelines').waitFor();
@@ -304,8 +304,8 @@ async function run() {
     }
     await navigate(page, 'home');
     await receive(page, 'push.opened');
-    assert.equal(await page.evaluate(() => S.v), 'notifications');
-    assert.ok(await sentCount(page, 'notifications.load') > 0, 'Opening from a push loads the current inbox');
+    assert.equal(await page.evaluate(() => S.v), 'official-chat');
+    assert.ok(await sentCount(page, 'official.load') > 0, 'An inbox push opens the verified official conversation');
     await readyProfile();
     console.log('PASS profile: capability-aware notifications, blocked account loading/unblock recovery, real privacy saves, gift history and support dialogs');
 

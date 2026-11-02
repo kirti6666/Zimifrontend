@@ -69,6 +69,7 @@
     "test:incoming-calls": "npm run build:web && node --test scripts/test-incoming-call-actions.cjs scripts/test-incoming-call-screen.cjs && node scripts/test-incoming-call-web.cjs && node scripts/test-api-adapter.cjs && node scripts/test-native-push.cjs",
     "test:dummy-calls": "npm run build:web && node scripts/test-dummy-call-ui.cjs",
     "test:support": "npm run build:web && node scripts/test-support-bridge.cjs && node scripts/test-api-adapter.cjs && node --test --test-name-pattern=support scripts/test-auth-bridge.cjs && node scripts/test-support-ui.cjs",
+    "test:official-chat": "npm run build:web && node scripts/test-official-bridge.cjs && node scripts/test-support-ui.cjs && node scripts/test-api-adapter.cjs && node --test --test-name-pattern=\"official|support\" scripts/test-auth-bridge.cjs",
     "test:offline": "npm run build:web && node scripts/test-offline.cjs",
     "test:chats": "npm run build:web && node scripts/test-chats.cjs",
     "test:navigation": "npm run build:web && node scripts/test-navigation.cjs",

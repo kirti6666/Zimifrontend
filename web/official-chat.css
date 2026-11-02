@@ -1,0 +1,17 @@
+/* Use the same row, bubble and composer geometry as personal conversations. */
+.zo-avatar>img{display:block;width:100%;height:100%;object-fit:cover}
+.zo-row .zc-name{display:flex;align-items:center;gap:5px}
+.zo-verified{display:inline-flex;flex:none;color:var(--accent-ink);vertical-align:middle}
+.zo-thread .zc-thread-person{cursor:default}
+.zo-thread .zc-thread-title h1{display:flex;align-items:center;gap:6px;font-size:17px;font-weight:650;letter-spacing:-.3px;line-height:1.2}
+.zo-preferences{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;color:var(--ink)}
+.zo-message .bub{white-space:pre-wrap;overflow-wrap:anywhere}
+.zo-message .bub>strong{display:block;font-weight:650;margin-bottom:5px}
+.zo-send-error{display:flex;align-items:center;gap:8px;max-width:100%;font-size:12px;color:var(--muted)}
+.zo-send-error>span{overflow-wrap:anywhere}
+.zo-send-error>button,.zo-read-error>button,.zo-earlier{min-height:44px;padding:8px 12px;color:var(--accent-ink);font-size:12px;font-weight:600;flex:none}
+.zo-earlier{align-self:center}
+.zo-read-error{padding:0 var(--zc-gutter);font-size:12px;color:var(--muted)}
+.zo-composer textarea{display:block;min-width:0;flex:1;width:100%;min-height:44px;max-height:128px;padding:12px 8px;resize:none;border:0;background:transparent;color:var(--ink);font:inherit;line-height:20px;outline:none}
+.zo-composer .zc-composer-send:disabled{opacity:.45}
+.zo-composer .zc-composer-field{align-items:flex-end;padding-left:8px}

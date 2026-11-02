@@ -159,6 +159,59 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 
+const officialFixture = () => {
+  const identity={id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
+  const message={id:'support:507f1f77bcf86cd799439041',kind:'support',senderType:'user',body:'Please help',createdAt:'2026-11-02T10:00:00Z',read:true,ticketId:'507f1f77bcf86cd799439042',sequence:1,clientMessageId:'official-native-01'};
+  return {data:{...identity,messages:[],total:0,hasMore:false,before:null,unreadCount:1},receipt:{message,official:{...identity,unread:1,lastMessage:message}}};
+};
+async function officialHarness(){
+  const h=harness(),fixture=officialFixture(),self='507f1f77bcf86cd799439031';
+  h.overrides.me=()=>({...account(self),requiresOnboarding:false});
+  h.overrides.officialChat=()=>fixture.data;h.overrides.sendOfficialMessage=()=>fixture.receipt;h.overrides.readOfficialChat=()=>({read:true,official:{...fixture.receipt.official,unread:0}});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();return{h,fixture,self};
+}
+test('official native actions use dedicated API routes and correlate coalesced support receipts',async()=>{
+  const {h,fixture}=await officialHarness();
+  try{
+    h.bridge.handle({type:'official.activity',data:{active:true}});h.bridge.handle({type:'official.load',data:{requestId:81}});await settle();
+    assert.equal(h.find('data.official').at(-1).data.requestId,81);assert.equal(h.find('data.official').at(-1).data.verified,true);
+    const pending=deferred();h.overrides.sendOfficialMessage=()=>pending.promise;
+    const message={type:'official.send',data:{body:fixture.receipt.message.body,clientMessageId:fixture.receipt.message.clientMessageId,requestId:82}};
+    h.bridge.handle(message);h.bridge.handle({...message,data:{...message.data,requestId:83}});await settle();assert.equal(h.count('sendOfficialMessage'),1);
+    pending.resolve(fixture.receipt);await settle();assert.deepEqual(h.find('official.sent').map(event=>event.data.requestId),[82,83]);
+    h.bridge.handle({type:'official.read',data:{ids:[fixture.receipt.message.id],requestId:84}});await settle();assert.equal(h.find('official.saved').at(-1).data.requestId,84);
+    assert.equal(h.count('thread'),0);assert.equal(h.count('sendMessage'),0);assert.equal(h.count('startCall'),0);assert.equal(h.count('acceptCall'),0);assert.equal(h.count('sendGift'),0,'Official support never acquires person-chat or spending authority');
+  }finally{h.bridge.close();}
+});
+test('official live invalidation, reconnect and foreground revalidate the active private conversation',async()=>{
+  const {h}=await officialHarness();try{
+    h.bridge.handle({type:'official.activity',data:{active:true}});const initial=h.count('officialChat');
+    h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),initial+1);assert.equal(h.find('data.official').at(-1).data.background,true);assert.ok(h.find('notifications.changed').length>0);
+    h.live.at(-1).onEvent({type:'realtime.status',data:{connected:true}});await settle();assert.equal(h.count('officialChat'),initial+2);
+    h.activities.forEach(listener=>listener('background'));await settle();const reads=h.count('officialChat');h.live.at(-1).onEvent({type:'official.changed',data:{}});await settle();assert.equal(h.count('officialChat'),reads);
+    h.activities.forEach(listener=>listener('active'));await settle();assert.equal(h.count('officialChat'),reads+1);
+    h.bridge.handle({type:'official.activity',data:{active:false}});const closed=h.count('officialChat');h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),closed);
+  }finally{h.bridge.close();}
+});
+test('official late content and send errors are retired with native account or document changes',async()=>{
+  for(const change of ['account','document'])for(const operation of ['load','send']){
+    const {h,fixture}=await officialHarness(),pending=deferred();try{
+      h.overrides[operation==='load'?'officialChat':'sendOfficialMessage']=()=>pending.promise;
+      h.bridge.handle(operation==='load'?{type:'official.load',data:{requestId:91}}:{type:'official.send',data:{body:fixture.receipt.message.body,clientMessageId:fixture.receipt.message.clientMessageId,requestId:91}});await settle();
+      if(change==='account')await h.session.setSessionTokens(tokenPair('bob'));else h.bridge.documentLoading();
+      if(operation==='load')pending.resolve(fixture.data);else pending.reject(new h.ApiError('Retired private support failure',503));await settle();
+      assert.equal(h.find('data.official').length,0);assert.equal(h.find('official.sent').length,0);assert.equal(h.find('official.error').length,0);
+    }finally{h.bridge.close();}
+  }
+});
+test('official push hints check the recipient and never resolve legacy support as a person or accept a call',async()=>{
+  const {h,self}=await officialHarness();try{
+    h.push.open({targetType:'support',targetId:'507f1f77bcf86cd799439042',recipientId:'507f1f77bcf86cd799439099'});await settle();assert.equal(h.find('official.open').length,0);
+    for(const targetType of ['support','official','inbox']){h.push.open({targetType,targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();}
+    assert.equal(h.find('official.open').length,3);assert.equal(h.count('publicProfile'),0);assert.equal(h.count('supportTicket'),0);assert.equal(h.count('notificationCall'),0);assert.equal(h.count('acceptCall'),0);
+  }finally{h.bridge.close();}
+});
+
 test('Facebetter auth validates requests and returns only the correlated license token', async () => {
   const h = harness(), licenseToken = '{"token":"signed-facebetter-license"}';
   for (const data of [{}, { requestId: 0 }, { requestId: -1 }, { requestId: 1.5 }, { requestId: '1' }, { requestId: 1, appKey: 'forged' },
@@ -3780,27 +3833,27 @@ test('denied permission is reported, retried silently in the foreground and can 
   h.bridge.close();
 });
 
-test('a tapped notification opens the inbox once a signed-in, onboarded screen can show it', async () => {
+test('a tapped notification opens the verified official conversation once a signed-in, onboarded screen can show it', async () => {
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
   await h.session.setSessionTokens(tokenPair());
   h.push.open(); await settle();
-  assert.equal(h.find('push.opened').length, 0, 'The app launched from a notification waits for its document');
+  assert.equal(h.find('official.open').length, 0, 'The app launched from a notification waits for its document');
   h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
-  assert.equal(h.find('push.opened').length, 1);
-  assert.ok(h.posts.findIndex(post => post.type === 'session') < h.posts.findIndex(post => post.type === 'push.opened'));
+  assert.equal(h.find('official.open').length, 1);
+  assert.ok(h.posts.findIndex(post => post.type === 'session') < h.posts.findIndex(post => post.type === 'official.open'));
   h.push.open(); await settle();
-  assert.equal(h.find('push.opened').length, 2);
+  assert.equal(h.find('official.open').length, 2);
 
   h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
   h.push.open(); await settle();
-  assert.equal(h.find('push.opened').length, 2, 'Signed out: nothing opens');
+  assert.equal(h.find('official.open').length, 2, 'Signed out: nothing opens');
   h.overrides.verifyOtp = () => ({ ...account(), tokens: tokenPair(), isNew: true });
   h.bridge.handle(verifyMessage()); await settle();
-  assert.equal(h.find('push.opened').length, 2, 'Onboarding is never interrupted');
+  assert.equal(h.find('official.open').length, 2, 'Onboarding is never interrupted');
   h.overrides.saveProfile = () => ({ ...account(), requiresOnboarding: false });
   h.bridge.handle({ type: 'profile.save', data: { name: 'Alice', onboarding: true } }); await settle();
-  assert.equal(h.find('push.opened').length, 3);
+  assert.equal(h.find('official.open').length, 3);
   h.bridge.close();
 });
 

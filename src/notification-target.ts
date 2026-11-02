@@ -1,5 +1,5 @@
 import { NOTIFICATION_CATEGORIES, type NotificationCategory } from "./notification-preferences";
-export const NOTIFICATION_TARGETS = ["inbox", "thread", "call", "post", "creator", "host", "appUpdate"] as const;
+export const NOTIFICATION_TARGETS = ["inbox", "thread", "call", "post", "creator", "host", "appUpdate", "official", "support"] as const;
 export interface NotificationTarget {
   notificationId?: string;
   category?: NotificationCategory;

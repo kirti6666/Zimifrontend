@@ -15,6 +15,7 @@ import { callTargetsFrom } from "./adapters";
 import type { CallTargetsInput } from "./types";
 import type { SupportCategory, SupportStatus } from "./types";
 import { supportConversationFrom, supportReceiptFrom, supportTicketFrom, supportTicketsFrom } from "./support";
+import { officialCursor, officialMessageId, officialReceiptFrom, officialReadFrom } from "./official";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -295,8 +296,21 @@ export const api = {
   async notifications(query?: NotificationsQuery) { return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100")); },
   async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
-  async officialChat(page = 1) { return officialChatFrom(await request("GET", `/chats/official?${queryString({ page, limit: 20 })}`)); },
-  async readOfficialChat(input: OfficialReadPatch) { return notificationReadFrom(await request("POST", "/chats/official/read", input)); },
+  async officialChat(before?: string) {
+    if (before !== undefined && !officialCursor(before)) throw new ApiError("Refresh the BinzoLive conversation and try again.", 400);
+    const version = getSessionVersion(), data = await request("GET", `/chats/official/thread?${queryString({ before, limit: 50 })}`);
+    ensureSession(version);return officialChatFrom(data);
+  },
+  async sendOfficialMessage(body: string, clientMessageId: string) {
+    if (typeof body !== "string" || !body.trim() || body.length > 4000 || !/^[A-Za-z0-9_-]{8,100}$/.test(clientMessageId)) throw new ApiError("Enter a message and try again.", 400);
+    const version = getSessionVersion(), data = await request("POST", "/chats/official/messages", { body, clientMessageId });
+    ensureSession(version);return officialReceiptFrom(data, clientMessageId);
+  },
+  async readOfficialChat(input: OfficialReadPatch) {
+    if (!(input.all === true && input.ids === undefined) && !(input.all === undefined && Array.isArray(input.ids) && input.ids.length > 0 && input.ids.length <= 100 && input.ids.every(officialMessageId) && new Set(input.ids).size === input.ids.length)) throw new ApiError("Open the BinzoLive conversation to mark messages read.", 400);
+    const version = getSessionVersion(), data = await request("POST", "/chats/official/thread/read", input.all === true ? { all: true } : { ids: input.ids });
+    ensureSession(version);return officialReadFrom(data);
+  },
   registerPushDevice: (token: string, notificationProtocol?: "binzo.push.v1") => {
     const version = Number(getAppUpdateAuth().appVersionCode);
     return request<void>("POST", "/notifications/devices", { token, platform: "android", ...(notificationProtocol === "binzo.push.v1" ? { notificationProtocol } : {}), ...(Number.isSafeInteger(version) && version > 0 ? { appVersionCode: version } : {}) });

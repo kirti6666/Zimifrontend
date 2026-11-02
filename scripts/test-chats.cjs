@@ -88,7 +88,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     const lastSent = type => page.evaluate(value => window.__sent.filter(message => message.type === value).at(-1)?.data, type);
     const sentCount = type => page.evaluate(value => window.__sent.filter(message => message.type === value).length, type);
     const navigate = view => page.evaluate(value => go(value), view);
-    const rows = () => page.locator('button.zc-row');
+    const rows = () => page.locator('button.zc-row:not([data-official-chat])');
     const names = () => rows().evaluateAll(nodes => nodes.map(node => node.innerText));
     const tab = name => page.getByRole('tab', { name: new RegExp(`^${name}(?:\\s|\\(|$)`) });
     const selectTab = async name => { await tab(name).click(); assert.equal(await tab(name).getAttribute('aria-selected'), 'true'); };
