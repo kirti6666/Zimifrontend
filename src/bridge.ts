@@ -44,7 +44,7 @@ export type WebMessage =
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
   | { type: "catalog.load" | "rtc.config"; data: Record<string, never> }
-  | { type: "beauty.auth"; data: { requestId: number } }
+  | { type: "beauty.auth"; data: { requestId: number; userAgent?: string } }
   | { type: "notifications.load"; data: NotificationsQuery & { requestId?: number } }
   | { type: "notifications.read"; data: { ids: string[]; requestId?: number } }
   | { type: "notifications.unread"; data: { ids: string[]; requestId: number } }
@@ -1302,7 +1302,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           return;
         }
         try {
-          const data = await api.beautyAuth();
+          const data = await api.beautyAuth(msg.data.userAgent);
           if (applicable() && sessionAvailable) emit({ type: "beauty.auth", data: { ...data, requestId } });
         } catch (error) {
           if (applicable()) operationError(error, msg.type, { requestId });

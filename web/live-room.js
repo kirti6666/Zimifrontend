@@ -163,9 +163,9 @@ function zrHostReferenceCall(p,voice){
     </div>${zrGiftCelebration()}${zrSheet()}${typeof hsSheet==='function'?hsSheet():''}${hcCallExtras()}</section>`;
 }
 function zrHostOptions(){
-  const voice=!!zrPerson()?.voice,effect=typeof HostStudio!=='undefined'?HostStudio.previewEffect:'original';
+  const voice=!!zrPerson()?.voice,effectsOn=!!window.ZimiBeauty?.isEnabled();
   return `<div class="zr-options-backdrop" onclick="if(event.target===this)zrClose()"><section class="zr-host-options" role="dialog" aria-modal="true" aria-label="Call options">
-    ${!voice?`<button type="button" onclick="Room.sheet='';hsOpenSheet('appearance')" aria-label="Beauty and filters">${hi('star',17)}<span>Beauty &amp; filters</span><em>${effect==='original'?'Off':effect[0].toUpperCase()+effect.slice(1)}</em></button>`:''}
+    ${!voice?`<button type="button" onclick="Room.sheet='';hsOpenSheet('appearance')" aria-label="Beauty and filters">${hi('star',17)}<span>Beauty &amp; filters</span><em>${effectsOn?'On':'Off'}</em></button>`:''}
     <button type="button" onclick="zrMic()" aria-label="${S.mic?'Mute microphone':'Unmute microphone'}" aria-pressed="${!S.mic}">${hi(S.mic?'mic':'micoff',17)}<span>${S.mic?'Mute':'Unmute'}</span><em class="${S.mic?'is-on':'is-off'}">${S.mic?'Mic on':'Muted'}</em></button>
     ${!voice?`<button type="button" onclick="zrCamera()" aria-label="${S.cam?'Turn camera off':'Turn camera on'}" aria-pressed="${!S.cam}">${hi(S.cam?'vid':'camoff',17)}<span>${S.cam?'Turn camera off':'Turn camera on'}</span><em class="${S.cam?'is-on':'is-off'}">${S.cam?'On':'Off'}</em></button>`:''}
     ${voice?`<button type="button" onclick="zrSound()" aria-label="${Room.playbackMuted?'Unmute caller':'Mute caller'}">${hi(Room.playbackMuted?'micoff':'mic',17)}<span>${Room.playbackMuted?'Unmute caller':'Mute caller'}</span><em class="${Room.playbackMuted?'is-off':'is-on'}">${Room.playbackMuted?'Muted':'On'}</em></button>`:''}
@@ -194,7 +194,10 @@ function zrSheet(){
   if(sheet==='host-options')return zrHostOptions();
   if(sheet==='call-controls'){
     const voice=S.v==='voice'||!!zrPerson()?.voice;
-    title='Call controls';content=`<p class="zr-sheet-note">Just the two of you. Manage your microphone${voice?'':' and camera'} during this call.</p><div class="zr-call-controls">${zrTool(S.mic?'mic':'micoff',S.mic?'Mute':'Unmute',"zrMic()",'',!S.mic)}${!voice?zrTool(camOn()?'vid':'camoff',camOn()?'Camera off':'Camera on',"zrCamera()",'',!camOn())+zrTool('flip','Flip camera',"zrFlip()"):''}${zrTool(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Sound on':'Sound off',"zrSound()",'',Room.playbackMuted)}</div><button class="zr-wide zr-danger" onclick="zrExit()">End call</button>`;
+    title='Call controls';content=`<p class="zr-sheet-note">Just the two of you. Manage your microphone${voice?'':' and camera'} during this call.</p><div class="zr-call-controls">${zrTool(S.mic?'mic':'micoff',S.mic?'Mute':'Unmute',"zrMic()",'',!S.mic)}${!voice?zrTool(camOn()?'vid':'camoff',camOn()?'Camera off':'Camera on',"zrCamera()",'',!camOn())+zrTool('flip','Flip camera',"zrFlip()"):''}${zrTool(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Sound on':'Sound off',"zrSound()",'',Room.playbackMuted)}</div>${!voice?`<button type="button" class="zr-wide zr-secondary" onclick="zrOpen('beauty')" aria-label="Beauty and filters">${hi('star',18)} Beauty &amp; filters</button>`:''}<button class="zr-wide zr-danger" onclick="zrExit()">End call</button>`;
+  }else if(sheet==='beauty'){
+    if(!zrIsCall()||S.v==='voice'||zrPerson()?.voice)return '';
+    title='Beauty & filters';content=window.ZimiBeauty?.picker()||'<p class="zr-sheet-note" role="status">Beauty effects are unavailable.</p>';
   }else if(sheet==='queue'){
     title=host?'1-on-1 call requests':'Your private call';
     content=`<p class="zr-sheet-note">${host?'Accepting a request ends your public live and starts a private video call.':'Your host will accept when they’re ready. The public live ends when the private call starts.'} ${host?'The current coin rate applies.':zrPrivateCallPrice()==='Free'?'This call is free.':zrPrivateCallPrice()+', with a one-minute minimum.'}</p>`;

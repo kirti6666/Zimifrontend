@@ -303,8 +303,8 @@ export const api = {
   },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
-  async beautyAuth() {
-    const data = record(await request("POST", "/facebetter/auth"));
+  async beautyAuth(userAgent?: string) {
+    const data = record(await request("POST", "/facebetter/auth", userAgent === undefined ? undefined : { userAgent }));
     if (typeof data.licenseToken !== "string" || !data.licenseToken.trim() || data.licenseToken.length > 128 * 1024) {
       throw new ApiError("Beauty effects could not be started. Please try again.", 502);
     }

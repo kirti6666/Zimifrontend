@@ -1,13 +1,12 @@
 /* Host targets are personal session preferences. Progress comes only from accepted
    gift receipts; reward amounts and eligibility come from the authenticated Home feed. */
 const HostStudio = {
-  sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original',
+  sheet: '', goal: 1000000, giftId: '', giftCount: 10,
   receivedCoins: 0, received: Object.create(null), giftNames: Object.create(null),
   receipts: new Set(), lastView: '', accountId: '', focus: '', opener: null, mounted: null, openedAt: 0
 };
 const HS_GOALS = [[100000, '100K'], [500000, '500K'], [1000000, '1M'], [5000000, '5M'], [10000000, '10M']];
 const HS_COUNTS = [5, 10, 20, 50];
-const HS_EFFECTS = [['original', 'Original'], ['warm', 'Warm'], ['soft', 'Soft'], ['mono', 'Mono']];
 
 function hsAllowed() { return ['setup', 'hcall'].includes(S.v) && isApprovedHost(); }
 function hsCatalog() { return Array.isArray(Home.gifts) ? Home.gifts : []; }
@@ -31,6 +30,7 @@ function hsReloadCatalog() {
 }
 function hsOpenSheet(kind) {
   if (!['mission', 'gift-target', 'appearance', 'card-image'].includes(kind) || !hsAllowed()) return;
+  if (kind === 'appearance' && S.v === 'hcall' && S.caller?.voice) return;
   const active = document.activeElement;
   HostStudio.opener = active?.getAttribute('aria-label') || active?.getAttribute('data-hs-focus') || null;
   HostStudio.focus = 'close'; HostStudio.sheet = kind; HostStudio.openedAt = Date.now();
@@ -71,11 +71,6 @@ function hsSetGiftCount(value) {
   if (!hsAllowed() || !HS_COUNTS.includes(value)) return;
   HostStudio.giftCount = value; HostStudio.focus = `count-${value}`; hsPaintSheet();
 }
-function hsSetEffect(value) {
-  if (!hsAllowed() || !HS_EFFECTS.some(([key]) => key === value)) return;
-  HostStudio.previewEffect = value; HostStudio.focus = `effect-${value}`;
-  document.documentElement.dataset.hostPreviewEffect = value; hsPaintSheet();
-}
 function hsCatalogPlaceholder(rail = false) {
   if (!DEMO && contentPending('catalog')) return `<div class="hs-gift-loading ${rail ? 'hs-rail-loading' : ''}" role="status" aria-label="Loading gift targets" aria-busy="true">${Array.from({ length: rail ? 7 : 6 }, () => `<span aria-hidden="true">${skeletonLine('30px', 30)}${skeletonLine('36px', 8)}</span>`).join('')}</div>`;
   const error = !DEMO && ContentLoading.catalog.error;
@@ -91,6 +86,7 @@ function hsTaskRows() {
 function hsSheet() {
   const kind = HostStudio.sheet;
   if (!kind || !hsAllowed()) return '';
+  if (kind === 'appearance' && S.v === 'hcall' && S.caller?.voice) return '';
   let title = '', subtitle = '', body = '';
   if (kind === 'mission') {
     title = 'Mission'; subtitle = 'Your target rises as coins come in';
@@ -105,8 +101,8 @@ function hsSheet() {
     const src=imageSrc(HostStudio.cardDraft||S.user?.creatorCardUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
     body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:hi('user',48)}</div><label class="hs-card-choose">${zi('camera',18)} Choose image<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label>${HostStudio.cardPreparing?'<p role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}<button type="button" class="hc-primary" onclick="hsSaveCard()" ${!HostStudio.cardDraft||busy?'disabled':''}>${HostStudio.cardSaving?'Saving…':'Save card image'}</button>`;
   } else {
-    title = 'Beauty & filters'; subtitle = 'Choose the look of your camera preview';
-    body = `<div class="hs-effects" role="group" aria-label="Camera preview filter">${HS_EFFECTS.map(([key, label]) => `<button type="button" class="${HostStudio.previewEffect === key ? 'is-on' : ''}" aria-pressed="${HostStudio.previewEffect === key}" data-hs-focus="effect-${key}" onclick="hsSetEffect('${key}')"><span class="hs-effect-swatch hs-effect-${key}">${hi('star', 22)}</span><span>${label}</span></button>`).join('')}</div><p class="hs-preview-only">${hi('eye', 14)} Preview only</p><p class="hs-sheet-note">These filters change your own preview. Your caller sees the original camera video.</p>`;
+    title = 'Beauty & filters'; subtitle = 'Changes apply to your camera and video calls';
+    body = window.ZimiBeauty?.picker() || '<p class="hs-sheet-note" role="status">Beauty effects are unavailable.</p>';
   }
   /* Redraws while the sheet is open resume its entrance instead of replaying it. */
   const age = Math.min(250, Math.max(0, Date.now() - HostStudio.openedAt));
@@ -173,8 +169,7 @@ function hsResetProgress() {
   HostStudio.receivedCoins = 0; HostStudio.received = Object.create(null); HostStudio.giftNames = Object.create(null); HostStudio.receipts = new Set();
 }
 function hsReset() {
-  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, previewEffect: 'original', focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardPrepareId:null,cardError:'',cardRequestId:null });
-  delete document.documentElement.dataset.hostPreviewEffect;
+  hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardPrepareId:null,cardError:'',cardRequestId:null });
 }
 function hsAfter() {
   const sheet = document.querySelector('.hs-sheet');

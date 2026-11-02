@@ -8,6 +8,7 @@ const { once } = require('node:events');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const wrapper = fs.readFileSync(path.join(root, 'node_modules/facebetter/dist/facebetter.js'), 'utf8');
+const catalog = fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
 const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
   .replace(/__FB_EFFECT_[a-z0-9_]+__/g, Buffer.from([70, 66, 68, 1]).toString('base64'));
 
@@ -28,6 +29,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
       await page.goto(`http://127.0.0.1:${server.address().port}`);
       await page.evaluate(saved => { localStorage.clear(); if (saved) localStorage.setItem('zimi.beauty.v1', JSON.stringify(saved)); }, saved);
       await page.addScriptTag({ content: wrapper });
+      await page.addScriptTag({ content: catalog });
       await page.addScriptTag({ content: `
         const DEMO=false;
         const BEAUTY={Beauty:Array(6),Makeup:Array(6),Sticker:Array(6),Filters:Array(6),'Image quality':Array(6)};
@@ -174,12 +176,12 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     await ui.evaluate(()=>{window.testFx=document.createElement('div');document.body.append(testFx);window.r=()=>{testFx.innerHTML=fxSheet()};S.btab='Beauty';S.bsel.Beauty=1;S.sh='fx';r()});
     const sheet=ui.locator('#test-fx');
     await ui.evaluate(()=>testFx.id='test-fx');
-    const slider=sheet.getByRole('slider',{name:'Smooth strength',exact:true});
+    const slider=sheet.getByRole('slider',{name:'Smoothing',exact:true});
     await slider.evaluate(el=>{el.value='27';el.dispatchEvent(new Event('input',{bubbles:true}))});
-    assert.equal(await ui.evaluate(()=>ZimiBeauty.strength('Beauty',1)),27,'The live strength slider updates the processor setting');
+    assert.equal(await ui.evaluate(()=>ZimiBeauty.getParams().smoothing),.27,'The live strength slider updates the processor setting');
     await ui.evaluate(()=>r());assert.equal(await slider.inputValue(),'27','Redrawing the sheet preserves the strength');
-    await sheet.getByRole('button',{name:'Reset',exact:true}).click();
-    assert.equal(await sheet.getByRole('slider').count(),0,'Reset clears selected effects and hides the adjustment');
+    await sheet.getByRole('button',{name:'Reset all',exact:true}).click();
+    assert.equal(await slider.inputValue(),'0','Reset clears selected effects');
     assert.equal(await ui.evaluate(()=>Object.values(S.bsel).every(value=>value===0)),true);
     await ui.evaluate(()=>ZimiBeauty.unavailable());
     assert.equal(await sheet.getByRole('button',{name:'Retry effects',exact:true}).isVisible(),true,'Asynchronous errors reveal Retry without reopening the sheet');

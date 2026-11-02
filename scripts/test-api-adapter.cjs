@@ -70,8 +70,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const licenseToken = JSON.stringify({ token: 'signed-facebetter-license' });
-  expect('POST', '/facebetter/auth', { licenseToken });
+  expect('POST', '/facebetter/auth', { licenseToken }, body => assert.equal(body, undefined, 'Older callers omit the optional WebView user agent'));
   assert.deepEqual(plain(await api.beautyAuth()), { licenseToken }, 'Facebetter receives the complete license response text');
+  const webviewUserAgent = 'Mozilla/5.0 (Linux; Android 15; wv) AppleWebKit/537.36 Version/4.0 Chrome/130.0.0.0 Mobile Safari/537.36';
+  expect('POST', '/facebetter/auth', { licenseToken }, body => assert.deepEqual(plain(body), { userAgent: webviewUserAgent }));
+  assert.deepEqual(plain(await api.beautyAuth(webviewUserAgent)), { licenseToken }, 'Facebetter authorization uses the camera WebView user agent');
   for (const licenseToken of [undefined, '', '   ', 123, 'x'.repeat(128 * 1024 + 1)]) {
     expect('POST', '/facebetter/auth', { licenseToken });
     await assert.rejects(api.beautyAuth(), /Beauty effects could not be started/);

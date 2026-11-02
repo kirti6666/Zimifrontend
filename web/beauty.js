@@ -2,7 +2,7 @@
    the server; the native bridge supplies a short-lived license token only. */
 (function () {
   'use strict';
-  const STORAGE = 'zimi.beauty.v1';
+  const STORAGE = 'zimi.beauty.v2', catalog = window.ZimiBeautyCatalog;
   const FILTERS = ['', 'natural', 'milk_tea', 'rose', 'japanese', 'vivid'];
   const STICKERS = ['', 'fox', 'black_glass', 'kiss2', 'mustache', 'fan_club'];
   const EFFECTS = {
@@ -11,14 +11,56 @@
     fox: '__FB_EFFECT_fox__', black_glass: '__FB_EFFECT_black_glass__',
     kiss2: '__FB_EFFECT_kiss2__', mustache: '__FB_EFFECT_mustache__', fan_club: '__FB_EFFECT_fan_club__'
   };
-  const decoded = new Map();
+  const decoded = new Map(), downloads = new Map();
   // Keep optional effects within a mobile call's pixel and main-thread budget.
   // The camera itself retains its original capture size and framing.
   const EFFECT_MAX_EDGE = 960, EFFECT_FRAME_INTERVAL = 1000 / 24;
-  let strengths = {}, epoch = 0, sequence = 0, pendingAuth = null, pending = null, current = null, failed = false;
+  let strengths = {}, epoch = 0, revision = 0, sequence = 0, pendingAuth = null, pending = null, current = null, failed = false;
+  let params = catalog.createDefaultParams(), legacySelection = '';
+  let changed, changedSignal=new Promise(resolve=>{changed=resolve});
+  function revise() {
+    revision++;
+    changed();
+    changedSignal=new Promise(resolve=>{changed=resolve});
+  }
+  const levels = {
+    smoothing:'setSmoothing', whitening:'setWhitening', rosiness:'setRosiness', blemish:'setBlemish', clarity:'setClarity',
+    brightness:'setBrightness', contrast:'setContrast', saturation:'setSaturation', colorTemperature:'setColorTemperature', colorTint:'setColorTint',
+    lipstick:'setLipstick', blush:'setBlush', contour:'setContour', eyeshadow:'setEyeShadow', eyeliner:'setEyeLiner',
+    eyebrow:'setEyebrow', eyelash:'setEyelash', pupil:'setPupil', teethWhiten:'setTeethWhiten'
+  };
+  const options = {
+    smoothingStyle:catalog.SKIN_PRESETS.map(x=>({id:x.smoothingStyle})), whiteningStyle:catalog.WHITENING_STYLES,
+    lipstickColor:catalog.LIPSTICK_COLORS, blushStyle:catalog.BLUSH_STYLES, blushColor:catalog.BLUSH_COLORS,
+    contourStyle:catalog.CONTOUR_STYLES, eyeshadowStyle:catalog.EYESHADOW_STYLES, eyeshadowColor:catalog.EYESHADOW_COLORS,
+    eyelinerStyle:catalog.EYELINER_STYLES, eyelinerColor:catalog.EYELINER_COLORS, eyebrowStyle:catalog.EYEBROW_STYLES,
+    eyebrowColor:catalog.EYEBROW_COLORS, eyelashStyle:catalog.EYELASH_STYLES, eyelashColor:catalog.EYELASH_COLORS,
+    pupilColor:catalog.PUPIL_COLORS
+  };
+  const bipolar = new Set(['brightness','contrast','saturation','colorTemperature','colorTint']);
+  const validParam = (key, value) => {
+    if (Object.hasOwn(options,key)) return options[key].some(x=>x.id===value);
+    if (key==='filterId') return value===null || catalog.FILTER_IDS.includes(value);
+    if (key==='stickerId') return value===null || catalog.STICKERS.some(x=>x.id===value);
+    if (key==='bgPreset') return value===null || catalog.BG_PRESETS.some(x=>x.id===value);
+    if (key==='chroma') return value===null || catalog.CHROMA_OPTIONS.some(x=>x.id===value);
+    if (key==='skinOnly' || key==='subjectOutline') return typeof value==='boolean';
+    return Object.hasOwn(params,key) && key!=='reshape' && key!=='bodyReshape' && typeof params[key]==='number' &&
+      Number.isFinite(value) && value>=(bipolar.has(key)?-1:0) && value<=1;
+  };
+  function restore(saved) {
+    if (!saved || typeof saved!=='object') return;
+    for (const [key,value] of Object.entries(saved)) {
+      if (key==='reshape' || key==='bodyReshape') {
+        if (value && typeof value==='object') for (const [id,amount] of Object.entries(value)) {
+          if (Object.hasOwn(params[key],id) && Number.isFinite(amount) && amount>=(key==='reshape'?-1:0) && amount<=1) params[key][id]=amount;
+        }
+      } else if (validParam(key,value)) params[key]=value;
+    }
+  }
   let state = { status: 'idle', message: 'Effects apply to your camera during video calls.' };
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE) || 'null');
+    const saved = JSON.parse(localStorage.getItem('zimi.beauty.v1') || 'null');
     if (saved && saved.selection && typeof S !== 'undefined') {
       Object.keys(BEAUTY).forEach(tab => {
         const value = saved.selection[tab];
@@ -31,62 +73,143 @@
       }
     }
   } catch (_) { /* Storage is optional on restricted devices. */ }
+  importLegacy();
+  try { restore(JSON.parse(localStorage.getItem(STORAGE)||'null')); } catch (_) {}
 
   function publish(status, message) {
     state = { status, message };
     document.querySelectorAll('[data-zimi-beauty-status]').forEach(el => { el.textContent = message; });
     document.querySelectorAll('[data-zimi-beauty-retry]').forEach(el => { el.hidden = status !== 'error'; });
+    document.dispatchEvent(new CustomEvent('zimi:beauty-state', {detail:{...state}}));
   }
   function save() {
-    try { localStorage.setItem(STORAGE, JSON.stringify({ selection: S.bsel, strengths })); } catch (_) {}
+    try { localStorage.setItem(STORAGE, JSON.stringify(params)); } catch (_) {}
   }
   function strength(tab, index) { return strengths[`${tab}:${index}`] ?? 60; }
   function selected(tab) { return typeof S === 'undefined' ? 0 : S.bsel[tab] || 0; }
   function amount(tab) { return selected(tab) ? strength(tab, selected(tab)) / 100 : 0; }
-  function wanted() {
-    return ['Beauty', 'Makeup', 'Filters', 'Image quality'].some(tab => amount(tab) > 0) || !!selected('Sticker');
+  function importLegacy() {
+    if (typeof S==='undefined' || !S.bsel) return;
+    const selection=JSON.stringify({selection:S.bsel,strengths});
+    if (selection===legacySelection) return;
+    legacySelection=selection;
+    const sdk=window.Facebetter,b=amount('Beauty'),beauty=selected('Beauty'),makeup=selected('Makeup'),q=amount('Image quality');
+    Object.assign(params,{smoothing:beauty===1?b:0,whitening:beauty===2?b:0,clarity:beauty===3?b:0,
+      lipstick:amount('Makeup'),filterId:amount('Filters')?FILTERS[selected('Filters')]:null,
+      filterIntensity:amount('Filters')||.8,stickerId:STICKERS[selected('Sticker')]||null,
+      colorTemperature:selected('Image quality')===1?q*.5:0,colorTint:selected('Image quality')===2?q*.4:0,
+      brightness:selected('Image quality')===3?q*.3:0,saturation:selected('Image quality')===4?q*.5:0,contrast:selected('Image quality')===5?q*.4:0});
+    params.reshape[sdk.Reshape.FaceVShape]=beauty===4?b*.5:0;
+    params.reshape[sdk.Reshape.FaceThin]=beauty===5?b*.5:0;
+    if (beauty) { params.skinOnly=true;params.smoothingStyle=sdk.SmoothingStyle.Natural; }
+    if (makeup) params.lipstickColor=[0,sdk.LipstickColor.GentlePink,sdk.LipstickColor.CoralOrange,sdk.LipstickColor.Peach,sdk.LipstickColor.Berry,sdk.LipstickColor.RetroRed][makeup];
+  }
+  function wanted(p=params) {
+    return Object.keys(levels).some(key=>p[key]!==0) || Object.values(p.reshape).some(Boolean) ||
+      Object.values(p.bodyReshape).some(Boolean) || !!(p.filterId&&p.filterIntensity) || !!p.stickerId ||
+      p.bgBlur>0 || !!p.bgPreset || p.chroma!==null || p.subjectOutline;
   }
   function bytes(name) {
-    if (!decoded.has(name)) decoded.set(name, Uint8Array.from(atob(EFFECTS[name]), char => char.charCodeAt(0)));
+    if (!decoded.has(name) && EFFECTS[name]) decoded.set(name, Uint8Array.from(atob(EFFECTS[name]), char => char.charCodeAt(0)));
     return decoded.get(name);
   }
-  function apply(handle) {
-    const engine = handle.engine, sdk = window.Facebetter;
-    const beauty = selected('Beauty'), b = amount('Beauty'), makeup = selected('Makeup'), m = amount('Makeup');
-    // Do not invoke unused paid capabilities just to set their initial zero.
-    // Clear a parameter only after this engine has actually enabled it.
-    const level = (method, value, key = method, args = []) => {
-      if (value !== 0 || handle.levels[key]) engine[method](...args, value);
-      handle.levels[key] = value;
-    };
-    engine.setBeautySkinOnly(true);
-    engine.setSmoothingStyle(sdk.SmoothingStyle.Natural);
-    level('setSmoothing', beauty === 1 ? b : 0);
-    level('setWhitening', beauty === 2 ? b : 0);
-    level('setClarity', beauty === 3 ? b : 0);
-    level('setReshape', beauty === 4 ? b * 0.5 : 0, 'FaceVShape', [sdk.Reshape.FaceVShape]);
-    level('setReshape', beauty === 5 ? b * 0.5 : 0, 'FaceThin', [sdk.Reshape.FaceThin]);
-    level('setLipstick', m);
-    if (makeup && m) engine.setLipstickColor([
-      0, sdk.LipstickColor.GentlePink, sdk.LipstickColor.CoralOrange,
-      sdk.LipstickColor.Peach, sdk.LipstickColor.Berry, sdk.LipstickColor.RetroRed
-    ][makeup]);
-    const filter = amount('Filters') ? FILTERS[selected('Filters')] : '', sticker = STICKERS[selected('Sticker')];
+  async function download(file) {
+    if (!downloads.has(file)) downloads.set(file,(async()=>{
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
+      try {
+        const response=await fetch(window.ZIMI_FACEBETTER_RUNTIME+file,{signal:controller.signal,credentials:'omit'});
+        if (!response.ok) throw new Error('Effect resources unavailable.');
+        const data=new Uint8Array(await response.arrayBuffer());
+        if (!data.length || data.length>20*1024*1024) throw new Error('Invalid effect resource.');
+        return data;
+      } finally { clearTimeout(timer); }
+    })().catch(error=>{downloads.delete(file);throw error}));
+    return downloads.get(file);
+  }
+  async function prepareEffects(handle,p,version) {
+    const ids=[p.filterId,p.stickerId].filter(Boolean);
+    await Promise.all(ids.map(async id=>{if(!bytes(id))decoded.set(id,await download('effects/'+id+'.fbd'))}));
+    if (p.bgPreset && !decoded.has('bg:'+p.bgPreset)) decoded.set('bg:'+p.bgPreset,await download('backgrounds/'+p.bgPreset+'.jpg'));
+    const packs=[];
+    if (catalog.STICKERS.find(x=>x.id===p.stickerId)?.kind==='3d') packs.push('resource_3d.fbd');
+    if (Object.values(p.bodyReshape).some(Boolean)) packs.push('resource_body.fbd');
+    for (const pack of packs) if (!handle.packs.has(pack)) {
+      const data=await download(pack);
+      if(handle.destroyed || handle.epoch!==epoch || version!==revision) return;
+      handle.engine.addResourcePack(data);handle.packs.add(pack);
+    }
+  }
+  function resourcesReady(handle,p) {
+    return (!p.filterId||!!bytes(p.filterId)) && (!p.stickerId||!!bytes(p.stickerId)) &&
+      (!p.bgPreset||decoded.has('bg:'+p.bgPreset)) &&
+      (catalog.STICKERS.find(x=>x.id===p.stickerId)?.kind!=='3d'||handle.packs.has('resource_3d.fbd')) &&
+      (!Object.values(p.bodyReshape).some(Boolean)||handle.packs.has('resource_body.fbd'));
+  }
+  function apply(handle,p=params) {
+    const engine=handle.engine,prev=handle.params||catalog.createDefaultParams();
+    // Avoid invoking unused licensed features even to set an initial zero.
+    for (const [key,method] of Object.entries(levels)) if (p[key]!==0 || prev[key]!==0) engine[method](p[key]);
+    for (const key of Object.keys(options)) {
+      const group=key.replace(/Style$|Color$/,'');
+      if (key==='smoothingStyle' ? p.smoothing>0 : key==='whiteningStyle' ? p.whitening>0 : p[group]>0) {
+        const method='set'+({eyeshadow:'EyeShadow',eyeliner:'EyeLiner'}[group]||group[0].toUpperCase()+group.slice(1))+key.slice(group.length);
+        if (!handle.params || prev[key]!==p[key] || prev[group]===0) engine[method](p[key]);
+      }
+    }
+    engine.setBeautySkinOnly(p.skinOnly);
+    for (const kind of ['reshape','bodyReshape']) for (const [id,value] of Object.entries(p[kind])) {
+      if (value!==0 || prev[kind][id]!==0) engine[kind==='reshape'?'setReshape':'setBodyReshape'](Number(id),value);
+    }
+    const filter=p.filterId,sticker=p.stickerId;
     if (filter !== handle.filter) {
       if (filter) engine.setFilter(bytes(filter)); else if (handle.filter) engine.clearFilter();
       handle.filter = filter;
     }
-    if (filter) engine.setFilterIntensity(amount('Filters'));
+    if (filter) engine.setFilterIntensity(p.filterIntensity);
     if (sticker !== handle.sticker) {
-      if (sticker) engine.setSticker(bytes(sticker)); else if (handle.sticker) engine.clearSticker();
+      const was3d=catalog.STICKERS.find(x=>x.id===handle.sticker)?.kind==='3d';
+      if (handle.sticker) engine[was3d?'clear3DSticker':'clearSticker']();
+      if (sticker) engine[catalog.STICKERS.find(x=>x.id===sticker)?.kind==='3d'?'set3DSticker':'setSticker'](bytes(sticker));
       handle.sticker = sticker;
     }
-    const quality = selected('Image quality'), q = amount('Image quality');
-    level('setColorTemperature', quality === 1 ? q * 0.5 : 0);
-    level('setColorTint', quality === 2 ? q * 0.4 : 0);
-    level('setBrightness', quality === 3 ? q * 0.3 : 0);
-    level('setSaturation', quality === 4 ? q * 0.5 : 0);
-    level('setContrast', quality === 5 ? q * 0.4 : 0);
+    if (p.chroma!==prev.chroma) { if(p.chroma===null)engine.clearChromaKey();else engine.setChromaKey(p.chroma); }
+    if (p.chroma!==null) { engine.setChromaKeySimilarity(p.chromaSimilarity);engine.setChromaKeySmoothness(p.chromaSmoothness);engine.setChromaKeyDesaturation(p.chromaDesaturation); }
+    if (p.bgBlur>0) engine.setVirtualBackgroundBlur(p.bgBlur);
+    else if(p.bgPreset && (p.bgPreset!==prev.bgPreset || prev.bgBlur>0 || !handle.params)) engine.setVirtualBackground(decoded.get('bg:'+p.bgPreset));
+    else if(!p.bgPreset && (prev.bgPreset || prev.bgBlur>0)) engine.clearVirtualBackground();
+    if(p.subjectOutline || prev.subjectOutline) engine.setSubjectOutline(p.subjectOutline);
+    handle.params=JSON.parse(JSON.stringify(p));
+  }
+  async function update(handle) {
+    if (handle.updating) return handle.updating;
+    handle.updating=(async()=>{
+      let version;
+      do {
+        version=revision;
+        const snapshot=JSON.parse(JSON.stringify(params));
+        // A new choice wakes this update immediately; a slow obsolete download
+        // must never delay Reset or overwrite the latest choice with an error.
+        let prepared;
+        try {
+          prepared=await Promise.race([
+            prepareEffects(handle,snapshot,version).then(()=>true),
+            changedSignal.then(()=>false)
+          ]);
+        } catch(error) {
+          if(version!==revision)continue;
+          throw error;
+        }
+        if(handle.destroyed || handle.failed || handle.epoch!==epoch || !wanted())return null;
+        if(!prepared)continue;
+        if(version===revision)apply(handle,snapshot);
+      } while(version!==revision);
+      publish('ready','Face effects are applied to the camera you share.');
+      return handle;
+    })().catch(error=>{
+      if(!handle.destroyed && handle.epoch===epoch){handle.failed=true;unavailable(error)}
+      return null;
+    }).finally(()=>{handle.updating=null});
+    return handle.updating;
   }
   function license() {
     return new Promise((resolve, reject) => {
@@ -99,7 +222,7 @@
         if (error) reject(error); else resolve(token);
       };
       pendingAuth = { requestId, finish };
-      Native.send('beauty.auth', { requestId });
+      Native.send('beauty.auth', { requestId, userAgent: navigator.userAgent.slice(0,1024) });
     });
   }
   Native.on('beauty.auth', data => {
@@ -109,9 +232,11 @@
     if (data.action === 'beauty.auth' && data.requestId === pendingAuth?.requestId) pendingAuth.finish(new Error('Effects authorization failed.'));
   });
 
-  function unavailable() {
+  function unavailable(error) {
     failed = true;
-    publish('error', 'Effects are unavailable. Your call continues with the original camera.');
+    publish('error', error?.code===-5
+      ? 'This effect needs an enabled Facebetter license. Choose another effect or retry.'
+      : 'Effects are unavailable. Your call continues with the original camera.');
   }
   function create(source) {
     if (!wanted()) {
@@ -120,7 +245,7 @@
     }
     if (failed) return Promise.resolve(null);
     if (current && !current.destroyed && !current.failed && current.source === source) {
-      try { apply(current); return Promise.resolve(current); } catch (_) { current.failed = true; unavailable(); return Promise.resolve(null); }
+      return update(current);
     }
     if (pending?.source === source) return pending.promise;
     const version = epoch;
@@ -186,7 +311,7 @@
         const output = canvasStream.getVideoTracks()[0];
         const handle = {
           source, engine, stream: new MediaStream([...source.getAudioTracks(), output]),
-          filter: undefined, sticker: undefined, levels: {}, destroyed: false, failed: false,
+          filter: undefined, sticker: undefined, packs: new Set(), epoch:version, destroyed: false, failed: false,
           setEnabled(enabled) {
             source.getVideoTracks().forEach(track => { track.enabled = !!enabled; });
             output.enabled = !!enabled;
@@ -198,7 +323,8 @@
             cleanup();
           }
         };
-        apply(handle);
+        task.cancel=()=>handle.destroy();
+        if (!await update(handle) || !valid()) { handle.destroy();return null; }
         let last = -Infinity, lastFrame = -1, processingCost = 0, interval = EFFECT_FRAME_INTERVAL, missing = 0;
         const draw = now => {
           if (disposed) return;
@@ -241,9 +367,9 @@
         if (failed) { handle.destroy(); return null; }
         publish('ready', 'Face effects are applied to the camera you share.');
         return handle;
-      } catch (_) {
+      } catch (error) {
         cleanup();
-        if (version === epoch) unavailable();
+        if (version === epoch) unavailable(error);
         return null;
       } finally {
         if (pending === task) pending = null;
@@ -253,38 +379,65 @@
     return task.promise;
   }
   function sync() {
+    importLegacy();
+    revise();
     save();
     failed = false;
     if (!wanted()) {
       if (pending) {
         epoch++;
         pendingAuth?.finish(new Error('Effects cancelled.'));
+        pending.cancel?.();
         pending = null;
       }
       publish('off', 'Effects off. Your original camera is shared.');
     }
     if (current && !current.destroyed && !current.failed) {
-      try { apply(current); } catch (_) { current.failed = true; unavailable(); }
+      if(resourcesReady(current,params)) {
+        try { apply(current); } catch (error) { current.failed = true; unavailable(error); }
+      } else if(wanted())publish('loading','Preparing selected effects…');
     }
     if (typeof DEMO !== 'undefined' && DEMO) publish('idle', 'Preview only. Face effects run in connected video calls.');
     else void window.ZimiMedia?.refreshBeauty();
   }
   function stop() {
     epoch++;
+    revise();
     pendingAuth?.finish(new Error('Effects cancelled.'));
+    pending?.cancel?.();
     pending = null;
     current?.destroy();
     failed = false;
     publish('idle', 'Effects apply to your camera during video calls.');
   }
   window.ZimiBeauty = {
-    create, sync, stop, strength, unavailable, getState: () => ({ ...state }),
+    create, sync, stop, strength, unavailable, getState: () => ({ ...state }), isEnabled:()=>wanted(),
+    getParams:()=>JSON.parse(JSON.stringify(params)),
+    setParam(key,value) {
+      if(!validParam(key,value))return;
+      if(typeof S!=='undefined')legacySelection=JSON.stringify({selection:S.bsel,strengths});
+      params[key]=value;
+      if(key==='bgPreset'&&value)params.bgBlur=0;
+      if(key==='bgBlur'&&value>0)params.bgPreset=null;
+      sync();
+    },
+    setShape(kind,key,value) {
+      if(!['reshape','bodyReshape'].includes(kind) || !Object.hasOwn(params[kind],key) ||
+        !Number.isFinite(value) || value<(kind==='reshape'?-1:0) || value>1)return;
+      if(typeof S!=='undefined')legacySelection=JSON.stringify({selection:S.bsel,strengths});
+      params[kind][key]=value;sync();
+    },
     setStrength(tab, index, value) {
       if (!Object.hasOwn(BEAUTY, tab) || !Number.isInteger(index) || index < 0 || index >= BEAUTY[tab].length) return;
       strengths[`${tab}:${index}`] = Math.max(0, Math.min(100, Number(value) || 0));
       sync();
     },
-    reset() { strengths = {}; sync(); }
+    reset() {
+      params=catalog.createDefaultParams();strengths={};
+      if(typeof S!=='undefined')S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,'Image quality':0};
+      legacySelection=JSON.stringify({selection:typeof S==='undefined'?{}:S.bsel,strengths});
+      sync();
+    }
   };
   window.addEventListener('pagehide', stop);
 })();

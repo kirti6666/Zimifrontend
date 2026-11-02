@@ -63,6 +63,7 @@ const files = {
       await page.addScriptTag({ content: `const DEMO=false, S={bsel:{Beauty:1,Makeup:0,Sticker:0,Filters:0,'Image quality':0}}, BEAUTY={Beauty:Array(6),Makeup:Array(6),Sticker:Array(6),Filters:Array(6),'Image quality':Array(6)};
         const Native={handlers:{},on(type,handler){(this.handlers[type]||=[]).push(handler)},send(type,data){if(type==='beauty.auth')this.handlers[type].forEach(handler=>handler({requestId:data.requestId,licenseToken:'invalid-facebetter-runtime-smoke-token'}))}};
         window.ZIMI_FACEBETTER_RUNTIME=${JSON.stringify(origin+'/runtime/2.2.1/')};` });
+      await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8') });
       let controller = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8');
       controller = controller.replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) => fs.readFileSync(path.join(root, 'web/facebetter/effects', name+'.fbd')).toString('base64'));
       await page.addScriptTag({ content: controller });

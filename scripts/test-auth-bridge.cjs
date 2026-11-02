@@ -147,7 +147,8 @@ const streamingHarness = (state = 'active', link = null) => harness(state, link,
 
 test('Facebetter auth validates requests and returns only the correlated license token', async () => {
   const h = harness(), licenseToken = '{"token":"signed-facebetter-license"}';
-  for (const data of [{}, { requestId: 0 }, { requestId: -1 }, { requestId: 1.5 }, { requestId: '1' }, { requestId: 1, appKey: 'forged' }]) {
+  for (const data of [{}, { requestId: 0 }, { requestId: -1 }, { requestId: 1.5 }, { requestId: '1' }, { requestId: 1, appKey: 'forged' },
+    ...['', '   ', 'x'.repeat(1025), 'browser\r\nInjected: true', 'browser\u0000', 'browser\u007f', 'browser\u0085', 123, null].map(userAgent => ({ requestId: 1, userAgent }))]) {
     assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'beauty.auth', data })), null);
     h.bridge.handle({ type: 'beauty.auth', data });
   }
@@ -157,7 +158,14 @@ test('Facebetter auth validates requests and returns only the correlated license
   h.overrides.beautyAuth = () => ({ licenseToken });
   h.bridge.handle({ type: 'beauty.auth', data: { requestId: 17 } }); await settle();
   assert.equal(h.count('beautyAuth'), 1);
+  assert.equal(h.calls.find(call => call.name === 'beautyAuth').args[0], undefined, 'Legacy requests leave the optional user agent undefined');
   assert.deepEqual(plain(h.find('beauty.auth').at(-1).data), { requestId: 17, licenseToken });
+  const userAgent = 'Mozilla/5.0 (Linux; Android 15; wv) AppleWebKit/537.36 Version/4.0 Chrome/130.0.0.0 Mobile Safari/537.36';
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'beauty.auth', data: { requestId: 19, userAgent } })));
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'beauty.auth', data: { requestId: 20, userAgent: 'x'.repeat(1024) } })), 'User agents at the documented size limit remain valid');
+  h.bridge.handle({ type: 'beauty.auth', data: { requestId: 19, userAgent } }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'beautyAuth').at(-1).args), [userAgent], 'Forward the WebView user agent without substituting the native HTTP user agent');
+  assert.deepEqual(plain(h.find('beauty.auth').at(-1).data), { requestId: 19, licenseToken });
   h.overrides.beautyAuth = () => { throw new h.ApiError('Beauty effects are unavailable.', 503); };
   h.bridge.handle({ type: 'beauty.auth', data: { requestId: 18 } }); await settle();
   assert.deepEqual(plain(h.find('operation.error').at(-1).data), { action: 'beauty.auth', requestId: 18, message: 'Beauty effects are unavailable.', status: 503 });

@@ -7,8 +7,12 @@ A React Native (Expo) app with creator discovery, private 1:1 video and voice ca
 Private video calls process outgoing camera frames with Facebetter 2.2.1:
 camera → beauty engine → canvas video track → WebRTC. The local preview and
 the other caller receive the same processed video; microphone audio stays on
-its original track. Beauty, makeup, five bundled filters, five face stickers
-and image adjustments are available from **More options → Beauty & filters**.
+its original track. The SDK demo's 19 filters, 11 face/screen/3D stickers,
+skin and makeup controls, 26 face adjustments, nine body adjustments,
+image grading, background blur and five background images are available.
+Hosts open **Go online → star** before calls; either side of a video call
+opens **Call options → Beauty & filters**. The shared picker changes outgoing
+video, including the host's camera, rather than adding preview-only CSS.
 Strength sliders and selections are saved on the device. Reset sends the
 original camera again. Camera flips, camera/mic toggles and minimized calls
 preserve the processing pipeline. Voice calls do not start the beauty engine.
@@ -24,9 +28,13 @@ Setup:
    Calls run in the WebView, so this integration uses Facebetter's Web SDK
    even on Android. The Android package is `com.aurora.liveapp` if a separate
    native SDK binding is needed later.
-3. Add `https://aurora.localhost` to backend `CORS_ORIGIN`. The app loads the
-   pinned runtime from `${EXPO_PUBLIC_API_URL}/facebetter/runtime/2.2.1/`.
-   The first use downloads about 11 MB; versioned resources are cacheable.
+3. Deploy the backend with `resources/facebetter/2.2.1/` (included in its
+   Docker image). The app loads the pinned runtime from
+   `${EXPO_PUBLIC_API_URL}/facebetter/runtime/2.2.1/`. Public runtime/effect
+   responses allow the WebView origin without changing authenticated API
+   CORS. Optional effects, backgrounds and body/3D models download on selection
+   and are cached. Authorization forwards the WebView user-agent through the
+   native bridge; App ID/App Key remain server-side.
 4. Run `npm run build:web` and rebuild/install the app normally. On two
    physical devices, start a video call, select Smooth/a sticker/a filter,
    and confirm the remote video changes. Check camera flip, camera off,
@@ -38,13 +46,15 @@ show an error with **Retry effects** in the effects sheet. No images are sent
 to the token endpoint; frame processing runs locally. Live broadcast release
 flags remain governed by the current release configuration.
 
-Implementation: `web/beauty.js`, `web/media.js`, native `beauty.auth` bridge,
+Implementation: `web/beauty-catalog.js`, `web/beauty-controls.js`,
+`web/beauty.js`, `web/media.js`, native `beauty.auth` bridge,
 and backend `POST /api/v1/facebetter/auth`. Official integration details:
 [Facebetter Web video pipeline](https://docs.facebetter.net/web/third-party-integration)
 and [authentication](https://docs.facebetter.net/intro/license).
 
-Run `npm run test:facebetter` for local SDK-adapter, controls and actual WebRTC
-transport checks with fake devices and mocked licenses. These checks do not
+Run `npm run test:facebetter` for full catalog, active host/member controls,
+resource/reset races, SDK-adapter and actual WebRTC transport checks with
+fake devices and mocked licenses. These checks do not
 claim to validate the production subscription or physical-device performance.
 
 Android supports mandatory updates published from the admin APK release panel.
