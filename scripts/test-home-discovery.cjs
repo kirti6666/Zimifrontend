@@ -52,7 +52,9 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     const card = page.locator(`article[data-host-id="${creators[0].id}"]`);
     assert.equal(await card.locator('.zh-creator-status').innerText(), 'Online');
     assert.equal(await card.locator('[data-creator-country] [role="img"]').getAttribute('aria-label'), 'India', 'India shows as a flag');
-    assert.equal(await page.locator(`article[data-host-id="${creators[2].id}"] [data-creator-country]`).innerText(), 'Nepal', 'Other countries show their name');
+    const nepal = page.locator(`article[data-host-id="${creators[2].id}"] [data-creator-country] [role="img"]`);
+    assert.equal(await nepal.getAttribute('aria-label'), 'Nepal', 'Known countries retain their accessible name');
+    assert.equal(await nepal.innerText(), '🇳🇵', 'Known countries outside India use their system flag');
     const call = card.locator('.zh-creator-call');
     assert.equal(await call.isEnabled(), true);
     assert.equal(await call.evaluate(el => getComputedStyle(el).borderRadius), '999px', 'Call buttons are round');

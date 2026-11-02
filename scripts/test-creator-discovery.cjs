@@ -105,7 +105,7 @@ async function assertProfileCards(page,scope,expected) {
     assert.equal(await button(page,'View Creator 4 profile').isEnabled(),true,'Unavailable call settings do not hide or disable a profile');
     await button(page,'View Creator 4 profile').click();
     await acceptProfile(page,hosts[3]);
-    assert.equal(await page.locator('#zu-call').isDisabled(),true,'The profile still enforces the creator call settings');
+    assert.equal(await page.locator('#zu-call').isEnabled(),true,'Members can manually call an approved creator even when their availability toggle is off');
     await page.locator('.zu-toolbar .zb-back').click();
     assert.equal(await page.evaluate(()=>S.v),'all-creators','Profile Back returns to All Creators');
     await assertProfileCards(page,'.zac-page',8);

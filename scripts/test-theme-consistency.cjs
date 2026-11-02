@@ -28,6 +28,7 @@ const themes = [
 const bg = (selector, token) => [selector, 'backgroundColor', token];
 const ink = (selector, token = 'text') => [selector, 'color', token];
 const cta = selector => [bg(selector, 'primary'), ink(selector, 'primaryContrast')];
+const fixed = (selector, property, value) => [selector, property, null, value];
 
 async function mountedThemes(page, name, rules = [], shot = false) {
   await page.evaluate(() => {
@@ -68,10 +69,10 @@ async function mountedThemes(page, name, rules = [], shot = false) {
       check(reference.pink,true,`${label}: gift balance keeps the requested pink pill`);
       check(reference.heading,'rgb(255, 255, 255)',`${label}: reference heading remains readable`);
     }
-    for (const [selector, property, token] of rules) {
+    for (const [selector, property, token, literal] of rules) {
       const actual = await page.locator(selector).first().evaluateAll((nodes, property) => nodes.length ? getComputedStyle(nodes[0])[property] : '<missing>', property);
       const expected = { ...theme.colors, background:'#ffffff', surface:'#ffffff', surfaceElevated:'#f8f8fa', text:'#18181b', textMuted:'#71717a', wallet:'#171717', primaryContrast:theme.id==='theme-ocean'?'#000000':'#ffffff' };
-      check(actual, rgb(expected[token]), `${label}: ${selector} ${property}`);
+      check(actual, literal ?? rgb(expected[token]), `${label}: ${selector} ${property}`);
     }
     const wrongFonts = await page.locator('#screen button, #screen input, #screen h1, #screen h2').evaluateAll(nodes => nodes.filter(node => node.getBoundingClientRect().width && getComputedStyle(node).fontFamily !== getComputedStyle(document.body).fontFamily).map(node => node.className || node.tagName));
     check(wrongFonts.length, 0, `${label}: controls/headings inherit typeface (${wrongFonts.join(', ')})`);
@@ -150,7 +151,9 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     await page.evaluate(() => cancelDial());
     await disabledStreams(page);
     await page.evaluate(id => { Home.giftTo = null; Home.stream = null; Home.hosting = false; S.callId = 'theme-private-call'; go('call', id); zrCallChat(); }, creator.id);
-    await mountedThemes(page, 'private video', [bg('.zr-room', 'background'), bg('.zr-compose', 'surface'), ink('.zr-compose input'), bg('.zr-pip', 'surface'), ink('.zr-call-feed .lvmsg.sys .txt', 'textMuted')], true);
+    // Camera placeholders and text over live video retain their media contrast;
+    // the composer and dialogs continue to use the selected account palette.
+    await mountedThemes(page, 'private video', [bg('.zr-room', 'background'), bg('.zr-compose', 'surface'), ink('.zr-compose input'), fixed('.zr-pip', 'backgroundColor', 'rgb(11, 12, 15)'), fixed('.zr-call-feed .lvmsg.sys .txt', 'color', 'rgba(255, 255, 255, 0.76)')], true);
     await page.evaluate(id => homeGifts(id), creator.id); await receive(page, 'data.catalog', catalog);
     await mountedThemes(page, 'call gifts');
     await page.evaluate(() => { homeCloseGifts(); zrOpen('call-controls'); });
@@ -168,7 +171,7 @@ async function mountedThemes(page, name, rules = [], shot = false) {
     }
     await disabledStreams(hostPage);
     await hostPage.evaluate(member => { S.caller = { id: member.id, n: member.name, callId: 'theme-host-call', voice: false }; S.callId = S.caller.callId; go('hcall'); }, member.user);
-    await mountedThemes(hostPage, 'host private call', [bg('.zr-room', 'background'), bg('.zr-pip', 'surface')]);
+    await mountedThemes(hostPage, 'host private call', [bg('.zr-room', 'background'), fixed('.zr-pip', 'backgroundColor', 'rgb(11, 12, 15)')]);
     for (const panel of ['call-controls', 'exit']) {
       await hostPage.evaluate(panel => zrOpen(panel), panel);
       await mountedThemes(hostPage, `host ${panel} dialog`, [bg('.zr-sheet', 'surface'), ink('.zr-sheet')]);

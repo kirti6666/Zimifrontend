@@ -36,7 +36,8 @@ test('launch binds original peer/account/reply and selection preserves an unrela
   h.chats.reply = null; // A context redraw must not turn this intended reply into an ordinary photo.
   h.state.msgs[0].text = 'Updated original';
   await h.select();
-  assert.deepEqual(h.sent, [{ type: 'chat.photo', data: { to: 'peer-1', photo: 'data:image/jpeg;base64,fixture', replyTo: 'original-1' } }]);
+  assert.deepEqual(h.sent, [{ type: 'chat.photo', data: { to: 'peer-1', photo: 'data:image/jpeg;base64,fixture', clientId: 'local-fixture', replyTo: 'original-1' } }]);
+  assert.equal(h.state.msgs.at(-1).clientId, h.sent[0].data.clientId, 'The upload and optimistic photo share their acknowledgment identity');
   assert.equal(h.state.msgs.at(-1).reply.text, 'Updated original', 'The optimistic quote reflects the current original');
   assert.equal(h.chats.drafts['peer-1'], 'Unrelated text draft'); assert.equal(h.input.zcPhotoIntent, undefined);
   await h.select(); assert.equal(h.sent.length, 1, 'One chooser intent is consumed once');

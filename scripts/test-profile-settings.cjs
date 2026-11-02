@@ -287,10 +287,14 @@ async function run() {
     await gifts.getByRole('button', { name: 'All transactions', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'transactions');
     await readyProfile();
-    for (const [button, title] of [['Help & tips', 'Help Center'], ['Community Guidelines', 'Community Guidelines']]) {
-      if (button === 'Community Guidelines') await openMenu('Privacy & Terms');
-      await row(button).click(); await dialog(title).waitFor(); assert.ok((await dialog(title).innerText()).length > 100); await close();
-    }
+    await row('Help & support').click();
+    assert.equal(await page.evaluate(() => S.v), 'support', 'Settings opens the authenticated support center');
+    await page.getByRole('heading', { name: 'Help & support', exact: true }).waitFor();
+    assert.ok(await sentCount(page, 'support.load') > 0, 'The support page requests the account conversation list');
+    await readyProfile();
+    await openMenu('Privacy & Terms');
+    await row('Community Guidelines').click(); await dialog('Community Guidelines').waitFor();
+    assert.ok((await dialog('Community Guidelines').innerText()).length > 100); await close();
     // Ringing calls and live rooms defer a tap until navigation is safe.
     // Connected/minimized call navigation is covered with real media in test-ongoing-call.
     for (const view of ['incoming', 'live']) {

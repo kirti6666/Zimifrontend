@@ -329,6 +329,7 @@ async function productionChecks(browser, errors) {
   await receive(page, 'stream.message', { id: 'message-hostile', streamId: stream.id, userId: creator.id, name: hostileText, text: hostileText });
   assert.ok((await page.getByRole('log', { name: 'Live chat' }).innerText()).includes(hostileText));
   await receive(page, 'stream.gift', { ...gift, id: 'gift-hostile', senderName: hostileText, giftName: hostileText });
+  await page.waitForFunction(text => document.querySelector('.zr-gift-alert')?.textContent.includes(text), hostileText, { timeout: 10000 });
   assert.ok((await page.locator('.zr-gift-alert').innerText()).includes(hostileText));
   assert.equal(await page.locator('.zr-room [onerror],.zr-room [onload],.zr-room script').count(), 0);
   assert.equal(await page.evaluate(() => window.__roomXss), undefined, 'Remote chat and gift strings remain text');

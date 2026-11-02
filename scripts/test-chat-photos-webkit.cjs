@@ -133,7 +133,10 @@ const photoId = id('51'), ownId = id('52');
         await fit(input, 'Keyboard-height reply input'); await fit(button('Send reply'), 'Keyboard-height send'); await screenshot('keyboard');
         await page.setViewportSize(viewport);
         await page.keyboard.press('Enter'); await viewer.waitFor({ state: 'detached' });
-        assert.deepEqual(await last('chat.send'), { to: mira.id, text: 'A WebKit photo reply +10-0', replyTo: photoId });
+        const replyRequest = await last('chat.send');
+        assert.match(replyRequest.clientId, /^[a-f\d-]{36}$/i, 'The reply has a client acknowledgment identity');
+        assert.deepEqual(replyRequest, { to: mira.id, text: 'A WebKit photo reply +10-0', clientId: replyRequest.clientId, replyTo: photoId });
+        assert.equal(await page.evaluate(clientId => S.msgs.find(message => message.local && message.clientId === clientId)?.reply?.id, replyRequest.clientId), photoId, 'WebKit keeps the optimistic reply linked to its outgoing identity');
 
         // Exercise the actual WebKit file chooser and image encoder.
         await page.locator('#ti').fill('Keep this chat draft');
@@ -144,6 +147,8 @@ const photoId = id('51'), ownId = id('52');
         await page.waitForFunction(() => __sent.some(message => message.type === 'chat.photo'));
         const uploaded = await last('chat.photo');
         assert.equal(uploaded.to, mira.id); assert.equal(uploaded.replyTo, photoId); assert.match(uploaded.photo, /^data:image\/jpeg;base64,/);
+        assert.match(uploaded.clientId, /^[a-f\d-]{36}$/i);
+        assert.equal(await page.evaluate(clientId => S.msgs.find(message => message.local && message.clientId === clientId)?.kind, uploaded.clientId), 'image', 'The selected photo retains its own upload acknowledgment identity');
         assert.equal(await page.locator('#ti').inputValue(), 'Keep this chat draft');
 
         await open(); await tap(button('Download photo'));
