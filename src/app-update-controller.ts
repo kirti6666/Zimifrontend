@@ -69,9 +69,11 @@ export class AppUpdateController {
     const until = typeof grace?.deferUntil === "string" ? Date.parse(grace.deferUntil) : NaN;
     if (this.closed || !Number.isFinite(until) || until <= Date.now() || until > Date.now() + 24 * 60 * 60 * 1000 ||
       !Array.isArray(grace.activities) || !grace.activities.length || grace.activities.some(kind => kind !== "call" && kind !== "purchase")) return false;
-    this.admitted = true; this.recovering = true; this.graceUntil = until; this.pendingLock = "required";
+    // A verified native ring may own its real lease before this read completes.
+    // Hand over immediately so ending it does not wait for the bootstrap deadline.
+    this.admitted = true; this.recovering = !this.busy; this.graceUntil = this.busy ? 0 : until; this.pendingLock = "required";
     clearTimeout(this.graceTimer);
-    this.graceTimer = setTimeout(() => { this.graceUntil = 0; this.recovering = false; this.finishDeferral(); }, Math.max(0, until - Date.now()));
+    this.graceTimer = this.busy ? undefined : setTimeout(() => { this.graceUntil = 0; this.recovering = false; this.finishDeferral(); }, Math.max(0, until - Date.now()));
     this.set({ status: "allowed", deferred: true, release, error: undefined });
     return true;
   }

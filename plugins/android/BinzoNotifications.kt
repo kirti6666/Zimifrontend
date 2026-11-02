@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
@@ -41,8 +42,14 @@ internal object BinzoNotifications {
   private fun settings(context: Context) = context.getSharedPreferences("binzo-notifications-v1", Context.MODE_PRIVATE)
   private fun endedCalls(context: Context) = context.getSharedPreferences("binzo-ended-calls-v1", Context.MODE_PRIVATE)
   fun owner(context: Context): String? = settings(context).getString("owner", null)
+  fun data(notification: ExpoNotification): Map<String, String>? = (notification.notificationRequest.trigger as? FirebaseNotificationTrigger)?.remoteMessage?.data
+  fun validCallAction(context: Context, callId: String?, recipientId: String?, expiresAt: String?, action: String?): Boolean {
+    val prefs = settings(context)
+    return BinzoNotificationPolicy.validCallAction(callId, recipientId, expiresAt, action, owner(context), prefs.getBoolean("enabled", false),
+      prefs.getBoolean("calls", false), endedCalls(context).getLong("${owner(context)}:$callId", 0), System.currentTimeMillis())
+  }
   fun envelope(context: Context, notification: ExpoNotification): BinzoNotificationPolicy.Envelope? {
-    val data = (notification.notificationRequest.trigger as? FirebaseNotificationTrigger)?.remoteMessage?.data ?: return null
+    val data = data(notification) ?: return null
     val prefs = settings(context)
     val envelope = BinzoNotificationPolicy.validate(data, prefs.getString("owner", null), prefs.getBoolean("enabled", false),
       BinzoNotificationPolicy.categories.filter { prefs.getBoolean(it, false) }.toSet(), System.currentTimeMillis()) ?: return null
@@ -56,7 +63,7 @@ internal object BinzoNotifications {
     val edit = prefs.edit().clear().putString("owner", owner).putBoolean("enabled", enabled)
     BinzoNotificationPolicy.categories.forEach { key -> edit.putBoolean(key, categories.hasKey(key) && !categories.isNull(key) && categories.getBoolean(key)) }
     check(edit.commit()) { "Could not save notification settings" }
-    if (oldOwner != owner) (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancelAll()
+    if (oldOwner != owner) { (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancelAll();BinzoIncomingCalls.dismiss(context, null) }
     else if (!enabled || !categories.hasKey("calls") || !categories.getBoolean("calls")) dismiss(context, null)
   }
   fun channel(context: Context) {
@@ -81,9 +88,14 @@ internal object BinzoNotifications {
     val now = System.currentTimeMillis()
     tombstones.all.filterValues { it is Long && it <= now }.keys.forEach { edit.remove(it) }
     if (id != null) edit.putLong("${owner(context)}:$id", now + 180_000)
-    manager.activeNotifications.filter { it.notification.extras.getString(CALL_ID)?.let { call -> id == null || call == id } == true }.forEach { manager.cancel(it.tag, it.id) }
+    closeRing(context, id)
+    BinzoIncomingCalls.dismiss(context, id)
     edit.commit()
     if (id != null && Build.VERSION.SDK_INT < 26) (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(timeoutIntent(context, id))
+  }
+  @Synchronized fun closeRing(context: Context, id: String?) {
+    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    manager.activeNotifications.filter { it.notification.extras.getString(CALL_ID)?.let { call -> id == null || call == id } == true }.forEach { manager.cancel(it.tag, it.id) }
   }
 }
 
@@ -111,7 +123,7 @@ class BinzoNotificationsService : NotificationsService() {
         delegate.handleNotification(notification)
       }
       override fun handleNotificationResponse(response: NotificationResponse) {
-        BinzoNotifications.envelope(context, response.notification)?.takeIf { it.incoming }?.let { BinzoNotifications.dismiss(context, it.targetId) }
+        BinzoNotifications.envelope(context, response.notification)?.takeIf { it.incoming }?.let { BinzoNotifications.closeRing(context, it.targetId) }
         delegate.handleNotificationResponse(response)
       }
       override fun handleNotificationsDropped() = delegate.handleNotificationsDropped()
@@ -127,7 +139,7 @@ class BinzoNotificationsService : NotificationsService() {
       }
       CoroutineScope(Dispatchers.IO).launch {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return@launch
-        val result = createNotification(notification, behavior)
+        val result = runCatching { createNotification(notification, behavior) }.getOrNull() ?: return@launch
         synchronized(BinzoNotifications) {
           // Recheck after asynchronous icon loading and serialize presentation
           // with logout/category changes and terminal call controls.
@@ -138,25 +150,28 @@ class BinzoNotificationsService : NotificationsService() {
       }
     }
     override suspend fun createNotification(notification: ExpoNotification, notificationBehavior: NotificationBehaviorRecord?): Notification {
-      val result = super.createNotification(notification, notificationBehavior)
       val envelope = BinzoNotifications.envelope(context, notification)
-      if (envelope?.incoming != true || notificationBehavior?.shouldPlaySound == false) return result
-      val remaining = (envelope.expiresAt!! - System.currentTimeMillis()).coerceIn(1, 180_000)
-      val builder = Notification.Builder.recoverBuilder(context, result).setCategory(Notification.CATEGORY_CALL).setOngoing(true).setAutoCancel(true).setOnlyAlertOnce(true).setVisibility(Notification.VISIBILITY_PRIVATE)
-      if (Build.VERSION.SDK_INT >= 26) builder.setChannelId(BinzoNotifications.CHANNEL).setTimeoutAfter(remaining)
-      else builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
-      val ringing = builder.build()
-      ringing.flags = ringing.flags or Notification.FLAG_INSISTENT
-      ringing.extras.putString(BinzoNotifications.CALL_ID, envelope.targetId)
-      BinzoNotifications.timeout(context, envelope.targetId!!, remaining)
-      return ringing
+      if (envelope?.incoming == true) return BinzoIncomingCalls.notification(context, notification) ?: throw IllegalStateException("Incoming call expired")
+      return super.createNotification(notification, notificationBehavior)
     }
   }
 }
 
 class BinzoNotificationsModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
+  init { BinzoIncomingCalls.attach(context) }
   override fun getName() = "BinzoNotifications"
-  override fun getConstants(): Map<String, Any> = mapOf("protocol" to BinzoNotificationPolicy.PROTOCOL)
+  override fun getConstants(): Map<String, Any?> = mapOf("protocol" to BinzoNotificationPolicy.PROTOCOL, "initialCallAction" to BinzoIncomingCalls.pending(reactApplicationContext))
+  override fun invalidate() { BinzoIncomingCalls.detach(reactApplicationContext);super.invalidate() }
+  @ReactMethod fun addListener(eventName: String) {}
+  @ReactMethod fun removeListeners(count: Double) {}
+  @ReactMethod fun getPendingCallAction(promise: Promise) {
+    try { promise.resolve(BinzoIncomingCalls.pending(reactApplicationContext)?.let { Arguments.makeNativeMap(it) }) }
+    catch (_: Exception) { promise.reject("CALL_ACTION", "Incoming call could not be restored.") }
+  }
+  @ReactMethod fun clearPendingCallAction(actionId: String, promise: Promise) {
+    try { BinzoIncomingCalls.clear(reactApplicationContext, actionId);promise.resolve(null) }
+    catch (_: Exception) { promise.reject("CALL_ACTION", "Incoming call action could not be cleared.") }
+  }
   @ReactMethod fun setAccount(accountId: String?, enabled: Boolean, categories: ReadableMap, promise: Promise) {
     try { val owner = accountId?.takeIf { BinzoNotificationPolicy.validId(it) };BinzoNotifications.setAccount(reactApplicationContext, owner, enabled && owner != null, categories);BinzoNotifications.channel(reactApplicationContext);promise.resolve(null) }
     catch (_: Exception) { promise.reject("NOTIFICATIONS_SETTINGS", "Notification settings could not be saved.") }

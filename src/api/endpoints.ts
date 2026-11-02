@@ -378,15 +378,18 @@ export const api = {
       ...(reason === "out_of_coins" || reason === "switch" || reason === "host_unavailable" ? { reason } : {}) };
   },
   async notificationCall(id: string) {
-    const version = getSessionVersion(), self = await selfId();ensureSession(version);
-    const raw = await request<unknown>("GET", "/calls/active");ensureSession(version);
+    const version = getSessionVersion();
+    const raw = await request<unknown>("GET", `/calls/${encodeURIComponent(id)}/incoming`);ensureSession(version);
     if (!raw || typeof raw !== "object") return null;
-    const call = record(raw), callerId = idOf(call.callerId);
-    if (idOf(call) !== id || call.status !== "ringing" || idOf(call.calleeId) !== self || !callerId ||
-      !["audio", "video"].includes(String(call.kind)) || !Number.isFinite(Date.parse(String(call.expiresAt))) || Date.parse(String(call.expiresAt)) <= Date.now()) return null;
-    const caller = await api.publicProfile(callerId);ensureSession(version);
-    if (Date.parse(String(call.expiresAt)) <= Date.now()) return null;
-    return { callId: id, from: { id: callerId, name: caller.name, avatarUrl: caller.avatarUrl, city: caller.city, gender: caller.gender }, voice: call.kind === "audio", fromHost: call.hostInitiated === true, ...callPrice(call) };
+    const call = record(raw), from=record(call.from), expiry=typeof call.expiresAt==='string'?Date.parse(call.expiresAt):NaN;
+    if (call.callId!==id || typeof call.recipientId!=='string' || !/^[a-f\d]{24}$/i.test(call.recipientId) || !/^[a-f\d]{24}$/i.test(idOf(from)) ||
+      typeof from.name!=='string' || !from.name.trim() || from.name.length>100 ||
+      typeof call.voice!=='boolean' || typeof call.fromHost!=='boolean' ||
+      !Number.isFinite(expiry) || expiry<=Date.now() || expiry>Date.now()+3*60000 ||
+      ![call.rate,call.entryFee,call.feeHoldSeconds].every(x=>Number.isSafeInteger(x)&&Number(x)>=0&&Number(x)<=1_000_000)) return null;
+    return { callId:id,recipientId:call.recipientId,expiresAt:call.expiresAt as string,
+      from:{id:idOf(from),name:from.name,avatarUrl:typeof from.avatarUrl==='string'&&from.avatarUrl.length<=2048&&/^https:\/\/[^\s<>"'\\]+$/.test(from.avatarUrl)?from.avatarUrl:'',city:typeof from.city==='string'?from.city:'',gender:genderOf(from.gender).gender},
+      voice:call.voice,fromHost:call.fromHost,rate:call.rate as number,entryFee:call.entryFee as number,feeHoldSeconds:call.feeHoldSeconds as number };
   },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async referral() { return referralFrom(await request("GET", "/referrals/me")); },

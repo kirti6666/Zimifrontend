@@ -15,7 +15,15 @@ function registerPackage(source) {
 }
 function configureManifest(manifest) {
   manifest.$ ||= {};manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+  manifest['uses-permission'] ||= [];
+  if (!manifest['uses-permission'].some(permission => permission.$?.['android:name'] === 'android.permission.USE_FULL_SCREEN_INTENT')) manifest['uses-permission'].push({ $: { 'android:name': 'android.permission.USE_FULL_SCREEN_INTENT' } });
   const app = manifest.application?.[0];if (!app) throw new Error('Native notifications require an Android application.');
+  app.activity ||= [];
+  if (!app.activity.some(activity => activity.$?.['android:name'] === '.BinzoIncomingCallActivity')) app.activity.push({ $: {
+    'android:name': '.BinzoIncomingCallActivity', 'android:exported': 'false', 'android:launchMode': 'singleTop',
+    'android:excludeFromRecents': 'true', 'android:showWhenLocked': 'true', 'android:turnScreenOn': 'true',
+    'android:taskAffinity': '${applicationId}.incomingcall', 'android:theme': '@android:style/Theme.Material.NoActionBar',
+  } });
   app.receiver ||= [];
   const original = 'expo.modules.notifications.service.NotificationsService';
   if (!app.receiver.some(receiver => receiver.$?.['android:name'] === original)) app.receiver.push({ $: { 'android:name': original, 'tools:node': 'remove' } });
@@ -27,7 +35,7 @@ function configureManifest(manifest) {
 function writeNativeFiles(projectRoot, androidRoot, packageName) {
   if (!/^[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)+$/.test(packageName)) throw new Error('Native notifications require a valid Android package.');
   const target = path.join(androidRoot, 'app/src/main/java', ...packageName.split('.'));fs.mkdirSync(target, { recursive: true });
-  for (const name of ['BinzoNotifications.kt','BinzoNotificationPolicy.kt']) fs.writeFileSync(path.join(target, name), fs.readFileSync(path.join(projectRoot, 'plugins/android', name), 'utf8').replaceAll('__PACKAGE__', packageName));
+  for (const name of ['BinzoNotifications.kt','BinzoNotificationPolicy.kt','BinzoIncomingCalls.kt']) fs.writeFileSync(path.join(target, name), fs.readFileSync(path.join(projectRoot, 'plugins/android', name), 'utf8').replaceAll('__PACKAGE__', packageName));
 }
 module.exports = config => {
   config = withAndroidManifest(config, mod => { configureManifest(mod.modResults.manifest);return mod; });

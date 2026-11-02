@@ -10,6 +10,15 @@ internal object BinzoNotificationPolicy {
   val categories = setOf("calls", "messages", "likes", "comments", "gifts", "appUpdates", "liveAlerts", "earningsAlerts", "announcements")
   private val id = Regex("^[a-fA-F0-9]{24}$")
   fun validId(value: String?) = value != null && id.matches(value)
+  fun validCallAction(callId: String?, recipientId: String?, expiresAt: String?, action: String?, owner: String?, enabled: Boolean, callsAllowed: Boolean, endedUntil: Long, now: Long): Boolean {
+    val expires = expiry(expiresAt) ?: return false
+    return validId(callId) && validId(recipientId) && recipientId == owner && enabled && callsAllowed &&
+      action in setOf("open", "answer", "decline") && expires > now && expires - now <= 180_000 && endedUntil <= now
+  }
+  fun terminalCallAction(callId: String?, recipientId: String?, dismissedId: String?): Map<String, String>? {
+    if (!validId(callId) || !validId(recipientId) || dismissedId != null && dismissedId != callId) return null
+    return mapOf("action" to "ended", "callId" to callId!!, "recipientId" to recipientId!!)
+  }
   data class Envelope(val category: String, val targetId: String?, val incoming: Boolean, val ended: Boolean, val expiresAt: Long?)
 
   fun expiry(value: String?): Long? {

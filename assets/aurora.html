@@ -5241,7 +5241,7 @@ html:root #zr-gift-playback .zr-gift-stage-art>span{font-size:clamp(100px,40vmin
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.1.5";
+window.ZIMI_APP_VERSION = "1.1.6";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -16816,6 +16816,28 @@ if (DEMO && previewMode === 'host-call' && isApprovedHost()) {
     setTimeout(() => { if (S.v === 'hcall' && !S.inc && !S.connecting) ringIncoming({ ...nextCaller(), callId: 'preview-waiting-call' }); }, 6000);
   });
 }
+
+/* Native notification actions carry explicit user intent. The server snapshot
+   is delivered first; capture/accept uses the same guarded path as a screen tap. */
+Native.on('call.nativeAction', data => {
+  const reply = outcome => Native.send('call.nativeResult', { callId:data.callId,actionId:data.actionId,action:data.action,outcome });
+  if(data.action==='open'){reply('handedOff');return}
+  if(data.action!=='answer'){reply('error');return}
+  void (async()=>{
+    try {
+      if(S.v==='ring'&&S.caller?.callId===data.callId){
+        await homeAcceptCall();
+        if(!S.acceptingCall)reply('handedOff');
+      } else if(S.v==='incoming'&&S.memberRing?.callId===data.callId){
+        // A member reviews the verified paid-call price and wallet controls on
+        // the existing incoming screen before making a chargeable answer.
+        if(S.memberRing.rate>0){reply('handedOff');return}
+        await acceptMemberRing();
+        if(!S.acceptingCall)reply('handedOff');
+      } else reply('handedOff');
+    } catch(_){reply('error')}
+  })();
+});
 
 /* Host targets are personal session preferences. Progress comes only from accepted
    gift receipts; reward amounts and eligibility come from the authenticated Home feed. */

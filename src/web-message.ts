@@ -82,6 +82,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
   let valid = false;
   switch (message.type) {
     case "ready": valid = boolean(d.demo); break;
+    case "call.nativeResult": valid = typeof d.callId === "string" && /^[a-f\d]{24}$/i.test(d.callId) && typeof d.actionId === "string" && /^[A-Za-z0-9._:-]{1,160}$/.test(d.actionId) && (d.action === "open" || d.action === "answer") && (d.outcome === "handedOff" || d.outcome === "error") && Object.keys(d).every(key=>["callId","actionId","action","outcome"].includes(key)); break;
     case "app.exit.request": case "app.launched": valid = Object.keys(d).length === 0; break;
     case "session.resume": case "data.reload": case "auth.logout": valid = true; break;
     case "connection.check": case "wallet.load": case "transactions.load": case "push.enable": valid = Object.keys(d).length === 0; break;

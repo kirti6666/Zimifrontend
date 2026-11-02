@@ -5,6 +5,7 @@ import { AppState, Linking, Share } from "react-native";
 import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
 import { createCallRecovery } from "./call-recovery";
+import { clearIncomingCallAction, getVerifiedIncomingCall, onIncomingCallAction, type NativeCallAction } from "./incoming-call-actions";
 import { messageFrom } from "./api/adapters";
 import type { LeaderboardPeriod, RelationshipKind, Relationships } from "./api/types";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
@@ -130,6 +131,7 @@ export type WebMessage =
   | { type: "call.targets.set"; data: import("./api/types").CallTargetsInput & { callId: string } }
   | { type: "call.decline"; data: { callId: string } }
   | { type: "call.end"; data: { callId?: string; reason?: string } }
+  | { type: "call.nativeResult"; data: { callId: string; actionId: string; action: "open" | "answer"; outcome: "handedOff" | "error" } }
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
   | { type: "payout.load"; data: { page?: number; requestId: number } }
   | { type: "payout.request"; data: { amountPaise: number; payoutAddress: string; idempotencyKey: string; requestId: number } }
@@ -278,6 +280,7 @@ export type AppMessage =
   | { type: "call.connected"; data: { callId: string; initiator?: boolean; peerId?: string; voice?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number; earlyEnds?: { today: number; limit: number; penaltyCoins: number } } }
   | { type: "call.failed"; data: { message: string; callId?: string; code?: string; requiredCoins?: number; invitationId?: string; requestId?: number } }
   | { type: "call.incoming"; data: { callId: string; from: Record<string, unknown>; voice?: boolean; fromHost?: boolean; rate?: number; entryFee?: number; feeHoldSeconds?: number } }
+  | { type: "call.nativeAction"; data: { callId: string; actionId: string; action: "open" | "answer" } }
   | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" | "host_unavailable" } }
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
@@ -793,6 +796,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let permissionAction: { requestId: number; document: number; sessionVersion: number; epoch: number; retired: boolean } | undefined;
   let pushOpenPending: NotificationTarget | undefined;
   let pushOpenRevision = 0;
+  let nativeIncoming: NativeCallAction | null = null;
+  let nativeIncomingFlight: string | undefined;
+  const handledIncomingActions = new Set<string>();
   const syncPush = async (mode: PushMode) => {
     const version = epoch, sessionVersion = getSessionVersion();
     const applicable = () => current(version) && sessionVersion === getSessionVersion() && sessionAvailable;
@@ -856,6 +862,33 @@ export function createBridge(post: (msg: AppMessage) => void) {
     } catch {
       if (applicable()) emit({ type: "push.opened", data: { targetType: "inbox", notificationId: target.notificationId } });
     }
+  };
+  const flushNativeIncoming = async () => {
+    const action = nativeIncoming;
+    if (!action || action.action === "decline" || !webReady || !sessionAvailable || restoring || liveOnboarding || hostAccount?.requiresOnboarding) return;
+    const key = `${action.actionId}:${action.action}:${documentRevision}`;
+    if (handledIncomingActions.has(key) || nativeIncomingFlight === key) return;
+    if (action.recipientId !== accountId || cancelledCalls.has(action.callId) || Date.parse(action.expiresAt) <= Date.now() || activeCall || pendingOutgoing || verifyCall) {
+      clearIncomingCallAction(action.actionId); return;
+    }
+    const version = epoch, session = getSessionVersion(), document = documentRevision;
+    nativeIncomingFlight = key;
+    const applicable = () => current(version) && session === getSessionVersion() && document === documentRevision && nativeIncoming?.actionId === action.actionId && nativeIncoming.action === action.action && action.recipientId === accountId && !cancelledCalls.has(action.callId) && !activeCall && !pendingOutgoing && !verifyCall && Date.parse(action.expiresAt)>Date.now();
+    try {
+      const incoming = getVerifiedIncomingCall(action.actionId, session) ?? await api.notificationCall(action.callId);
+      if (!applicable()) {
+        if (current(version) && session === getSessionVersion() && document === documentRevision && nativeIncoming?.actionId === action.actionId && nativeIncoming.action === action.action &&
+          (activeCall || pendingOutgoing || verifyCall || cancelledCalls.has(action.callId) || Date.parse(action.expiresAt)<=Date.now())) clearIncomingCallAction(action.actionId);
+        return;
+      }
+      if (!incoming || incoming.recipientId !== accountId || !(hasHostAccess() || accountRole === "user" && incoming.fromHost)) { clearIncomingCallAction(action.actionId); return; }
+      handledIncomingActions.add(key);
+      if (handledIncomingActions.size > 128) handledIncomingActions.delete(handledIncomingActions.values().next().value!);
+      holdCallActivity(incoming.callId);
+      emit({ type: "call.incoming", data: incoming });
+      emit({ type: "call.nativeAction", data: { callId: incoming.callId, actionId: action.actionId, action: action.action } });
+    } catch { /* Native call surface retains Retry; an uncertain read never accepts. */ }
+    finally { if (nativeIncomingFlight === key) nativeIncomingFlight = undefined; }
   };
   const loadProfileSettings = () => readResource("profileSettings", () => api.profileSettings(), emitProfileSettings);
   const loadPublicProfile = (id: string, requestId?: number) => {
@@ -1141,7 +1174,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       emit(event as AppMessage);
     }, accountId, appActive && !liveOnboarding);
     if (!onboarding) { void loadLists(); void restorePendingPurchases(); void support.unread(); }
-    void flushStreamLink(); flushPushOpen();
+    void flushStreamLink(); flushPushOpen(); void flushNativeIncoming();
   };
   const unsubscribe = onSessionExpired(() => {
     support.reset();
@@ -1177,7 +1210,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (renewed && current(version)) startSession(renewed, account.requiresOnboarding);
     } catch (error) {
       if (current(version)) emit({ type: "session.error", data: { message: errorMessage(error) } });
-    } finally { restoring = false; void support.unread(); void flushStreamLink(); flushPushOpen(); }
+    } finally { restoring = false; void support.unread(); void flushStreamLink(); flushPushOpen(); void flushNativeIncoming(); }
   };
 
   async function handle(msg: WebMessage) {
@@ -2167,8 +2200,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const stopPush = startPush(data => {
     const target = notificationTargetFrom(data);
     if (!target) return;
+    if (target.targetType === "call" && nativeIncoming?.callId === target.targetId) return;
     pushOpenPending = target;pushOpenRevision++;void flushPushOpen();
   }, recipientId => sessionAvailable && !!accountId && (!recipientId || recipientId === accountId));
+  const stopIncomingActions = onIncomingCallAction(action => { nativeIncoming = action; void flushNativeIncoming(); });
   const stopPushToken = onPushTokenChange(token => {
     if (pushSession === getSessionVersion() && sessionAvailable) {
       const version = epoch, sessionVersion = getSessionVersion();
@@ -2210,6 +2245,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
       if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
     },
-    close: () => { support.reset(); callRecovery?.close(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
+    close: () => { support.reset(); callRecovery?.close(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopIncomingActions(); stopPushToken(); stopLive(); },
   };
 }

@@ -20,9 +20,19 @@ const payoutReceipt = (id = 'payout-1') => ({ id, amountPaise: 50000, payoutAddr
 const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1', requestId } });
 const plain = value => JSON.parse(JSON.stringify(value));
 
-function harness(initialAppState = 'active', initialLink = null, liveStreaming = false) {
+function harness(initialAppState = 'active', initialLink = null, liveStreaming = false, initialIncoming = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
   const overrides = {};
+  const incomingActions={current:initialIncoming,listeners:new Set(),cleared:[],verified:new Map(),cacheReads:[],emit(action){this.current=action;for(const listener of [...this.listeners])listener(action)}};
+  const incomingModule={
+    onIncomingCallAction:listener=>{incomingActions.listeners.add(listener);listener(incomingActions.current);return ()=>incomingActions.listeners.delete(listener)},
+    clearIncomingCallAction:actionId=>{incomingActions.cleared.push(actionId);if(incomingActions.current?.actionId===actionId)incomingActions.emit(null)},
+    getVerifiedIncomingCall:(actionId,sessionVersion)=>{incomingActions.cacheReads.push({actionId,sessionVersion});return incomingActions.verified.get(`${actionId}:${sessionVersion}`)??null},
+  };
+  const incomingScreenModule={
+    IncomingCallScreen:'IncomingCallScreen',
+    useIncomingCall:()=>({action:null,verified:null,error:'',onEvent:()=>{},onResult:()=>{},choose:()=>{},retry:()=>{},close:()=>{},...overrides.incomingState}),
+  };
   // The FCM edge: OS permission, the device token and notification taps.
   const push = { status: 'registered', token: 'fcm:device-token', modes: [], owners: [], dismissed: [], protocol: undefined, cleared: 0, stopped: 0, open: undefined, tokenListener: undefined };
   const pushModule = {
@@ -103,6 +113,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === './api/client' || id === './client') return client;
       if (id === './api/endpoints') return { api };
       if (id === './push') return pushModule;
+      if (id === './incoming-call-actions') return incomingModule;
       if (id === './device-permissions') return devicePermissionModule;
       if (id === './features') return { LIVE_STREAMING_ENABLED: liveStreaming };
       if (id === './chat-photo-download') return { downloadChatPhoto: async (to, messageId, current) => { calls.push({ name: 'downloadChatPhoto', args: [to, messageId, current] }); if (overrides.downloadChatPhoto) return overrides.downloadChatPhoto(to, messageId, current); } };
@@ -123,6 +134,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
       if (id === './src/launch-screen') return { LaunchScreen: 'LaunchScreen' };
+      if (id === './src/incoming-call-screen') return incomingScreenModule;
       if (id === './src/config') return { API_URL: 'https://api.example.test/api/v1' };
       if (id === './src/app-update') return { useAppUpdates: () => ({ state: overrides.appUpdatesState ?? { status: 'allowed' }, check: () => {}, update: () => {} }) };
       if (id === './src/app-update-screen') return { AppUpdateScreen: 'AppUpdateScreen' };
@@ -140,7 +152,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
   const webMessages = load('src/web-message.ts');
   const count = name => calls.filter(call => call.name === name).length;
   const find = type => posts.filter(post => post.type === type);
-  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push, devicePermissions };
+  return { session, bridge, bridgeModule, webMessages, load, ApiError, overrides, calls, posts, live, saved, count, find, disk, haptics, capture, effects, opened, signals, activities, keyboards, links, shares, backs, alerts, exits, connection, push, devicePermissions, incomingActions };
 }
 
 // Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
@@ -703,14 +715,40 @@ test('the native update gate mounts app content only after an allowed policy', (
   const h = harness(), app = h.load('App.tsx');
   for (const status of ['checking', 'required', 'error']) {
     h.overrides.appUpdatesState = { status };
-    const tree = app.default();
+    const tree = [app.default().props.children].flat()[0];
     assert.equal(tree.type, 'AppUpdateScreen', `${status} cannot mount the WebView or session bridge`);
     assert.equal(tree.props.state.status, status);
     assert.equal(h.effects.length, 0, 'Blocked builds do not start app-content effects');
   }
   h.overrides.appUpdatesState = { status: 'allowed' };
-  assert.equal(app.default().type, app.AppContent);
+  assert.equal([app.default().props.children].flat()[0].type, app.AppContent);
   assert.equal(h.effects.length, 0, 'The wrapper leaves content mounting to React');
+});
+
+test('native incoming surface covers update checking without mounting app content and preserves its stable root', () => {
+  const h=harness(),app=h.load('App.tsx'),action={actionId:'native-first-frame',action:'open',recipientId:'507f1f77bcf86cd799439101',callId:'507f1f77bcf86cd799439103',expiresAt:new Date(Date.now()+30000).toISOString(),callerName:'Mira',callKind:'video'};
+  h.overrides.incomingState={action};
+  for(const status of ['checking','required','error']) {
+    h.overrides.appUpdatesState={status};const tree=app.default(),[content,overlay]=[tree.props.children].flat();
+    assert.equal(tree.type,'View');assert.equal(content.type,'AppUpdateScreen');assert.equal(overlay.type,'IncomingCallScreen');assert.equal(overlay.props.action.actionId,action.actionId);assert.equal(overlay.props.allowed,false);
+    assert.equal(h.effects.length,0,'A pending notification does not mount the gated WebView or account effects');
+  }
+  h.overrides.appUpdatesState={status:'allowed'};const admitted=app.default(),[content,overlay]=[admitted.props.children].flat();
+  assert.equal(content.type,app.AppContent);assert.equal(content.props.priorityIncoming,true);assert.equal(overlay.props.allowed,true);
+  h.overrides.incomingState={action:null};const cleared=app.default(),[sameContent,empty]=[cleared.props.children].flat();
+  assert.equal(cleared.type,admitted.type);assert.equal(sameContent.type,content.type,'Clearing the ring overlay preserves the content component at the same root position');assert.equal(empty,null);
+  h.bridge.close();
+});
+
+test('priority incoming app content skips the launch logo and forwards only valid trusted native results', () => {
+  const h=harness(),results=[],provider=h.load('App.tsx').AppContent({priorityIncoming:true,onIncomingResult:value=>results.push(plain(value))});
+  const [keyboard,launch]=[provider.props.children].flat(),web=[keyboard.props.children.props.children].flat().find(node=>node?.type==='WebView');
+  assert.equal(launch,false,'The launch animation never covers the priority incoming route');assert.equal(keyboard.props.accessibilityElementsHidden,false);assert.equal(keyboard.props.importantForAccessibility,'auto');
+  const data={callId:'507f1f77bcf86cd799439103',actionId:'native-first-frame',action:'answer',outcome:'handedOff'};
+  const deliver=(value,url='https://aurora.localhost/')=>web.props.onMessage({nativeEvent:{url,data:JSON.stringify({type:'call.nativeResult',data:value})}});
+  deliver(data,'https://evil.test/');for(const invalid of [{},{...data,callId:'bad'},{...data,actionId:'bad id'},{...data,action:'decline'},{...data,outcome:'accepted'},{...data,autoAccept:true}]){assert.equal(h.webMessages.parseWebMessage(JSON.stringify({type:'call.nativeResult',data:invalid})),null);deliver(invalid)}
+  deliver(data);deliver({...data,action:'open',outcome:'error'});assert.deepEqual(results,[data,{...data,action:'open',outcome:'error'}]);
+  assert.equal(h.count('acceptCall'),0,'A native UI acknowledgment cannot mutate or accept a call');h.effects.forEach(cleanup=>cleanup?.());h.bridge.close();
 });
 
 test('native shell resizes the WebView for keyboard overlap before applying safe-area insets', () => {
@@ -3486,6 +3524,89 @@ test('call recovery discards pending results after document, account and bridge 
       assert.equal(h.find('call.ended').length,0,`A stale ${change} snapshot cannot end or reopen content`);
       assert.equal(h.posts.length,before,'No retired call-state callback publishes a late result');
     } finally {pending.resolve({callId,status:'ended'});h.bridge.close();}
+  }
+});
+
+const nativeRecipient='507f1f77bcf86cd799439101',nativePeer='507f1f77bcf86cd799439102',nativeCallId='507f1f77bcf86cd799439103';
+const nativeHint=(extra={})=>({actionId:'native-queued-action',action:'open',recipientId:nativeRecipient,callId:nativeCallId,expiresAt:new Date(Date.now()+30000).toISOString(),callerName:'Mira',callKind:'video',...extra});
+const nativeSnapshot=(extra={})=>({callId:nativeCallId,recipientId:nativeRecipient,expiresAt:new Date(Date.now()+30000).toISOString(),from:{id:nativePeer,name:'Verified Mira',avatarUrl:'',city:'Pune'},voice:false,fromHost:false,rate:0,entryFee:0,feeHoldSeconds:0,...extra});
+async function nativeIncomingHarness() {
+  const h=harness();h.overrides.me=()=>approvedAccount(nativeRecipient);h.overrides.notificationCall=()=>nativeSnapshot();
+  await h.session.setSessionTokens(tokenPair(nativeRecipient));h.bridge.handle({type:'ready',data:{demo:false}});await settle();return h;
+}
+
+test('native incoming bridge queues before readiness, reuses verified startup data and waits for the web acceptance path', async()=>{
+  const action=nativeHint(),restore=deferred(),h=harness('active',null,false,action);
+  try {
+    h.overrides.me=()=>restore.promise;
+    await settle();assert.equal(h.count('notificationCall'),0);assert.equal(h.find('call.nativeAction').length,0);
+    await h.session.setSessionTokens(tokenPair(nativeRecipient));
+    h.incomingActions.verified.set(`${action.actionId}:${h.session.getSessionVersion()}`,nativeSnapshot());
+    h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+    assert.equal(h.count('notificationCall'),0);assert.equal(h.find('call.incoming').length,0,'Account restoration must finish before showing an actionable incoming ring');
+    restore.resolve(approvedAccount(nativeRecipient));await settle();
+    assert.equal(h.count('notificationCall'),0,'The root’s verified snapshot is reused without another HTTP lookup');
+    assert.equal(h.find('call.incoming').length,1);assert.deepEqual(plain(h.find('call.nativeAction').map(event=>event.data)),[{callId:nativeCallId,actionId:action.actionId,action:'open'}]);
+    assert.ok(h.posts.findIndex(event=>event.type==='session')<h.posts.findIndex(event=>event.type==='call.incoming'));
+    assert.ok(h.posts.findIndex(event=>event.type==='call.incoming')<h.posts.findIndex(event=>event.type==='call.nativeAction'),'The verified ring is delivered before its requested UI action');
+    h.incomingActions.emit({...action});h.incomingActions.emit({...action});await settle();assert.equal(h.find('call.nativeAction').length,1);
+    h.incomingActions.emit({...action,action:'answer'});h.incomingActions.emit({...action,action:'answer'});await settle();
+    assert.deepEqual(h.find('call.nativeAction').map(event=>event.data.action),['open','answer']);assert.equal(h.count('notificationCall'),0);assert.equal(h.count('acceptCall'),0,'Neither capture startup nor native Answer can accept before the web prepares media');
+    h.overrides.acceptCall=()=>({peerId:nativePeer,voice:false});
+    h.bridge.handle({type:'call.accept',data:{callId:nativeCallId}});await settle();
+    assert.equal(h.count('acceptCall'),1,'The existing explicit web acceptance message owns the server mutation');
+    assert.equal(h.find('call.connected').at(-1).data.callId,nativeCallId);
+  } finally {restore.resolve(approvedAccount(nativeRecipient));h.bridge.close();}
+});
+
+test('native incoming bridge rejects wrong owners, expired hints, completed calls and unsupported recipient roles', async()=>{
+  for(const condition of ['wrong-owner','expired','already-ended','not-ringing','wrong-server-owner','member-from-member']) {
+    const h=await nativeIncomingHarness();
+    try {
+      let action=nativeHint();
+      if(condition==='wrong-owner')action={...action,recipientId:'507f1f77bcf86cd799439104'};
+      if(condition==='expired')action={...action,expiresAt:new Date(0).toISOString()};
+      if(condition==='already-ended')h.live[0].onEvent({type:'call.ended',data:{callId:nativeCallId}});
+      if(condition==='not-ringing')h.overrides.notificationCall=()=>null;
+      if(condition==='wrong-server-owner')h.overrides.notificationCall=()=>nativeSnapshot({recipientId:'507f1f77bcf86cd799439104'});
+      if(condition==='member-from-member'){
+        h.overrides.me=()=>({...account(nativeRecipient),requiresOnboarding:false});h.bridge.handle({type:'session.resume',data:{}});await settle();
+      }
+      h.incomingActions.emit(action);await settle();
+      assert.equal(h.find('call.nativeAction').length,0,condition);assert.equal(h.find('call.incoming').length,0,condition);assert.equal(h.count('acceptCall'),0,condition);assert.ok(h.incomingActions.cleared.includes(action.actionId),condition);
+      if(['wrong-owner','expired','already-ended'].includes(condition))assert.equal(h.count('notificationCall'),0,'A known unusable hint does not make an incoming lookup');
+    } finally {h.bridge.close();}
+  }
+});
+
+test('native incoming bridge ignores notification actions while another call is active, creating or verifying', async()=>{
+  for(const activity of ['active','creating','verifying']) {
+    const h=await nativeIncomingHarness(),created=deferred();
+    try {
+      if(activity==='active')h.live[0].onEvent({type:'call.connected',data:{callId:'507f1f77bcf86cd799439105',initiator:true,peerId:nativePeer}});
+      if(activity==='creating'){h.overrides.startCall=()=>created.promise;h.bridge.handle({type:'call.start',data:{to:nativePeer}});await settle();}
+      if(activity==='verifying')h.live[0].onEvent({type:'verify.updated',data:{callId:'507f1f77bcf86cd799439106',status:'ringing'}});
+      h.incomingActions.emit(nativeHint({action:'answer'}));await settle();
+      assert.equal(h.count('notificationCall'),0,activity);assert.equal(h.find('call.nativeAction').length,0,activity);assert.equal(h.find('call.incoming').length,0,activity);assert.equal(h.count('acceptCall'),0,activity);
+      assert.ok(h.incomingActions.cleared.includes('native-queued-action'),activity);
+    } finally {created.resolve({callId:'507f1f77bcf86cd799439105'});await settle();h.bridge.close();}
+  }
+});
+
+test('native incoming bridge coalesces pending lookups and discards late terminal, busy, document and account results', async()=>{
+  for(const change of ['terminal','busy','document','account']) {
+    const h=await nativeIncomingHarness(),lookup=deferred();
+    try {
+      h.overrides.notificationCall=()=>lookup.promise;const action=nativeHint({action:'answer'});
+      h.incomingActions.emit(action);h.incomingActions.emit({...action});await settle();assert.equal(h.count('notificationCall'),1,'Repeated native events share the same pending lookup');
+      if(change==='terminal')h.live[0].onEvent({type:'call.ended',data:{callId:nativeCallId}});
+      if(change==='busy')h.live[0].onEvent({type:'call.connected',data:{callId:'507f1f77bcf86cd799439105',initiator:true,peerId:nativePeer}});
+      if(change==='document')h.bridge.documentLoading();
+      if(change==='account'){h.bridge.handle({type:'auth.logout',data:{}});await settle();}
+      lookup.resolve(nativeSnapshot());await settle();
+      assert.equal(h.find('call.nativeAction').length,0,change);assert.equal(h.find('call.incoming').length,0,change);assert.equal(h.count('acceptCall'),0,change);
+      if(change==='terminal'||change==='busy')assert.ok(h.incomingActions.cleared.includes(action.actionId),'The stale native surface is removed when its in-flight lookup becomes terminal or busy');
+    } finally {lookup.resolve(null);h.bridge.close();}
   }
 });
 

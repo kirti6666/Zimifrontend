@@ -38,7 +38,11 @@ function jar(group, artifact, version) {
   const manifest = { application: [{ $: {} }] };plugin.configureManifest(manifest);plugin.configureManifest(manifest);
   assert.equal(manifest.application[0].receiver.length, 2);assert.equal(manifest.application[0].receiver[0].$['tools:node'], 'remove');
   const receiver = manifest.application[0].receiver[1];assert.equal(receiver.$['android:exported'], 'false');assert.ok(receiver['intent-filter'][0].action.some(action => action.$['android:name'] === 'expo.modules.notifications.NOTIFICATION_EVENT'));
-  assert.equal(manifest['uses-permission'], undefined, 'No fullscreen/foreground service or DND-bypass permission is added');
+  assert.deepEqual(manifest['uses-permission'].map(item => item.$['android:name']), ['android.permission.USE_FULL_SCREEN_INTENT'], 'Only the incoming-call fullscreen permission is added');
+  assert.equal(manifest.application[0].activity.length, 1, 'The native ringing activity is registered once');
+  const incoming = manifest.application[0].activity[0].$;
+  assert.equal(incoming['android:name'], '.BinzoIncomingCallActivity');assert.equal(incoming['android:exported'], 'false');
+  assert.equal(incoming['android:showWhenLocked'], 'true');assert.equal(incoming['android:turnScreenOn'], 'true');assert.equal(incoming['android:excludeFromRecents'], 'true');
   const application = plugin.registerPackage('PackageList(this).packages.apply {\n}');assert.equal(plugin.registerPackage(application), application);
   const gradle = plugin.configureGradle('dependencies {}');assert.equal(plugin.configureGradle(gradle), gradle);
   // The direct native foreground path relies on Expo not also presenting these
@@ -76,6 +80,18 @@ fun main() {
  check(BinzoNotificationPolicy.validate(ended, owner, false, emptySet(), now)?.ended == true)
  check(BinzoNotificationPolicy.validate(ended, call, true, setOf("calls"), now) == null)
  check(BinzoNotificationPolicy.expiry("2026-02-30T12:00:00.000Z") == null)
+ fun callAction(account: String? = owner, target: String? = call, recipient: String? = owner, action: String? = "answer", expiry: String? = expires, enabled: Boolean = true, calls: Boolean = true, ended: Long = 0L, at: Long = now) = BinzoNotificationPolicy.validCallAction(target, recipient, expiry, action, account, enabled, calls, ended, at)
+ for (action in listOf("open", "answer", "decline")) check(callAction(action = action))
+ check(!callAction(account = null));check(!callAction(account = call));check(!callAction(recipient = call))
+ check(!callAction(target = "invalid"));check(!callAction(action = "accept-payment"));check(!callAction(enabled = false));check(!callAction(calls = false))
+ check(!callAction(expiry = null));check(!callAction(expiry = "bad"));check(!callAction(expiry = "2099-01-01T00:00:00.000Z"))
+ check(!callAction(ended = now + 1000));check(!callAction(at = now + 30_001));check(callAction(ended = now - 1))
+ val terminal = mapOf("action" to "ended", "callId" to call, "recipientId" to owner)
+ check(BinzoNotificationPolicy.terminalCallAction(call, owner, call) == terminal)
+ check(BinzoNotificationPolicy.terminalCallAction(call, owner, null) == terminal)
+ check(BinzoNotificationPolicy.terminalCallAction(call, owner, owner) == null)
+ check(BinzoNotificationPolicy.terminalCallAction(null, owner, call) == null)
+ check(BinzoNotificationPolicy.terminalCallAction(call, "invalid", null) == null)
  println("PASS actual Kotlin policy: recipient, category/master prefs, mandatory call expiry, malformed/stale targets, messages, announcements and terminal controls")
 }`);
     const stdlib = jar('org.jetbrains.kotlin', 'kotlin-stdlib', '2.1.20');
@@ -84,6 +100,6 @@ fun main() {
     const compile = spawnSync(java, ['-cp', compiler.join(path.delimiter), 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler', '-no-stdlib', '-no-reflect', '-classpath', stdlib, '-d', classes, policy, main], { encoding: 'utf8' });
     assert.equal(compile.status, 0, compile.stdout + compile.stderr);
     const run = spawnSync(java, ['-cp', [classes, stdlib].join(path.delimiter), 'com.example.push.PolicyChecksKt'], { encoding: 'utf8' });assert.equal(run.status, 0, run.stdout + run.stderr);process.stdout.write(run.stdout);
-    console.log('PASS native push wrapper/plugin: capability negotiation, disabled-until-settings ownership, category sync, safe dismissal, idempotent receiver/package wiring and no new intrusive permissions');
+    console.log('PASS native push wrapper/plugin: capability negotiation, owner/category/action/expiry/tombstone guards, safe dismissal, private lock-screen call activity and idempotent native wiring');
   } finally { assert.ok(path.resolve(temp).startsWith(path.resolve(os.tmpdir()) + path.sep));fs.rmSync(temp, { recursive: true, force: true }); }
 })().catch(error => { console.error(error);process.exitCode = 1; });

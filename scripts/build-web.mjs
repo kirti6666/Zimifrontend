@@ -179,6 +179,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/call-ringback.js") +
   "\n" + read("web/ongoing-call.js") +
   "\n" + read("web/host-calls.js") +
+  "\n" + read("web/incoming-call.js") +
   "\n" + read("web/host-studio.js") +
   "\n" + read("web/verification-call.js") +
   "\n" + read("web/chats.js") +

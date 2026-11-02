@@ -324,6 +324,36 @@ test('fresh authenticated server grace can restore a cold payment and hands its 
   h.controller.close();
 });
 
+test('fresh grace hands off to a native call lease already held before admission and locks immediately when it ends', async () => {
+  for(const leaseTiming of ['before-start','during-grace']) {
+    const time=clock(),proof=deferred(),h=controllerHarness({grace:()=>proof.promise},time.globals);
+    try {
+      if(leaseTiming==='before-start')h.controller.setBusy(true);
+      const starting=h.controller.start();await settle();
+      assert.equal(h.calls.graces.length,1);
+      assert.ok(!h.frames.some(frame=>frame.status==='allowed'),'A local lease alone never opens the cold mandatory gate');
+      if(leaseTiming==='during-grace')h.controller.setBusy(true);
+      proof.resolve({deferUntil:new Date(time.now()+60000).toISOString(),activities:['call']});await starting;
+      assert.equal(h.controller.state.status,'allowed');assert.equal(h.controller.state.deferred,true);
+      h.controller.setBusy(false);
+      assert.equal(h.controller.state.status,'required','The finished real call owns the boundary instead of the old ringing expiry');
+      assert.equal(h.controller.state.deferred,false);
+      time.advance(60001);assert.equal(h.controller.state.status,'required');
+    } finally {h.controller.close();}
+  }
+});
+
+test('a native lease finished while grace was in flight retains only the bounded server recovery deadline', async () => {
+  const time=clock(),proof=deferred(),h=controllerHarness({grace:()=>proof.promise},time.globals);
+  try {
+    h.controller.setBusy(true);const starting=h.controller.start();await settle();h.controller.setBusy(false);
+    proof.resolve({deferUntil:new Date(time.now()+1000).toISOString(),activities:['call']});await starting;
+    assert.equal(h.controller.state.status,'allowed');assert.equal(h.controller.state.deferred,true);
+    time.advance(999);assert.equal(h.controller.state.status,'allowed');
+    time.advance(1);assert.equal(h.controller.state.status,'required');assert.equal(h.controller.state.deferred,false);
+  } finally {h.controller.close();}
+});
+
 test('server grace expires and locks a cold recovery even when no bridge activity ever attaches', async () => {
   const time = clock(), h = controllerHarness({ grace: async () => ({ deferUntil: new Date(time.now() + 1000).toISOString(), activities: ['call'] }) }, time.globals);
   await h.controller.start(); assert.equal(h.controller.state.status, 'allowed');

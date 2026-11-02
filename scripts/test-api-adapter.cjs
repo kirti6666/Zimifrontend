@@ -694,13 +694,24 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('GET', `/calls/${pushCallId}`, {...confirmedCall,status:'ended'}, undefined, {run:()=>version++});
   await assert.rejects(api.callState(pushCallId), /sign-in changed/, 'A late snapshot from the previous account cannot affect a new session');
   expect('GET', '/auth/me', {user}); await api.me(true);
-  const activeRing = { _id: pushCallId, callerId: pushPeer, calleeId: 'member-id', status: 'ringing', kind: 'audio', hostInitiated: true, coinsPerMinute: 35, expiresAt: new Date(Date.now() + 30000).toISOString() };
-  expect('GET', '/calls/active', activeRing); expect('GET', `/users/${pushPeer}`, { ...publicHost, _id: pushPeer });
+  const activeRing = { callId:pushCallId,recipientId:'507f1f77bcf86cd799439015',expiresAt:new Date(Date.now()+30000).toISOString(),
+    from:{id:pushPeer,name:'Aster',avatarUrl:'https://cdn.example.test/avatar.jpg',city:'Pune',gender:'female'},voice:true,fromHost:true,rate:35,entryFee:5,feeHoldSeconds:30 };
+  const beforeIncomingLookup=requests.length;
+  expect('GET', `/calls/${pushCallId}/incoming`, activeRing);
   const notificationCall = await api.notificationCall(pushCallId);
-  assert.equal(notificationCall.from.id, pushPeer); assert.equal(notificationCall.voice, true); assert.equal(notificationCall.fromHost, true);
-  for(const changed of [{status:'ended'},{calleeId:'other-account'},{_id:'different-call'},{expiresAt:new Date(0).toISOString()},{kind:'unknown'}]){
-    expect('GET','/calls/active',{...activeRing,...changed});assert.equal(await api.notificationCall(pushCallId),null,'Expired, completed, unrelated or malformed calls never become incoming rings');
+  assert.deepEqual(plain(notificationCall),activeRing,'The one authenticated incoming-call response provides caller, recipient, kind, expiry and the actual price');
+  assert.equal(requests.length-beforeIncomingLookup,1,'Opening a notification requires no separate account, active-call or caller-profile lookup');
+  for(const changed of [{callId:'507f1f77bcf86cd799439099'},{recipientId:'bad-id'},{from:{...activeRing.from,id:'bad-id'}},{from:{...activeRing.from,name:''}},{from:{...activeRing.from,name:'x'.repeat(101)}},
+    {expiresAt:new Date(0).toISOString()},{expiresAt:new Date(Date.now()+180001).toISOString()},{expiresAt:'tomorrow'},{voice:'audio'},{fromHost:1},
+    {rate:-1},{rate:1.5},{rate:'35'},{entryFee:undefined},{entryFee:1_000_001},{feeHoldSeconds:null}]){
+    expect('GET',`/calls/${pushCallId}/incoming`,{...activeRing,...changed});assert.equal(await api.notificationCall(pushCallId),null,'Wrong-target, expired, malformed identity and unsupported metadata cannot become incoming rings');
   }
+  expect('GET',`/calls/${pushCallId}/incoming`,null);assert.equal(await api.notificationCall(pushCallId),null,'A call that stopped ringing before the lookup does not reopen');
+  expect('GET',`/calls/${pushCallId}/incoming`,{...activeRing,from:{...activeRing.from,avatarUrl:'javascript:alert(1)'}});
+  assert.equal((await api.notificationCall(pushCallId)).from.avatarUrl,'','An invalid optional caller image cannot enter a ringing screen');
+  expect('GET',`/calls/${pushCallId}/incoming`,activeRing,undefined,{run:()=>version++});
+  await assert.rejects(api.notificationCall(pushCallId),/sign-in changed/,'A response begun under an older account cannot become the next account’s incoming call');
+  expect('GET','/auth/me',{user});await api.me(true);
   expect('GET', `/posts/${pushPostId}`, { _id: pushPostId, userId: pushPeer, kind: 'photo', mediaUrl: 'https://cdn.example.test/target.jpg', caption: 'Targeted post' });
   const notificationPost=await api.notificationPost(pushPostId);assert.equal(notificationPost.ownerId,pushPeer);assert.equal(notificationPost.post.id,pushPostId);
   finished();
