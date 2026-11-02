@@ -4,6 +4,7 @@ import { AppState, Linking, Share } from "react-native";
 
 import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
+import { createCallRecovery } from "./call-recovery";
 import { messageFrom } from "./api/adapters";
 import type { LeaderboardPeriod, RelationshipKind, Relationships } from "./api/types";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
@@ -295,6 +296,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let appActive = AppState?.currentState !== "background" && AppState?.currentState !== "inactive";
   let liveOnboarding = false;
   let activeCall: string | undefined;
+  let callRecovery: ReturnType<typeof createCallRecovery> | undefined;
   // A staff verification call; `accepted` marks the device that answered it.
   let verifyCall: { callId: string; accepted: boolean } | undefined;
   let callGeneration = 0;
@@ -416,6 +418,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     settleExpiry();
   };
   const resetUpdateActivities = () => {
+    callRecovery?.reset();
     for (const entry of purchaseActivities) { entry.dismissed = true; clearTimeout(entry.timer); }
     purchaseActivities.clear();
     for (const lease of updateActivities) lease.finish();
@@ -426,6 +429,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (closed) return;
     if (message.type === "call.connected" || message.type === "call.ended") void dismissIncomingCallNotification(message.data.callId).catch(() => {});
     post(message);
+    if (["call.created", "call.connected", "call.ended", "stream.privateCall"].includes(message.type)) callRecovery?.sync();
   };
   const support = createSupportBridge({ api, emit, snapshot: () => ({
     key: `${epoch}:${getSessionVersion()}:${documentRevision}:${accountId ?? ""}`,
@@ -434,6 +438,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   }) });
   const stopConnection = onConnectionChanged(data => {
     if (webReady) emit({ type: "connection.status", data });
+    if (data.connected) callRecovery?.sync(true);
   });
   const metadata = (error: unknown) => ({
     message: errorMessage(error),
@@ -668,6 +673,22 @@ export function createBridge(post: (msg: AppMessage) => void) {
     readResource("calls", () => api.callHistory(), data => emit({ type: "data.calls", data }), { background: true }),
     readResource("missed", () => api.missedCalls(), data => emit({ type: "data.missed", data }), { background: true }),
   ]);
+  const endRemoteCall = (data: Extract<AppMessage, { type: "call.ended" }>["data"]) => {
+    rememberCancelledCall(data.callId);
+    if (data.callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
+    finishCallActivity(data.callId);
+    void refreshCalls();
+    emit({ type: "call.ended", data });
+  };
+  callRecovery = createCallRecovery({
+    snapshot: () => ({
+      key: `${epoch}:${getSessionVersion()}:${documentRevision}:${accountId ?? ""}:${callGeneration}`,
+      callId: activeCall,
+      available: !closed && sessionAvailable && !!accountId && !!getCachedToken() && webReady && !restoring && !liveOnboarding,
+    }),
+    read: callId => api.callState(callId),
+    ended: ({ callId, coins, reason }) => endRemoteCall({ callId, ...(coins !== undefined ? { coins } : {}), ...(reason ? { reason } : {}) }),
+  });
   const homeFlightCurrent = () => homeFlight && current(homeFlight.epoch) && homeFlight.session === getSessionVersion() && homeFlight.document === documentRevision;
   const loadHome = (query = homeQuery, background = false): Promise<void> => {
     query = { ...query };
@@ -968,6 +989,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       for (const external of externalCoinCheckouts.values()) if (!external.settling) external.departed = true;
       return;
     }
+    callRecovery?.sync(true);
     if (homeInvalidated && accountId && getCachedToken()) { lastHomeRefresh = 0; invalidateHome(); }
     for (const external of externalCoinCheckouts.values()) if (external.departed) void coinPaymentReturned(external);
     for (const pending of pendingPurchases.values()) {
@@ -1083,10 +1105,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       // A host's targets belong to the call on screen; a late update from an earlier call is dropped.
       if (event.type === "call.targets" && callId !== activeCall) return;
       if (event.type === "call.ended" && typeof callId === "string") {
-        rememberCancelledCall(callId);
-        if (callId === activeCall) { activeCall = undefined; activeHostCall = false; callGeneration++; }
-        finishCallActivity(callId);
-        void refreshCalls();
+        endRemoteCall(event.data as Extract<AppMessage, { type: "call.ended" }>["data"]);
+        return;
       }
       if (event.type === "call.connected" && typeof callId === "string") {
         if (event.data?.initiator === false && !hasHostAccess() && !(hostChecking && activeHostCall && activeCall === callId) &&
@@ -1107,6 +1127,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "stream.ended" && event.data?.streamId === activeStream?.id) activeStream = undefined;
       if (event.type === "home.updated") invalidateHome();
       if (event.type === "realtime.status" && event.data?.connected === true && !liveOnboarding) {
+        callRecovery?.sync(true);
         const reconnecting = connectedBefore;
         connectedBefore = true;
         if (activeStream) quietly(loadStreamRequests(activeStream.id), "stream.requests.load");
@@ -2033,6 +2054,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (!msg.data.callId || callId === activeCall || callId === pendingOutgoing?.callId) callGeneration++;
         if (callId) rememberCancelledCall(callId);
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; }
+        callRecovery?.sync();
         if (callId) quietly(api.endCall(callId, msg.data.reason).finally(() => finishCallActivity(callId)), msg.type);
         return;
       }
@@ -2155,7 +2177,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { support.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { support.reset(); callRecovery?.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
       const version = epoch;
@@ -2188,6 +2210,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
       if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
     },
-    close: () => { support.reset(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
+    close: () => { support.reset(); callRecovery?.close(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopPushToken(); stopLive(); },
   };
 }

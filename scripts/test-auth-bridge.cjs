@@ -69,6 +69,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
     profileSettings: () => profileSettings(), themes: () => themeCatalog(), blockedUsers: () => ({ users: [], total: 0, page: 1, limit: 20 }),
     payouts: (page = 1) => ({ items: [], total: 0, page, limit: 20 }),
     streamRequests: streamId => ({ streamId, requests: [], count: 0, ownRequestId: null }),
+    callState: callId => ({ callId, status: 'accepted' }),
     ads: () => ({ adFree: false, items: [] }),
   };
   const api = new Proxy({}, { get: (_, name) => async (...args) => {
@@ -122,6 +123,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === 'expo-haptics') return { selectionAsync: async () => haptics.push('selection'), notificationAsync: async kind => haptics.push(kind), impactAsync: async kind => haptics.push(kind), NotificationFeedbackType: { Success: 'success', Error: 'error' }, ImpactFeedbackStyle: { Light: 'light' } };
       if (id === './assets/aurora-bundle') return { __esModule: true, default: '<html>Native app</html>' };
       if (id === './src/launch-screen') return { LaunchScreen: 'LaunchScreen' };
+      if (id === './src/config') return { API_URL: 'https://api.example.test/api/v1' };
       if (id === './src/app-update') return { useAppUpdates: () => ({ state: overrides.appUpdatesState ?? { status: 'allowed' }, check: () => {}, update: () => {} }) };
       if (id === './src/app-update-screen') return { AppUpdateScreen: 'AppUpdateScreen' };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
@@ -3374,6 +3376,117 @@ test('a finished, declined or missed call refreshes call history and missed call
   const loads=h.find('data.loading').filter(message=>['calls','missed'].includes(message.data.resource)).slice(-4);
   assert.ok(loads.length===4&&loads.every(message=>message.data.background===true),'The refresh is a background read');
   assert.equal(h.find('data.calls').at(-1).data.calls[0].status,'missed');h.bridge.close();
+});
+
+async function recoveryCallHarness(callId) {
+  const h = harness();
+  h.overrides.me = () => ({...account(),requiresOnboarding:false});
+  h.overrides.startCall = () => ({callId});
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle({type:'call.start',data:{to:'host-id',voice:false}});await settle();
+  h.live[0].onEvent({type:'call.connected',data:{callId,initiator:true,peerId:'host-id',voice:false}});await settle();
+  assert.equal(h.find('call.created').at(-1).data.callId,callId);
+  assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),true);
+  return h;
+}
+
+test('call recovery reconciles a lost remote hangup on reconnect and retires the active call once', async () => {
+  const callId='lost-terminal-call',h=await recoveryCallHarness(callId);
+  try {
+    const before={history:h.count('callHistory'),missed:h.count('missedCalls')};
+    h.overrides.callState=()=>({callId,status:'ended',coins:42,reason:'switch'});
+    h.live[0].onEvent({type:'realtime.status',data:{connected:false}});
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.deepEqual(plain(h.calls.filter(call=>call.name==='callState').at(-1).args),[callId],'Reconnection checks the exact currently active call');
+    assert.deepEqual(plain(h.find('call.ended').map(event=>event.data)),[{callId,coins:42,reason:'switch'}]);
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),false,'An authoritative remote hangup releases the native call lease');
+    assert.deepEqual([h.count('callHistory')-before.history,h.count('missedCalls')-before.missed],[1,1]);
+    const reads=h.count('callState');
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});
+    for(const listener of [...h.activities])listener('active');await settle();
+    assert.equal(h.count('callState'),reads,'Once ended, foreground/reconnect does not continue querying the retired call');
+    assert.equal(h.find('call.ended').length,1);
+    const connections=h.find('call.connected').length;
+    h.live[0].onEvent({type:'call.connected',data:{callId,initiator:true,peerId:'host-id'}});await settle();
+    assert.equal(h.find('call.connected').length,connections,'A delayed accepted event cannot reopen the call after reconciliation');
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),false);
+  } finally {h.bridge.close();}
+});
+
+test('call recovery checks a background call on foreground without waiting for a socket reconnect', async () => {
+  const callId='foreground-terminal-call',h=await recoveryCallHarness(callId);
+  try {
+    h.overrides.callState=()=>({callId,status:'ended'});
+    for(const listener of [...h.activities])listener('background');await settle();
+    assert.equal(h.find('call.ended').length,0);
+    for(const listener of [...h.activities])listener('active');await settle();
+    assert.deepEqual(plain(h.find('call.ended').map(event=>event.data)),[{callId}]);
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),false);
+    assert.equal(h.count('endCall'),0,'Recovering a server hangup does not issue a second hangup mutation');
+  } finally {h.bridge.close();}
+});
+
+test('call recovery retains healthy media through failed and accepted state checks, then recovers a terminal state', async () => {
+  const callId='uncertain-call',h=await recoveryCallHarness(callId);
+  try {
+    h.overrides.callState=()=>{throw new h.ApiError('State check offline',503)};
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.equal(h.find('call.ended').length,0);
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),true,'An HTTP failure is uncertainty, never proof of a remote hangup');
+    h.overrides.callState=()=>({callId,status:'accepted'});
+    for(const listener of [...h.activities])listener('active');await settle();
+    assert.equal(h.find('call.ended').length,0);
+    assert.equal(h.find('call.connected').length,1,'Confirming an existing accepted call never restarts its media');
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),true);
+    h.overrides.callState=()=>({callId,status:'missed',reason:'host_unavailable'});
+    h.connection.emit({connected:true});await settle();
+    assert.deepEqual(plain(h.find('call.ended').map(event=>event.data)),[{callId,reason:'host_unavailable'}],'HTTP connection recovery also reconciles the terminal snapshot');
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),false);
+    assert.equal(h.count('endCall'),0);
+  } finally {h.bridge.close();}
+});
+
+test('call recovery ignores an old pending snapshot after a new call replaces it', async () => {
+  const oldCall='old-recovery-call',newCall='new-recovery-call',h=await recoveryCallHarness(oldCall),pending=deferred();
+  try {
+    h.overrides.callState=callId=>callId===oldCall?pending.promise:{callId,status:'accepted'};
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.equal(h.count('callState'),1);
+    h.bridge.handle({type:'call.end',data:{callId:oldCall}});await settle();
+    h.overrides.startCall=()=>({callId:newCall});
+    h.bridge.handle({type:'call.start',data:{to:'second-host',voice:true}});await settle();
+    h.live[0].onEvent({type:'call.connected',data:{callId:newCall,initiator:true,peerId:'second-host',voice:true}});await settle();
+    pending.resolve({callId:oldCall,status:'ended'});await settle();
+    assert.equal(h.find('call.ended').length,0,'A late terminal snapshot belongs to the former call, not its replacement');
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),true);
+    assert.equal(h.find('call.connected').at(-1).data.callId,newCall);
+    h.overrides.callState=callId=>({callId,status:'ended'});
+    h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+    assert.deepEqual(plain(h.find('call.ended').map(event=>event.data)),[{callId:newCall}]);
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(),false);
+  } finally {pending.resolve({callId:oldCall,status:'ended'});h.bridge.close();}
+});
+
+test('call recovery discards pending results after document, account and bridge retirement', async () => {
+  for(const change of ['document','account','close']) {
+    const callId=`retired-${change}-call`,h=await recoveryCallHarness(callId),pending=deferred();
+    try {
+      h.overrides.callState=()=>pending.promise;
+      h.live[0].onEvent({type:'realtime.status',data:{connected:true}});await settle();
+      assert.equal(h.count('callState'),1);
+      if(change==='document')h.bridge.documentLoading();
+      else if(change==='account') {
+        h.bridge.handle({type:'auth.logout',data:{}});await settle();
+        h.overrides.verifyOtp=()=>({...account('bob'),requiresOnboarding:false,tokens:tokenPair('bob'),isNew:false});
+        h.bridge.handle(verifyMessage(88));await settle();
+      } else h.bridge.close();
+      const before=h.posts.length;
+      pending.resolve({callId,status:'ended',coins:90});await settle();
+      assert.equal(h.find('call.ended').length,0,`A stale ${change} snapshot cannot end or reopen content`);
+      assert.equal(h.posts.length,before,'No retired call-state callback publishes a late result');
+    } finally {pending.resolve({callId,status:'ended'});h.bridge.close();}
+  }
 });
 
 const pushSettings = (serverPush = true) => { const settings = profileSettings(); settings.capabilities.pushNotifications = serverPush; return settings; };

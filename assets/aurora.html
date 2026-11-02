@@ -15617,8 +15617,13 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
     if (session.kind === 'call' && handoffCall === session.id) return releaseCall();
     const message = explain(error);
     Native.send(session.kind === 'call' ? 'call.end' : session.hosting ? 'stream.end' : 'stream.leave', session.kind === 'call' ? { callId: session.id, reason: 'media_failed' } : { streamId: session.id });
+    if (active !== session) return;
     stop();
     status(message, true);
+    // Signaling may be offline when media recovery fails. End the matching UI
+    // locally as well, so its timer/minimized banner cannot outlive the media.
+    // The remote path does not send a second call.end request.
+    if (session.kind === 'call') Native.receive({ type: 'call.ended', data: { callId: session.id } });
   }
   async function tuneVideo(peer, level) {
     if (peer.tuning || peer.tuned === level) return;
