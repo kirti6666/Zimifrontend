@@ -454,10 +454,23 @@
     try {
       for (const sender of peer.pc.getSenders()) {
         if (sender.track?.kind !== 'video' || !sender.getParameters || !sender.setParameters) continue;
-        const params = sender.getParameters();
+        let params = sender.getParameters();
         if (!params.encodings?.length) continue;
         params.encodings.forEach(encoding => Object.assign(encoding, VIDEO_PROFILES[level]));
-        await sender.setParameters(params);
+        // Camera motion should remain fluid while the encoder lowers resolution.
+        // Some older WebViews reject this optional preference: still apply the
+        // supported bitrate/size limits using a fresh parameters transaction.
+        if (peer.framePreference !== false) params.degradationPreference = 'maintain-framerate';
+        else delete params.degradationPreference;
+        try { await sender.setParameters(params); }
+        catch (error) {
+          if (peer.framePreference === false) throw error;
+          peer.framePreference = false;
+          params = sender.getParameters();
+          delete params.degradationPreference;
+          params.encodings.forEach(encoding => Object.assign(encoding, VIDEO_PROFILES[level]));
+          await sender.setParameters(params);
+        }
       }
       peer.tuned = level;
       peer.targetSamples = 0;
@@ -472,6 +485,7 @@
       if (active !== session || peers.get(id) !== peer) return;
       let poor = navigator.onLine === false, outgoingPoor = poor, severe = false;
       let cpuLimited = false, availableBitrate;
+      const current = peer.tuned ?? 2;
       let selectedPair;
       report.forEach(stat => {
         if (stat.type === 'transport' && stat.selectedCandidatePairId) selectedPair = stat.selectedCandidatePairId;
@@ -503,9 +517,34 @@
           }
           peer.stats.set(stat.id, { received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0 });
         }
-        if (stat.type === 'outbound-rtp' && stat.qualityLimitationReason === 'cpu') cpuLimited = true;
+        if (stat.type === 'outbound-rtp' && (stat.kind === 'video' || stat.mediaType === 'video')) {
+          const before = peer.stats.get(stat.id), videoOn = cameraEnabled() && stat.active !== false;
+          if (videoOn) {
+            if (stat.qualityLimitationReason === 'cpu') cpuLimited = true;
+            // These counters are cumulative. Use only a fresh, non-reset
+            // interval so old keyframes and camera changes cannot hold a call
+            // at low quality after the device has recovered.
+            if (before && !(stat.timestamp <= before.timestamp)) {
+              const frames = stat.framesEncoded - before.frames, encode = stat.totalEncodeTime - before.encode;
+              if (frames >= 8 && encode >= 0 && encode / frames > 1 / VIDEO_PROFILES[current].maxFramerate) cpuLimited = true;
+              const packets = stat.packetsSent - before.packets, delay = stat.totalPacketSendDelay - before.delay;
+              if (packets >= 20 && delay >= 0 && delay / packets > .12) {
+                poor = outgoingPoor = true;
+                if (delay / packets > .3) severe = true;
+              }
+            }
+            // A bandwidth estimate alone is normal. Actual lost encoder motion
+            // despite a healthy camera source is a reason to lower resolution.
+            const source = report.get(stat.mediaSourceId);
+            if (stat.qualityLimitationReason === 'bandwidth' && source?.framesPerSecond >= 18 && stat.framesPerSecond < source.framesPerSecond * .65) {
+              poor = outgoingPoor = true;
+              if (stat.framesPerSecond < 8) severe = true;
+            }
+          }
+          peer.stats.set(stat.id, { timestamp: stat.timestamp, frames: stat.framesEncoded, encode: stat.totalEncodeTime, packets: stat.packetsSent, delay: stat.totalPacketSendDelay });
+        }
       });
-      if (peer.pc.connectionState !== 'connected') return;
+      if (!peerConnected(peer.pc)) return;
       // A low bandwidth estimate alone is not a failure: reducing our ceiling
       // again can prevent the estimator from probing upward after a brief dip.
       // Use it to size a reduction only when loss, jitter or delay confirms one.
@@ -514,16 +553,24 @@
       if (peer.poorSamples >= 2 || peer.goodSamples >= 3) {
         setQuality(poor ? 'poor' : 'good');
       }
-      const target = outgoingPoor ? severe || availableBitrate < 600000 ? 0 : 1 : cpuLimited ? 1 : 2;
+      const target = outgoingPoor ? severe || availableBitrate < 600000 ? 0 : 1 : cpuLimited ? Math.max(0, current - 1) : 2;
       peer.targetSamples = peer.targetLevel === target ? peer.targetSamples + 1 : 1;
       peer.targetLevel = target;
-      const current = peer.tuned ?? 2;
       if (target < current && peer.targetSamples >= 2) await tuneVideo(peer, target);
       // Restore one step at a time after sustained recovery, avoiding repeated
       // jumps between a clear picture and the lowest quality on mobile data.
       else if (target > current && peer.targetSamples >= 3) await tuneVideo(peer, current + 1);
     } catch (_) { /* A stats read may race call cleanup or be unsupported. */ }
     finally { peer.sampling = false; }
+  }
+  function peerConnected(pc) {
+    return pc.connectionState === 'connected' && !['disconnected', 'failed'].includes(pc.iceConnectionState);
+  }
+  function connectedPeer(session, peer) {
+    clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
+    setQuality('good');
+    status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
+    if (session.kind === 'call') void tuneVideo(peer, peer.tuned ?? 2);
   }
   function recoverPeer(session, id, peer) {
     if (active !== session || peers.get(id) !== peer || peer.recoveryTimer) return;
@@ -533,7 +580,7 @@
     peer.recoveryTimer = setTimeout(() => {
       peer.recoveryTimer = null;
       if (active !== session || peers.get(id) !== peer) return;
-      if (peer.pc.connectionState === 'connected' && peer.pc.iceConnectionState !== 'failed') return;
+      if (peerConnected(peer.pc)) return connectedPeer(session, peer);
       if (Date.now() - peer.recoveryStarted >= 30000) return fail(session, new Error('The media connection could not recover. Please reconnect.'));
       // Only the original offerer restarts ICE, avoiding competing offers.
       if (peer.offerer) enqueue(session, id, async current => {
@@ -578,10 +625,8 @@
     pc.onconnectionstatechange = () => {
       if (active !== session) return;
       if (pc.connectionState === 'connected') {
-        clearTimeout(peer.recoveryTimer); peer.recoveryTimer = null; peer.recoveryStarted = 0;
-        setQuality('good');
-        status(session.kind === 'stream' && session.hosting ? 'You are live.' : 'Connected');
-        if (session.kind === 'call') void tuneVideo(peer, 2);
+        if (peerConnected(pc)) connectedPeer(session, peer);
+        else if (session.kind === 'call') recoverPeer(session, id, peer);
       }
       if (pc.connectionState === 'disconnected') {
         if (session.kind === 'call') recoverPeer(session, id, peer);
@@ -595,7 +640,9 @@
     };
     if (session.kind === 'call') {
       pc.oniceconnectionstatechange = () => {
+        if (active !== session || peers.get(id) !== peer) return;
         if (['failed', 'disconnected'].includes(pc.iceConnectionState)) recoverPeer(session, id, peer);
+        else if (peer.recoveryStarted && peerConnected(pc)) connectedPeer(session, peer);
       };
       peer.monitor = setInterval(() => void sampleQuality(session, id, peer), 2000);
     }
@@ -750,7 +797,7 @@
   Native.on('realtime.status', data => {
     if (active?.kind === 'call') {
       if (data.connected) peers.forEach((peer, id) => {
-        if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer);
+        if (!peerConnected(peer.pc)) recoverPeer(active, id, peer);
       });
       return;
     }
@@ -771,7 +818,7 @@
       pending.reject(new Error(data.message || 'Could not load video connection settings.'));
     } else if (data.action === 'stream.start') { stop(); status(data.message || 'The broadcast could not be started.', true); }
     else if (active && ['rtc.signal', 'stream.signal', 'stream.ready'].includes(data.action)) {
-      if (active.kind === 'call') peers.forEach((peer, id) => { if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer); });
+      if (active.kind === 'call') peers.forEach((peer, id) => { if (!peerConnected(peer.pc)) recoverPeer(active, id, peer); });
       else if (data.action === 'stream.ready') fail(active, new Error(data.message || 'The media connection was interrupted.'));
       else status(data.message || 'The media connection was interrupted.', true);
     }
@@ -785,12 +832,19 @@
   });
   window.addEventListener('pagehide', stop);
   const screen = document.getElementById('screen');
-  if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(attach).observe(screen, { childList: true, subtree: true });
+  if (screen && typeof MutationObserver !== 'undefined') new MutationObserver(records => {
+    const changed = [...records].flatMap(record => [...record.addedNodes, ...record.removedNodes]).filter(node => node.nodeType === 1);
+    const contains = (node, selector) => node.matches(selector) || !!node.querySelector(selector);
+    // Chat, billing and gift updates do not change a media attachment. Avoid
+    // rescanning every video and reapplying beauty state for those mutations.
+    if (changed.some(node => contains(node, MEDIA_SELECTOR))) attach();
+    else if (changed.some(node => contains(node, '[data-zimi-network]'))) paintQuality();
+  }).observe(screen, { childList: true, subtree: true });
   function resume() {
     if (document.hidden) return;
     attach();
     if (active?.kind === 'call') peers.forEach((peer, id) => {
-      if (peer.pc.connectionState !== 'connected') recoverPeer(active, id, peer);
+      if (!peerConnected(peer.pc)) recoverPeer(active, id, peer);
       else void sampleQuality(active, id, peer);
     });
   }

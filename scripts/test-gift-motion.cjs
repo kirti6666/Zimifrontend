@@ -109,6 +109,26 @@ async function checkTransparentGift(page, label) {
     assert.equal(await stage(page).locator('img').evaluate(image=>image===window.__giftImage),true,'Opening chat and redrawing preserve the running animation image');
     assert.equal(await stage(page).evaluate(node=>!document.getElementById('screen').contains(node)),true,'The playback portal lives outside the redrawable call screen');
     assert.equal(await page.locator('.zr-gift-celebration').evaluate(el => getComputedStyle(el).pointerEvents), 'none', 'Celebrations never block controls');
+    const layoutReads=await page.evaluate(async()=>{
+      const room=document.querySelector('.zr-room'),bounds=room.getBoundingClientRect;
+      let reads=0;room.getBoundingClientRect=function(){reads++;return bounds.call(this)};
+      try{
+        // Model clock/billing text and live chat arriving in separate tasks.
+        for(let i=0;i<20;i++){
+          document.getElementById('ck').textContent='00:'+String(i).padStart(2,'0');
+          const message=document.createElement('div');message.textContent='Call chat '+i;
+          document.getElementById('rfeed').append(message);
+          await new Promise(resolve=>setTimeout(resolve,0));
+        }
+        return reads;
+      }finally{room.getBoundingClientRect=bounds}
+    });
+    assert.equal(layoutReads,0,'Clock and chat updates never force gift bounds layout during a video call');
+    await page.evaluate(()=>{const dialog=document.createElement('dialog');dialog.id='gift-pacing-dialog';dialog.open=true;document.body.append(dialog)});
+    await page.waitForFunction(()=>document.getElementById('zr-gift-playback')?.hidden);
+    await page.evaluate(()=>document.getElementById('gift-pacing-dialog').remove());
+    await page.waitForFunction(()=>document.getElementById('zr-gift-playback')?.hidden===false);
+    assert.equal(await stage(page).locator('img').evaluate(image=>image===window.__giftImage),true,'Dialog removal resumes the same playing image');
     await page.waitForTimeout(300);
     fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
     await page.screenshot({ path: path.join(root, 'artifacts', 'host-gift-motion.png') });

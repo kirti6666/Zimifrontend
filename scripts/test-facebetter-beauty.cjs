@@ -40,9 +40,10 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
           setCallbacks(callbacks){if(!this.initialized)throw new Error('Real SDK requires init before setCallbacks');this.callbacks=callbacks}
           async setLogConfig(options){this.logOptions=options}
           async init(options){this.options=options;if(window.delayInit)await new Promise(resolve=>window.finishInit=resolve);this.initialized=true}
-          processImage(video,width,height,frame,mirror){
+          processImage(input,width,height,frame,mirror){
             if(window.failProcess)throw new Error('Test processing failed');
-            this.processed++;this.lastProcess={width,height,frame,mirror};
+            if(window.processDelay){const end=performance.now()+processDelay;while(performance.now()<end){}}
+            this.processed++;this.lastProcess={width,height,frame,mirror,imageData:input instanceof ImageData};
             const data=new ImageData(width,height);for(let i=0;i<data.data.length;i+=4){data.data[i+1]=255;data.data[i+3]=255}return data;
           }
           destroy(){this.destroyed=true}
@@ -50,14 +51,14 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
         for(const name of ['setBeautySkinOnly','setSmoothingStyle','setSmoothing','setWhitening','setClarity','setReshape','setLipstick','setLipstickColor','setFilter','clearFilter','setFilterIntensity','setSticker','clearSticker','setColorTemperature','setColorTint','setBrightness','setSaturation','setContrast'])Engine.prototype[name]=function(...args){this.calls.push([name,...args.map(value=>value instanceof Uint8Array?[...value]:value)])};
         window.Facebetter.BeautyEffectEngine=Engine;
         window.lastCall=name=>engines.at(-1).calls.filter(call=>call[0]===name).at(-1);
-        window.makeSource=()=>{
-          const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;
-          const paint=canvas.getContext('2d');paint.fillStyle='#ff0000';paint.fillRect(0,0,160,120);
-          window.sourceTimer=setInterval(()=>paint.fillRect(0,0,160,120),40);
+        window.makeSource=(width=160,height=120)=>{
+          const canvas=window.sourceCanvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+          const paint=canvas.getContext('2d');paint.fillStyle='#ff0000';paint.fillRect(0,0,width,height);
+          window.sourceTimer=setInterval(()=>paint.fillRect(0,0,canvas.width,canvas.height),40);
           window.audioContext=new AudioContext();const destination=audioContext.createMediaStreamDestination();
           window.raw=new MediaStream([...canvas.captureStream(24).getVideoTracks(),...destination.stream.getAudioTracks()]);return raw;
         };
-        window.begin=()=>{window.job=ZimiBeauty.create(makeSource());window.job.then(value=>window.handle=value)};
+        window.begin=(...size)=>{window.job=ZimiBeauty.create(makeSource(...size));window.job.then(value=>window.handle=value)};
         window.authorize=()=>Native.receive('beauty.auth',{requestId:sent.at(-1).data.requestId,licenseToken:'signed-license-fixture'});
         window.pixel=async()=>{const video=document.createElement('video');video.muted=true;video.srcObject=handle.stream;await video.play();const canvas=document.createElement('canvas');canvas.width=canvas.height=1;canvas.getContext('2d').drawImage(video,0,0,1,1);const pixel=[...canvas.getContext('2d').getImageData(0,0,1,1).data];video.pause();video.srcObject=null;return pixel};
       ` });
@@ -75,6 +76,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
       token: 'signed-license-fixture', log: { consoleEnabled: false, fileEnabled: false, level: 4 }, wasm: 'https://runtime.example.test/facebetter/facebetter-core.js', assets: 'https://runtime.example.test/facebetter/', mirror: 0, frame: 1, audio: true, ready: 'ready'
     });
     assert.deepEqual(await page.evaluate(() => pixel()), [0, 255, 0, 255], 'The output stream contains processed pixels');
+    assert.equal(await page.evaluate(()=>engines[0].lastProcess.imageData),true,'The SDK receives pixels directly instead of allocating its own canvas per video frame');
     assert.deepEqual(await page.evaluate(() => lastCall('setSmoothing')), ['setSmoothing', 0.6]);
     await page.evaluate(() => ZimiBeauty.setStrength('Beauty', 1, 35));
     assert.deepEqual(await page.evaluate(() => lastCall('setSmoothing')), ['setSmoothing', 0.35]);
@@ -92,6 +94,34 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     });
     assert.deepEqual(off,{muted:true,noProcessor:true,rawLive:true,outputStopped:true,engineDestroyed:true,filter:['clearFilter'],sticker:['clearSticker']});
     await page.close();
+
+    const bounded = await fixture();
+    await bounded.evaluate(()=>begin(1280,720));await bounded.evaluate(()=>authorize());await bounded.waitForFunction(()=>!!window.handle);
+    assert.deepEqual(await bounded.evaluate(()=>({width:engines[0].lastProcess.width,height:engines[0].lastProcess.height,raw:raw.getVideoTracks()[0].getSettings().width})),{width:960,height:540,raw:1280},'Effects bound CPU readback pixels while retaining camera capture and landscape framing');
+    await bounded.evaluate(()=>{
+      window.createdCanvases=0;const create=document.createElement.bind(document);
+      document.createElement=(tag,...args)=>{if(tag==='canvas')createdCanvases++;return create(tag,...args)};
+      window.beforeFrames=engines[0].processed;
+    });
+    await bounded.waitForFunction(()=>engines[0].processed>=beforeFrames+4);
+    assert.equal(await bounded.evaluate(()=>createdCanvases),0,'Continuing effect playback reuses its input/output canvases');
+    await bounded.evaluate(()=>clearInterval(sourceTimer));await bounded.waitForTimeout(200);
+    const pausedFrames=await bounded.evaluate(()=>engines[0].processed);
+    await bounded.waitForTimeout(300);
+    assert.equal(await bounded.evaluate(()=>engines[0].processed),pausedFrames,'A stalled camera is not reprocessed while the microphone timeline continues');
+    await bounded.evaluate(()=>{
+      sourceCanvas.width=720;sourceCanvas.height=1280;
+      const paint=sourceCanvas.getContext('2d');window.sourceTimer=setInterval(()=>paint.fillRect(0,0,720,1280),40);
+    });
+    await bounded.waitForFunction(()=>engines[0].lastProcess.width===540&&engines[0].lastProcess.height===960);
+    assert.equal(await bounded.evaluate(()=>handle.stream.getVideoTracks()[0].readyState),'live','Camera orientation changes preserve the processed track');
+    await bounded.evaluate(()=>{window.processDelay=45;window.beforeFrames=engines[0].processed});
+    await bounded.waitForTimeout(900);
+    assert.ok(await bounded.evaluate(()=>{const count=engines[0].processed-beforeFrames;return count>0&&count<=11}),'A slow processor keeps producing frames while leaving main-thread time for call controls');
+    await bounded.evaluate(()=>{handle.setEnabled(false);window.beforeFrames=engines[0].processed});
+    await bounded.waitForTimeout(180);
+    assert.equal(await bounded.evaluate(()=>engines[0].processed),await bounded.evaluate(()=>beforeFrames),'Turning the camera off stops expensive processing');
+    await bounded.evaluate(()=>{ZimiBeauty.stop();clearInterval(sourceTimer);raw.getTracks().forEach(track=>track.stop())});await bounded.close();
 
     const persisted = await fixture({selection:{Beauty:99,Makeup:-1,Sticker:2,Filters:1.5,'Image quality':3},strengths:{'Beauty:1':20,'Sticker:2':Infinity,'Image quality:3':150}});
     assert.deepEqual(await persisted.evaluate(() => ({selection:S.bsel,strength:ZimiBeauty.strength('Beauty',1),invalid:ZimiBeauty.strength('Image quality',3),requests:sent.length})), {selection:{Beauty:1,Makeup:0,Sticker:2,Filters:0,'Image quality':3},strength:20,invalid:60,requests:0});
@@ -155,6 +185,6 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     assert.equal(await sheet.getByRole('button',{name:'Retry effects',exact:true}).isVisible(),true,'Asynchronous errors reveal Retry without reopening the sheet');
     await ui.close();
     assert.deepEqual(errors,[]);
-    console.log('Facebetter processor: real processed stream pixels, pinned SDK enums, settings, strengths, reset, persistence, auth correlation/error/retry, cancellation, late-init cleanup and runtime fallback passed.');
+    console.log('Facebetter processor: processed pixels, bounded reusable readback canvases, fresh-frame detection, slow-device pacing, orientation/mute handling, pinned SDK enums, settings, auth/retry, cancellation and fallback passed.');
   } finally { if(browser)await browser.close();server.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1});

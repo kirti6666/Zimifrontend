@@ -96,6 +96,33 @@ function zrLive(){
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
+function zrPaintCallWallet(){
+  if(!zrIsCall())return false;
+  const room=document.querySelector('.zr-call');if(!room)return false;
+  const replace=(node,html)=>{if(node&&node.innerHTML!==html)node.innerHTML=html};
+  room.querySelectorAll('[data-call-balance]').forEach(node=>replace(node,contentBalance()));
+  const cost=room.querySelector('#zr-call-cost'),label=zrCallCost(zrIsHost());if(cost&&cost.textContent!==label)cost.textContent=label;
+  const sheet=Home.giftTo&&room.querySelector('.zw-sheet');
+  if(sheet){
+    replace(sheet.querySelector('.zg-balance>span'),contentBalance());
+    replace(sheet.querySelector('.zw-wallet-main>h2'),coinIcon(19)+' '+contentBalance());
+    // Generate only the small wallet-dependent footer/error. The catalog's
+    // artwork, scrolling and focused controls retain their existing DOM.
+    const template=document.createElement('template');
+    template.innerHTML=CoinUI.topup?coinWalletError():coinGiftFooter()+coinGiftWalletError();
+    const footer=sheet.querySelector('.zw-gift-footer'),nextFooter=template.content.querySelector('.zw-gift-footer');
+    if(footer&&nextFooter){
+      replace(footer.querySelector('p'),nextFooter.querySelector('p')?.innerHTML||'');
+      const send=footer.querySelector('.zw-send'),nextSend=nextFooter.querySelector('.zw-send');
+      if(send&&nextSend){send.disabled=nextSend.disabled;replace(send,nextSend.innerHTML)}
+    }else if(nextFooter)sheet.append(nextFooter);else footer?.remove();
+    const error=sheet.querySelector('[data-coin-wallet-error]'),nextError=template.content.querySelector('[data-coin-wallet-error]');
+    if(error&&nextError)replace(error,nextError.innerHTML);
+    else if(nextError){if(CoinUI.topup)sheet.querySelector('.zw-wallet')?.after(nextError);else sheet.querySelector('.zg-catalog')?.append(nextError)}
+    else error?.remove();
+  }
+  return true;
+}
 /* Keep a small, still catalog row on the sending side. A tap opens the selected
    gift for explicit confirmation; it never spends coins or starts playback. */
 function zrSenderGiftRail(){
@@ -255,7 +282,7 @@ function zrReceiveGift(d){
   if(S.v==='live'||zrIsCall())r();
 }
 Native.on('gift.received',d=>{if(zrIsCall())zrReceiveGift(d)});
-Native.on('data.catalog',()=>{if(zrIsCall())r()});
+Native.on('data.catalog',()=>{if(zrIsCall()&&!Home.giftTo)r()});
 Native.on('stream.shareLink',d=>{if(Home.stream?.id!==d.streamId)return;Room.shareLink=d.url;if(Room.sheet==='share')r()});
 Native.on('stream.link.loading',d=>{Room.linkLoading=!!d.loading;zrLinkSheet()});
 Native.on('stream.link',d=>{Room.linkLoading=false;Room.link=d.stream;zrLinkSheet()});

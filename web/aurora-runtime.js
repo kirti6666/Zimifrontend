@@ -598,6 +598,9 @@ function hostReply(){
  },1100+Math.random()*900);
 }
 function paintFeed(){
+ // Call chat is transient; bound gifts, sent messages and system notices too,
+ // so long calls cannot accumulate an ever-growing layout and message array.
+ if(S.rmsgs.length>100)S.rmsgs.splice(0,S.rmsgs.length-100);
  const f=document.getElementById("rfeed");
  if(!f)return;
  f.innerHTML=S.rmsgs.map(([k,w,t])=>`<div class="lvmsg ${["me","host","sys","gift"].includes(k)?k:"host"}">

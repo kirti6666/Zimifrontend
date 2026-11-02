@@ -130,11 +130,16 @@ window.ZimiGiftPlayback=(()=>{
     window.visualViewport?.addEventListener('resize',position);
     window.visualViewport?.addEventListener('scroll',position);
     Native.on('keyboard',()=>requestAnimationFrame(position));
-    // Some sheets/dialogs close by removing their own DOM, without r(). Resume
-    // waiting gifts then as well; ignore our own portal's visibility updates.
+    // Some sheets/dialogs close without r(). Only their structural changes or
+    // a replaced call surface need another bounds read. Clock, balance and chat
+    // text mutations must not force layout while video and gifts are playing.
+    const layoutSelector='dialog,[role="dialog"],[role="menu"],#zc-photo-viewer,.zc-overlay,.zc-message-menu,.zr-room,.app';
+    const changesLayout=node=>node.nodeType===1&&(node.matches(layoutSelector)||!!node.querySelector(layoutSelector));
     new MutationObserver(changes=>{
       if(!active&&!queue.length)return;
-      if(changes.some(change=>!portal||!portal.contains(change.target)))sync();
+      if(changes.some(change=>!portal?.contains(change.target)&&(change.type==='attributes'
+        ?changesLayout(change.target)
+        :[...change.addedNodes,...change.removedNodes].some(changesLayout))))sync();
     }).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open','hidden']});
     return {enqueue,sync,clear,get active(){return active},get element(){return portal}};
   }
