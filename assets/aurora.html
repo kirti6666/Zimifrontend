@@ -3388,9 +3388,9 @@ html:root[data-theme="dark"] .zc-thread{
 .zr-call{overflow:hidden;max-width:none;left:0;transform:none;border:0;--call-ink:#fff;--call-muted:rgb(255 255 255 / .76);--call-control:rgb(0 0 0 / .32);--call-line:rgb(255 255 255 / .35)}
 :root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
 .zr-call .zr-video{background:var(--media-canvas)}
+/* Both participants see the same complete camera frame, even when its aspect ratio
+   differs from the phone or the PiP. Cropping remote video changed the host's framing. */
 .zr-call .zr-video>video,.zr-call .zr-pip>video{object-fit:contain;object-position:center}
-/* Remote video fills either participant's stage or PiP with centered, proportional cropping. */
-.zr-call .zr-video>video[data-zimi-remote],.zr-call .zr-pip>video[data-zimi-remote]{object-fit:cover;object-position:center}
 .zr-call .zr-shade{display:none}
 .zr-call .zr-top{background:transparent;padding-bottom:8px}
 .zr-call:not(.zr-voice-call)>:is(.zr-top,.zr-bottom,.zr-pip,.zr-video){--room-ink:var(--call-ink);--room-muted:var(--call-muted);--room-glass:var(--call-control);color:var(--room-ink)}
@@ -10256,12 +10256,11 @@ function giftStickerMotion(sticker){
  if(!sticker.motionUrl){try{const data=atob(sticker.motion.slice(sticker.motion.indexOf(',')+1)),bytes=new Uint8Array(data.length);for(let i=0;i<data.length;i++)bytes[i]=data.charCodeAt(i);sticker.motionUrl=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}catch{sticker.motionUrl=sticker.motion}}
  return sticker.motionUrl;
 }
-/* Uploaded artwork is authoritative, including transparent animated WebP from
-   frame ZIPs. Keep the historical helper name for existing callers, but display
-   the actual animation everywhere instead of substituting a still or artwork
-   chosen merely because its name matches a bundled gift. */
-function giftStillUrl(name,mediaUrl){const uploaded=homeGiftUrl(mediaUrl||'');if(uploaded)return uploaded;const sticker=giftSticker(name);return sticker?giftStickerMotion(sticker):''}
-function giftMotionUrl(name,mediaUrl){return giftStillUrl(name,mediaUrl)}
+/* Keep bundled thumbnails and receipt banners static so a video call only
+   decodes the active celebration. Uploaded artwork remains authoritative: the
+   catalog has no separate cover URL, so never substitute a same-named sticker. */
+function giftStillUrl(name,mediaUrl){const uploaded=homeGiftUrl(mediaUrl||'');if(uploaded)return uploaded;return giftSticker(name)?.cover||''}
+function giftMotionUrl(name,mediaUrl){const uploaded=homeGiftUrl(mediaUrl||'');if(uploaded)return uploaded;const sticker=giftSticker(name);return sticker?(window.matchMedia('(prefers-reduced-motion: reduce)').matches?sticker.cover:giftStickerMotion(sticker)):''}
 function giftIsFree(gift){return gift?.coins===0}
 function giftPriceLabel(gift){return giftIsFree(gift)?'Free':n(gift?.coins)+' coins'}
 function giftPriceMarkup(gift,size=13){return giftIsFree(gift)?'Free':coinIcon(size)+' '+n(gift?.coins)}
@@ -11553,9 +11552,10 @@ function coinAcceptPayment(d,checkout=false){
  else if(d.idempotencyKey&&d.packId){Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey,...paymentRestoredRoute(d,Home.checkoutAttempt)};if(d.coins!=null)CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??0,name:'Pending coin pack'}}
  coinPaint();
 }
-function homeGifts(id){
+function homeGifts(id,selectedGiftId=''){
  if(!id)return;CoinUI.focus={label:document.activeElement?.getAttribute('aria-label'),id:document.activeElement?.id};
  if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError='';CoinUI.giftScroll=0}
+ if(selectedGiftId&&!Home.giftBusy&&Home.gifts.some(gift=>gift.id===selectedGiftId))CoinUI.giftId=selectedGiftId;
  Home.giftTo=id;CoinUI.topup=false;
  if(!DEMO){contentStart('catalog');Native.send('catalog.load')}
  r();
@@ -15009,6 +15009,17 @@ function zrLive(){
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
+/* Keep a small, still catalog row on the sending side. A tap opens the selected
+   gift for explicit confirmation; it never spends coins or starts playback. */
+function zrSenderGiftRail(){
+  const gifts=Array.isArray(Home.gifts)?Home.gifts.slice(0,8):[];
+  if(!gifts.length){
+    if(!DEMO&&contentPending('catalog'))return `<div class="zr-gift-rail hs-gift-loading hs-rail-loading" role="status" aria-label="Loading call gifts" aria-busy="true">${Array.from({length:6},()=>`<span aria-hidden="true">${skeletonLine('30px',30)}${skeletonLine('36px',8)}</span>`).join('')}</div>`;
+    return !DEMO&&ContentLoading.catalog.error?`<div class="zr-gift-rail hs-empty" role="alert"><span>Gifts are unavailable right now.</span><button type="button" onclick="contentRetry('catalog')" aria-label="Retry call gifts">Retry</button></div>`:'';
+  }
+  return `<div class="zr-gift-rail hs-gift-rail" role="group" aria-label="Send gifts" data-lenis-prevent>${gifts.map(gift=>{const artwork=giftStillUrl(gift.name,gift.mediaUrl);return `<button type="button" aria-label="Choose ${esc(gift.name)}, ${giftPriceLabel(gift)}" onclick="zrChooseCallGift('${domId(gift.id)}')" ${Home.giftBusy?'disabled':''}><span class="hs-gift-art">${artwork?`<img src="${artwork}" alt="" loading="lazy" decoding="async">`:esc(gift.emoji||'🎁')}</span><small>${giftPriceMarkup(gift,9)}</small></button>`}).join('')}</div>`;
+}
+function zrChooseCallGift(id){if(!zrIsCall()||zrIsHost()||Home.giftBusy)return;const host=zrPerson();if(host)homeGifts(host.id,id)}
 function zrCallChat(){Room.chatOpen=!Room.chatOpen;r();if(Room.chatOpen)document.getElementById('rmsg')?.focus();else document.querySelector('.zr-call-chat-toggle')?.focus({preventScroll:true})}
 function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" enterkeyhint="send" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
 /* A host starts with their own camera on the main stage, as in the setup preview.
@@ -15054,7 +15065,7 @@ function zrCall(host){
     <div class="zr-top"><header class="zr-call-toolbar">${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${typeof ctSenderTargets==='function'?ctSenderTargets():''}${zrGiftBanner()}</div>
     ${voice?zrVoiceStage(p):`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`}
     <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():`
-      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
+      ${zrSenderGiftRail()}<div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
         <div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small></span></div></div>
         <button type="button" class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>
         ${voice?'':`<button type="button" class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',23)}</button>`}

@@ -150,9 +150,10 @@ function coinAcceptPayment(d,checkout=false){
  else if(d.idempotencyKey&&d.packId){Home.checkoutAttempt={packId:d.packId,idempotencyKey:d.idempotencyKey,...paymentRestoredRoute(d,Home.checkoutAttempt)};if(d.coins!=null)CoinUI.packSnapshot={id:d.packId,coins:d.coins,pricePaise:d.amountPaise??d.payableAmountPaise??0,name:'Pending coin pack'}}
  coinPaint();
 }
-function homeGifts(id){
+function homeGifts(id,selectedGiftId=''){
  if(!id)return;CoinUI.focus={label:document.activeElement?.getAttribute('aria-label'),id:document.activeElement?.id};
  if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError='';CoinUI.giftScroll=0}
+ if(selectedGiftId&&!Home.giftBusy&&Home.gifts.some(gift=>gift.id===selectedGiftId))CoinUI.giftId=selectedGiftId;
  Home.giftTo=id;CoinUI.topup=false;
  if(!DEMO){contentStart('catalog');Native.send('catalog.load')}
  r();

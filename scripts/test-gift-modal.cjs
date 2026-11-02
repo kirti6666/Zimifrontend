@@ -61,7 +61,8 @@ async function checkLayout(page,label){
   assert.match(await giftButton(page,'Rose').locator('small').innerText(),/123/,'The displayed price comes from the catalog, not the visual reference');
   assert.equal(await sheet.locator('.zg-tier').count(),0,'No extra badge or layer is added to gift artwork');
   const still=await giftButton(page,'Rose Waterfall').locator('.zg-art img').getAttribute('src');
-  assert.equal(still,await page.evaluate(()=>giftMotionUrl('Rose Waterfall')),'Picker artwork stays animated');
+  assert.equal(still,await page.evaluate(()=>giftSticker('Rose Waterfall').cover),'Picker uses the bundled still cover without decoding another animation');
+  assert.equal(still,await page.evaluate(()=>giftMotionUrl('Rose Waterfall')),'Reduced motion keeps the bundled celebration static');
   assert.equal(await giftButton(page,'Rose Waterfall').locator('.zg-art').evaluate(node=>getComputedStyle(node,'::before').content),'none','No glow behind transparent artwork');
   assert.equal(await sheet.locator('.zw-gift-footer').count(),0,'An unselected gift sheet has no extra footer');
 }

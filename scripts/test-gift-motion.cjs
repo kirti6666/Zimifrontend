@@ -7,6 +7,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const host = { id: '507f1f77bcf86cd799439017', name: 'Host', role: 'host', hostStatus: 'approved', isVerifiedHost: true };
 const artwork = '<svg xmlns="http://www.w3.org/2000/svg" width="540" height="960"><rect x="4" y="4" width="532" height="952" fill="#8752df55" stroke="#ffd900" stroke-width="8"/></svg>';
+const transparentArtwork = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="240"><circle cx="60" cy="120" r="40" fill="#ea4baf"/></svg>';
 const stage = page => page.locator('.zr-gift-celebration');
 async function playing(page, transfer) {
   await page.waitForFunction(id => { const node=document.querySelector('.zr-gift-celebration');return node?.dataset.state==='playing'&&(!id||node.dataset.transferId===id); }, transfer);
@@ -39,6 +40,29 @@ async function checkFullscreenGift(page, label) {
   assert.ok(geometry.painted.left>=geometry.room.left-1 && geometry.painted.right<=geometry.room.right+1 && geometry.painted.top>=geometry.room.top-1 && geometry.painted.bottom<=geometry.room.bottom+1,`${label}: all artwork edges stay visible`);
 }
 
+// Transparent exports must remain transparent through the cached blob and all
+// three display layers. An opaque fixture cannot catch an added square matte.
+async function checkTransparentGift(page, label) {
+  await checkFullscreenGift(page, label);
+  const rendered = await stage(page).evaluate(async overlay => {
+    const art=overlay.querySelector('.zr-gift-stage-art'),image=art.querySelector('img');
+    const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+    const context=canvas.getContext('2d');context.drawImage(image,0,0);
+    const pixel=(x,y)=>Array.from(context.getImageData(x,y,1,1).data);
+    return {source:await (await fetch(image.src)).text(),
+      corners:[[0,0],[119,0],[0,239],[119,239]].map(([x,y])=>pixel(x,y)[3]),center:pixel(60,120),
+      layers:[overlay,art,image].map(node=>{
+        const s=getComputedStyle(node);
+        return {background:s.backgroundColor,backgroundImage:s.backgroundImage,border:s.borderWidth,
+          shadow:s.boxShadow,filter:s.filter,mask:s.maskImage,clip:s.clipPath,blend:s.mixBlendMode};
+      })};
+  });
+  assert.equal(rendered.source,transparentArtwork,`${label}: playback preserves the supplied artwork bytes`);
+  assert.deepEqual(rendered.corners,[0,0,0,0],`${label}: transparent canvas edges survive loading and playback`);
+  assert.deepEqual(rendered.center,[234,75,175,255],`${label}: solid artwork retains its original color and alpha`);
+  for(const layer of rendered.layers)assert.deepEqual(layer,{background:'rgba(0, 0, 0, 0)',backgroundImage:'none',border:'0px',shadow:'none',filter:'none',mask:'none',clip:'none',blend:'normal'},`${label}: display layers add no box, mask or color processing`);
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
   const errors = [];
@@ -48,6 +72,17 @@ async function checkFullscreenGift(page, label) {
     await page.route('https://**/*', route => route.request().url().startsWith('https://gift-motion.fixture.test/')?route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:artwork}):route.abort());
     await page.addInitScript(() => { window.__sent=[];window.ReactNativeWebView = { postMessage(raw) { __sent.push(JSON.parse(raw)); } }; });
     await page.goto(pathToFileURL(path.join(root, 'assets/aurora.html')).href + '?role=host');
+    assert.deepEqual(await page.evaluate(()=>GIFT_STICKERS.map(sticker=>{
+      const still=giftStillUrl(sticker.name);
+      return {usesCover:still===sticker.cover,allocatedMotion:!!sticker.motionUrl};
+    })),Array.from({length:3},()=>({usesCover:true,allocatedMotion:false})),'Bundled thumbnails use still covers without allocating animation resources');
+    await page.emulateMedia({reducedMotion:'reduce'});
+    assert.equal(await page.evaluate(()=>GIFT_STICKERS.every(sticker=>giftMotionUrl(sticker.name)===sticker.cover&&!sticker.motionUrl)),true,'Reduced motion uses bundled covers without decoding animation');
+    assert.deepEqual(await page.evaluate(()=>{
+      const uploaded='https://gift-motion.fixture.test/original.webp?version=1';
+      return [giftStillUrl('Heart',uploaded),giftMotionUrl('Heart',uploaded)];
+    }),['https://gift-motion.fixture.test/original.webp?version=1','https://gift-motion.fixture.test/original.webp?version=1'],'Uploaded artwork remains authoritative even when its name matches a bundled gift');
+    await page.emulateMedia({reducedMotion:'no-preference'});
     const receive = (type, data) => page.evaluate(message => Native.receive(message), { type, data });
     await receive('session', { user: host, verification: 'verified', requiresOnboarding: false });
     await page.evaluate(() => {
@@ -104,6 +139,7 @@ async function checkFullscreenGift(page, label) {
       const body=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#8752df" fill-opacity=".35"/><path d="M8 8H${width-8}V${height-8}H8Z" fill="none" stroke="#ffd900" stroke-width="16"/><text x="50%" y="50%" text-anchor="middle" fill="white" font-size="48">Complete ${shape} gift</text></svg>`;
       return route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body});
     });
+    await page.route('https://gift-transparent.fixture.test/**', route => route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:transparentArtwork}));
     let receipt=20;
     for(const view of ['hcall','call','voice']) {
       const user=view==='hcall'?host:{id:'gift-layout-member',name:'Member',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false};
@@ -124,6 +160,13 @@ async function checkFullscreenGift(page, label) {
           if(view==='hcall'&&viewport.width===320&&shape==='landscape')await page.screenshot({path:path.join(root,'artifacts','host-gift-fullscreen-landscape.png')});
           if(view==='call'&&viewport.width===390&&shape==='portrait')await page.screenshot({path:path.join(root,'artifacts','member-gift-fullscreen-portrait.png')});
         }
+      }
+      if(view!=='voice'){
+        await page.evaluate(()=>zrClearGiftMotion());
+        const transfer='transparent-'+view;
+        await receive('gift.received',{...gift,id:transfer,callId:'fullscreen-gift-'+view,durationMs:600000,mediaUrl:'https://gift-transparent.fixture.test/original.svg'});
+        await playing(page,transfer);
+        await checkTransparentGift(page,view+' transparent gift');
       }
     }
 
@@ -158,7 +201,7 @@ async function checkFullscreenGift(page, label) {
     // A sender sees the same full-surface animation only after the server ack.
     await page.evaluate(hostId=>{S.callId='sent-gift-call';go('call',hostId)},host.id);
     await receive('wallet.balance',{coins:5000});
-    const sentGift={id:'sent-gift',name:'Sent artwork',coins:25,emoji:'🎁',mediaUrl:'https://gift-motion.fixture.test/sent.svg',durationMs:700};
+    const sentGift={id:'sent-gift',name:'Sent artwork',coins:25,emoji:'🎁',mediaUrl:'https://gift-transparent.fixture.test/original.svg',durationMs:1700};
     await page.evaluate(hostId=>homeGifts(hostId),host.id);
     await receive('data.catalog',{gifts:[sentGift],packs:[],paymentsAvailable:false});
     await page.evaluate(id=>{homeSelectGift(id);homeSendGift()},sentGift.id);
@@ -167,7 +210,7 @@ async function checkFullscreenGift(page, label) {
     assert.equal(await stage(page).count(),0,'An unconfirmed send does not start animation');
     await receive('gift.sent',{...request,id:'sent-call-transfer',coins:25});
     await playing(page,'sent-call-transfer');
-    await checkFullscreenGift(page,'confirmed sender gift');
+    await checkTransparentGift(page,'confirmed sender gift');
     await receive('app.background',{});
     assert.equal(await stage(page).count(),0,'Backgrounding clears active playback and queued gifts');
     assert.deepEqual(errors, [], 'No browser errors');

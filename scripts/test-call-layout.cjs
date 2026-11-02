@@ -30,12 +30,14 @@ async function checkLayout(page, label, voice = false) {
     const stage = room.querySelector('.zr-video').getBoundingClientRect();
     const theme = ztCurrent(), color = value => { const swatch = document.createElement('span'); swatch.style.color = value; room.append(swatch); const result = getComputedStyle(swatch).color; swatch.remove(); return result; };
     const controls = [...room.querySelectorAll('.zr-call-toolbar button,.zr-call-dock>button,.zr-call-composer>button')].map(el => ({ label: el.getAttribute('aria-label'), rect: el.getBoundingClientRect() }));
+    const rail=room.querySelector('.zr-gift-rail'),railBox=rail?.getBoundingClientRect();
     return {
       overflow: document.documentElement.scrollWidth > innerWidth + 1 || room.scrollWidth > room.clientWidth + 1,
       bottomVisible: dock.bottom <= innerHeight + 1 && dock.top >= top.bottom,
       pip: pip ? { inside: pip.left >= box.left && pip.right <= box.right + 1, belowTop: pip.top >= top.bottom - 1, aboveDock: pip.bottom < dock.top } : null,
       outside: controls.filter(({ rect }) => rect.left < box.left - 1 || rect.right > box.right + 1 || rect.bottom > innerHeight + 1).map(x => x.label),
       crowded: controls.filter(({ rect }) => rect.width < 32 || rect.height < 32).map(x => x.label),
+      giftRail: !railBox || getComputedStyle(rail).display==='none' ? null : {inside:railBox.left>=box.left-1&&railBox.right<=box.right+1&&railBox.bottom<=dock.top+1,usable:[...rail.querySelectorAll('button')].every(button=>{const r=button.getBoundingClientRect();return r.width>=44&&r.height>=44})},
       roomBackground: getComputedStyle(room).backgroundColor, expectedBackground: color(ztDisplayColors(theme).background),
       roomColor: getComputedStyle(room).color, expectedColor: color(ztDisplayColors(theme).text),
       theme: document.documentElement.dataset.theme, expectedTheme: window.ZimiThemes.dark() ? 'dark' : 'light',
@@ -44,8 +46,7 @@ async function checkLayout(page, label, voice = false) {
       fullStage: Math.abs(stage.left-box.left)<1 && Math.abs(stage.top-box.top)<1 && Math.abs(stage.width-box.width)<1 && Math.abs(stage.height-box.height)<1 && Math.abs(box.width-innerWidth)<1,
       opaqueChrome: [...room.querySelectorAll('.zr-top,.zr-bottom,.zr-call-stat,.hs-target-card')].filter(el=>getComputedStyle(el).backgroundColor!=='rgba(0, 0, 0, 0)').map(el=>el.className),
       incorrectVideoFit: [...room.querySelectorAll('video')].filter(el=>{
-        const remote=el.hasAttribute('data-zimi-remote');
-        return getComputedStyle(el).objectFit!==(remote?'cover':'contain')||getComputedStyle(el).objectPosition!=='50% 50%';
+        return getComputedStyle(el).objectFit!=='contain'||getComputedStyle(el).objectPosition!=='50% 50%';
       }).map(el=>el.outerHTML),
       blurred: [room,...room.querySelectorAll('*')].filter(el=>{const style=getComputedStyle(el);return style.backdropFilter!=='none'||/blur\(/.test(style.filter)}).map(el=>el.className),
       overlayColor: getComputedStyle(room.querySelector('.zr-top')).color,
@@ -55,6 +56,7 @@ async function checkLayout(page, label, voice = false) {
   assert.equal(result.bottomVisible, true, `${label}: bottom controls remain on screen`);
   assert.deepEqual(result.outside, [], `${label}: every control stays inside the call`);
   assert.deepEqual(result.crowded, [], `${label}: controls have usable touch targets`);
+  if(result.giftRail)assert.deepEqual(result.giftRail,{inside:true,usable:true},`${label}: gift bubbles stay above the controls with usable touch targets`);
   assert.equal(result.roomBackground, result.expectedBackground, `${label}: the app canvas (white, or black in Dark Mode) is used`);
   assert.equal(result.roomColor, result.expectedColor, `${label}: the app text color is used`);
   assert.equal(result.theme, result.expectedTheme, `${label}: native chrome follows Dark Mode`);
@@ -62,7 +64,7 @@ async function checkLayout(page, label, voice = false) {
   assert.equal(result.primaryTabs, 0, `${label}: main tabs are absent in calls`);
   assert.equal(result.fullStage, true, `${label}: the camera stage reaches every screen edge behind the controls`);
   assert.deepEqual(result.opaqueChrome, [], `${label}: header, footer and stats remain transparent`);
-  assert.deepEqual(result.incorrectVideoFit, [], `${label}: remote video fills its container and local previews preserve their framing`);
+  assert.deepEqual(result.incorrectVideoFit, [], `${label}: both participants preserve the complete camera framing`);
   assert.deepEqual(result.blurred, [], `${label}: camera, overlays and dialogs never blur the screen`);
   assert.equal(result.overlayColor, voice ? result.expectedColor : 'rgb(255, 255, 255)', `${label}: video controls remain readable in every theme`);
   if (voice) assert.equal(result.pip, null, `${label}: voice calls have no camera preview`);
@@ -101,6 +103,47 @@ async function screenshotCall(page, name) {
   finally { await page.evaluate(()=>{for(const {video,stream,previous}of __layoutFrames){video.srcObject=previous;stream.getTracks().forEach(track=>track.stop())}delete window.__layoutFrames;ZimiMedia.attach()}); }
 }
 
+// Exercise actual decoded frames: the old fixture asserted "cover" on an empty
+// remote video, so it could not catch the sender cropping the host's camera.
+async function checkVideoFraming(page, label) {
+  const originalViewport=page.viewportSize();
+  try {
+    for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,height:390}]) {
+      await page.setViewportSize(viewport);
+      for(const [width,height] of [[1280,720],[720,1280],[720,720]]) {
+        await page.evaluate(async ({width,height})=>{
+          window.__framingVideos=[];
+          for(const video of document.querySelectorAll('.zr-call video')) {
+            const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+            const ctx=canvas.getContext('2d');ctx.fillStyle='#365c72';ctx.fillRect(0,0,width,height);
+            ctx.strokeStyle='#fff';ctx.lineWidth=12;ctx.strokeRect(6,6,width-12,height-12);
+            const stream=canvas.captureStream(0);
+            __framingVideos.push({video,stream,previous:video.srcObject});
+            video.srcObject=stream;stream.getVideoTracks()[0].requestFrame();await video.play();
+          }
+        },{width,height});
+        try {
+          await page.waitForFunction(({width,height})=>[...document.querySelectorAll('.zr-call video')].every(video=>video.readyState>=2&&video.videoWidth===width&&video.videoHeight===height),{width,height});
+          const frames=await page.locator('.zr-call video').evaluateAll(videos=>videos.map(video=>{
+            const r=video.getBoundingClientRect(),style=getComputedStyle(video);
+            const scale=(style.objectFit==='cover'?Math.max:Math.min)(r.width/video.videoWidth,r.height/video.videoHeight);
+            const width=video.videoWidth*scale,height=video.videoHeight*scale;
+            return {remote:video.hasAttribute('data-zimi-remote'),inside:width<=r.width+1&&height<=r.height+1,ratio:width/height,centered:style.objectPosition==='50% 50%'};
+          }));
+          assert.ok(frames.some(frame=>frame.remote),`${label}: test uses a decoded remote frame`);
+          for(const frame of frames) {
+            assert.equal(frame.inside,true,`${label} ${viewport.width}x${viewport.height} / ${width}x${height}: all ${frame.remote?'remote':'local'} frame edges stay inside its stage or PiP`);
+            assert.ok(Math.abs(frame.ratio-width/height)<.0001,`${label}: frame proportions remain unchanged`);
+            assert.equal(frame.centered,true,`${label}: the complete camera frame is centered`);
+          }
+        } finally {
+          await page.evaluate(()=>{for(const {video,stream,previous}of __framingVideos){video.srcObject=previous;stream.getTracks().forEach(track=>track.stop())}delete window.__framingVideos;ZimiMedia.attach()});
+        }
+      }
+    }
+  } finally { await page.setViewportSize(originalViewport); }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'], ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
   const errors = [];
@@ -133,6 +176,7 @@ async function screenshotCall(page, name) {
   }
   try {
     const page = await open();
+    await checkVideoFraming(page,'sender host video');
     assert.equal(await page.evaluate(() => DEMO), false, 'Checks use the production UI with mocked account data');
     assert.equal(await page.evaluate(() => {
       const video=document.querySelector('video[data-zimi-local]');
@@ -141,7 +185,30 @@ async function screenshotCall(page, name) {
     }),true,'Production screen redraws preserve the playing camera element');
     await page.evaluate(() => { window.__lastCameraTime=document.querySelector('video[data-zimi-local]').currentTime; });
     await page.waitForFunction(() => document.querySelector('video[data-zimi-local]').currentTime > __lastCameraTime, { timeout: 5000 });
-    assert.equal(await page.locator('.zr-call-heading,.zr-gift-rail').count(), 0, 'Sender call has no heading, disclaimer or inline gift strip');
+    assert.equal(await page.locator('.zr-call-heading').count(), 0, 'Sender call has no extra heading');
+    const giftRail=page.getByRole('group',{name:'Send gifts',exact:true});
+    assert.equal(await giftRail.locator('button').count(),8,'Sender shows a bounded row of real catalog gifts');
+    assert.equal(await giftRail.locator('img:not([loading="lazy"])').count(),0,'Gift bubbles load still artwork lazily');
+    const giftSendsBefore=(await sent(page,'gift.send')).length;
+    const bubbleName=`Choose ${catalog.gifts[2].name}, ${catalog.gifts[2].coins} coins`;
+    await giftRail.getByRole('button',{name:bubbleName,exact:true}).click();
+    assert.deepEqual(await page.evaluate(()=>[Home.giftTo,CoinUI.giftId]),[creator.id,catalog.gifts[2].id],'Tapping a sender gift bubble opens that gift for confirmation');
+    assert.equal((await sent(page,'gift.send')).length,giftSendsBefore,'Choosing a bubble never spends coins');
+    await receive(page,'data.catalog',catalog);
+    await button(page,'Close gifts').click();
+    assert.equal(await giftRail.getByRole('button',{name:bubbleName,exact:true}).evaluate(button=>button===document.activeElement),true,'Closing gifts restores focus to the chosen bubble');
+    await page.evaluate(()=>{Home.gifts=[];contentStart('catalog');r()});
+    await page.getByRole('status',{name:'Loading call gifts',exact:true}).waitFor();
+    await receive(page,'data.loading',{resource:'catalog',loading:false,error:'Catalog temporarily unavailable'});
+    const loadsBefore=(await sent(page,'catalog.load')).length;
+    await button(page,'Retry call gifts').click();
+    assert.equal((await sent(page,'catalog.load')).length,loadsBefore+1,'The gift bubble error retries the actual catalog request');
+    await page.getByRole('status',{name:'Loading call gifts',exact:true}).waitFor();
+    await receive(page,'data.catalog',{...catalog,gifts:[]});
+    assert.equal(await page.locator('.zr-gift-rail').count(),0,'An empty catalog never invents gift bubbles');
+    await receive(page,'data.catalog',{...catalog,gifts:[...catalog.gifts,...catalog.gifts.map(gift=>({...gift,id:gift.id+'more'}))]});
+    assert.equal(await giftRail.locator('button').count(),8,'A larger catalog keeps the call row small; the full catalog remains in Gifts');
+    await receive(page,'data.catalog',catalog);
     assert.equal(await page.locator('.zr-call-stat').count(), 0, 'The call rate is not shown in sender stats');
     assert.equal(await page.locator('.ct-call-targets .hs-target-card').count(), 0, 'Targets appear only once the host shares them');
     const strawberry = catalog.gifts[2];
@@ -228,6 +295,7 @@ async function screenshotCall(page, name) {
     const visibleBottom = () => page.locator('.zr-bottom').evaluate(bottom => [...bottom.querySelectorAll('button,input')].filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden').map(el => el.getAttribute('aria-label')));
     assert.deepEqual(await visibleBottom(), ['Call message', 'Add emoji', 'Close call chat'], 'Call chat shows only the message box, emoji and close');
     assert.equal(await page.locator('.zr-call-dock').count(), 0, 'Call chat hides the message, account, add-coins, end-call and gift controls');
+    assert.equal(await page.locator('.zr-gift-rail').count(),0,'Chat hides gift bubbles while the keyboard is open');
     await page.setViewportSize({ width: 390, height: 500 });
     await checkLayout(page, 'chat with reduced keyboard viewport');
     await page.setViewportSize({ width: 390, height: 844 });
@@ -281,6 +349,7 @@ async function screenshotCall(page, name) {
     assert.equal((await sent(page, 'call.end')).at(-1).data.callId, 'layout-member-call');
 
     const hostPage = await open(true);
+    await checkVideoFraming(hostPage,'host and caller video');
     await checkLayout(hostPage, 'host video');
     assert.doesNotMatch(await hostPage.locator('.zr-call-person').innerText(), /ID |507f1f77bcf86cd799439012/, 'Sender profile shows the name without its account ID');
     await receive(hostPage, 'gift.received', { id: 'received-call-gift', senderId: member.id, senderName: member.name, giftName: 'Rose', emoji: '🌹', coins: 99 });
