@@ -152,10 +152,22 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     await pages.host.waitForFunction(() => document.querySelector('[data-zimi-remote]').currentTime>lastRemoteTime);
     await pages.host.evaluate(() => { document.querySelector('[data-zimi-remote]').pause(); Native.receive('app.foreground',{}); });
     await pages.host.waitForFunction(() => !document.querySelector('[data-zimi-remote]').paused);
+    const attachmentWrites=await pages.host.evaluate(async()=>{
+      const video=document.querySelector('[data-zimi-local]'),muted=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'muted');
+      let writes=0;
+      Object.defineProperty(video,'muted',{configurable:true,get(){return muted.get.call(this)},set(value){writes++;muted.set.call(this,value)}});
+      try {
+        const tick=document.createElement('p');document.getElementById('screen').append(tick);
+        for(let i=0;i<12;i++){tick.textContent='Call time '+i;await new Promise(requestAnimationFrame)}
+        tick.remove();await new Promise(requestAnimationFrame);return writes;
+      } finally { delete video.muted; }
+    });
+    assert.equal(attachmentWrites,0,'Clock/chat/gift text mutations do not reattach media or reapply camera/beauty controls');
     const healthyCallEnds=messages.filter(message=>message.type==='call.end').length;
     await receive(pages.host,'operation.error',{action:'rtc.signal',message:'Temporary signaling outage'});
     assert.equal(messages.filter(message=>message.type==='call.end').length,healthyCallEnds,'A signaling acknowledgment failure does not terminate healthy call media');
     await pages.host.waitForFunction(() => peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').getParameters().encodings[0].maxBitrate===1800000);
+    assert.equal(await pages.host.evaluate(()=>peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').getParameters().degradationPreference),'maintain-framerate','The actual browser sender prioritizes continuous camera motion');
     await pages.host.evaluate(() => {
       // Drive quality samples explicitly so a timer cannot race a one-sample spike.
       mediaTimers.forEach(clearInterval);
@@ -205,8 +217,13 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     await sample(2);
     assert.deepEqual(await encoding(),balanced,'CPU pressure reduces encoder work');
     assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','CPU pressure is not reported as a poor network');
+    await sample(2);
+    assert.deepEqual(await encoding(),low,'Persistent CPU overload can step down again instead of staying overloaded at the middle profile');
+    const localWidth=await pages.host.locator('[data-zimi-local]').evaluate(video=>video.videoWidth);
+    const beforeLowTime=await pages.viewer.locator('[data-zimi-remote]').evaluate(video=>video.currentTime);
+    await pages.viewer.waitForFunction(({localWidth,beforeLowTime})=>{const video=document.querySelector('[data-zimi-remote]');return video.videoWidth<=localWidth/2+2&&video.currentTime>beforeLowTime+.2},{localWidth,beforeLowTime});
     await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='outbound').qualityLimitationReason='bandwidth';statsFixture.find(s=>s.id==='path').availableOutgoingBitrate=400000});
-    await sample(3);
+    await sample(6);
     assert.deepEqual(await encoding(),high,'A low bandwidth estimate alone does not lock the encoder into a low quality ceiling');
     assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good');
     await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='remote').fractionLost=.12});
@@ -214,16 +231,58 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     assert.deepEqual(await encoding(),low,'Low available bandwidth with confirmed outgoing loss has a smooth low-bandwidth profile');
     await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').availableOutgoingBitrate=2000000;statsFixture.find(s=>s.id==='remote').fractionLost=0});
     await sample(6);
+    await pages.host.evaluate(()=>{
+      Object.assign(statsFixture.find(s=>s.id==='outbound'),{qualityLimitationReason:'none',timestamp:1000,framesEncoded:5000,totalEncodeTime:500,packetsSent:50000,totalPacketSendDelay:10000});
+    });
+    await sample(2);
+    assert.deepEqual(await encoding(),high,'Historical encode/pacer totals do not count as current overload');
+    const advanceEncode=async(count=1)=>{for(let i=0;i<count;i++){await pages.host.evaluate(()=>{const s=statsFixture.find(s=>s.id==='outbound');s.timestamp+=2000;s.framesEncoded+=24;s.totalEncodeTime+=2});await sample()}};
+    await advanceEncode();
+    assert.deepEqual(await encoding(),high,'One slow encode interval is not enough to lower quality');
+    await advanceEncode();
+    assert.deepEqual(await encoding(),balanced,'Measured encoding time above the frame budget lowers resolution without waiting for packet loss');
+    await advanceEncode(2);
+    assert.deepEqual(await encoding(),low,'Measured encoder overload continues stepping down if a device still cannot keep up');
+    await pages.host.evaluate(()=>{const s=statsFixture.find(s=>s.id==='outbound');s.timestamp+=2000;s.framesEncoded=1;s.totalEncodeTime=0;s.packetsSent=1;s.totalPacketSendDelay=0});
+    await sample(6);
+    assert.deepEqual(await encoding(),high,'Counter resets and duplicate timestamps cannot manufacture encode/pacer overload');
+    await pages.host.evaluate(()=>{
+      const sender=peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video');window.realParameters=sender.setParameters.bind(sender);window.preferenceRejections=0;
+      sender.setParameters=params=>{if(params.degradationPreference){preferenceRejections++;return Promise.reject(new DOMException('Unsupported preference','NotSupportedError'))}return realParameters(params)};
+    });
+    const advancePacer=async(count=1)=>{for(let i=0;i<count;i++){await pages.host.evaluate(()=>{const s=statsFixture.find(s=>s.id==='outbound');s.timestamp+=2000;s.packetsSent+=100;s.totalPacketSendDelay+=20});await sample()}};
+    await advancePacer(2);
+    assert.deepEqual(await encoding(),balanced,'Sustained local send buffering lowers resolution before the call accumulates network delay');
+    assert.equal(await pages.host.evaluate(()=>preferenceRejections),1,'Unsupported motion preference falls back once while retaining the bitrate/size adaptation');
+    await sample(6);
+    assert.deepEqual(await encoding(),high,'Pacer delay from previous intervals does not prevent recovery');
+    await pages.host.evaluate(()=>{
+      const s=statsFixture.find(s=>s.id==='outbound');s.qualityLimitationReason='bandwidth';s.mediaSourceId='source';s.framesPerSecond=5;
+      statsFixture.push({id:'source',type:'media-source',kind:'video',framesPerSecond:24});
+    });
+    await sample(2);
+    assert.deepEqual(await encoding(),low,'An encoder losing most camera frames under bandwidth pressure reduces resolution even before loss/RTT alarms');
+    await pages.host.evaluate(()=>{S.cam=0;ZimiMedia.attach()});
+    await sample(6);
+    assert.deepEqual(await encoding(),high,'A disabled camera cannot be mistaken for frozen encoder output');
+    await pages.host.evaluate(()=>{
+      S.cam=1;ZimiMedia.attach();const s=statsFixture.find(s=>s.id==='outbound');s.framesPerSecond=24;s.qualityLimitationReason='none';
+      peerConnections.at(-1).getSenders().find(sender=>sender.track?.kind==='video').setParameters=realParameters;
+    });
+    await sample(3);
     const offersBeforeRecovery=messages.filter(message=>message.id==='host'&&message.type==='rtc.signal'&&message.data.description?.type==='offer').length;
     await pages.host.evaluate(() => {
       const pc=peerConnections.at(-1);pc.getStats=realStats;
-      Object.defineProperty(pc,'connectionState',{configurable:true,get:()=> 'failed'});pc.onconnectionstatechange();
+      // Some WebViews report ICE disconnected before aggregate connectionState
+      // leaves connected. That state must still restart its stalled transport.
+      Object.defineProperty(pc,'iceConnectionState',{configurable:true,get:()=> 'disconnected'});pc.oniceconnectionstatechange();
     });
     assert.equal(await pages.host.evaluate(() => ZimiMedia.getState().connectionQuality),'reconnecting');
     await new Promise((resolve,reject)=>{const deadline=Date.now()+8000;const timer=setInterval(()=>{if(messages.filter(message=>message.id==='host'&&message.type==='rtc.signal'&&message.data.description?.type==='offer').length>offersBeforeRecovery){clearInterval(timer);resolve()}else if(Date.now()>deadline){clearInterval(timer);reject(new Error('ICE recovery did not offer again'))}},50)});
-    await pages.host.evaluate(() => { const pc=peerConnections.at(-1);delete pc.connectionState;pc.onconnectionstatechange(); });
+    await pages.host.evaluate(() => { const pc=peerConnections.at(-1);delete pc.iceConnectionState;pc.oniceconnectionstatechange();pc.onconnectionstatechange(); });
     await pages.host.waitForFunction(() => peerConnections.at(-1).connectionState==='connected'&&peerConnections.at(-1).signalingState==='stable');
     assert.equal(messages.filter(message=>message.type==='call.end').length,healthyCallEnds,'ICE recovery keeps the same call alive');
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','ICE recovery clears the reconnecting banner even without a new aggregate state event');
     await pages.host.evaluate(() => { S.mic=0; S.cam=0; ZimiMedia.attach(); });
     assert.equal(await pages.host.evaluate(() => document.querySelector('[data-zimi-local]').srcObject.getTracks().every(track => !track.enabled)), true, 'Mute and camera controls affect transmitted tracks');
     await Promise.all(Object.values(pages).map(page => receive(page, 'call.ended', {callId:'call-one'})));
@@ -309,7 +368,7 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     });
     assert.match(denied, /Allow access in your device settings/);
     assert.deepEqual(errors, [], 'The browser has no uncaught errors');
-    console.log('Home media: stream startup/reconnect, video/voice/private-call handoff, early ICE, broadcast/call controls, multi-viewer camera flip and rollback, playback mute, rerender reuse, no viewer capture, unanswered call cleanup, capture/flip cancellation and permission errors passed.');
+    console.log('Home media: real two-peer video/voice transport, continuous reduced-resolution playback, measured encoder/pacer adaptation and recovery, preference fallback, media-only attachments, ICE-only restart, handoff, camera flip/rollback, playback reuse, capture cleanup and permission errors passed.');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));

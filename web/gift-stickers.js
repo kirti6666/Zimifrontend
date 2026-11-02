@@ -12,12 +12,11 @@ function giftStickerMotion(sticker){
  if(!sticker.motionUrl){try{const data=atob(sticker.motion.slice(sticker.motion.indexOf(',')+1)),bytes=new Uint8Array(data.length);for(let i=0;i<data.length;i++)bytes[i]=data.charCodeAt(i);sticker.motionUrl=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}catch{sticker.motionUrl=sticker.motion}}
  return sticker.motionUrl;
 }
-/* Uploaded artwork is authoritative, including transparent animated WebP from
-   frame ZIPs. Keep the historical helper name for existing callers, but display
-   the actual animation everywhere instead of substituting a still or artwork
-   chosen merely because its name matches a bundled gift. */
-function giftStillUrl(name,mediaUrl){const uploaded=homeGiftUrl(mediaUrl||'');if(uploaded)return uploaded;const sticker=giftSticker(name);return sticker?giftStickerMotion(sticker):''}
-function giftMotionUrl(name,mediaUrl){return giftStillUrl(name,mediaUrl)}
+/* Keep bundled thumbnails and receipt banners static so a video call only
+   decodes the active celebration. Uploaded artwork remains authoritative: the
+   catalog has no separate cover URL, so never substitute a same-named sticker. */
+function giftStillUrl(name,mediaUrl){const uploaded=homeGiftUrl(mediaUrl||'');if(uploaded)return uploaded;return giftSticker(name)?.cover||''}
+function giftMotionUrl(name,mediaUrl){const uploaded=homeGiftUrl(mediaUrl||'');if(uploaded)return uploaded;const sticker=giftSticker(name);return sticker?(window.matchMedia('(prefers-reduced-motion: reduce)').matches?sticker.cover:giftStickerMotion(sticker)):''}
 function giftIsFree(gift){return gift?.coins===0}
 function giftPriceLabel(gift){return giftIsFree(gift)?'Free':n(gift?.coins)+' coins'}
 function giftPriceMarkup(gift,size=13){return giftIsFree(gift)?'Free':coinIcon(size)+' '+n(gift?.coins)}

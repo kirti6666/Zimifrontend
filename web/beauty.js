@@ -12,6 +12,9 @@
     kiss2: '__FB_EFFECT_kiss2__', mustache: '__FB_EFFECT_mustache__', fan_club: '__FB_EFFECT_fan_club__'
   };
   const decoded = new Map();
+  // Keep optional effects within a mobile call's pixel and main-thread budget.
+  // The camera itself retains its original capture size and framing.
+  const EFFECT_MAX_EDGE = 960, EFFECT_FRAME_INTERVAL = 1000 / 24;
   let strengths = {}, epoch = 0, sequence = 0, pendingAuth = null, pending = null, current = null, failed = false;
   let state = { status: 'idle', message: 'Effects apply to your camera during video calls.' };
   try {
@@ -123,13 +126,15 @@
     const version = epoch;
     const task = { source, promise: null };
     task.promise = Promise.resolve().then(async () => {
-      let engine, video, canvasStream, raf = 0, disposed = false;
+      let engine, video, inputCanvas, canvas, canvasStream, raf = 0, disposed = false;
       const cleanup = () => {
         if (disposed) return;
         disposed = true;
         cancelAnimationFrame(raf);
         if (video) { video.pause(); video.srcObject = null; video.remove(); }
         canvasStream?.getTracks().forEach(track => track.stop());
+        if (inputCanvas) inputCanvas.width = inputCanvas.height = 0;
+        if (canvas) canvas.width = canvas.height = 0;
         engine?.destroy();
       };
       const valid = () => version === epoch && source.getVideoTracks().some(track => track.readyState === 'live');
@@ -164,9 +169,19 @@
         document.body.append(video);
         await video.play();
         if (!valid() || !wanted()) { cleanup(); return null; }
-        const canvas = document.createElement('canvas'), context = canvas.getContext('2d', { alpha: false });
-        if (!context || !video.videoWidth || !video.videoHeight) throw new Error('Camera frames unavailable.');
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        inputCanvas = document.createElement('canvas');
+        const input = inputCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
+        canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d', { alpha: false });
+        if (!input || !context || !video.videoWidth || !video.videoHeight) throw new Error('Camera frames unavailable.');
+        const resizeInput = () => {
+          const scale = Math.min(1, EFFECT_MAX_EDGE / Math.max(video.videoWidth, video.videoHeight));
+          const width = Math.max(1, Math.round(video.videoWidth * scale)), height = Math.max(1, Math.round(video.videoHeight * scale));
+          if (inputCanvas.width !== width) inputCanvas.width = width;
+          if (inputCanvas.height !== height) inputCanvas.height = height;
+        };
+        resizeInput();
+        canvas.width = inputCanvas.width; canvas.height = inputCanvas.height;
         canvasStream = canvas.captureStream(24);
         const output = canvasStream.getVideoTracks()[0];
         const handle = {
@@ -184,22 +199,33 @@
           }
         };
         apply(handle);
-        let last = -Infinity, missing = 0;
+        let last = -Infinity, lastFrame = -1, processingCost = 0, interval = EFFECT_FRAME_INTERVAL, missing = 0;
         const draw = now => {
           if (disposed) return;
           try {
             if (engineFailure) throw new Error('Effects stopped.');
-            if (output.enabled && video.readyState >= 2 && now - last >= 1000 / 24) {
-              last = now;
+            const frame = video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.currentTime;
+            if (output.enabled && video.readyState >= 2 && now - last >= interval && frame !== lastFrame) {
+              last = now; lastFrame = frame;
+              const started = performance.now();
+              resizeInput();
+              input.drawImage(video, 0, 0, inputCanvas.width, inputCanvas.height);
               // Preview mirroring belongs to the existing video CSS. Encode
               // unmirrored pixels so text and the remote view remain natural.
-              const result = engine.processImage(video, video.videoWidth, video.videoHeight, sdk.FrameType.Video, sdk.MirrorMode.None);
+              // SDK 2.2.1 creates a new full-size canvas for every video input.
+              // Reuse our bounded readback canvas and pass ImageData directly.
+              const result = engine.processImage(input.getImageData(0, 0, inputCanvas.width, inputCanvas.height), inputCanvas.width, inputCanvas.height, sdk.FrameType.Video, sdk.MirrorMode.None);
               if (result) {
                 missing = 0;
                 if (canvas.width !== result.width) canvas.width = result.width;
                 if (canvas.height !== result.height) canvas.height = result.height;
                 context.putImageData(result, 0, 0);
               } else if (++missing >= 30) throw new Error('Effects frames unavailable.');
+              // Leave at least half the time for call controls, WebRTC and gift
+              // rendering on slower devices; never queue or repeat stale frames.
+              const cost = performance.now() - started;
+              processingCost = processingCost ? processingCost * 0.75 + cost * 0.25 : cost;
+              interval = Math.max(EFFECT_FRAME_INTERVAL, processingCost * 2);
             }
             raf = requestAnimationFrame(draw);
           } catch (_) {

@@ -96,6 +96,44 @@ function zrLive(){
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
 function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
+function zrPaintCallWallet(){
+  if(!zrIsCall())return false;
+  const room=document.querySelector('.zr-call');if(!room)return false;
+  const replace=(node,html)=>{if(node&&node.innerHTML!==html)node.innerHTML=html};
+  room.querySelectorAll('[data-call-balance]').forEach(node=>replace(node,contentBalance()));
+  const cost=room.querySelector('#zr-call-cost'),label=zrCallCost(zrIsHost());if(cost&&cost.textContent!==label)cost.textContent=label;
+  const sheet=Home.giftTo&&room.querySelector('.zw-sheet');
+  if(sheet){
+    replace(sheet.querySelector('.zg-balance>span'),contentBalance());
+    replace(sheet.querySelector('.zw-wallet-main>h2'),coinIcon(19)+' '+contentBalance());
+    // Generate only the small wallet-dependent footer/error. The catalog's
+    // artwork, scrolling and focused controls retain their existing DOM.
+    const template=document.createElement('template');
+    template.innerHTML=CoinUI.topup?coinWalletError():coinGiftFooter()+coinGiftWalletError();
+    const footer=sheet.querySelector('.zw-gift-footer'),nextFooter=template.content.querySelector('.zw-gift-footer');
+    if(footer&&nextFooter){
+      replace(footer.querySelector('p'),nextFooter.querySelector('p')?.innerHTML||'');
+      const send=footer.querySelector('.zw-send'),nextSend=nextFooter.querySelector('.zw-send');
+      if(send&&nextSend){send.disabled=nextSend.disabled;replace(send,nextSend.innerHTML)}
+    }else if(nextFooter)sheet.append(nextFooter);else footer?.remove();
+    const error=sheet.querySelector('[data-coin-wallet-error]'),nextError=template.content.querySelector('[data-coin-wallet-error]');
+    if(error&&nextError)replace(error,nextError.innerHTML);
+    else if(nextError){if(CoinUI.topup)sheet.querySelector('.zw-wallet')?.after(nextError);else sheet.querySelector('.zg-catalog')?.append(nextError)}
+    else error?.remove();
+  }
+  return true;
+}
+/* Keep a small, still catalog row on the sending side. A tap opens the selected
+   gift for explicit confirmation; it never spends coins or starts playback. */
+function zrSenderGiftRail(){
+  const gifts=Array.isArray(Home.gifts)?Home.gifts.slice(0,8):[];
+  if(!gifts.length){
+    if(!DEMO&&contentPending('catalog'))return `<div class="zr-gift-rail hs-gift-loading hs-rail-loading" role="status" aria-label="Loading call gifts" aria-busy="true">${Array.from({length:6},()=>`<span aria-hidden="true">${skeletonLine('30px',30)}${skeletonLine('36px',8)}</span>`).join('')}</div>`;
+    return !DEMO&&ContentLoading.catalog.error?`<div class="zr-gift-rail hs-empty" role="alert"><span>Gifts are unavailable right now.</span><button type="button" onclick="contentRetry('catalog')" aria-label="Retry call gifts">Retry</button></div>`:'';
+  }
+  return `<div class="zr-gift-rail hs-gift-rail" role="group" aria-label="Send gifts" data-lenis-prevent>${gifts.map(gift=>{const artwork=giftStillUrl(gift.name,gift.mediaUrl);return `<button type="button" aria-label="Choose ${esc(gift.name)}, ${giftPriceLabel(gift)}" onclick="zrChooseCallGift('${domId(gift.id)}')" ${Home.giftBusy?'disabled':''}><span class="hs-gift-art">${artwork?`<img src="${artwork}" alt="" loading="lazy" decoding="async">`:esc(gift.emoji||'🎁')}</span><small>${giftPriceMarkup(gift,9)}</small></button>`}).join('')}</div>`;
+}
+function zrChooseCallGift(id){if(!zrIsCall()||zrIsHost()||Home.giftBusy)return;const host=zrPerson();if(host)homeGifts(host.id,id)}
 function zrCallChat(){Room.chatOpen=!Room.chatOpen;r();if(Room.chatOpen)document.getElementById('rmsg')?.focus();else document.querySelector('.zr-call-chat-toggle')?.focus({preventScroll:true})}
 function zrCallComposer(){return `<form class="zr-chat zr-call-composer" id="zr-call-composer" onsubmit="event.preventDefault();zrSendMessage()"><div class="zr-compose"><input id="rmsg" maxlength="500" autocomplete="off" enterkeyhint="send" value="${esc(Room.draft)}" oninput="Room.draft=this.value;zrDraftChanged()" placeholder="Say something…" aria-label="Call message"><button type="button" onclick="zrOpen('emoji')" aria-label="Add emoji">${hi('smile',19)}</button><button class="zr-send ${Room.draft.trim()?'has-draft':''}" aria-label="Send message">${hi('send',18)}</button></div>${zrRound('close','Close call chat','zrCallChat()')}</form>`}
 /* A host starts with their own camera on the main stage, as in the setup preview.
@@ -141,7 +179,7 @@ function zrCall(host){
     <div class="zr-top"><header class="zr-call-toolbar">${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}<span class="zr-pill zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-call-private">${hi('shield',12)} Private</span>${zrRound('callmore','Call options',"zrOpen('call-controls')")}</header>${window.zrfCallCard?.()||''}${typeof ctSenderTargets==='function'?ctSenderTargets():''}${zrGiftBanner()}</div>
     ${voice?zrVoiceStage(p):`<div class="zr-pip ${camOn()?'':'camera-off'}"><video data-zimi-local autoplay muted playsinline></video>${!camOn()?hi('camoff',21):''}<span>You ${!S.mic?hi('micoff',12):''}</span></div>`}
     <div class="zr-bottom">${zrStatus()}<div class="zr-call-cost" id="zr-call-cost">${zrCallCost(false)}</div><div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>${Room.chatOpen?zrCallComposer():`
-      <div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
+      ${zrSenderGiftRail()}<div class="zr-call-dock"><button type="button" class="zr-round zr-call-chat-toggle" onclick="zrCallChat()" aria-label="Open call chat">${hi('chat',21)}</button>
         <div class="zr-call-person">${zrAvatar(p,36)}<div><strong>${esc(p.n)}</strong><span>${coinIcon(14)} <span data-call-balance>${contentBalance()}</span> <small>Your coins</small></span></div></div>
         <button type="button" class="zr-call-topup" onclick="zrCallTopup()" aria-label="Add coins">${hi('plus',16)}</button>
         ${voice?'':`<button type="button" class="zr-hangup" onclick="endCall()" aria-label="End call">${hi('ph',23)}</button>`}
@@ -244,7 +282,7 @@ function zrReceiveGift(d){
   if(S.v==='live'||zrIsCall())r();
 }
 Native.on('gift.received',d=>{if(zrIsCall())zrReceiveGift(d)});
-Native.on('data.catalog',()=>{if(zrIsCall())r()});
+Native.on('data.catalog',()=>{if(zrIsCall()&&!Home.giftTo)r()});
 Native.on('stream.shareLink',d=>{if(Home.stream?.id!==d.streamId)return;Room.shareLink=d.url;if(Room.sheet==='share')r()});
 Native.on('stream.link.loading',d=>{Room.linkLoading=!!d.loading;zrLinkSheet()});
 Native.on('stream.link',d=>{Room.linkLoading=false;Room.link=d.stream;zrLinkSheet()});

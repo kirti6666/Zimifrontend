@@ -61,7 +61,8 @@ async function checkLayout(page,label){
   assert.match(await giftButton(page,'Rose').locator('small').innerText(),/123/,'The displayed price comes from the catalog, not the visual reference');
   assert.equal(await sheet.locator('.zg-tier').count(),0,'No extra badge or layer is added to gift artwork');
   const still=await giftButton(page,'Rose Waterfall').locator('.zg-art img').getAttribute('src');
-  assert.equal(still,await page.evaluate(()=>giftMotionUrl('Rose Waterfall')),'Picker artwork stays animated');
+  assert.equal(still,await page.evaluate(()=>giftSticker('Rose Waterfall').cover),'Picker uses the bundled still cover without decoding another animation');
+  assert.equal(still,await page.evaluate(()=>giftMotionUrl('Rose Waterfall')),'Reduced motion keeps the bundled celebration static');
   assert.equal(await giftButton(page,'Rose Waterfall').locator('.zg-art').evaluate(node=>getComputedStyle(node,'::before').content),'none','No glow behind transparent artwork');
   assert.equal(await sheet.locator('.zw-gift-footer').count(),0,'An unselected gift sheet has no extra footer');
 }
@@ -91,6 +92,11 @@ async function checkLayout(page,label){
       if(view==='thread'||view==='call'){await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.activeElement?.blur());await page.screenshot({path:path.join(directory,`${view}-390.png`)})}
       await page.keyboard.press('Escape');assert.equal(await dialog(page).count(),0,'Escape dismisses every shared surface');
     }
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await openGifts(page);
+    assert.equal(await giftButton(page,'Rose Waterfall').locator('.zg-art img').getAttribute('src'),await page.evaluate(()=>giftSticker('Rose Waterfall').cover),'An ordinary call gift picker also uses still covers with motion enabled');
+    assert.equal(await page.evaluate(()=>GIFT_STICKERS.every(sticker=>!sticker.motionUrl)),true,'Browsing gifts allocates no bundled animation resources');
+    await dialog(page).getByRole('button',{name:'Close gifts',exact:true}).click();
     await page.evaluate(target=>go('thread',target),creator.id);await receive(page,'data.thread',{with:creator.id,canSend:true,messages:[]});
     await page.locator('#ti').fill('Keep my draft');await openGifts(page);
     await giftButton(page,'Rose').click();assert.equal(await giftButton(page,'Rose').getAttribute('aria-pressed'),'true');
