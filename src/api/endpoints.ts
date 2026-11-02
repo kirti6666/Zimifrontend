@@ -303,8 +303,8 @@ export const api = {
   },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
-  async beautyAuth() {
-    const data = record(await request("POST", "/facebetter/auth"));
+  async beautyAuth(userAgent?: string) {
+    const data = record(await request("POST", "/facebetter/auth", userAgent === undefined ? undefined : { userAgent }));
     if (typeof data.licenseToken !== "string" || !data.licenseToken.trim() || data.licenseToken.length > 128 * 1024) {
       throw new ApiError("Beauty effects could not be started. Please try again.", 502);
     }
@@ -363,16 +363,33 @@ export const api = {
   async thread(withId: string, knownIds?: string[]) { const id = await selfId(); const known = knownIds?.filter(id => /^[a-f\d]{24}$/i.test(id)).slice(-200); return messagesFrom(await request("GET", `/chats/${encodeURIComponent(withId)}${known?.length ? `?knownIds=${encodeURIComponent(known.join(","))}` : ""}`), id); },
   async missedCalls() { const id = await selfId(); return missedFrom(await request("GET", "/calls?limit=100"), id); },
   async callHistory() { const id = await selfId(); return callsFrom(await request("GET", "/calls?limit=100"), id); },
+  async callState(callId: string): Promise<{ callId: string; status: "ringing" | "accepted" | "ended" | "declined" | "missed"; coins?: number; reason?: "out_of_coins" | "switch" | "host_unavailable" }> {
+    const version = getSessionVersion(), self = await selfId(); ensureSession(version);
+    const call = record(await request("GET", `/calls/${encodeURIComponent(callId)}`)); ensureSession(version);
+    const caller = idOf(call.callerId), callee = idOf(call.calleeId), status = call.status;
+    if (idOf(call) !== callId || !caller || !callee || caller === callee || (caller !== self && callee !== self) ||
+      typeof status !== "string" || !["ringing", "accepted", "ended", "declined", "missed"].includes(status))
+      throw new ApiError("This call's status could not be confirmed. Please try again.", 502);
+    const paid = typeof call.coinsPerMinute === "number" && Number.isSafeInteger(call.coinsPerMinute) && call.coinsPerMinute > 0;
+    const charged = typeof call.coinsCharged === "number" && Number.isSafeInteger(call.coinsCharged) && call.coinsCharged >= 0;
+    const reason = call.endReason;
+    return { callId, status: status as "ringing" | "accepted" | "ended" | "declined" | "missed",
+      ...(paid && charged ? { coins: call.coinsCharged as number } : {}),
+      ...(reason === "out_of_coins" || reason === "switch" || reason === "host_unavailable" ? { reason } : {}) };
+  },
   async notificationCall(id: string) {
-    const version = getSessionVersion(), self = await selfId();ensureSession(version);
-    const raw = await request<unknown>("GET", "/calls/active");ensureSession(version);
+    const version = getSessionVersion();
+    const raw = await request<unknown>("GET", `/calls/${encodeURIComponent(id)}/incoming`);ensureSession(version);
     if (!raw || typeof raw !== "object") return null;
-    const call = record(raw), callerId = idOf(call.callerId);
-    if (idOf(call) !== id || call.status !== "ringing" || idOf(call.calleeId) !== self || !callerId ||
-      !["audio", "video"].includes(String(call.kind)) || !Number.isFinite(Date.parse(String(call.expiresAt))) || Date.parse(String(call.expiresAt)) <= Date.now()) return null;
-    const caller = await api.publicProfile(callerId);ensureSession(version);
-    if (Date.parse(String(call.expiresAt)) <= Date.now()) return null;
-    return { callId: id, from: { id: callerId, name: caller.name, avatarUrl: caller.avatarUrl, city: caller.city, gender: caller.gender }, voice: call.kind === "audio", fromHost: call.hostInitiated === true, ...callPrice(call) };
+    const call = record(raw), from=record(call.from), expiry=typeof call.expiresAt==='string'?Date.parse(call.expiresAt):NaN;
+    if (call.callId!==id || typeof call.recipientId!=='string' || !/^[a-f\d]{24}$/i.test(call.recipientId) || !/^[a-f\d]{24}$/i.test(idOf(from)) ||
+      typeof from.name!=='string' || !from.name.trim() || from.name.length>100 ||
+      typeof call.voice!=='boolean' || typeof call.fromHost!=='boolean' ||
+      !Number.isFinite(expiry) || expiry<=Date.now() || expiry>Date.now()+3*60000 ||
+      ![call.rate,call.entryFee,call.feeHoldSeconds].every(x=>Number.isSafeInteger(x)&&Number(x)>=0&&Number(x)<=1_000_000)) return null;
+    return { callId:id,recipientId:call.recipientId,expiresAt:call.expiresAt as string,
+      from:{id:idOf(from),name:from.name,avatarUrl:typeof from.avatarUrl==='string'&&from.avatarUrl.length<=2048&&/^https:\/\/[^\s<>"'\\]+$/.test(from.avatarUrl)?from.avatarUrl:'',city:typeof from.city==='string'?from.city:'',gender:genderOf(from.gender).gender},
+      voice:call.voice,fromHost:call.fromHost,rate:call.rate as number,entryFee:call.entryFee as number,feeHoldSeconds:call.feeHoldSeconds as number };
   },
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async referral() { return referralFrom(await request("GET", "/referrals/me")); },

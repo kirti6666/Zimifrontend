@@ -13,6 +13,7 @@ import { isTrustedDocument, parseWebMessage } from "./src/web-message";
 import { useAppUpdates } from "./src/app-update";
 import { AppUpdateScreen } from "./src/app-update-screen";
 import { API_URL } from "./src/config";
+import { IncomingCallScreen, useIncomingCall } from "./src/incoming-call-screen";
 
 /* Matches --canvas in web/aurora.css for each theme. */
 const CANVAS = { light: "#ffffff", dark: "#000000" } as const;
@@ -59,10 +60,16 @@ const withThemeCache = (page: string, cache: ThemeCache) =>
 
 export default function App() {
   const updates = useAppUpdates();
-  return updates.state.status === "allowed" ? <AppContent /> : <AppUpdateScreen {...updates} />;
+  const incoming = useIncomingCall(updates.state);
+  const content = updates.state.status === "allowed" ? <AppContent priorityIncoming={!!incoming.action} onIncomingEvent={incoming.onEvent} onIncomingResult={incoming.onResult} /> : <AppUpdateScreen {...updates} />;
+  return <View style={{flex:1}}>{content}{incoming.action ? <IncomingCallScreen {...incoming} action={incoming.action} allowed={updates.state.status==="allowed"} /> : null}</View>;
 }
 
-export function AppContent() {
+export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingResult}: {
+  priorityIncoming?:boolean;
+  onIncomingEvent?:(message:{type:string;data?:Record<string,unknown>})=>void;
+  onIncomingResult?:(result:{callId:string;actionId:string;action:"open"|"answer";outcome:"handedOff"|"error"})=>void;
+}={}) {
   const cache = useMemo(() => readThemeCache(), []);
   const cached = cache.account?.theme ?? cache.default;
   const page = useMemo(() => html && withThemeCache(html, cache), [cache]);
@@ -71,14 +78,15 @@ export function AppContent() {
   const [canvasOverride, setCanvasOverride] = useState<string | null>("#ffffff");
   const [palette, setPalette] = useState<NativePalette>({ ink: "#18181b", primary: cached?.colors.primary ?? "#c71862", contrast: "#ffffff", surface: "#ffffff", raised: "#f8f8fa" });
   const [failure, setFailure] = useState<string | null>(null);
-  const [launched, setLaunched] = useState(false);
-  const [launchVisible, setLaunchVisible] = useState(true);
+  const [launched, setLaunched] = useState(priorityIncoming);
+  const [launchVisible, setLaunchVisible] = useState(!priorityIncoming);
   const webRef = useRef<WebView>(null);
   const webReady = useRef(false);
   const exitConfirmation = useRef<object | null>(null);
 
   // Everything the screens ask of the server goes through src/bridge.ts.
-  const bridge = useMemo(() => createBridge((msg) => postToWeb(webRef, msg)), []);
+  const incomingEvent = useRef(onIncomingEvent); incomingEvent.current=onIncomingEvent;
+  const bridge = useMemo(() => createBridge((msg) => { postToWeb(webRef, msg); incomingEvent.current?.(msg as {type:string;data?:Record<string,unknown>}); }), []);
   const documentLoading = useCallback(() => {
     webReady.current = false;
     exitConfirmation.current = null;
@@ -142,6 +150,8 @@ export function AppContent() {
       bridge.handle(msg);
     } else if (msg.type === "app.launched") {
       setLaunched(true);
+    } else if (msg.type === "call.nativeResult") {
+      onIncomingResult?.(msg.data);
     } else if (msg.type === "app.exit.request") {
       requestExit();
     } else if (msg.type === "theme") {
@@ -159,7 +169,7 @@ export function AppContent() {
       // Video calls and chats: screenshots and screen recordings show nothing while they are open.
       void (msg.data.on ? ScreenCapture.preventScreenCaptureAsync(PRIVATE_SCREEN) : ScreenCapture.allowScreenCaptureAsync(PRIVATE_SCREEN)).catch(() => {});
     } else bridge.handle(msg);
-  }, [bridge, requestExit]);
+  }, [bridge, requestExit, onIncomingResult]);
 
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {

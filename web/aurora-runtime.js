@@ -67,7 +67,7 @@ kerr:0,ci:0,spent:0,giftN:0,
   {k:"earn",ico:"cup",t:"Big earner",d:"Earn 5,000 coins from calls",goal:5000,p:3400,u:"coins",rw:2500}],
 tab:"explore",ht:"posts",pi:0,likes:{},mic:1,cam:1,bt:"creators",per:"weekly",rmsgs:callPreview?[["host","Aanya","hey, you made it"]]:[],h:callPreview?"aanya":null,bal:52400,sec:0,t:null,msgs:null,tray:previewMode==="gifts"?1:0,
  title:"",goal:1000000,fav:22,favn:10,favGot:0,gifted:0,
- sh:0,cmp:0,cache:{},btab:"Beauty",bsel:{Beauty:1,Makeup:0,Sticker:0,Filters:0,"Image quality":0},lvmode:"Live",
+ sh:0,cmp:0,cache:{},btab:"Beauty",bsel:{Beauty:0,Makeup:0,Sticker:0,Filters:0,"Image quality":0},lvmode:"Live",
  txf:"all",faq:-1,safe:{discover:1,requests:1,activity:0},blocked:[],
  editName:me.n,editCity:me.c,editAbout:me.about,coverData:"",avatarData:"",postData:[],following:{}};
 const g=id=>H.find(x=>x.id===id)||EXTRA.find(x=>x.id===id);
@@ -449,15 +449,8 @@ function shWrap(title,sub,inner){
    <div class="shbody">${inner}</div></div></div>`}
 
 function fxSheet(){
- const opts=BEAUTY[S.btab], sel=S.bsel[S.btab], adj=opts[sel]&&opts[sel][2];
  return shWrap("Beauty and effects",S.v==="setup"?"Applies to your camera before your next call":"Changes apply now and stay on for your next calls",
- `<div class="dtabs">${Object.keys(BEAUTY).map(k=>`<button class="${S.btab===k?"on":""}" onclick="S.btab='${k}';r()">${k}</button>`).join("")}
-   <button class="rst" onclick="resetFx()">Reset</button></div>
-  <div class="dopts">${opts.map(([l,e],i)=>`<button class="dopt ${sel===i?"on":""}" aria-pressed="${sel===i}" onclick="pickFx(${i})">
-    <span class="dcirc">${e}</span><span class="dlab">${l}</span></button>`).join("")}</div>
-  ${adj?`<div class="slid"><input type="range" min="0" max="100" value="${window.ZimiBeauty?ZimiBeauty.strength(S.btab,sel):60}" oninput="setFxStrength(this.value)" aria-label="${opts[sel][0]} strength"></div>`:""}
-  <p data-zimi-beauty-status role="status" aria-live="polite">${esc(window.ZimiBeauty?ZimiBeauty.getState().message:'')}</p>
-  <button class="rst" data-zimi-beauty-retry onclick="ZimiBeauty.sync()" ${!window.ZimiBeauty||ZimiBeauty.getState().status!=='error'?'hidden':''}>Retry effects</button>`)}
+ window.ZimiBeauty?.picker?ZimiBeauty.picker():'')}
 
 function missionSheet(){
  const goal=S.goal, prog=S.gifted||0, pct=Math.min(100,goal?prog/goal*100:0);

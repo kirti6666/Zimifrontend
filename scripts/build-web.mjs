@@ -115,6 +115,7 @@ const page = (demo, hosted = false) =>
   read("web/ongoing-call.css") +
   read("web/host-calls.css") +
   read("web/host-studio.css") +
+  read("web/beauty.css") +
   read("web/verification-call.css") +
   read("web/offline.css") +
   read("web/public-profile.css") +
@@ -168,14 +169,17 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/agency.js") +
   "\n" + read("web/coins.js") +
   "\n" + read("node_modules/facebetter/dist/facebetter.js").replace(/[ \t]+$/gm, "") +
+  "\n" + read("web/beauty-catalog.js") +
   "\n" + read("web/beauty.js").replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) =>
     readFileSync(join(root, `web/facebetter/effects/${name}.fbd`)).toString("base64")) +
+  "\n" + read("web/beauty-controls.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +
   "\n" + read("web/call-ringback.js") +
   "\n" + read("web/ongoing-call.js") +
   "\n" + read("web/host-calls.js") +
+  "\n" + read("web/incoming-call.js") +
   "\n" + read("web/host-studio.js") +
   "\n" + read("web/verification-call.js") +
   "\n" + read("web/chats.js") +

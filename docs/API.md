@@ -219,6 +219,16 @@ screen shows the price and a running cost (an estimate between charges); the sum
 shows the server's charge when it arrives. New accounts can receive free welcome
 coins, also set by staff.
 
+After a hangup commits, the backend sends the terminal call event to both
+participants before entry-fee/commission reconciliation. The native bridge
+also reads authenticated `GET /calls/:id` every five seconds while a call is
+active, and immediately on reconnect or returning to the foreground. A confirmed
+terminal status uses the same `call.ended` cleanup for visible and minimized
+calls. Network/read failures preserve the call; stale responses from another
+call, account or document cannot close the current call. An exhausted local
+media connection ends its own call UI and stops capture even if its server
+event is lost.
+
 ## Setup
 
 Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_URL`. The login token

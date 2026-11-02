@@ -70,8 +70,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const licenseToken = JSON.stringify({ token: 'signed-facebetter-license' });
-  expect('POST', '/facebetter/auth', { licenseToken });
+  expect('POST', '/facebetter/auth', { licenseToken }, body => assert.equal(body, undefined, 'Older callers omit the optional WebView user agent'));
   assert.deepEqual(plain(await api.beautyAuth()), { licenseToken }, 'Facebetter receives the complete license response text');
+  const webviewUserAgent = 'Mozilla/5.0 (Linux; Android 15; wv) AppleWebKit/537.36 Version/4.0 Chrome/130.0.0.0 Mobile Safari/537.36';
+  expect('POST', '/facebetter/auth', { licenseToken }, body => assert.deepEqual(plain(body), { userAgent: webviewUserAgent }));
+  assert.deepEqual(plain(await api.beautyAuth(webviewUserAgent)), { licenseToken }, 'Facebetter authorization uses the camera WebView user agent');
   for (const licenseToken of [undefined, '', '   ', 123, 'x'.repeat(128 * 1024 + 1)]) {
     expect('POST', '/facebetter/auth', { licenseToken });
     await assert.rejects(api.beautyAuth(), /Beauty effects could not be started/);
@@ -664,13 +667,51 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(publicPosts.posts[0].caption, 'A song for today'); assert.equal(publicPosts.total, 13); assert.equal(publicPosts.page, 2);
   assert.throws(() => adapters.publicPostsFrom({ items: [], total: undefined, page: 1, limit: 12 }), /could not be loaded/);
   const pushPeer = '507f1f77bcf86cd799439012', pushCallId = '507f1f77bcf86cd799439013', pushPostId = '507f1f77bcf86cd799439014';
-  const activeRing = { _id: pushCallId, callerId: pushPeer, calleeId: 'member-id', status: 'ringing', kind: 'audio', hostInitiated: true, coinsPerMinute: 35, expiresAt: new Date(Date.now() + 30000).toISOString() };
-  expect('GET', '/calls/active', activeRing); expect('GET', `/users/${pushPeer}`, { ...publicHost, _id: pushPeer });
-  const notificationCall = await api.notificationCall(pushCallId);
-  assert.equal(notificationCall.from.id, pushPeer); assert.equal(notificationCall.voice, true); assert.equal(notificationCall.fromHost, true);
-  for(const changed of [{status:'ended'},{calleeId:'other-account'},{_id:'different-call'},{expiresAt:new Date(0).toISOString()},{kind:'unknown'}]){
-    expect('GET','/calls/active',{...activeRing,...changed});assert.equal(await api.notificationCall(pushCallId),null,'Expired, completed, unrelated or malformed calls never become incoming rings');
+  const confirmedCall = { _id: pushCallId, callerId: 'member-id', calleeId: pushPeer, status: 'accepted', coinsPerMinute: 35, coinsCharged: 70 };
+  for (const status of ['ringing','accepted','ended','declined','missed']) {
+    expect('GET', `/calls/${pushCallId}`, { ...confirmedCall, status });
+    assert.deepEqual(plain(await api.callState(pushCallId)), {callId:pushCallId,status,coins:70}, 'Authoritative call checks preserve every supported state');
   }
+  expect('GET', `/calls/${pushCallId}`, {...confirmedCall, callerId:{_id:pushPeer},calleeId:{id:'member-id'},status:'ended',coinsCharged:0,endReason:'out_of_coins'});
+  assert.deepEqual(plain(await api.callState(pushCallId)), {callId:pushCallId,status:'ended',coins:0,reason:'out_of_coins'}, 'Either participant can reconcile an ended call, including a confirmed zero charge');
+  for (const endReason of ['switch','host_unavailable']) {
+    expect('GET', `/calls/${pushCallId}`, {...confirmedCall,status:'ended',endReason});
+    assert.equal((await api.callState(pushCallId)).reason,endReason);
+  }
+  expect('GET', `/calls/${pushCallId}`, {...confirmedCall,status:'ended',coinsPerMinute:0,coinsCharged:999,endReason:'forged UI text'});
+  assert.deepEqual(plain(await api.callState(pushCallId)), {callId:pushCallId,status:'ended'}, 'Free calls never invent a charge or expose unknown terminal copy');
+  for (const coinsCharged of [-1,1.5,'70',undefined]) {
+    expect('GET', `/calls/${pushCallId}`, {...confirmedCall,status:'ended',coinsCharged});
+    assert.deepEqual(plain(await api.callState(pushCallId)), {callId:pushCallId,status:'ended'}, 'Invalid billing metadata cannot become a displayed charge');
+  }
+  for (const invalid of [null,[],{...confirmedCall,_id:'another-call'},{...confirmedCall,status:'unknown'},{...confirmedCall,status:['ended']},{...confirmedCall,callerId:'stranger',calleeId:pushPeer},{...confirmedCall,calleeId:undefined},{...confirmedCall,calleeId:'member-id'}]) {
+    expect('GET', `/calls/${pushCallId}`, invalid);
+    await assert.rejects(api.callState(pushCallId), /status could not be confirmed|unexpected response/, 'Unrelated or malformed snapshots cannot terminate the active call');
+  }
+  const stateOffline = new ApiError('Offline call state check',503);
+  expect('GET', `/calls/${pushCallId}`, undefined, undefined, {error:stateOffline});
+  await assert.rejects(api.callState(pushCallId), error=>error===stateOffline, 'A failed check stays uncertain instead of being converted into an ended call');
+  expect('GET', `/calls/${pushCallId}`, {...confirmedCall,status:'ended'}, undefined, {run:()=>version++});
+  await assert.rejects(api.callState(pushCallId), /sign-in changed/, 'A late snapshot from the previous account cannot affect a new session');
+  expect('GET', '/auth/me', {user}); await api.me(true);
+  const activeRing = { callId:pushCallId,recipientId:'507f1f77bcf86cd799439015',expiresAt:new Date(Date.now()+30000).toISOString(),
+    from:{id:pushPeer,name:'Aster',avatarUrl:'https://cdn.example.test/avatar.jpg',city:'Pune',gender:'female'},voice:true,fromHost:true,rate:35,entryFee:5,feeHoldSeconds:30 };
+  const beforeIncomingLookup=requests.length;
+  expect('GET', `/calls/${pushCallId}/incoming`, activeRing);
+  const notificationCall = await api.notificationCall(pushCallId);
+  assert.deepEqual(plain(notificationCall),activeRing,'The one authenticated incoming-call response provides caller, recipient, kind, expiry and the actual price');
+  assert.equal(requests.length-beforeIncomingLookup,1,'Opening a notification requires no separate account, active-call or caller-profile lookup');
+  for(const changed of [{callId:'507f1f77bcf86cd799439099'},{recipientId:'bad-id'},{from:{...activeRing.from,id:'bad-id'}},{from:{...activeRing.from,name:''}},{from:{...activeRing.from,name:'x'.repeat(101)}},
+    {expiresAt:new Date(0).toISOString()},{expiresAt:new Date(Date.now()+180001).toISOString()},{expiresAt:'tomorrow'},{voice:'audio'},{fromHost:1},
+    {rate:-1},{rate:1.5},{rate:'35'},{entryFee:undefined},{entryFee:1_000_001},{feeHoldSeconds:null}]){
+    expect('GET',`/calls/${pushCallId}/incoming`,{...activeRing,...changed});assert.equal(await api.notificationCall(pushCallId),null,'Wrong-target, expired, malformed identity and unsupported metadata cannot become incoming rings');
+  }
+  expect('GET',`/calls/${pushCallId}/incoming`,null);assert.equal(await api.notificationCall(pushCallId),null,'A call that stopped ringing before the lookup does not reopen');
+  expect('GET',`/calls/${pushCallId}/incoming`,{...activeRing,from:{...activeRing.from,avatarUrl:'javascript:alert(1)'}});
+  assert.equal((await api.notificationCall(pushCallId)).from.avatarUrl,'','An invalid optional caller image cannot enter a ringing screen');
+  expect('GET',`/calls/${pushCallId}/incoming`,activeRing,undefined,{run:()=>version++});
+  await assert.rejects(api.notificationCall(pushCallId),/sign-in changed/,'A response begun under an older account cannot become the next account’s incoming call');
+  expect('GET','/auth/me',{user});await api.me(true);
   expect('GET', `/posts/${pushPostId}`, { _id: pushPostId, userId: pushPeer, kind: 'photo', mediaUrl: 'https://cdn.example.test/target.jpg', caption: 'Targeted post' });
   const notificationPost=await api.notificationPost(pushPostId);assert.equal(notificationPost.ownerId,pushPeer);assert.equal(notificationPost.post.id,pushPostId);
   finished();
