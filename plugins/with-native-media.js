@@ -5,6 +5,8 @@ const { withAndroidManifest, withAppBuildGradle, withGradleProperties } = requir
 // only, so release APKs are ARM-only (also keeps WebRTC's 12 MB per-ABI library
 // out of x86 slices). Debug keeps x86 so the emulator still runs the app; there
 // beauty reports unsupported and calls send the plain camera.
+// React Native's defaultConfig filters are additive: build:apk also pins its
+// reactNativeArchitectures property so dependency x86 libraries are excluded.
 const ARM_ABIS = '"armeabi-v7a", "arm64-v8a"';
 const PROJECTION_SERVICE = 'com.oney.WebRTCModule.MediaProjectionService';
 

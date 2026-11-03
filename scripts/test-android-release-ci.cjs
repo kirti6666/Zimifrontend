@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { createHash } = require('node:crypto');
 const { test } = require('node:test');
+const vm = require('node:vm');
 const ci = require('../ci/android-release.cjs');
 
 const identity = { packageName: ci.PACKAGE, versionName: '1.1.12', versionCode: 22 };
@@ -118,4 +119,33 @@ test('the complete verifier stages only the verified APK with matching checksums
   fs.rmSync(path.join(root, 'release'), { recursive: true });
   assert.throws(() => ci.validateApk(root, file, (_tool, args) => args.includes('badging') ? badging('application-debuggable\n') : signature, { ANDROID_HOME: '/fixture-sdk' }), /debuggable/);
   assert.equal(fs.existsSync(path.join(root, 'release')), false, 'A failed APK check cannot produce a release artifact');
+});
+
+for (const platform of ['linux', 'win32']) test(`the ${platform} release command overrides local architectures and endpoints`, () => {
+  const file = path.resolve(__dirname, 'build-release-apk.cjs'), calls = [];
+  const processFixture = { platform, env: {
+    NODE_ENV: 'development', EXPO_PUBLIC_API_URL: 'http://localhost:5000/api/v1',
+    EXPO_PUBLIC_SOCKET_URL: 'http://localhost:5000', ORG_GRADLE_PROJECT_reactNativeArchitectures: 'x86_64',
+  } };
+  vm.runInNewContext(fs.readFileSync(file, 'utf8'), {
+    __dirname: path.dirname(file), process: processFixture,
+    console: { error: value => { throw new Error(String(value)); } },
+    require(id) {
+      if (id === 'node:path') return path;
+      if (id === 'node:child_process') return { spawnSync: (command, args, options) => { calls.push({ command, args, options }); return { status: 0 }; } };
+      throw new Error(`Unexpected release-build dependency: ${id}`);
+    },
+  }, { filename: file });
+  assert.equal(calls.length, 1);
+  const call = calls[0], gradleArgs = platform === 'win32' ? call.args.at(-1).split(/\s+/) : Array.from(call.args);
+  assert.equal(call.command, platform === 'win32' ? 'cmd.exe' : './gradlew');
+  assert.deepEqual(gradleArgs.filter(arg => arg.startsWith('-PreactNativeArchitectures=')), ['-PreactNativeArchitectures=armeabi-v7a,arm64-v8a'], 'The release CLI property must outrank a local x86 Gradle environment property');
+  assert.ok(gradleArgs.includes(':app:createBundleReleaseJsAndAssets'));
+  assert.ok(gradleArgs.includes(':app:assembleRelease'));
+  assert.equal(call.options.cwd, path.resolve(__dirname, '../android'));
+  assert.equal(call.options.env.NODE_ENV, 'production');
+  assert.equal(call.options.env.EXPO_PUBLIC_API_URL, 'https://api.binzolive.com/api/v1');
+  assert.equal(call.options.env.EXPO_PUBLIC_SOCKET_URL, 'https://api.binzolive.com');
+  assert.equal(call.options.env.ORG_GRADLE_PROJECT_reactNativeArchitectures, 'x86_64', 'The generic local environment can remain while the release command explicitly chooses ARM');
+  assert.equal(processFixture.exitCode, 0);
 });

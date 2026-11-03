@@ -14,7 +14,6 @@ import { useAppUpdates } from "./src/app-update";
 import { AppUpdateScreen } from "./src/app-update-screen";
 import { API_URL } from "./src/config";
 import { IncomingCallScreen, useIncomingCall } from "./src/incoming-call-screen";
-import { NATIVE_CAMERA_TEST, NativeCameraTest } from "./src/native-media/camera-test";
 import { createNativeMedia, type NativeMediaState } from "./src/native-media/controller";
 import { NATIVE_MEDIA_ENABLED, NativeMediaLayer } from "./src/native-media/view";
 import type { NativeMediaLayout } from "./src/native-media/protocol";
@@ -65,10 +64,8 @@ const withThemeCache = (page: string, cache: ThemeCache) =>
 export default function App() {
   const updates = useAppUpdates();
   const incoming = useIncomingCall(updates.state);
-  const [cameraTest, setCameraTest] = useState(false);
   const content = updates.state.status === "allowed" ? <AppContent priorityIncoming={!!incoming.action} onIncomingEvent={incoming.onEvent} onIncomingResult={incoming.onResult} /> : <AppUpdateScreen {...updates} />;
   return <View style={{flex:1}}>{content}{incoming.action ? <IncomingCallScreen {...incoming} action={incoming.action} allowed={updates.state.status==="allowed"} /> : null}
-    {NATIVE_CAMERA_TEST ? cameraTest ? <NativeCameraTest onClose={() => setCameraTest(false)} /> : <Pressable onPress={() => setCameraTest(true)} style={styles.cameraTest}><Text style={styles.cameraTestText}>Cam test</Text></Pressable> : null}
   </View>;
 }
 
@@ -298,7 +295,4 @@ const styles = StyleSheet.create({
   failBody: { fontSize: 13, opacity: 0.7, textAlign: "center", marginBottom: 20 },
   retry: { borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10 },
   retryText: { fontWeight: "700", fontSize: 14 },
-  // Development-only entry to the native camera measurement (src/native-media/camera-test.tsx).
-  cameraTest: { position: "absolute", right: 12, bottom: 96, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#101012cc" },
-  cameraTestText: { color: "#ffffff", fontWeight: "700", fontSize: 12 },
 });
