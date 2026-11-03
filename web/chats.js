@@ -281,7 +281,7 @@ function zcDemoThread(h){const name=first(h?.n||'there'),at=minutes=>new Date(Da
   {id:'demo-m5',kind:'voice',mine:false,at:at(1),durationMs:42000},
   {id:'demo-m6',mine:true,status:'read',at:at(0),text:'Yes! Jumping on in 2 minutes, let me grab my headphones 🎧'}]}
 window.ZimiHome.views.thread=zcThread;
-Native.on('gift.sent',d=>zcThreadGift(d.to,d.giftDetails||window.ZimiCoins?.giftReceipt(d)||Home.gifts.find(x=>x.id===d.gift),d));
+Native.on('gift.sent',d=>{if(!d.streamId&&d.scope!=='stream')zcThreadGift(d.to,d.giftDetails||window.ZimiCoins?.giftReceipt(d)||Home.gifts.find(x=>x.id===d.gift),d)});
 /* A failed send cannot be matched to a request, so it marks the latest unconfirmed message. */
 /* Photos from members reach creators blurred; the creator chooses which ones to view, again on every visit. */
 function zcPhotoBubble(m){const src=imageSrc(m.imageUrl),img=src?`<img src="${src}" alt="" loading="lazy">`:'',blurred=isHost()&&!m.mine&&!Chats.revealed[m.id],id=domId(m.id);return `<div class="zc-photo-wrap"><button type="button" class="zc-photo ${blurred?'is-blurred':''}" aria-haspopup="dialog" aria-label="${blurred?'Photo hidden. Tap to view':'Open photo'}" aria-description="Swipe ${m.mine?'left':'right'} to reply, or hold for message options" onclick="${blurred?`zcRevealPhoto('${id}')`:`ZimiChatPhoto.open('${id}')`}" ${src?'':'disabled'}>${img}${blurred?`<span>${hi('eye',18)} Tap to view</span>`:m.status==='sending'?'<span>Sending…</span>':`<span class="zc-photo-view-hint" aria-hidden="true">${ci('expand',17)}</span>`}</button>${zcActionable(m)?`<button class="zc-photo-options" aria-label="Photo message options" aria-haspopup="dialog" onclick="zcMessageMenu('${id}')">${ci('more',18)}</button>`:''}</div>`}

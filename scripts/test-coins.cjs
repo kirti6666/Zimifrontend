@@ -355,7 +355,8 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.equal(callGift.to, creator.id);
     assert.equal(await page.evaluate(() => S.gifted), 0, 'Call gift totals wait for confirmed delivery');
     assert.equal(await page.locator('.zr-gift-alert').count(), 0, 'Pending artwork has no confirmed gift banner');
-    await page.locator('#zr-gift-playback[data-provisional="true"]').waitFor({state:'visible'});
+    assert.equal(await page.locator('#zr-gift-playback').count(),0,'Call animation waits for the shared committed receipt');
+    assert.match(await page.locator('#app-notice').innerText(),/Sending gift/);
     await receive(page, 'gift.sent', ackGift(callGift, { id: 'confirmed-call-gift', coins: 30 }));
     const callGiftState = () => page.evaluate(() => ({ coins: S.gifted, count: S.giftN, roomCoins: Room.received, messages: S.rmsgs.filter(message => message[0] === 'gift').length }));
     assert.deepEqual(await callGiftState(), { coins: 30, count: 1, roomCoins: 30, messages: 1 }, 'Confirmed private-call delivery uses the actual charged amount and updates sender feedback');

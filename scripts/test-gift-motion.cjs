@@ -166,12 +166,13 @@ async function checkTransparentGift(page, label) {
       await receive('session',{user,verification:view==='hcall'?'verified':'none',requiresOnboarding:false});
       await receive('data.home',{hosts:[{id:host.id,name:host.name,role:'host',verified:true,ratePerMin:0,entryFee:0}],total:1,page:1});
       await page.evaluate(({view,hostId})=>{S.callId='fullscreen-gift-'+view;S.caller={id:'caller',n:'Imran',callId:S.callId,voice:false};go(view,view==='hcall'?undefined:hostId)}, {view,hostId:host.id});
+      const scopedGift={...gift,senderId:view==='hcall'?'caller':'you',senderName:view==='hcall'?'Imran':'You'};
       for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:768,height:1024}]) {
         await page.setViewportSize(viewport);
         for(const shape of ['portrait','landscape','square']) {
           await page.evaluate(()=>zrClearGiftMotion());
           const transfer='fullscreen-'+receipt++;
-          await receive('gift.received',{...gift,id:transfer,callId:'fullscreen-gift-'+view,giftName:'Uploaded '+shape,coins:25000,durationMs:600000,mediaUrl:'https://gift-layout.fixture.test/'+shape});
+          await receive('gift.received',{...scopedGift,id:transfer,callId:'fullscreen-gift-'+view,giftName:'Uploaded '+shape,coins:25000,durationMs:600000,mediaUrl:'https://gift-layout.fixture.test/'+shape});
           await playing(page,transfer);
           await checkFullscreenGift(page,`${view} ${viewport.width}x${viewport.height} ${shape}`);
           await stage(page).locator('img').evaluate(image=>{window.__shapeGift=image});
@@ -184,14 +185,14 @@ async function checkTransparentGift(page, label) {
       if(view!=='voice'){
         await page.evaluate(()=>zrClearGiftMotion());
         const transfer='transparent-'+view;
-        await receive('gift.received',{...gift,id:transfer,callId:'fullscreen-gift-'+view,durationMs:600000,mediaUrl:'https://gift-transparent.fixture.test/original.svg'});
+        await receive('gift.received',{...scopedGift,id:transfer,callId:'fullscreen-gift-'+view,durationMs:600000,mediaUrl:'https://gift-transparent.fixture.test/original.svg'});
         await playing(page,transfer);
         await checkTransparentGift(page,view+' transparent gift');
       }
     }
 
-    // Load latency must not consume the duration, and distinct gifts must finish
-    // in receipt order even while the call is redrawn for other controls.
+    // Load latency must not consume the duration. Legacy unscoped receipts keep
+    // their ordered queue while new committed call-scoped gifts replace promptly.
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>zrClearGiftMotion());
     let releaseSlow,signalSlow;
@@ -201,7 +202,8 @@ async function checkTransparentGift(page, label) {
       await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:artwork});
     });
     const callId=await page.evaluate(()=>S.callId);
-    await receive('gift.received',{...gift,id:'slow-call-gift',callId,durationMs:500,mediaUrl:'https://gift-motion.fixture.test/slow.svg'});
+    const callGift={...gift,senderId:'you',senderName:'You',callId};
+    await receive('gift.received',{...callGift,id:'slow-call-gift',durationMs:500,mediaUrl:'https://gift-motion.fixture.test/slow.svg'});
     await slowRequested;
     await stage(page).waitFor({state:'visible'});
     assert.equal(await stage(page).getAttribute('data-state'),'loading','The cold motion surface is visible before its response arrives');
@@ -212,17 +214,17 @@ async function checkTransparentGift(page, label) {
     const loadedAt=await page.evaluate(()=>Room.giftMotion.at);
     await page.waitForFunction(()=>!Room.giftMotion,{timeout:2000});
     assert.ok(Date.now()-loadedAt>=450,'The supplied display duration runs after artwork becomes playable');
-    await receive('gift.received',{...gift,id:'queue-call-1',callId,durationMs:500});await playing(page,'queue-call-1');
+    await receive('gift.received',{...callGift,id:'queue-call-1',durationMs:500});await playing(page,'queue-call-1');
     const firstUrl=await stage(page).locator('img').getAttribute('src');
-    await receive('gift.received',{...gift,id:'queue-call-2',callId,durationMs:500});
-    await receive('gift.received',{...gift,id:'queue-call-1',callId,durationMs:500});
+    await receive('gift.received',{...callGift,id:'queue-call-2',durationMs:500});
+    await receive('gift.received',{...callGift,id:'queue-call-1',durationMs:500});
     assert.equal(await stage(page).getAttribute('data-transfer-id'),'queue-call-1','Later and duplicate gifts cannot interrupt the current gift');
     await playing(page,'queue-call-2');
     assert.notEqual(await stage(page).locator('img').getAttribute('src'),firstUrl,'The next transfer starts a fresh animation resource');
     await page.waitForFunction(()=>!Room.giftMotion,{timeout:2000});
 
-    // Sending is immediate presentation. Coins, receipts and the success banner
-    // still wait for the server; its acknowledgment promotes the same image.
+    // Call participants use the same committed timeline. Sending feedback and
+    // prewarming are immediate, while animation/accounting wait for the receipt.
     await page.evaluate(hostId=>{S.callId='sent-gift-call';go('call',hostId)},host.id);
     await receive('wallet.balance',{coins:5000});
     const sentGift={id:'sent-gift',name:'Sent artwork',coins:25,emoji:'🎁',mediaUrl:'https://gift-transparent.fixture.test/original.svg',durationMs:5000};
@@ -232,28 +234,29 @@ async function checkTransparentGift(page, label) {
     await page.evaluate(id=>{homeSelectGift(id);homeSendGift()},sentGift.id);
     const request=await page.evaluate(()=>__sent.filter(message=>message.type==='gift.send').at(-1)?.data);
     assert.ok(request?.idempotencyKey,'The send uses a correlated gift request');
-    await playing(page,'request:'+request.idempotencyKey);
-    assert.equal(await stage(page).getAttribute('data-provisional'),'true','Sending gives immediate provisional artwork');
+    assert.equal(request.callId,'sent-gift-call','Retry identity retains the exact originating call');
+    assert.equal(await stage(page).count(),0,'The sender cannot start the call animation before the recipient committed event');
+    assert.match(await page.locator('#app-notice').innerText(),/Sending gift/);
     assert.deepEqual(await page.evaluate(()=>({balance:S.bal,count:S.giftN,coins:S.gifted,messages:S.rmsgs.length})),beforePending,'Provisional artwork cannot change balance, gift counts or confirmed chat');
     assert.equal(await page.locator('.zr-gift-alert').count(),0,'Pending artwork has no sent-success banner');
     assert.deepEqual(await page.evaluate(()=>[Room.gift,Room.giftMotion]),[null,null],'Pending presentation cannot become a confirmed gift');
-    await stage(page).locator('img').evaluate(image=>{window.__pendingGift={image,url:image.src,at:document.getElementById('zr-gift-playback').dataset.startedAt}});
     await receive('operation.error',{action:'gift.send',...request,status:503,code:'UNAVAILABLE',message:'Fixture delivery is uncertain'});
     await page.evaluate(()=>homeRetryGift());
     const retry=await page.evaluate(()=>__sent.filter(message=>message.type==='gift.send').at(-1)?.data);
     assert.deepEqual(retry,request,'Uncertain delivery retries the same gift request');
-    assert.equal(await stage(page).locator('img').evaluate(image=>image===__pendingGift.image&&image.src===__pendingGift.url),true,'Checking an uncertain send does not restart its pending artwork');
+    assert.equal(await stage(page).count(),0,'Checking an uncertain send cannot run an uncommitted call animation');
     await receive('gift.sent',{...request,id:'sent-call-transfer',coins:25});
     await playing(page,'sent-call-transfer');
     assert.equal(await stage(page).getAttribute('data-provisional'),'false');
-    assert.equal(await stage(page).locator('img').evaluate(image=>image===__pendingGift.image&&image.src===__pendingGift.url&&document.getElementById('zr-gift-playback').dataset.startedAt===__pendingGift.at),true,'Acknowledgment preserves the image, original URL and playback clock');
+    await stage(page).locator('img').evaluate(image=>{window.__committedGift={image,url:image.src,at:document.getElementById('zr-gift-playback').dataset.startedAt}});
     assert.deepEqual(await page.evaluate(()=>[S.giftN,S.gifted]),[beforePending.count+1,beforePending.coins+25],'Confirmed accounting happens once');
     await receive('gift.sent',{...request,id:'sent-call-transfer',coins:25});
+    assert.equal(await stage(page).locator('img').evaluate(image=>image===__committedGift.image&&image.src===__committedGift.url&&document.getElementById('zr-gift-playback').dataset.startedAt===__committedGift.at),true,'Repeated committed delivery preserves the image and timeline');
     assert.deepEqual(await page.evaluate(()=>[S.giftN,S.gifted]),[beforePending.count+1,beforePending.coins+25],'A repeated acknowledgment cannot count twice');
     await checkTransparentGift(page,'confirmed sender gift');
     await receive('app.background',{});
     assert.equal(await stage(page).count(),0,'Backgrounding clears active playback and queued gifts');
     assert.deepEqual(errors, [], 'No browser errors');
-    console.log('PASS gift motion: immediate provisional sends with confirmed-only accounting, receipt promotion without replay, visible cold posters, ordered queue, post-load duration, background cleanup; uncropped full-surface artwork for host, member and voice calls');
+    console.log('PASS gift motion: immediate sending feedback with committed-only call timelines, exact call identity, confirmed accounting, no duplicate replay, cold streaming, ordered queue, post-load duration and background cleanup; uncropped full-surface artwork');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

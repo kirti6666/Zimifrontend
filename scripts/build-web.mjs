@@ -166,6 +166,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/gift-playback.js") +
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
+  "\n" + read("web/diamonds.js") +
   "\n" + read("web/pull-refresh.js") +
   "\n" + read("web/home-render.js") +
   "\n" + read("web/home.js") +

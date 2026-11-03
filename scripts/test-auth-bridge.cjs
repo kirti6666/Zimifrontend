@@ -1699,6 +1699,28 @@ test('gift retries share one request while distinct attempts retain their own ac
   h.bridge.close();
 });
 
+test('gift call identity stays bound across another active call and the committed socket can beat HTTP', async()=>{
+  const h=harness(),pending=deferred();h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.overrides.startCall=()=>({callId:'newer-call'});h.bridge.handle({type:'call.start',data:{to:'host',voice:false}});await settle();
+  const send={type:'gift.send',data:{to:'host',gift:'catalog-gift',coins:25,inCall:true,callId:'origin-call',idempotencyKey:'bound-gift-attempt'}};
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify(send)));
+  for(const patch of [{callId:123},{callId:null},{callId:'../call'},{inCall:false},{streamId:'stream'}])assert.equal(h.webMessages.parseWebMessage(JSON.stringify({...send,data:{...send.data,...patch}})),null,'Malformed or mixed call/stream authority is rejected');
+  h.overrides.sendGift=()=>pending.promise;h.bridge.handle(send);h.bridge.handle(send);
+  assert.equal(h.count('sendGift'),1);assert.equal(h.calls.find(call=>call.name==='sendGift').args[3],'origin-call','A newer active call cannot rewrite an immutable retry payload');
+  const receipt={to:'host',gift:'catalog-gift',idempotencyKey:'bound-gift-attempt',id:'committed-transfer',coins:25,callId:'origin-call',scope:'call',createdAt:'2026-11-03T11:00:00Z'};
+  h.live[0].onEvent({type:'gift.sent',data:receipt});await settle();assert.equal(h.find('gift.sent').length,1,'Committed playback is forwarded while the HTTP response is unresolved');
+  pending.resolve({id:receipt.id,coins:25,callId:receipt.callId,scope:'call',createdAt:receipt.createdAt});await settle();
+  assert.equal(h.find('gift.sent').length,2);assert.deepEqual(h.find('gift.sent').map(event=>[event.data.id,event.data.callId]),[['committed-transfer','origin-call'],['committed-transfer','origin-call']],'Both transports preserve the same transfer/call identity for visual deduplication');h.bridge.close();
+});
+
+test('disabled live gifting suppresses sender committed stream events as well as recipient events',async()=>{
+  const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.live[0].onEvent({type:'gift.sent',data:{id:'stream-transfer',to:'host',gift:'gift',coins:25,idempotencyKey:'stream-attempt',scope:'stream',streamId:'room',message:null}});
+  h.live[0].onEvent({type:'gift.received',data:{id:'stream-transfer',from:'member',gift:'Gift',coins:25,scope:'stream',streamId:'room'}});
+  assert.equal(h.find('gift.sent').length,0);assert.equal(h.find('gift.received').length,0);h.bridge.close();
+});
+
 test('gift failures carry their own attempt and insufficient-coin code without confirming a spend', async () => {
   const h = harness();
   h.overrides.sendGift = () => { throw new h.ApiError('Not enough coins', 409, 'INSUFFICIENT_COINS'); };

@@ -196,7 +196,7 @@ function homeSendGift(id=CoinUI.giftId){
  // An uncertain delivery must be retried with its original payload, even after leaving a room.
  if(previous&&(previous.to!==to||previous.gift!==id)){CoinUI.giftError='Your previous gift is still unconfirmed. Open that gift and retry to check its delivery.';coinPaint();return}
  if(!giftIsFree(gift)&&S.bal<gift.coins)return coinRequireRecharge();
- if(!previous)Home.giftAttempt={to,gift:id,idempotencyKey:crypto.randomUUID(),coins:gift.coins,inCall:['call','voice','hcall'].includes(S.v),...(Home.stream?.id&&S.v==='live'?{streamId:Home.stream.id}:{})};
+ if(!previous)Home.giftAttempt={to,gift:id,idempotencyKey:crypto.randomUUID(),coins:gift.coins,inCall:['call','voice','hcall'].includes(S.v),...(['call','voice','hcall'].includes(S.v)&&S.callId?{callId:S.callId}:{}),...(Home.stream?.id&&S.v==='live'?{streamId:Home.stream.id}:{})};
  const attempt=Home.giftAttempt;CoinUI.receipts.set(attempt.idempotencyKey,{...gift,_view:S.v,_callId:attempt.inCall?(S.callId||(DEMO?'preview-call':null)):null});Home.giftBusy=true;CoinUI.giftError='';coinPaint();
  if(DEMO){S.bal-=gift.coins;Home.giftBusy=false;Home.giftAttempt=null;Home.giftTo=null;S.tray=0;S.sh=0;r();window.zcThreadGift?.(to,gift,attempt);coinCallGiftFeedback({...attempt,coins:gift.coins});if(S.v==='live')window.zrReceiveGift?.({senderId:'you',senderName:'You',giftName:gift.name,emoji:gift.emoji,coins:gift.coins});appNotice('Preview gift sent');return}
  // This is the sender's pending visual, not a delivered receipt or a debit.
@@ -209,16 +209,20 @@ function homeSendGift(id=CoinUI.giftId){
 function homeRetryGift(){if(!Home.giftAttempt||Home.giftBusy||window.ZimiOffline?.isOffline())return;Home.giftBusy=true;CoinUI.giftError='';Native.send('gift.send',{...Home.giftAttempt});coinPaint()}
 function coinGiftMatches(d){const a=Home.giftAttempt;return !!a&&d.idempotencyKey===a.idempotencyKey&&(!d.to||d.to===a.to)&&(!d.gift||d.gift===a.gift)}
 function coinCallGiftFeedback(d){
- const saved=CoinUI.receipts.get(d.idempotencyKey),gift=d.giftDetails?{...saved,...d.giftDetails,_callId:saved?._callId}:saved;if(!gift?._callId)return;
+ const saved=CoinUI.receipts.get(d.idempotencyKey),gift=d.giftDetails?{...saved,...d.giftDetails,_callId:d.callId||saved?._callId}:saved;if(!gift?._callId)return;
+ if(d.callId&&saved?._callId&&d.callId!==saved._callId)return;
  const coins=Number.isSafeInteger(d.coins)&&d.coins>=0?d.coins:gift.coins;
  if(['call','voice'].includes(S.v)&&gift._callId===(S.callId||(DEMO?'preview-call':null))&&S.h===d.to){
   S.gifted=(S.gifted||0)+coins;S.giftN=(S.giftN||0)+1;
-  window.zrReceiveGift?.({id:d.id||d.idempotencyKey,idempotencyKey:d.idempotencyKey,senderId:'you',senderName:'You',giftName:gift.name,emoji:gift.emoji,mediaUrl:gift.mediaUrl,coverUrl:gift.coverUrl,durationMs:gift.durationMs,coins});
+  window.zrReceiveGift?.({id:d.id||d.idempotencyKey,idempotencyKey:d.idempotencyKey,callId:gift._callId,scope:'call',createdAt:d.createdAt,emittedAt:d.emittedAt,senderId:'you',senderName:'You',giftName:gift.name,emoji:gift.emoji,mediaUrl:gift.mediaUrl,coverUrl:gift.coverUrl,durationMs:gift.durationMs,coins});
  }else if(S.v==='summary'&&S.sum?.k==='sender'&&S.sum.callId===gift._callId){S.sum.giftV=(S.sum.giftV||0)+coins;S.sum.gifts=(S.sum.gifts||0)+1;S.sum.spent=(S.sum.spent||0)+coins;r()}
 }
 Native.on('gift.sent',d=>{
- if(!coinGiftMatches(d)||CoinUI.confirmed.has(d.idempotencyKey))return;
- CoinUI.confirmed.add(d.idempotencyKey);Home.giftBusy=false;Home.giftAttempt=null;CoinUI.giftError='';
+ const own=coinGiftMatches(d),transfer=d.id?'transfer:'+d.id:'';
+ if((!own&&(!d.callId||!d.giftDetails))||CoinUI.confirmed.has(d.idempotencyKey)||transfer&&CoinUI.confirmed.has(transfer))return;
+ if(d.idempotencyKey)CoinUI.confirmed.add(d.idempotencyKey);if(transfer)CoinUI.confirmed.add(transfer);
+ if(!own){coinCallGiftFeedback(d);return}
+ Home.giftBusy=false;Home.giftAttempt=null;CoinUI.giftError='';
  if(Home.giftTo===d.to){Home.giftTo=null;CoinUI.topup=false;S.tray=0;if(S.sh==='gift')S.sh=0;r()}
  else coinPaint();coinCallGiftFeedback(d);appNotice('Gift sent!');
 });
@@ -231,7 +235,7 @@ Native.on('operation.error',d=>{
   const relevant=attempt.inCall?saved?._callId===S.callId&&['call','voice','hcall'].includes(S.v):attempt.streamId?S.v==='live'&&Home.stream?.id===attempt.streamId:S.v==='thread'&&S.h===attempt.to;
   Home.giftBusy=false;if(relevant)Home.giftTo=attempt.to;CoinUI.giftId=attempt.gift;CoinUI.topup=false;
   CoinUI.giftError=d.code==='INSUFFICIENT_COINS'?'':d.message||'Delivery could not be confirmed. Retry this gift.';
-  if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){
+  if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE','GIFT_CALL_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){
    window.zrCancelGiftPreview?.(attempt.idempotencyKey);window.ZimiChatGifts?.cancel(attempt.idempotencyKey);
    Home.giftAttempt=null;if(d.code==='INSUFFICIENT_COINS')coinRefresh();
   }

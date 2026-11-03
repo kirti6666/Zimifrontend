@@ -43,7 +43,7 @@ function zrVoiceControls(host){
  const control=(icon,label,text,action,muted)=>`<span class="zr-voice-control"><button type="button" class="zr-round" aria-label="${label}" aria-pressed="${muted}" onclick="${action}">${hi(icon,23)}</button><small>${text}</small></span>`;
  return `<div class="zr-voice-controls" role="group" aria-label="Voice call controls">${control(S.mic?'mic':'micoff',S.mic?'Mute microphone':'Unmute microphone',S.mic?'Mute':'Unmute','zrMic()',!S.mic)}<span class="zr-voice-control"><button type="button" class="zr-round zr-hangup" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${hi('ph',24)}</button><small>End call</small></span>${control(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Unmute caller':'Mute caller',Room.playbackMuted?'Sound off':'Sound on','zrSound()',Room.playbackMuted)}</div>`;
 }
-function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl,gift.coverUrl);return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${giftIsFree(gift)?'Free gift':(gift.sent?'':'+')+n(gift.coins)+' coins '+(gift.sent?'sent':'received')}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl,gift.coverUrl),diamonds=zrIsHost()&&gift.diamondScale===1000000&&Number.isSafeInteger(gift.diamondUnits)&&gift.diamondUnits>=0;const value=giftIsFree(gift)?'Free gift':gift.sent?n(gift.coins)+' coins sent':diamonds?diamondIcon(12)+' +'+diamondFormat(gift.diamondUnits)+' diamonds received':n(gift.coins)+' coin gift';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${value}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
 /* Playback lives outside the HTML rebuilt by r(), keeping the same decoded
    animation running while chat, wallet updates and call controls redraw. */
 function zrGiftCelebration(){return ''}
@@ -83,15 +83,17 @@ function zrClearGiftMotion(reset=false){
 function zrPreviewGift(attempt,gift){
   if(!attempt.inCall&&!attempt.streamId||!zrGiftForeground||document.hidden||(!zrIsCall()&&S.v!=='live'))return false;
   zrEnsure();
-  return CallGiftPlayback.enqueue({key:Room.key,requestId:attempt.idempotencyKey,transferId:'request:'+attempt.idempotencyKey,
-    provisional:true,priority:true,gift:{name:'You',sent:true,giftName:gift.name,emoji:gift.emoji,mediaUrl:gift.mediaUrl,coverUrl:gift.coverUrl,coins:gift.coins},
-    media:giftMotionUrl(gift.name,gift.mediaUrl),poster:giftStillResource(gift.name,gift.mediaUrl,gift.coverUrl),emoji:gift.emoji,durationMs:gift.durationMs});
+  // A call's animation starts from the same committed receipt as the other
+  // participant. Local feedback/prewarming must not run its timeline early or
+  // interrupt a previously committed gift on only the sender's screen.
+  ZimiGiftPlayback.preload(giftMotionUrl(gift.name,gift.mediaUrl));
+  appNotice('Sending gift…');return true;
 }
 function zrCancelGiftPreview(requestId){return CallGiftPlayback.cancel(requestId)}
-function zrStartGiftMotion(gift=Room.gift,transferId=''){
+function zrStartGiftMotion(gift=Room.gift,transferId='',priority=false){
   if(!gift||!zrGiftForeground||document.hidden)return;
   const media=giftMotionUrl(gift.giftName,gift.mediaUrl),catalog=Home.gifts.find(item=>item.name===gift.giftName&&giftMotionUrl(item.name,item.mediaUrl)===media);
-  CallGiftPlayback.enqueue({key:Room.key,gift:{...gift},media,poster:giftStillResource(gift.giftName,gift.mediaUrl,gift.coverUrl),emoji:gift.emoji||'🎁',durationMs:gift.durationMs??catalog?.durationMs,transferId:String(transferId||crypto.randomUUID()),receivedAt:Date.now()});
+  CallGiftPlayback.enqueue({key:Room.key,gift:{...gift},media,poster:giftStillResource(gift.giftName,gift.mediaUrl,gift.coverUrl),emoji:gift.emoji||'🎁',durationMs:gift.durationMs??catalog?.durationMs,transferId:String(transferId||crypto.randomUUID()),receivedAt:Date.now(),priority});
 }
 function zrSupporterStrip(){return `<div class="zr-supporters">${Room.supporters.slice(0,2).map((p,i)=>`<button onclick="zrOpen('supporters')">${zrAvatar({n:p.name,seed:i+18,avatarUrl:p.avatarUrl,gender:p.gender},23)}<b class="zr-rank">${i+1}</b><strong>${esc(p.name)}</strong><span>${homeCompact(p.coins)}</span></button>`).join('')}<button class="zr-explore" onclick="zrOpen('supporters')">${hi('cup',14)} Supporters ${hi('chev',12)}</button></div>`}
 function zrGoal(){if(!Room.goalEnabled)return '';const percent=Math.min(100,Math.round(Room.received/Room.goal*100));return `<button class="zr-goal" onclick="zrOpen('goal')" aria-label="Edit session gift goal"><span>${hi('mic',15)}<strong>Goal: ${esc(Room.goalTitle)}</strong><small>${homeCompact(Room.received)} / ${homeCompact(Room.goal)} coins (${percent}%)</small></span><span class="zr-progress" role="progressbar" aria-label="Session gift goal" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></span></button>`}
@@ -286,17 +288,23 @@ Native.on('stream.reaction',d=>{if(Home.stream?.id!==d.streamId||d.id&&Room.reac
 Native.on('stream.gift',d=>{if(Home.stream?.id!==d.streamId)return;zrReceiveGift(d)});
 function zrReceiveGift(d){
   if(!zrIsCall()&&S.v!=='live')return;
-  if(zrIsCall()&&d.callId&&d.callId!==S.callId)return;
+  if(zrIsCall()&&(!d.callId||d.callId!==S.callId||d.scope&&d.scope!=='call'))return;
+  if(zrIsCall()&&d.senderId!=='you'){
+    const peer=S.v==='hcall'?S.caller?.id:S.h,from=d.senderId||d.from?.id||d.from;
+    if(!peer||String(from)!==String(peer))return;
+  }
   zrEnsure();
   const id=d.id||d._id||d.transactionId;if(id&&Room.giftIds.has(id))return;if(id){Room.giftIds.add(id);if(Room.giftIds.size>500)Room.giftIds.delete(Room.giftIds.values().next().value)}
   const coins=Number(d.totalCoins??d.coins??d.amount)||0,gift=typeof d.gift==='object'?d.gift:null;
   const name=d.senderName||d.from?.name||d.sender?.name||d.name||'A supporter',userId=d.senderId||d.from?.id||d.from||d.sender?.id||name;
-  const previous=Room.lastGift,eventGift={name,sent:userId==='you',giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,coverUrl:d.coverUrl||gift?.coverUrl,durationMs:d.durationMs??gift?.durationMs,coins,combo:previous?.name===name?previous.combo+1:1};
+  const previous=Room.lastGift,eventGift={name,sent:userId==='you',giftName:d.giftName||gift?.name||(typeof d.gift==='string'?d.gift:'a gift'),emoji:d.emoji||gift?.emoji||'🎁',mediaUrl:d.mediaUrl||gift?.mediaUrl,coverUrl:d.coverUrl||gift?.coverUrl,durationMs:d.durationMs??gift?.durationMs,coins,...(d.diamondScale===1000000&&Number.isSafeInteger(d.diamondUnits)&&d.diamondUnits>=0?{diamondUnits:d.diamondUnits,diamondScale:d.diamondScale}:{}),combo:previous?.name===name?previous.combo+1:1};
   Room.lastGift=eventGift;
   Room.received+=coins;let p=Room.supporters.find(x=>x.id===userId);if(p)p.coins+=coins;else Room.supporters.push({id:userId,name,coins,avatarUrl:d.senderAvatarUrl||d.sender?.avatarUrl,gender:d.senderGender||d.sender?.gender});Room.supporters.sort((a,b)=>b.coins-a.coins);
   if(zrIsCall()){S.rmsgs.push(['gift',name,`sent ${eventGift.emoji} ${eventGift.giftName}`]);if(S.v==='hcall'){S.earned=(S.earned||0)+coins;S.recvN=(S.recvN||0)+1;S.gifted=(S.gifted||0)+coins}}
   if(S.v==='hcall'&&userId!=='you'&&typeof hsReceiveGift==='function')hsReceiveGift(d);
-  if(!d.idempotencyKey||!CallGiftPlayback.confirm(d.idempotencyKey,String(id||d.idempotencyKey),{gift:eventGift,media:giftMotionUrl(eventGift.giftName,eventGift.mediaUrl),durationMs:eventGift.durationMs}))zrStartGiftMotion(eventGift,id);
+  // Both participants replace the old presentation on each new committed call
+  // receipt. Ordinary/legacy room receipts keep their existing ordered queue.
+  if(!d.idempotencyKey||!CallGiftPlayback.confirm(d.idempotencyKey,String(id||d.idempotencyKey),{gift:eventGift,media:giftMotionUrl(eventGift.giftName,eventGift.mediaUrl),durationMs:eventGift.durationMs}))zrStartGiftMotion(eventGift,id,zrIsCall()&&d.scope==='call');
   if(S.v==='live'||zrIsCall())r();
 }
 Native.on('gift.received',d=>{if(zrIsCall())zrReceiveGift(d)});

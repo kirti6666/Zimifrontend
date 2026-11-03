@@ -122,7 +122,7 @@ export type WebMessage =
   | { type: "chat.voice"; data: { to: string; audio: string; durationMs: number; clientId: string; replyTo?: string } }
   | { type: "chat.edit"; data: { to: string; id: string; text: string } }
   | { type: "chat.delete"; data: { to: string; id: string; everyone: boolean } }
-  | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; streamId?: string; idempotencyKey?: string } }
+  | { type: "gift.send"; data: { to: string; gift: string; coins: number; inCall: boolean; callId?: string; streamId?: string; idempotencyKey?: string } }
   | { type: "call.start"; data: { to: string; voice?: boolean } }
   | { type: "call.invitation.load"; data: { requestId: number; active?: boolean } }
   | { type: "call.invitation.connect"; data: { id: string; requestId: number; expectedCoinsPerMinute: number; expectedEntryFeeCoins: number } }
@@ -226,7 +226,7 @@ export type AppMessage =
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "data.ads"; data: AdFeed }
   | { type: "ads.opened" | "ads.retired"; data: { id: string } }
-  | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number; message?: Message | null; giftDetails?: import("./api/types").Gift & { transferId: string; quantity: number } } }
+  | { type: "gift.sent"; data: { gift: string; to: string; idempotencyKey?: string; id?: string; coins?: number; callId?: string; scope?: "call" | "stream" | "chat"; createdAt?: string; emittedAt?: string; message?: Message | null; giftDetails?: import("./api/types").Gift & { transferId: string; quantity: number } } }
   | { type: "rtc.config"; data: RtcConfig }
   | { type: "beauty.auth"; data: { requestId: number; licenseToken: string } }
   | { type: "rtc.signal"; data: RtcPayload & { callId: string; from: string } }
@@ -286,8 +286,8 @@ export type AppMessage =
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
-  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; coverUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
-  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; sequence?: number; orderAfterSequence?: number; clientId?: string; kind?: "text" | "image" | "voice" | "gift"; gift?: Message["gift"]; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
+  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; callId?: string; scope?: "call" | "stream" | "chat"; createdAt?: string; emittedAt?: string; diamondUnits?: number; diamondScale?: 1000000; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; coverUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
+  | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; sequence?: number; orderAfterSequence?: number; clientId?: string; kind?: "text" | "image" | "voice" | "gift"; gift?: Message["gift"]; giftCallId?: string; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */
 export function postToWeb(web: RefObject<WebView | null>, msg: AppMessage) {
@@ -1056,7 +1056,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       }
-      if (!LIVE_STREAMING_ENABLED && event.type === "gift.received" && event.data?.streamId) return;
+      if (!LIVE_STREAMING_ENABLED && ["gift.received", "gift.sent"].includes(event.type) && (event.data?.streamId || event.data?.scope === "stream")) return;
       if (event.type === "verification.status") {
         hostStatus = typeof event.data?.hostStatus === "string" ? event.data.hostStatus : event.data?.status === "verified" ? "approved" : String(event.data?.status || "none");
         invalidateHostAccess(false);
@@ -1935,9 +1935,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "gift.send": {
         const sessionVersion = getSessionVersion();
-        const receipt = await api.sendGift(msg.data.to, msg.data.gift, msg.data.coins, msg.data.inCall ? activeCall : undefined, msg.data.streamId, msg.data.idempotencyKey);
+        const receipt = await api.sendGift(msg.data.to, msg.data.gift, msg.data.coins, msg.data.callId ?? (msg.data.inCall ? activeCall : undefined), msg.data.streamId, msg.data.idempotencyKey);
         if (current(version) && sessionVersion === getSessionVersion()) {
-          emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey, id: receipt.id, coins: receipt.coins, ...(receipt.message !== undefined ? { message: receipt.message } : {}), ...(receipt.giftDetails ? { giftDetails: receipt.giftDetails } : {}) } });
+          emit({ type: "gift.sent", data: { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey, id: receipt.id, coins: receipt.coins, ...(receipt.callId ? { callId: receipt.callId } : {}), ...(receipt.scope ? { scope: receipt.scope } : {}), ...(receipt.createdAt ? { createdAt: receipt.createdAt } : {}), ...(receipt.message !== undefined ? { message: receipt.message } : {}), ...(receipt.giftDetails ? { giftDetails: receipt.giftDetails } : {}) } });
           if (receipt.message) quietly(loadChats(1, true), "chats.reload");
           if (receipt.coins > 0) quietly(refreshWallet(), "wallet.load");
         }
