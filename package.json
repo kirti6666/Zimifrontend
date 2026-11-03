@@ -56,6 +56,7 @@
     "test:private-screens": "npm run build:web && node scripts/test-private-screens.cjs",
     "test:chat-safety": "npm run build:web && node scripts/test-chat-safety.cjs",
     "test:chat-actions": "npm run build:web && node scripts/test-chat-actions.cjs",
+    "test:chat-composer": "npm run build:web && node scripts/test-chat-composer.cjs",
     "test:chat-replies": "npm run build:web && node scripts/test-chat-replies.cjs",
     "test:chat-voice": "npm run build:web && node scripts/test-chat-voice.cjs",
     "test:chat-photos": "npm run build:web && node scripts/test-chat-photo-picker.cjs && node scripts/test-chat-photos.cjs",

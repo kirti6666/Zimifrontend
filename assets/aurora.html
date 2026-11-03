@@ -2827,9 +2827,7 @@ html:root[data-theme="dark"] .zc-thread{
 }
 .zc-thread-header{background:var(--canvas)}
 .zc-thread-scroll{background:transparent}
-:root .zc-thread :is(.zc-gift-strip,.zc-composer,.zc-gift-button){background:transparent}
-:root .zc-thread .zc-composer-field{background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,var(--line))}
-:root .zc-thread .zc-composer-field:focus-within{background:color-mix(in srgb,var(--accent) 16%,var(--surface));border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+:root .zc-thread :is(.zc-gift-strip,.zc-composer){background:transparent}
 .zc-thread-scroll :is(.zc-meta,.zc-edited,.zc-thread-note){color:var(--zc-wallpaper-muted)}
 
 .zc-thread-scroll>.zh-error{margin:0}
@@ -2896,23 +2894,31 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-emoji{flex:none;display:flex;gap:4px;padding:8px var(--zc-gutter) 0;overflow-x:auto;scrollbar-width:none}
 .zc-emoji[hidden]{display:none}
 .zc-emoji>button{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--surface);font-size:22px}
-.zc-composer{flex:none;display:flex;align-items:center;gap:8px;padding:8px max(10px,calc(50% - 384px)) 12px}
-.zc-composer-icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--muted)}
-.zc-composer-add[aria-expanded="true"]{color:var(--accent-ink);background:var(--surface)}
-.zc-composer-gift{color:var(--accent-ink)}
-.zc-composer-field{flex:1;min-width:0;display:flex;align-items:center;height:48px;padding:0 4px 0 18px;border-radius:99px;background:var(--surface)}
-.zc-composer-field>input{flex:1;min-width:0;width:0;font-size:15px;outline:none}
-.zc-composer-field>input::placeholder{color:var(--muted);opacity:1}
-.zc-composer-field:focus-within{background:var(--raised)}
-.zc-composer-field>button{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--muted)}
-.zc-composer-send{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--cta-ink);box-shadow:0 8px 22px -8px color-mix(in srgb,var(--accent) 85%,transparent)}
-.zc-composer-send:active,.zc-thread-video:active{transform:scale(.95)}
+.zc-composer{flex:none;display:flex;align-items:flex-end;gap:8px;padding:10px max(12px,calc(50% - 384px)) 12px}
+.zc-composer[hidden]{display:none}
+.zc-composer-field{flex:1;min-width:0;display:flex;align-items:flex-end;gap:2px;min-height:54px;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface);transition:border-color 160ms ease,background-color 160ms ease}
+.zc-composer-field:focus-within{border-color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 3%,var(--surface))}
+.zc-composer-field>textarea{display:block;flex:1;min-width:0;width:0;height:44px;min-height:44px;max-height:min(132px,max(66px,25dvh));padding:11px 6px;border:0;resize:none;outline:none;background:transparent;color:var(--ink);caret-color:var(--accent-ink);font:inherit;font-size:16px;line-height:22px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.zc-composer-field>textarea::placeholder{color:var(--muted);opacity:1}
+.zc-composer-field>.zc-composer-icon{flex:none;display:grid;place-items:center;width:44px;height:44px;color:var(--muted);transition:color 160ms ease,background-color 160ms ease}
+.zc-composer-field>.zc-composer-add[aria-expanded="true"]{color:var(--accent-ink);background:var(--accent-wash)}
+.zc-composer-field>.zc-gift-button{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:44px;min-width:44px;height:44px;padding:2px;color:var(--accent-ink);background:transparent;font-size:10px;font-weight:600;line-height:12px}
+.zc-composer-field>.zc-gift-button svg{flex:none}
+.zc-composer-send{flex:none;display:grid;place-items:center;width:48px;height:48px;margin-bottom:3px;border:1px solid transparent;border-radius:10px;background:var(--accent);color:var(--cta-ink);transition:background-color 160ms ease,color 160ms ease,transform 120ms ease}
+.zc-composer-send.is-mic{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.zc-composer button:disabled{opacity:.4}
+.zc-composer button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.zc-composer-field>button:not(:disabled):active{background:var(--accent-wash);color:var(--accent-ink)}
+.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:scale(.95)}
+@media(hover:hover){.zc-composer-field>button:not(:disabled):hover{background:var(--raised)}.zc-composer-send:not(:disabled):hover{background:color-mix(in srgb,var(--accent) 90%,var(--ink))}.zc-composer-send.is-mic:not(:disabled):hover{background:var(--raised)}}
 @keyframes zc-live{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
 @keyframes zc-wave{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
-@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}.zc-composer{gap:4px}.zc-composer-send{width:46px;height:46px}}
-/* With the keyboard open the history needs the room; the banner returns when typing stops. */
-@media(max-height:600px){.zc-thread:has(.zc-composer-field:focus-within) .zc-thread-live{display:none}}
-@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer-send:active,.zc-thread-video:active{transform:none}}
+@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}}
+/* Optional gift shortcuts yield room to typing and reply/emoji controls.
+   The compact Gift button still opens the whole catalog. */
+.zh-keyboard-open .zc-thread :is(.zc-thread-live,.zc-gift-strip){display:none}
+@media(max-height:600px){.zc-thread .zc-gift-strip{display:none}.zc-thread:has(.zc-composer-field:focus-within,#zc-emoji:not([hidden]),#zc-attach:not([hidden])) .zc-thread-live{display:none}}
+@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer *{transition:none}.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:none}}
 
 /* Phone numbers and abusive words the server hid from chat: a blur, never readable or copyable. */
 .chat-hidden{display:inline-block;filter:blur(4px);opacity:.7;user-select:none;-webkit-user-select:none;letter-spacing:-.05em;vertical-align:-.1em}
@@ -2965,18 +2971,8 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-gift-button{display:flex;align-items:center;justify-content:center;gap:5px;flex:none;min-width:72px;height:48px;padding:0 10px;background:var(--surface);color:var(--accent-ink);font-size:13px;font-weight:650}
 .zc-gift-button:disabled{opacity:.45}
 .zc-gift-button:focus-visible,.zc-gift-strip>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
-/* A compact composer keeps text and controls together above the keyboard. */
-.zc-composer{padding:10px max(12px,calc(50% - 384px)) 12px}
-.zc-composer[hidden]{display:none}
-.zc-composer-field{height:54px;gap:2px;padding:4px 5px;border:1px solid var(--line);background:var(--surface)}
-.zc-composer-field:focus-within{background:var(--surface);border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
-.zc-composer-field>input{height:42px;padding:0 6px;color:var(--ink);caret-color:var(--accent-ink)}
-.zc-composer-field>.zc-composer-icon{width:40px;height:44px;color:var(--muted)}
-.zc-composer-field>.zc-composer-gift{color:var(--accent-ink)}
-.zc-composer-field>.zc-composer-send{width:44px;height:44px;background:var(--accent);color:var(--cta-ink);box-shadow:none}
-.zc-composer-field>.zc-composer-send.is-mic{background:transparent;color:var(--ink)}
-.zc-composer-field>button:disabled{opacity:.4}
-.zc-composer-field>button:focus-visible,.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+/* Recording and playback share the composer's theme and focus treatment. */
+.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
 #zc-recording{flex:none;min-width:0}
 .zc-recorder{margin:10px var(--zc-gutter) 12px;padding:14px 12px 10px;border:1px solid var(--line);border-radius:22px;background:var(--surface)}
 .zc-recording-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 5px 8px;color:var(--ink)}
@@ -3008,7 +3004,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-flash .zc-voice{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent)}
 @keyframes zc-recording-pulse{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
 @keyframes zc-recording-glow{50%{opacity:.4}}
-@media(max-width:350px){.zc-composer-field{gap:0}.zc-composer-field>.zc-composer-icon{width:36px}.zc-composer-field>input{padding:0 4px;font-size:14px}.zc-recording-hint{font-size:11px}}
+@media(max-width:350px){.zc-recording-hint{font-size:11px}}
 @media(max-height:600px){.zc-is-recording .zc-thread-live{display:none}.zc-recorder{margin-top:6px;margin-bottom:8px}}
 @media(prefers-reduced-motion:reduce){.zc-recording-pulse>span,.zc-recording-dot{animation:none}}
 .zc-photo-wrap{position:relative;width:min(62vw,240px)}
@@ -3249,7 +3245,7 @@ html:root[data-theme="dark"] .zc-thread{
 :root[data-theme-id] :is(input,textarea)::placeholder{color:var(--muted)}
 :root[data-theme-id] :is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 /* An input inside a pill-shaped field would draw a box inside the pill; the field shows focus instead. */
-:root :is(.zc-composer-field,.zc-compose-search,.zh-search-header>div)>input:focus-visible{outline:none}
+:root :is(.zc-composer-field,.zc-compose-search,.zh-search-header>div)>:is(input,textarea):focus-visible{outline:none}
 :root[data-theme-id] input[type=checkbox]{accent-color:var(--accent)}
 :root[data-theme-id] .zh-packs>button.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 :root[data-theme-id] :is(.zp-camera,.zp-avatar,.zh-story-create .zh-story-ring,.zh-rate,.ob-toast){background:var(--raised);color:var(--ink);border-color:var(--line)}
@@ -5150,6 +5146,7 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
 .zo-earlier{align-self:center}
 .zo-read-error{padding:0 var(--zc-gutter);font-size:12px;color:var(--muted)}
 .zo-composer textarea{display:block;min-width:0;flex:1;width:100%;min-height:44px;max-height:128px;padding:12px 8px;resize:none;border:0;background:transparent;color:var(--ink);font:inherit;line-height:20px;outline:none}
+.zo-composer .zc-composer-send{width:44px;height:44px;margin-bottom:0}
 .zo-composer .zc-composer-send:disabled{opacity:.45}
 .zo-composer .zc-composer-field{align-items:flex-end;padding-left:8px}
 /* The wallet keeps purchased coins separate from confirmed creator earnings. */
@@ -18564,10 +18561,33 @@ function zcQuickGift(id){if(!S.h||!zcCanGift(zcThreadPerson())||zcThreadBlocked(
 const zcEmoji=['😊','😂','😍','🥰','🔥','💖','👏','🙌','🎶','🎧','✨','🙏'];
 function zcThreadComposer(h){
  const text=Chats.drafts[S.h]||'',send=!!text.trim()||!!Chats.editing,recording=window.ZimiChatVoice?.active();
- return `<p id="zc-send-status" class="zc-thread-note" role="status" ${!zcThreadBlocked()?"hidden":""}>${esc(zcThreadBlocked())}</p><div id="zc-context">${zcContextView(h)}</div><div id="zc-attach" class="zc-attach" role="menu" aria-label="Add to your message" hidden onkeydown="if(event.key==='Escape'){zcThreadAttach(false);document.querySelector('.zc-composer-add')?.focus()}"><button role="menuitem" data-chat-send ${zcThreadBlocked()?"disabled":""} onclick="zcPickPhoto()">${ci('image',20)}<span>Photo</span></button><button role="menuitem" onclick="zcThreadAttach(false);zcThreadEmoji(true)"><span aria-hidden="true">&#128522;</span><span>Emoji</span></button></div><div id="zc-emoji" class="zc-emoji" role="group" aria-label="Emoji" hidden>${zcEmoji.map(e=>`<button onclick="zcThreadInsert('${e}')" aria-label="Insert ${e}">${e}</button>`).join('')}</div><div id="zc-recording">${window.ZimiChatVoice?.view()||''}</div><div class="zc-composer" ${recording?'hidden':''}><div class="zc-composer-field"><button class="zc-composer-icon zc-composer-add" aria-label="Add a photo or emoji" aria-haspopup="menu" aria-expanded="false" aria-controls="zc-attach" onclick="zcThreadAttach()">${ci('add',24)}</button><input id="ti" placeholder="Type here..." aria-label="Message ${esc(h.n)}" maxlength="2000" autocomplete="off" value="${esc(text)}" oninput="zcComposerInput()" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();zcThreadSend()}"><input id="zc-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="zcSendPhoto(this)"><button class="zc-composer-send ${send?'':'is-mic'}" data-chat-send ${zcThreadBlocked()?"disabled":""} aria-label="${send?'Send message':'Record voice message'}" onclick="zcComposerAction()">${ci(send?'send':'mic',22)}</button></div>${zcCanGift(h)?`<button type="button" class="zc-gift-button" aria-label="Gift" aria-haspopup="dialog" onclick="zcOpenGifts()" ${zcThreadBlocked()?'disabled':''}>${hi('gift',20)}<span>Gift</span></button>`:''}</div>`
+ return `<p id="zc-send-status" class="zc-thread-note" role="status" ${!zcThreadBlocked()?"hidden":""}>${esc(zcThreadBlocked())}</p><div id="zc-context">${zcContextView(h)}</div><div id="zc-attach" class="zc-attach" role="menu" aria-label="Add to your message" hidden onkeydown="if(event.key==='Escape'){zcThreadAttach(false);document.querySelector('.zc-composer-add')?.focus()}"><button role="menuitem" data-chat-send ${zcThreadBlocked()?"disabled":""} onclick="zcPickPhoto()">${ci('image',20)}<span>Photo</span></button><button role="menuitem" onclick="zcThreadAttach(false);zcThreadEmoji(true)"><span aria-hidden="true">&#128522;</span><span>Emoji</span></button></div><div id="zc-emoji" class="zc-emoji" role="group" aria-label="Emoji" hidden>${zcEmoji.map(e=>`<button onclick="zcThreadInsert('${e}')" aria-label="Insert ${e}">${e}</button>`).join('')}</div><div id="zc-recording">${window.ZimiChatVoice?.view()||''}</div>
+ <div class="zc-composer" ${recording?'hidden':''}>
+  <div class="zc-composer-field">
+   <button type="button" class="zc-composer-icon zc-composer-add" aria-label="Add a photo or emoji" aria-haspopup="menu" aria-expanded="false" aria-controls="zc-attach" onclick="zcThreadAttach()">${ci('add',22)}</button>
+   <textarea id="ti" rows="1" placeholder="Message…" aria-label="Message ${esc(h.n)}" maxlength="2000" autocomplete="off" enterkeyhint="send" oninput="zcComposerInput()" onkeydown="zcComposerKey(event)">
+${esc(text)}</textarea>
+   <input id="zc-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="zcSendPhoto(this)">
+   ${zcCanGift(h)?`<button type="button" class="zc-gift-button" aria-label="Gift" aria-haspopup="dialog" onclick="zcOpenGifts()" ${zcThreadBlocked()?'disabled':''}>${hi('gift',20)}<span>Gift</span></button>`:''}
+  </div>
+  <button type="button" class="zc-composer-send ${send?'':'is-mic'}" data-chat-send ${zcThreadBlocked()?"disabled":""} aria-label="${send?'Send message':'Record voice message'}" onpointerdown="if(document.activeElement?.id==='ti')event.preventDefault()" onclick="zcComposerAction()">${ci(send?'send':'mic',22)}</button>
+ </div>`
 }
 function zcComposerInput(){window.ZimiChatActivity?.sync();const input=document.getElementById('ti');if(input)Chats.drafts[S.h]=input.value;zcUpdateComposer()}
-function zcUpdateComposer(){const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
+function zcComposerKey(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&event.keyCode!==229){event.preventDefault();zcThreadSend()}}
+/* Only remeasure when the draft or viewport changes; incoming messages must not
+   disturb the caret or repeatedly force layout while someone is typing. */
+function zcResizeComposer(){
+ const input=document.getElementById('ti');if(!input||!input.offsetWidth)return;
+ const size={text:input.value,width:input.clientWidth,viewport:innerHeight},last=input.zcSize;
+ if(last&&last.text===size.text&&last.width===size.width&&last.viewport===size.viewport)return;
+ const history=document.getElementById('tf'),atEnd=history&&history.scrollHeight-history.scrollTop-history.clientHeight<80;
+ input.style.height='auto';input.style.height=input.scrollHeight+'px';
+ input.style.overflowY=input.scrollHeight>input.clientHeight?'auto':'hidden';input.zcSize=size;
+ if(atEnd)history.scrollTop=history.scrollHeight;
+}
+function zcUpdateComposer(){zcResizeComposer();const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
+window.addEventListener('resize',()=>{if(S.v==='thread')zcResizeComposer()});
 function zcComposerAction(){if(document.getElementById('ti')?.value.trim()||Chats.editing)zcThreadSend();else window.ZimiChatVoice?.start()}
 function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadGifts(h)}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
 function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send],.zc-gift-button,.zc-gift-strip>button").forEach(button=>{button.disabled=!!reason;button.title=reason});zcUpdateComposer();const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
@@ -18597,8 +18617,8 @@ function zcThreadGift(to,gift,receipt={}){
  window.ZimiChatGifts?.accept(target,m,receipt);
 }
 function zcThreadMenu(open){const menu=document.querySelector('.zc-thread-menu'),button=document.querySelector('.zc-thread-more>button');if(!menu||!button)return;const show=open??menu.hidden;menu.hidden=!show;button.setAttribute('aria-expanded',String(show));if(show)menu.querySelector('button')?.focus()}
-function zcThreadEmoji(open){const tray=document.getElementById('zc-emoji');if(!tray)return;tray.hidden=!(open??tray.hidden)}
-function zcThreadInsert(emoji){const input=document.getElementById('ti');if(!input)return;const end=input.selectionEnd??input.value.length;input.setRangeText(emoji,input.selectionStart??end,end,'end');Chats.drafts[S.h]=input.value;zcUpdateComposer();input.focus()}
+function zcThreadEmoji(open){const tray=document.getElementById('zc-emoji');if(!tray)return;const show=open??tray.hidden;tray.hidden=!show;if(show)tray.querySelector('button')?.focus({preventScroll:true})}
+function zcThreadInsert(emoji){const input=document.getElementById('ti');if(!input)return;const end=input.selectionEnd??input.value.length,start=input.selectionStart??end;if(input.value.length-(end-start)+emoji.length<=input.maxLength){input.setRangeText(emoji,start,end,'end');zcComposerInput()}input.focus({preventScroll:true})}
 /* Preview-only conversation matching the design reference. */
 function zcDemoThread(h){const name=first(h?.n||'there'),at=minutes=>new Date(Date.now()-minutes*60000).toISOString();return [
   {id:'demo-m1',mine:true,status:'read',at:at(4),text:`Hey ${name}! Loved your acoustic guitar intro earlier today 🔥`},
@@ -18731,8 +18751,8 @@ document.addEventListener('click',event=>{
 },true);
 document.addEventListener('contextmenu',event=>{const stack=event.target.closest?.('.zc-msg-stack[data-message-id]');if(S.v==='thread'&&stack){event.preventDefault();if(zcGesture?.stack===stack)zcGesture.held=true;zcMessageMenu(stack.dataset.messageId)}});
 document.addEventListener('aurora:navigate',()=>{Chats.playing='';zcEndGesture();if(S.v!=='thread'){zcClearContext();Chats.menu='';Chats.contextPeer=null}});
-document.addEventListener('click',event=>{if(S.v==='thread'&&!event.target.closest?.('.zc-thread-more'))zcThreadMenu(false)});
-document.addEventListener('keydown',event=>{if(event.key!=='Escape'||S.v!=='thread')return;const menu=document.querySelector('.zc-thread-menu');if(menu&&!menu.hidden){zcThreadMenu(false);document.querySelector('.zc-thread-more>button')?.focus()}else zcThreadEmoji(false)});
+document.addEventListener('click',event=>{if(S.v!=='thread')return;if(!event.target.closest?.('.zc-thread-more'))zcThreadMenu(false);if(!event.target.closest?.('.zc-composer-add,#zc-attach'))zcThreadAttach(false);if(!event.target.closest?.('.zc-composer-add,#zc-attach,#zc-emoji'))zcThreadEmoji(false)});
+document.addEventListener('keydown',event=>{if(event.key!=='Escape'||S.v!=='thread')return;const menu=document.querySelector('.zc-thread-menu');if(menu&&!menu.hidden){zcThreadMenu(false);document.querySelector('.zc-thread-more>button')?.focus()}else{const emojiFocused=document.getElementById('zc-emoji')?.contains(document.activeElement);zcThreadEmoji(false);if(emojiFocused)document.getElementById('ti')?.focus({preventScroll:true})}});
 if(DEMO){
   const people=[{id:'ishaan',name:'Ishita Rao',photo:2,verified:true,online:true},{id:'aanya',name:'Ananya Iyer',photo:0,verified:true,online:true},{id:'meher',name:'Meher Kaur',photo:1,verified:true,online:false},{id:'demo-rewards',name:'BinzoLive Rewards & Bot',bot:true},{id:'kabir',name:'Kavya Malhotra',photo:4,online:true},{id:'demo-tara',name:'Tara Bhatt',photo:5,verified:true,online:false}];
   const previews=["Just finished my ghazal set. Chai and one more song soon?",'Sent you a gift: 💎 Super Diamond Crown','Thanks for the awesome session tonight! Loved it.','Bonus claimed: +200 free coins credited to your wallet','Free for a quick call this evening?','Audio message (0:42)'];
