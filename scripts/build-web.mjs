@@ -143,6 +143,7 @@ const page = (demo, hosted = false) =>
   read("web/gift-art.css") +
   read("web/call-invitations.css") +
   read("web/call-targets.css") +
+  read("web/native-media.css") +
   BODY +
   read("web/vendor/lenis.min.js") +
   INIT +
@@ -176,6 +177,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/beauty.js").replace(/__FB_EFFECT_([a-z0-9_]+)__/g, (_, name) =>
     readFileSync(join(root, `web/facebetter/effects/${name}.fbd`)).toString("base64")) +
   "\n" + read("web/beauty-controls.js") +
+  "\n" + read("web/native-media.js") +
   "\n" + read("web/media.js") +
   "\n" + read("web/live-room.js") +
   "\n" + read("web/call-setup.js") +

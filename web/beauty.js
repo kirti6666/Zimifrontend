@@ -692,6 +692,14 @@
     publish('idle', 'Effects apply to your camera during video calls.');
   }
   window.ZimiBeauty = {
+    nativeState(status) {
+      if (!window.ZIMI_NATIVE_MEDIA) return;
+      if (!wanted()) return publish('off', 'Effects off. Your original camera is shared.');
+      if (status === 'ready') publish('ready', 'Effects are applied to the camera you share.');
+      else if (status === 'loading') publish('loading', 'Preparing selected effects…');
+      else if (status === 'idle') publish('idle', 'Effects apply to your camera during video calls.');
+      else publish('error', 'Beauty effects are unavailable. Your original camera is shared.');
+    },
     create, sync, stop, strength, unavailable, getState: () => ({ ...state }), isEnabled:()=>wanted(),getFailedEffect,
     getParams:()=>JSON.parse(JSON.stringify(params)),
     setParam(key,value,activate=false) {

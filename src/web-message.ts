@@ -3,6 +3,7 @@ import { validNotificationPreferencesPatch } from "./notification-preferences";
 import { notificationTargetFrom } from "./notification-target";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUSES } from "./api/support";
 import { officialCursor, officialMessageId } from "./api/official";
+import { validNativeMediaLayout, validNativeMediaRequest } from "./native-media/protocol";
 
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -134,6 +135,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "notifications.unread": valid = notificationIds(d.ids) && d.requestId !== undefined && Object.keys(d).every(key => ["ids", "requestId"].includes(key)); break;
     case "notifications.readAll": valid = d.requestId !== undefined && Object.keys(d).every(key => key === "requestId"); break;
     case "call.match": valid = d.category === undefined || category(d.category); break;
+    case "native.media": valid = validNativeMediaRequest(d); break;
+    case "native.media.layout": valid = validNativeMediaLayout(d); break;
     case "rtc.signal": valid = identifier(d.callId) && rtcSignal(d); break;
     case "stream.signal": valid = identifier(d.streamId) && identifier(d.to) && rtcSignal(d); break;
     case "stream.start": valid = text(d.title, 120) && category(d.category) && (d.kind === undefined || ["video", "audio"].includes(String(d.kind))); break;

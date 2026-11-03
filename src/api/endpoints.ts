@@ -324,6 +324,14 @@ export const api = {
     }
     return { licenseToken: data.licenseToken };
   },
+  /** License for the native Android SDK, bound to the app package rather than the WebView origin. */
+  async beautyAuthAndroid() {
+    const data = record(await request("POST", "/facebetter/auth/android"));
+    if (typeof data.licenseToken !== "string" || !data.licenseToken.trim() || data.licenseToken.length > 128 * 1024) {
+      throw new ApiError("Beauty effects could not be started. Please try again.", 502);
+    }
+    return { licenseToken: data.licenseToken };
+  },
   async stream(streamId: string) { return streamFrom(await request("GET", `/streams/${encodeURIComponent(streamId)}`)); },
   async streamMessages(streamId: string) { return items(await request("GET", `/streams/${encodeURIComponent(streamId)}/messages?limit=50`)).map(streamChatFrom).reverse(); },
   async startStream(input: { title: string; category: string; kind?: "video" | "audio" }) {

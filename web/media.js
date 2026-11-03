@@ -2,6 +2,7 @@
    signaling only; camera/microphone capture begins from an explicit action. */
 (function () {
   'use strict';
+  if (window.ZimiMedia?.native) return;
   let local = null, remote = null, active = null, capture = null, pendingCall = null;
   let generation = 0, configRequest = null, cameraSwitch = null, switchingStream = null;
   let facingMode = 'user', playbackMuted = false, handoffCall = null;

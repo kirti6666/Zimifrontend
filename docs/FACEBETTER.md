@@ -1,10 +1,19 @@
 # Facebetter integration and verification
 
-The mobile app uses **Facebetter Web SDK 2.2.1 inside React Native WebView**. Its camera and private-call WebRTC tracks are browser media streams. It does not instantiate the Java/Kotlin `net.pixpark:facebetter` engine.
+Android builds containing `BinzoMedia` use **Facebetter Android SDK 2.2.1 with native WebRTC capture, encoding and playback**, following the texture-processing setup in `../facebetter-expo`. The WebView keeps the call interface and sends commands and video rectangles; camera pixels stay native. iOS, standalone browser previews and older binaries retain the Web SDK 2.2.1 path described below. x86 Android emulators can use native calls with plain camera video; the Facebetter Android library ships ARM ABIs only.
 
 The supplied [Android quick-start](https://docs.facebetter.net/android/quick-start) describes the native Android integration and currently names SDK 2.0.0. The checked-in vendor Android demo uses 2.2.1. The app's installed JavaScript wrapper and both mobile/backend WASM runtimes match 2.2.1; do not downgrade them to match that older documentation example.
 
-## Current processing path
+## Android processing path
+
+1. `src/native-media/controller.ts` captures camera and microphone using `react-native-webrtc`. Video requests 1920 x 1440 at 30 fps; the device selects a supported capture mode. The tested phone supports this full 4:3 sensor mode and encodes 1440 x 1920 portrait without the 1080-to-1072 hardware alignment crop. Front-camera mirroring belongs to `RTCView`, not the encoded frames.
+2. Skin/Color selections reach `modules/binzo-media` as settings commands. The controller requests `/facebetter/auth/android` through the authenticated API. The backend uses the separate `FACEBETTER_ANDROID_LICENSE_FILE` when configured, otherwise mints an Android authorization token. Android package `com.aurora.liveapp` must be bound in the provider console. Web-origin licenses are never retried as Android licenses, and application keys remain on the server.
+3. The `facebetter` processor attached to the camera track passes each captured OES texture to an owned GLES3 thread sharing the camera context. Like `facebetter-expo`, it draws the camera upright into a 2D texture and calls native `processImage`. Effect textures retain a 1920-pixel long edge, preserving the original framing. WebRTC applies source adaptation before this processor, so smaller encoder-adapted inputs are not upscaled. GLES3 is requested explicitly rather than relying on WebRTC's GLES2 context being upgraded by a driver. SDK calls may unbind EGL; processing and conversion explicitly restore the owning context.
+4. A bounded pool copies SDK output into owned textures so preview and encoding can safely retain frames. Texture conversion, recycling and SDK cleanup run on the owning GL thread. Retained output keeps its converter/context alive until consumers release it; ending a call invalidates old status, license and statistics work. Diagnostics distinguish unscaled camera texture size, adapted incoming dimensions/timestamp FPS, output size, total average/maximum frame cost and SDK-reported processing cost. Paused camera intervals restart the measurement window. No `ImageData`, WASM inference or video-frame messages are used on this Android path.
+5. `src/native-media/view.tsx` presents local and remote streams with native `RTCView` surfaces beneath the WebView's transparent video slots. The local preview and outgoing sender share the native camera track. Muting, camera-off, camera flips, minimized calls and the existing authenticated signaling continue through the controller. Connecting a call obtains transient communication audio focus and defaults video to speaker/voice to earpiece while respecting wired/Bluetooth devices; ending it restores the previous audio mode/route. Camera preview alone does not take call audio focus. A beauty authorization, GL or processing failure passes the original camera through and preserves audio and the call.
+6. Native call encoding starts at a 2.5 Mbps / 30 fps / 1920-pixel long-edge ceiling with resolution preserved. Sustained network/encoder pressure selects lower 480/720/1280-pixel profiles that prioritize frame rate. Capture framing and the microphone stay intact; the encoder scales its output. Native previews use `contain` to show the entire source image without zoom/crop. Ending the session releases beauty before stopping capture.
+
+## Browser and older-binary processing path
 
 1. `web/media.js` captures the camera and microphone.
 2. `web/beauty.js` requests authorization through the native bridge before creating an engine. `src/bridge.ts` requires an active session and correlates each response to its request.
@@ -43,6 +52,8 @@ Release **1.1.10 / build 19** packages these controls. Touch swipe, mouse drag, 
 
 ## Identity and resources
 
+- Android native authorization is bound to package `com.aurora.liveapp`. `FACEBETTER_ANDROID_LICENSE_FILE` is independent of the Web license setting; an unset Android path retains Android online authorization. Unsupported beauty devices continue with raw native video.
+
 - The WebView document origin is `https://aurora.localhost`. Web licensing must cover that origin. Binding only Android package `com.aurora.liveapp` does not authorize this browser engine.
 - Local development now explicitly uses `FACEBETTER_LICENSE_FILE=../facebetter-offline.lic`, as requested. The native bridge still authenticates and correlates authorization requests; the SDK receives the full file contents, without embedding the license or App Key in the app bundle. An unset path retains online authorization. This is a server-delivered offline SDK license, not a network-free app startup.
 - Runtime/model/effect URLs live below `/api/v1/facebetter/runtime/2.2.1/`. They are public, credential-free resources and must have WebView-compatible CORS, MIME types and cross-origin resource policy. License issuance remains authenticated and uncached.
@@ -51,7 +62,11 @@ Release **1.1.10 / build 19** packages these controls. Touch swipe, mouse drag, 
 
 ## Tests
 
-Run the regular SDK, catalog, race, controls, media, runtime and bridge checks:
+Run native controller/lifecycle and Android packaging regressions, then the regular browser SDK, catalog, race, controls, media, runtime and bridge checks:
+
+```powershell
+node --test scripts/test-native-media-controller.cjs scripts/test-native-media-plugin.cjs
+```
 
 ```powershell
 npm run test:facebetter
@@ -72,7 +87,7 @@ try {
 
 This test keeps credentials in memory, intercepts resources locally at the licensed origin, and checks actual pixel changes. Keep licenses and provider responses out of source control and test logs. Native Android validation still requires a device or emulator; browser tests alone do not establish Android performance.
 
-## Verification on 2 November 2026
+## Historical WebView verification on 2 November 2026
 
 - Seven existing mobile Facebetter suites and thirteen backend auth/resource regressions passed.
 - HEAD checks of all forty deployed runtime/model/filter/sticker/background routes returned HTTP 200 with compatible WebView CORS. All thirty-seven local custom resource manifest hashes matched, and mobile/backend core binaries matched.

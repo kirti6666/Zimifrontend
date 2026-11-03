@@ -66,6 +66,7 @@
     "test:notifications": "npm run build:web && node scripts/test-push.cjs && node scripts/test-notifications.cjs",
     "test:push": "node scripts/test-push.cjs && node scripts/test-api-adapter.cjs && node --test --test-name-pattern=\"push|notification navigation|notification call taps\" scripts/test-auth-bridge.cjs",
     "test:native-push": "node scripts/test-native-push.cjs",
+    "test:native-media": "npm run build:web && node --test scripts/test-native-media-protocol.cjs scripts/test-native-media-controller.cjs scripts/test-native-media-shell.cjs scripts/test-native-media-plugin.cjs scripts/test-native-media-loopback.cjs && node scripts/test-native-media-web.cjs",
     "test:incoming-calls": "npm run build:web && node --test scripts/test-incoming-call-actions.cjs scripts/test-incoming-call-screen.cjs && node scripts/test-incoming-call-web.cjs && node scripts/test-api-adapter.cjs && node scripts/test-native-push.cjs",
     "test:dummy-calls": "npm run build:web && node scripts/test-dummy-call-ui.cjs",
     "test:support": "npm run build:web && node scripts/test-support-bridge.cjs && node scripts/test-api-adapter.cjs && node --test --test-name-pattern=support scripts/test-auth-bridge.cjs && node scripts/test-support-ui.cjs",
@@ -108,6 +109,7 @@
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
+    "react-native-webrtc": "155.0.1",
     "react-native-webview": "13.16.1",
     "socket.io-client": "^4.8.4"
   },

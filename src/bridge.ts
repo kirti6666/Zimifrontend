@@ -25,6 +25,7 @@ import { notificationTargetFrom, type NotificationTarget } from "./notification-
 import { notifyAppUpdate } from "./app-update-events";
 import { openDevicePermissionSettings, readDevicePermissions, requestDevicePermissions, type DevicePermissions } from "./device-permissions";
 import { createSupportBridge, type SupportWebMessage, type SupportAppMessage } from "./support-bridge";
+import type { NativeMediaMessage, NativeMediaEvent } from "./native-media/protocol";
 
 /* The screens (web/, shown in the WebView) and the app talk in small JSON
    messages: { type, data }. The screens never call the server themselves;
@@ -34,6 +35,7 @@ import { createSupportBridge, type SupportWebMessage, type SupportAppMessage } f
 
 /* Screens -> app. */
 export type WebMessage =
+  | NativeMediaMessage
   | SupportWebMessage
   | OfficialWebMessage
   | { type: "ready"; data: { demo: boolean } }
@@ -142,6 +144,7 @@ export type WebMessage =
    wallet.balance, verification.status) come straight from the server socket. */
 export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
+  | NativeMediaEvent
   | OfficialAppMessage
   | SupportAppMessage
   | { type: "app.background"; data: Record<string, never> }
