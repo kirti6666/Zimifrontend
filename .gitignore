@@ -14,6 +14,8 @@ google-services.json
 GoogleService-Info.plist
 artifacts/*
 /release/
+__pycache__/
+*.py[cod]
 /modules/**/android/build/
 /modules/**/android/.cxx/
 /modules/**/android/.gradle/

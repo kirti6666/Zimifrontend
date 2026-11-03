@@ -286,7 +286,7 @@ export type AppMessage =
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
-  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
+  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; coverUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
   | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; sequence?: number; orderAfterSequence?: number; clientId?: string; kind?: "text" | "image" | "voice" | "gift"; gift?: Message["gift"]; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */

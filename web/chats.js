@@ -167,7 +167,7 @@ function zcHostCall(id,voice){const h=g(id)||Chats.rows.find(c=>c.user.id===id)?
 function zcThreadLive(h){if(!h.stream)return '';const id=domId(h.id),name=first(h.n),viewers=h.stream.viewers||h.viewers;return `<section class="zc-thread-live" aria-label="${esc(name)} is live now"><span class="zc-thread-live-cover">${homeCover(h)}<b><i></i>LIVE</b></span><div class="zc-thread-live-text"><h2><span>${esc(name)} is Live Now</span><i></i></h2><p>${esc(h.stream.title||h.tag||'Streaming now')}${viewers?' · '+homeCompact(viewers)+' watching':''}</p></div><div class="zc-thread-live-actions"><button class="zc-thread-join" onclick="homeOpen('${id}')">Join Stream</button>${!isHost()&&(h.available||DEMO)?`<button class="zc-thread-call" onclick="homeCall('${id}')">${hi('vid',18)} 1:1 Call${h.rate>0?` (${n(h.rate)}c/m)`:''}</button>`:''}</div></section>`}
 function zcThreadNote(h){return `<p class="zc-thread-note">${hi('lock',13)} Never share sign-in codes or payment details${h.verified?' · Creator ID verified':''}</p>`}
 function zcGiftCard(m,h){
- const x=m.gift||{},still=giftStillUrl(x.name,x.mediaUrl||x.image||''),quantity=Number.isSafeInteger(x.quantity)&&x.quantity>1?x.quantity:0;
+ const x=m.gift||{},still=giftStillUrl(x.name,x.mediaUrl||x.image||'',x.coverUrl),quantity=Number.isSafeInteger(x.quantity)&&x.quantity>1?x.quantity:0;
  const mark=still?`<img src="${still}" alt="" loading="lazy" decoding="async">`:`<span aria-hidden="true">${x.html?giftGlyph(x.html):esc(x.emoji||String.fromCodePoint(0x1f381))}</span>`;
  return `<div class="zc-gift-card" aria-label="${m.mine?'Gift sent':'Gift received'}: ${esc(x.name||'Gift')}${quantity?', quantity '+quantity:''}, ${giftPriceLabel(x)}"><div class="zc-gift-top"><span>${hi('gift',14)} ${m.mine?'Gift sent':'Gift received'}</span>${quantity?`<b>&times;${n(quantity)}</b>`:''}</div><div class="zc-gift-body"><span class="zc-gift-icon">${mark}</span><div><h3>${esc(x.name||'Gift')}</h3><span class="zc-gift-value">${giftIsFree(x)?'Free':coinIcon(13)+' '+n(x.coins)+' <span>coins</span>'}</span></div></div><p class="zc-gift-person">${m.mine?'Delivered to':'From'} ${esc(first(h.n))}</p></div>`;
 }
@@ -207,7 +207,7 @@ function zcThreadGifts(h){
   if(!DEMO&&contentPending('catalog'))return `<div class="zc-gift-strip zc-gift-loading" role="status" aria-label="Loading gifts" aria-busy="true">${Array.from({length:5},()=>'<span class="zc-gift-placeholder zh-skeleton"></span>').join('')}</div>`;
   return '';
  }
- return `<div class="zc-gift-strip" role="group" aria-label="Quick gifts">${gifts.map(x=>`<button type="button" onclick="zcQuickGift('${domId(x.id)}')" aria-label="${esc(x.name)}, ${giftPriceLabel(x)}" ${blocked?'disabled':''}><span class="zc-quick-gift-art">${giftStillUrl(x.name,x.mediaUrl)?`<img src="${giftStillUrl(x.name,x.mediaUrl)}" alt="" loading="lazy" decoding="async">`:`<span aria-hidden="true">${esc(x.emoji||String.fromCodePoint(0x1f381))}</span>`}</span><span class="zc-quick-gift-name">${esc(x.name)}</span><b>${giftPriceMarkup(x,11)}</b></button>`).join('')}</div>`;
+ return `<div class="zc-gift-strip" role="group" aria-label="Quick gifts">${gifts.map(x=>`<button type="button" onclick="zcQuickGift('${domId(x.id)}')" aria-label="${esc(x.name)}, ${giftPriceLabel(x)}" ${blocked?'disabled':''}><span class="zc-quick-gift-art">${giftStillUrl(x.name,x.mediaUrl,x.coverUrl)?`<img src="${giftStillUrl(x.name,x.mediaUrl,x.coverUrl)}" alt="" loading="lazy" decoding="async">`:`<span aria-hidden="true">${esc(x.emoji||String.fromCodePoint(0x1f381))}</span>`}</span><span class="zc-quick-gift-name">${esc(x.name)}</span><b>${giftPriceMarkup(x,11)}</b></button>`).join('')}</div>`;
 }
 function zcOpenGifts(){if(!S.h||!zcCanGift(zcThreadPerson())||zcThreadBlocked())return;homeGifts(S.h)}
 function zcQuickGift(id){if(!S.h||!zcCanGift(zcThreadPerson())||zcThreadBlocked())return;homeGifts(S.h);homeSelectGift(id)}
@@ -241,7 +241,7 @@ function zcThreadGift(to,gift,receipt={}){
  }
  const identity=receipt.id||receipt.transactionId||receipt.idempotencyKey;
  if(identity&&rows.some(message=>message.giftReceipt===String(identity)))return;
- const m={id:'gift-'+(identity||crypto.randomUUID()),giftReceipt:identity?String(identity):'',kind:'gift',legacyGift:true,mine:true,at:receipt.createdAt||new Date().toISOString(),status:'sent',gift:{giftId:gift.id,name:gift.name,emoji:gift.emoji||'',mediaUrl:gift.mediaUrl||'',durationMs:gift.durationMs,transferId:receipt.id||receipt.transactionId||'',coins:Number.isSafeInteger(receipt.coins)?receipt.coins:gift.coins,quantity:1}};
+ const m={id:'gift-'+(identity||crypto.randomUUID()),giftReceipt:identity?String(identity):'',kind:'gift',legacyGift:true,mine:true,at:receipt.createdAt||new Date().toISOString(),status:'sent',gift:{giftId:gift.id,name:gift.name,emoji:gift.emoji||'',mediaUrl:gift.mediaUrl||'',...(gift.coverUrl?{coverUrl:gift.coverUrl}:{}),durationMs:gift.durationMs,transferId:receipt.id||receipt.transactionId||'',coins:Number.isSafeInteger(receipt.coins)?receipt.coins:gift.coins,quantity:1}};
  rows.push(m);
  if(S.v==='thread'&&S.h===target){const sequences=S.msgs.filter(row=>Number.isSafeInteger(row.sequence)).map(row=>row.sequence);if(sequences.length)m.orderAfterSequence=Math.max(...sequences);S.msgs=ZimiChatOrder.merge(S.msgs,[m],Chats.hidden);paint()}
  window.ZimiChatGifts?.accept(target,m,receipt);

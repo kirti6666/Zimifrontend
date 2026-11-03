@@ -215,6 +215,11 @@ keeps it identical to the original Next.js version.
   pickers and receipts show the still cover; the animation plays only when a
   gift is sent or received (the cover under reduced motion). Read gift artwork
   through `giftStillUrl`/`giftMotionUrl`, not the raw `mediaUrl`.
+  Explicit Send may start a sender-only provisional visual immediately, keyed
+  by its idempotency key. Wallets, earnings, counts, receipts and the other user
+  remain server-confirmed; rejection cancels the visual and retries/acknowledgments
+  never replay it. Use static uploaded `coverUrl` posters in lists and preserve
+  the original animation for playback; warm only selected/next artwork.
 - The gift picker follows the supplied dark reference in `web/gift-picker.css`:
   a rounded bottom sheet, purple/pink header glow, live pink balance/top-up pill,
   and four open columns of still artwork, names and gold prices. `.zg-reference`

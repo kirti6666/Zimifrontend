@@ -196,13 +196,16 @@ async function checkTransparentGift(page, label) {
     await page.evaluate(()=>zrClearGiftMotion());
     let releaseSlow,signalSlow;
     const slowReleased=new Promise(resolve=>{releaseSlow=resolve}),slowRequested=new Promise(resolve=>{signalSlow=resolve});
-    await page.route('https://gift-motion.fixture.test/slow.svg',async route=>{
-      if(route.request().resourceType()==='fetch'){signalSlow();await slowReleased}
+    await page.route('https://gift-motion.fixture.test/slow.svg*',async route=>{
+      if(route.request().resourceType()==='image'){signalSlow();await slowReleased}
       await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:artwork});
     });
     const callId=await page.evaluate(()=>S.callId);
     await receive('gift.received',{...gift,id:'slow-call-gift',callId,durationMs:500,mediaUrl:'https://gift-motion.fixture.test/slow.svg'});
     await slowRequested;
+    await stage(page).waitFor({state:'visible'});
+    assert.equal(await stage(page).getAttribute('data-state'),'loading','The cold motion surface is visible before its response arrives');
+    assert.equal(await stage(page).getAttribute('data-started-at'),null,'Poster visibility leaves the motion clock stopped');
     await page.waitForTimeout(650);
     assert.equal(await page.evaluate(()=>Room.giftMotion),null,'A slow artwork load does not start or exhaust its display clock');
     releaseSlow();await playing(page,'slow-call-gift');
@@ -218,22 +221,39 @@ async function checkTransparentGift(page, label) {
     assert.notEqual(await stage(page).locator('img').getAttribute('src'),firstUrl,'The next transfer starts a fresh animation resource');
     await page.waitForFunction(()=>!Room.giftMotion,{timeout:2000});
 
-    // A sender sees the same full-surface animation only after the server ack.
+    // Sending is immediate presentation. Coins, receipts and the success banner
+    // still wait for the server; its acknowledgment promotes the same image.
     await page.evaluate(hostId=>{S.callId='sent-gift-call';go('call',hostId)},host.id);
     await receive('wallet.balance',{coins:5000});
-    const sentGift={id:'sent-gift',name:'Sent artwork',coins:25,emoji:'🎁',mediaUrl:'https://gift-transparent.fixture.test/original.svg',durationMs:1700};
+    const sentGift={id:'sent-gift',name:'Sent artwork',coins:25,emoji:'🎁',mediaUrl:'https://gift-transparent.fixture.test/original.svg',durationMs:5000};
     await page.evaluate(hostId=>homeGifts(hostId),host.id);
     await receive('data.catalog',{gifts:[sentGift],packs:[],paymentsAvailable:false});
+    const beforePending=await page.evaluate(()=>({balance:S.bal,count:S.giftN,coins:S.gifted,messages:S.rmsgs.length}));
     await page.evaluate(id=>{homeSelectGift(id);homeSendGift()},sentGift.id);
     const request=await page.evaluate(()=>__sent.filter(message=>message.type==='gift.send').at(-1)?.data);
     assert.ok(request?.idempotencyKey,'The send uses a correlated gift request');
-    assert.equal(await stage(page).count(),0,'An unconfirmed send does not start animation');
+    await playing(page,'request:'+request.idempotencyKey);
+    assert.equal(await stage(page).getAttribute('data-provisional'),'true','Sending gives immediate provisional artwork');
+    assert.deepEqual(await page.evaluate(()=>({balance:S.bal,count:S.giftN,coins:S.gifted,messages:S.rmsgs.length})),beforePending,'Provisional artwork cannot change balance, gift counts or confirmed chat');
+    assert.equal(await page.locator('.zr-gift-alert').count(),0,'Pending artwork has no sent-success banner');
+    assert.deepEqual(await page.evaluate(()=>[Room.gift,Room.giftMotion]),[null,null],'Pending presentation cannot become a confirmed gift');
+    await stage(page).locator('img').evaluate(image=>{window.__pendingGift={image,url:image.src,at:document.getElementById('zr-gift-playback').dataset.startedAt}});
+    await receive('operation.error',{action:'gift.send',...request,status:503,code:'UNAVAILABLE',message:'Fixture delivery is uncertain'});
+    await page.evaluate(()=>homeRetryGift());
+    const retry=await page.evaluate(()=>__sent.filter(message=>message.type==='gift.send').at(-1)?.data);
+    assert.deepEqual(retry,request,'Uncertain delivery retries the same gift request');
+    assert.equal(await stage(page).locator('img').evaluate(image=>image===__pendingGift.image&&image.src===__pendingGift.url),true,'Checking an uncertain send does not restart its pending artwork');
     await receive('gift.sent',{...request,id:'sent-call-transfer',coins:25});
     await playing(page,'sent-call-transfer');
+    assert.equal(await stage(page).getAttribute('data-provisional'),'false');
+    assert.equal(await stage(page).locator('img').evaluate(image=>image===__pendingGift.image&&image.src===__pendingGift.url&&document.getElementById('zr-gift-playback').dataset.startedAt===__pendingGift.at),true,'Acknowledgment preserves the image, original URL and playback clock');
+    assert.deepEqual(await page.evaluate(()=>[S.giftN,S.gifted]),[beforePending.count+1,beforePending.coins+25],'Confirmed accounting happens once');
+    await receive('gift.sent',{...request,id:'sent-call-transfer',coins:25});
+    assert.deepEqual(await page.evaluate(()=>[S.giftN,S.gifted]),[beforePending.count+1,beforePending.coins+25],'A repeated acknowledgment cannot count twice');
     await checkTransparentGift(page,'confirmed sender gift');
     await receive('app.background',{});
     assert.equal(await stage(page).count(),0,'Backgrounding clears active playback and queued gifts');
     assert.deepEqual(errors, [], 'No browser errors');
-    console.log('PASS gift motion: sent/received receipts, stable playback nodes, ordered queue, post-load duration, background cleanup; full-surface uncropped artwork for host, member and voice calls at phone, landscape and tablet sizes');
+    console.log('PASS gift motion: immediate provisional sends with confirmed-only accounting, receipt promotion without replay, visible cold posters, ordered queue, post-load duration, background cleanup; uncropped full-surface artwork for host, member and voice calls');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

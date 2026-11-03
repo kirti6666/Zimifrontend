@@ -158,8 +158,10 @@ function homeGifts(id,selectedGiftId=''){
  Home.giftTo=id;CoinUI.topup=false;
  if(!DEMO){contentStart('catalog');Native.send('catalog.load')}
  r();
+ coinWarmGift(CoinUI.giftId);
 }
-function homeSelectGift(id){if(Home.giftBusy)return;CoinUI.giftId=id;CoinUI.giftError='';coinPaint()}
+function coinWarmGift(id){const gift=Home.gifts.find(item=>item.id===id);if(gift)window.ZimiGiftPlayback?.preload(giftMotionUrl(gift.name,gift.mediaUrl))}
+function homeSelectGift(id){if(Home.giftBusy)return;CoinUI.giftId=id;CoinUI.giftError='';coinWarmGift(id);coinPaint()}
 function homeGiftUrl(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password&&!/[<>"'`\s]/.test(raw)?esc(u.href):''}catch{return ''}}
 function homeGiftTopup(){CoinUI.topup=true;CoinUI.paymentError='';coinPaint()}
 function homeGiftDisplayOrder(){
@@ -168,7 +170,7 @@ function homeGiftDisplayOrder(){
  return [...Home.gifts].sort((a,b)=>rank(a.name)-rank(b.name));
 }
 function homeGiftTile(gift){
- const artwork=giftStillUrl(gift.name,gift.mediaUrl);
+ const artwork=giftStillUrl(gift.name,gift.mediaUrl,gift.coverUrl);
  return `<button type="button" data-gift-id="${domId(gift.id)}" aria-pressed="${gift.id===CoinUI.giftId}" aria-label="${esc(gift.name)}, ${giftPriceLabel(gift)}" class="zg-gift ${gift.id===CoinUI.giftId?'selected':''}" onclick="homeSelectGift('${domId(gift.id)}')" ${Home.giftBusy?'disabled':''}><span class="zg-art">${artwork?`<img src="${artwork}" alt="" loading="lazy" decoding="async">`:`<span class="zg-emoji" aria-hidden="true">${esc(gift.emoji||'🎁')}</span>`}</span><b>${esc(gift.name)}</b><small class="zg-price">${giftIsFree(gift)?'Free':coinIcon(14)+'<span>'+n(gift.coins)+'</span>'}</small></button>`;
 }
 function coinGiftWalletState(){
@@ -195,8 +197,13 @@ function homeSendGift(id=CoinUI.giftId){
  if(previous&&(previous.to!==to||previous.gift!==id)){CoinUI.giftError='Your previous gift is still unconfirmed. Open that gift and retry to check its delivery.';coinPaint();return}
  if(!giftIsFree(gift)&&S.bal<gift.coins)return coinRequireRecharge();
  if(!previous)Home.giftAttempt={to,gift:id,idempotencyKey:crypto.randomUUID(),coins:gift.coins,inCall:['call','voice','hcall'].includes(S.v),...(Home.stream?.id&&S.v==='live'?{streamId:Home.stream.id}:{})};
- const attempt=Home.giftAttempt;CoinUI.receipts.set(attempt.idempotencyKey,{...gift,_callId:attempt.inCall?(S.callId||(DEMO?'preview-call':null)):null});Home.giftBusy=true;CoinUI.giftError='';coinPaint();
+ const attempt=Home.giftAttempt;CoinUI.receipts.set(attempt.idempotencyKey,{...gift,_view:S.v,_callId:attempt.inCall?(S.callId||(DEMO?'preview-call':null)):null});Home.giftBusy=true;CoinUI.giftError='';coinPaint();
  if(DEMO){S.bal-=gift.coins;Home.giftBusy=false;Home.giftAttempt=null;Home.giftTo=null;S.tray=0;S.sh=0;r();window.zcThreadGift?.(to,gift,attempt);coinCallGiftFeedback({...attempt,coins:gift.coins});if(S.v==='live')window.zrReceiveGift?.({senderId:'you',senderName:'You',giftName:gift.name,emoji:gift.emoji,coins:gift.coins});appNotice('Preview gift sent');return}
+ // This is the sender's pending visual, not a delivered receipt or a debit.
+ // The selected original is already warming while the user chooses the gift.
+ coinWarmGift(gift.id);homeCloseGifts();
+ if(attempt.inCall||attempt.streamId)window.zrPreviewGift?.(attempt,gift);
+ else window.ZimiChatGifts?.preview(to,gift,attempt);
  Native.send('gift.send',{...attempt});
 }
 function homeRetryGift(){if(!Home.giftAttempt||Home.giftBusy||window.ZimiOffline?.isOffline())return;Home.giftBusy=true;CoinUI.giftError='';Native.send('gift.send',{...Home.giftAttempt});coinPaint()}
@@ -206,7 +213,7 @@ function coinCallGiftFeedback(d){
  const coins=Number.isSafeInteger(d.coins)&&d.coins>=0?d.coins:gift.coins;
  if(['call','voice'].includes(S.v)&&gift._callId===(S.callId||(DEMO?'preview-call':null))&&S.h===d.to){
   S.gifted=(S.gifted||0)+coins;S.giftN=(S.giftN||0)+1;
-  window.zrReceiveGift?.({id:d.id||d.idempotencyKey,senderId:'you',senderName:'You',giftName:gift.name,emoji:gift.emoji,mediaUrl:gift.mediaUrl,durationMs:gift.durationMs,coins});
+  window.zrReceiveGift?.({id:d.id||d.idempotencyKey,idempotencyKey:d.idempotencyKey,senderId:'you',senderName:'You',giftName:gift.name,emoji:gift.emoji,mediaUrl:gift.mediaUrl,coverUrl:gift.coverUrl,durationMs:gift.durationMs,coins});
  }else if(S.v==='summary'&&S.sum?.k==='sender'&&S.sum.callId===gift._callId){S.sum.giftV=(S.sum.giftV||0)+coins;S.sum.gifts=(S.sum.gifts||0)+1;S.sum.spent=(S.sum.spent||0)+coins;r()}
 }
 Native.on('gift.sent',d=>{
@@ -219,7 +226,17 @@ Native.on('wallet.checkout',d=>coinAcceptPayment(d,true));
 Native.on('wallet.purchase',d=>coinAcceptPayment(d));
 Native.on('wallet.payment-returned',coinPaymentReturned);
 Native.on('operation.error',d=>{
- if(d.action==='gift.send'&&coinGiftMatches(d)){Home.giftBusy=false;CoinUI.giftError=d.code==='INSUFFICIENT_COINS'?'':d.message||'Delivery could not be confirmed. Retry this gift.';if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){Home.giftAttempt=null;if(d.code==='INSUFFICIENT_COINS')coinRefresh()}coinPaint()}
+ if(d.action==='gift.send'&&coinGiftMatches(d)){
+  const attempt=Home.giftAttempt,saved=CoinUI.receipts.get(attempt.idempotencyKey);
+  const relevant=attempt.inCall?saved?._callId===S.callId&&['call','voice','hcall'].includes(S.v):attempt.streamId?S.v==='live'&&Home.stream?.id===attempt.streamId:S.v==='thread'&&S.h===attempt.to;
+  Home.giftBusy=false;if(relevant)Home.giftTo=attempt.to;CoinUI.giftId=attempt.gift;CoinUI.topup=false;
+  CoinUI.giftError=d.code==='INSUFFICIENT_COINS'?'':d.message||'Delivery could not be confirmed. Retry this gift.';
+  if(['INSUFFICIENT_COINS','STREAM_UNAVAILABLE'].includes(d.code)||[400,403,404].includes(d.status)){
+   window.zrCancelGiftPreview?.(attempt.idempotencyKey);window.ZimiChatGifts?.cancel(attempt.idempotencyKey);
+   Home.giftAttempt=null;if(d.code==='INSUFFICIENT_COINS')coinRefresh();
+  }
+  r();
+ }
  if(d.action==='wallet.checkout'&&Home.checkoutAttempt?.idempotencyKey===d.idempotencyKey){Home.checkoutBusy=false;CoinUI.paymentError=d.message;const routeRejected=['PAYMENT_ROUTE_CHOICE_DISABLED','PAYMENT_ROUTE_UNAVAILABLE'].includes(d.code),uncertainRoute=['PAYIN_ROUTE_UNAVAILABLE','PAYMENT_ROUTE_CONFLICT'].includes(d.code);if(routeRejected||d.code==='PAYIN_PROVISIONING_FAILED'||(!uncertainRoute&&[400,404].includes(d.status)&&!coinPendingPayment())){Home.checkoutAttempt=null;Home.checkout=null;CoinUI.packSnapshot=null}coinPaint();if(routeRejected)paymentRoutesLoad()}
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });

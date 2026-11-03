@@ -466,7 +466,7 @@ export const api = {
     }
     const rawSnapshot = receipt.giftSnapshot && typeof receipt.giftSnapshot === "object" && !Array.isArray(receipt.giftSnapshot) ? record(receipt.giftSnapshot) : undefined;
     const snapshot = message?.gift ?? (rawSnapshot ? chatGiftFrom({ ...rawSnapshot, giftId: idOf(receipt.giftId) || gift, transferId: idOf(receipt), coins: receipt.coins, quantity: receipt.quantity ?? 1 }) : undefined);
-    const giftDetails = snapshot ? { id: snapshot.giftId, transferId: snapshot.transferId, name: snapshot.name, emoji: snapshot.emoji, mediaUrl: snapshot.mediaUrl, coins: snapshot.coins, quantity: snapshot.quantity, ...(snapshot.durationMs !== undefined ? { durationMs: snapshot.durationMs } : {}) } : undefined;
+    const giftDetails = snapshot ? { id: snapshot.giftId, transferId: snapshot.transferId, name: snapshot.name, emoji: snapshot.emoji, mediaUrl: snapshot.mediaUrl, ...(snapshot.coverUrl ? { coverUrl: snapshot.coverUrl } : {}), coins: snapshot.coins, quantity: snapshot.quantity, ...(snapshot.durationMs !== undefined ? { durationMs: snapshot.durationMs } : {}) } : undefined;
     // A confirmed transfer must not become a failed send if a subsequent wallet
     // read loses its connection. The bridge refreshes the balance independently.
     return { id: idOf(receipt), coins: receipt.coins, ...(message ? { message } : receipt.message === null ? { message: null } : {}), ...(giftDetails ? { giftDetails } : {}) };

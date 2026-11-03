@@ -247,7 +247,7 @@ export interface StreamCallRequest { id: string; streamId: string; userId: strin
 export interface StreamRequests { streamId: string; requests: StreamCallRequest[]; ownRequestId: string | null; count: number; }
 export interface StreamPrivateCall { streamId: string; requestId: string; callId: string; peerId: string; initiator: boolean; voice: false; peer: { id: string; name: string; avatarUrl?: string; gender?: Gender | null }; }
 export interface StreamReaction { id: string; streamId: string; userId: string; emoji: string; }
-export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; durationMs?: number; }
+export interface Gift { id: string; name: string; emoji: string; coins: number; mediaUrl: string; coverUrl?: string; durationMs?: number; }
 export interface CoinPack { id: string; name: string; coins: number; pricePaise: number; bonusPercent?: number; badge?: "hot" | "popular"; }
 export interface Catalog { gifts: Gift[]; packs: CoinPack[]; paymentsAvailable: boolean; }
 export interface PaymentRoutes {
@@ -346,6 +346,7 @@ export interface ChatGift {
   name: string;
   emoji: string;
   mediaUrl: string;
+  coverUrl?: string;
   coins: number;
   quantity: number;
   durationMs?: number;

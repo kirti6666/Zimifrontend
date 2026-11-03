@@ -102,6 +102,10 @@ async function checkLayout(page,label){
     await giftButton(page,'Rose').click();assert.equal(await giftButton(page,'Rose').getAttribute('aria-pressed'),'true');
     const send=dialog(page).getByRole('button',{name:'Send gift',exact:true});assert.equal(await send.isEnabled(),true);
     await send.click();const attempt=await last(page,'gift.send');assert.equal(attempt.gift,gifts[1].id);assert.equal(attempt.coins,123);
+    assert.equal(await dialog(page).count(),0,'Explicit Send closes the picker for immediate presentation');
+    await page.locator('#zc-gift-playback[data-provisional="true"]').waitFor({state:'visible'});
+    assert.equal(await page.locator('.zc-gift-card').count(),0,'The pending visual does not create a receipt');
+    assert.equal(await page.evaluate(()=>S.bal),12345,'The pending visual does not debit coins');
     await receive(page,'operation.error',{action:'gift.send',to:creator.id,gift:attempt.gift,idempotencyKey:attempt.idempotencyKey,message:'Confirm delivery before retrying'});
     await dialog(page).getByRole('button',{name:'Send gift',exact:true}).click();
     assert.equal((await last(page,'gift.send')).idempotencyKey,attempt.idempotencyKey,'Uncertain delivery retries retain identity');

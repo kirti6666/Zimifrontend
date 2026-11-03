@@ -44,7 +44,8 @@ async function makePage(browser, errors, messages = history, account = member, p
   await page.route(/^https?:\/\//, route => {
     if (!route.request().url().startsWith('https://media.fixture.test/')) return route.abort();
     if (route.request().resourceType() === 'fetch') page._giftFetches.push(route.request().url());
-    const shape=shapeArtwork.get(route.request().url());
+    const source=new URL(route.request().url());source.searchParams.delete('binzoGiftCache');
+    const shape=shapeArtwork.get(source.href);
     if(shape)return route.fulfill({status:200,headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:shape.body});
     return route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*' }, contentType: actualArt ? 'image/webp' : 'image/png', body: actualArt || png });
   });
@@ -91,7 +92,12 @@ async function expectPlaying(page, transfer, mediaUrl=artUrl) {
   await page.waitForFunction(transfer => document.querySelector('#zc-gift-playback img')?.dataset.transferId === transfer && document.querySelector('#zc-gift-playback')?.dataset.state === 'playing', id(2000 + transfer));
   assert.equal(await page.locator('#zc-gift-playback:visible').count(), 1, 'Only one center animation plays at a time');
   assert.equal(await stage(page).locator('img').getAttribute('data-media-url'), mediaUrl, 'Center playback uses the original server media');
-  assert.match(await stage(page).locator('img').getAttribute('src'), /^blob:/, 'CORS-allowed original artwork gets a fresh animation resource');
+  const source=await stage(page).locator('img').getAttribute('src');
+  if(!source.startsWith('blob:')){
+    const original=new URL(mediaUrl);if(!original.search)original.searchParams.set('binzoGiftCache','2');
+    const network=new URL(source);assert.match(network.hash,/^#binzoGiftPlayback=/,'Cold playback identity is a fragment');network.hash='';original.hash='';
+    assert.equal(network.href,original.href,'Cold playback streams the exact original through its stable HTTP cache URL');
+  }
   await expectFullStage(page);
   assert.equal(await stage(page).getAttribute('aria-hidden'), 'true');
 }
@@ -122,11 +128,11 @@ async function assertComposer(page, before) {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
   const errors = [], checks = [], geometryChecks=[];
   try {
-    const old = receipt(1);
+    const old = {...receipt(1),clientId:'historical-other-device-request'};
     const page = await makePage(browser, errors, [...history, old]);
     assert.equal(await stage(page).isVisible(), false, 'Loading gift history never starts center playback');
     await receive(page, 'chat.updated', { with: host.id, message: old });
-    assert.equal(await stage(page).isVisible(), false, 'An echo of a gift already loaded from history never replays');
+    assert.equal(await stage(page).isVisible(), false, 'A historical/other-device clientId echo never replays without a local pending send');
     await receive(page, 'operation.error', { action: 'gift.send', to: host.id, gift: gift.id, idempotencyKey: 'failed', status: 402, code: 'INSUFFICIENT_COINS', message: 'Fixture send failed' });
     assert.equal(await stage(page).isVisible(), false, 'Failed gift sends never play');
     await page.getByRole('dialog',{name:'Recharge to continue',exact:true}).getByRole('button',{name:'Not now',exact:true}).click();
@@ -161,14 +167,15 @@ async function assertComposer(page, before) {
       assert.equal(await stage(page).locator('img').evaluate(image => image === window.__playingImage), true, 'Resize and ordinary redraw do not restart the animation image');
     }
     await expectIdle(page, 'A confirmed gift ends after its supplied duration');
-    assert.equal(await page.evaluate(async url=>{try{await fetch(url);return true}catch{return false}},firstUrl),false,'Finished playback revokes its Blob URL');
+    if(firstUrl.startsWith('blob:'))assert.equal(await page.evaluate(async url=>{try{await fetch(url);return true}catch{return false}},firstUrl),false,'Finished playback revokes its Blob URL');
+    else assert.equal(await stage(page).count(),0,'The completed cold network image is removed');
     await receive(page, 'gift.sent', ack(sent));
     await receive(page, 'chat.updated', { with: host.id, message: sent });
     assert.equal(await stage(page).isVisible(), false, 'Late duplicate events do not replay an expired transfer');
     assert.equal(await page.locator(`#zc-m-${sent.id} .zc-gift-card`).count(), 1, 'Center playback leaves one persisted sender receipt');
     checks.push('echo/ack dedupe', 'draft focus selection anchor', 'no artwork decorations or pointer interception', 'stable node across redraw and resize');
 
-    const first = receipt(3), second = receipt(4);
+    const first = receipt(3), second = receipt(4),fetchesBeforeQueue=page._giftFetches.length;
     await receive(page, 'gift.sent', ack(first)); await expectPlaying(page, 3);
     const queueFirstUrl=await stage(page).locator('img').getAttribute('src');
     await receive(page, 'gift.sent', ack(second)); await receive(page, 'gift.sent', ack(first));
@@ -176,7 +183,7 @@ async function assertComposer(page, before) {
     await expectPlaying(page, 4);
     const queueSecondUrl=await stage(page).locator('img').getAttribute('src');
     assert.notEqual(queueFirstUrl,queueSecondUrl,'Distinct gifts restart the original animation with fresh Blob URLs');
-    assert.equal(page._giftFetches.length,1,'Queued plays reuse cached original bytes without another HTTP fetch');
+    assert.equal(page._giftFetches.length,fetchesBeforeQueue,'Queued plays reuse the completed original-byte cache without another fetch');
     await expectIdle(page, 'The playback queue drains after both distinct gifts');
     checks.push('ordered distinct-transfer queue');
 
@@ -184,12 +191,14 @@ async function assertComposer(page, before) {
     let releaseSlow,signalSlow;
     const slowReleased=new Promise(resolve=>{releaseSlow=resolve}),slowRequested=new Promise(resolve=>{signalSlow=resolve});
     const slowUrl='https://media.fixture.test/delayed-artwork.svg';
-    await page.route(slowUrl,async route=>{
-      if(route.request().resourceType()==='fetch'){signalSlow();await slowReleased}
+    await page.route(slowUrl+'*',async route=>{
+      if(route.request().resourceType()==='image'){signalSlow();await slowReleased}
       await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:shapeArtwork.values().next().value.body});
     });
     const delayed=receipt(14);delayed.gift.mediaUrl=slowUrl;delayed.gift.durationMs=500;
     await receive(page,'gift.sent',ack(delayed));await slowRequested;
+    await stage(page).waitFor({state:'visible'});
+    assert.equal(await stage(page).getAttribute('data-started-at'),null,'A cold remote original has a visible surface without spending motion time before load');
     await page.waitForTimeout(650);
     assert.equal(await stage(page).getAttribute('data-state'),'loading','The slow asset retains its pending transfer instead of timing out its display');
     releaseSlow();await expectPlaying(page,14,slowUrl);
@@ -202,8 +211,8 @@ async function assertComposer(page, before) {
     let releaseSheetArt,signalSheetArt;
     const sheetArtReleased=new Promise(resolve=>{releaseSheetArt=resolve}),sheetArtRequested=new Promise(resolve=>{signalSheetArt=resolve});
     const sheetArtUrl='https://media.fixture.test/sheet-delayed-artwork.svg';
-    await page.route(sheetArtUrl,async route=>{
-      if(route.request().resourceType()==='fetch'){signalSheetArt();await sheetArtReleased}
+    await page.route(sheetArtUrl+'*',async route=>{
+      if(route.request().resourceType()==='image'){signalSheetArt();await sheetArtReleased}
       await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:shapeArtwork.values().next().value.body});
     });
     const sheetDelayed=receipt(15);sheetDelayed.gift.mediaUrl=sheetArtUrl;sheetDelayed.gift.durationMs=500;
@@ -265,6 +274,69 @@ async function assertComposer(page, before) {
     checks.push('background/hidden/wrong-thread suppression');
     await receiver.close();
 
+    // Exercise the real Send action with its response deliberately withheld.
+    // The provisional image is presentation only; acknowledgment must reuse it
+    // while adding exactly one server-backed persisted receipt.
+    const pendingPage=await makePage(browser,errors);
+    const pendingGift={...gift,durationMs:5000};
+    await pendingPage.evaluate(peer=>homeGifts(peer),host.id);
+    await receive(pendingPage,'data.catalog',{gifts:[pendingGift],packs:[],paymentsAvailable:false});
+    const pendingBalance=await pendingPage.evaluate(()=>S.bal);
+    await pendingPage.evaluate(id=>{homeSelectGift(id);homeSendGift()},gift.id);
+    const request=await pendingPage.evaluate(()=>__sent.filter(message=>message.type==='gift.send').at(-1)?.data);
+    assert.ok(request?.idempotencyKey,'Sending uses the actual correlated native request');
+    await pendingPage.waitForFunction(key=>{const node=document.getElementById('zc-gift-playback');return node?.dataset.state==='playing'&&node.dataset.transferId==='request:'+key},request.idempotencyKey);
+    assert.equal(await stage(pendingPage).getAttribute('data-provisional'),'true');
+    assert.equal(await pendingPage.evaluate(()=>S.bal),pendingBalance,'Pending presentation does not debit coins');
+    assert.equal(await pendingPage.locator('.zc-gift-card').count(),0,'A local preview cannot fabricate a chat receipt');
+    await stage(pendingPage).locator('img').evaluate(image=>{window.__pendingChatGift={image,url:image.src,at:document.getElementById('zc-gift-playback').dataset.startedAt}});
+    await receive(pendingPage,'operation.error',{action:'gift.send',...request,status:503,code:'UNAVAILABLE',message:'Fixture confirmation is uncertain'});
+    await pendingPage.evaluate(()=>homeRetryGift());
+    assert.deepEqual(await pendingPage.evaluate(()=>__sent.filter(message=>message.type==='gift.send').at(-1)?.data),request,'An uncertain Send retains its idempotency identity');
+    assert.equal(await stage(pendingPage).locator('img').evaluate(image=>image===__pendingChatGift.image&&image.src===__pendingChatGift.url),true,'Retrying does not replay pending artwork');
+    const canonical=receipt(40);canonical.clientId=request.idempotencyKey;canonical.gift.durationMs=5000;
+    const confirmed={...ack(canonical),idempotencyKey:request.idempotencyKey};
+    await pendingPage.evaluate(()=>homeCloseGifts());
+    await receive(pendingPage,'chat.updated',{with:host.id,message:canonical});await expectPlaying(pendingPage,40);
+    assert.equal(await stage(pendingPage).getAttribute('data-provisional'),'false','An early sender socket clientId confirms the matching local preview before HTTP');
+    assert.equal(await stage(pendingPage).locator('img').evaluate(image=>image===__pendingChatGift.image&&image.src===__pendingChatGift.url&&document.getElementById('zc-gift-playback').dataset.startedAt===__pendingChatGift.at),true,'Early socket confirmation retains the original image and clock');
+    assert.equal(await pendingPage.locator('.zc-gift-card').count(),1,'The canonical sender socket adds its one real persisted receipt');
+    assert.equal(await pendingPage.evaluate(()=>S.bal),pendingBalance,'An early gift receipt cannot fabricate a wallet debit');
+    await receive(pendingPage,'gift.sent',confirmed);await expectPlaying(pendingPage,40);
+    assert.equal(await stage(pendingPage).getAttribute('data-provisional'),'false');
+    assert.equal(await stage(pendingPage).locator('img').evaluate(image=>image===__pendingChatGift.image&&image.src===__pendingChatGift.url&&document.getElementById('zc-gift-playback').dataset.startedAt===__pendingChatGift.at),true,'The server receipt promotes the same original image and playback clock');
+    await receive(pendingPage,'gift.sent',confirmed);await receive(pendingPage,'chat.updated',{with:host.id,message:canonical});
+    assert.equal(await pendingPage.locator('.zc-gift-card').count(),1,'Repeated acknowledgments and socket echoes leave one persisted receipt');
+    await pendingPage.evaluate(()=>ZimiChatGifts.reset());
+    await pendingPage.evaluate(peer=>homeGifts(peer),host.id);
+    await receive(pendingPage,'data.catalog',{gifts:[pendingGift],packs:[],paymentsAvailable:false});
+    await pendingPage.evaluate(id=>{homeSelectGift(id);homeSendGift()},gift.id);
+    const rejected=await pendingPage.evaluate(()=>__sent.filter(message=>message.type==='gift.send').at(-1)?.data);
+    await stage(pendingPage).waitFor({state:'visible'});
+    await receive(pendingPage,'operation.error',{action:'gift.send',...rejected,status:400,code:'INVALID_GIFT',message:'Fixture gift is unavailable'});
+    assert.equal(await stage(pendingPage).count(),0,'A definitive failure cancels its provisional presentation');
+    assert.equal(await pendingPage.locator('.zc-gift-card').count(),1,'A rejected preview adds no receipt');
+    await pendingPage.close();
+    checks.push('instant pending Send, confirmed-only receipt, retry and acknowledgment preserve original image, terminal failure cancels preview');
+
+    const signedPage=await makePage(browser,errors);
+    const signedMotion='https://media.fixture.test/signed-original.svg?token=fixture&expires=9999999999';
+    const signedCover='https://media.fixture.test/signed-cover.svg?width=360&version=poster';
+    let releaseSigned,requestedSigned;
+    const signedReleased=new Promise(resolve=>{releaseSigned=resolve}),signedRequested=new Promise(resolve=>{requestedSigned=resolve}),signedFetches=[];
+    await signedPage.route(signedMotion,async route=>{signedFetches.push(route.request().url());if(route.request().resourceType()==='image'){requestedSigned();await signedReleased}await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:'image/svg+xml',body:shapeArtwork.get('https://media.fixture.test/square.svg').body})});
+    await signedPage.route(signedCover,route=>route.fulfill({contentType:'image/svg+xml',body:shapeArtwork.get('https://media.fixture.test/portrait.svg').body}));
+    assert.deepEqual(await signedPage.evaluate(({motion,cover})=>[giftMotionUrl('Signed original',motion),giftStillResource('Signed original',motion,cover)],{motion:signedMotion,cover:signedCover}),[signedMotion,signedCover],'Programmatic artwork helpers preserve both query parameters without HTML escaping');
+    const signedReceipt=receipt(41);Object.assign(signedReceipt.gift,{mediaUrl:signedMotion,coverUrl:signedCover,durationMs:500});
+    await receive(signedPage,'gift.sent',ack(signedReceipt));await signedRequested;
+    assert.equal(await stage(signedPage).evaluate(node=>getComputedStyle(node).backgroundImage),'url("'+signedCover+'")','Cold playback uses the exact supplied static cover URL as its background');
+    assert.equal(await signedPage.locator(`#zc-m-${signedReceipt.id} .zc-gift-icon img`).getAttribute('src'),signedCover,'The persisted receipt decodes its HTML cover attribute to the same exact URL');
+    assert.equal(await stage(signedPage).getAttribute('data-state'),'loading');
+    releaseSigned();await expectPlaying(signedPage,41,signedMotion);
+    assert.ok(signedFetches.length>=1&&signedFetches.every(url=>url===signedMotion),'The signed stream and completed cache fill preserve the exact supplied query');
+    await expectIdle(signedPage,'The signed original completes normally');await signedPage.close();
+    checks.push('signed original query parameters and exact supplied cover URL through loading, receipt and playback');
+
     const geometryPage=await makePage(browser,errors,history.slice(0,2));
     let transfer=20;
     for(const [media,shape] of shapeArtwork){
@@ -298,6 +370,9 @@ async function assertComposer(page, before) {
     // Capture the supplied transparent animation separately at its real duration.
     const visualPage = await makePage(browser,errors,history.slice(0,2));
     await visualPage.locator('#ti').fill('Keep chatting while the original gift plays');
+    // Keep this logout case specifically on the warmed-Blob path so revocation
+    // remains covered; the first page and streaming HTTP suite exercise cold IMG.
+    await visualPage.evaluate(media=>ZimiGiftPlayback.preload(media),artUrl);
     const visual = receipt(11); visual.gift.durationMs = 6400;
     await receive(visualPage, 'gift.sent', ack(visual)); await expectPlaying(visualPage, 11);
     await stage(visualPage).locator('img').evaluate(image => image.decode());
@@ -307,6 +382,7 @@ async function assertComposer(page, before) {
       await visualPage.screenshot({ path: path.join(out, `original-rose-${dark ? 'dark' : 'light'}-390.png`) });
     }
     const visualUrl=await stage(visualPage).locator('img').getAttribute('src');
+    assert.match(visualUrl,/^blob:/,'The logout scenario holds a real warmed playback Blob');
     await receive(visualPage, 'gift.sent', ack(receipt(13)));
     await receive(visualPage, 'session.none'); await expectIdle(visualPage, 'Logout cancels active artwork and queued timers');
     assert.equal(await visualPage.evaluate(async url=>{try{await fetch(url);return true}catch{return false}},visualUrl),false,'Logout revokes active playback Blob URL');
