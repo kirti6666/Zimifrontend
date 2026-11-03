@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.aurora.liveapp",
-      "versionCode": 30,
+      "versionCode": 31,
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/adaptive-icon.png",
         "backgroundColor": "#00000000"

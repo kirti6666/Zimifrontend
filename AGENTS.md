@@ -195,8 +195,8 @@ keeps it identical to the original Next.js version.
   that screen shows and the app is in the foreground; any other view silences
   it. The avatar rings and "Calling" dots in `web/call-dial.css` follow the
   tone's 3s cycle through `--dial-phase`, so redraws do not restart them.
-  A video call rings over the caller's own camera, full screen (frames fill the
-  display without stretching, the front camera is mirrored once), with Flip,
+  A video call rings over the caller's own camera, full screen (portrait frames
+  cover, landscape frames stay whole, the front camera is mirrored), with Flip,
   Camera and Mute beside Cancel. The same `video[data-zimi-local]` moves into
   the call when it is answered; with the camera off the plain calling screen shows.
 - Calls keep going behind other screens (`web/ongoing-call.js`). Back on the
