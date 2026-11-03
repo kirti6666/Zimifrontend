@@ -34,6 +34,7 @@ window.ZimiChatGifts=(()=>{
   function accept(peer,message,receipt={}){
     sync();peer=String(peer||'');
     if(!peer||message?.kind!=='gift'||message.deleted||!message.gift)return;
+    if(receipt.callId||receipt.scope==='call'||message.giftCallId)return;
     const keys=identity(peer,message,receipt);
     const requestId=receipt.idempotencyKey||(message.mine?message.clientId:undefined);
     if(requestId&&player.confirm(requestId,String(message.gift.transferId||receipt.id||message.id),{media:giftMotionUrl(message.gift.name,message.gift.mediaUrl||message.gift.image||'')})){
@@ -65,7 +66,7 @@ window.ZimiChatGifts=(()=>{
   // Older servers may notify a recipient before the canonical chat message.
   // This event is visual only; the persisted bubble still comes from history.
   Native.on('gift.received',receipt=>{
-    if(receipt.streamId)return;
+    if(receipt.streamId||receipt.callId||receipt.scope==='call')return;
     const peer=receipt.senderId||receipt.from?.id||receipt.from;
     if(!peer||typeof peer==='object')return;
     const gift=receipt.gift&&typeof receipt.gift==='object'?receipt.gift:{};

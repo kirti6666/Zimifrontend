@@ -622,6 +622,15 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('GET', '/wallet', { coins: 200, earningsPaise: 123450, reservedPaise: 2000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
   assert.deepEqual(plain(await api.wallet()), { coins: 200, earningsPaise: 123450, reservedPaise: 2000, minimumWithdrawalPaise: 50000, withdrawalsEnabled: true });
   const invalidPayoutConfig = adapters.walletFrom({ coins: 0, earningsPaise: 100, minimumWithdrawalPaise: 1.5, withdrawalsEnabled: 'true' });
+  const diamondWallet = { coins: 700, earningsPaise: 123456, reservedPaise: 5000, diamondUnits: 6172800000, reservedDiamondUnits: 250000000, diamondScale: 1000000, conversion: { diamondsPerCoin: 1.25, paisePerDiamond: 20.5 } };
+  const parsedDiamonds = adapters.walletFrom({ ...diamondWallet, diamonds: 999999, reservedDiamonds: 999999 });
+  assert.equal(parsedDiamonds.diamonds, 6172.8, 'Display diamonds derive from exact server units, never an untrusted duplicate');
+  assert.equal(parsedDiamonds.reservedDiamonds, 250);
+  assert.deepEqual(plain(parsedDiamonds.conversion), diamondWallet.conversion);
+  for (const broken of [{ diamondUnits: -1 }, { diamondUnits: 1.5 }, { diamondUnits: Number.MAX_SAFE_INTEGER + 1 }, { diamondScale: 100 }, { reservedDiamondUnits: -1 }, { conversion: { diamondsPerCoin: 0, paisePerDiamond: 20 } }, { conversion: { diamondsPerCoin: 1, paisePerDiamond: Infinity } }]) {
+    assert.throws(() => adapters.walletFrom({ ...diamondWallet, ...broken }), /diamond balance/, 'Malformed diamond accounting fails closed');
+  }
+  assert.equal(adapters.walletFrom({ coins: 0, earningsPaise: 100 }).diamondUnits, undefined, 'An older server never invents a diamond balance');
   assert.equal(invalidPayoutConfig.minimumWithdrawalPaise, undefined); assert.equal(invalidPayoutConfig.withdrawalsEnabled, false);
   const rechargePrompt = { enabled: true, thresholdCoins: 999, lastRechargeCoins: 10000, delaySeconds: 10, repeatSeconds: 180 };
   assert.deepEqual(plain(adapters.walletFrom({ coins: 800, earningsPaise: 0, rechargePrompt }).rechargePrompt), rechargePrompt, 'The staff Recharge rule reaches the call screen');
@@ -641,6 +650,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     assert.throws(() => adapters.callTargetsFrom(broken), /targets/);
   const payoutDto = { _id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: '2026-10-22T08:00:00.000Z', reason: 'Reviewed', payoutReference: 'bank-reference', userId: 'private-owner' };
   const payoutReceipt = { id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: payoutDto.createdAt, reason: 'Reviewed', payoutReference: 'bank-reference' };
+  assert.deepEqual(plain(adapters.payoutFrom({ ...payoutDto, diamondUnits: 2500000000, diamondScale: 1000000 })), { ...payoutReceipt, diamondUnits: 2500000000, diamondScale: 1000000 }, 'Withdrawal keeps the immutable diamond reservation');
+  for (const broken of [{ diamondUnits: -1, diamondScale: 1000000 }, { diamondUnits: 1.5, diamondScale: 1000000 }, { diamondUnits: 1, diamondScale: 1000 }, { diamondScale: 1000000 }]) assert.throws(() => adapters.payoutFrom({ ...payoutDto, ...broken }), /diamond details/);
   expect('GET', '/wallet/withdrawals?page=2&limit=20', { items: [payoutDto], total: 21, page: 2, limit: 20 });
   assert.deepEqual(plain(await api.payouts(2)), { items: [payoutReceipt], total: 21, page: 2, limit: 20 }, 'History maps the actual payout receipt without leaking server metadata');
   expect('GET', '/wallet/withdrawals?page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
@@ -844,6 +855,9 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(ordinaryPack.badge,undefined,'An ordinary catalog pack receives no invented popularity badge');
   expect('POST', '/gifts/send', { _id: 'transfer-id', coins: 25 }, body => { assert.deepEqual(plain(body), { recipientId: 'creator-id', giftId, quantity: 1, streamId: 'stream-id', idempotencyKey: 'gift-attempt-1' }); assert.equal(body.coins, undefined, 'Price must come from the server catalog'); });
   assert.deepEqual(plain(await api.sendGift('creator-id', giftId, 1, undefined, 'stream-id', 'gift-attempt-1')), { id: 'transfer-id', coins: 25 }, 'A committed gift returns its server receipt without depending on a second network request');
+  const scopedGiftCall='507f1f77bcf86cd799439099';
+  expect('POST','/gifts/send',{_id:'scoped-transfer',coins:25,callId:scopedGiftCall,createdAt:chatAt},body=>assert.deepEqual(plain(body),{recipientId:'creator-id',giftId,quantity:1,callId:scopedGiftCall,idempotencyKey:'call-gift-attempt'}));
+  assert.deepEqual(plain(await api.sendGift('creator-id',giftId,999999,scopedGiftCall,undefined,'call-gift-attempt')),{id:'scoped-transfer',coins:25,callId:scopedGiftCall,scope:'call',createdAt:chatAt},'The request and committed receipt retain exact call identity without trusting client price');
   const chatGift = { giftId, transferId: 'direct-transfer', name: 'Golden Rose', emoji: 'rose', mediaUrl: 'https://cdn.example.test/gifts/golden-rose.svg', coins: 25, quantity: 1 };
   const giftMessage = { _id: 'direct-gift-message', senderId: 'member-id', recipientId: 'creator-id', text: '', kind: 'gift', gift: chatGift, sequence: 15, createdAt: chatAt, automated: false };
   const normalizedGift = adapters.messageFrom(giftMessage, 'member-id');
@@ -1034,6 +1048,21 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(events.filter(event => event.type === 'gift.received').at(-1).data.coverUrl,giftCover,'Live gifts retain the static poster separately from motion');
   socket.emitServer('gift:received', { ...receivedGift, durationMs: -10 });
   assert.equal(Object.hasOwn(events.filter(event => event.type === 'gift.received').at(-1).data, 'durationMs'), false);
+  socket.emitServer('gift:received',{...receivedGift,streamId:undefined,callId:scopedGiftCall,scope:'call',createdAt:chatAt,emittedAt:chatAt,diamondUnits:1250000,diamondScale:1000000});
+  const scopedIncoming=events.filter(event=>event.type==='gift.received').at(-1).data;
+  assert.equal(scopedIncoming.callId,scopedGiftCall);assert.equal(scopedIncoming.scope,'call');assert.equal(scopedIncoming.emittedAt,chatAt,'Committed delivery timestamps and call routing survive native normalization');
+  assert.equal(scopedIncoming.diamondUnits,1250000);assert.equal(scopedIncoming.diamondScale,1000000,'Host diamond presentation requires the explicit fixed-point contract');
+  socket.emitServer('gift:received',{...receivedGift,diamondUnits:1250000,diamondScale:100});assert.equal(events.filter(event=>event.type==='gift.received').at(-1).data.diamondUnits,undefined,'An unrecognized diamond scale cannot become an earning claim');
+  const committedOwn={...receivedGift,_id:'socket-call-transfer',senderId:'member-id',recipientId:'host-id',streamId:undefined,callId:scopedGiftCall,scope:'call',giftId,quantity:1,idempotencyKey:'socket-gift-attempt',createdAt:chatAt,emittedAt:chatAt};
+  socket.emitServer('gift:sent',committedOwn);
+  const socketReceipt=events.filter(event=>event.type==='gift.sent').at(-1).data;
+  assert.equal(socketReceipt.id,'socket-call-transfer');assert.equal(socketReceipt.to,'host-id');assert.equal(socketReceipt.idempotencyKey,'socket-gift-attempt');assert.equal(socketReceipt.callId,scopedGiftCall);assert.equal(socketReceipt.giftDetails.name,committedOwn.giftName);assert.equal(socketReceipt.coins,250,'The sender receives a committed socket receipt without waiting for HTTP');
+  const committedCount=events.filter(event=>event.type==='gift.sent').length;
+  for(const patch of [{senderId:'someone-else'},{idempotencyKey:undefined},{coins:-1},{callId:undefined}])socket.emitServer('gift:sent',{...committedOwn,...patch});
+  assert.equal(events.filter(event=>event.type==='gift.sent').length,committedCount,'Unrelated, uncorrelated or malformed committed events cannot become sender receipts');
+  socket.emitServer('gift:sent',{...committedOwn,_id:'socket-stream-transfer',callId:undefined,scope:'stream',streamId:'stream-id',message:null});
+  const streamSocketReceipt=events.filter(event=>event.type==='gift.sent').at(-1).data;
+  assert.equal(streamSocketReceipt.scope,'stream');assert.equal(streamSocketReceipt.streamId,'stream-id');assert.equal(streamSocketReceipt.message,null,'A public-room commit cannot turn into a fabricated direct chat receipt');
   const walletRefreshesBeforeFree = events.filter(event => event.type === 'wallet.refresh').length;
   socket.emitServer('gift:received', { ...receivedGift, _id: 'free-live-transfer', coins: 0, durationMs: 6400 });
   const freeIncoming = events.filter(event => event.type === 'gift.received').at(-1).data;

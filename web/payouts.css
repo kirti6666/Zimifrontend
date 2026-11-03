@@ -1,5 +1,7 @@
 .zpay-page{width:100%;max-width:640px;margin:auto;padding:18px 18px 40px;color:var(--ink)}
+.zd-balance{margin:0 0 14px;min-width:0}.zd-balance>span,.zd-balance>small{display:block;color:var(--muted);font-size:12px;line-height:1.6}.zd-balance>strong{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:28px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}.zd-balance>strong>svg{flex:none;color:var(--accent-ink)}.zd-conversion{font-size:12px;line-height:1.6;color:var(--muted);margin-top:10px;overflow-wrap:anywhere}.zp-wallet .zd-balance{margin-top:18px}.zp-wallet .zd-balance>strong{font-size:24px}.zp-diamond-link{min-height:44px;padding:8px 0;color:var(--accent-ink);font-size:13px;font-weight:600;text-align:left}
 .zp-wallet-actions>.zp-withdrawal-history{grid-column:1/-1}
+.zd-balance>strong>span{min-width:0;overflow-wrap:anywhere}
 .zpay-page section,.zpay-form{min-width:0;margin-bottom:18px}
 .zpay-wallet,.zpay-form,.zpay-review,.zpay-success{padding:20px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
 .zpay-balance>span,.zpay-balance>small{display:block;color:var(--muted);font-size:12px;line-height:1.6}

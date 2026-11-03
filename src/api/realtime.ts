@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { callerFrom, callPrice, callTargetsFrom, coinCount, genderOf, giftArtworkFrom, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callerFrom, callPrice, callTargetsFrom, chatGiftFrom, coinCount, genderOf, giftArtworkFrom, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 import { getAppUpdateAuth, notifyAppUpdate } from "../app-update-events";
@@ -88,6 +88,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
         ...(normalized.orderAfterSequence !== undefined ? { orderAfterSequence: normalized.orderAfterSequence } : {}),
         kind: normalized.kind, ...(normalized.imageUrl ? { imageUrl: normalized.imageUrl } : {}),
         ...(normalized.gift ? { gift: normalized.gift } : {}),
+        ...(normalized.kind === "gift" && idOf(message.giftCallId) ? { giftCallId: idOf(message.giftCallId) } : {}),
         ...(normalized.audioUrl ? { audioUrl: normalized.audioUrl, durationMs: normalized.durationMs } : {}), automated: message.automated === true,
         ...(normalized.reply ? { reply: normalized.reply } : {}),
         ...(idOf(message.callId) ? { callId: idOf(message.callId), inCall: true } : message.inCall === true ? { inCall: true } : {}),
@@ -122,16 +123,42 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
       const durationMs = giftDurationFrom(gift.durationMs);
       if (idOf(gift.recipientId) !== userId) return;
       if (typeof gift.coins !== "number" || !Number.isSafeInteger(gift.coins) || gift.coins < 0) return;
+      if (gift.scope === "call" && !idOf(gift.callId)) return;
       emit("gift.received", {
         gift: string(gift.giftName) || idOf(gift.giftId) || "Gift", coins: gift.coins, from: idOf(gift.senderId),
         id: idOf(gift), streamId: idOf(gift.streamId), giftId: idOf(gift.giftId), giftName: string(gift.giftName),
+        ...(idOf(gift.callId) ? { callId: idOf(gift.callId) } : {}),
+        ...(["call", "stream", "chat"].includes(string(gift.scope)) ? { scope: string(gift.scope) } : {}),
+        ...(string(gift.createdAt) ? { createdAt: string(gift.createdAt) } : {}), ...(string(gift.emittedAt) ? { emittedAt: string(gift.emittedAt) } : {}),
         senderName: string(gift.senderName), emoji: string(gift.emoji), mediaUrl: string(gift.mediaUrl), senderAvatarUrl: string(gift.senderAvatarUrl),
         ...(giftArtworkFrom(gift.coverUrl) ? { coverUrl: giftArtworkFrom(gift.coverUrl) } : {}),
         ...(durationMs !== undefined ? { durationMs } : {}),
+        ...(gift.diamondScale === 1000000 && Number.isSafeInteger(gift.diamondUnits) && Number(gift.diamondUnits) >= 0 ? { diamondUnits: Number(gift.diamondUnits), diamondScale: 1000000 } : {}),
         senderGender: genderOf(gift.senderGender).gender,
       });
       if (gift.coins > 0) refreshWallet();
     } catch { /* Ignore malformed events. */ }
+  });
+  socket.on("gift:sent", payload => {
+    try {
+      const gift = record(payload), transferId = idOf(gift), recipientId = idOf(gift.recipientId);
+      if (!userId || idOf(gift.senderId) !== userId || !recipientId || !transferId ||
+        typeof gift.idempotencyKey !== "string" || !/^[a-zA-Z0-9_-]{8,100}$/.test(gift.idempotencyKey)) return;
+      if (gift.scope === "call" && !idOf(gift.callId)) return;
+      const snapshot = chatGiftFrom({ ...gift, name: gift.giftName, transferId });
+      if (!snapshot) return;
+      const rawMessage = gift.message && typeof gift.message === "object" && !Array.isArray(gift.message) ? record(gift.message) : {}, message = messageFrom(rawMessage, userId);
+      emit("gift.sent", {
+        id: transferId, to: recipientId, gift: snapshot.giftId, idempotencyKey: gift.idempotencyKey, coins: snapshot.coins,
+        ...(idOf(gift.streamId) ? { streamId: idOf(gift.streamId) } : {}),
+        ...(idOf(gift.callId) ? { callId: idOf(gift.callId) } : {}),
+        ...(["call", "stream", "chat"].includes(string(gift.scope)) ? { scope: string(gift.scope) } : {}),
+        ...(string(gift.createdAt) ? { createdAt: string(gift.createdAt) } : {}), ...(string(gift.emittedAt) ? { emittedAt: string(gift.emittedAt) } : {}),
+        giftDetails: { ...snapshot, id: snapshot.giftId },
+        ...(message.id && message.kind === "gift" && message.gift?.transferId === transferId && idOf(rawMessage.recipientId) === recipientId ? { message } : gift.message === null ? { message: null } : {}),
+      });
+      if (snapshot.coins > 0) refreshWallet();
+    } catch { /* A malformed socket is never a financial confirmation. */ }
   });
   socket.on("call:targets", payload => {
     try { const targets = callTargetsFrom(payload); if (targets) emit("call.targets", { ...targets }); } catch { /* Ignore malformed targets. */ }

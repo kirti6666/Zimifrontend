@@ -1,0 +1,73 @@
+/* Production bundle fixtures only: no account, currency or payout is changed. */
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const fs=require('node:fs');
+const {pathToFileURL}=require('node:url');
+const {chromium}=require('playwright');
+const root=path.resolve(__dirname,'..');
+const host={user:{id:'507f1f77bcf86cd799439011',name:'Diamond creator',role:'host',serverRole:'host',hostStatus:'approved',isVerifiedHost:true,isPhoneVerified:true},verification:'verified',requiresOnboarding:false};
+const member={user:{...host.user,id:'507f1f77bcf86cd799439001',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false},verification:'none',requiresOnboarding:false};
+const wallet={coins:52400,earningsPaise:123456,reservedPaise:5000,minimumWithdrawalPaise:50000,withdrawalsEnabled:true,diamondUnits:6172800000,reservedDiamondUnits:250000000,diamondScale:1000000,conversion:{diamondsPerCoin:1.25,paisePerDiamond:20.5}};
+const receive=(page,type,data)=>page.evaluate(message=>Native.receive(message),{type,data});
+const go=(page,view)=>page.evaluate(view=>go(view),view);
+const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type===type).map(message=>message.data),type);
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
+ const errors=[];
+ try{
+  const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+  page.setDefaultTimeout(7000);page.on('pageerror',error=>errors.push(error.message));
+  await page.route(/^https?:\/\//,route=>route.abort());
+  await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
+  await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');
+  await receive(page,'session',host);await go(page,'wallet');
+  await receive(page,'wallet.balance',wallet);await receive(page,'data.transactions',{items:[]});
+  assert.match(await page.locator('.zd-balance').innerText(),/6,172\.8/);
+  assert.match(await page.locator('.zd-balance').innerText(),/250 diamonds reserved/);
+  assert.match(await page.locator('.zwallet-balance .big').innerText(),/52,400/,'Purchased coins remain separate');
+  assert.match(await page.locator('.earnbox').innerText(),/1,234\.56/,'Current conversion does not revalue earned cash');
+  assert.match(await page.locator('.zd-conversion').innerText(),/1 coin = 1\.25 diamonds/);
+  assert.equal(await page.evaluate(()=>diamondFormat(9007199254740991)),'9,00,71,99,254.740991','All six fractional digits survive at the safe integer boundary');
+  assert.equal(await page.evaluate(()=>diamondFormat(1)),'0.000001');
+  await receive(page,'wallet.balance',{coins:60000});
+  assert.match(await page.locator('.zd-balance').innerText(),/6,172\.8/,'Coin-only events retain confirmed diamonds');
+  await receive(page,'wallet.balance',{conversion:{diamondsPerCoin:3,paisePerDiamond:10}});
+  assert.match(await page.locator('.zd-balance').innerText(),/6,172\.8/);
+  assert.match(await page.locator('.zwallet-earnings-amount').innerText(),/1,234\.56/,'Rate edits only change future conversion copy');
+  await go(page,'settings');
+  assert.match(await page.locator('.zp-wallet').innerText(),/60,000[\s\S]*6,172\.8/,'Account balance includes both assets');
+  await page.getByRole('button',{name:'View diamonds & payouts',exact:true}).click();
+  const historyRequest=(await sent(page,'payout.load')).at(-1);
+  await receive(page,'payout.loaded',{items:[],total:0,page:1,limit:20,requestId:historyRequest.requestId});
+  assert.match(await page.locator('.zpay-wallet').innerText(),/6,172\.8[\s\S]*1,234\.56/);
+  await page.locator('#zpay-amount').fill('500.00');await page.locator('#zpay-address').fill('creator@upi');
+  await page.getByRole('button',{name:'Review withdrawal',exact:true}).click();
+  assert.match(await page.getByRole('region',{name:'Review withdrawal'}).innerText(),/Estimated diamonds to reserve\s*2,500/,'Estimate uses recorded cash liability, not current rates');
+  assert.equal((await sent(page,'payout.request')).length,0,'Review never reserves funds');
+  await page.getByRole('button',{name:'Confirm withdrawal request',exact:true}).click();
+  const request=(await sent(page,'payout.request')).at(-1);
+  assert.equal(request.amountPaise,50000);assert.ok(request.idempotencyKey);
+  assert.equal(request.diamondUnits,undefined,'Client cannot choose the amount of diamonds debited');
+  const payout={id:'507f1f77bcf86cd799439021',amountPaise:50000,payoutAddress:'creator@upi',status:'pending',createdAt:new Date().toISOString(),diamondUnits:2500000000,diamondScale:1000000};
+  await receive(page,'payout.requested',{payout,requestId:request.requestId});
+  assert.match(await page.locator('.zpay-success').innerText(),/2,500 diamonds/,'Receipt uses the server-reserved diamond amount');
+  await receive(page,'wallet.balance',{...wallet,diamondUnits:3672800000,reservedDiamondUnits:2750000000,earningsPaise:73456,reservedPaise:55000});
+  assert.match(await page.locator('.zpay-wallet').innerText(),/3,672\.8[\s\S]*2,750 diamonds reserved[\s\S]*734\.56/);
+  await receive(page,'payout.loaded',{items:[payout],total:1,page:1,limit:20,requestId:(await sent(page,'payout.load')).at(-1).requestId});
+  assert.match(await page.locator('.zpay-history').innerText(),/2,500 diamonds/);
+  const shots=path.join(root,'artifacts','diamonds');fs.mkdirSync(shots,{recursive:true});
+  for(const dark of [false,true])for(const width of [320,390]){
+   await page.setViewportSize({width,height:844});await page.evaluate(value=>ZimiThemes.setDark(value),dark);
+   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1||document.querySelector('.zpay-page').scrollWidth>document.querySelector('.zpay-page').clientWidth+1);
+   assert.equal(overflow,false,`${width}px ${dark?'dark':'light'} payout fits`);
+   await page.screenshot({path:path.join(shots,`payout-${dark?'dark':'light'}-${width}.png`)});
+  }
+  await receive(page,'session',member);await receive(page,'wallet.balance',{coins:9,earningsPaise:0});await go(page,'wallet');
+  assert.equal(await page.locator('.zd-balance').count(),0,'A new account cannot inherit host diamonds');
+  await receive(page,'session',host);await receive(page,'wallet.balance',{coins:10,earningsPaise:100,reservedPaise:0,minimumWithdrawalPaise:50,withdrawalsEnabled:true});await go(page,'wallet');
+  assert.equal(await page.locator('.zd-balance').count(),0,'Legacy responses never invent diamond values');
+  assert.match(await page.locator('.zwallet-earnings-amount').innerText(),/1\.00/,'Legacy cash remains available during an upgrade');
+  assert.deepEqual(errors,[]);
+  console.log('PASS diamonds: exact microunits, separate coins, locked historical cash, live balance/settings, server-authoritative payout estimate/receipt/history, owner isolation, legacy compatibility and320/390px light/dark layouts');
+ }finally{await browser.close()}
+})().catch(error=>{console.error(error);process.exitCode=1});

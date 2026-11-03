@@ -1,6 +1,6 @@
-/* Animated gift stickers bundled with the app (web/stickers/, built by
-   scripts/build-gift-sticker.py). Uploaded media takes precedence; bundled
-   animations are a fallback for catalog gifts without their own artwork. */
+/* Authored gift stickers (web/stickers/, built by scripts/build-gift-sticker.py).
+   Large originals use immutable CDN files to keep WebView HTML small. Uploaded
+   media takes precedence; these are a fallback for gifts without their own art. */
 const GIFT_STICKERS=[
  {name:'Heart',cover:'__GIFT_STICKER_heart-cover__',motion:'__GIFT_STICKER_heart__'},
  {name:'Golden Rose',cover:'__GIFT_STICKER_golden-rose-cover__',motion:'__GIFT_STICKER_golden-rose__'},
@@ -9,6 +9,7 @@ const GIFT_STICKERS=[
 function giftSticker(name){const key=String(name||'').trim().toLowerCase();return GIFT_STICKERS.find(s=>s.name.toLowerCase()===key)||null}
 /* Animations are megabytes of base64; a blob URL keeps them out of every redraw's HTML. */
 function giftStickerMotion(sticker){
+ if(/^https:\/\//.test(sticker.motion))return sticker.motion;
  if(!sticker.motionUrl){try{const base64=sticker.motion.slice(sticker.motion.indexOf(',')+1);let bytes;if(typeof Uint8Array.fromBase64==='function')bytes=Uint8Array.fromBase64(base64);else{const data=atob(base64);bytes=new Uint8Array(data.length);for(let i=0;i<data.length;i++)bytes[i]=data.charCodeAt(i)}sticker.motionUrl=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}))}catch{sticker.motionUrl=sticker.motion}}
  return sticker.motionUrl;
 }

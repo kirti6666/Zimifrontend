@@ -350,11 +350,22 @@ export function missedFrom(value: unknown, userId: string): { calls: MissedCall[
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);
   if (!Number.isSafeInteger(wallet.coins) || !Number.isSafeInteger(wallet.earningsPaise) || (wallet.coins as number) < 0 || (wallet.earningsPaise as number) < 0) throw new ApiError("Your wallet could not be loaded. Try again.", 502);
+  const hasDiamonds = ["diamondUnits", "reservedDiamondUnits", "diamondScale", "conversion"].some(key => wallet[key] !== undefined);
+  const conversion = wallet.conversion === undefined ? {} : record(wallet.conversion);
+  if (hasDiamonds && (!Number.isSafeInteger(wallet.diamondUnits) || Number(wallet.diamondUnits) < 0 ||
+    !Number.isSafeInteger(wallet.reservedDiamondUnits) || Number(wallet.reservedDiamondUnits) < 0 || wallet.diamondScale !== 1000000 ||
+    (wallet.conversion !== undefined && (typeof conversion.diamondsPerCoin !== "number" || !Number.isFinite(conversion.diamondsPerCoin) || conversion.diamondsPerCoin <= 0 ||
+      typeof conversion.paisePerDiamond !== "number" || !Number.isFinite(conversion.paisePerDiamond) || conversion.paisePerDiamond < 0)))) {
+    throw new ApiError("Your diamond balance could not be loaded. Try again.", 502);
+  }
   return {
     coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
     reservedPaise: finite(wallet.reservedPaise),
     minimumWithdrawalPaise: Number.isSafeInteger(wallet.minimumWithdrawalPaise) && Number(wallet.minimumWithdrawalPaise) > 0 ? Number(wallet.minimumWithdrawalPaise) : undefined,
     withdrawalsEnabled: wallet.withdrawalsEnabled === true,
+    ...(hasDiamonds ? { diamondUnits: Number(wallet.diamondUnits), reservedDiamondUnits: Number(wallet.reservedDiamondUnits), diamondScale: 1000000 as const,
+      diamonds: Number(wallet.diamondUnits) / 1000000, reservedDiamonds: Number(wallet.reservedDiamondUnits) / 1000000,
+      ...(wallet.conversion !== undefined ? { conversion: { diamondsPerCoin: Number(conversion.diamondsPerCoin), paisePerDiamond: Number(conversion.paisePerDiamond) } } : {}) } : {}),
     ...(rechargePromptFrom(wallet.rechargePrompt) ? { rechargePrompt: rechargePromptFrom(wallet.rechargePrompt) } : {}),
   };
 }
@@ -383,7 +394,12 @@ export function payoutFrom(value: unknown): Payout {
     !["pending", "approved", "paid", "rejected"].includes(String(payout.status)) || typeof payout.createdAt !== "string" || !Number.isFinite(Date.parse(payout.createdAt))) {
     throw new ApiError("Your withdrawal could not be confirmed. Check its status and try again.", 502);
   }
+  if ((payout.diamondUnits !== undefined || payout.diamondScale !== undefined) &&
+    (!Number.isSafeInteger(payout.diamondUnits) || Number(payout.diamondUnits) < 0 || payout.diamondScale !== 1000000)) {
+    throw new ApiError("Your withdrawal diamond details could not be confirmed. Check its status and try again.", 502);
+  }
   return { id, amountPaise: Number(payout.amountPaise), payoutAddress: payout.payoutAddress, status: payout.status as Payout["status"], createdAt: payout.createdAt,
+    ...(payout.diamondUnits !== undefined ? { diamondUnits: Number(payout.diamondUnits), diamondScale: 1000000 as const } : {}),
     ...(typeof payout.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(payout.idempotencyKey) ? { idempotencyKey: payout.idempotencyKey } : {}),
     ...(typeof payout.reason === "string" ? { reason: payout.reason } : {}), ...(typeof payout.payoutReference === "string" ? { payoutReference: payout.payoutReference } : {}) };
 }

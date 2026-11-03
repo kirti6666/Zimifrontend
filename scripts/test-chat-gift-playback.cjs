@@ -249,6 +249,11 @@ async function assertComposer(page, before) {
     await receive(receiver, 'chat.message', incoming(incomingGift, fan));
     await expectIdle(receiver, 'Incoming gift finishes once despite transport duplicates');
     assert.equal(await receiver.locator(`#zc-m-${incomingGift.id} .zc-gift-card`).count(), 1);
+    const callReceipt=receipt(42,42,{mine:false});
+    await receive(receiver,'chat.message',{...incoming(callReceipt,fan),giftCallId:'another-call'});
+    await receive(receiver,'gift.received',{id:callReceipt.gift.transferId,callId:'another-call',scope:'call',from:fan.id,giftName:gift.name,mediaUrl:artUrl,coins:gift.coins});
+    assert.equal(await stage(receiver).count(),0,'A call gift keeps its durable conversation receipt without animating in another surface');
+    assert.equal(await receiver.locator(`#zc-m-${callReceipt.id} .zc-gift-card`).count(),1);
     checks.push('incoming canonical receipt plays once');
 
     await receive(page, 'gift.sent', ack(receipt(6))); await expectPlaying(page, 6);

@@ -427,6 +427,13 @@ export interface Wallet {
   withdrawalsEnabled?: boolean;
   earned?: number;
   rechargePrompt?: RechargePrompt;
+  /** Fixed microunits are authoritative; INR value was locked when earned. */
+  diamondUnits?: number;
+  reservedDiamondUnits?: number;
+  diamondScale?: 1000000;
+  diamonds?: number;
+  reservedDiamonds?: number;
+  conversion?: { diamondsPerCoin: number; paisePerDiamond: number };
 }
 /** Staff-set rule for the low-balance Recharge pop-up on a member's call screen. */
 export interface RechargePrompt { enabled: boolean; thresholdCoins: number; lastRechargeCoins: number; delaySeconds: number; repeatSeconds: number; }
@@ -443,6 +450,8 @@ export interface Payout {
   reason?: string;
   payoutReference?: string;
   idempotencyKey?: string;
+  diamondUnits?: number;
+  diamondScale?: 1000000;
 }
 
 export interface Payouts {

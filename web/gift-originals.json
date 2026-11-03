@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "originals": {
+    "heart": {
+      "sha256": "2f433f5e88697ed5484ac59f773a8b873a6ef418e20ac1d0ea6a9d7aba162419",
+      "bytes": 17021364,
+      "width": 720,
+      "height": 1280,
+      "frameCount": 192,
+      "url": "https://pub-1177db8f8d144e0eac175a8d42ff1331.r2.dev/gift-originals/bundled/2f433f5e88697ed5484ac59f773a8b873a6ef418e20ac1d0ea6a9d7aba162419.webp"
+    },
+    "golden-rose": {
+      "sha256": "20ec3dc8e8f6a28c8ba1260167d6fbb8f14eca60912a0726f3dc89e6d2badc69",
+      "bytes": 7292576,
+      "width": 360,
+      "height": 640,
+      "frameCount": 192,
+      "url": "https://pub-1177db8f8d144e0eac175a8d42ff1331.r2.dev/gift-originals/bundled/20ec3dc8e8f6a28c8ba1260167d6fbb8f14eca60912a0726f3dc89e6d2badc69.webp"
+    }
+  }
+}

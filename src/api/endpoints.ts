@@ -11,7 +11,7 @@ import type { RelationshipKind, Relationships } from "./types";
 import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
 import type { HostAgencyStatus } from "./types";
 import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
-import { callTargetsFrom } from "./adapters";
+import { callTargetsFrom, string } from "./adapters";
 import type { CallTargetsInput } from "./types";
 import type { SupportCategory, SupportStatus } from "./types";
 import { supportConversationFrom, supportReceiptFrom, supportTicketFrom, supportTicketsFrom } from "./support";
@@ -455,9 +455,9 @@ export const api = {
   acceptVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/accept`),
   endVerificationCall: (callId: string) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/end`),
   verificationSignal: (callId: string, signal: RtcPayload) => request<void>("POST", `/verification-calls/${encodeURIComponent(callId)}/signal`, signal),
-  async sendGift(to: string, gift: string, _coins: number, _callId?: string, streamId?: string, idempotencyKey?: string): Promise<{ id: string; coins: number; message?: import("./types").Message | null; giftDetails?: import("./types").Gift & { transferId: string; quantity: number } }> {
+  async sendGift(to: string, gift: string, _coins: number, callId?: string, streamId?: string, idempotencyKey?: string): Promise<{ id: string; coins: number; callId?: string; scope?: "call" | "stream" | "chat"; createdAt?: string; message?: import("./types").Message | null; giftDetails?: import("./types").Gift & { transferId: string; quantity: number } }> {
     if (!/^[a-f\d]{24}$/i.test(gift) || !idempotencyKey || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) throw new ApiError("Choose a gift from the current server catalog. No coins were spent.", 400);
-    const receipt = record(await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(streamId ? { streamId } : {}), idempotencyKey }));
+    const receipt = record(await request("POST", "/gifts/send", { recipientId: to, giftId: gift, quantity: 1, ...(callId ? { callId } : {}), ...(streamId ? { streamId } : {}), idempotencyKey }));
     if (!idOf(receipt) || typeof receipt.coins !== "number" || !Number.isSafeInteger(receipt.coins) || receipt.coins < 0) throw new ApiError("The gift confirmation could not be read. Retry to check this same gift.", 502);
     let message: import("./types").Message | undefined;
     if (receipt.message && typeof receipt.message === "object" && !Array.isArray(receipt.message)) {
@@ -469,7 +469,7 @@ export const api = {
     const giftDetails = snapshot ? { id: snapshot.giftId, transferId: snapshot.transferId, name: snapshot.name, emoji: snapshot.emoji, mediaUrl: snapshot.mediaUrl, ...(snapshot.coverUrl ? { coverUrl: snapshot.coverUrl } : {}), coins: snapshot.coins, quantity: snapshot.quantity, ...(snapshot.durationMs !== undefined ? { durationMs: snapshot.durationMs } : {}) } : undefined;
     // A confirmed transfer must not become a failed send if a subsequent wallet
     // read loses its connection. The bridge refreshes the balance independently.
-    return { id: idOf(receipt), coins: receipt.coins, ...(message ? { message } : receipt.message === null ? { message: null } : {}), ...(giftDetails ? { giftDetails } : {}) };
+    return { id: idOf(receipt), coins: receipt.coins, ...(idOf(receipt.callId) ? { callId: idOf(receipt.callId), scope: "call" as const } : idOf(receipt.streamId) ? { scope: "stream" as const } : {}), ...(string(receipt.createdAt) ? { createdAt: string(receipt.createdAt) } : {}), ...(message ? { message } : receipt.message === null ? { message: null } : {}), ...(giftDetails ? { giftDetails } : {}) };
   },
   async chatPhotoUrl(to: string, id: string): Promise<string> {
     const version = getSessionVersion();
