@@ -3,7 +3,9 @@ const { spawnSync } = require('node:child_process');
 
 // Gradle can reuse a Metro bundle built with a developer's local .env. Force
 // only the release JS/package tasks and supply the production public origins.
-const tasks = [':app:createBundleReleaseJsAndAssets', '--rerun', ':app:packageRelease', '--rerun', ':app:assembleRelease', '--console=plain'];
+// React Native adds this property to defaultConfig ABI filters. Build-type
+// filters are additive, so pin the release command itself to the shipped ABIs.
+const tasks = [':app:createBundleReleaseJsAndAssets', '--rerun', ':app:packageRelease', '--rerun', ':app:assembleRelease', '-PreactNativeArchitectures=armeabi-v7a,arm64-v8a', '--console=plain'];
 const windows = process.platform === 'win32';
 const result = spawnSync(windows ? 'cmd.exe' : './gradlew', windows ? ['/d', '/s', '/c', `gradlew.bat ${tasks.join(' ')}`] : tasks, {
   cwd: path.resolve(__dirname, '../android'),
