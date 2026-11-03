@@ -22,7 +22,7 @@ export type NativeMediaState = {
 };
 
 // Match facebetter-expo's full camera framing and native GPU capture path.
-// Start at 1080p/30. Sustained connection/device evidence can lower the full
+// Start at full 4:3 camera resolution and 30fps. Sustained connection/device evidence can lower the full
 // frame size; changing the encoding ceiling never crops the requested framing.
 // The 4:3 mode retains full sensor framing and avoids the hardware encoder's
 // 1080 -> 1072 alignment crop on supported devices.
@@ -35,14 +35,30 @@ const PROFILES = [
 ];
 const VIDEO_MAX_LEVEL = PROFILES.length - 1;
 const VIDEO_START_LEVEL = VIDEO_MAX_LEVEL;
+const RECEIVER_EVIDENCE_MS = 8000;
+const VIDEO_RECOVERY_DWELL_MS = 10000;
+type QualitySnapshot = {
+  sampledAt: number; timestamp?: number; received?: number; lost?: number;
+  sent?: number; frames?: number; encode?: number; delay?: number; bytes?: number;
+  reports?: number; measurements?: number; remoteTimestamp?: number; fraction?: number; jitter?: number;
+  freezes?: number; buffer?: number; emitted?: number; responses?: number; rtt?: number;
+  impairment?: number; impairedUntil?: number; latencyUntil?: number;
+};
+const number = (value: unknown): number | undefined => typeof value === "number" && Number.isFinite(value) ? value : undefined;
+const increase = (value: unknown, before: unknown): number | undefined => {
+  const current = number(value), previous = number(before);
+  return current !== undefined && previous !== undefined && current >= previous ? current - previous : undefined;
+};
+const changedCounter = (value: unknown, before: unknown) => (increase(value, before) || 0) > 0;
 type Signal = { callId: string; from?: string; description?: { type: "offer" | "answer"; sdp: string }; candidate?: Record<string, unknown> };
 type Session = {
   id: string; peerId: string; initiator: boolean; voice: boolean; version: number;
   pc: RTCPeerConnection | null; pending: Signal[]; candidates: Record<string, unknown>[];
   queue: Promise<void>; started: Promise<void> | null;
   monitor?: ReturnType<typeof setInterval>; recovery?: ReturnType<typeof setTimeout>;
-  recoveryStarted: number; sampling: boolean; level: number; tuned: number; target: number; samples: number;
-  stats: Map<string, Record<string, number | string | boolean>>;
+  recoveryStarted: number; sampling: boolean; level: number; tuned: number; target: number;
+  poorSamples: number; goodSamples: number; downSamples: number; upSamples: number; changedAt: number; healthySince: number;
+  stats: Map<string, QualitySnapshot>;
 };
 
 const message = (error: unknown) => error instanceof Error ? error.message : "The media connection could not be started. Please try again.";
@@ -252,11 +268,10 @@ export function createNativeMedia(
           maxBitrate: profile.maxBitrate, maxFramerate: profile.maxFramerate,
           scaleResolutionDownBy: Math.max(1, Math.max(dimensions.width || 0, dimensions.height || 0) / profile.maxEdge),
         }));
-        // WebRTC adapts its source before the effect processor. Keep the
-        // requested 1080p at the top profile; our sustained CPU/network checks
-        // explicitly select smaller profiles when needed. At those smaller
-        // profiles WebRTC may prioritize motion under further pressure.
-        parameters.degradationPreference = level === VIDEO_MAX_LEVEL ? "maintain-resolution" : "maintain-framerate";
+        // Prioritize motion at every level. WebRTC may reduce its adapted
+        // source before beauty/encoding when the device or connection needs it;
+        // our fresh interval checks also select sustainable profile ceilings.
+        parameters.degradationPreference = "maintain-framerate";
         try { await sender.setParameters(parameters); }
         catch (_) {
           // Some OS/WebRTC versions reject degradationPreference. Retry the
@@ -268,7 +283,12 @@ export function createNativeMedia(
           try { await sender.setParameters(fallback); } catch (_) { return; }
         }
       }
-      if (valid(current)) current.tuned = current.level = level;
+      if (valid(current)) {
+        if (current.tuned !== level) {
+          current.changedAt = Date.now(); current.upSamples = current.downSamples = 0;
+        }
+        current.tuned = current.level = level;
+      }
     });
   }
   function signal(current: Session, payload: Record<string, unknown>) {
@@ -301,8 +321,13 @@ export function createNativeMedia(
     }
   }
   function recovered(current: Session) {
+    const restarting = current.recoveryStarted > 0 || state.quality === "reconnecting";
     clearTimeout(current.recovery); current.recovery = undefined; current.recoveryStarted = 0;
-    publish({ status: "Connected", quality: "good" });
+    if (restarting) {
+      current.stats.clear(); current.poorSamples = current.goodSamples = current.upSamples = current.downSamples = 0;
+      current.healthySince = 0;
+    }
+    publish({ status: "Connected", quality: restarting ? "good" : state.quality });
   }
   function recover(current: Session) {
     if (!valid(current) || current.recovery) return;
@@ -323,37 +348,135 @@ export function createNativeMedia(
     try {
       const report: Map<string, Record<string, any>> = await current.pc.getStats();
       if (!valid(current) || !connected(current.pc)) return;
-      let poor = false, severe = false, cpu = false, fresh = false;
-      const next = new Map<string, Record<string, number | string | boolean>>();
+      const now = Date.now(), next = new Map<string, QualitySnapshot>();
+      let freshPoor = false, heldPoor = false, freshNetwork = false;
+      let outgoingPoor = false, outgoingSevere = false, heldOutgoingPoor = false, cpu = false, freshOutgoing = false;
+      let availableBitrate: number | undefined, sentBitrate: number | undefined;
       let selectedPair: string | undefined;
       report.forEach(stat => { if (stat.type === "transport") selectedPair = stat.selectedCandidatePairId; });
-      report.forEach(stat => {
-        const before = current.stats.get(stat.id), updated = !before || stat.timestamp == null || Number(stat.timestamp) > Number(before.timestamp);
-        if (updated) fresh = true;
+      report.forEach((stat, id) => {
+        if (!["candidate-pair", "remote-inbound-rtp", "inbound-rtp", "outbound-rtp"].includes(stat.type)) return;
+        const key = String(stat.id || id), before = current.stats.get(key), timestamp = number(stat.timestamp);
+        const updated = timestamp !== undefined ? !before || before.timestamp === undefined || timestamp > before.timestamp :
+          !before || changedCounter(stat.packetsReceived, before.received) || changedCounter(stat.packetsSent, before.sent) ||
+          changedCounter(stat.framesEncoded, before.frames) || changedCounter(stat.reportsReceived, before.reports) || changedCounter(stat.roundTripTimeMeasurements, before.measurements);
+        const snapshot: QualitySnapshot = {
+          sampledAt: updated ? now : before?.sampledAt || now, timestamp,
+          received: number(stat.packetsReceived), lost: number(stat.packetsLost), sent: number(stat.packetsSent),
+          frames: number(stat.framesEncoded), encode: number(stat.totalEncodeTime), delay: number(stat.totalPacketSendDelay), bytes: number(stat.bytesSent),
+          reports: number(stat.reportsReceived), measurements: number(stat.roundTripTimeMeasurements), remoteTimestamp: number(stat.remoteTimestamp),
+          fraction: number(stat.fractionLost), jitter: number(stat.jitter), freezes: number(stat.freezeCount), buffer: number(stat.jitterBufferDelay), emitted: number(stat.jitterBufferEmittedCount),
+          responses: number(stat.responsesReceived), rtt: number(stat.currentRoundTripTime),
+        };
+        next.set(key, snapshot);
         if (stat.type === "candidate-pair" && (selectedPair ? stat.id === selectedPair : stat.nominated && stat.state === "succeeded")) {
-          if (stat.currentRoundTripTime > .6) poor = true;
-          if (stat.currentRoundTripTime > 1.2) severe = true;
+          if (number(stat.availableOutgoingBitrate) !== undefined && stat.availableOutgoingBitrate > 0) availableBitrate = stat.availableOutgoingBitrate;
+          const freshRtt = updated && (snapshot.responses === undefined || !before ? true : changedCounter(snapshot.responses, before.responses));
+          if (freshRtt) {
+            freshNetwork = true;
+            // A distant relay can have a stable 600ms path without packet loss.
+            // Keep extreme delay visible, but shrinking video cannot remove
+            // propagation latency and must not be triggered by RTT alone.
+            if (snapshot.rtt !== undefined && snapshot.rtt >= 1.2) freshPoor = true;
+          }
         }
+        const received = increase(snapshot.received, before?.received), lost = increase(snapshot.lost, before?.lost);
+        const packets = (received || 0) + (lost || 0);
+        const intervalLoss = before && received !== undefined && lost !== undefined && packets >= 20 ? lost / packets : undefined;
         if (stat.type === "remote-inbound-rtp") {
           let impairedUntil = Number(before?.impairedUntil || 0), impairment = Number(before?.impairment || 0);
-          if (updated) {
-            const received = stat.packetsReceived - Number(before?.received || 0), lost = stat.packetsLost - Number(before?.lost || 0);
-            const loss = Math.max(stat.fractionLost || 0, before && received >= 0 && lost >= 0 && received + lost >= 20 ? lost / (received + lost) : 0);
-            impairment = loss > .2 || stat.roundTripTime > 1.2 ? 2 : loss > .08 || stat.jitter > .08 || stat.roundTripTime > .6 ? 1 : 0;
-            impairedUntil = impairment ? Date.now() + 8000 : 0;
+          let latencyUntil = Number(before?.latencyUntil || 0);
+          // A collection timestamp advances even when the last RTCP report did
+          // not. Prefer actual feedback counters; packet/remote timestamps are
+          // the fallback, even if an optional measurement marker stays at zero.
+          // Unchanged loss/jitter gauges are not another receiver report.
+          const markerAdvanced = !before ? (snapshot.reports || snapshot.measurements || snapshot.remoteTimestamp || 0) > 0 :
+              changedCounter(snapshot.reports, before.reports) || changedCounter(snapshot.measurements, before.measurements) ||
+              snapshot.remoteTimestamp !== undefined && before.remoteTimestamp !== undefined && snapshot.remoteTimestamp > before.remoteTimestamp;
+          const feedback = updated && (markerAdvanced || !!before &&
+            (changedCounter(snapshot.received, before.received) || changedCounter(snapshot.lost, before.lost) ||
+              snapshot.fraction !== undefined && before.fraction !== undefined && snapshot.fraction !== before.fraction ||
+              snapshot.jitter !== undefined && before.jitter !== undefined && snapshot.jitter !== before.jitter));
+          const reset = !!before && ([ [snapshot.reports, before.reports], [snapshot.measurements, before.measurements],
+            [snapshot.received, before.received], [snapshot.lost, before.lost] ].some(([value, previous]) => value !== undefined && previous !== undefined && value < previous));
+          if (reset) { impairedUntil = latencyUntil = impairment = 0; }
+          if (feedback && !reset) {
+            const loss = Math.max(snapshot.fraction !== undefined && snapshot.fraction >= 0 && snapshot.fraction <= 1 ? snapshot.fraction : 0, intervalLoss || 0);
+            impairment = loss > .2 || stat.jitter > .2 ? 2 : loss > .08 || stat.jitter > .08 ? 1 : 0;
+            impairedUntil = impairment ? now + RECEIVER_EVIDENCE_MS : 0;
+            latencyUntil = stat.roundTripTime >= 1.2 ? now + RECEIVER_EVIDENCE_MS : 0;
+            freshNetwork = freshOutgoing = true;
+            if (impairment || latencyUntil) freshPoor = true;
+            if (impairment) outgoingPoor = true;
+            if (impairment > 1) outgoingSevere = true;
           }
-          if (impairedUntil > Date.now()) { poor ||= impairment > 0; severe ||= impairment > 1; }
-          next.set(stat.id, { timestamp: stat.timestamp, received: stat.packetsReceived, lost: stat.packetsLost, impairment, impairedUntil });
-        } else next.set(stat.id, { timestamp: stat.timestamp });
-        if (stat.type === "outbound-rtp" && (stat.kind === "video" || stat.mediaType === "video") && state.camera) cpu ||= stat.qualityLimitationReason === "cpu";
+          if (impairedUntil > now) heldPoor = heldOutgoingPoor = true;
+          if (latencyUntil > now) heldPoor = true;
+          Object.assign(snapshot, { impairment, impairedUntil, latencyUntil });
+        }
+        if (stat.type === "inbound-rtp" && before && updated) {
+          const freezes = increase(snapshot.freezes, before.freezes), emitted = increase(snapshot.emitted, before.emitted), buffer = increase(snapshot.buffer, before.buffer);
+          const receiving = packets >= 20 || (emitted || 0) >= 8;
+          if (receiving) {
+            freshNetwork = true;
+            // Receiving a bad picture must not reduce the picture we send.
+            // A decoder/render freeze can be local CPU work or startup. Treat
+            // it as a network warning only with fresh jitter/packet evidence.
+            if ((intervalLoss || 0) > .08 || emitted && buffer !== undefined && buffer / emitted > .2 ||
+              (freezes || 0) > 0 && stat.jitter > .08) freshPoor = true;
+          }
+        }
+        if (stat.type === "outbound-rtp" && (stat.kind === "video" || stat.mediaType === "video") && state.camera && stat.active !== false && before && updated) {
+          const frames = increase(snapshot.frames, before.frames), sent = increase(snapshot.sent, before.sent), encode = increase(snapshot.encode, before.encode), delay = increase(snapshot.delay, before.delay);
+          const elapsed = (now - before.sampledAt) / 1000, bytes = increase(snapshot.bytes, before.bytes);
+          if (bytes !== undefined && elapsed > 0) sentBitrate = bytes * 8 / elapsed;
+          if ((frames || 0) >= 8 || (sent || 0) >= 20) freshOutgoing = freshNetwork = true;
+          if (frames && frames >= 8) {
+            cpu ||= stat.qualityLimitationReason === "cpu" || encode !== undefined && encode / frames > 1 / PROFILES[current.level].maxFramerate;
+            const source = report.get(stat.mediaSourceId), sourceFps = number(source?.framesPerSecond), encodedFps = elapsed > 0 ? frames / elapsed : undefined;
+            if (stat.qualityLimitationReason === "bandwidth" && sourceFps !== undefined && sourceFps >= 18 && encodedFps !== undefined && encodedFps < sourceFps * .65) {
+              outgoingPoor = freshPoor = true;
+              outgoingSevere ||= encodedFps < 8;
+            }
+          }
+          if (sent && sent >= 20 && delay !== undefined && delay / sent > .08) {
+            outgoingPoor = freshPoor = true;
+            outgoingSevere ||= delay / sent > .2;
+          }
+        }
       });
       current.stats = next;
-      if (!fresh) return;
-      const target = severe ? 0 : poor ? 1 : cpu ? Math.max(0, current.level - 1) : VIDEO_MAX_LEVEL;
-      current.samples = target === current.target ? current.samples + 1 : 1; current.target = target;
-      if (current.samples >= (target < current.level ? 2 : 3)) {
-        publish({ quality: poor ? "poor" : "good" });
-        if (target !== current.level) await tune(current, target < current.level ? target : current.level + 1);
+      // Warning hysteresis is independent of sender adaptation. Stale RTCP can
+      // hold a recent warning briefly, but cannot count as another bad sample.
+      if (freshPoor) { current.poorSamples++; current.goodSamples = 0; }
+      else if (!heldPoor && freshNetwork) { current.goodSamples++; current.poorSamples = 0; }
+      if (current.poorSamples >= 2 && state.quality !== "poor") publish({ quality: "poor" });
+      else if (current.goodSamples >= 3 && state.quality !== "good") publish({ quality: "good" });
+      if (current.voice || !state.camera) return;
+      if (outgoingPoor || cpu) {
+        current.upSamples = 0; current.healthySince = 0;
+        let target = outgoingSevere ? 0 : Math.max(0, current.level - 1);
+        if (outgoingPoor && availableBitrate !== undefined) {
+          const capacity = PROFILES.reduce((level, profile, index) => profile.maxBitrate <= availableBitrate! * .85 ? index : level, 0);
+          target = Math.min(target, capacity);
+        }
+        current.downSamples = target === current.target ? current.downSamples + 1 : 1; current.target = target;
+        if (target < current.level && current.downSamples >= 2) await tune(current, target);
+      } else if (heldOutgoingPoor) {
+        current.upSamples = 0; current.healthySince = 0;
+      } else if (freshOutgoing) {
+        current.downSamples = 0;
+        current.healthySince ||= now;
+        current.upSamples++;
+        const headroom = availableBitrate === undefined || availableBitrate >= Math.max((sentBitrate || 0) * 1.25, PROFILES[current.level].maxBitrate * 1.05);
+        // A sender cap can itself limit the bandwidth estimator. Permit a
+        // bounded one-step probe after longer healthy operation so recovery
+        // cannot remain locked at a small profile forever.
+        const probe = now - current.healthySince >= 15000;
+        if (current.level < VIDEO_MAX_LEVEL && current.upSamples >= 4 && now - current.changedAt >= VIDEO_RECOVERY_DWELL_MS && (headroom || probe)) {
+          await tune(current, current.level + 1);
+          current.healthySince = now;
+        }
       }
     } catch (_) { /* A stats read can race cleanup or be unavailable on an older OS. */ }
     finally { current.sampling = false; }
@@ -398,7 +521,8 @@ export function createNativeMedia(
     const current: Session = {
       id: callId, peerId, initiator: !!data.initiator, voice: !!data.voice, version: generation,
       pc: null, pending: earlySignals.filter(signal => signal.callId === callId), candidates: [], queue: Promise.resolve(), started: null,
-      recoveryStarted: 0, sampling: false, level: VIDEO_START_LEVEL, tuned: -1, target: VIDEO_START_LEVEL, samples: 0, stats: new Map(),
+      recoveryStarted: 0, sampling: false, level: VIDEO_START_LEVEL, tuned: -1, target: VIDEO_START_LEVEL,
+      poorSamples: 0, goodSamples: 0, downSamples: 0, upSamples: 0, changedAt: 0, healthySince: 0, stats: new Map(),
     };
     earlySignals = []; session = current;
     current.started = (async () => {
@@ -411,7 +535,7 @@ export function createNativeMedia(
         const config = await api.rtcConfig();
         if (!valid(current)) return;
         if (!Array.isArray(config.iceServers)) throw new Error("The server returned invalid video connection settings.");
-        const pc = new RTCPeerConnection({ iceServers: config.iceServers }); current.pc = pc;
+        const pc = new RTCPeerConnection({ iceServers: config.iceServers, bundlePolicy: "max-bundle", rtcpMuxPolicy: "require" }); current.pc = pc;
         local.getTracks().forEach(track => { if (!current.voice || track.kind === "audio") pc.addTrack(track, local); });
         pc.addEventListener("icecandidate", event => {
           if (!valid(current) || !event.candidate) return;

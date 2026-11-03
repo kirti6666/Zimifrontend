@@ -3389,9 +3389,10 @@ html:root[data-theme="dark"] .zc-thread{
 .zr-call{overflow:hidden;max-width:none;left:0;transform:none;border:0;--call-ink:#fff;--call-muted:rgb(255 255 255 / .76);--call-control:rgb(0 0 0 / .32);--call-line:rgb(255 255 255 / .35)}
 :root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
 .zr-call .zr-video{background:var(--media-canvas)}
-/* Both participants see the same complete camera frame, even when its aspect ratio
-   differs from the phone or the PiP. Cropping remote video changed the host's framing. */
+/* The call background fills the screen. PiP and the beauty dock keep the whole
+   image; capture/encoding dimensions and camera orientation are unchanged. */
 .zr-call .zr-video>video,.zr-call .zr-pip>video{object-fit:contain;object-position:center}
+.zr-call:not(.zb-previewing)>.zr-video>video{object-fit:cover!important;object-position:center}
 .zr-call .zr-shade{display:none}
 .zr-call .zr-top{background:transparent;padding-bottom:8px}
 .zr-call:not(.zr-voice-call)>:is(.zr-top,.zr-bottom,.zr-pip,.zr-video){--room-ink:var(--call-ink);--room-muted:var(--call-muted);--room-glass:var(--call-control);color:var(--room-ink)}
@@ -3408,6 +3409,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zr-network svg path:nth-child(n+2){opacity:.25}
 .zi-icon:is([data-icon=callgrid],[data-icon=callmore]){--zi-tap:zi-bounce;--zi-time:400ms}
 .zr-call .zr-top{padding:0 10px}
+.zr-call:not(.zr-voice-call)>.zr-top{padding-top:var(--safe-top);padding-left:calc(10px + var(--safe-left));padding-right:calc(10px + var(--safe-right))}
 .zr-call-toolbar{display:flex;align-items:center;gap:8px;padding:9px 0}
 .zr-call-toolbar .zr-round,.zr-call-toolbar .zr-call-back{width:36px;height:36px;min-height:36px;flex:0 0 36px;border:1px solid var(--line);border-radius:50%;background:var(--room-glass);color:var(--room-ink)}
 .zr-call-toolbar .zr-timer{min-height:30px;padding:6px 10px;font-size:12px;gap:6px}
@@ -3429,6 +3431,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zr-call .zr-pip>span{bottom:4px;left:4px;padding:2px 3px;font-size:9px}
 .zr-sender-call .zr-pip{top:122px}
 .zr-call .zr-bottom{padding:12px 10px max(9px,var(--safe-bottom));background:transparent;width:100%}
+.zr-call:not(.zr-voice-call)>.zr-bottom{padding-left:calc(10px + var(--safe-left));padding-right:calc(10px + var(--safe-right))}
 .zr-call .zr-status{background:none;padding:0;margin:0 0 3px;font-size:11px;line-height:1.4;border-radius:0;max-width:100%;text-align:left}
 .zr-call-cost{font-size:10px;color:var(--room-muted);margin-bottom:5px;line-height:1.5}
 .zr-call .zr-call-feed{max-height:min(18vh,155px);gap:6px;margin:0 0 10px;padding:3px 0;overscroll-behavior:contain}
@@ -3504,7 +3507,6 @@ html:root[data-theme="dark"] .zc-thread{
 
 /* The host's call follows the host studio reference: their own camera on the full stage, the
    caller in the corner, compact targets and controls. Colours stay with the selected theme. */
-.zr-call-reference .zr-reference-stage>video[data-zimi-local][data-zimi-shape=landscape]{object-fit:contain}
 .zr-call-reference .zr-reference-stage.camera-off>video{visibility:hidden}
 .zr-call-reference .zr-camera-off{position:absolute;inset:26% 0 32%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--room-muted)}
 .zr-call-reference .zr-top{padding:0 14px}
@@ -3583,11 +3585,20 @@ html:root[data-theme="dark"] .zc-thread{
    video stays mounted and audible, and the hangup row remains below it. */
 .zr-call.zb-previewing{--zb-panel-height:min(42dvh,320px);--zb-panel-bottom:calc(78px + var(--safe-bottom));--zb-preview-bottom:calc(var(--zb-panel-bottom) + var(--zb-panel-height));--zb-preview-right:0px;--zb-remote-right:12px}
 .zr-call.zb-previewing :is(.zr-call-feed,.zr-gift-rail,.hs-gift-rail,.zr-gift-alert,.zr-gift-celebration,.zr-call-stats,.zr-status,.zr-call-cost,.zr-shade){display:none}
-.zr-call.zb-previewing .zr-video:has(video[data-zimi-local]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-local]){position:absolute;left:0;right:var(--zb-preview-right);top:58px;bottom:var(--zb-preview-bottom);width:auto;height:auto;z-index:1;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:var(--media-canvas);opacity:1}
+.zr-call.zb-previewing .zr-video:has(video[data-zimi-local]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-local]){position:absolute;inset:0;width:auto;height:auto;z-index:1;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:var(--media-canvas);opacity:1}
 .zr-call.zb-previewing .zr-video:has(video[data-zimi-remote]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-remote]){position:absolute;left:auto;right:var(--zb-remote-right);top:68px;bottom:auto;width:84px;height:116px;z-index:6;margin:0;padding:0;border:2px solid var(--call-line);border-radius:14px;box-shadow:none;background:var(--media-canvas);opacity:1}
 .zr-call.zb-previewing :is(.zr-video,.zr-pip)>video{object-fit:contain;object-position:center}
+.zr-call.zb-previewing :is(.zr-video,.zr-pip)>video[data-zimi-local]{object-fit:cover!important;object-position:center}
+:root .zr-call.zb-previewing :is(.zr-video,.zr-pip):has(video[data-zimi-local]),:root .zr-call.zb-previewing :is(.zr-video,.zr-pip)>video[data-zimi-local]{border-radius:0!important}
 .zr-call.zb-previewing .zr-pip:disabled{opacity:1;cursor:default}
 .zr-call.zb-previewing .zr-bottom{z-index:7;padding-top:8px}
+/* Controls and floating previews avoid system bars while the main video stays
+   at inset:0 across the complete call surface. */
+.zr-call:not(.zb-previewing)>.zr-pip{top:calc(169px + var(--safe-top));right:calc(10px + var(--safe-right))}
+.zr-sender-call:not(.zb-previewing)>.zr-pip{top:calc(122px + var(--safe-top))}
+.zr-call-reference:not(.zb-previewing)>.zr-pip{top:calc(126px + var(--safe-top));right:calc(12px + var(--safe-right))}
+.zr-call-reference .zr-host-options{top:calc(54px + var(--safe-top))}
+.zr-call.zb-previewing :is(.zr-video,.zr-pip):has(video[data-zimi-remote]){top:calc(68px + var(--safe-top))}
 @media(max-height:460px) and (min-width:600px){
   .zr-call.zb-previewing{--zb-panel-width:min(46vw,400px);--zb-panel-height:calc(100dvh - 96px);--zb-preview-bottom:var(--zb-panel-bottom);--zb-preview-right:calc(var(--zb-panel-width) + 24px);--zb-remote-right:calc(var(--zb-panel-width) + 36px)}
   .zr-call.zb-previewing>[data-zimi-beauty-panel]{left:auto;right:12px;margin-inline:0}
@@ -3634,7 +3645,7 @@ html:root[data-theme="dark"] .zc-thread{
 .ringscr.dial .ringact{margin-top:auto;padding-top:40px}
 .ringscr.dial .rbtn{color:var(--muted)}
 /* Back minimizes a ringing call; it keeps ringing behind other screens (web/ongoing-call.js). */
-.ringscr.dial>.dialmin{position:absolute;top:16px;left:16px;z-index:2}
+.ringscr.dial>.dialmin{position:absolute;top:calc(16px + var(--safe-top));left:calc(16px + var(--safe-left));z-index:2}
 .ringscr.dial .voiceend{width:64px;height:64px;transition:transform .18s}
 .ringscr.dial .voiceend:active{transform:scale(.94)}
 /* Video calls: flip, camera and mute sit beside Cancel, like the call's own dock. */
@@ -3646,16 +3657,15 @@ html:root[data-theme="dark"] .zc-thread{
 /* Beside the tools, Cancel matches their size. */
 .ringscr.dial .dialdock .voiceend{width:52px;height:52px}
 .ringscr.dial .dialdock .voiceend svg{width:22px;height:22px}
-/* The caller sees their own camera full screen while it rings: portrait frames fill the
-   screen, landscape frames sit whole on the media canvas and the front camera is mirrored,
-   as on the host stage. The camera is the call's own HD capture, never zoomed or filtered.
+/* The caller sees their own camera filling the screen while it rings. Display
+   fitting preserves proportions and the front camera is mirrored once.
    White type rides on scrims, as on other camera stages, and the avatar shrinks to keep
    the caller's face clear. */
 .ringscr.dial.is-video{color:#fff}
 .ringscr.dial.is-video .ringbg{background:var(--media-canvas);animation:none}
 .ringscr.dial .ringbg>:is(video,svg){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
 .ringscr.dial .ringbg>video[data-zimi-facing=user]{transform:scaleX(-1)}
-.ringscr.dial .ringbg>video[data-zimi-shape=landscape]{object-fit:contain}
+.ringscr.dial.is-video .ringbg>video{object-fit:cover!important;object-position:center}
 .dialscrim{position:absolute;inset:0;background:linear-gradient(180deg,rgb(0 0 0 / .62),rgb(0 0 0 / .28) 30%,transparent 48%,transparent 58%,rgb(0 0 0 / .62))}
 .ringscr.dial:not(.is-video) .ringbg>video{visibility:hidden}
 .ringscr.dial:not(.is-video) .ringbg>:is(svg,.dialscrim){display:none}
@@ -5336,10 +5346,17 @@ html[data-zimi-native-underlay], body[data-zimi-native-underlay],
 video[data-zimi-native-video] {
   background: transparent !important;
 }
-/* Preserve the whole camera image in calls, setup and the smaller beauty
-   preview. Differing surface/frame ratios need space around the image; cover
-   would crop the camera and make the person appear zoomed in. */
+/* Standalone setup/beauty and picture-in-picture retain the whole camera image.
+   The active call background, including its beauty preview, fills the display. */
 html video[data-zimi-native-video] { color: transparent; object-fit: contain !important; }
+/* Native padding is removed only for a visible video call. Its controls consume
+   these insets while the video itself continues behind the system bars. */
+:root[data-native-call-fullscreen] {
+  --safe-top:var(--native-safe-top,0px);
+  --safe-right:var(--native-safe-right,0px);
+  --safe-bottom:var(--native-safe-bottom,0px);
+  --safe-left:var(--native-safe-left,0px);
+}
 </style>
 </head>
 <body>
@@ -5380,7 +5397,7 @@ html video[data-zimi-native-video] { color: transparent; object-fit: contain !im
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.1.8";
+window.ZIMI_APP_VERSION = "1.1.9";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -15926,8 +15943,15 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
     });
   }
   function cameraEnabled() { return typeof camOn === 'function' ? !!camOn() : typeof S === 'undefined' || S.cam !== 0; }
+  function fullScreenCall() {
+    if (typeof S === 'undefined' || S.bgCall) return false;
+    return ['call', 'hcall'].includes(S.v) && !!document.querySelector('.zr-call:not(.zr-voice-call)') ||
+      ['dial', 'dialback'].includes(S.v) && !!document.querySelector('.ringscr.dial.is-video');
+  }
   function layout() {
     scheduled = false;
+    const fullScreen = fullScreenCall();
+    document.documentElement.toggleAttribute('data-native-call-fullscreen', fullScreen);
     const nextAncestors = new Set(), slots = [];
     ['local', 'remote'].forEach(kind => {
       const available = kind === 'local' ? state.hasVideo && cameraEnabled() : state.hasRemoteVideo;
@@ -15959,7 +15983,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
     });
     ancestors.forEach(el => { if (!nextAncestors.has(el)) { el.removeAttribute('data-zimi-native-underlay'); ancestors.delete(el); } });
     nextAncestors.forEach(el => { el.setAttribute('data-zimi-native-underlay', ''); ancestors.add(el); });
-    const data = { width: innerWidth, height: innerHeight, slots }, serialized = JSON.stringify(data);
+    const data = { width: innerWidth, height: innerHeight, slots, fullScreen }, serialized = JSON.stringify(data);
     if (serialized !== lastLayout) { lastLayout = serialized; Native.send('native.media.layout', data); }
   }
   function scheduleLayout() { if (!scheduled) { scheduled = true; requestAnimationFrame(layout); } }
@@ -15982,6 +16006,13 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   Native.on('native.media.dimensions', data => {
     if (!['local', 'remote'].includes(data.kind) || !(data.width > 0 && data.height > 0)) return;
     shapes[data.kind] = data.width > data.height ? 'landscape' : 'portrait';
+    scheduleLayout();
+  });
+  Native.on('app.insets', data => {
+    for (const edge of ['top', 'right', 'bottom', 'left']) {
+      const value = data[edge];
+      if (Number.isFinite(value) && value >= 0 && value <= 1000) document.documentElement.style.setProperty('--native-safe-' + edge, value + 'px');
+    }
     scheduleLayout();
   });
   async function refreshBeauty() {
@@ -16593,14 +16624,24 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
           const before = peer.stats.get(stat.id);
           if (!before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp) freshReport = true;
           nextStats.set(stat.id, { timestamp: stat.timestamp });
-          if (stat.currentRoundTripTime > .6) poor = outgoingPoor = true;
-          if (stat.currentRoundTripTime > 1.2) severe = true;
+          // A distant relay raises propagation delay without proving congestion.
+          // Warn about sustained extreme delay, but do not blur a healthy sender.
+          if (stat.currentRoundTripTime > 1.2) poor = true;
           if (stat.availableOutgoingBitrate > 0) availableBitrate = stat.availableOutgoingBitrate;
         }
         if (['inbound-rtp', 'remote-inbound-rtp'].includes(stat.type)) {
-          const before = peer.stats.get(stat.id), fresh = !before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp;
+          const before = peer.stats.get(stat.id);
+          const updated = !before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp;
+          // getStats() collection timestamps can advance without a new RTCP
+          // receiver report. Reusing its last fractionLost forever held calls
+          // at low quality even after the network recovered.
+          const feedbackChanged = !before || ['reportsReceived', 'roundTripTimeMeasurements', 'remoteTimestamp'].some(key =>
+            Number.isFinite(stat[key]) && Number.isFinite(before[key]) && stat[key] > before[key]) ||
+            ['packetsReceived', 'packetsLost', 'fractionLost', 'jitter', 'roundTripTime'].some(key =>
+              Number.isFinite(stat[key]) && stat[key] !== before[key === 'packetsReceived' ? 'received' : key === 'packetsLost' ? 'lost' : key]);
+          const fresh = updated && (stat.type !== 'remote-inbound-rtp' || feedbackChanged);
           if (fresh) freshReport = true;
-          let impaired = fresh && (stat.jitter > .08 || stat.roundTripTime > .6);
+          let impaired = fresh && stat.jitter > .08;
           // Remote receiver reports may omit packetsReceived. Their fractionLost
           // describes the last RTCP interval, unlike cumulative packetsLost.
           let loss = fresh && stat.type === 'remote-inbound-rtp' ? stat.fractionLost || 0 : 0;
@@ -16620,7 +16661,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
             // Fresh healthy RTCP clears it; missing feedback expires promptly.
             if (fresh) {
               remotePoor = impaired;
-              remoteSevere = impaired && (loss > .2 || stat.roundTripTime > 1.2);
+              remoteSevere = loss > .2;
               impairedUntil = impaired ? sampledAt + REMOTE_IMPAIRMENT_MS : 0;
             } else if (before?.impairedUntil > sampledAt) {
               remotePoor = !!before.remotePoor;remoteSevere = !!before.remoteSevere;impairedUntil = before.impairedUntil;
@@ -16628,7 +16669,14 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
             if (remotePoor) poor = outgoingPoor = true;
             if (remoteSevere) severe = true;
           }
-          nextStats.set(stat.id, { timestamp: stat.timestamp, received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0, remotePoor, remoteSevere, impairedUntil });
+          if (fresh && stat.roundTripTime > 1.2) poor = true;
+          nextStats.set(stat.id, {
+            timestamp: stat.timestamp, received: stat.packetsReceived || 0, lost: stat.packetsLost || 0,
+            freezes: stat.freezeCount || 0, fractionLost: stat.fractionLost, jitter: stat.jitter,
+            roundTripTime: stat.roundTripTime, reportsReceived: stat.reportsReceived,
+            roundTripTimeMeasurements: stat.roundTripTimeMeasurements, remoteTimestamp: stat.remoteTimestamp,
+            remotePoor, remoteSevere, impairedUntil
+          });
         }
         if (stat.type === 'outbound-rtp' && (stat.kind === 'video' || stat.mediaType === 'video')) {
           const before = peer.stats.get(stat.id), videoOn = cameraEnabled() && stat.active !== false;
@@ -16720,7 +16768,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   }
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
-    const pc = new RTCPeerConnection(session.config);
+    const pc = new RTCPeerConnection({ ...session.config, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' });
     const peer = { id, pc, adaptiveVideo:session.kind === 'call', videoLevel:VIDEO_START_LEVEL, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0, poorSamples: 0, targetSamples: 0 };
     peers.set(id, peer);
     const published = outgoing();

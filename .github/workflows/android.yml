@@ -36,6 +36,7 @@ jobs:
       - run: npm run typecheck
       - run: node --test scripts/test-android-release-ci.cjs
       - run: npm run test:native-media
+      - run: npm run test:incoming-calls
       - run: npm run test:call-performance
       - run: npm run test:facebetter
       - name: Validate workflow syntax and shell commands

@@ -49,9 +49,10 @@
 .zr-call{overflow:hidden;max-width:none;left:0;transform:none;border:0;--call-ink:#fff;--call-muted:rgb(255 255 255 / .76);--call-control:rgb(0 0 0 / .32);--call-line:rgb(255 255 255 / .35)}
 :root:has(.zr-call) .app,:root:has(.zr-call) #scroll-root{background:var(--media-canvas)}
 .zr-call .zr-video{background:var(--media-canvas)}
-/* Both participants see the same complete camera frame, even when its aspect ratio
-   differs from the phone or the PiP. Cropping remote video changed the host's framing. */
+/* The call background fills the screen. PiP and the beauty dock keep the whole
+   image; capture/encoding dimensions and camera orientation are unchanged. */
 .zr-call .zr-video>video,.zr-call .zr-pip>video{object-fit:contain;object-position:center}
+.zr-call:not(.zb-previewing)>.zr-video>video{object-fit:cover!important;object-position:center}
 .zr-call .zr-shade{display:none}
 .zr-call .zr-top{background:transparent;padding-bottom:8px}
 .zr-call:not(.zr-voice-call)>:is(.zr-top,.zr-bottom,.zr-pip,.zr-video){--room-ink:var(--call-ink);--room-muted:var(--call-muted);--room-glass:var(--call-control);color:var(--room-ink)}
@@ -68,6 +69,7 @@
 .zr-network svg path:nth-child(n+2){opacity:.25}
 .zi-icon:is([data-icon=callgrid],[data-icon=callmore]){--zi-tap:zi-bounce;--zi-time:400ms}
 .zr-call .zr-top{padding:0 10px}
+.zr-call:not(.zr-voice-call)>.zr-top{padding-top:var(--safe-top);padding-left:calc(10px + var(--safe-left));padding-right:calc(10px + var(--safe-right))}
 .zr-call-toolbar{display:flex;align-items:center;gap:8px;padding:9px 0}
 .zr-call-toolbar .zr-round,.zr-call-toolbar .zr-call-back{width:36px;height:36px;min-height:36px;flex:0 0 36px;border:1px solid var(--line);border-radius:50%;background:var(--room-glass);color:var(--room-ink)}
 .zr-call-toolbar .zr-timer{min-height:30px;padding:6px 10px;font-size:12px;gap:6px}
@@ -89,6 +91,7 @@
 .zr-call .zr-pip>span{bottom:4px;left:4px;padding:2px 3px;font-size:9px}
 .zr-sender-call .zr-pip{top:122px}
 .zr-call .zr-bottom{padding:12px 10px max(9px,var(--safe-bottom));background:transparent;width:100%}
+.zr-call:not(.zr-voice-call)>.zr-bottom{padding-left:calc(10px + var(--safe-left));padding-right:calc(10px + var(--safe-right))}
 .zr-call .zr-status{background:none;padding:0;margin:0 0 3px;font-size:11px;line-height:1.4;border-radius:0;max-width:100%;text-align:left}
 .zr-call-cost{font-size:10px;color:var(--room-muted);margin-bottom:5px;line-height:1.5}
 .zr-call .zr-call-feed{max-height:min(18vh,155px);gap:6px;margin:0 0 10px;padding:3px 0;overscroll-behavior:contain}
@@ -164,7 +167,6 @@
 
 /* The host's call follows the host studio reference: their own camera on the full stage, the
    caller in the corner, compact targets and controls. Colours stay with the selected theme. */
-.zr-call-reference .zr-reference-stage>video[data-zimi-local][data-zimi-shape=landscape]{object-fit:contain}
 .zr-call-reference .zr-reference-stage.camera-off>video{visibility:hidden}
 .zr-call-reference .zr-camera-off{position:absolute;inset:26% 0 32%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--room-muted)}
 .zr-call-reference .zr-top{padding:0 14px}
@@ -243,11 +245,20 @@
    video stays mounted and audible, and the hangup row remains below it. */
 .zr-call.zb-previewing{--zb-panel-height:min(42dvh,320px);--zb-panel-bottom:calc(78px + var(--safe-bottom));--zb-preview-bottom:calc(var(--zb-panel-bottom) + var(--zb-panel-height));--zb-preview-right:0px;--zb-remote-right:12px}
 .zr-call.zb-previewing :is(.zr-call-feed,.zr-gift-rail,.hs-gift-rail,.zr-gift-alert,.zr-gift-celebration,.zr-call-stats,.zr-status,.zr-call-cost,.zr-shade){display:none}
-.zr-call.zb-previewing .zr-video:has(video[data-zimi-local]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-local]){position:absolute;left:0;right:var(--zb-preview-right);top:58px;bottom:var(--zb-preview-bottom);width:auto;height:auto;z-index:1;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:var(--media-canvas);opacity:1}
+.zr-call.zb-previewing .zr-video:has(video[data-zimi-local]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-local]){position:absolute;inset:0;width:auto;height:auto;z-index:1;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:var(--media-canvas);opacity:1}
 .zr-call.zb-previewing .zr-video:has(video[data-zimi-remote]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-remote]){position:absolute;left:auto;right:var(--zb-remote-right);top:68px;bottom:auto;width:84px;height:116px;z-index:6;margin:0;padding:0;border:2px solid var(--call-line);border-radius:14px;box-shadow:none;background:var(--media-canvas);opacity:1}
 .zr-call.zb-previewing :is(.zr-video,.zr-pip)>video{object-fit:contain;object-position:center}
+.zr-call.zb-previewing :is(.zr-video,.zr-pip)>video[data-zimi-local]{object-fit:cover!important;object-position:center}
+:root .zr-call.zb-previewing :is(.zr-video,.zr-pip):has(video[data-zimi-local]),:root .zr-call.zb-previewing :is(.zr-video,.zr-pip)>video[data-zimi-local]{border-radius:0!important}
 .zr-call.zb-previewing .zr-pip:disabled{opacity:1;cursor:default}
 .zr-call.zb-previewing .zr-bottom{z-index:7;padding-top:8px}
+/* Controls and floating previews avoid system bars while the main video stays
+   at inset:0 across the complete call surface. */
+.zr-call:not(.zb-previewing)>.zr-pip{top:calc(169px + var(--safe-top));right:calc(10px + var(--safe-right))}
+.zr-sender-call:not(.zb-previewing)>.zr-pip{top:calc(122px + var(--safe-top))}
+.zr-call-reference:not(.zb-previewing)>.zr-pip{top:calc(126px + var(--safe-top));right:calc(12px + var(--safe-right))}
+.zr-call-reference .zr-host-options{top:calc(54px + var(--safe-top))}
+.zr-call.zb-previewing :is(.zr-video,.zr-pip):has(video[data-zimi-remote]){top:calc(68px + var(--safe-top))}
 @media(max-height:460px) and (min-width:600px){
   .zr-call.zb-previewing{--zb-panel-width:min(46vw,400px);--zb-panel-height:calc(100dvh - 96px);--zb-preview-bottom:var(--zb-panel-bottom);--zb-preview-right:calc(var(--zb-panel-width) + 24px);--zb-remote-right:calc(var(--zb-panel-width) + 36px)}
   .zr-call.zb-previewing>[data-zimi-beauty-panel]{left:auto;right:12px;margin-inline:0}

@@ -7,8 +7,8 @@ Android builds containing `BinzoMedia` use native WebRTC and the Facebetter Andr
 - Android native capture requests 1920 x 1440 at 30 fps with full camera framing. Device capability determines the actual capture mode. The tested phone's 4:3 mode retains the full sensor image and avoids the hardware encoder's 1080-to-1072 alignment reduction. Camera flips retain the native camera track and microphone.
 - Native Facebetter processing uses an explicit GLES3 context sharing camera textures on an owned GL thread. The OES camera frame becomes an upright 2D texture, retains its 1920-pixel long edge, and is copied into a bounded retained-output pool. WebRTC source adaptation runs before the processor; already-smaller inputs stay small. Pixels never pass through the WebView or JavaScript bridge.
 - Native output conversion and recycling stay on their owning GL thread. Cleanup keeps the context alive while encoder/preview consumers retain frames, and stale session callbacks cannot update a newer call. Unsupported/failed beauty sends the original camera and retains call audio.
-- Camera rotation is baked into processed pixels once; SDK output is copied without an extra vertical flip. Native video uses `contain` so the whole camera image remains visible without zooming, cropping or stretching. The pinned WebRTC patch reports displayed dimensions after metadata rotation, keeping raw and processed camera shape consistent.
-- Android native encoding starts at a 2.5 Mbps / 30 fps / 1920-pixel long-edge ceiling with resolution preserved. Sustained network/encoder pressure selects lower 480/720/1280-pixel profiles that prioritize frame rate. Encoder limits are ceilings, not promises of throughput.
+- Camera rotation is baked into processed pixels once; SDK output is copied without an extra vertical flip. The active call uses `cover` to fill the display without padding or stretching, including with the filter dock open; this crops source edges when aspect ratios differ. Setup and PiP use `contain` for the whole image. The pinned WebRTC patch reports displayed dimensions after metadata rotation, keeping raw and processed camera shape consistent.
+- Android native encoding starts at a 2.5 Mbps / 30 fps / 1920-pixel long-edge ceiling and prioritizes frame rate at every profile. WebRTC may reduce adapted resolution under device or connection pressure; fresh interval loss, pacing delay and encoder evidence also select lower 480/720/1280-pixel ceilings. Recovery requires sustained healthy samples and headroom, with a bounded probe to avoid remaining stuck at a low sender cap. Capture remains 1920 x 1440; encoder limits are ceilings, not promises of throughput.
 - Android authorization uses `/facebetter/auth/android` and its separate `FACEBETTER_ANDROID_LICENSE_FILE` setting or online Android license. Web-origin credentials are not used as Android fallbacks.
 - Native diagnostics distinguish unscaled camera textures, adapted incoming dimensions/timestamp FPS, output dimensions, total average/maximum frame cost and SDK cost. Camera pauses restart the measurement window instead of appearing as low processing FPS.
 
@@ -55,7 +55,19 @@ The host link reports 100 Mbps full duplex. It was not saturated during observat
 
 No production configuration, deployment, service restart or purchase was made. Physical-phone camera, thermal and two-phone WAN checks remain necessary before claiming the reported lag is fully resolved.
 
-## Release validation
+### Current VPS and call policy verification, 3 November 2026
+
+A fresh read-only sample found 95% idle CPU, approximately 215 GiB RAM available, healthy API/TURN services, and no new interface drops, errors or UDP buffer errors. The interface now reports **1 Gbps full duplex**, with roughly 0.2 Mbps inbound and 1.0 Mbps outbound during the sample. The running TURN secret matches the API, all three transports authenticate, and the TLS certificate expires on 27 January 2027. No server restart or configuration change was needed for these checks.
+
+A bounded synthetic browser call through two forced-relay peers measured 533 ms RTT over UDP, 593 ms over TCP and 556 ms over TLS. UDP lost 3 of roughly 3,014 packets with 3 ms jitter; TCP/TLS reported no lost packets. Browser congestion control decoded 960x720 at around 20 fps (16 fps in the final TLS sample), despite requesting a 1920x1440 camera and a 2.5 Mbps sender cap. This is a relay-path check, separate from the physical native 1440x1920/30 fps camera benchmark, and does not establish two-phone call quality.
+
+The call policy no longer treats stable propagation delay alone as bandwidth congestion. Native quality sampling uses actual receiver feedback counters and packet intervals, expires stale feedback, and separates incoming impairment from outgoing sender adaptation. Sustained loss, send buffering or encoder pressure can reduce sender work; recovery increases one step after fresh healthy evidence and a dwell period. Sustained RTT at or above 1.2 seconds can still display a warning without reducing resolution by itself. Native capture remains 1920x1440 at 30 fps. Both native and browser peers bundle audio/video on one ICE transport.
+
+The active video call fills the display, including while its filter dock is open. Controls use system insets independently of the video background. Standalone setup and picture-in-picture previews retain their whole-image framing. Foreground incoming ringing uses verified server state for both account roles and hands audio to the existing Android call notification when present.
+
+The relay's IP geolocation remains Kansas City, US. The user confirmed no nearby India/Singapore endpoint is available. The current measurements do not show a CPU, memory or bandwidth bottleneck; geographic propagation delay remains on relayed calls. Credentials and real account calls are excluded from the diagnostics.
+
+## Historical release validation
 
 The release evidence below predates the native Android migration. Native build/controller checks and physical-device camera/two-phone call checks must be assessed separately; historical browser FPS results are not proof of native throughput.
 

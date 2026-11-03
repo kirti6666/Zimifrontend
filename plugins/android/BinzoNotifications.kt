@@ -42,6 +42,10 @@ internal object BinzoNotifications {
   private fun settings(context: Context) = context.getSharedPreferences("binzo-notifications-v1", Context.MODE_PRIVATE)
   private fun endedCalls(context: Context) = context.getSharedPreferences("binzo-ended-calls-v1", Context.MODE_PRIVATE)
   fun owner(context: Context): String? = settings(context).getString("owner", null)
+  fun callAlertsEnabled(context: Context): Boolean = settings(context).let {
+    owner(context) != null && it.getBoolean("enabled", false) && it.getBoolean("calls", false)
+  }
+  fun callEnded(context: Context, id: String): Boolean = endedCalls(context).getLong("${owner(context)}:$id", 0) > System.currentTimeMillis()
   fun data(notification: ExpoNotification): Map<String, String>? = (notification.notificationRequest.trigger as? FirebaseNotificationTrigger)?.remoteMessage?.data
   fun validCallAction(context: Context, callId: String?, recipientId: String?, expiresAt: String?, action: String?): Boolean {
     val prefs = settings(context)
@@ -63,7 +67,7 @@ internal object BinzoNotifications {
     val edit = prefs.edit().clear().putString("owner", owner).putBoolean("enabled", enabled)
     BinzoNotificationPolicy.categories.forEach { key -> edit.putBoolean(key, categories.hasKey(key) && !categories.isNull(key) && categories.getBoolean(key)) }
     check(edit.commit()) { "Could not save notification settings" }
-    if (oldOwner != owner) { (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancelAll();BinzoIncomingCalls.dismiss(context, null) }
+    if (oldOwner != owner) { BinzoCallRinging.reset(context);(context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancelAll();BinzoIncomingCalls.dismiss(context, null) }
     else if (!enabled || !categories.hasKey("calls") || !categories.getBoolean("calls")) dismiss(context, null)
   }
   fun channel(context: Context) {
@@ -82,6 +86,7 @@ internal object BinzoNotifications {
     if (Build.VERSION.SDK_INT < 26) (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + remaining, timeoutIntent(context, id))
   }
   @Synchronized fun dismiss(context: Context, id: String?) {
+    BinzoCallRinging.stop(context, id)
     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     val tombstones = endedCalls(context)
     val edit = tombstones.edit()
@@ -145,6 +150,9 @@ class BinzoNotificationsService : NotificationsService() {
           // with logout/category changes and terminal call controls.
           if (BinzoNotifications.remote(notification) && BinzoNotifications.envelope(context, notification)?.let { !it.ended } != true) return@launch
           // Permission can be revoked while a remote image is loading.
+          val ringingCall = result.extras.getString(BinzoNotifications.CALL_ID)
+          if (ringingCall != null && BinzoCallRinging.suppressed(ringingCall)) return@launch
+          ringingCall?.let { BinzoCallRinging.notificationWillRing(context, it) }
           runCatching { NotificationManagerCompat.from(context).notify(notification.notificationRequest.identifier, getNotifyId(notification.notificationRequest), result) }
         }
       }
@@ -158,10 +166,14 @@ class BinzoNotificationsService : NotificationsService() {
 }
 
 class BinzoNotificationsModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
-  init { BinzoIncomingCalls.attach(context) }
+  init { BinzoIncomingCalls.attach(context);BinzoCallRinging.attach(context) }
   override fun getName() = "BinzoNotifications"
   override fun getConstants(): Map<String, Any?> = mapOf("protocol" to BinzoNotificationPolicy.PROTOCOL, "initialCallAction" to BinzoIncomingCalls.pending(reactApplicationContext))
-  override fun invalidate() { BinzoIncomingCalls.detach(reactApplicationContext);super.invalidate() }
+  override fun invalidate() { BinzoCallRinging.detach(reactApplicationContext);BinzoIncomingCalls.detach(reactApplicationContext);super.invalidate() }
+  @ReactMethod fun startIncomingRinging(callId: String, recipientId: String, remainingMs: Double) {
+    if (remainingMs.isFinite() && BinzoNotificationPolicy.validId(callId) && BinzoNotificationPolicy.validId(recipientId)) BinzoCallRinging.start(reactApplicationContext, callId, recipientId, remainingMs.toLong())
+  }
+  @ReactMethod fun stopIncomingRinging(callId: String?) { BinzoCallRinging.stop(reactApplicationContext, callId) }
   @ReactMethod fun addListener(eventName: String) {}
   @ReactMethod fun removeListeners(count: Double) {}
   @ReactMethod fun getPendingCallAction(promise: Promise) {

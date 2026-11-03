@@ -7,7 +7,7 @@ const callId='507f1f77bcf86cd799439011',recipientId='507f1f77bcf86cd799439012';
 const hint=(action='open')=>({actionId:'native-action-1',action,callId,recipientId,expiresAt:new Date(Date.now()+60000).toISOString(),callerName:'Caller',callKind:'video'});
 const incoming=()=>({callId,recipientId,expiresAt:new Date(Date.now()+60000).toISOString(),from:{id:'507f1f77bcf86cd799439013',name:'Verified caller'},voice:false,fromHost:false,rate:0,entryFee:0,feeHoldSeconds:0});
 function harness(initial=hint(),status='checking'){
-  const values=[],effects=[],timers=new Map(),reads=[],declines=[],dismissed=[];
+  const values=[],effects=[],timers=new Map(),reads=[],declines=[],dismissed=[],ringing=[];
   let cursor=0,dirty=false,latest=initial,listener,cache,version=1,busy=0,output,sequence=0;
   const update={status,installed:{versionCode:15},checking:status==='checking'};
   const react={useState(initial){const i=cursor++;if(!(i in values))values[i]=typeof initial==='function'?initial():initial;return[values[i],next=>{const value=typeof next==='function'?next(values[i]):next;if(value!==values[i]){values[i]=value;dirty=true}}]},useRef(initial){const i=cursor++;return values[i]??(values[i]={current:initial})},useCallback(fn){cursor++;return fn},useEffect(fn,deps){const i=cursor++,old=values[i];if(!old||deps.some((value,index)=>value!==old.deps[index])){values[i]={deps,cleanup:old?.cleanup};effects.push(()=>{old?.cleanup?.();values[i].cleanup=fn()})}}};
@@ -15,17 +15,29 @@ function harness(initial=hint(),status='checking'){
   const actions={getIncomingCallAction:()=>latest,startIncomingCallActions:()=>()=>{},onIncomingCallAction:fn=>{listener=fn;fn(latest);return()=>{listener=null}},clearIncomingCallAction:id=>{if(latest?.actionId===id){latest=null;cache=null;listener?.(null)}},requestIncomingCallAction:(id,action)=>{if(latest?.actionId===id){latest={...latest,action};listener?.(latest)}},retryIncomingCallAction:id=>{if(latest?.actionId===id)listener?.({...latest})},getVerifiedIncomingCall:(id,session)=>cache?.id===id&&cache.session===session?cache.value:null,setVerifiedIncomingCall:(id,value,session)=>{cache={id,value,session}}};
   const module={exports:{}};
   const mocks={'react':react,'react-native':{StyleSheet:{create:x=>x},BackHandler:{addEventListener:()=>({remove(){}})}},'react/jsx-runtime':{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},'react-native-safe-area-context':{},'expo-status-bar':{},'expo-splash-screen':{hideAsync:async()=>{}},'./api/endpoints':{api:{notificationCall:id=>{const pending={id,...deferred()};reads.push(pending);return pending.promise},declineCall:async id=>{declines.push(id)}}},'./api/client':{ApiError},'./session':{getSessionVersion:()=>version,getToken:async()=> 'account-token'},'./app-update-activity':{beginUpdateActivity:()=>{busy++;let ended=false;return()=>{if(!ended){ended=true;busy--}}}},'./native-push-notifications':{dismissIncomingCallNotification:async id=>dismissed.push(id)},'./incoming-call-actions':actions};
+  mocks['./call-ringing']={startVerifiedIncomingRinging:value=>ringing.push(['start',value.callId]),releaseVerifiedIncomingRinging:()=>ringing.push(['release']),stopIncomingRinging:id=>ringing.push(['stop',id])};
   vm.runInNewContext(`(function(require,module,exports){${code}\n})`,{setTimeout:(fn,delay)=>{timers.set(++sequence,{fn,delay});return sequence},clearTimeout:id=>timers.delete(id),Date,console})(id=>{if(!(id in mocks))throw new Error(id);return mocks[id]},module,module.exports);
   function render(){cursor=0;dirty=false;output=module.exports.useIncomingCall(update);while(effects.length)effects.shift()();return output}
   async function flush(){for(let i=0;i<8;i++){await new Promise(resolve=>setImmediate(resolve));if(dirty)render()}return output}
   render();
-  return{reads,declines,dismissed,timers,ApiError,actions,flush,get output(){return output},get latest(){return latest},get busy(){return busy},setVersion:next=>{version=next},close(){for(const value of values)value?.cleanup?.();timers.clear()}};
+  return{reads,declines,dismissed,ringing,timers,ApiError,actions,flush,get output(){return output},get latest(){return latest},get busy(){return busy},setVersion:next=>{version=next},close(){for(const value of values)value?.cleanup?.();timers.clear()}};
 }
 
 test('incoming surface exists during update check and verification never accepts or captures',async()=>{
   const h=harness();assert.equal(h.output.action.callId,callId);assert.equal(h.output.verified,null);await h.flush();assert.equal(h.reads.length,1);
+  assert.equal(h.ringing.length,0,'An unverified notification hint cannot start sound');
   h.reads[0].resolve(incoming());await h.flush();assert.equal(h.output.verified.from.name,'Verified caller');assert.equal(h.busy,1);assert.deepEqual(h.declines,[]);
   h.output.choose('answer');await h.flush();assert.equal(h.output.action.action,'answer');assert.equal(h.reads.length,1,'Verified server snapshot is reused while startup continues');h.close();assert.equal(h.busy,0);
+  assert.ok(h.ringing.some(row=>row[0]==='start'),'Verified foreground overlay rings even before the WebView mounts');
+  assert.ok(h.ringing.some(row=>row[0]==='stop'),'Answer silences the ring immediately');
+});
+
+test('a late Open verification cannot restart ringing after an immediate Answer choice',async()=>{
+  const h=harness();await h.flush();
+  h.output.choose('answer');
+  h.reads[0].resolve(incoming());await h.flush();
+  assert.equal(h.ringing.filter(row=>row[0]==='start').length,0,'The stale Open response is no longer applicable');
+  assert.equal(h.latest.action,'answer');h.close();
 });
 
 test('decline is terminal cleanup even while a mandatory update blocks the app',async()=>{

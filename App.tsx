@@ -29,6 +29,7 @@ type Theme = keyof typeof CANVAS;
 /* One key for every private screen, so turning protection off undoes exactly this. */
 const PRIVATE_SCREEN = "zimi-private-screen";
 type NativePalette = Partial<Record<"ink" | "primary" | "contrast" | "surface" | "raised", string>>;
+type NativeInsets = { top: number; right: number; bottom: number; left: number };
 
 /* Mirrors the page's data-theme onto the native chrome so the safe-area
    padding and the status bar track the canvas the page is painting. */
@@ -89,6 +90,12 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
   const exitConfirmation = useRef<object | null>(null);
   const [nativeState, setNativeState] = useState<NativeMediaState | null>(null);
   const [nativeLayout, setNativeLayout] = useState<NativeMediaLayout | null>(null);
+  const nativeInsets = useRef<NativeInsets>({ top: 0, right: 0, bottom: 0, left: 0 });
+  const fullScreen = nativeLayout?.fullScreen === true;
+  const reportInsets = useCallback((insets: NativeInsets) => {
+    nativeInsets.current = insets;
+    if (webReady.current) postToWeb(webRef, { type: "app.insets", data: insets });
+  }, []);
   const bridgeRef = useRef<ReturnType<typeof createBridge> | null>(null);
   const nativeMedia = useMemo(() => NATIVE_MEDIA_ENABLED ? createNativeMedia(message => {
     if (message.type === "rtc.signal" || message.type === "call.end") bridgeRef.current?.handle(message as WebMessage);
@@ -165,9 +172,13 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
     if (msg.type === "native.media") {
       if (nativeMedia) void nativeMedia.handle(msg.data);
     } else if (msg.type === "native.media.layout") {
-      if (nativeMedia) setNativeLayout(msg.data);
+      if (nativeMedia) {
+        setNativeLayout(msg.data);
+        postToWeb(webRef, { type: "app.insets", data: nativeInsets.current });
+      }
     } else if (msg.type === "ready") {
       webReady.current = true;
+      postToWeb(webRef, { type: "app.insets", data: nativeInsets.current });
       bridge.handle(msg);
     } else if (msg.type === "app.launched") {
       setLaunched(true);
@@ -220,9 +231,9 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
       {/* Edge-to-edge Android (including Expo Go) can overlay the keyboard without
           resizing the WebView or its visual viewport. Resize its native container
           by the actual keyboard overlap, so every web composer stays visible. */}
-      <KeyboardShell style={[styles.safe, { backgroundColor: canvas }]} accessibilityElementsHidden={launchVisible} importantForAccessibility={launchVisible ? "no-hide-descendants" : "auto"}>
-        <SafeAreaView edges={["top", "right", "bottom", "left"]} style={[styles.safe, { backgroundColor: canvas }]}>
-          <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <KeyboardShell fullScreen={fullScreen} style={[styles.safe, { backgroundColor: canvas }]} accessibilityElementsHidden={launchVisible} importantForAccessibility={launchVisible ? "no-hide-descendants" : "auto"}>
+        <SafeAreaView edges={fullScreen ? [] : ["top", "right", "bottom", "left"]} style={[styles.safe, { backgroundColor: canvas }]}>
+          <StatusBar style={fullScreen || theme === "dark" ? "light" : "dark"} />
           {failure || !page ? (
             <View style={styles.center}>
               <Text style={[styles.failTitle, { color: ink }]}>BinzoLive could not start</Text>
@@ -274,6 +285,7 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
         </SafeAreaView>
       </KeyboardShell>
       {launchVisible && <LaunchScreen ready={launched || !!failure || !page} onHidden={hideLaunch} />}
+      <SafeAreaReporter onChange={reportInsets} />
     </SafeAreaProvider>
   );
 }
@@ -282,9 +294,15 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
    navigation bar or home indicator; the SafeAreaView inside still pads for that inset too.
    Taking the inset out of the keyboard padding seats every composer right on the keyboard
    instead of above an empty strip. */
-function KeyboardShell(props: ComponentProps<typeof KeyboardAvoidingView>) {
+function SafeAreaReporter({ onChange }: { onChange: (insets: NativeInsets) => void }) {
+  const insets = useSafeAreaInsets();
+  useEffect(() => onChange(insets), [onChange, insets.top, insets.right, insets.bottom, insets.left]);
+  return null;
+}
+
+function KeyboardShell({ fullScreen = false, ...props }: ComponentProps<typeof KeyboardAvoidingView> & { fullScreen?: boolean }) {
   const { bottom } = useSafeAreaInsets();
-  return <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={-bottom} {...props} />;
+  return <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={fullScreen ? 0 : -bottom} {...props} />;
 }
 
 const styles = StyleSheet.create({

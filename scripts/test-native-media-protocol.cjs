@@ -28,5 +28,8 @@ test('native beauty permits only licensed setter names and validated argument ra
 test('native video surfaces reject malformed, repeated and unbounded geometry', () => {
   assert.equal(validLayout({ width: 390, height: 844, slots: [slot(), slot('remote')] }), true);
   assert.equal(validLayout({ width: 390, height: 844, slots: [] }), true);
+  assert.equal(validLayout({ width: 390, height: 844, slots: [], fullScreen: true }), true);
+  assert.equal(validLayout({ width: 390, height: 844, slots: [], fullScreen: false }), true);
+  assert.equal(validLayout({ width: 390, height: 844, slots: [], fullScreen: 'true' }), false);
   for (const item of [{ width: 0, height: 844, slots: [] }, { width: 390, height: Infinity, slots: [] }, { width: 390, height: 844, slots: [slot(), slot()] }, { width: 390, height: 844, slots: [{ ...slot(), x: NaN }] }, { width: 390, height: 844, slots: [{ ...slot(), width: -1 }] }, { width: 390, height: 844, slots: [{ ...slot(), kind: 'camera' }] }, { width: 390, height: 844, slots: [{ ...slot(), fit: 'fill' }] }, { width: 390, height: 844, slots: [{ ...slot(), radius: 100000 }] }]) assert.equal(validLayout(item), false);
 });

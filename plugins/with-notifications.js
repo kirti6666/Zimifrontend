@@ -35,7 +35,7 @@ function configureManifest(manifest) {
 function writeNativeFiles(projectRoot, androidRoot, packageName) {
   if (!/^[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)+$/.test(packageName)) throw new Error('Native notifications require a valid Android package.');
   const target = path.join(androidRoot, 'app/src/main/java', ...packageName.split('.'));fs.mkdirSync(target, { recursive: true });
-  for (const name of ['BinzoNotifications.kt','BinzoNotificationPolicy.kt','BinzoIncomingCalls.kt']) fs.writeFileSync(path.join(target, name), fs.readFileSync(path.join(projectRoot, 'plugins/android', name), 'utf8').replaceAll('__PACKAGE__', packageName));
+  for (const name of ['BinzoNotifications.kt','BinzoNotificationPolicy.kt','BinzoIncomingCalls.kt','BinzoCallRinging.kt']) fs.writeFileSync(path.join(target, name), fs.readFileSync(path.join(projectRoot, 'plugins/android', name), 'utf8').replaceAll('__PACKAGE__', packageName));
 }
 module.exports = config => {
   config = withAndroidManifest(config, mod => { configureManifest(mod.modResults.manifest);return mod; });

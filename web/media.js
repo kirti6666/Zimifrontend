@@ -543,14 +543,24 @@
           const before = peer.stats.get(stat.id);
           if (!before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp) freshReport = true;
           nextStats.set(stat.id, { timestamp: stat.timestamp });
-          if (stat.currentRoundTripTime > .6) poor = outgoingPoor = true;
-          if (stat.currentRoundTripTime > 1.2) severe = true;
+          // A distant relay raises propagation delay without proving congestion.
+          // Warn about sustained extreme delay, but do not blur a healthy sender.
+          if (stat.currentRoundTripTime > 1.2) poor = true;
           if (stat.availableOutgoingBitrate > 0) availableBitrate = stat.availableOutgoingBitrate;
         }
         if (['inbound-rtp', 'remote-inbound-rtp'].includes(stat.type)) {
-          const before = peer.stats.get(stat.id), fresh = !before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp;
+          const before = peer.stats.get(stat.id);
+          const updated = !before || stat.timestamp == null || before.timestamp == null || stat.timestamp > before.timestamp;
+          // getStats() collection timestamps can advance without a new RTCP
+          // receiver report. Reusing its last fractionLost forever held calls
+          // at low quality even after the network recovered.
+          const feedbackChanged = !before || ['reportsReceived', 'roundTripTimeMeasurements', 'remoteTimestamp'].some(key =>
+            Number.isFinite(stat[key]) && Number.isFinite(before[key]) && stat[key] > before[key]) ||
+            ['packetsReceived', 'packetsLost', 'fractionLost', 'jitter', 'roundTripTime'].some(key =>
+              Number.isFinite(stat[key]) && stat[key] !== before[key === 'packetsReceived' ? 'received' : key === 'packetsLost' ? 'lost' : key]);
+          const fresh = updated && (stat.type !== 'remote-inbound-rtp' || feedbackChanged);
           if (fresh) freshReport = true;
-          let impaired = fresh && (stat.jitter > .08 || stat.roundTripTime > .6);
+          let impaired = fresh && stat.jitter > .08;
           // Remote receiver reports may omit packetsReceived. Their fractionLost
           // describes the last RTCP interval, unlike cumulative packetsLost.
           let loss = fresh && stat.type === 'remote-inbound-rtp' ? stat.fractionLost || 0 : 0;
@@ -570,7 +580,7 @@
             // Fresh healthy RTCP clears it; missing feedback expires promptly.
             if (fresh) {
               remotePoor = impaired;
-              remoteSevere = impaired && (loss > .2 || stat.roundTripTime > 1.2);
+              remoteSevere = loss > .2;
               impairedUntil = impaired ? sampledAt + REMOTE_IMPAIRMENT_MS : 0;
             } else if (before?.impairedUntil > sampledAt) {
               remotePoor = !!before.remotePoor;remoteSevere = !!before.remoteSevere;impairedUntil = before.impairedUntil;
@@ -578,7 +588,14 @@
             if (remotePoor) poor = outgoingPoor = true;
             if (remoteSevere) severe = true;
           }
-          nextStats.set(stat.id, { timestamp: stat.timestamp, received: stat.packetsReceived || 0, lost: stat.packetsLost || 0, freezes: stat.freezeCount || 0, remotePoor, remoteSevere, impairedUntil });
+          if (fresh && stat.roundTripTime > 1.2) poor = true;
+          nextStats.set(stat.id, {
+            timestamp: stat.timestamp, received: stat.packetsReceived || 0, lost: stat.packetsLost || 0,
+            freezes: stat.freezeCount || 0, fractionLost: stat.fractionLost, jitter: stat.jitter,
+            roundTripTime: stat.roundTripTime, reportsReceived: stat.reportsReceived,
+            roundTripTimeMeasurements: stat.roundTripTimeMeasurements, remoteTimestamp: stat.remoteTimestamp,
+            remotePoor, remoteSevere, impairedUntil
+          });
         }
         if (stat.type === 'outbound-rtp' && (stat.kind === 'video' || stat.mediaType === 'video')) {
           const before = peer.stats.get(stat.id), videoOn = cameraEnabled() && stat.active !== false;
@@ -670,7 +687,7 @@
   }
   function newPeer(session, id, offerer) {
     if (peers.has(id)) return peers.get(id);
-    const pc = new RTCPeerConnection(session.config);
+    const pc = new RTCPeerConnection({ ...session.config, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' });
     const peer = { id, pc, adaptiveVideo:session.kind === 'call', videoLevel:VIDEO_START_LEVEL, pending: [], candidates: [], queue: Promise.resolve(), offerer, stats: new Map(), goodSamples: 0, poorSamples: 0, targetSamples: 0 };
     peers.set(id, peer);
     const published = outgoing();

@@ -194,7 +194,7 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='remote').packetsLost=200});
     await sample(2);
     assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','Missing remote packet totals cannot turn cumulative loss into a false 100 percent loss rate');
-    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').currentRoundTripTime=.9});
+    await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').currentRoundTripTime=1.5});
     await sample();
     assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','One network spike does not flash the poor-connection warning');
     assert.deepEqual(await encoding(),high,'One spike does not blur the outgoing video');
@@ -204,7 +204,9 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     assert.deepEqual(await encoding(),high,'Bad incoming media does not reduce our outgoing video');
     await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='inbound').jitter=0;statsFixture.find(s=>s.id==='path').currentRoundTripTime=.9});
     await sample(2);
-    assert.deepEqual(await encoding(),balanced,'Sustained outgoing congestion first preserves 24 fps at a moderate resolution');
+    assert.deepEqual(await encoding(),high,'A distant relay with stable propagation delay alone does not blur healthy outgoing video');
+    await sample();
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','Stable relay delay without loss, jitter or buffering does not keep the network warning active');
     await pages.host.evaluate(()=>{statsFixture.find(s=>s.id==='path').currentRoundTripTime=.03;statsFixture.find(s=>s.id==='remote').fractionLost=.3});
     await sample(2);
     assert.deepEqual(await encoding(),low,'Severe receiver-reported loss reduces video even when packetsReceived is unavailable');
@@ -247,10 +249,10 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     await pages.host.evaluate(()=>{const s=statsFixture.find(s=>s.id==='outbound');s.timestamp+=2000;s.framesEncoded=1;s.totalEncodeTime=0;s.packetsSent=1;s.totalPacketSendDelay=0});
     await sample(6);
     assert.deepEqual(await encoding(),high,'Counter resets and duplicate timestamps cannot manufacture encode/pacer overload');
-    await pages.host.evaluate(()=>{window.realPerformanceNow=performance.now.bind(performance);window.mediaClock=0;performance.now=()=>mediaClock;statsFixture.forEach(stat=>{stat.timestamp=20000});statsFixture.find(stat=>stat.id==='remote').fractionLost=.3});
+    await pages.host.evaluate(()=>{window.realPerformanceNow=performance.now.bind(performance);window.mediaClock=0;performance.now=()=>mediaClock;statsFixture.forEach(stat=>{stat.timestamp=20000});Object.assign(statsFixture.find(stat=>stat.id==='remote'),{fractionLost:.3,roundTripTimeMeasurements:1})});
     await sample();await sample(3);
     assert.deepEqual(await encoding(),high,'Repeated wholly stale reports do not manufacture sustained congestion');
-    await pages.host.evaluate(()=>{mediaClock+=2000;statsFixture.find(stat=>stat.id==='remote').timestamp+=2000});await sample();
+    await pages.host.evaluate(()=>{mediaClock+=2000;const remote=statsFixture.find(stat=>stat.id==='remote');remote.timestamp+=2000;remote.roundTripTimeMeasurements++});await sample();
     assert.deepEqual(await encoding(),low,'Two fresh severe RTCP intervals still reduce quality when unchanged reports occur between them');
     const freshLocal=async count=>{for(let index=0;index<count;index++){await pages.host.evaluate(()=>{mediaClock+=2000;const path=statsFixture.find(stat=>stat.id==='path'),outbound=statsFixture.find(stat=>stat.id==='outbound');path.timestamp+=2000;outbound.timestamp+=2000;outbound.framesEncoded+=40;outbound.totalEncodeTime+=.04;outbound.packetsSent+=100;outbound.totalPacketSendDelay+=.001});await sample()}};
     await freshLocal(3);assert.deepEqual(await encoding(),low,'Fresh healthy local stats cannot immediately negate recent receiver-observed severe loss');
@@ -262,7 +264,10 @@ const receive = (page, type, data) => page.evaluate(({ type, data }) => { if(typ
     await pages.host.evaluate(()=>{mediaClock+=9000});await freshLocal(3);
     assert.deepEqual(await encoding(),balanced,'Loss retention expires after eight seconds so genuinely recovered local media is not held indefinitely');
     await freshLocal(3);assert.deepEqual(await encoding(),high);
-    await pages.host.evaluate(()=>{const remote=statsFixture.find(stat=>stat.id==='remote');remote.timestamp+=2000});await sample();await freshLocal(1);assert.deepEqual(await encoding(),low);
+    await pages.host.evaluate(()=>{const remote=statsFixture.find(stat=>stat.id==='remote');remote.timestamp+=2000});await sample();await freshLocal(2);
+    assert.deepEqual(await encoding(),high,'A new collection timestamp without new receiver feedback cannot revive expired loss or blur recovered video');
+    assert.equal(await pages.host.evaluate(()=>ZimiMedia.getState().connectionQuality),'good','Stale RTCP loss cannot keep the poor-connection label active');
+    await pages.host.evaluate(()=>{const remote=statsFixture.find(stat=>stat.id==='remote');remote.timestamp+=2000;remote.roundTripTimeMeasurements++});await sample();await freshLocal(1);assert.deepEqual(await encoding(),low);
     await pages.host.evaluate(()=>{window.removedRemote=statsFixture.splice(statsFixture.findIndex(stat=>stat.id==='remote'),1)[0]});await freshLocal(3);
     assert.deepEqual(await encoding(),balanced,'A disappeared receiver SSRC immediately discards its held impairment instead of leaking into the next stream');
     await freshLocal(3);assert.deepEqual(await encoding(),high);

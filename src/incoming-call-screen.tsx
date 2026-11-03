@@ -8,6 +8,7 @@ import { getSessionVersion, getToken } from "./session";
 import { ApiError } from "./api/client";
 import { beginUpdateActivity } from "./app-update-activity";
 import { dismissIncomingCallNotification } from "./native-push-notifications";
+import { releaseVerifiedIncomingRinging, startVerifiedIncomingRinging, stopIncomingRinging } from "./call-ringing";
 import type { UpdateState } from "./app-update-controller";
 import { clearIncomingCallAction, getIncomingCallAction, getVerifiedIncomingCall, onIncomingCallAction, requestIncomingCallAction, retryIncomingCallAction, setVerifiedIncomingCall, startIncomingCallActions, type NativeCallAction } from "./incoming-call-actions";
 
@@ -23,6 +24,11 @@ export function useIncomingCall(state: UpdateState) {
   const [retry, setRetry] = useState(0);
   const lease = useRef<{ callId: string; finish: () => void } | null>(null);
   useEffect(() => {
+    if (action?.action !== "open" || !verified || verified.callId !== action.callId) return;
+    startVerifiedIncomingRinging(verified);
+    return releaseVerifiedIncomingRinging;
+  }, [action?.actionId, action?.action, verified?.callId, verified?.expiresAt]);
+  useEffect(() => {
     const stop = startIncomingCallActions();
     const unsubscribe = onIncomingCallAction(setAction);
     return () => { unsubscribe(); stop(); lease.current?.finish(); lease.current = null; };
@@ -33,7 +39,8 @@ export function useIncomingCall(state: UpdateState) {
     if (!action || !state.installed) return;
     const selected = action, session = getSessionVersion();
     let active = true, timer: ReturnType<typeof setTimeout> | undefined;
-    const applicable = () => active && getIncomingCallAction()?.actionId === selected.actionId && getSessionVersion() === session;
+    const applicable = () => active && getIncomingCallAction()?.actionId === selected.actionId &&
+      getIncomingCallAction()?.action === selected.action && Date.parse(selected.expiresAt) > Date.now() && getSessionVersion() === session;
     const finish = () => {
       if (!applicable()) return;
       void dismissIncomingCallNotification(selected.callId);
@@ -50,6 +57,7 @@ export function useIncomingCall(state: UpdateState) {
         if (!applicable()) return;
         if (!incoming || incoming.recipientId !== selected.recipientId) { finish(); return; }
         setVerified(incoming); setVerifiedIncomingCall(selected.actionId, incoming, session);
+        if (selected.action === "open") startVerifiedIncomingRinging(incoming);
         if (!lease.current) lease.current = { callId: selected.callId, finish: beginUpdateActivity("call", selected.callId) };
         // Recheck while the native surface covers startup, so a cancelled call
         // disappears even if its terminal push or socket event was missed.
@@ -77,7 +85,7 @@ export function useIncomingCall(state: UpdateState) {
   }, []);
   const onResult = useCallback((result: NativeResult) => onEvent({ type: "call.nativeResult", data: result }), [onEvent]);
   return { action, verified, error, onEvent, onResult,
-    choose: (choice: "answer" | "decline") => { if (action) requestIncomingCallAction(action.actionId, choice); },
+    choose: (choice: "answer" | "decline") => { if (action) { stopIncomingRinging(action.callId);requestIncomingCallAction(action.actionId, choice); } },
     retry: () => { if(action)retryIncomingCallAction(action.actionId);setRetry(value => value + 1); },
     close: () => { if (action) clearIncomingCallAction(action.actionId); },
   };

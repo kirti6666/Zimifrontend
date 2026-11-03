@@ -46,7 +46,8 @@ async function checkLayout(page, label, voice = false) {
       fullStage: Math.abs(stage.left-box.left)<1 && Math.abs(stage.top-box.top)<1 && Math.abs(stage.width-box.width)<1 && Math.abs(stage.height-box.height)<1 && Math.abs(box.width-innerWidth)<1,
       opaqueChrome: [...room.querySelectorAll('.zr-top,.zr-bottom,.zr-call-stat,.hs-target-card')].filter(el=>getComputedStyle(el).backgroundColor!=='rgba(0, 0, 0, 0)').map(el=>el.className),
       incorrectVideoFit: [...room.querySelectorAll('video')].filter(el=>{
-        return getComputedStyle(el).objectFit!=='contain'||getComputedStyle(el).objectPosition!=='50% 50%';
+        const expected=el.parentElement.matches('.zr-call:not(.zb-previewing)>.zr-video')?'cover':'contain';
+        return getComputedStyle(el).objectFit!==expected||getComputedStyle(el).objectPosition!=='50% 50%';
       }).map(el=>el.outerHTML),
       blurred: [room,...room.querySelectorAll('*')].filter(el=>{const style=getComputedStyle(el);return style.backdropFilter!=='none'||/blur\(/.test(style.filter)}).map(el=>el.className),
       overlayColor: getComputedStyle(room.querySelector('.zr-top')).color,
@@ -64,7 +65,7 @@ async function checkLayout(page, label, voice = false) {
   assert.equal(result.primaryTabs, 0, `${label}: main tabs are absent in calls`);
   assert.equal(result.fullStage, true, `${label}: the camera stage reaches every screen edge behind the controls`);
   assert.deepEqual(result.opaqueChrome, [], `${label}: header, footer and stats remain transparent`);
-  assert.deepEqual(result.incorrectVideoFit, [], `${label}: both participants preserve the complete camera framing`);
+  assert.deepEqual(result.incorrectVideoFit, [], `${label}: main video fills the display while PiP preserves the camera frame`);
   assert.deepEqual(result.blurred, [], `${label}: camera, overlays and dialogs never blur the screen`);
   assert.equal(result.overlayColor, voice ? result.expectedColor : 'rgb(255, 255, 255)', `${label}: video controls remain readable in every theme`);
   if (voice) assert.equal(result.pip, null, `${label}: voice calls have no camera preview`);
@@ -128,11 +129,11 @@ async function checkVideoFraming(page, label) {
             const r=video.getBoundingClientRect(),style=getComputedStyle(video);
             const scale=(style.objectFit==='cover'?Math.max:Math.min)(r.width/video.videoWidth,r.height/video.videoHeight);
             const width=video.videoWidth*scale,height=video.videoHeight*scale;
-            return {remote:video.hasAttribute('data-zimi-remote'),inside:width<=r.width+1&&height<=r.height+1,ratio:width/height,centered:style.objectPosition==='50% 50%'};
+            return {remote:video.hasAttribute('data-zimi-remote'),cover:style.objectFit==='cover',inside:width<=r.width+1&&height<=r.height+1,fills:width>=r.width-1&&height>=r.height-1,ratio:width/height,centered:style.objectPosition==='50% 50%'};
           }));
           assert.ok(frames.some(frame=>frame.remote),`${label}: test uses a decoded remote frame`);
           for(const frame of frames) {
-            assert.equal(frame.inside,true,`${label} ${viewport.width}x${viewport.height} / ${width}x${height}: all ${frame.remote?'remote':'local'} frame edges stay inside its stage or PiP`);
+            assert.equal(frame.cover?frame.fills:frame.inside,true,`${label} ${viewport.width}x${viewport.height} / ${width}x${height}: the main video fills every edge and PiP keeps the complete image`);
             assert.ok(Math.abs(frame.ratio-width/height)<.0001,`${label}: frame proportions remain unchanged`);
             assert.equal(frame.centered,true,`${label}: the complete camera frame is centered`);
           }
