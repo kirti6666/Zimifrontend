@@ -214,10 +214,33 @@ function zcQuickGift(id){if(!S.h||!zcCanGift(zcThreadPerson())||zcThreadBlocked(
 const zcEmoji=['😊','😂','😍','🥰','🔥','💖','👏','🙌','🎶','🎧','✨','🙏'];
 function zcThreadComposer(h){
  const text=Chats.drafts[S.h]||'',send=!!text.trim()||!!Chats.editing,recording=window.ZimiChatVoice?.active();
- return `<p id="zc-send-status" class="zc-thread-note" role="status" ${!zcThreadBlocked()?"hidden":""}>${esc(zcThreadBlocked())}</p><div id="zc-context">${zcContextView(h)}</div><div id="zc-attach" class="zc-attach" role="menu" aria-label="Add to your message" hidden onkeydown="if(event.key==='Escape'){zcThreadAttach(false);document.querySelector('.zc-composer-add')?.focus()}"><button role="menuitem" data-chat-send ${zcThreadBlocked()?"disabled":""} onclick="zcPickPhoto()">${ci('image',20)}<span>Photo</span></button><button role="menuitem" onclick="zcThreadAttach(false);zcThreadEmoji(true)"><span aria-hidden="true">&#128522;</span><span>Emoji</span></button></div><div id="zc-emoji" class="zc-emoji" role="group" aria-label="Emoji" hidden>${zcEmoji.map(e=>`<button onclick="zcThreadInsert('${e}')" aria-label="Insert ${e}">${e}</button>`).join('')}</div><div id="zc-recording">${window.ZimiChatVoice?.view()||''}</div><div class="zc-composer" ${recording?'hidden':''}><div class="zc-composer-field"><button class="zc-composer-icon zc-composer-add" aria-label="Add a photo or emoji" aria-haspopup="menu" aria-expanded="false" aria-controls="zc-attach" onclick="zcThreadAttach()">${ci('add',24)}</button><input id="ti" placeholder="Type here..." aria-label="Message ${esc(h.n)}" maxlength="2000" autocomplete="off" value="${esc(text)}" oninput="zcComposerInput()" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();zcThreadSend()}"><input id="zc-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="zcSendPhoto(this)"><button class="zc-composer-send ${send?'':'is-mic'}" data-chat-send ${zcThreadBlocked()?"disabled":""} aria-label="${send?'Send message':'Record voice message'}" onclick="zcComposerAction()">${ci(send?'send':'mic',22)}</button></div>${zcCanGift(h)?`<button type="button" class="zc-gift-button" aria-label="Gift" aria-haspopup="dialog" onclick="zcOpenGifts()" ${zcThreadBlocked()?'disabled':''}>${hi('gift',20)}<span>Gift</span></button>`:''}</div>`
+ return `<p id="zc-send-status" class="zc-thread-note" role="status" ${!zcThreadBlocked()?"hidden":""}>${esc(zcThreadBlocked())}</p><div id="zc-context">${zcContextView(h)}</div><div id="zc-attach" class="zc-attach" role="menu" aria-label="Add to your message" hidden onkeydown="if(event.key==='Escape'){zcThreadAttach(false);document.querySelector('.zc-composer-add')?.focus()}"><button role="menuitem" data-chat-send ${zcThreadBlocked()?"disabled":""} onclick="zcPickPhoto()">${ci('image',20)}<span>Photo</span></button><button role="menuitem" onclick="zcThreadAttach(false);zcThreadEmoji(true)"><span aria-hidden="true">&#128522;</span><span>Emoji</span></button></div><div id="zc-emoji" class="zc-emoji" role="group" aria-label="Emoji" hidden>${zcEmoji.map(e=>`<button onclick="zcThreadInsert('${e}')" aria-label="Insert ${e}">${e}</button>`).join('')}</div><div id="zc-recording">${window.ZimiChatVoice?.view()||''}</div>
+ <div class="zc-composer" ${recording?'hidden':''}>
+  <div class="zc-composer-field">
+   <button type="button" class="zc-composer-icon zc-composer-add" aria-label="Add a photo or emoji" aria-haspopup="menu" aria-expanded="false" aria-controls="zc-attach" onclick="zcThreadAttach()">${ci('add',22)}</button>
+   <textarea id="ti" rows="1" placeholder="Message…" aria-label="Message ${esc(h.n)}" maxlength="2000" autocomplete="off" enterkeyhint="send" oninput="zcComposerInput()" onkeydown="zcComposerKey(event)">
+${esc(text)}</textarea>
+   <input id="zc-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="zcSendPhoto(this)">
+   ${zcCanGift(h)?`<button type="button" class="zc-gift-button" aria-label="Gift" aria-haspopup="dialog" onclick="zcOpenGifts()" ${zcThreadBlocked()?'disabled':''}>${hi('gift',20)}<span>Gift</span></button>`:''}
+  </div>
+  <button type="button" class="zc-composer-send ${send?'':'is-mic'}" data-chat-send ${zcThreadBlocked()?"disabled":""} aria-label="${send?'Send message':'Record voice message'}" onpointerdown="if(document.activeElement?.id==='ti')event.preventDefault()" onclick="zcComposerAction()">${ci(send?'send':'mic',22)}</button>
+ </div>`
 }
 function zcComposerInput(){window.ZimiChatActivity?.sync();const input=document.getElementById('ti');if(input)Chats.drafts[S.h]=input.value;zcUpdateComposer()}
-function zcUpdateComposer(){const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
+function zcComposerKey(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&event.keyCode!==229){event.preventDefault();zcThreadSend()}}
+/* Only remeasure when the draft or viewport changes; incoming messages must not
+   disturb the caret or repeatedly force layout while someone is typing. */
+function zcResizeComposer(){
+ const input=document.getElementById('ti');if(!input||!input.offsetWidth)return;
+ const size={text:input.value,width:input.clientWidth,viewport:innerHeight},last=input.zcSize;
+ if(last&&last.text===size.text&&last.width===size.width&&last.viewport===size.viewport)return;
+ const history=document.getElementById('tf'),atEnd=history&&history.scrollHeight-history.scrollTop-history.clientHeight<80;
+ input.style.height='auto';input.style.height=input.scrollHeight+'px';
+ input.style.overflowY=input.scrollHeight>input.clientHeight?'auto':'hidden';input.zcSize=size;
+ if(atEnd)history.scrollTop=history.scrollHeight;
+}
+function zcUpdateComposer(){zcResizeComposer();const button=document.querySelector('.zc-composer-send');if(!button)return;const send=!!document.getElementById('ti')?.value.trim()||!!Chats.editing,label=send?'Send message':'Record voice message';if(button.getAttribute('aria-label')!==label){button.setAttribute('aria-label',label);button.innerHTML=ci(send?'send':'mic',22)}button.classList.toggle('is-mic',!send);button.disabled=!!zcThreadBlocked()}
+window.addEventListener('resize',()=>{if(S.v==='thread')zcResizeComposer()});
 function zcComposerAction(){if(document.getElementById('ti')?.value.trim()||Chats.editing)zcThreadSend();else window.ZimiChatVoice?.start()}
 function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadGifts(h)}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
 function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send],.zc-gift-button,.zc-gift-strip>button").forEach(button=>{button.disabled=!!reason;button.title=reason});zcUpdateComposer();const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
@@ -247,8 +270,8 @@ function zcThreadGift(to,gift,receipt={}){
  window.ZimiChatGifts?.accept(target,m,receipt);
 }
 function zcThreadMenu(open){const menu=document.querySelector('.zc-thread-menu'),button=document.querySelector('.zc-thread-more>button');if(!menu||!button)return;const show=open??menu.hidden;menu.hidden=!show;button.setAttribute('aria-expanded',String(show));if(show)menu.querySelector('button')?.focus()}
-function zcThreadEmoji(open){const tray=document.getElementById('zc-emoji');if(!tray)return;tray.hidden=!(open??tray.hidden)}
-function zcThreadInsert(emoji){const input=document.getElementById('ti');if(!input)return;const end=input.selectionEnd??input.value.length;input.setRangeText(emoji,input.selectionStart??end,end,'end');Chats.drafts[S.h]=input.value;zcUpdateComposer();input.focus()}
+function zcThreadEmoji(open){const tray=document.getElementById('zc-emoji');if(!tray)return;const show=open??tray.hidden;tray.hidden=!show;if(show)tray.querySelector('button')?.focus({preventScroll:true})}
+function zcThreadInsert(emoji){const input=document.getElementById('ti');if(!input)return;const end=input.selectionEnd??input.value.length,start=input.selectionStart??end;if(input.value.length-(end-start)+emoji.length<=input.maxLength){input.setRangeText(emoji,start,end,'end');zcComposerInput()}input.focus({preventScroll:true})}
 /* Preview-only conversation matching the design reference. */
 function zcDemoThread(h){const name=first(h?.n||'there'),at=minutes=>new Date(Date.now()-minutes*60000).toISOString();return [
   {id:'demo-m1',mine:true,status:'read',at:at(4),text:`Hey ${name}! Loved your acoustic guitar intro earlier today 🔥`},
@@ -381,8 +404,8 @@ document.addEventListener('click',event=>{
 },true);
 document.addEventListener('contextmenu',event=>{const stack=event.target.closest?.('.zc-msg-stack[data-message-id]');if(S.v==='thread'&&stack){event.preventDefault();if(zcGesture?.stack===stack)zcGesture.held=true;zcMessageMenu(stack.dataset.messageId)}});
 document.addEventListener('aurora:navigate',()=>{Chats.playing='';zcEndGesture();if(S.v!=='thread'){zcClearContext();Chats.menu='';Chats.contextPeer=null}});
-document.addEventListener('click',event=>{if(S.v==='thread'&&!event.target.closest?.('.zc-thread-more'))zcThreadMenu(false)});
-document.addEventListener('keydown',event=>{if(event.key!=='Escape'||S.v!=='thread')return;const menu=document.querySelector('.zc-thread-menu');if(menu&&!menu.hidden){zcThreadMenu(false);document.querySelector('.zc-thread-more>button')?.focus()}else zcThreadEmoji(false)});
+document.addEventListener('click',event=>{if(S.v!=='thread')return;if(!event.target.closest?.('.zc-thread-more'))zcThreadMenu(false);if(!event.target.closest?.('.zc-composer-add,#zc-attach'))zcThreadAttach(false);if(!event.target.closest?.('.zc-composer-add,#zc-attach,#zc-emoji'))zcThreadEmoji(false)});
+document.addEventListener('keydown',event=>{if(event.key!=='Escape'||S.v!=='thread')return;const menu=document.querySelector('.zc-thread-menu');if(menu&&!menu.hidden){zcThreadMenu(false);document.querySelector('.zc-thread-more>button')?.focus()}else{const emojiFocused=document.getElementById('zc-emoji')?.contains(document.activeElement);zcThreadEmoji(false);if(emojiFocused)document.getElementById('ti')?.focus({preventScroll:true})}});
 if(DEMO){
   const people=[{id:'ishaan',name:'Ishita Rao',photo:2,verified:true,online:true},{id:'aanya',name:'Ananya Iyer',photo:0,verified:true,online:true},{id:'meher',name:'Meher Kaur',photo:1,verified:true,online:false},{id:'demo-rewards',name:'BinzoLive Rewards & Bot',bot:true},{id:'kabir',name:'Kavya Malhotra',photo:4,online:true},{id:'demo-tara',name:'Tara Bhatt',photo:5,verified:true,online:false}];
   const previews=["Just finished my ghazal set. Chai and one more song soon?",'Sent you a gift: 💎 Super Diamond Crown','Thanks for the awesome session tonight! Loved it.','Bonus claimed: +200 free coins credited to your wallet','Free for a quick call this evening?','Audio message (0:42)'];

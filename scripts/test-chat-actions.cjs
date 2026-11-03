@@ -116,8 +116,8 @@ const at = minutes => new Date(Date.now() - minutes * 60000).toISOString();
     const composer = page.locator('.zc-composer-field');
     assert.equal(await composer.getByRole('button', { name: 'Add a photo or emoji', exact: true }).count(), 1, 'The attachment control sits inside the shared composer');
     assert.equal(await page.locator('.zc-composer').getByRole('button', { name: 'Gift', exact: true }).count(), 1,'A separate Gift action sits beside the input');
-    assert.equal(await composer.getByRole('button', { name: 'Record voice message', exact: true }).count(), 1, 'An empty composer has one recording action');
-    assert.equal(await composer.getByRole('button', { name: 'Send message', exact: true }).count(), 0);
+    assert.equal(await page.locator('.zc-composer').getByRole('button', { name: 'Record voice message', exact: true }).count(), 1, 'An empty composer has one recording action beside the field');
+    assert.equal(await page.locator('.zc-composer').getByRole('button', { name: 'Send message', exact: true }).count(), 0);
 
     // Gifts sit above the composer; a tap picks the gift in the sheet and never spends coins by itself.
     const catalog = { gifts: [{ id: id('61'), name: 'Rose', emoji: '🌹', coins: 99 }, { id: id('62'), name: 'Crown', coins: 999, mediaUrl: 'https://media.example.test/crown.png' }], packs: [], paymentsAvailable: false };

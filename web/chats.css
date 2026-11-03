@@ -139,9 +139,7 @@ html:root[data-theme="dark"] .zc-thread{
 }
 .zc-thread-header{background:var(--canvas)}
 .zc-thread-scroll{background:transparent}
-:root .zc-thread :is(.zc-gift-strip,.zc-composer,.zc-gift-button){background:transparent}
-:root .zc-thread .zc-composer-field{background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-color:color-mix(in srgb,var(--accent) 28%,var(--line))}
-:root .zc-thread .zc-composer-field:focus-within{background:color-mix(in srgb,var(--accent) 16%,var(--surface));border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+:root .zc-thread :is(.zc-gift-strip,.zc-composer){background:transparent}
 .zc-thread-scroll :is(.zc-meta,.zc-edited,.zc-thread-note){color:var(--zc-wallpaper-muted)}
 
 .zc-thread-scroll>.zh-error{margin:0}
@@ -208,23 +206,31 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-emoji{flex:none;display:flex;gap:4px;padding:8px var(--zc-gutter) 0;overflow-x:auto;scrollbar-width:none}
 .zc-emoji[hidden]{display:none}
 .zc-emoji>button{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--surface);font-size:22px}
-.zc-composer{flex:none;display:flex;align-items:center;gap:8px;padding:8px max(10px,calc(50% - 384px)) 12px}
-.zc-composer-icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--muted)}
-.zc-composer-add[aria-expanded="true"]{color:var(--accent-ink);background:var(--surface)}
-.zc-composer-gift{color:var(--accent-ink)}
-.zc-composer-field{flex:1;min-width:0;display:flex;align-items:center;height:48px;padding:0 4px 0 18px;border-radius:99px;background:var(--surface)}
-.zc-composer-field>input{flex:1;min-width:0;width:0;font-size:15px;outline:none}
-.zc-composer-field>input::placeholder{color:var(--muted);opacity:1}
-.zc-composer-field:focus-within{background:var(--raised)}
-.zc-composer-field>button{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:var(--muted)}
-.zc-composer-send{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--cta-ink);box-shadow:0 8px 22px -8px color-mix(in srgb,var(--accent) 85%,transparent)}
-.zc-composer-send:active,.zc-thread-video:active{transform:scale(.95)}
+.zc-composer{flex:none;display:flex;align-items:flex-end;gap:8px;padding:10px max(12px,calc(50% - 384px)) 12px}
+.zc-composer[hidden]{display:none}
+.zc-composer-field{flex:1;min-width:0;display:flex;align-items:flex-end;gap:2px;min-height:54px;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface);transition:border-color 160ms ease,background-color 160ms ease}
+.zc-composer-field:focus-within{border-color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 3%,var(--surface))}
+.zc-composer-field>textarea{display:block;flex:1;min-width:0;width:0;height:44px;min-height:44px;max-height:min(132px,max(66px,25dvh));padding:11px 6px;border:0;resize:none;outline:none;background:transparent;color:var(--ink);caret-color:var(--accent-ink);font:inherit;font-size:16px;line-height:22px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.zc-composer-field>textarea::placeholder{color:var(--muted);opacity:1}
+.zc-composer-field>.zc-composer-icon{flex:none;display:grid;place-items:center;width:44px;height:44px;color:var(--muted);transition:color 160ms ease,background-color 160ms ease}
+.zc-composer-field>.zc-composer-add[aria-expanded="true"]{color:var(--accent-ink);background:var(--accent-wash)}
+.zc-composer-field>.zc-gift-button{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:44px;min-width:44px;height:44px;padding:2px;color:var(--accent-ink);background:transparent;font-size:10px;font-weight:600;line-height:12px}
+.zc-composer-field>.zc-gift-button svg{flex:none}
+.zc-composer-send{flex:none;display:grid;place-items:center;width:48px;height:48px;margin-bottom:3px;border:1px solid transparent;border-radius:10px;background:var(--accent);color:var(--cta-ink);transition:background-color 160ms ease,color 160ms ease,transform 120ms ease}
+.zc-composer-send.is-mic{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.zc-composer button:disabled{opacity:.4}
+.zc-composer button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.zc-composer-field>button:not(:disabled):active{background:var(--accent-wash);color:var(--accent-ink)}
+.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:scale(.95)}
+@media(hover:hover){.zc-composer-field>button:not(:disabled):hover{background:var(--raised)}.zc-composer-send:not(:disabled):hover{background:color-mix(in srgb,var(--accent) 90%,var(--ink))}.zc-composer-send.is-mic:not(:disabled):hover{background:var(--raised)}}
 @keyframes zc-live{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
 @keyframes zc-wave{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
-@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}.zc-composer{gap:4px}.zc-composer-send{width:46px;height:46px}}
-/* With the keyboard open the history needs the room; the banner returns when typing stops. */
-@media(max-height:600px){.zc-thread:has(.zc-composer-field:focus-within) .zc-thread-live{display:none}}
-@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer-send:active,.zc-thread-video:active{transform:none}}
+@media(max-width:350px){.zc-thread-title b{font-size:15.5px}.zc-thread-actions>button{width:36px}.zc-thread-actions>.zc-thread-video{width:42px;height:42px}.zc-thread-live-actions{flex-wrap:nowrap}.zc-thread-live-actions>button{flex:1 1 auto;min-width:0;padding:0 10px;font-size:12.5px}}
+/* Optional gift shortcuts yield room to typing and reply/emoji controls.
+   The compact Gift button still opens the whole catalog. */
+.zh-keyboard-open .zc-thread :is(.zc-thread-live,.zc-gift-strip){display:none}
+@media(max-height:600px){.zc-thread .zc-gift-strip{display:none}.zc-thread:has(.zc-composer-field:focus-within,#zc-emoji:not([hidden]),#zc-attach:not([hidden])) .zc-thread-live{display:none}}
+@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer *{transition:none}.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:none}}
 
 /* Phone numbers and abusive words the server hid from chat: a blur, never readable or copyable. */
 .chat-hidden{display:inline-block;filter:blur(4px);opacity:.7;user-select:none;-webkit-user-select:none;letter-spacing:-.05em;vertical-align:-.1em}

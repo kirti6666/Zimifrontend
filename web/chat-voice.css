@@ -1,15 +1,5 @@
-/* A compact composer keeps text and controls together above the keyboard. */
-.zc-composer{padding:10px max(12px,calc(50% - 384px)) 12px}
-.zc-composer[hidden]{display:none}
-.zc-composer-field{height:54px;gap:2px;padding:4px 5px;border:1px solid var(--line);background:var(--surface)}
-.zc-composer-field:focus-within{background:var(--surface);border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
-.zc-composer-field>input{height:42px;padding:0 6px;color:var(--ink);caret-color:var(--accent-ink)}
-.zc-composer-field>.zc-composer-icon{width:40px;height:44px;color:var(--muted)}
-.zc-composer-field>.zc-composer-gift{color:var(--accent-ink)}
-.zc-composer-field>.zc-composer-send{width:44px;height:44px;background:var(--accent);color:var(--cta-ink);box-shadow:none}
-.zc-composer-field>.zc-composer-send.is-mic{background:transparent;color:var(--ink)}
-.zc-composer-field>button:disabled{opacity:.4}
-.zc-composer-field>button:focus-visible,.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+/* Recording and playback share the composer's theme and focus treatment. */
+.zc-recorder button:focus-visible,.zc-voice button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
 #zc-recording{flex:none;min-width:0}
 .zc-recorder{margin:10px var(--zc-gutter) 12px;padding:14px 12px 10px;border:1px solid var(--line);border-radius:22px;background:var(--surface)}
 .zc-recording-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 5px 8px;color:var(--ink)}
@@ -41,6 +31,6 @@
 .zc-flash .zc-voice{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 55%,transparent)}
 @keyframes zc-recording-pulse{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
 @keyframes zc-recording-glow{50%{opacity:.4}}
-@media(max-width:350px){.zc-composer-field{gap:0}.zc-composer-field>.zc-composer-icon{width:36px}.zc-composer-field>input{padding:0 4px;font-size:14px}.zc-recording-hint{font-size:11px}}
+@media(max-width:350px){.zc-recording-hint{font-size:11px}}
 @media(max-height:600px){.zc-is-recording .zc-thread-live{display:none}.zc-recorder{margin-top:6px;margin-bottom:8px}}
 @media(prefers-reduced-motion:reduce){.zc-recording-pulse>span,.zc-recording-dot{animation:none}}

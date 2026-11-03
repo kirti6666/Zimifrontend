@@ -15,14 +15,18 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyWebBranding, WEB_ICON_HEAD } from "./web-branding.mjs";
+import { giftStickerResource, assertInlineHtmlSize } from "./gift-original-assets.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
 const brandLogo = "data:image/webp;base64," + readFileSync(join(root, "web/binzolive-logo.webp")).toString("base64");
 const brandIcon = "data:image/png;base64," + readFileSync(join(root, "web/favicon/favicon-96x96.png")).toString("base64");
 // __GIFT_STICKER_name__ in web/gift-stickers.js becomes web/stickers/name.webp.
-const giftSticker = (_, name) =>
-  "data:image/webp;base64," + readFileSync(join(root, `web/stickers/${name}.webp`)).toString("base64");
+// The page reaches the WebView as one HTML string. Keep the user's 3 MiB
+// per-sticker size guard, and serve oversized originals from immutable CDN keys
+// instead of silently packaging the lower-resolution web/stickers/inline files.
+const giftOriginals = JSON.parse(read("web/gift-originals.json"));
+const giftSticker = (_, name) => giftStickerResource(root, giftOriginals, name);
 // web/model-photos/model-N.(webp|jpg|png): licensed stock photos of models. A missing file leaves
 // its slot empty, and the welcome screen and preview fall back to web/onboarding-media/.
 const modelPhoto = (i) => {
@@ -216,6 +220,8 @@ const page = (demo, hosted = false) =>
 const appDemo = process.env.ZIMI_DEMO === "1";
 const app = page(appDemo);
 const preview = page(true, true);
+assertInlineHtmlSize(app, 'App');
+assertInlineHtmlSize(preview, 'Preview');
 
 mkdirSync(join(root, "assets"), { recursive: true });
 writeFileSync(join(root, "assets/aurora.html"), app);

@@ -46,12 +46,15 @@ jobs:
         run: |
           node scripts/test-gift-playback-core.cjs
           node scripts/test-gift-playback-progressive.cjs
+          node scripts/test-gift-originals.cjs
           node scripts/test-chat-gift-playback.cjs
           node scripts/test-chat-gifts.cjs
           node scripts/test-free-gifts.cjs
           node scripts/test-coins.cjs
           node scripts/test-chat-order.cjs
       - run: npm run test:call-performance
+      - name: Verify chat composer interaction and keyboard layout
+        run: node scripts/test-chat-composer.cjs
       - run: npm run test:facebetter
       - name: Validate workflow syntax and shell commands
         run: docker run --rm -v "$PWD:/work" -w /work rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
