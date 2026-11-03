@@ -1,0 +1,18 @@
+diff --git a/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCView.java b/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCView.java
+index bdc9ffc..a0a8554 100644
+--- a/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCView.java
++++ b/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCView.java
+@@ -299,8 +299,11 @@ public class WebRTCView extends ViewGroup {
+                     try {
+                         ReactContext reactContext = (ReactContext) getContext();
+                         WritableMap params = Arguments.createMap();
+-                        params.putInt("width", videoWidth);
+-                        params.putInt("height", videoHeight);
++                        // Report the displayed dimensions, matching the renderer's
++                        // aspect ratio when camera rotation is carried as metadata.
++                        boolean swapped = rotation % 180 != 0;
++                        params.putInt("width", swapped ? videoHeight : videoWidth);
++                        params.putInt("height", swapped ? videoWidth : videoHeight);
+ 
+                         // Send the event through React Native's event system
+                         reactContext.getJSModule(RCTEventEmitter.class)

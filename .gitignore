@@ -13,3 +13,7 @@ admin-site/dist/
 google-services.json
 GoogleService-Info.plist
 artifacts/*
+/release/
+/modules/**/android/build/
+/modules/**/android/.cxx/
+/modules/**/android/.gradle/

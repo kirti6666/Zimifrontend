@@ -8,7 +8,8 @@ const { once } = require('node:events');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const wrapper = fs.readFileSync(path.join(root, 'node_modules/facebetter/dist/facebetter.js'), 'utf8');
-const catalog = fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
+// Exercise every effect group; test-facebetter-ui covers the shipped Basic plan.
+const catalog = "window.ZIMI_FACEBETTER_PLAN='pro+';\n" + fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
 const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
   .replace(/__FB_EFFECT_[a-z0-9_]+__/g, Buffer.from([70, 66, 68, 1]).toString('base64'));
 
@@ -99,7 +100,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
 
     const bounded = await fixture();
     await bounded.evaluate(()=>begin(1280,720));await bounded.evaluate(()=>authorize());await bounded.waitForFunction(()=>!!window.handle);
-    assert.deepEqual(await bounded.evaluate(()=>({width:engines[0].lastProcess.width,height:engines[0].lastProcess.height,raw:raw.getVideoTracks()[0].getSettings().width})),{width:960,height:540,raw:1280},'Effects bound CPU readback pixels while retaining camera capture and landscape framing');
+    assert.deepEqual(await bounded.evaluate(()=>({width:engines[0].lastProcess.width,height:engines[0].lastProcess.height,raw:raw.getVideoTracks()[0].getSettings().width})),{width:480,height:270,raw:1280},'Effects start with a mobile pixel budget while retaining camera capture and landscape framing');
     await bounded.evaluate(()=>{
       window.createdCanvases=0;const create=document.createElement.bind(document);
       document.createElement=(tag,...args)=>{if(tag==='canvas')createdCanvases++;return create(tag,...args)};
@@ -115,7 +116,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
       sourceCanvas.width=720;sourceCanvas.height=1280;
       const paint=sourceCanvas.getContext('2d');window.sourceTimer=setInterval(()=>paint.fillRect(0,0,720,1280),40);
     });
-    await bounded.waitForFunction(()=>engines[0].lastProcess.width===540&&engines[0].lastProcess.height===960);
+    await bounded.waitForFunction(()=>engines[0].lastProcess.width===270&&engines[0].lastProcess.height===480);
     assert.equal(await bounded.evaluate(()=>handle.stream.getVideoTracks()[0].readyState),'live','Camera orientation changes preserve the processed track');
     await bounded.evaluate(()=>{window.processDelay=45;window.beforeFrames=engines[0].processed});
     await bounded.waitForTimeout(900);
@@ -169,6 +170,7 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     const ui = await context.newPage();
     ui.on('pageerror',error=>errors.push(error.message));
     await ui.route('https://**/*',route=>route.abort());
+    await ui.addInitScript(() => { window.ZIMI_FACEBETTER_PLAN = 'pro+'; });
     await ui.goto(`http://127.0.0.1:${server.address().port}/ui?preview=call`);
     await ui.waitForFunction(()=>!!window.ZimiBeauty);
     // Mount the shipped sheet with its real handlers; keep unrelated preview
@@ -176,6 +178,8 @@ const source = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8')
     await ui.evaluate(()=>{window.testFx=document.createElement('div');document.body.append(testFx);window.r=()=>{testFx.innerHTML=fxSheet()};S.btab='Beauty';S.bsel.Beauty=1;S.sh='fx';r()});
     const sheet=ui.locator('#test-fx');
     await ui.evaluate(()=>testFx.id='test-fx');
+    assert.equal(await sheet.locator('[data-zimi-filter-rail]').count(),1,'The camera picker opens on swipe filters');
+    await sheet.locator('[data-zimi-beauty-tab="skin"]').click();
     const slider=sheet.getByRole('slider',{name:'Smoothing',exact:true});
     await slider.evaluate(el=>{el.value='27';el.dispatchEvent(new Event('input',{bubbles:true}))});
     assert.equal(await ui.evaluate(()=>ZimiBeauty.getParams().smoothing),.27,'The live strength slider updates the processor setting');

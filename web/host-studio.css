@@ -68,6 +68,19 @@
 .hs-gift-rail .hs-gift-art{width:30px;height:30px;font-size:26px}
 .hs-gift-rail small{display:flex;align-items:center;justify-content:center;gap:2px;font-size:9px;font-weight:750;line-height:1.3;white-space:nowrap}
 .hs-rail-loading{min-height:60px;padding:4px 0 8px;gap:4px}
+/* The setup camera is still started only by Check camera. Opening the dock
+   changes its bounds without creating or replacing a capture element. */
+.hc-setup.zb-previewing{--zb-panel-height:min(42dvh,320px);--zb-panel-bottom:calc(78px + var(--safe-bottom));--zb-preview-bottom:calc(var(--zb-panel-bottom) + var(--zb-panel-height));--zb-preview-right:0px;--zb-preview-top:58px}
+.hc-setup.zb-previewing :is(.hc-setup-panels,.hc-camera-hint){display:none}
+.hc-setup.zb-previewing .hc-stage{top:var(--zb-preview-top);left:0;right:var(--zb-preview-right);bottom:var(--zb-preview-bottom)}
+.hc-setup.zb-previewing .hc-stage>video{object-fit:contain;object-position:center}
+.hc-setup.zb-previewing .hc-camera-space{position:absolute;top:var(--zb-preview-top);left:0;right:var(--zb-preview-right);bottom:var(--zb-preview-bottom);min-height:0;margin:0;padding:12px}
+.hc-setup.zb-previewing .hc-setup-footer{margin-top:auto;z-index:7}
+@media(max-height:650px){.hc-setup.zb-previewing{--zb-preview-top:50px}}
+@media(max-height:460px) and (min-width:600px){
+  .hc-setup.zb-previewing{max-width:none;--zb-panel-width:min(46vw,400px);--zb-panel-height:calc(100dvh - 96px);--zb-preview-bottom:var(--zb-panel-bottom);--zb-preview-right:calc(var(--zb-panel-width) + 24px)}
+  .hc-setup.zb-previewing>[data-zimi-beauty-panel]{left:auto;right:12px;margin-inline:0}
+}
 @keyframes hs-sheet-in{from{transform:translateY(100%);opacity:.6}to{transform:none;opacity:1}}
 @media(prefers-reduced-motion:reduce){.hs-sheet{animation:none}.hs-progress>i,.hs-target-track>em{transition:none}}
 @media(max-width:360px){.hs-sheet header{padding-inline:14px}.hs-sheet-body{padding-inline:13px}.hs-targets{gap:6px}.hs-target-card{gap:6px;padding-inline:8px}.hs-target-art{width:26px;height:26px;font-size:21px}.hs-target-label{font-size:7.5px;letter-spacing:.5px}.hs-target-copy>strong{font-size:11.5px}.hs-task{gap:7px;padding:9px}.hs-task-copy>b{font-size:11px}}

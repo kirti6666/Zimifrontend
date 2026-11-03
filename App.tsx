@@ -6,7 +6,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import html from "./assets/aurora-bundle";
-import { createBridge, postToWeb } from "./src/bridge";
+import { createBridge, postToWeb, type AppMessage, type WebMessage } from "./src/bridge";
 import { LaunchScreen } from "./src/launch-screen";
 import { readThemeCache, type ThemeCache } from "./src/theme-cache";
 import { isTrustedDocument, parseWebMessage } from "./src/web-message";
@@ -14,6 +14,10 @@ import { useAppUpdates } from "./src/app-update";
 import { AppUpdateScreen } from "./src/app-update-screen";
 import { API_URL } from "./src/config";
 import { IncomingCallScreen, useIncomingCall } from "./src/incoming-call-screen";
+import { NATIVE_CAMERA_TEST, NativeCameraTest } from "./src/native-media/camera-test";
+import { createNativeMedia, type NativeMediaState } from "./src/native-media/controller";
+import { NATIVE_MEDIA_ENABLED, NativeMediaLayer } from "./src/native-media/view";
+import type { NativeMediaLayout } from "./src/native-media/protocol";
 
 /* Matches --canvas in web/aurora.css for each theme. */
 const CANVAS = { light: "#ffffff", dark: "#000000" } as const;
@@ -56,13 +60,16 @@ true;
 
 /* Part of the page itself: Android may run injected scripts only after the first paint. */
 const withThemeCache = (page: string, cache: ThemeCache) =>
-  page.replace("<head>", `<head><script>window.__zimiThemeCache=${JSON.stringify(cache).replace(/</g, "\\u003c")};window.ZIMI_FACEBETTER_RUNTIME=${JSON.stringify(`${API_URL}/facebetter/runtime/2.2.1/`).replace(/</g, "\\u003c")}</script>`);
+  page.replace("<head>", `<head><script>window.ZIMI_NATIVE_MEDIA=${NATIVE_MEDIA_ENABLED};window.__zimiThemeCache=${JSON.stringify(cache).replace(/</g, "\\u003c")};window.ZIMI_FACEBETTER_RUNTIME=${JSON.stringify(`${API_URL}/facebetter/runtime/2.2.1/`).replace(/</g, "\\u003c")}</script>`);
 
 export default function App() {
   const updates = useAppUpdates();
   const incoming = useIncomingCall(updates.state);
+  const [cameraTest, setCameraTest] = useState(false);
   const content = updates.state.status === "allowed" ? <AppContent priorityIncoming={!!incoming.action} onIncomingEvent={incoming.onEvent} onIncomingResult={incoming.onResult} /> : <AppUpdateScreen {...updates} />;
-  return <View style={{flex:1}}>{content}{incoming.action ? <IncomingCallScreen {...incoming} action={incoming.action} allowed={updates.state.status==="allowed"} /> : null}</View>;
+  return <View style={{flex:1}}>{content}{incoming.action ? <IncomingCallScreen {...incoming} action={incoming.action} allowed={updates.state.status==="allowed"} /> : null}
+    {NATIVE_CAMERA_TEST ? cameraTest ? <NativeCameraTest onClose={() => setCameraTest(false)} /> : <Pressable onPress={() => setCameraTest(true)} style={styles.cameraTest}><Text style={styles.cameraTestText}>Cam test</Text></Pressable> : null}
+  </View>;
 }
 
 export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingResult}: {
@@ -83,16 +90,29 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
   const webRef = useRef<WebView>(null);
   const webReady = useRef(false);
   const exitConfirmation = useRef<object | null>(null);
+  const [nativeState, setNativeState] = useState<NativeMediaState | null>(null);
+  const [nativeLayout, setNativeLayout] = useState<NativeMediaLayout | null>(null);
+  const bridgeRef = useRef<ReturnType<typeof createBridge> | null>(null);
+  const nativeMedia = useMemo(() => NATIVE_MEDIA_ENABLED ? createNativeMedia(message => {
+    if (message.type === "rtc.signal" || message.type === "call.end") bridgeRef.current?.handle(message as WebMessage);
+    else postToWeb(webRef, message as AppMessage);
+  }, next => setNativeState(previous => previous?.local === next.local && previous?.remote === next.remote && previous?.hasVideo === next.hasVideo && previous?.remoteVideo === next.remoteVideo && previous?.camera === next.camera && previous?.facing === next.facing ? previous : next)) : null, []);
 
   // Everything the screens ask of the server goes through src/bridge.ts.
   const incomingEvent = useRef(onIncomingEvent); incomingEvent.current=onIncomingEvent;
-  const bridge = useMemo(() => createBridge((msg) => { postToWeb(webRef, msg); incomingEvent.current?.(msg as {type:string;data?:Record<string,unknown>}); }), []);
+  const bridge = useMemo(() => createBridge((msg) => { nativeMedia?.event(msg as {type:string;data?:Record<string,unknown>}); postToWeb(webRef, msg); incomingEvent.current?.(msg as {type:string;data?:Record<string,unknown>}); }), [nativeMedia]);
+  bridgeRef.current = bridge;
   const documentLoading = useCallback(() => {
     webReady.current = false;
     exitConfirmation.current = null;
     bridge.documentLoading();
-  }, [bridge]);
-  useEffect(() => () => { bridge.prepareForUpdate(); bridge.close(); }, [bridge]);
+    nativeMedia?.stop();
+    setNativeLayout(null);
+  }, [bridge, nativeMedia]);
+  useEffect(() => () => { nativeMedia?.close(); bridge.prepareForUpdate(); bridge.close(); }, [bridge, nativeMedia]);
+  const onNativeDimensions = useCallback((kind: "local" | "remote", width: number, height: number) => {
+    postToWeb(webRef, { type: "native.media.dimensions", data: { kind, width, height } });
+  }, []);
   useEffect(() => {
     if (launched) return;
     const timer = setTimeout(() => setLaunched(true), LAUNCH_LIMIT_MS);
@@ -121,10 +141,10 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
     // capture/playback an explicit cleanup signal when the app loses focus.
     const subscription = AppState.addEventListener("change", state => {
       if (state !== "active") postToWeb(webRef, { type: "app.background", data: {} });
-      else postToWeb(webRef, { type: "app.foreground", data: {} });
+      else { nativeMedia?.event({ type: "app.foreground", data: {} }); postToWeb(webRef, { type: "app.foreground", data: {} }); }
     });
     return () => subscription.remove();
-  }, []);
+  }, [nativeMedia]);
 
   const requestExit = useCallback(() => {
     if (!webReady.current || exitConfirmation.current) return;
@@ -145,7 +165,11 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
     if (!isTrustedDocument(event.nativeEvent.url)) return;
     const msg = parseWebMessage(event.nativeEvent.data);
     if (!msg) return;
-    if (msg.type === "ready") {
+    if (msg.type === "native.media") {
+      if (nativeMedia) void nativeMedia.handle(msg.data);
+    } else if (msg.type === "native.media.layout") {
+      if (nativeMedia) setNativeLayout(msg.data);
+    } else if (msg.type === "ready") {
       webReady.current = true;
       bridge.handle(msg);
     } else if (msg.type === "app.launched") {
@@ -169,7 +193,7 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
       // Video calls and chats: screenshots and screen recordings show nothing while they are open.
       void (msg.data.on ? ScreenCapture.preventScreenCaptureAsync(PRIVATE_SCREEN) : ScreenCapture.allowScreenCaptureAsync(PRIVATE_SCREEN)).catch(() => {});
     } else bridge.handle(msg);
-  }, [bridge, requestExit, onIncomingResult]);
+  }, [bridge, requestExit, onIncomingResult, nativeMedia]);
 
   // Without this a failed load is just a white screen with nothing in the logs.
   const onError = useCallback((event: { nativeEvent: { description?: string } }) => {
@@ -213,9 +237,11 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
               </Pressable>
             </View>
           ) : (
+            <View style={styles.safe}>
+            {NATIVE_MEDIA_ENABLED && <NativeMediaLayer state={nativeState} layout={nativeLayout} onDimensions={onNativeDimensions} />}
             <WebView
               ref={webRef}
-              style={[styles.web, { backgroundColor: canvas }]}
+              style={[styles.web, { backgroundColor: NATIVE_MEDIA_ENABLED ? "transparent" : canvas }]}
               originWhitelist={["https://aurora.localhost", "about:blank"]}
               source={webSource}
               onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
@@ -246,6 +272,7 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
               automaticallyAdjustContentInsets={false}
               contentInsetAdjustmentBehavior="never"
             />
+            </View>
           )}
         </SafeAreaView>
       </KeyboardShell>
@@ -271,4 +298,7 @@ const styles = StyleSheet.create({
   failBody: { fontSize: 13, opacity: 0.7, textAlign: "center", marginBottom: 20 },
   retry: { borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10 },
   retryText: { fontWeight: "700", fontSize: 14 },
+  // Development-only entry to the native camera measurement (src/native-media/camera-test.tsx).
+  cameraTest: { position: "absolute", right: 12, bottom: 96, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#101012cc" },
+  cameraTestText: { color: "#ffffff", fontWeight: "700", fontSize: 12 },
 });

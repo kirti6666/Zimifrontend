@@ -8,7 +8,8 @@ const { once } = require('node:events');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '..');
 const wrapper = fs.readFileSync(path.join(root, 'node_modules/facebetter/dist/facebetter.js'), 'utf8');
-const catalog = fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
+// Exercise every effect group; test-facebetter-ui covers the shipped Basic plan.
+const catalog = "window.ZIMI_FACEBETTER_PLAN='pro+';\n" + fs.readFileSync(path.join(root, 'web/beauty-catalog.js'), 'utf8');
 const processor = fs.readFileSync(path.join(root, 'web/beauty.js'), 'utf8').replace(/__FB_EFFECT_[a-z0-9_]+__/g, Buffer.from('embedded-effect').toString('base64'));
 
 (async () => {

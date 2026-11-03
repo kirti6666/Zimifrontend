@@ -138,6 +138,9 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
       if (id === './src/config') return { API_URL: 'https://api.example.test/api/v1' };
       if (id === './src/app-update') return { useAppUpdates: () => ({ state: overrides.appUpdatesState ?? { status: 'allowed' }, check: () => {}, update: () => {} }) };
       if (id === './src/app-update-screen') return { AppUpdateScreen: 'AppUpdateScreen' };
+      if (id === './src/native-media/camera-test') return { NATIVE_CAMERA_TEST: false, NativeCameraTest: 'NativeCameraTest' };
+      if (id === './src/native-media/view') return { NATIVE_MEDIA_ENABLED: false, NativeMediaLayer: 'NativeMediaLayer' };
+      if (id === './src/native-media/controller') return { createNativeMedia: () => { throw new Error('Native media should be disabled in shell-only tests'); } };
       if (id.startsWith('.')) return load(path.relative(ROOT, path.resolve(path.dirname(filename), `${id}.ts`)));
       throw new Error(`Unexpected import ${id}`);
     };
@@ -158,6 +161,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // Retain dormant broadcasting coverage for a future rollout, with explicit opt-in
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
+const findShellWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findShellWeb).find(Boolean) || null;
 
 const officialFixture = () => {
   const identity={id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
@@ -795,7 +799,7 @@ test('native incoming surface covers update checking without mounting app conten
 
 test('priority incoming app content skips the launch logo and forwards only valid trusted native results', () => {
   const h=harness(),results=[],provider=h.load('App.tsx').AppContent({priorityIncoming:true,onIncomingResult:value=>results.push(plain(value))});
-  const [keyboard,launch]=[provider.props.children].flat(),web=[keyboard.props.children.props.children].flat().find(node=>node?.type==='WebView');
+  const [keyboard,launch]=[provider.props.children].flat(),web=findShellWeb(keyboard);
   assert.equal(launch,false,'The launch animation never covers the priority incoming route');assert.equal(keyboard.props.accessibilityElementsHidden,false);assert.equal(keyboard.props.importantForAccessibility,'auto');
   const data={callId:'507f1f77bcf86cd799439103',actionId:'native-first-frame',action:'answer',outcome:'handedOff'};
   const deliver=(value,url='https://aurora.localhost/')=>web.props.onMessage({nativeEvent:{url,data:JSON.stringify({type:'call.nativeResult',data:value})}});
@@ -810,7 +814,7 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   const [shell] = [provider.props.children].flat();
   const keyboard = shell.type(shell.props);
   const safeArea = keyboard.props.children;
-  const web = [safeArea.props.children].flat().find(node => node?.type === 'WebView');
+  const web = findShellWeb(safeArea);
   const style = node => Object.assign({}, ...[node.props.style].flat());
   assert.equal(provider.type, 'SafeAreaProvider');
   assert.equal(keyboard.type, 'KeyboardAvoidingView', 'Measure keyboard overlap from the full root, outside safe-area padding');
@@ -831,7 +835,7 @@ test('the animated logo covers the app at launch instead of a loading skeleton',
   const h = harness();
   const provider = h.load('App.tsx').AppContent();
   const [keyboard, launch] = [provider.props.children].flat();
-  const web = [keyboard.props.children.props.children].flat().find(node => node?.type === 'WebView');
+  const web = findShellWeb(keyboard);
   assert.equal(launch.type, 'LaunchScreen', 'The logo is drawn over the whole screen, outside the safe-area padding');
   assert.equal(launch.props.ready, false, 'The logo stays until the page reports its first screen');
   assert.equal(typeof launch.props.onHidden, 'function');

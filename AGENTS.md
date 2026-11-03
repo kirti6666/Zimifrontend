@@ -260,9 +260,30 @@ keeps it identical to the original Next.js version.
 - The host go-live flow (`web/host-calls.js`, `web/host-studio.js`, the host
   call in `web/live-room.js`) follows the host reference layout but always
   uses the selected theme's colors, never a fixed palette. The host's camera
-  fills the screen: capture at 1280x720 with `resizeMode: 'none'` (portrait
-  sizes made the browser crop and zoom), and let `data-zimi-shape` show a
-  landscape camera whole instead of cropping it.
+  retains its full source image: native Android requests 1920x1440 at 30 fps;
+  the browser fallback captures 1280x720 with `resizeMode: 'none'`. Use
+  `contain` in call/setup/beauty surfaces so changing their shape never crops,
+  stretches or zooms the camera image.
+- Android builds containing `BinzoMedia` use native WebRTC capture/playback and
+  Facebetter Android SDK 2.2.1, matching `../facebetter-expo`'s GLES3 texture path.
+  `src/native-media/` owns capture, signaling media state and native video surfaces;
+  `web/native-media.js` sends commands and layout rectangles, never frame pixels.
+  Keep the original camera framing and audio. Native texture conversion, recycling
+  and cleanup stay on the owning GL thread; retained outputs keep that context alive.
+  Android license failures fall back to plain native camera, never a Web-origin token.
+  Run the native media controller/plugin tests after native-call changes.
+  See `docs/FACEBETTER.md` and `docs/VIDEO_PERFORMANCE.md`.
+  Older binaries, iOS and browser previews retain Web SDK 2.2.1 in the WebView.
+  Compatible browser devices use the bundled `web/beauty-worker.js` canvas adapter;
+  unsupported startup falls back to bounded main-thread processing. Keep one
+  frame in flight, acknowledge effect changes before caching applied state,
+  and discard stale results on selection/camera changes and cleanup. Do not
+  count repeated output presentations as processed FPS or embed a test license.
+  Run `npm run test:facebetter` and `npm run test:call-performance` after changes.
+  The camera-visible beauty dock uses a swipe-to-select filter carousel; keep
+  only one processed preview, retain call controls and native Back dismissal,
+  and preserve the host's camera-swap preference when enlarging the local video.
+  Its circular filter swatches are included in the shared ROUND contract.
 - Creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.

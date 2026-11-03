@@ -66,6 +66,7 @@ function stickerFolder(kind) {
 
 const TABS = [
   { id: 'skin', icon: 'spa' },
+  { id: 'color', icon: 'tune' },
   { id: 'reshape', icon: 'face' },
   { id: 'makeup', icon: 'brush' },
   { id: 'filter', icon: 'palette' },
@@ -73,6 +74,39 @@ const TABS = [
   { id: 'body', icon: 'accessibility' },
   { id: 'background', icon: 'blur_on' },
 ]
+
+// Facebetter licenses effect groups by subscription plan
+// (https://docs.facebetter.net/intro/pricing). BinzoLive's license is Basic:
+// skin beauty and colour grading only. After an upgrade, change the fallback
+// below to 'pro' or 'pro+' to show those groups again.
+const PLAN_TABS = {
+  basic: ['skin', 'color'],
+  pro: ['skin', 'color', 'reshape', 'makeup', 'filter'],
+  'pro+': TABS.map((tab) => tab.id),
+}
+const PLAN = Object.hasOwn(PLAN_TABS, window.ZIMI_FACEBETTER_PLAN) ? window.ZIMI_FACEBETTER_PLAN : 'basic'
+const LICENSED_TABS = PLAN_TABS[PLAN]
+
+const TAB_PARAMS = {
+  skin: ['smoothing', 'smoothingStyle', 'whitening', 'whiteningStyle', 'rosiness', 'blemish', 'clarity', 'skinOnly'],
+  color: ['brightness', 'contrast', 'saturation', 'colorTemperature', 'colorTint'],
+  reshape: ['reshape'],
+  makeup: [
+    'lipstick', 'lipstickColor', 'blush', 'blushStyle', 'blushColor', 'contour', 'contourStyle',
+    'eyeshadow', 'eyeshadowStyle', 'eyeshadowColor', 'eyeliner', 'eyelinerStyle', 'eyelinerColor',
+    'eyebrow', 'eyebrowStyle', 'eyebrowColor', 'eyelash', 'eyelashStyle', 'eyelashColor',
+    'pupil', 'pupilColor', 'teethWhiten',
+  ],
+  filter: ['filterId', 'filterIntensity'],
+  sticker: ['stickerId'],
+  body: ['bodyReshape'],
+  background: ['bgBlur', 'bgPreset', 'chroma', 'chromaSimilarity', 'chromaSmoothness', 'chromaDesaturation', 'subjectOutline'],
+}
+const LICENSED_PARAMS = new Set(LICENSED_TABS.flatMap((tab) => TAB_PARAMS[tab]))
+
+function isLicensed(key) {
+  return LICENSED_PARAMS.has(key)
+}
 
 const SKIN_PRESETS = [
   { id: 'texture', smoothingStyle: SmoothingStyle.Texture },
@@ -785,5 +819,5 @@ const labels = {
   "status.exported": "Exported",
   "status.exportFailed": "Export failed"
 };
-window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, stickerFolder, TABS, SKIN_PRESETS, WHITENING_STYLES, RESHAPE_GROUPS, BODY_GROUPS, BODY_ITEMS, LIPSTICK_COLORS, BLUSH_STYLES, BLUSH_COLORS, CONTOUR_STYLES, EYESHADOW_STYLES, EYESHADOW_COLORS, EYELINER_STYLES, EYELINER_COLORS, EYEBROW_STYLES, EYEBROW_COLORS, EYELASH_STYLES, EYELASH_COLORS, PUPIL_COLORS, CHROMA_OPTIONS, prettyFilterName, pickFilterLabel, STUDIO_LOOK, createDefaultParams, applyParams, labels };
+window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, stickerFolder, TABS, PLAN, LICENSED_TABS, TAB_PARAMS, isLicensed, SKIN_PRESETS, WHITENING_STYLES, RESHAPE_GROUPS, BODY_GROUPS, BODY_ITEMS, LIPSTICK_COLORS, BLUSH_STYLES, BLUSH_COLORS, CONTOUR_STYLES, EYESHADOW_STYLES, EYESHADOW_COLORS, EYELINER_STYLES, EYELINER_COLORS, EYEBROW_STYLES, EYEBROW_COLORS, EYELASH_STYLES, EYELASH_COLORS, PUPIL_COLORS, CHROMA_OPTIONS, prettyFilterName, pickFilterLabel, STUDIO_LOOK, createDefaultParams, applyParams, labels };
 })();

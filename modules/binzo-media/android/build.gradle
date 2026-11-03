@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.binzomedia'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.binzomedia"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+    minSdkVersion 24
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // The processor plugs into react-native-webrtc's camera track; org.webrtc comes with it.
+  implementation project(':react-native-webrtc')
+  // Ships arm64-v8a and armeabi-v7a only. Other ABIs report beauty as unsupported.
+  implementation "net.pixpark:facebetter:2.2.1"
+}

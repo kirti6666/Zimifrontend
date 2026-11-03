@@ -1,0 +1,13 @@
+/* Native SurfaceView video sits beneath this transparent WebView. Controls,
+   gradients, beauty controls and sheets remain ordinary web content above it. */
+html[data-zimi-native-underlay], body[data-zimi-native-underlay],
+#scroll-root[data-zimi-native-underlay], #screen[data-zimi-native-underlay],
+#top[data-zimi-native-underlay], .app[data-zimi-native-underlay],
+[data-zimi-native-underlay], #screen video[data-zimi-native-video],
+video[data-zimi-native-video] {
+  background: transparent !important;
+}
+/* Preserve the whole camera image in calls, setup and the smaller beauty
+   preview. Differing surface/frame ratios need space around the image; cover
+   would crop the camera and make the person appear zoomed in. */
+html video[data-zimi-native-video] { color: transparent; object-fit: contain !important; }

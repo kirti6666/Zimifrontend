@@ -29,6 +29,44 @@ forces the release JS bundle and package tasks to run. A plain Gradle build can
 otherwise reuse a bundle made with a developer's local `.env`. Verify a signed
 APK's startup on a device before publishing it.
 
+## GitHub Actions APK builds
+
+[The Android workflow](../.github/workflows/android.yml) runs on pushes to `main`,
+version tags such as `v1.1.12`, and manual dispatch. It checks TypeScript, native
+media, browser call performance, Facebetter and the release verifier before a
+signed production build. A manual run on another branch runs checks only.
+
+Configure these repository or `production` environment secrets once:
+
+- `ANDROID_KEYSTORE_BASE64`: base64 of the **existing** `android/app/debug.keystore`.
+  Preserve its current `androiddebugkey` alias and signing certificate below.
+- `GOOGLE_SERVICES_JSON_BASE64`: base64 of the Firebase `google-services.json`
+  containing the `com.aurora.liveapp` Android client.
+
+The runner uses Node 24, Java 17, Android platform/build tools 36, NDK
+27.1.12297006 and CMake 3.22.1. It regenerates ignored Android sources with Expo
+prebuild and all checked-in plugins. Firebase is restored before prebuild; the
+original keystore is restored afterward so prebuild cannot replace the signer.
+Build concurrency is bounded for the Ubuntu runner. Credentials are removed
+after the build and never included in the uploaded artifact.
+
+Commit one explicit `release:version` change before starting a new release.
+A `v*` tag must exactly match the committed Expo version. Version codes are not
+derived from workflow run numbers, and rerunning a job does not increment them.
+
+Each successful build uploads an Actions artifact containing the signed APK,
+a JSON manifest and `SHA256SUMS`. The verifier checks the exact package/version,
+the existing signing certificate, non-debuggable manifest, native updater
+capability, bundled JavaScript, and both ARM Facebetter/WebRTC libraries.
+Version tags also publish those exact verified files to GitHub Releases. An
+existing GitHub Release is never overwritten by a rerun.
+
+GitHub publication supplies a downloadable APK. Mandatory updates still use the
+verified **Admin → App releases** upload and publication flow described in
+[APP_UPDATES.md](APP_UPDATES.md), after device startup and call validation.
+GitHub Actions does not change the app's minimum supported version or publish a
+mandatory update automatically.
+
 EAS uses remote build numbering in `eas.json`. If using EAS after publishing a
 local Gradle build, set its remote Android version to at least the published
 code with `eas build:version:set` before the next production build increments

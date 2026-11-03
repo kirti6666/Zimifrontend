@@ -205,14 +205,19 @@ const catalog = { gifts: [{ id: '507f1f77bcf86cd799439013', name: 'Rose', emoji:
 
     await navigate('chats');
     await visible('Loading conversations');
+    const personConversations = page.locator('#zc-list .rowlink:not([data-official-chat])');
+    assert.equal(await page.locator('[data-official-chat]').count(), 1, 'The official account remains available while person conversations load');
     assert.equal(await page.getByText('No conversations match that search.', { exact: true }).count(), 0);
     const chats = { chats: [{ user: host, last: 'Hello from Mira', time: 'Today', unread: 1 }] };
     await result('data.chats', chats, 'chats');
-    assert.equal(await page.locator('.rowlink').count(), 1);
+    assert.equal(await personConversations.count(), 1);
+    assert.equal(await page.locator('#zc-list .rowlink').count(), 2, 'The official account and returned person conversation both appear');
+    assert.equal(await page.locator('#zc-list .rowlink').first().getAttribute('data-official-chat'), '', 'The official account stays pinned first');
     await loading('chats', true);
-    assert.equal(await page.locator('.rowlink').count(), 0);
+    assert.equal(await personConversations.count(), 0);
+    assert.equal(await page.locator('[data-official-chat]').count(), 1, 'Refreshing person conversations preserves the official account');
     await result('data.chats', chats, 'chats');
-    await page.locator('.rowlink').click();
+    await personConversations.click();
     await visible('Loading messages');
     const draft = page.getByRole('textbox', { name: 'Message Mira North', exact: true });
     await draft.fill('Draft while history is loading');

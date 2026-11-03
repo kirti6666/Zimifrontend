@@ -3,7 +3,7 @@
     "name": "BinzoLive",
     "slug": "aurora-live-app",
     "scheme": "binzolive",
-    "version": "1.1.8",
+    "version": "1.1.12",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/brand/icon.png",
@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.aurora.liveapp",
-      "versionCode": 17,
+      "versionCode": 22,
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/adaptive-icon.png",
         "backgroundColor": "#00000000"
@@ -65,6 +65,7 @@
       "./plugins/with-development-network",
       "./plugins/with-apk-updater",
       "./plugins/with-notifications",
+      "./plugins/with-native-media",
       [
         "expo-splash-screen",
         {
