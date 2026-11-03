@@ -5,6 +5,7 @@ import { AppState, Linking, Share } from "react-native";
 import { ApiError, checkConnection, errorMessage, getConnectionStatus, onConnectionChanged } from "./api/client";
 import { api } from "./api/endpoints";
 import { createCallRecovery } from "./call-recovery";
+import { createCallRinging } from "./call-ringing";
 import { clearIncomingCallAction, getVerifiedIncomingCall, onIncomingCallAction, type NativeCallAction } from "./incoming-call-actions";
 import { messageFrom } from "./api/adapters";
 import type { LeaderboardPeriod, RelationshipKind, Relationships } from "./api/types";
@@ -149,6 +150,7 @@ export type AppMessage =
   | SupportAppMessage
   | { type: "app.background"; data: Record<string, never> }
   | { type: "app.foreground"; data: Record<string, never> }
+  | { type: "app.insets"; data: { top: number; right: number; bottom: number; left: number } }
   | { type: "app.back"; data: Record<string, never> }
   | { type: "session"; data: Account }
   | { type: "session.restoring" | "session.none"; data: Record<string, never> }
@@ -284,7 +286,7 @@ export type AppMessage =
   | { type: "verify.incoming"; data: { callId: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
-  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
+  | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; coverUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
   | { type: "chat.message"; data: { from: string; name: string; text: string; id?: string; createdAt?: string; sequence?: number; orderAfterSequence?: number; clientId?: string; kind?: "text" | "image" | "voice" | "gift"; gift?: Message["gift"]; imageUrl?: string; audioUrl?: string; durationMs?: number; reply?: Message["reply"]; inCall?: boolean; callId?: string; automated?: boolean } };
 
 /* Sends one message into the page. */
@@ -426,8 +428,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
     callActivities.clear();
   };
   const current = (version: number) => !closed && version === epoch;
+  const ringing = createCallRinging({ owner: () => accountId, key: () => `${epoch}:${documentRevision}:${getSessionVersion()}`, verify: id => api.notificationCall(id) });
+  ringing.foreground(appActive);
   const emit = (message: AppMessage) => {
     if (closed) return;
+    ringing.observe(message as unknown as { type: string; data: Record<string, unknown> });
     if (message.type === "call.connected" || message.type === "call.ended") void dismissIncomingCallNotification(message.data.callId).catch(() => {});
     post(message);
     if (["call.created", "call.connected", "call.ended", "stream.privateCall"].includes(message.type)) callRecovery?.sync();
@@ -994,6 +999,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   const activity = AppState?.addEventListener("change", state => {
     if (closed) return;
     appActive = state === "active";
+    ringing.foreground(appActive);
     official.foreground();
     stopLive.setActive?.(appActive && !liveOnboarding);
     if (chatLease) { chatLease.revision++; flushChatActivity(); }
@@ -1529,6 +1535,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "auth.logout": {
+        ringing.reset();
         support.reset(); official.reset();
         const nativeClearing = syncNativePush(null);
         pushOpenPending = undefined;pushOpenRevision++;
@@ -2194,9 +2201,10 @@ export function createBridge(post: (msg: AppMessage) => void) {
   });
 
   return {
-    documentLoading: () => { support.reset(); official.reset(); callRecovery?.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
+    documentLoading: () => { ringing.reset(); support.reset(); official.reset(); callRecovery?.reset(); setChatActivity(); webReady = false; documentRevision++; homeQuery = { mode: "popular" }; resetHomeReads(); notificationQueryOwner = undefined; },
     handle: (msg: WebMessage) => {
       if (closed || !parseWebMessage(JSON.stringify(msg))) return;
+      ringing.handle(msg as unknown as { type: string; data: Record<string, unknown> });
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
       const serialized = notificationWrite || ((msg.type === "chat.send" || msg.type === "chat.photo") && !!msg.data.clientId) || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.invitation.connect", "call.invitation.dismiss", "call.topup.hold", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
@@ -2227,6 +2235,6 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (verification) void api.endVerificationCall(verification.callId).catch(() => {});
       if (stream) void (stream.hosting ? api.endStream(stream.id) : api.leaveStream(stream.id)).catch(() => {});
     },
-    close: () => { support.reset(); official.reset(); callRecovery?.close(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopIncomingActions(); stopPushToken(); stopLive(); },
+    close: () => { ringing.reset(); support.reset(); official.reset(); callRecovery?.close(); closed = true; resetUpdateActivities(); epoch++; callGeneration++; resetHomeReads(); unsubscribe(); stopConnection(); activity?.remove(); linkSubscription.remove(); stopPush(); stopIncomingActions(); stopPushToken(); stopLive(); },
   };
 }

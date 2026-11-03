@@ -76,16 +76,17 @@ const button = (page, name) => page.getByRole('button', { name, exact: true });
       const layout = await page.evaluate(() => {
         const video = document.querySelector('video[data-zimi-local]'), dock = document.querySelector('[data-zimi-beauty-panel]');
         const camera = video.getBoundingClientRect(), panel = dock.getBoundingClientRect();
-        const hit = document.elementFromPoint(camera.left + camera.width / 2, camera.top + camera.height / 2);
-        return { checks: { visible: camera.left >= 0 && camera.top >= 0 && camera.right <= innerWidth + 1 && camera.bottom <= innerHeight + 1 && camera.width >= 200 && camera.height >= 140,
-          separate: camera.right <= panel.left + 1 || camera.bottom <= panel.top + 1,
+        const point = [camera.left + Math.max(1, Math.min(camera.width, panel.left - camera.left)) / 2, camera.top + camera.height / 2];
+        const hit = document.elementFromPoint(...point);
+        return { checks: { visible: Math.abs(camera.left)<1 && Math.abs(camera.top)<1 && Math.abs(camera.width-innerWidth)<1 && Math.abs(camera.height-innerHeight)<1,
+          overlays: panel.left < camera.right && panel.right > camera.left && panel.top < camera.bottom && panel.bottom > camera.top,
           // Host main-stage video intentionally ignores pointer input; its
           // containing call is the expected hit target in that branch.
           unobscured: video.parentElement.contains(hit) || (hit === video.closest('.zr-call') && getComputedStyle(video.parentElement).pointerEvents === 'none'), framing: getComputedStyle(video).objectFit,
-          overflow: document.documentElement.scrollWidth > innerWidth + 1 }, debug: { camera: camera.toJSON(), panel: panel.toJSON(), hit: hit?.tagName + '.' + hit?.className, label: hit?.getAttribute('aria-label'), parent: video.parentElement.className, point: [camera.left + camera.width / 2, camera.top + camera.height / 2] } };
+          overflow: document.documentElement.scrollWidth > innerWidth + 1 }, debug: { camera: camera.toJSON(), panel: panel.toJSON(), hit: hit?.tagName + '.' + hit?.className, label: hit?.getAttribute('aria-label'), parent: video.parentElement.className, point } };
       });
       await page.screenshot({ path: path.join(artifacts, `facebetter-${label}-landscape.png`) });
-      assert.deepEqual(layout.checks, { visible: true, separate: true, unobscured: true, framing: 'contain', overflow: false }, label + ': Landscape leaves the whole local camera visible beside the dock: ' + JSON.stringify(layout.debug));
+      assert.deepEqual(layout.checks, { visible: true, overlays: true, unobscured: true, framing: 'cover', overflow: false }, label + ': Landscape keeps full-screen camera video behind the overlaid dock: ' + JSON.stringify(layout.debug));
     }
     async function exercisePicker(page, hosting) {
       const picker = page.locator('[data-zimi-beauty-picker]');

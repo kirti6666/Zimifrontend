@@ -254,6 +254,10 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     await button(page, 'Send gift').click();
     const giftRequest = await last(page, 'gift.send');
     assert.equal(giftRequest.to, creator.id); assert.equal(giftRequest.gift, rose.id); assert.equal(giftRequest.inCall, false);
+    assert.equal(await giftDialog(page).count(),0,'Send closes the picker immediately');
+    await page.locator('#zc-gift-playback[data-provisional="true"]').waitFor({state:'visible'});
+    assert.equal(await page.locator('.zc-gift-card').count(),0,'Immediate artwork cannot invent a delivered receipt');
+    assert.equal(await page.evaluate(()=>S.bal),1000,'Pending gift presentation cannot change the wallet');
     await page.evaluate(giftId => homeSendGift(giftId), rose.id);
     assert.equal((await sent(page, 'gift.send')).length, 1, 'Repeated taps send one gift request');
     await showGifts(page);
@@ -350,7 +354,8 @@ const payment = (order, status = 'PENDING') => ({ purchaseId: 'purchase-' + orde
     assert.equal(callGift.inCall, true);
     assert.equal(callGift.to, creator.id);
     assert.equal(await page.evaluate(() => S.gifted), 0, 'Call gift totals wait for confirmed delivery');
-    assert.equal(await page.locator('.zr-gift-alert').count(), 0, 'The sender does not see a gift animation before confirmation');
+    assert.equal(await page.locator('.zr-gift-alert').count(), 0, 'Pending artwork has no confirmed gift banner');
+    await page.locator('#zr-gift-playback[data-provisional="true"]').waitFor({state:'visible'});
     await receive(page, 'gift.sent', ackGift(callGift, { id: 'confirmed-call-gift', coins: 30 }));
     const callGiftState = () => page.evaluate(() => ({ coins: S.gifted, count: S.giftN, roomCoins: Room.received, messages: S.rmsgs.filter(message => message[0] === 'gift').length }));
     assert.deepEqual(await callGiftState(), { coins: 30, count: 1, roomCoins: 30, messages: 1 }, 'Confirmed private-call delivery uses the actual charged amount and updates sender feedback');

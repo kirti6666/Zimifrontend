@@ -1,6 +1,6 @@
 export type NativeMediaRequest = { requestId: number; action: string; data?: Record<string, unknown> };
 export type VideoSlot = { kind: "local" | "remote"; x: number; y: number; width: number; height: number; radius: number; fit: "contain" | "cover" };
-export type NativeMediaLayout = { width: number; height: number; slots: VideoSlot[] };
+export type NativeMediaLayout = { width: number; height: number; slots: VideoSlot[]; fullScreen?: boolean };
 export type NativeMediaMessage =
   | { type: "native.media"; data: NativeMediaRequest }
   | { type: "native.media.layout"; data: NativeMediaLayout };
@@ -37,7 +37,7 @@ export function validNativeMediaRequest(v: Record<string, unknown>): boolean {
 }
 
 export function validNativeMediaLayout(v: Record<string, unknown>): boolean {
-  return keys(v, ["width", "height", "slots"]) && finite(v.width, 1, 10000) && finite(v.height, 1, 10000) && Array.isArray(v.slots) && v.slots.length <= 2 &&
+  return keys(v, ["width", "height", "slots", "fullScreen"]) && (v.fullScreen === undefined || boolean(v.fullScreen)) && finite(v.width, 1, 10000) && finite(v.height, 1, 10000) && Array.isArray(v.slots) && v.slots.length <= 2 &&
     new Set(v.slots.map(slot => record(slot) ? slot.kind : null)).size === v.slots.length && v.slots.every(slot => record(slot) &&
       keys(slot, ["kind", "x", "y", "width", "height", "radius", "fit"]) && ["local", "remote"].includes(String(slot.kind)) &&
       finite(slot.x, -10000, 10000) && finite(slot.y, -10000, 10000) && finite(slot.width, 1, 10000) && finite(slot.height, 1, 10000) &&

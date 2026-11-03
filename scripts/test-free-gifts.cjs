@@ -44,6 +44,9 @@ const dialog=page=>page.getByRole('dialog',{name:'Send a gift',exact:true});
   await dialog(page).getByRole('button',{name:'Send gift',exact:true}).click();
   const request=(await sends(page,'gift.send')).at(-1);
   assert.equal(request.coins,0);assert.equal(request.gift,free.id);
+  assert.equal(await dialog(page).count(),0,'Explicit Send closes the sheet even when the wallet is unavailable');
+  await page.locator('#zc-gift-playback[data-provisional="true"]').waitFor({state:'visible'});
+  assert.equal(await page.evaluate(()=>S.bal),0,'Free provisional playback cannot invent credit or debit');
   assert.equal(await page.locator('.zc-gift-card').count(),0,'Free receipt waits for server confirmation too');
   await receive(page,'operation.error',{action:'gift.send',...request,status:500,message:'Retry delivery confirmation'});
   // The catalog can become paid during an uncertain retry; retry identity wins.

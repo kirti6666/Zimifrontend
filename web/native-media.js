@@ -35,8 +35,15 @@
     });
   }
   function cameraEnabled() { return typeof camOn === 'function' ? !!camOn() : typeof S === 'undefined' || S.cam !== 0; }
+  function fullScreenCall() {
+    if (typeof S === 'undefined' || S.bgCall) return false;
+    return ['call', 'hcall'].includes(S.v) && !!document.querySelector('.zr-call:not(.zr-voice-call)') ||
+      ['dial', 'dialback'].includes(S.v) && !!document.querySelector('.ringscr.dial.is-video');
+  }
   function layout() {
     scheduled = false;
+    const fullScreen = fullScreenCall();
+    document.documentElement.toggleAttribute('data-native-call-fullscreen', fullScreen);
     const nextAncestors = new Set(), slots = [];
     ['local', 'remote'].forEach(kind => {
       const available = kind === 'local' ? state.hasVideo && cameraEnabled() : state.hasRemoteVideo;
@@ -68,7 +75,7 @@
     });
     ancestors.forEach(el => { if (!nextAncestors.has(el)) { el.removeAttribute('data-zimi-native-underlay'); ancestors.delete(el); } });
     nextAncestors.forEach(el => { el.setAttribute('data-zimi-native-underlay', ''); ancestors.add(el); });
-    const data = { width: innerWidth, height: innerHeight, slots }, serialized = JSON.stringify(data);
+    const data = { width: innerWidth, height: innerHeight, slots, fullScreen }, serialized = JSON.stringify(data);
     if (serialized !== lastLayout) { lastLayout = serialized; Native.send('native.media.layout', data); }
   }
   function scheduleLayout() { if (!scheduled) { scheduled = true; requestAnimationFrame(layout); } }
@@ -91,6 +98,13 @@
   Native.on('native.media.dimensions', data => {
     if (!['local', 'remote'].includes(data.kind) || !(data.width > 0 && data.height > 0)) return;
     shapes[data.kind] = data.width > data.height ? 'landscape' : 'portrait';
+    scheduleLayout();
+  });
+  Native.on('app.insets', data => {
+    for (const edge of ['top', 'right', 'bottom', 'left']) {
+      const value = data[edge];
+      if (Number.isFinite(value) && value >= 0 && value <= 1000) document.documentElement.style.setProperty('--native-safe-' + edge, value + 'px');
+    }
     scheduleLayout();
   });
   async function refreshBeauty() {

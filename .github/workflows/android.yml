@@ -36,6 +36,21 @@ jobs:
       - run: npm run typecheck
       - run: node --test scripts/test-android-release-ci.cjs
       - run: npm run test:native-media
+      - name: Verify incoming ringing and host/member handoff
+        # The full local command also compiles policy fixtures using a prior
+        # Android Gradle cache. Native sources compile in the build job below.
+        run: |
+          node --test scripts/test-incoming-call-actions.cjs scripts/test-incoming-call-screen.cjs scripts/test-call-ringing.cjs
+          node scripts/test-incoming-call-web.cjs
+      - name: Verify instant gift playback and sender confirmation
+        run: |
+          node scripts/test-gift-playback-core.cjs
+          node scripts/test-gift-playback-progressive.cjs
+          node scripts/test-chat-gift-playback.cjs
+          node scripts/test-chat-gifts.cjs
+          node scripts/test-free-gifts.cjs
+          node scripts/test-coins.cjs
+          node scripts/test-chat-order.cjs
       - run: npm run test:call-performance
       - run: npm run test:facebetter
       - name: Validate workflow syntax and shell commands

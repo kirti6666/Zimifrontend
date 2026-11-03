@@ -41,10 +41,11 @@ async function makePage(browser, errors, account = member, peer = host, history 
   page.on('pageerror', error => errors.push(error.message));
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=', 'base64');
   await page.route(/^https?:\/\//, route => {
-    const shape = previewShapes.find(item => item.url === route.request().url());
+    const source=new URL(route.request().url());source.searchParams.delete('binzoGiftCache');
+    const shape = previewShapes.find(item => item.url === source.href);
     if (shape) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: shape.artwork });
     return route.request().url().startsWith('https://media.fixture.test/')
-      ? route.fulfill({ status: 200, contentType: realArt && route.request().url().endsWith('/0.png') ? 'image/webp' : 'image/png', body: realArt && route.request().url().endsWith('/0.png') ? realArt : png }) : route.abort();
+      ? route.fulfill({ status: 200, contentType: realArt && source.pathname.endsWith('/0.png') ? 'image/webp' : 'image/png', body: realArt && source.pathname.endsWith('/0.png') ? realArt : png }) : route.abort();
   });
   await page.addInitScript(() => { window.__sent = []; window.ReactNativeWebView = { postMessage: raw => __sent.push(JSON.parse(raw)) }; });
   await page.goto(pathToFileURL(path.join(root, 'assets', 'aurora.html')).href);
@@ -166,11 +167,17 @@ async function receiptPreviewLayouts(browser, errors) {
     await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).click();
     const attempt = await last(page, 'gift.send');
     assert.equal(attempt.to, host.id); assert.equal(attempt.gift, gifts[1].id); assert.equal(attempt.coins, gifts[1].coins); assert.ok(attempt.idempotencyKey);
+    assert.equal(await sheet(page).count(),0,'Send closes the picker for immediate conversation playback');
+    await page.locator('#zc-gift-playback[data-provisional="true"]').waitFor({state:'visible'});
+    await page.evaluate(id=>homeSendGift(id),gifts[1].id);
+    assert.equal((await sent(page,'gift.send')).length,1,'Repeated Send cannot submit another pending purchase');
+    assert.equal(await page.evaluate(()=>S.bal),10000,'Provisional playback cannot debit the wallet');
     assert.equal(await page.locator('.zc-gift-card').count(), 0, 'Sending waits for a server receipt');
     await receive(page, 'operation.error', { action: 'gift.send', ...attempt, status: 500, message: 'Fixture delivery could not be confirmed' });
     await sheet(page).getByRole('button', { name: 'Send gift', exact: true }).click();
     assert.equal((await last(page, 'gift.send')).idempotencyKey, attempt.idempotencyKey, 'Uncertain retry preserves the gift request identity');
     await receive(page, 'operation.error', { action: 'gift.send', ...attempt, code: 'INSUFFICIENT_COINS', status: 402, message: 'Fixture balance is too low' });
+    assert.equal(await page.locator('#zc-gift-playback').count(),0,'A definitive rejection cancels pending playback');
     assert.equal(await page.locator('.zc-gift-card').count(), 0, 'Failed wallet request does not create a delivered gift receipt');
     assert.equal(await page.evaluate(() => S.bal), 10000, 'Only authoritative wallet events change balance');
     await receive(page, 'wallet.balance', { coins: 0 });

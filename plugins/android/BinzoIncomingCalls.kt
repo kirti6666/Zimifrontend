@@ -133,6 +133,7 @@ internal object BinzoIncomingCalls {
 
   fun notification(context: Context, notification: ExpoNotification): Notification? {
     val value = remember(context, notification) ?: return null
+    if (BinzoCallRinging.suppressed(value.optString("callId"))) return null
     BinzoNotifications.channel(context)
     val remaining = (BinzoNotificationPolicy.expiry(value.optString("expiresAt"))!! - System.currentTimeMillis()).coerceIn(1, 180_000)
     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

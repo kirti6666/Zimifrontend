@@ -18,7 +18,7 @@
 .ringscr.dial .ringact{margin-top:auto;padding-top:40px}
 .ringscr.dial .rbtn{color:var(--muted)}
 /* Back minimizes a ringing call; it keeps ringing behind other screens (web/ongoing-call.js). */
-.ringscr.dial>.dialmin{position:absolute;top:16px;left:16px;z-index:2}
+.ringscr.dial>.dialmin{position:absolute;top:calc(16px + var(--safe-top));left:calc(16px + var(--safe-left));z-index:2}
 .ringscr.dial .voiceend{width:64px;height:64px;transition:transform .18s}
 .ringscr.dial .voiceend:active{transform:scale(.94)}
 /* Video calls: flip, camera and mute sit beside Cancel, like the call's own dock. */
@@ -30,16 +30,15 @@
 /* Beside the tools, Cancel matches their size. */
 .ringscr.dial .dialdock .voiceend{width:52px;height:52px}
 .ringscr.dial .dialdock .voiceend svg{width:22px;height:22px}
-/* The caller sees their own camera full screen while it rings: portrait frames fill the
-   screen, landscape frames sit whole on the media canvas and the front camera is mirrored,
-   as on the host stage. The camera is the call's own HD capture, never zoomed or filtered.
+/* The caller sees their own camera filling the screen while it rings. Display
+   fitting preserves proportions and the front camera is mirrored once.
    White type rides on scrims, as on other camera stages, and the avatar shrinks to keep
    the caller's face clear. */
 .ringscr.dial.is-video{color:#fff}
 .ringscr.dial.is-video .ringbg{background:var(--media-canvas);animation:none}
 .ringscr.dial .ringbg>:is(video,svg){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
 .ringscr.dial .ringbg>video[data-zimi-facing=user]{transform:scaleX(-1)}
-.ringscr.dial .ringbg>video[data-zimi-shape=landscape]{object-fit:contain}
+.ringscr.dial.is-video .ringbg>video{object-fit:cover!important;object-position:center}
 .dialscrim{position:absolute;inset:0;background:linear-gradient(180deg,rgb(0 0 0 / .62),rgb(0 0 0 / .28) 30%,transparent 48%,transparent 58%,rgb(0 0 0 / .62))}
 .ringscr.dial:not(.is-video) .ringbg>video{visibility:hidden}
 .ringscr.dial:not(.is-video) .ringbg>:is(svg,.dialscrim){display:none}

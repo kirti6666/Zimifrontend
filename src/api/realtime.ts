@@ -2,7 +2,7 @@ import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config";
 import { getToken, onTokenChanged } from "../session";
 import { api } from "./endpoints";
-import { callerFrom, callPrice, callTargetsFrom, coinCount, genderOf, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
+import { callerFrom, callPrice, callTargetsFrom, coinCount, genderOf, giftArtworkFrom, giftDurationFrom, idOf, messageFrom, record, streamChatFrom, string, verificationOf } from "./adapters";
 import type { RtcPayload } from "./types";
 import { ApiError } from "./client";
 import { getAppUpdateAuth, notifyAppUpdate } from "../app-update-events";
@@ -126,6 +126,7 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
         gift: string(gift.giftName) || idOf(gift.giftId) || "Gift", coins: gift.coins, from: idOf(gift.senderId),
         id: idOf(gift), streamId: idOf(gift.streamId), giftId: idOf(gift.giftId), giftName: string(gift.giftName),
         senderName: string(gift.senderName), emoji: string(gift.emoji), mediaUrl: string(gift.mediaUrl), senderAvatarUrl: string(gift.senderAvatarUrl),
+        ...(giftArtworkFrom(gift.coverUrl) ? { coverUrl: giftArtworkFrom(gift.coverUrl) } : {}),
         ...(durationMs !== undefined ? { durationMs } : {}),
         senderGender: genderOf(gift.senderGender).gender,
       });

@@ -68,7 +68,7 @@ function shell() {
   const app = load('App.tsx');
   const all = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(all)];
   function render() { cursor = 0; const tree = app.AppContent({ onIncomingEvent: message => incoming.push(plain(message)) }); pendingEffects.splice(0).forEach(work => work()); return tree; }
-  const find = (tree, type) => all(tree).find(node => node.type === type);
+  const find = (tree, type) => all(tree).find(node => node.type === type || typeof node.type === 'function' && node.type.name === type);
   const send = (type, data = {}, url = 'https://aurora.localhost/') => find(render(), 'WebView').props.onMessage({ nativeEvent: { url, data: JSON.stringify({ type, data }) } });
   function unmount() { hooks.forEach(hook => hook?.cleanup?.()); }
   return { render, find, send, unmount, posts, calls, media, serverWrites, activities, incoming, server: message => receiveServer(message), nativeSend: message => nativeSend(message), state: value => nativeState(value), timers };
@@ -105,6 +105,27 @@ test('native RPC and layout honor the real trusted-origin parser and reject web-
   h.send('native.media.layout', { ...layout, slots: [{ ...layout.slots[0], width: Infinity }] });
   assert.deepEqual(plain(h.find(h.render(), 'NativeMediaLayer').props.layout), layout);
   assert.equal(h.serverWrites.length, 0, 'Media RPC never reaches the API bridge as an arbitrary web action');
+  h.unmount();
+});
+
+test('fullscreen video consumes native insets only in overlaid controls and restores navigation padding', () => {
+  const h = shell(); let tree = h.render();
+  assert.deepEqual(plain(h.find(tree, 'SafeAreaView').props.edges), ['top', 'right', 'bottom', 'left']);
+  h.find(tree, 'SafeAreaReporter').props.onChange({ top: 32, right: 0, bottom: 24, left: 0 });
+  h.send('ready', { demo: false });
+  assert.ok(h.posts.some(message => message.type === 'app.insets' && message.data.top === 32 && message.data.bottom === 24));
+  const layout = { width: 390, height: 844, slots: [], fullScreen: true };
+  h.send('native.media.layout', layout); tree = h.render();
+  assert.deepEqual(plain(h.find(tree, 'SafeAreaView').props.edges), [], 'The native video/WebView viewport reaches all physical display edges');
+  assert.equal(h.find(tree, 'StatusBar').props.style, 'light');
+  assert.equal(h.find(tree, 'KeyboardShell').props.fullScreen, true);
+  h.send('native.media.layout', { ...layout, fullScreen: 'yes' });
+  assert.equal(h.find(h.render(), 'KeyboardShell').props.fullScreen, true, 'Invalid fullscreen input cannot alter geometry');
+  h.send('native.media.layout', { ...layout, fullScreen: false }); tree = h.render();
+  assert.deepEqual(plain(h.find(tree, 'SafeAreaView').props.edges), ['top', 'right', 'bottom', 'left'], 'Minimized/voice/ordinary pages regain normal safe-area padding');
+  h.send('native.media.layout', layout);
+  h.find(h.render(), 'WebView').props.onLoadStart();
+  assert.deepEqual(plain(h.find(h.render(), 'SafeAreaView').props.edges), ['top', 'right', 'bottom', 'left'], 'Document replacement retires fullscreen geometry');
   h.unmount();
 });
 

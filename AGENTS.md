@@ -195,8 +195,8 @@ keeps it identical to the original Next.js version.
   that screen shows and the app is in the foreground; any other view silences
   it. The avatar rings and "Calling" dots in `web/call-dial.css` follow the
   tone's 3s cycle through `--dial-phase`, so redraws do not restart them.
-  A video call rings over the caller's own camera, full screen (portrait frames
-  cover, landscape frames stay whole, the front camera is mirrored), with Flip,
+  A video call rings over the caller's own camera, full screen (frames fill the
+  display without stretching, the front camera is mirrored once), with Flip,
   Camera and Mute beside Cancel. The same `video[data-zimi-local]` moves into
   the call when it is answered; with the camera off the plain calling screen shows.
 - Calls keep going behind other screens (`web/ongoing-call.js`). Back on the
@@ -215,6 +215,11 @@ keeps it identical to the original Next.js version.
   pickers and receipts show the still cover; the animation plays only when a
   gift is sent or received (the cover under reduced motion). Read gift artwork
   through `giftStillUrl`/`giftMotionUrl`, not the raw `mediaUrl`.
+  Explicit Send may start a sender-only provisional visual immediately, keyed
+  by its idempotency key. Wallets, earnings, counts, receipts and the other user
+  remain server-confirmed; rejection cancels the visual and retries/acknowledgments
+  never replay it. Use static uploaded `coverUrl` posters in lists and preserve
+  the original animation for playback; warm only selected/next artwork.
 - The gift picker follows the supplied dark reference in `web/gift-picker.css`:
   a rounded bottom sheet, purple/pink header glow, live pink balance/top-up pill,
   and four open columns of still artwork, names and gold prices. `.zg-reference`
@@ -262,8 +267,14 @@ keeps it identical to the original Next.js version.
   uses the selected theme's colors, never a fixed palette. The host's camera
   retains its full source image: native Android requests 1920x1440 at 30 fps;
   the browser fallback captures 1280x720 with `resizeMode: 'none'`. Use
-  `contain` in call/setup/beauty surfaces so changing their shape never crops,
-  stretches or zooms the camera image.
+  `cover` on the visible video call's main stage and video dial preview so they
+  fill the display without bars; preserve proportions and accept display cropping.
+  Standalone setup/beauty and PiP use `contain` to show the whole camera frame.
+  During a call the beauty dock overlays the existing full-screen local camera
+  (`cover`, inset 0) instead of shrinking its video; the remote remains PiP.
+  Visible native video calls remove native safe-area padding and pass the real
+  insets to web controls; video remains edge to edge, controls stay clear of
+  system bars, and normal navigation/voice/minimized calls retain native insets.
 - Android builds containing `BinzoMedia` use native WebRTC capture/playback and
   Facebetter Android SDK 2.2.1, matching `../facebetter-expo`'s GLES3 texture path.
   `src/native-media/` owns capture, signaling media state and native video surfaces;

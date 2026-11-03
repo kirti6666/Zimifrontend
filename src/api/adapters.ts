@@ -199,10 +199,14 @@ export function streamChatFrom(value: unknown): StreamChat {
 export function giftDurationFrom(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 }
+export function giftArtworkFrom(value: unknown): string {
+  if (typeof value !== "string" || !/^https:\/\/[^\s"'<>\\]+$/.test(value)) return "";
+  try { const url = new URL(value); return url.username || url.password ? "" : value; } catch { return ""; }
+}
 export function catalogFrom(giftData: unknown, packData: unknown): Catalog {
   return { gifts: items(giftData).map(record).filter(gift => typeof gift.coins === "number" && Number.isSafeInteger(gift.coins) && gift.coins >= 0).map(gift => {
-    const media = gift.media && typeof gift.media === "object" ? record(gift.media) : {}, durationMs = giftDurationFrom(media.durationMs);
-    return { id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: string(media.url), ...(durationMs !== undefined ? { durationMs } : {}) };
+    const media = gift.media && typeof gift.media === "object" ? record(gift.media) : {}, durationMs = giftDurationFrom(media.durationMs), coverUrl = giftArtworkFrom(media.coverUrl);
+    return { id: idOf(gift), name: string(gift.name), emoji: string(gift.emoji), coins: count(gift.coins), mediaUrl: string(media.url), ...(coverUrl ? { coverUrl } : {}), ...(durationMs !== undefined ? { durationMs } : {}) };
   }),
     packs: items(packData).map(record).map(pack => ({ id: idOf(pack), name: string(pack.name), coins: count(pack.coins), pricePaise: count(pack.pricePaise), ...(Number.isSafeInteger(pack.bonusPercent) && Number(pack.bonusPercent) > 0 && Number(pack.bonusPercent) <= 1000 ? { bonusPercent: Number(pack.bonusPercent) } : {}), ...(["hot", "popular"].includes(String(pack.badge)) ? { badge: pack.badge as "hot" | "popular" } : {}) })), paymentsAvailable: record(packData).paymentsAvailable === true };
 }
@@ -299,8 +303,8 @@ export function chatGiftFrom(value: unknown): ChatGift | undefined {
   const artwork = string(gift.mediaUrl);
   let mediaUrl = "";
   try { const url = new URL(artwork); if (/^https:\/\/[^\s"'<>\\]+$/.test(artwork) && !url.username && !url.password) mediaUrl = artwork; } catch { /* A name-only receipt still remains valid. */ }
-  const durationMs = giftDurationFrom(gift.durationMs);
-  return { giftId, transferId, name, emoji: string(gift.emoji).slice(0, 20), mediaUrl, coins: Number(gift.coins), quantity: Number(gift.quantity), ...(durationMs !== undefined ? { durationMs } : {}) };
+  const durationMs = giftDurationFrom(gift.durationMs), coverUrl = giftArtworkFrom(gift.coverUrl);
+  return { giftId, transferId, name, emoji: string(gift.emoji).slice(0, 20), mediaUrl, ...(coverUrl ? { coverUrl } : {}), coins: Number(gift.coins), quantity: Number(gift.quantity), ...(durationMs !== undefined ? { durationMs } : {}) };
 }
 /** One chat message as the screens show it, including its edit, delete and reply state. */
 export function messageFrom(value: unknown, userId: string): Message {

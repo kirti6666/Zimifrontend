@@ -7,7 +7,14 @@ html[data-zimi-native-underlay], body[data-zimi-native-underlay],
 video[data-zimi-native-video] {
   background: transparent !important;
 }
-/* Preserve the whole camera image in calls, setup and the smaller beauty
-   preview. Differing surface/frame ratios need space around the image; cover
-   would crop the camera and make the person appear zoomed in. */
+/* Standalone setup/beauty and picture-in-picture retain the whole camera image.
+   The active call background, including its beauty preview, fills the display. */
 html video[data-zimi-native-video] { color: transparent; object-fit: contain !important; }
+/* Native padding is removed only for a visible video call. Its controls consume
+   these insets while the video itself continues behind the system bars. */
+:root[data-native-call-fullscreen] {
+  --safe-top:var(--native-safe-top,0px);
+  --safe-right:var(--native-safe-right,0px);
+  --safe-bottom:var(--native-safe-bottom,0px);
+  --safe-left:var(--native-safe-left,0px);
+}

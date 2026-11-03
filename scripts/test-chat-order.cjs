@@ -7,6 +7,8 @@ const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..'),context={window:{}};
 vm.runInNewContext(fs.readFileSync(path.join(root,'web/chat-order.js'),'utf8'),context);
 const order=context.window.ZimiChatOrder,plain=value=>JSON.parse(JSON.stringify(value));
+const separateKinds=plain(order.merge([{id:'text',mine:true,clientId:'same-request',text:'Hello'}],[{id:'gift',mine:true,kind:'gift',clientId:'same-request',gift:{transferId:'transfer'}}]));
+assert.equal(separateKinds.length,2,'Sender gift request aliases cannot replace ordinary messages that use the same client ID');
 const at=seconds=>new Date(1700000000000+seconds*1000).toISOString();
 const legacy={id:'legacy',at:at(75)},welcome={id:'welcome',sequence:1,at:at(100),automated:true},human={id:'human',sequence:2,at:at(50)};
 for(const rows of [[legacy,welcome,human],[human,legacy,welcome],[welcome,human,legacy]])assert.deepEqual(plain(order.merge([],rows)).map(row=>row.id),['legacy','welcome','human'],'Sequence/legacy partition is transitive even with clock skew');

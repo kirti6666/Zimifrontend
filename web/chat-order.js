@@ -25,14 +25,15 @@ window.ZimiChatOrder=(()=>{
   }
   function merge(current,incoming,hidden=new Set()){
     const rows=[],byId=new Map(),byClient=new Map(),byGift=new Map();
+    const clientKey=row=>(row.kind||'text')+':'+row.clientId;
     for(const next of [...current,...incoming]){
       if(next.id&&hidden.has(String(next.id)))continue;
       let index=next.id?byId.get(String(next.id)):undefined;
-      if(index===undefined&&next.mine&&next.clientId)index=byClient.get(next.clientId);
+      if(index===undefined&&next.mine&&next.clientId)index=byClient.get(clientKey(next));
       if(index===undefined&&next.kind==='gift'&&next.gift?.transferId)index=byGift.get(String(next.gift.transferId));
       if(index===undefined){index=rows.length;rows.push({...next})}
       else rows[index]=combine(rows[index],next);
-      const row=rows[index];if(row.id)byId.set(String(row.id),index);if(row.mine&&row.clientId)byClient.set(row.clientId,index);if(row.kind==='gift'&&row.gift?.transferId)byGift.set(String(row.gift.transferId),index);
+      const row=rows[index];if(row.id)byId.set(String(row.id),index);if(row.mine&&row.clientId)byClient.set(clientKey(row),index);if(row.kind==='gift'&&row.gift?.transferId)byGift.set(String(row.gift.transferId),index);
     }
     for(const row of rows)if(row.reply){const index=byId.get(String(row.reply.id)),original=index===undefined?null:rows[index];if(original&&(original.deleted||original.edited))row.reply={...row.reply,text:original.deleted?'':original.text||'',image:!original.deleted&&original.kind==='image',voice:!original.deleted&&original.kind==='voice',deleted:!!original.deleted}}
     return rows.sort(compare);

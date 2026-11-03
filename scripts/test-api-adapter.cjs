@@ -852,6 +852,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(timedGift.gift.durationMs, 6400); assert.equal(timedGift.durationMs, undefined, 'Animation timing stays inside the gift snapshot, separate from voice duration');
   const timedCatalog = adapters.catalogFrom({ items: [{ _id: giftId, name: 'Golden Rose', coins: 25, media: { url: chatGift.mediaUrl, durationMs: 6400 } }] }, { items: [] });
   assert.equal(timedCatalog.gifts[0].durationMs, 6400, 'Catalog gifts retain the original media timing');
+  const giftCover='https://cdn.example.test/gift-cover.webp';
+  assert.equal(adapters.catalogFrom({items:[{_id:giftId,coins:25,media:{url:chatGift.mediaUrl,coverUrl:giftCover}}]},{items:[]}).gifts[0].coverUrl,giftCover,'Catalog posters remain separate from original animation URLs');
+  const coveredGift=adapters.chatGiftFrom({...chatGift,coverUrl:giftCover});
+  assert.equal(coveredGift.coverUrl,giftCover);assert.equal(coveredGift.mediaUrl,chatGift.mediaUrl,'Receipt posters never replace authoritative animation bytes');
+  for(const coverUrl of ['javascript:alert(1)','http://cdn.example.test/x.webp','https://user:password@cdn.example.test/x.webp','https://cdn.example.test/"unsafe.webp'])assert.equal(Object.hasOwn(adapters.chatGiftFrom({...chatGift,coverUrl}),'coverUrl'),false,'Unsafe receipt posters are omitted');
   assert.equal(Object.hasOwn(adapters.messageFrom(giftMessage, 'member-id').gift, 'durationMs'), false, 'Legacy snapshots do not receive invented timing');
   for (const durationMs of [-1, 1.5, Infinity, NaN, '6400', null, true]) {
     assert.equal(Object.hasOwn(adapters.messageFrom({ ...giftMessage, gift: { ...chatGift, durationMs } }, 'member-id').gift, 'durationMs'), false);
@@ -1025,6 +1030,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(plain(giftEvent.data),{gift:'Diamond Crown',coins:250,from:'host-id',id:'gift-delivery',streamId:'stream-id',giftId:'catalog-gift',giftName:'Diamond Crown',senderName:'Asha Live',emoji:'💎',mediaUrl:'https://cdn.example.test/crown.png',senderAvatarUrl:'https://cdn.example.test/asha.png'});
   socket.emitServer('gift:received', { ...receivedGift, durationMs: 6400 });
   assert.equal(events.filter(event => event.type === 'gift.received').at(-1).data.durationMs, 6400);
+  socket.emitServer('gift:received', { ...receivedGift, coverUrl:giftCover });
+  assert.equal(events.filter(event => event.type === 'gift.received').at(-1).data.coverUrl,giftCover,'Live gifts retain the static poster separately from motion');
   socket.emitServer('gift:received', { ...receivedGift, durationMs: -10 });
   assert.equal(Object.hasOwn(events.filter(event => event.type === 'gift.received').at(-1).data, 'durationMs'), false);
   const walletRefreshesBeforeFree = events.filter(event => event.type === 'wallet.refresh').length;

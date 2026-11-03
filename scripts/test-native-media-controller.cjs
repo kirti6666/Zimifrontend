@@ -107,6 +107,7 @@ test('native capture uses reference framing; preview and sender share one GPU-pr
   assert.equal(h.calls.filter(call => call[0] === 'androidAuth').length, 1, 'An active licensed processor does not repeatedly fetch a token');
   assert.equal(h.calls.some(call => call[0] === 'startCallAudio'), false, 'Camera preview does not change the device audio route');
   const pc = await h.connect();
+  assert.equal(pc.config.bundlePolicy, 'max-bundle'); assert.equal(pc.config.rtcpMuxPolicy, 'require');
   assert.deepEqual(h.calls.find(call => call[0] === 'startCallAudio'), ['startCallAudio', true]);
   assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').track, video);
   assert.equal(pc.getSenders().find(sender => sender.track.kind === 'audio').track, microphone);
@@ -114,8 +115,8 @@ test('native capture uses reference framing; preview and sender share one GPU-pr
   assert.equal(videoParameters.encodings[0].maxBitrate, 2500000);
   assert.equal(videoParameters.encodings[0].maxFramerate, 30);
   assert.equal(videoParameters.encodings[0].scaleResolutionDownBy, 1);
-  assert.equal(videoParameters.degradationPreference, 'maintain-resolution');
-  assert.deepEqual(h.calls.find(call => call[0] === 'signaled')[2], plain(videoParameters), '1080p limits are applied before signaling the first offer');
+  assert.equal(videoParameters.degradationPreference, 'maintain-framerate');
+  assert.deepEqual(h.calls.find(call => call[0] === 'signaled')[2], plain(videoParameters), 'Full-source limits are applied before signaling the first offer');
   assert.equal(h.calls.some(call => call[0] === 'parameters' && call[1] === 'audio'), false);
   await h.rpc('controls', { camera: false, microphone: false });
   assert.equal(video.enabled, false); assert.equal(microphone.enabled, false);
@@ -168,7 +169,8 @@ test('early ICE waits for the matching remote description; foreign callers canno
   assert.ok(h.events.some(event => event.type === 'rtc.signal' && event.data.description?.type === 'answer'));
   const signaledAnswer = h.calls.find(call => call[0] === 'signaled' && call[1] === 'answer')[2];
   assert.equal(signaledAnswer.encodings[0].maxBitrate, 2500000);
-  assert.equal(signaledAnswer.encodings[0].scaleResolutionDownBy, 1, 'The answering side starts at full1080p too');
+  assert.equal(signaledAnswer.encodings[0].scaleResolutionDownBy, 1, 'The answering side starts at full source size too');
+  assert.equal(signaledAnswer.degradationPreference, 'maintain-framerate');
   const offerWrites = h.calls.filter(call => call[0] === 'offer'); assert.equal(offerWrites.length, 0);
   h.controller.close(); await flush();
 });
@@ -260,47 +262,222 @@ test('only the initiator restarts ICE, recovery is bounded, and cleanup cancels 
   }
 });
 
-test('native RTP adaptation uses sustained receiver evidence and never treats a repeated report as recovery', async () => {
+function qualityStats({ sample, feedback = sample, loss = 0, rtt = .1, jitter = 0, available = 4000000, delay = sample, frames = sample * 60, encode = sample * .18, reason = 'none', received = feedback * 1000, lost = 0, incoming, markers = true } = {}) {
+  const values = [
+    ['transport', { id: 'transport', type: 'transport', timestamp: sample * 2000, selectedCandidatePairId: 'pair' }],
+    ['pair', { id: 'pair', type: 'candidate-pair', timestamp: sample * 2000, responsesReceived: sample, currentRoundTripTime: rtt, availableOutgoingBitrate: available }],
+    ['receiver', { id: 'receiver', type: 'remote-inbound-rtp', timestamp: sample * 2000, ...(markers ? { reportsReceived: feedback } : {}), packetsReceived: received, packetsLost: lost, fractionLost: loss, jitter, roundTripTime: rtt }],
+    ['encoder', { id: 'encoder', type: 'outbound-rtp', kind: 'video', timestamp: sample * 2000, packetsSent: sample * 500, framesEncoded: frames, bytesSent: sample * 200000, totalPacketSendDelay: delay, totalEncodeTime: encode, qualityLimitationReason: reason, mediaSourceId: 'source' }],
+    ['source', { id: 'source', type: 'media-source', timestamp: sample * 2000, framesPerSecond: 30 }],
+  ];
+  if (incoming) values.push(['incoming', { id: 'incoming', type: 'inbound-rtp', timestamp: sample * 2000, ...incoming }]);
+  return new Map(values);
+}
+function videoSender(pc) { return pc.getSenders().find(sender => sender.track.kind === 'video'); }
+function markConnected(pc) { pc.connectionState = pc.iceConnectionState = 'connected'; pc.onconnectionstatechange(); }
+
+test('fresh receiver loss reduces the sender; repeated reports are neutral and recovery waits at each step', async () => {
   const h = fixture(), pc = await h.connect();
-  pc.connectionState = pc.iceConnectionState = 'connected'; pc.onconnectionstatechange();
-  const stats = (timestamp, loss) => new Map([
-    ['transport', { id: 'transport', type: 'transport', timestamp, selectedCandidatePairId: 'pair' }],
-    ['pair', { id: 'pair', type: 'candidate-pair', timestamp, currentRoundTripTime: .1 }],
-    ['receiver', { id: 'receiver', type: 'remote-inbound-rtp', timestamp, fractionLost: loss }],
-  ]);
-  pc.stats = stats(1, .3); await h.tick(2000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].maxBitrate, 2500000);
-  pc.stats = stats(2, .3); await h.tick(2000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].maxBitrate, 450000);
+  markConnected(pc);
+  pc.stats = qualityStats({ sample: 1, loss: .3 }); await h.tick(2000);
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 2500000);
+  assert.equal(h.state().quality, 'good', 'One bad receiver report does not warn');
+  pc.stats = qualityStats({ sample: 2, loss: .3 }); await h.tick(2000);
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 450000);
+  assert.equal(h.state().quality, 'poor');
   for (let count = 0; count < 4; count++) await h.tick(2000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].maxBitrate, 450000);
-  for (let timestamp = 3; timestamp <= 5; timestamp++) { pc.stats = stats(timestamp, 0); await h.tick(2000); }
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].maxBitrate, 900000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.degradationPreference, 'maintain-framerate');
-  pc.stats = stats(6, 0); await h.tick(2000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].maxBitrate, 1800000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].scaleResolutionDownBy, 1920 / 1280);
-  pc.stats = stats(7, 0); await h.tick(2000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].maxBitrate, 2500000);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.encodings[0].scaleResolutionDownBy, 1);
-  assert.equal(pc.getSenders().find(sender => sender.track.kind === 'video').params.degradationPreference, 'maintain-resolution');
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 450000);
+  for (let sample = 3; sample <= 5; sample++) { pc.stats = qualityStats({ sample }); await h.tick(2000); }
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 450000, 'Three fresh recovery polls do not immediately raise resolution');
+  pc.stats = qualityStats({ sample: 6 }); await h.tick(2000);
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 900000);
+  assert.equal(h.state().quality, 'good');
+  assert.equal(videoSender(pc).params.degradationPreference, 'maintain-framerate');
+  for (let sample = 7; sample <= 10; sample++) { pc.stats = qualityStats({ sample }); await h.tick(2000); }
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 900000, 'Each quality increase observes the10s dwell');
+  pc.stats = qualityStats({ sample: 11 }); await h.tick(2000);
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 1800000);
+  for (let sample = 12; sample <= 16; sample++) { pc.stats = qualityStats({ sample }); await h.tick(2000); }
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 2500000);
+  assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy, 1);
   h.controller.close(); await flush();
 });
 
-test('sustained encoder CPU pressure lowers 1080p to the 720p profile while keeping 30fps motion', async () => {
+test('sustained encoder CPU pressure lowers resolution without reporting a poor connection', async () => {
   const h = fixture(), pc = await h.connect();
-  pc.connectionState = pc.iceConnectionState = 'connected'; pc.onconnectionstatechange();
-  const video = pc.getSenders().find(sender => sender.track.kind === 'video');
-  for (const timestamp of [1, 2]) {
-    pc.stats = new Map([['encoder', { id: 'encoder', type: 'outbound-rtp', kind: 'video', timestamp, qualityLimitationReason: 'cpu' }]]);
+  markConnected(pc); const video = videoSender(pc);
+  pc.stats = qualityStats({ sample: 1 }); await h.tick(2000);
+  for (const sample of [2, 3]) {
+    pc.stats = qualityStats({ sample, reason: 'cpu' });
     await h.tick(2000);
-    if (timestamp === 1) assert.equal(video.params.encodings[0].scaleResolutionDownBy, 1, 'A single transient CPU report keeps the requested1080p');
+    if (sample === 2) assert.equal(video.params.encodings[0].scaleResolutionDownBy, 1, 'One CPU interval keeps full source resolution');
   }
   assert.equal(video.params.encodings[0].scaleResolutionDownBy, 1920 / 1280);
   assert.equal(video.params.encodings[0].maxBitrate, 1800000);
   assert.equal(video.params.encodings[0].maxFramerate, 30);
   assert.equal(video.params.degradationPreference, 'maintain-framerate');
+  assert.equal(h.state().quality, 'good');
   assert.equal(h.state().local.getVideoTracks()[0].getSettings().width, 1920, 'Adaptation does not reopen or crop the original camera');
   assert.equal(h.captures.length, 1);
+  h.controller.close(); await flush();
+});
+
+test('stable distant-relay RTT with near-zero loss does not show poor connection or shrink video', async () => {
+  const h = fixture(), pc = await h.connect(); markConnected(pc);
+  for (let sample = 1; sample <= 10; sample++) {
+    pc.stats = qualityStats({ sample, rtt: .75, loss: .001, jitter: .003 }); await h.tick(2000);
+  }
+  assert.equal(h.state().quality, 'good');
+  assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy, 1);
+  assert.equal(h.captures.length, 1);
+  h.controller.close(); await flush();
+});
+
+test('extreme fresh RTT remains visible but propagation delay alone never reduces sender resolution', async () => {
+  const h = fixture(), pc = await h.connect(); markConnected(pc);
+  pc.stats = qualityStats({ sample: 1, rtt: 1.4 }); await h.tick(2000);
+  assert.equal(h.state().quality, 'good');
+  pc.stats = qualityStats({ sample: 2, rtt: 1.4 }); await h.tick(2000);
+  assert.equal(h.state().quality, 'poor');
+  assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy, 1);
+  for (let sample = 3; sample <= 5; sample++) { pc.stats = qualityStats({ sample }); await h.tick(2000); }
+  assert.equal(h.state().quality, 'good');
+  h.controller.close(); await flush();
+});
+
+test('a changing collection timestamp cannot turn one old RTCP loss report into sustained impairment', async () => {
+  const h = fixture(), pc = await h.connect(); markConnected(pc);
+  for (let sample = 1; sample <= 10; sample++) {
+    pc.stats = qualityStats({ sample, feedback: 1, loss: .3 }); await h.tick(2000);
+  }
+  assert.equal(h.state().quality, 'good');
+  assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy, 1);
+  assert.equal(h.events.some(event => event.type === 'native.media.state' && event.data.quality === 'poor'), false);
+  h.controller.close(); await flush();
+});
+
+test('fresh counter-based RTP loss works without fractionLost and incoming loss only warns the receiver', async () => {
+  for (const direction of ['incoming', 'outgoing']) {
+    const h = fixture(), pc = await h.connect(); markConnected(pc);
+    for (let sample = 1; sample <= 3; sample++) {
+      pc.stats = qualityStats({ sample, markers: false,
+        ...(direction === 'outgoing' ? { received: sample * 100, lost: sample * 50 } :
+          { incoming: { packetsReceived: sample * 100, packetsLost: sample * 50, freezeCount: 0 } }) });
+      if (direction === 'outgoing') delete pc.stats.get('receiver').fractionLost;
+      await h.tick(2000);
+    }
+    assert.equal(h.state().quality, 'poor');
+    assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy > 1, direction === 'outgoing');
+    h.controller.close(); await flush();
+  }
+});
+
+test('fresh pacer backlog reduces a congested sender while an idle stale CPU gauge is neutral', async () => {
+  for (const stalled of [false, true]) {
+    const h = fixture(), pc = await h.connect(); markConnected(pc);
+    for (let sample = 1; sample <= 3; sample++) {
+      pc.stats = qualityStats({ sample, ...(stalled ? { frames: 60, reason: 'cpu', delay: 1 } : { delay: sample * 150, available: 550000 }) });
+      if (stalled) pc.stats.get('encoder').packetsSent = 500;
+      await h.tick(2000);
+    }
+    assert.equal(h.state().quality, stalled ? 'good' : 'poor');
+    assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy > 1, !stalled);
+    h.controller.close(); await flush();
+  }
+});
+
+test('one bounded healthy quality probe can escape a bandwidth estimate limited by the current sender cap', async () => {
+  const h = fixture(), pc = await h.connect(); markConnected(pc);
+  for (let sample = 1; sample <= 2; sample++) { pc.stats = qualityStats({ sample, loss: .3 }); await h.tick(2000); }
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 450000);
+  for (let sample = 3; sample <= 10; sample++) { pc.stats = qualityStats({ sample, available: 400000 }); await h.tick(2000); }
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 450000, 'A low estimate prevents an immediate increase');
+  pc.stats = qualityStats({ sample: 11, available: 400000 }); await h.tick(2000);
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 900000, 'A15s healthy one-step probe avoids permanently trapping the call at low resolution');
+  h.controller.close(); await flush();
+});
+
+test('stale or removed RTCP impairment expires while active healthy RTP clears a genuine old warning', async () => {
+  for (const remove of [false, true]) {
+    const h = fixture(), pc = await h.connect(); markConnected(pc);
+    for (let sample = 1; sample <= 2; sample++) { pc.stats = qualityStats({ sample, loss: .3 }); await h.tick(2000); }
+    assert.equal(h.state().quality, 'poor');
+    for (let sample = 3; sample <= 10; sample++) {
+      pc.stats = qualityStats({ sample, feedback: 2, loss: .3 });
+      if (remove) pc.stats.delete('receiver');
+      await h.tick(2000);
+    }
+    assert.equal(h.state().quality, 'good', 'Collection timestamps cannot keep an expired or removed receiver warning alive');
+    h.controller.close(); await flush();
+  }
+});
+
+test('RTCP packet deltas remain useful when an optional feedback measurement counter is stuck at zero', async () => {
+  const h = fixture(), pc = await h.connect(); markConnected(pc);
+  for (let sample = 1; sample <= 3; sample++) {
+    pc.stats = qualityStats({ sample, feedback: 0, received: sample * 100, lost: sample * 50 });
+    delete pc.stats.get('receiver').fractionLost;
+    pc.stats.get('receiver').roundTripTimeMeasurements = 0;
+    await h.tick(2000);
+  }
+  assert.equal(h.state().quality, 'poor');
+  assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 450000);
+  h.controller.close(); await flush();
+});
+
+test('changed receiver loss or jitter remains fresh when RTT measurement markers stay at zero', async () => {
+  for (const gauge of ['loss', 'jitter']) {
+    const h = fixture(), pc = await h.connect(); markConnected(pc);
+    for (let sample = 1; sample <= 3; sample++) {
+      pc.stats = qualityStats({ sample, feedback: 0, received: 1000, lost: 0,
+        [gauge]: sample === 1 ? 0 : sample === 2 ? .25 : .3 });
+      pc.stats.get('receiver').roundTripTimeMeasurements = 0;
+      await h.tick(2000);
+    }
+    assert.equal(h.state().quality, 'poor', `Two fresh changed${gauge} reports remain visible without RTT measurements`);
+    assert.equal(videoSender(pc).params.encodings[0].maxBitrate, 450000);
+    h.controller.close(); await flush();
+  }
+});
+
+test('unchanged loss and jitter with static RTT markers remain neutral despite fresh collection timestamps', async () => {
+  const h = fixture(), pc = await h.connect(); markConnected(pc);
+  for (let sample = 1; sample <= 8; sample++) {
+    pc.stats = qualityStats({ sample, feedback: 0, received: 1000, lost: 0, loss: .3, jitter: .3 });
+    pc.stats.get('receiver').roundTripTimeMeasurements = 0;
+    await h.tick(2000);
+  }
+  assert.equal(h.state().quality, 'good');
+  assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy, 1);
+  h.controller.close(); await flush();
+});
+
+test('actual interval encode cost or bandwidth-limited frame loss adapts even without packet loss', async () => {
+  for (const bottleneck of ['encode', 'bandwidth']) {
+    const h = fixture(), pc = await h.connect(); markConnected(pc);
+    for (let sample = 1; sample <= 3; sample++) {
+      pc.stats = qualityStats({ sample, ...(bottleneck === 'encode' ? { encode: sample * 3 } : { reason: 'bandwidth', frames: sample * 24, available: 1500000 }) });
+      await h.tick(2000);
+    }
+    assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy > 1, true);
+    assert.equal(h.state().quality, bottleneck === 'encode' ? 'good' : 'poor');
+    assert.equal(h.captures.length, 1);
+    h.controller.close(); await flush();
+  }
+});
+
+test('startup or CPU-only receiver freezes do not become a poor-network warning without fresh jitter evidence', async () => {
+  const h = fixture(), pc = await h.connect(); markConnected(pc);
+  for (let sample = 1; sample <= 4; sample++) {
+    pc.stats = qualityStats({ sample, incoming: { packetsReceived: sample * 1000, packetsLost: 0, freezeCount: 100 + sample, jitter: .003 } });
+    await h.tick(2000);
+  }
+  assert.equal(h.state().quality, 'good', 'Initial and subsequent decoder freezes alone are not network loss');
+  for (let sample = 5; sample <= 6; sample++) {
+    pc.stats = qualityStats({ sample, incoming: { packetsReceived: sample * 1000, packetsLost: 0, freezeCount: 100 + sample, jitter: .12 } });
+    await h.tick(2000);
+  }
+  assert.equal(h.state().quality, 'poor', 'Repeated fresh receive freezes with high actual jitter remain visible');
+  assert.equal(videoSender(pc).params.encodings[0].scaleResolutionDownBy, 1);
   h.controller.close(); await flush();
 });
