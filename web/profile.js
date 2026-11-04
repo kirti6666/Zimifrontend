@@ -37,7 +37,16 @@ function zpIdentity(){
     <button type="button" class="zp-edit-profile" onclick="zpGo('editprofile')">${zi('edit',16)} Edit profile ${hi('arrow',16)}</button>
     <button type="button" class="zp-edit-profile zp-public-view" onclick="zpViewPublic()">${hi('eye',16)} View as others see it ${hi('arrow',16)}</button></div></section>`;
 }
-function zpWallet(){return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Coin balance</h2><div class="zp-balance">${coinIcon(23)}<strong>${contentBalance()}</strong></div></div><button type="button" class="zp-topup" onclick="zpGo('coins')">Add coins</button></div></section>`}
+function zpWallet(){
+  if(isApprovedHost()||S.user?.serverRole==='host'){
+    const wallet=diamondOwnWallet(),checking=!!window.ZimiHostAccess?.checking(),error=ContentLoading.wallet.error,
+      loading=checking||contentPending('wallet')||(!wallet&&!error),ready=isApprovedHost()&&!loading&&!error&&diamondReady(wallet),
+      units=Number.isSafeInteger(wallet?.profileDiamondUnits)&&wallet.profileDiamondUnits>=0?wallet.profileDiamondUnits:wallet?.diamondUnits;
+    const amount=loading?`<span class="zh-skeleton" role="status" aria-label="Loading diamond balance" aria-busy="true">${skeletonLine('110px',34)}</span>`:ready?diamondFormat(units):'—';
+    return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Diamond balance</h2><div class="zp-balance">${diamondIcon(23)}<strong>${amount}</strong></div></div>${isApprovedHost()?`<button type="button" class="zp-topup" onclick="zpGo('payout')">Withdraw</button>`:''}</div>${!loading&&!ready?`<p class="zp-wallet-note" ${error?'role="alert"':''}>${esc(error||'Diamond balance unavailable.')}${isApprovedHost()?` <button type="button" onclick="contentRetry('wallet')">Retry</button>`:''}</p>`:''}</section>`;
+  }
+  return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Coin balance</h2><div class="zp-balance">${coinIcon(23)}<strong>${contentBalance()}</strong></div></div><button type="button" class="zp-topup" onclick="zpGo('coins')">Add coins</button></div></section>`;
+}
 function zpAccountSummary(){
   const p=ZProfile.data?.profile||{},name=p.name||S.user?.name||me.n||'Your profile',avatar=S.avatarData||(DEMO?OB_MEDIA[0]:''),stats=ZProfile.data?.stats||{};
   return `<button type="button" class="zp-account-summary" onclick="zpGo('profile')" aria-label="Open your profile"><span class="zp-summary-avatar">${imageSrc(avatar)?`<img class="zh-photo-pending" src="${imageSrc(avatar)}" alt="" data-face="${faceKind(me)}">`:face(me)}</span><span class="zp-summary-copy"><b>${esc(name)}</b><span class="zp-summary-stats">${zpPending()?skeletonLine('115px',12):ZProfile.error?'Account details unavailable':[['gift','Gifts received',stats.giftsReceived],['people','Fans',stats.fans],['follow','Following',stats.following]].map(([icon,label,value])=>`<span aria-label="${label}: ${zpNumber(value)}">${zi(icon,14)} ${zpNumber(value)}</span>`).join('')}</span></span>${hi('chev',20)}</button>`;

@@ -35,8 +35,9 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   assert.equal(await page.evaluate(()=>diamondOwnWallet().diamondUnits),6172800000);
   assert.match(await page.locator('.zwallet-earnings-amount').innerText(),/1,234\.56/,'Rate edits only change future conversion copy');
   await go(page,'settings');
-  assert.match(await page.locator('.zp-wallet').innerText(),/60,000/);
-  assert.equal(await page.locator('.zp-wallet .zd-balance').count(),0,'Settings keeps only the coin balance');
+  assert.match(await page.locator('.zp-wallet').innerText(),/Diamond balance[\s\S]*6,172\.8/,'Hosts see their confirmed diamonds in Settings');
+  assert.equal(await page.locator('.zp-wallet').getByRole('button',{name:'Add coins',exact:true}).count(),0,'Host settings hides coin top-up');
+  assert.doesNotMatch(await page.locator('.zp-wallet').innerText(),/Coin balance|60,000/);
   await page.getByRole('button',{name:'Payments',exact:true}).click();
   await page.getByRole('dialog',{name:'Payments',exact:true}).getByRole('button',{name:'Withdraw',exact:true}).click();
   const historyRequest=(await sent(page,'payout.load')).at(-1);
@@ -70,7 +71,8 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   const hostReward={periodStart:'2026-10-25T18:30:00.000Z',periodEnd:'2026-11-22T18:30:00.000Z',weekNumber:2,weeklyTargetMinutes:1950,weekMinutes:[1800,720,0,0],thisWeekMinutes:720,thisWeekTargetMinutes:2100,remainingThisWeekMinutes:1380,lastWeekMinutes:1800,pendingDiamonds:500,pendingPaise:10000,status:'pending'};
   const policyWallet={...wallet,earningsPaise:269000,reservedPaise:0,minimumWithdrawalPaise:200000,diamondUnits:13450*1000000,reservedDiamondUnits:0,profileDiamondUnits:12000*1000000,profileEarningsPaise:240000,hostEarningsPolicy:policy,hostReward};
   await receive(page,'wallet.balance',policyWallet);await go(page,'settings');
-  assert.equal(await page.locator('.zp-wallet .zd-balance').count(),0,'Regular and reward diamond balances both stay in Withdraw');
+  assert.match(await page.locator('.zp-wallet').innerText(),/12,000/,'Settings shows regular and gift diamonds');
+  assert.doesNotMatch(await page.locator('.zp-wallet').innerText(),/13,450/,'Task rewards remain in Withdraw');
   await receive(page,'wallet.balance',{reservedDiamondUnits:2000*1000000,reservedPaise:40000,profileReservedDiamondUnits:1500*1000000,profileReservedPaise:30000,hostEarningsPolicy:{...policy,hostWeeklyTargetMinutes:3000}});
   assert.doesNotMatch(await page.locator('.zp-wallet').innerText(),/diamonds reserved/,'Reserved diamonds also stay out of Settings');
   await go(page,'payout');await page.evaluate(()=>payoutNew());

@@ -300,7 +300,8 @@ even if the independent wallet refresh fails. Actual transfers and payment
 references are recorded by the admin after manual processing.
 
 Host diamond balances and rules live under **Payments > Withdraw**. Settings
-keeps the spendable coin balance. **Account > Statistics** opens three earned
+shows a diamond summary and Withdraw action for host accounts; members keep the
+spendable coin balance and Add coins action. **Account > Statistics** opens three earned
 diamond bar graphs: Daily shows 24 hourly buckets, Weekly shows Monday-Sunday,
 and Monthly shows each calendar date. Previous/next controls browse history.
 All boundaries use IST. Withdrawals and penalties do not reduce gross earned
