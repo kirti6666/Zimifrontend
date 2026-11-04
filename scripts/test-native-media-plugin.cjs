@@ -1,12 +1,22 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const withNativeMedia = require('../plugins/with-native-media');
+const fs = require('node:fs');
+const path = require('node:path');
 
 async function transform(name, modResults) {
   const config = withNativeMedia({ name: 'Native media test', slug: 'native-media-test' });
   const result = await config.mods.android[name]({ ...config, modResults, modRequest: {} });
   return result.modResults;
 }
+
+test('private-call foreground capture declares the required types and permissions without exporting control', () => {
+  const manifest = fs.readFileSync(path.join(__dirname, '../modules/binzo-media/android/src/main/AndroidManifest.xml'), 'utf8');
+  for (const permission of ['FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_CAMERA', 'FOREGROUND_SERVICE_MICROPHONE']) {
+    assert.match(manifest, new RegExp(`android.permission.${permission}"`));
+  }
+  assert.match(manifest, /<service[^>]+android:name="\.CallForegroundService"[^>]+android:exported="false"[^>]+android:foregroundServiceType="camera\|microphone"/);
+});
 
 test('native release packaging preserves emulator debug builds and is idempotent', async () => {
   const original = {
