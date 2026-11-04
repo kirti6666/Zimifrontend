@@ -168,7 +168,7 @@ function zaSeen(entries){
 }
 function zaObserve(){
   const slots=document.querySelectorAll('[data-za-slot]');
-  if(!('IntersectionObserver' in window))return;
+  if(typeof IntersectionObserver!=='function')return;
   ZAds.observer=ZAds.observer||new IntersectionObserver(zaSeen,{threshold:[0,.5,1]});
   ZAds.observer.disconnect();
   if(!slots.length){zaStopTimers();zaPauseAll();return}

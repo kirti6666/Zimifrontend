@@ -84,15 +84,64 @@ function homeDashboardEmpty(){
     <div class="zh-empty-actions">${primary}</div>
   </div><div class="zh-empty-links" aria-label="More ways to connect"><button type="button" onclick="go('chats')"><span class="zh-empty-link-icon">${hi('chat',22)}</span><strong>Your chats</strong><span>Keep the conversation going</span>${hi('arrow',16)}</button><button type="button" aria-label="Find a creator" onclick="go('search')"><span class="zh-empty-link-icon">${hi('srch',22)}</span><strong>Find your people</strong><span>Search for a creator you love</span>${hi('arrow',16)}</button></div>`;
 }
-// Like the reference: the country chips, then one square-card grid. Hosts keep loading with "Load more".
+// Member feeds append the next page as their footer approaches the viewport.
 function homeDashboard(){
   if(isApprovedHost())return hostDirectoryScreen();
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
   const grid=pending?homeDashboardSkeleton('Loading creators',6):error?'':all.length?`<div id="home-host-grid" class="zh-grid">${homeGridWithAd(all.map(homeTile),'home')}</div>`:homeDashboardEmpty()+(window.ZimiAds?.campaigns('home')||'')+(window.ZimiAds?.card('home')||'');
-  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!DEMO&&!pending&&!error&&Home.hasMore?'<div id="home-feed-next" class="zh-feed-next" aria-hidden="true"></div>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
 }
+
+/* Observe the actual app scroller. Keep one listener/observer, even when live
+   wallet or presence messages patch Home repeatedly. Older WebViews use the
+   same bounded check from a passive scroll listener. */
+const HomeInfinite=(()=>{
+  const margin=240;
+  let root=null,target=null,observer=null,frame=0,generation=0,query='',foreground=true;
+  const scope=()=>!DEMO&&S.loggedIn&&S.v==='home'&&!isApprovedHost();
+  function ready(){return scope()&&foreground&&!document.hidden&&!window.ZimiOffline?.isOffline()&&Home.loaded&&Home.hasMore&&Home.page<1000&&Home.hosts.length<Home.total&&Home.queryKey===homeFeedKey()&&!Home.loading&&!contentPending('home')&&!Home.error&&!ContentLoading.home.error}
+  function check(){
+    frame=0;
+    if(!ready()||!root?.isConnected||!target?.isConnected||query!==Home.queryKey||target!==document.getElementById('home-feed-next'))return;
+    const viewport=root.getBoundingClientRect(),footer=target.getBoundingClientRect();
+    if(root.clientHeight>0&&footer.top<=viewport.bottom+margin&&footer.bottom>=viewport.top)homeLoad(true);
+  }
+  function schedule(){if(!frame)frame=requestAnimationFrame(check)}
+  function reset(){
+    generation++;observer?.disconnect();observer=null;
+    root?.removeEventListener('scroll',schedule);
+    if(frame)cancelAnimationFrame(frame);
+    frame=0;root=null;target=null;query='';
+  }
+  function attach(){
+    const nextRoot=document.getElementById('scroll-root'),next=scope()&&foreground&&!document.hidden&&document.getElementById('home-feed-next');
+    if(!next||!nextRoot){reset();return}
+    if(root!==nextRoot||target!==next||query!==Home.queryKey){
+      reset();root=nextRoot;target=next;query=Home.queryKey;
+      const own=generation;
+      root.addEventListener('scroll',schedule,{passive:true});
+      if(typeof IntersectionObserver==='function'){
+        observer=new IntersectionObserver(entries=>{if(own===generation&&entries.some(entry=>entry.target===target&&entry.isIntersecting))schedule()},{root,rootMargin:`0px 0px ${margin}px 0px`});
+        observer.observe(target);
+      }
+    }
+    schedule();
+  }
+  const previous=ZimiHome.afterRender;
+  ZimiHome.afterRender=()=>{previous();attach()};
+  window.addEventListener('resize',schedule,{passive:true});
+  document.addEventListener('visibilitychange',attach);
+  document.addEventListener('aurora:navigate',attach);
+  window.addEventListener('pagehide',reset);
+  window.addEventListener('pageshow',attach);
+  Native.on('app.background',()=>{foreground=false;reset()});
+  Native.on('app.foreground',()=>{foreground=true;attach()});
+  Native.on('connection.status',schedule);
+  Native.on('session.none',reset);Native.on('session.expired',reset);
+  return {reset};
+})();
 
 /* Each approved-host directory keeps its own query and pages. Only the selected
    tab paints, so an in-flight read cannot replace the other tab's input/caret. */

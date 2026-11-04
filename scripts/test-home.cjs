@@ -286,8 +286,10 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.deepEqual(await lastSent('chat.open'),{with:host.id});
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='stream.join'||m.type==='call.start').length),0,'Chat does not start a broadcast or call');
     await real.evaluate(()=>go('home'));
-    await receive('data.home',{...home,hosts:[host,online],stage:[host],total:3});
-    await real.getByRole('button',{name:'Load more hosts',exact:true}).click();
+    await receive('data.home',{...home,hosts:[host,online],stage:[host],total:3,limit:2});
+    assert.equal(await real.getByRole('button',{name:'Load more hosts',exact:true}).count(),0,'Home loads the next page automatically without a Load more control');
+    await real.evaluate(()=>{const root=document.getElementById('scroll-root');root.scrollTop=root.scrollHeight;root.dispatchEvent(new Event('scroll'))});
+    await real.waitForFunction(()=>__sent.filter(message=>message.type==='home.reload').at(-1)?.data.page===2);
     assert.deepEqual(await lastSent('home.reload'),{page:2,mode:'popular'},'Home pagination preserves the feed');
     assert.equal(await real.locator('article[data-host-id]').count(),2,'Paging keeps loaded host cards visible');
     assert.equal(await real.getByRole('status',{name:'Loading more hosts',exact:true}).count(),1);
@@ -296,7 +298,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.locator('article[data-host-id]').count(),2,'A pagination failure retains the loaded hosts');
     await real.getByRole('button',{name:'Retry loading more hosts',exact:true}).click();
     assert.deepEqual(await lastSent('home.reload'),{page:2,mode:'popular'},'Retry requests the failed page');
-    await receive('data.home',{...home,hosts:[online,busy],stage:[host],total:3,page:2});
+    await receive('data.home',{...home,hosts:[online,busy],stage:[host],total:3,page:2,limit:2});
     assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id],'Paging deduplicates repeated hosts across featured and discovery cards');
     assert.equal(await real.getByRole('status',{name:'Loading more hosts',exact:true}).count(),0);
     assert.equal(await real.locator('.zh-home-refresh,[aria-label="Refresh home"]').count(),0,'Home has no refresh button');

@@ -3,7 +3,7 @@
 const Home = {
   loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', region: '', page: 1, firstPageIds:[], queryKey:'popular||',
   searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
-  hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
+  hosts: [], stage: [], featured: null, total: 0, pageLimit: 20, hasMore: false, paginationStopped: false, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
   notifications: [], unreadCount: 0, gifts: [], packs: [], paymentsAvailable: false,
   matching: false, giftTo: null, giftBusy: false, claiming: false,
@@ -278,12 +278,19 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
 },afterRender:()=>{contentImagesReady();homeShowCloseError();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{
-  const retainPages=d.background&&Home.loaded&&Home.page>1,previousFirst=new Set(Home.firstPageIds);
+  const retainPages=d.background&&Home.loaded&&Home.page>1,previousFirst=new Set(Home.firstPageIds),previousCount=Home.hosts.length;
   Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';
   const list=(d.hosts||[]).map(homeRemember),ids=new Set(list.map(h=>h.id));
   Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:retainPages?[...list,...Home.hosts.filter(h=>!previousFirst.has(h.id)&&!ids.has(h.id))].slice(0,d.total||0):list;
   if(!(d.page>1))Home.firstPageIds=[...ids];
-  Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=retainPages?Home.page:d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(!(isApprovedHost()&&S.v==='home')&&['home','all-creators','chats','precall'].includes(S.v))r();
+  Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=retainPages?Home.page:d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;
+  if(Number.isSafeInteger(d.limit)&&d.limit>0)Home.pageLimit=d.limit;
+  const pagesRemain=Home.hosts.length<Home.total&&Home.page<1000&&Home.page*Home.pageLimit<Home.total;
+  // Empty or repeated pages must not turn a visible footer into a request loop.
+  // A foreground refresh resets the boundary; background presence reads retain it.
+  if(!retainPages)Home.paginationStopped=!list.length||d.page>1&&Home.hosts.length<=previousCount;
+  Home.hasMore=!Home.paginationStopped&&pagesRemain;
+  homeValidatePreparingPeer();if(!(isApprovedHost()&&S.v==='home')&&['home','all-creators','chats','precall'].includes(S.v))r();
 });
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
@@ -322,7 +329,7 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','all-creators','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,pageLimit:20,hasMore:false,paginationStopped:false,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','all-creators'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));

@@ -4412,6 +4412,7 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zh-home.zh-dashboard .zh-error{margin:0 0 18px;border-color:var(--line);background:var(--surface);color:var(--muted)}
 .zh-home.zh-dashboard .zh-error button{color:var(--accent-ink)}
 .zh-home.zh-dashboard>.zh-skeleton:last-of-type{margin-top:18px}
+.zh-feed-next{height:1px;pointer-events:none}
 .zh-home.zh-dashboard button{touch-action:manipulation;transition:background-color .15s ease,transform .15s ease,border-color .15s ease}
 .zh-home.zh-dashboard button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .zh-home.zh-dashboard .zh-live-shortcut:active{transform:scale(.97)}
@@ -11240,7 +11241,7 @@ window.ZimiHomeRender = (() => {
 const Home = {
   loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', region: '', page: 1, firstPageIds:[], queryKey:'popular||',
   searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
-  hosts: [], stage: [], featured: null, total: 0, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
+  hosts: [], stage: [], featured: null, total: 0, pageLimit: 20, hasMore: false, paginationStopped: false, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
   notifications: [], unreadCount: 0, gifts: [], packs: [], paymentsAvailable: false,
   matching: false, giftTo: null, giftBusy: false, claiming: false,
@@ -11515,12 +11516,19 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
 },afterRender:()=>{contentImagesReady();homeShowCloseError();window.ZimiCoins?.afterRender();const feed=document.getElementById('home-room-messages');if(feed)feed.scrollTop=feed.scrollHeight}};
 
 Native.on('data.home',d=>{
-  const retainPages=d.background&&Home.loaded&&Home.page>1,previousFirst=new Set(Home.firstPageIds);
+  const retainPages=d.background&&Home.loaded&&Home.page>1,previousFirst=new Set(Home.firstPageIds),previousCount=Home.hosts.length;
   Home.loading=false;Home.loadingMore=false;Home.loaded=true;Home.error='';
   const list=(d.hosts||[]).map(homeRemember),ids=new Set(list.map(h=>h.id));
   Home.hosts=d.page>1?[...Home.hosts,...list.filter(h=>!Home.hosts.some(x=>x.id===h.id))]:retainPages?[...list,...Home.hosts.filter(h=>!previousFirst.has(h.id)&&!ids.has(h.id))].slice(0,d.total||0):list;
   if(!(d.page>1))Home.firstPageIds=[...ids];
-  Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=retainPages?Home.page:d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;homeValidatePreparingPeer();if(!(isApprovedHost()&&S.v==='home')&&['home','all-creators','chats','precall'].includes(S.v))r();
+  Home.stage=(d.stage||[]).map(homeRemember);Home.featured=d.featured?homeRemember(d.featured):null;Home.total=d.total||0;Home.page=retainPages?Home.page:d.page||1;Home.broadcasterCount=d.broadcasterCount||0;Home.availableCount=d.availableCount||0;Home.speedMatchEnabled=d.speedMatchEnabled!==false;Home.bonus=d.bonus||null;Home.unreadCount=d.unreadCount||0;if(d.categories?.length)Home.categories=d.categories;
+  if(Number.isSafeInteger(d.limit)&&d.limit>0)Home.pageLimit=d.limit;
+  const pagesRemain=Home.hosts.length<Home.total&&Home.page<1000&&Home.page*Home.pageLimit<Home.total;
+  // Empty or repeated pages must not turn a visible footer into a request loop.
+  // A foreground refresh resets the boundary; background presence reads retain it.
+  if(!retainPages)Home.paginationStopped=!list.length||d.page>1&&Home.hosts.length<=previousCount;
+  Home.hasMore=!Home.paginationStopped&&pagesRemain;
+  homeValidatePreparingPeer();if(!(isApprovedHost()&&S.v==='home')&&['home','all-creators','chats','precall'].includes(S.v))r();
 });
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
@@ -11559,7 +11567,7 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','all-creators','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,pageLimit:20,hasMore:false,paginationStopped:false,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
 Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','all-creators'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
@@ -11666,15 +11674,64 @@ function homeDashboardEmpty(){
     <div class="zh-empty-actions">${primary}</div>
   </div><div class="zh-empty-links" aria-label="More ways to connect"><button type="button" onclick="go('chats')"><span class="zh-empty-link-icon">${hi('chat',22)}</span><strong>Your chats</strong><span>Keep the conversation going</span>${hi('arrow',16)}</button><button type="button" aria-label="Find a creator" onclick="go('search')"><span class="zh-empty-link-icon">${hi('srch',22)}</span><strong>Find your people</strong><span>Search for a creator you love</span>${hi('arrow',16)}</button></div>`;
 }
-// Like the reference: the country chips, then one square-card grid. Hosts keep loading with "Load more".
+// Member feeds append the next page as their footer approaches the viewport.
 function homeDashboard(){
   if(isApprovedHost())return hostDirectoryScreen();
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
   const grid=pending?homeDashboardSkeleton('Loading creators',6):error?'':all.length?`<div id="home-host-grid" class="zh-grid">${homeGridWithAd(all.map(homeTile),'home')}</div>`:homeDashboardEmpty()+(window.ZimiAds?.campaigns('home')||'')+(window.ZimiAds?.card('home')||'');
-  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
+  return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!DEMO&&!pending&&!error&&Home.hasMore?'<div id="home-feed-next" class="zh-feed-next" aria-hidden="true"></div>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
 }
+
+/* Observe the actual app scroller. Keep one listener/observer, even when live
+   wallet or presence messages patch Home repeatedly. Older WebViews use the
+   same bounded check from a passive scroll listener. */
+const HomeInfinite=(()=>{
+  const margin=240;
+  let root=null,target=null,observer=null,frame=0,generation=0,query='',foreground=true;
+  const scope=()=>!DEMO&&S.loggedIn&&S.v==='home'&&!isApprovedHost();
+  function ready(){return scope()&&foreground&&!document.hidden&&!window.ZimiOffline?.isOffline()&&Home.loaded&&Home.hasMore&&Home.page<1000&&Home.hosts.length<Home.total&&Home.queryKey===homeFeedKey()&&!Home.loading&&!contentPending('home')&&!Home.error&&!ContentLoading.home.error}
+  function check(){
+    frame=0;
+    if(!ready()||!root?.isConnected||!target?.isConnected||query!==Home.queryKey||target!==document.getElementById('home-feed-next'))return;
+    const viewport=root.getBoundingClientRect(),footer=target.getBoundingClientRect();
+    if(root.clientHeight>0&&footer.top<=viewport.bottom+margin&&footer.bottom>=viewport.top)homeLoad(true);
+  }
+  function schedule(){if(!frame)frame=requestAnimationFrame(check)}
+  function reset(){
+    generation++;observer?.disconnect();observer=null;
+    root?.removeEventListener('scroll',schedule);
+    if(frame)cancelAnimationFrame(frame);
+    frame=0;root=null;target=null;query='';
+  }
+  function attach(){
+    const nextRoot=document.getElementById('scroll-root'),next=scope()&&foreground&&!document.hidden&&document.getElementById('home-feed-next');
+    if(!next||!nextRoot){reset();return}
+    if(root!==nextRoot||target!==next||query!==Home.queryKey){
+      reset();root=nextRoot;target=next;query=Home.queryKey;
+      const own=generation;
+      root.addEventListener('scroll',schedule,{passive:true});
+      if(typeof IntersectionObserver==='function'){
+        observer=new IntersectionObserver(entries=>{if(own===generation&&entries.some(entry=>entry.target===target&&entry.isIntersecting))schedule()},{root,rootMargin:`0px 0px ${margin}px 0px`});
+        observer.observe(target);
+      }
+    }
+    schedule();
+  }
+  const previous=ZimiHome.afterRender;
+  ZimiHome.afterRender=()=>{previous();attach()};
+  window.addEventListener('resize',schedule,{passive:true});
+  document.addEventListener('visibilitychange',attach);
+  document.addEventListener('aurora:navigate',attach);
+  window.addEventListener('pagehide',reset);
+  window.addEventListener('pageshow',attach);
+  Native.on('app.background',()=>{foreground=false;reset()});
+  Native.on('app.foreground',()=>{foreground=true;attach()});
+  Native.on('connection.status',schedule);
+  Native.on('session.none',reset);Native.on('session.expired',reset);
+  return {reset};
+})();
 
 /* Each approved-host directory keeps its own query and pages. Only the selected
    tab paints, so an in-flight read cannot replace the other tab's input/caret. */
@@ -21831,7 +21888,7 @@ function zaSeen(entries){
 }
 function zaObserve(){
   const slots=document.querySelectorAll('[data-za-slot]');
-  if(!('IntersectionObserver' in window))return;
+  if(typeof IntersectionObserver!=='function')return;
   ZAds.observer=ZAds.observer||new IntersectionObserver(zaSeen,{threshold:[0,.5,1]});
   ZAds.observer.disconnect();
   if(!slots.length){zaStopTimers();zaPauseAll();return}

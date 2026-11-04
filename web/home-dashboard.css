@@ -106,6 +106,7 @@
 .zh-home.zh-dashboard .zh-error{margin:0 0 18px;border-color:var(--line);background:var(--surface);color:var(--muted)}
 .zh-home.zh-dashboard .zh-error button{color:var(--accent-ink)}
 .zh-home.zh-dashboard>.zh-skeleton:last-of-type{margin-top:18px}
+.zh-feed-next{height:1px;pointer-events:none}
 .zh-home.zh-dashboard button{touch-action:manipulation;transition:background-color .15s ease,transform .15s ease,border-color .15s ease}
 .zh-home.zh-dashboard button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 .zh-home.zh-dashboard .zh-live-shortcut:active{transform:scale(.97)}

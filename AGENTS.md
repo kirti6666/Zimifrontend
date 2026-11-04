@@ -87,7 +87,10 @@ keeps it identical to the original Next.js version.
   = `following`, Explore = `popular` (default), For You = `foryou` (hosts not
   followed yet), New = `new` (latest hosts first). Under the header, country
   chips: Popular and India only for now (`country=India`), hidden on
-  Following. Then one square-card two-column grid with "Load more"; there is
+  Following. Then one square-card two-column grid that loads the next page
+  automatically near the bottom, without a Load more button. Keep loaded cards
+  stable, one page request in flight, and an explicit retry after errors; stop
+  at the server's final page or an empty/non-growing page. There is
   no featured card, section title or category chips. An approved host's
   availability is a floating "Go online"/"Online" button at the bottom right of
   Home, where the reference has its LIVE button. Use the selected theme's
