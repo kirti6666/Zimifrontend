@@ -14,12 +14,14 @@ function withBuildGradle(config) {
   return withAppBuildGradle(config, (mod) => {
     if (mod.modResults.language !== 'groovy') return mod;
     let contents = mod.modResults.contents;
-    // Hash long generated C++ object paths on Windows checkouts.
+    // Leave enough room for the longest hashed codegen filename and its .d
+    // suffix. A smaller limit can fall back to an unshortened >260-char path.
+    contents = contents.replace(/-DCMAKE_OBJECT_PATH_MAX=240\b/g, '-DCMAKE_OBJECT_PATH_MAX=250');
     if (!contents.includes('CMAKE_OBJECT_PATH_MAX')) {
       contents = contents.replace(/defaultConfig\s*\{/, `defaultConfig {
         externalNativeBuild {
             cmake {
-                arguments "-DCMAKE_OBJECT_PATH_MAX=240"
+                arguments "-DCMAKE_OBJECT_PATH_MAX=250"
             }
         }`);
     }

@@ -16,7 +16,7 @@ test('native release packaging preserves emulator debug builds and is idempotent
   const first = await transform('appBuildGradle', original);
   assert.match(first.contents, /release\s*\{\s*ndk\s*\{\s*abiFilters "armeabi-v7a", "arm64-v8a"/);
   assert.doesNotMatch(first.contents.match(/debug\s*\{[^}]+\}/)[0], /abiFilters/);
-  assert.match(first.contents, /CMAKE_OBJECT_PATH_MAX=240/);
+  assert.match(first.contents, /CMAKE_OBJECT_PATH_MAX=250/);
   const second = await transform('appBuildGradle', { ...first });
   assert.equal(second.contents, first.contents);
 });
