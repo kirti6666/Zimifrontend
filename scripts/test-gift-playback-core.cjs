@@ -28,7 +28,7 @@ async function playing(page,id){
 const idle = page => page.waitForFunction(()=>!__player.active);
 (async()=>{
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
-  const errors=[],counts=new Map(),held=new Map(),fetches=[];
+  const errors=[],counts=new Map(),held=new Map(),fetches=[],failedFetches=new Set();
   try{
     const page=await browser.newPage({viewport:{width:390,height:844}});
     page.on('pageerror',error=>errors.push(error.message));
@@ -39,7 +39,9 @@ const idle = page => page.waitForFunction(()=>!__player.active);
       if(name==='/app')return route.fulfill({contentType:'text/html',body:'<!doctype html><meta name="viewport" content="width=device-width"><style>html,body{margin:0}.app{width:100vw;height:100dvh}</style><div class="app"><button id="control" style="position:fixed;bottom:20px;left:150px;width:80px;height:44px;z-index:1">Send</button></div>'});
       if(route.request().resourceType()==='fetch')fetches.push(route.request().url());
       counts.set(name,(counts.get(name)||0)+1);
-      if(held.has(name)){held.get(name).requested();await held.get(name).promise;}
+      const blocked=held.get(route.request().resourceType()+':'+name)||held.get(name);
+      if(blocked){blocked.requested();await blocked.promise;}
+      if(route.request().resourceType()==='fetch'&&failedFetches.has(name)){await route.abort('failed');return;}
       try{await route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:name==='/original-4k.png'?'image/png':'image/svg+xml',body:name==='/original-4k.png'?high:art});}catch(error){if(!/closed|handled|Invalid|intercept|aborted/i.test(String(error)))throw error;}
     });
     await page.goto(origin+'/app');
@@ -47,7 +49,7 @@ const idle = page => page.waitForFunction(()=>!__player.active);
     await page.evaluate(()=>{window.Native={on(){}};window.__events=[];window.__available=true;window.__obstructed=false;window.__urls=0;const create=URL.createObjectURL.bind(URL);URL.createObjectURL=blob=>{__urls++;return create(blob)};window.__decodes=0;HTMLImageElement.prototype.decode=function(){__decodes++;return new Promise(()=>{})};});
     await page.addScriptTag({content:fs.readFileSync(path.join(root,'web/gift-playback.js'),'utf8')});
     await page.evaluate(()=>{window.__player=ZimiGiftPlayback.create({id:'zc-gift-playback',imageClass:'zc-gift-playback-art',available:()=>__available,obstructed:()=>__obstructed,onStart:item=>__events.push({type:'start',id:item.transferId||item.requestId,provisional:!!item.provisional,at:item.at}),onConfirm:item=>__events.push({type:'confirm',state:item.state,gift:item.gift}),onFinish:item=>__events.push({type:'finish',id:item.transferId||item.requestId})});});
-    function hold(name){let release,requested;const promise=new Promise(resolve=>{release=resolve}),request=new Promise(resolve=>{requested=resolve});held.set(name,{promise,requested});return {release,request};}
+    function hold(name,resourceType){let release,requested;const promise=new Promise(resolve=>{release=resolve}),request=new Promise(resolve=>{requested=resolve});held.set(resourceType?resourceType+':'+name:name,{promise,requested});return {release,request};}
     const slow=hold('/slow.svg');
     await page.evaluate(({origin,poster})=>__player.enqueue({transferId:'slow',media:origin+'/slow.svg',poster,durationMs:350}),{origin,poster});
     await slow.request;
@@ -79,8 +81,13 @@ const idle = page => page.waitForFunction(()=>!__player.active);
     assert.equal(await page.evaluate(()=>__player.confirm('send-4k','confirmed-4k')),true,'A late duplicate acknowledgment recognizes an already finished preview');
     assert.equal(await page.locator('#zc-gift-playback').count(),0);
 
+    const queuedCache=hold('/queue.svg','fetch');
     await page.evaluate(origin=>{__events.length=0;__player.enqueue({transferId:'remote-active',media:origin+'/queue.svg',durationMs:700});},origin);await playing(page,'remote-active');
+    await queuedCache.request;
     await page.evaluate(({origin,poster})=>{__player.enqueue({transferId:'remote-queued',media:origin+'/queue.svg',durationMs:350});__player.enqueue({requestId:'own-request',provisional:true,priority:true,media:origin+'/queue.svg',poster,durationMs:350});__player.enqueue({transferId:'socket-before-ack',media:origin+'/queue.svg',durationMs:350});},{origin,poster});
+    assert.deepEqual(await page.evaluate(()=>({id:__player.active.requestId,state:__player.active.state,visible:!__player.element.hidden,feedback:!!__player.element.querySelector('[data-gift-loading]')})),{id:'own-request',state:'loading',visible:true,feedback:true},'Priority feedback is immediate while the completed original fills the shared byte cache');
+    assert.equal(counts.get('/queue.svg'),2,'Priority preemption pins the in-flight byte fill instead of starting another original image');
+    queuedCache.release();
     await playing(page,'own-request');
     const pendingUrl=await page.locator('#zc-gift-playback img').getAttribute('src');
     await page.evaluate(()=>{__player.confirm('own-request','socket-before-ack');__player.confirm('own-request','socket-before-ack')});
@@ -90,6 +97,23 @@ const idle = page => page.waitForFunction(()=>!__player.active);
     await idle(page);
     assert.deepEqual(await page.evaluate(()=>__events.filter(event=>event.type==='start').map(event=>event.id)),['remote-active','own-request','remote-queued'],'Priority sender feedback keeps the received queue and coalesces an early socket receipt');
     assert.equal(counts.get('/queue.svg'),2,'Queued transfers reuse the bytes filled after the first image load');
+
+    const clearedFill=hold('/clear-fill.svg','fetch');
+    await page.evaluate(origin=>__player.enqueue({transferId:'fill-active',media:origin+'/clear-fill.svg',durationMs:1700}),origin);await playing(page,'fill-active');await clearedFill.request;
+    await page.evaluate(origin=>{__player.enqueue({transferId:'fill-queued',media:origin+'/clear-fill.svg'});__player.enqueue({requestId:'fill-priority',priority:true,media:origin+'/clear-fill.svg'});},origin);
+    const fillUrls=await page.evaluate(()=>__urls);
+    const clearedFetch=page.waitForEvent('requestfailed',{predicate:request=>new URL(request.url()).pathname==='/clear-fill.svg'&&request.resourceType()==='fetch'});
+    await page.evaluate(()=>__player.clear());await clearedFetch;clearedFill.release();await page.waitForTimeout(150);
+    assert.deepEqual(await page.evaluate(()=>({active:!!__player.active,portal:!!__player.element,urls:__urls})),{active:false,portal:false,urls:fillUrls},'Clearing all consumers aborts a pinned cache fill without creating late Blob URLs or resurrecting playback');
+    assert.equal(counts.get('/clear-fill.svg'),2,'Cancelled pending consumers never start another original download');
+
+    const failedFill=hold('/failed-fill.svg','fetch');failedFetches.add('/failed-fill.svg');
+    await page.evaluate(origin=>{__events.length=0;__player.enqueue({transferId:'failure-active',media:origin+'/failed-fill.svg',durationMs:1700});},origin);await playing(page,'failure-active');await failedFill.request;
+    await page.evaluate(origin=>{__player.enqueue({transferId:'failure-queued',media:origin+'/failed-fill.svg',durationMs:350});__player.enqueue({requestId:'failure-priority',priority:true,media:origin+'/failed-fill.svg',durationMs:350});},origin);
+    failedFill.release();await playing(page,'failure-priority');
+    assert.equal(await page.evaluate(()=>__player.active.image.naturalWidth),540,'A rejected byte-cache fetch falls back to the intact original image');
+    await playing(page,'failure-queued');await idle(page);
+    assert.deepEqual(await page.evaluate(()=>__events.filter(event=>event.type==='start').map(event=>event.id)),['failure-active','failure-priority','failure-queued'],'A failed/CORS cache fill cannot discard priority or queued gifts sharing the original');
 
     const stale=hold('/cancelled.svg');
     await page.evaluate(({origin,poster})=>__player.enqueue({requestId:'cancelled-request',provisional:true,media:origin+'/cancelled.svg',poster}),{origin,poster});await stale.request;
