@@ -150,6 +150,7 @@ const page = (demo, hosted = false) =>
   read("web/call-targets.css") +
   read("web/native-media.css") +
   BODY +
+  read("web/compat.js") +
   read("web/vendor/lenis.min.js") +
   INIT +
   `window.ZIMI_DEMO = ${demo};\n` +

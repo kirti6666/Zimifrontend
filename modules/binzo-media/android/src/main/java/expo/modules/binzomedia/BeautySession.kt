@@ -274,7 +274,9 @@ internal class BeautySession(val context: EGLContext) {
       EngineEventCode.LICENSE_VALIDATION_FAILED, EngineEventCode.INITIALIZATION_FAILED -> {
         // Keep sending the plain camera; a new token retries.
         refusedToken = token
-        engine?.release()
+        // This callback is posted directly to the GL looper, outside the
+        // frame FutureTask. A provider cleanup error must not kill the app.
+        runCatching { engine?.release() }
         engine = null
         engineToken = null
         publish(if (code == EngineEventCode.LICENSE_VALIDATION_FAILED) "authFailed" else "initFailed")
@@ -335,7 +337,7 @@ internal class BeautySession(val context: EGLContext) {
 
   private fun recycle(output: Output) {
     if (released || output.retired) {
-      output.buffer.release()
+      releaseGlResource { output.buffer.release() }
       outputs.remove(output)
       if (released && outputs.isEmpty()) finishRelease()
     } else {
@@ -419,10 +421,9 @@ internal class BeautySession(val context: EGLContext) {
     released = true
     runCatching { engine?.release() }
     engine = null
-    if (glContext != EGL14.EGL_NO_CONTEXT) makeCurrent()
-    input?.release()
+    releaseGlResource { input?.release() }
     input = null
-    outputs.filter { !it.inUse }.forEach { it.buffer.release() }
+    outputs.filter { !it.inUse }.forEach { output -> releaseGlResource { output.buffer.release() } }
     outputs.removeAll { !it.inUse }
     // Retained texture frames may still need toI420 for an encoder. Keep their
     // converter/context/handler alive until the final output is returned.
@@ -430,14 +431,26 @@ internal class BeautySession(val context: EGLContext) {
   }
 
   private fun finishRelease() {
-    drawer?.release()
-    frameDrawer?.release()
-    yuvConverter?.release()
+    releaseGlResource { drawer?.release() }
+    releaseGlResource { frameDrawer?.release() }
+    releaseGlResource { yuvConverter?.release() }
     drawer = null
     frameDrawer = null
     yuvConverter = null
-    destroyGl()
-    glThread.quitSafely()
+    try { destroyGl() } finally { glThread.quitSafely() }
+  }
+
+  /** Context loss is normal when a device suspends or its graphics driver
+   * resets. Deleting GL resources then can throw, or touch another context.
+   * Retire Java ownership even when an individual native cleanup fails. */
+  private fun releaseGlResource(release: () -> Unit) {
+    try {
+      if (glContext == EGL14.EGL_NO_CONTEXT) return
+      makeCurrent()
+      release()
+    } catch (error: Throwable) {
+      Log.w(TAG, "GL cleanup unavailable (${error.javaClass.simpleName})")
+    }
   }
 
   private fun destroyGl() {

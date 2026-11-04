@@ -68,6 +68,18 @@ Run native controller/lifecycle and Android packaging regressions, then the regu
 node --test scripts/test-native-media-controller.cjs scripts/test-native-media-plugin.cjs
 ```
 
+After an Android Gradle build has populated the Kotlin compiler cache, the
+credential-free JVM cleanup probe executes the production Kotlin cleanup
+methods with injected EGL loss and resource-release failures:
+
+```powershell
+node scripts/test-native-media-cleanup.cjs
+```
+
+It also checks retained-frame lifetime and failed-license cleanup. This does
+not exercise an actual graphics driver; suspend/resume and two-device call
+checks are still required on the release APK.
+
 ```powershell
 npm run test:facebetter
 ```

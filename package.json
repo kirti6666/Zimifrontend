@@ -67,7 +67,7 @@
     "test:chat-photo-download": "node scripts/test-chat-photo-download.cjs",
     "test:verification": "npm run build:web && node scripts/test-verification-call.cjs",
     "test:loading": "npm run build:web && node scripts/test-loading.cjs",
-    "test:launch": "npm run build:web && node scripts/test-launch.cjs && node scripts/test-startup-fonts.cjs && node scripts/test-auth-bridge.cjs",
+    "test:launch": "npm run build:web && node scripts/test-launch.cjs && node scripts/test-startup-fonts.cjs && node scripts/test-web-compat.cjs && node scripts/test-auth-bridge.cjs",
     "test:notifications": "npm run build:web && node scripts/test-push.cjs && node scripts/test-notifications.cjs",
     "test:push": "node scripts/test-push.cjs && node scripts/test-api-adapter.cjs && node --test --test-name-pattern=\"push|notification navigation|notification call taps\" scripts/test-auth-bridge.cjs",
     "test:native-push": "node scripts/test-native-push.cjs",

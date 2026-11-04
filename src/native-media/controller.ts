@@ -237,6 +237,14 @@ export function createNativeMedia(
       if (version !== generation || closed) throw cancelled();
       const opened = await mediaDevices.getUserMedia({ audio: !existing, video: video ? { ...CAMERA, facingMode: state.facing } : false });
       if (version !== generation || closed) { stopStream(opened); throw cancelled(); }
+      // WebRTC resolves partial capture when only one requested permission is
+      // granted. Reject it before adding tracks or signaling the media session.
+      const microphone = [...opened.getAudioTracks(), ...(existing?.getAudioTracks() || [])].some(track => track.readyState === "live");
+      const camera = opened.getVideoTracks().some(track => track.readyState === "live");
+      if (!microphone || video && !camera) {
+        stopStream(opened);
+        throw new Error(`${!microphone ? "Microphone" : "Camera"} access is required. Allow it in your device settings and try again.`);
+      }
       let local = opened;
       if (existing) {
         opened.getTracks().forEach(track => existing.addTrack(track));

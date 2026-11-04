@@ -24,6 +24,7 @@ const INK = { light: "#101012", dark: "#ffffff" } as const;
 /* The page says when its first screen has content (app.launched). This only caps
    how long a slow network keeps the logo up before the page shows its own loading. */
 const LAUNCH_LIMIT_MS = 8000;
+const DOCUMENT_READY_LIMIT_MS = 20000;
 
 type Theme = keyof typeof CANVAS;
 /* One key for every private screen, so turning protection off undoes exactly this. */
@@ -83,10 +84,12 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
   const [canvasOverride, setCanvasOverride] = useState<string | null>("#ffffff");
   const [palette, setPalette] = useState<NativePalette>({ ink: "#18181b", primary: cached?.colors.primary ?? "#c71862", contrast: "#ffffff", surface: "#ffffff", raised: "#f8f8fa" });
   const [failure, setFailure] = useState<string | null>(null);
+  const [webGeneration, setWebGeneration] = useState(0);
   const [launched, setLaunched] = useState(priorityIncoming);
   const [launchVisible, setLaunchVisible] = useState(!priorityIncoming);
   const webRef = useRef<WebView>(null);
   const webReady = useRef(false);
+  const rendererFailures = useRef<number[]>([]);
   const exitConfirmation = useRef<object | null>(null);
   const [nativeState, setNativeState] = useState<NativeMediaState | null>(null);
   const [nativeLayout, setNativeLayout] = useState<NativeMediaLayout | null>(null);
@@ -113,6 +116,15 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
     nativeMedia?.stop();
     setNativeLayout(null);
   }, [bridge, nativeMedia]);
+  useEffect(() => {
+    if (failure) return;
+    const timer = setTimeout(() => {
+      if (webReady.current) return;
+      documentLoading();
+      setFailure("The app could not load. Update Android System WebView and Chrome, then tap Retry.");
+    }, DOCUMENT_READY_LIMIT_MS);
+    return () => clearTimeout(timer);
+  }, [webGeneration, failure, documentLoading]);
   useEffect(() => () => { nativeMedia?.close(); bridge.prepareForUpdate(); bridge.close(); }, [bridge, nativeMedia]);
   const onNativeDimensions = useCallback((kind: "local" | "remote", width: number, height: number) => {
     postToWeb(webRef, { type: "native.media.dimensions", data: { kind, width, height } });
@@ -209,17 +221,35 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
     setFailure(event.nativeEvent.description || "The BinzoLive bundle failed to load.");
   }, [documentLoading]);
 
-  // The WebView's renderer can be killed under memory pressure; reload instead
-  // of leaving a blank view behind. Returning true tells Android we handled it.
-  const reload = useCallback(() => {
+  // A terminated Android renderer's WebView cannot be reused. Retire its ref
+  // before stopping media so callbacks cannot target the dead instance, then
+  // change its key to destroy it and create a fresh native WebView.
+  const restartDocument = useCallback(() => {
+    webRef.current = null;
     documentLoading();
     setFailure(null);
     // The page starts over, so the logo covers it until its first screen is ready again.
     setLaunched(false);
     setLaunchVisible(true);
-    webRef.current?.reload();
-    return true;
+    setWebGeneration(generation => generation + 1);
   }, [documentLoading]);
+  const reload = useCallback(() => {
+    rendererFailures.current = [];
+    restartDocument();
+    return true;
+  }, [restartDocument]);
+  const rendererGone = useCallback(() => {
+    const now = Date.now();
+    const recent = rendererFailures.current.filter(time => now - time < 60000);
+    rendererFailures.current = [...recent, now];
+    if (recent.length < 2) restartDocument();
+    else {
+      webRef.current = null;
+      documentLoading();
+      setFailure("The app stopped loading. Close other apps to free memory, then tap Retry.");
+    }
+    return true;
+  }, [documentLoading, restartDocument]);
 
   const canvas = canvasOverride ?? CANVAS[theme];
   const ink = palette.ink ?? INK[theme];
@@ -238,7 +268,7 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
             <View style={styles.center}>
               <Text style={[styles.failTitle, { color: ink }]}>BinzoLive could not start</Text>
               <Text style={[styles.failBody, { color: ink }]}>
-                {failure ?? "The bundle is empty. Run `npm run build:web` and restart."}
+                {failure ?? "The app could not load. Please install the latest BinzoLive update."}
               </Text>
               <Pressable onPress={reload} style={[styles.retry, { backgroundColor: primary }]}>
                 <Text style={[styles.retryText, { color: contrast }]}>Retry</Text>
@@ -248,6 +278,7 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
             <View style={styles.safe}>
             {NATIVE_MEDIA_ENABLED && <NativeMediaLayer state={nativeState} layout={nativeLayout} onDimensions={onNativeDimensions} />}
             <WebView
+              key={webGeneration}
               ref={webRef}
               style={[styles.web, { backgroundColor: NATIVE_MEDIA_ENABLED ? "transparent" : canvas }]}
               originWhitelist={["https://aurora.localhost", "about:blank"]}
@@ -262,8 +293,8 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
               onLoadStart={documentLoading}
               onMessage={onMessage}
               onError={onError}
-              onRenderProcessGone={reload}
-              onContentProcessDidTerminate={reload}
+              onRenderProcessGone={rendererGone}
+              onContentProcessDidTerminate={rendererGone}
               // The page is a single 100dvh screen that scrolls its own inner
               // containers, so the WebView's outer scroll view is left alone:
               // disabling it is an iOS-only no-op here that can block inner scroll.

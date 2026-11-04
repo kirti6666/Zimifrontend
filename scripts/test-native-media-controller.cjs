@@ -142,6 +142,39 @@ test('hangup during camera acquisition stops a late stream and rejects the pendi
   h.controller.close();
 });
 
+for (const missing of ['microphone', 'camera']) test(`native video preparation rejects and retires a stream missing its required ${missing}`, async () => {
+  const capture = deferred(), h = fixture({ capture });
+  const pending = h.rpc('prepare', { video: true }); await flush();
+  // react-native-webrtc can resolve with only the permission that was granted.
+  const opened = h.makeStream(missing !== 'camera', missing !== 'microphone');
+  const tracks = opened.getTracks(); capture.resolve(opened);
+  const response = await pending; await flush();
+  assert.match(response.error || '', new RegExp(missing, 'i'));
+  assert.ok(tracks.every(track => track.readyState === 'ended'));
+  assert.equal(opened.released, true);
+  assert.equal(h.state()?.local || null, null);
+  assert.equal(h.calls.some(call => call[0] === 'startCallAudio'), false);
+  assert.equal(h.events.some(event => event.type === 'rtc.signal'), false);
+  h.controller.close();
+});
+
+test('failed video upgrade keeps the existing microphone and its mute state', async () => {
+  const options = {}, h = fixture(options);
+  await h.rpc('prepare', { video: false });
+  await h.rpc('controls', { camera: true, microphone: false });
+  const original = h.state().local, microphone = original.getAudioTracks()[0];
+  options.capture = deferred();
+  const pending = h.rpc('prepare', { video: true }); await flush();
+  const opened = h.makeStream(false, false); options.capture.resolve(opened);
+  const response = await pending;
+  assert.match(response.error, /camera/i);
+  assert.equal(opened.released, true);
+  assert.equal(h.state().local, original);
+  assert.equal(microphone.readyState, 'live');
+  assert.equal(microphone.enabled, false);
+  h.controller.close(); await flush();
+});
+
 test('hangup invalidates a pending ICE configuration and never constructs or signals a peer', async () => {
   const config = deferred(), h = fixture({ config });
   await h.rpc('prepare', { video: true });
