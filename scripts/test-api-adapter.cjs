@@ -631,6 +631,22 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     assert.throws(() => adapters.walletFrom({ ...diamondWallet, ...broken }), /diamond balance/, 'Malformed diamond accounting fails closed');
   }
   assert.equal(adapters.walletFrom({ coins: 0, earningsPaise: 100 }).diamondUnits, undefined, 'An older server never invents a diamond balance');
+  const hostPolicy={enabled:true,hostCallSharePercent:28,hostCallRewardPercent:13,hostGiftSharePercent:41,agencySharePercent:13,hostWeeklyTargetMinutes:1950,paisePerDiamond:20,wholeBalanceWithdrawal:true,hostRules:'Be respectful.'};
+  assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:hostPolicy}).hostEarningsPolicy),hostPolicy);
+  assert.equal(adapters.walletFrom({...diamondWallet,conversion:{diamondsPerCoin:0,paisePerDiamond:20},hostEarningsPolicy:{...hostPolicy,hostCallSharePercent:0}}).conversion.diamondsPerCoin,0,'Zero regular call share remains a valid policy');
+  assert.throws(()=>adapters.walletFrom({...diamondWallet,profileDiamondUnits:diamondWallet.diamondUnits+1}),/profile balance/);
+  assert.equal(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:null,hostReward:null}).hostEarningsPolicy,null,'Explicit null clears a cached policy');
+  for(const broken of [{...hostPolicy,hostCallSharePercent:-1},{...hostPolicy,paisePerDiamond:0},{...hostPolicy,hostWeeklyTargetMinutes:0},{...hostPolicy,wholeBalanceWithdrawal:false}])assert.throws(()=>adapters.walletFrom({...diamondWallet,hostEarningsPolicy:broken}),/host earning rules/);
+  assert.throws(()=>adapters.walletFrom({...diamondWallet,hostReward:{status:'eligible',pendingDiamonds:100}}),/weekly reward progress/);
+  const statisticStart=Date.parse('2026-11-03T18:30:00.000Z');
+  const statistic={period:'daily',timeZone:'Asia/Kolkata',anchorDate:'2026-11-04',startAt:new Date(statisticStart).toISOString(),endAt:new Date(statisticStart+86400000).toISOString(),totalDiamondUnits:3000000,diamondScale:1000000,historicalTiming:false,buckets:Array.from({length:24},(_,index)=>({startAt:new Date(statisticStart+index*3600000).toISOString(),endAt:new Date(statisticStart+(index+1)*3600000).toISOString(),label:String(index).padStart(2,'0')+':00',diamondUnits:index===1?3000000:0}))};
+  expect('GET','/wallet/diamond-statistics?period=daily&date=2026-11-04',statistic);
+  assert.deepEqual(plain(await api.diamondStatistics('daily','2026-11-04')),statistic,'The chart receives exact earned units and complete zero buckets');
+  for(const broken of [{...statistic,totalDiamondUnits:1},{...statistic,buckets:statistic.buckets.slice(1)},{...statistic,diamondScale:100},{...statistic,anchorDate:'2026-02-30'},{...statistic,period:'weekly'}]){
+    expect('GET','/wallet/diamond-statistics?period=daily',broken);await assert.rejects(api.diamondStatistics('daily'),/diamond statistics/);
+  }
+  const beforeStatistics=requests.length;for(const args of [['all'],['daily','2026-02-30'],['daily','../other']])await assert.rejects(api.diamondStatistics(...args),/valid statistics/);
+  assert.equal(requests.length,beforeStatistics,'Malformed statistics requests never reach the API');
   assert.equal(invalidPayoutConfig.minimumWithdrawalPaise, undefined); assert.equal(invalidPayoutConfig.withdrawalsEnabled, false);
   const rechargePrompt = { enabled: true, thresholdCoins: 999, lastRechargeCoins: 10000, delaySeconds: 10, repeatSeconds: 180 };
   assert.deepEqual(plain(adapters.walletFrom({ coins: 800, earningsPaise: 0, rechargePrompt }).rechargePrompt), rechargePrompt, 'The staff Recharge rule reaches the call screen');
@@ -659,7 +675,9 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const payoutBody = { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1' };
   expect('POST', '/wallet/withdraw', payoutDto, body => assert.deepEqual(plain(body), payoutBody));
   assert.deepEqual(plain(await api.requestPayout(50000, '  creator@upi  ', payoutBody.idempotencyKey)), payoutReceipt, 'Submission trims the destination and returns its receipt independently from wallet refresh');
-  for (const patch of [{ amountPaise: '50000' }, { amountPaise: 1.5 }, { amountPaise: -1 }, { amountPaise: 100000001 }, { _id: '' }, { status: 'complete' }, { payoutAddress: '' }, { createdAt: 'not-a-date' }]) {
+  expect('POST','/wallet/withdraw',{...payoutDto,amountPaise:150000000},body=>assert.equal(body.amountPaise,150000000));
+  assert.equal((await api.requestPayout(150000000,'creator@upi',payoutBody.idempotencyKey)).amountPaise,150000000,'Large whole balances reach the server and retain their exact receipt amount');
+  for (const patch of [{ amountPaise: '50000' }, { amountPaise: 1.5 }, { amountPaise: -1 }, { amountPaise: Number.MAX_SAFE_INTEGER+1 }, { _id: '' }, { status: 'complete' }, { payoutAddress: '' }, { createdAt: 'not-a-date' }]) {
     expect('POST', '/wallet/withdraw', { ...payoutDto, ...patch });
     await assert.rejects(api.requestPayout(50000, 'creator@upi', payoutBody.idempotencyKey), /withdrawal/i, 'Malformed payout confirmation stays unconfirmed');
   }

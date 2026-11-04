@@ -1509,7 +1509,7 @@ test('free gifts pass native validation and preserve zero receipts without needi
 test('withdrawal messages reject legacy amounts, malformed requests and extra authority fields', async () => {
   const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
   const invalidWrites = [{ coins: 100, upi: 'creator@upi' }, ...[
-    { amountPaise: 0 }, { amountPaise: 1.5 }, { amountPaise: '50000' }, { amountPaise: 100000001 },
+    { amountPaise: 0 }, { amountPaise: 1.5 }, { amountPaise: '50000' }, { amountPaise: Number.MAX_SAFE_INTEGER+1 },
     { payoutAddress: '  ' }, { payoutAddress: 'ab' }, { payoutAddress: 'x'.repeat(201) },
     { idempotencyKey: 'short' }, { idempotencyKey: 'invalid/key' }, { idempotencyKey: 'x'.repeat(101) },
     { requestId: undefined }, { requestId: 0 }, { requestId: 1.5 }, { userId: 'someone-else' }, { coins: 100 },
@@ -1519,7 +1519,38 @@ test('withdrawal messages reject legacy amounts, malformed requests and extra au
     const message = { type, data }; assert.equal(parse(message), null, JSON.stringify(message)); h.bridge.handle(message);
   }
   assert.ok(parse(payoutMessage())); assert.ok(parse({ type: 'payout.load', data: { requestId: 2, page: 2 } }));
+  assert.ok(parse({...payoutMessage(),data:{...payoutMessage().data,amountPaise:150000000}}),'Policy whole balances may exceed the former partial-withdrawal cap');
   await settle(); assert.equal(h.calls.length, 0, 'Malformed messages never reach account checks or payout APIs'); h.bridge.close();
+});
+
+test('diamond statistics messages reject invalid dates and user authority fields', async () => {
+  const h=harness(),message={type:'diamonds.statistics.load',data:{period:'daily',requestId:1}};
+  assert.ok(h.webMessages.parseWebMessage(JSON.stringify(message)));
+  for(const patch of [{period:'all'},{date:'2026-02-30'},{date:'2026-01-01T00:00:00Z'},{requestId:0},{userId:'someone-else'}]){
+    const invalid={...message,data:{...message.data,...patch}};assert.equal(h.webMessages.parseWebMessage(JSON.stringify(invalid)),null);h.bridge.handle(invalid);
+  }
+  await settle();assert.equal(h.calls.length,0);h.bridge.close();
+});
+
+test('diamond statistics revalidate hosts and isolate the newest period request', async () => {
+  const h=harness(),old=deferred(),latest=deferred();h.overrides.me=()=>approvedAccount();
+  h.overrides.diamondStatistics=period=>period==='daily'?old.promise:latest.promise;
+  h.bridge.handle({type:'diamonds.statistics.load',data:{period:'daily',requestId:1}});await settle();
+  h.bridge.handle({type:'diamonds.statistics.load',data:{period:'weekly',date:'2026-11-04',requestId:2}});await settle();
+  latest.resolve({period:'weekly',buckets:[],totalDiamondUnits:7});await settle();old.reject(new h.ApiError('Old read failed',503));await settle();
+  assert.equal(h.find('diamonds.statistics.loaded').length,1);assert.equal(h.find('diamonds.statistics.loaded')[0].data.requestId,2);assert.equal(h.find('diamonds.statistics.error').length,0);
+  h.overrides.me=()=>account();h.bridge.handle({type:'diamonds.statistics.load',data:{period:'monthly',requestId:3}});await settle();
+  assert.equal(h.count('diamondStatistics'),2,'Members cannot read host statistics');assert.equal(h.find('diamonds.statistics.error').at(-1).data.requestId,3);h.bridge.close();
+});
+
+test('retired diamond statistics never reach a new document or account', async () => {
+  for(const retirement of ['document','account'])for(const stage of ['approval','result']){
+    const h=harness(),pending=deferred();await h.session.setSessionTokens(tokenPair());h.overrides.me=()=>stage==='approval'?pending.promise:approvedAccount();h.overrides.diamondStatistics=()=>pending.promise;
+    h.bridge.handle({type:'diamonds.statistics.load',data:{period:'daily',requestId:1}});await settle();
+    if(retirement==='document')h.bridge.documentLoading();else {await h.session.clearToken();await h.session.setSessionTokens(tokenPair('new'))}
+    pending.resolve(stage==='approval'?approvedAccount():{period:'daily',buckets:[],totalDiamondUnits:123});await settle();
+    assert.equal(h.find('diamonds.statistics.loaded').length+h.find('diamonds.statistics.error').length,0);assert.equal(h.count('diamondStatistics'),stage==='approval'?0:1);h.bridge.close();
+  }
 });
 
 test('withdrawal history remains available after revocation while new submissions revalidate approval', async () => {

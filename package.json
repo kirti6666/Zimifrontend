@@ -38,6 +38,7 @@
     "test:payment-return": "npm run build:web && node scripts/test-payment-return.cjs",
     "test:wallet": "npm run build:web && node scripts/test-wallet.cjs",
     "test:diamonds": "npm run build:web && node scripts/test-diamonds.cjs && node scripts/test-payouts.cjs && node scripts/test-wallet.cjs && node scripts/test-api-adapter.cjs",
+    "test:host-statistics": "npm run build:web && node scripts/test-host-statistics.cjs",
     "test:payouts": "npm run build:web && node scripts/test-payout-cache.cjs && node scripts/test-payouts.cjs",
     "test:payments": "npm run build:web && node scripts/test-api-adapter.cjs && node scripts/test-auth-bridge.cjs && node scripts/test-payment-routes.cjs && node scripts/test-coins.cjs && node scripts/test-themes.cjs && node scripts/test-profile-premium.cjs",
     "test:home": "npm run build:web && node scripts/test-home.cjs && node scripts/test-home-media.cjs",

@@ -5,6 +5,8 @@ import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, calls
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
+import { diamondStatisticsFrom, validStatisticsDate } from "./diamond-statistics";
+import type { DiamondStatisticsPeriod } from "./types";
 import { leaderboardFrom, officialChatFrom, referralFrom } from "./adapters";
 import { relationshipsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
@@ -418,6 +420,14 @@ export const api = {
   async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },
   async leaderboard(period: LeaderboardPeriod) { return leaderboardFrom(await request("GET", `/leaderboard/creators?${queryString({ period, limit: 50 })}`), period); },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
+  async diamondStatistics(period: DiamondStatisticsPeriod, date?: string) {
+    if (!["daily", "weekly", "monthly"].includes(period) || (date !== undefined && !validStatisticsDate(date)))
+      throw new ApiError("Choose a valid statistics period and date.", 400);
+    const data = diamondStatisticsFrom(await request("GET", `/wallet/diamond-statistics?${queryString({ period, date })}`));
+    if (data.period !== period || date !== undefined && data.anchorDate !== date)
+      throw new ApiError("Your diamond statistics could not be confirmed. Try again.", 502);
+    return data;
+  },
   async automaticCallInvitation(active = false) { return automaticInvitationFrom(await request(active ? "GET" : "POST", active ? "/calls/automatic-invitation/active" : "/calls/automatic-invitation", active ? undefined : {})); },
   async dismissAutomaticInvitation(id: string) { return automaticInvitationFrom(await request("POST", `/calls/automatic-invitation/${encodeURIComponent(id)}/dismiss`, {})); },
   async connectAutomaticInvitation(id: string, expectedCoinsPerMinute: number, expectedEntryFeeCoins: number) {
@@ -562,7 +572,7 @@ export const api = {
     return payoutsFrom(await request("GET", `/wallet/withdrawals?page=${page}&limit=20`));
   },
   async requestPayout(amountPaise: number, payoutAddress: string, idempotencyKey: string) {
-    if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0 || amountPaise > 100000000 || typeof payoutAddress !== "string" ||
+    if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0 || typeof payoutAddress !== "string" ||
       payoutAddress.trim().length < 3 || payoutAddress.trim().length > 200 || typeof idempotencyKey !== "string" || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) {
       throw new ApiError("Check your withdrawal amount and payout address.", 400);
     }

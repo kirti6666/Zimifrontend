@@ -15,7 +15,7 @@ function validated(value: unknown): PendingPayout {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("The saved withdrawal attempt could not be verified.");
   const item = value as Record<string, unknown>;
   if (Object.keys(item).length !== 3 || !Object.keys(item).every(key => ["amountPaise", "payoutAddress", "idempotencyKey"].includes(key)) ||
-    !Number.isSafeInteger(item.amountPaise) || Number(item.amountPaise) <= 0 || Number(item.amountPaise) > 100000000 ||
+    !Number.isSafeInteger(item.amountPaise) || Number(item.amountPaise) <= 0 ||
     typeof item.payoutAddress !== "string" || item.payoutAddress.trim().length < 3 || item.payoutAddress.trim().length > 200 || !validKey(item.idempotencyKey)) {
     throw new Error("The saved withdrawal attempt could not be verified.");
   }

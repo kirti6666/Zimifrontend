@@ -284,6 +284,7 @@ for it (login, call failed).
 | Unlock lifetime premium | `POST /themes/premium/purchase` `{idempotencyKey, route?}`; `POST /themes/premium/verify` `{merchantOrderId}` | `Purchase` with `kind: "premium"` |
 | Request a withdrawal | `POST /wallet/withdraw` `{amountPaise, payoutAddress, idempotencyKey}` | A withdrawal record; reserves INR earnings pending admin review |
 | Withdrawal history | `GET /wallet/withdrawals?page=1&limit=20` | `{items,total,page,limit}` with pending, approved, paid, or rejected records |
+| Host diamond statistics | `GET /wallet/diamond-statistics?period=daily\|weekly\|monthly&date=YYYY-MM-DD` | Own approved-host earnings only; IST period bounds, `diamondScale`, `totalDiamondUnits`, and contiguous zero-filled `buckets` with `startAt`, `endAt`, `label`, `diamondUnits` |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
 | Sponsored cards (free plan) | `GET /ads` | `{adFree, items: AdCreative[]}`; premium members get `{adFree: true, items: []}` |
 | An ad has been at least half visible for 1 s (2 s for video) | `POST /ads/:id/impression` `{placement}` | `{counted, servable}`; `servable: false` takes it out of rotation |
@@ -297,6 +298,21 @@ uses `payout.load` / `payout.request` with request IDs; native returns correlate
 keeps its original idempotency key. A successful reservation remains confirmed
 even if the independent wallet refresh fails. Actual transfers and payment
 references are recorded by the admin after manual processing.
+
+Host diamond balances and rules live under **Payments > Withdraw**. Settings
+keeps the spendable coin balance. **Account > Statistics** opens three earned
+diamond bar graphs: Daily shows 24 hourly buckets, Weekly shows Monday-Sunday,
+and Monthly shows each calendar date. Previous/next controls browse history.
+All boundaries use IST. Withdrawals and penalties do not reduce gross earned
+totals; task rewards remain in Withdraw and do not enter these graphs.
+
+The WebView sends `diamonds.statistics.load {period,date?,requestId}`. Native
+revalidates host approval, requests server data, validates bucket precision and
+totals, and emits `diamonds.statistics.loaded` (the response plus `requestId`) or
+`diamonds.statistics.error {period,date?,requestId,message}`. Older requests,
+documents and account sessions cannot replace the latest chart. Old call receipts
+without timing snapshots use their recorded receipt date and set
+`historicalTiming: true`; current calls are attributed across their paid seconds.
 
 In a conversation, swipe left on your own message or right on the other person's message,
 or hold either message and choose **Reply**.

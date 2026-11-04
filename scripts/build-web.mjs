@@ -130,6 +130,7 @@ const page = (demo, hosted = false) =>
   read("web/coins.css") +
   read("web/notifications.css") +
   read("web/payouts.css") +
+  read("web/host-statistics.css") +
   read("web/payment-routes.css") +
   read("web/ads.css") +
   read("web/tactile.css") +
@@ -209,6 +210,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/post-create.js") +
   "\n" + read("web/post-view.js") +
   "\n" + read("web/payouts.js") +
+  "\n" + read("web/host-statistics.js") +
   "\n" + read("web/payment-routes.js") +
   "\n" + read("web/ads.js") +
   "\n" + read("web/tactile.js") +

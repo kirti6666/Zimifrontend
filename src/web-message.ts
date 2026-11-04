@@ -210,9 +210,14 @@ export function parseWebMessage(raw: string): WebMessage | null {
       Number.isInteger(d.goalCoins) && Number(d.goalCoins) >= 1 && Number(d.goalCoins) <= 1e9 && giftAmount(d.earnedCoins) &&
       Object.keys(d).every(key => ["callId", "giftId", "giftCount", "giftProgress", "goalCoins", "earnedCoins"].includes(key)); break;
     case "call.end": valid = (d.callId === undefined || identifier(d.callId)) && optionalText(d.reason, 300); break;
+    case "diamonds.statistics.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
+      ["daily", "weekly", "monthly"].includes(String(d.period)) &&
+      (d.date === undefined || (typeof d.date === "string" && /^(20\d{2}|2100)-\d{2}-\d{2}$/.test(d.date) &&
+        Number.isFinite(Date.parse(`${d.date}T00:00:00Z`)) && new Date(`${d.date}T00:00:00Z`).toISOString().slice(0, 10) === d.date)) &&
+      Object.keys(d).every(key => ["period", "date", "requestId"].includes(key)); break;
     case "payout.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
       (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 1000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
-    case "payout.request": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Number.isSafeInteger(d.amountPaise) && Number(d.amountPaise) > 0 && Number(d.amountPaise) <= 100000000 &&
+    case "payout.request": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Number.isSafeInteger(d.amountPaise) && Number(d.amountPaise) > 0 &&
       typeof d.payoutAddress === "string" && d.payoutAddress.trim().length >= 3 && d.payoutAddress.length <= 200 && idempotency(d.idempotencyKey) &&
       Object.keys(d).every(key => ["amountPaise", "payoutAddress", "idempotencyKey", "requestId"].includes(key)); break;
     case "awards.claim": valid = identifier(d.task); break;
