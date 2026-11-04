@@ -9,8 +9,8 @@ const root = path.resolve(__dirname, '..');
 const id = suffix => `507f1f77bcf86cd7994390${suffix}`;
 const now = Date.now();
 const at = minutes => new Date(now - minutes * 60000).toISOString();
-const mira = { id: id('11'), name: 'Mira North', role: 'host', category: 'Music', tag: 'Acoustic evenings', online: true, verified: true, availableForCall: true, ratePerMin: 0 };
-const asha = { id: id('12'), name: 'Asha Sen', role: 'host', category: 'Talk', tag: 'Books and stories', online: false, verified: true, availableForCall: false, ratePerMin: 0 };
+const mira = { id: id('11'), name: 'Mira North', role: 'host', category: 'Music', tag: 'Acoustic evenings', online: true, onlineForCalls: true, verified: true, availableForCall: true, ratePerMin: 0 };
+const asha = { id: id('12'), name: 'Asha Sen', role: 'host', category: 'Talk', tag: 'Books and stories', online: true, onlineForCalls: false, verified: true, availableForCall: false, ratePerMin: 0 };
 const rohan = { id: id('13'), name: 'Rohan Patel', role: 'sender', category: '', tag: '', online: false, verified: false, availableForCall: false };
 const memberAccount = { user: { id: id('01'), name: 'Test Member', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, balance: 1250, verification: 'none', requiresOnboarding: false };
 const hostAccount = { ...memberAccount, user: { ...memberAccount.user, id: id('02'), name: 'Test Creator', role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified' };
@@ -20,7 +20,7 @@ const conversations = [
   { id: id('23'), user: asha, last: 'Thanks for the session', time: '1h ago', lastAt: at(60), unread: 0, lastKind: 'text', lastMine: true, lastStatus: 'read', hasCalls: false },
 ];
 const chatData = (chats = conversations) => ({ chats, total: chats.length, page: 1, limit: 50, unreadCount: chats.reduce((sum, chat) => sum + chat.unread, 0), unreadConversations: chats.filter(chat => chat.unread > 0).length });
-const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2, page: 1, limit: 20, categories: ['Music', 'Talk'], broadcasterCount: 0, availableCount: 1, speedMatchEnabled: true, bonus: null, unreadCount: 0 };
+const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page: 1, limit: 20, categories: ['Music', 'Talk'], broadcasterCount: 0, availableCount: 1, speedMatchEnabled: true, bonus: null, unreadCount: 0 };
 
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
@@ -253,8 +253,9 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await filters.getByLabel('Sort conversations', { exact: true }).selectOption({ label: 'Most recent' });
     assert.match((await names())[0], /Rohan Patel/);
     await filters.getByLabel('Online only', { exact: true }).check();
-    assert.equal(await rows().count(), 2, 'Hosts always show online, so Online only keeps every host and drops members');
-    assert.doesNotMatch((await names()).join(' '), /Rohan Patel/);
+    assert.equal(await rows().count(), 1, 'Online only retains the actually online host');
+    assert.match((await names()).join(' '), /Mira North/);
+    assert.doesNotMatch((await names()).join(' '), /Rohan Patel|Asha Sen/, 'An offline host stays out of Online only even while socket-connected');
     await filters.getByLabel('Sort conversations', { exact: true }).selectOption({ label: 'Name' });
     await filters.getByRole('button', { name: 'Reset filters', exact: true }).click();
     assert.equal(await rows().count(), 3);
@@ -351,6 +352,11 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
     await picker.getByRole('button').filter({ hasText: 'Asha Sen' }).click();
     assert.equal((await lastSent('chat.open')).with, asha.id);
     assert.equal(await page.evaluate(() => S.v), 'thread');
+    assert.equal(await page.locator('.zc-thread-header small').textContent(),'Offline','An offline chat host keeps truthful presence');
+    const callsBeforeOfflineSetup=await sentCount('call.start');
+    await page.getByRole('button',{name:'Video call',exact:true}).click();
+    assert.equal(await page.evaluate(()=>S.v),'precall','Offline chat hosts still allow explicit manual call setup');
+    assert.equal(await sentCount('call.start'),callsBeforeOfflineSetup,'Opening an offline host call still requires confirmation');
     await navigate('chats');
     await page.getByRole('button', { name: 'New chat', exact: true }).click();
     await picker.getByRole('button', { name: 'Find more creators', exact: true }).click();
@@ -451,6 +457,7 @@ const homeData = { hosts: [mira, asha], stage: [mira], featured: mira, total: 2,
       { ...conversations[0], automatedOnly: false },
       { ...conversations[0], id: id('24'), user: welcomeMember, automatedOnly: true, last: 'An automated hello', lastAutomated: true },
       conversations[1],
+      conversations[2], // This host's own history keeps the offline creator known.
     ]);
     await receive('session', hostAccount);
     await settle('data.home', homeData, 'home');

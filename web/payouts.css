@@ -1,21 +1,61 @@
-.zpay-page{width:100%;max-width:640px;margin:auto;padding:18px 18px 40px;color:var(--ink)}
+/* Withdraw follows "Withdrawal Page.html": inverse balance card, one UPI field, one action, Host rules. Colors stay theme tokens. */
+.zpay-page{width:100%;max-width:430px;margin:auto;padding:8px 20px 24px;color:var(--ink)}
 .zd-balance{margin:0 0 14px;min-width:0}.zd-balance>span,.zd-balance>small{display:block;color:var(--muted);font-size:12px;line-height:1.6}.zd-balance>strong{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:28px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}.zd-balance>strong>svg{flex:none;color:var(--accent-ink)}.zd-conversion{font-size:12px;line-height:1.6;color:var(--muted);margin-top:10px;overflow-wrap:anywhere}.zp-wallet .zd-balance{margin-top:18px}.zp-wallet .zd-balance>strong{font-size:24px}.zp-diamond-link{min-height:44px;padding:8px 0;color:var(--accent-ink);font-size:13px;font-weight:600;text-align:left}
 .zp-wallet-actions>.zp-withdrawal-history{grid-column:1/-1}
 .zd-balance>strong>span{min-width:0;overflow-wrap:anywhere}
-.zpay-page section,.zpay-form{min-width:0;margin-bottom:18px}
-.zpay-rules,.zpay-reward{padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.zpay-rules-text{white-space:pre-wrap}.zpay-reward progress{display:block;width:100%;height:8px;margin:14px 0;accent-color:var(--accent);border-radius:0}.zpay-reward progress::-webkit-progress-bar{background:var(--line)}.zpay-reward progress::-webkit-progress-value{background:var(--accent)}.zpay-reward progress::-moz-progress-bar{background:var(--accent)}.zpay-reward dl{margin:12px 0}.zpay-reward dt{font-size:12px;color:var(--muted)}.zpay-reward dd{margin:6px 0 0;font-size:16px;font-weight:600;overflow-wrap:anywhere}.zpay-form input[readonly]{background:var(--surface)}
-.zpay-wallet,.zpay-form,.zpay-review,.zpay-success{padding:20px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
-.zpay-balance>span,.zpay-balance>small{display:block;color:var(--muted);font-size:12px;line-height:1.6}
-.zpay-balance>strong{display:block;margin:10px 0;color:var(--ink);font-size:32px;line-height:1.25;overflow-wrap:anywhere}
 .zpay-page p{font-size:12px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere}
-.zpay-form{display:flex;flex-direction:column;gap:10px}.zpay-form label{font-size:13px;font-weight:600}.zpay-form label:not(:first-child){margin-top:8px}
-.zpay-form input{display:block;width:100%;min-height:48px;min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);font:inherit;font-size:15px}.zpay-form input::placeholder{color:var(--faint)}
-.zpay-primary,.zpay-secondary{display:flex;align-items:center;justify-content:center;min-height:46px;width:100%;padding:12px 14px;border:0;border-radius:12px;font-size:13px;font-weight:650;line-height:1.5;background:var(--accent);color:var(--cta-ink)}
-.zpay-secondary{margin-top:10px;background:var(--raised);color:var(--ink)}.zpay-page button:disabled,.zpay-page input:disabled{opacity:.5;cursor:default}.zpay-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
-.zpay-page h2{font-size:18px;line-height:1.4;margin:0 0 13px}.zpay-review dl{margin:0 0 16px}.zpay-review dl>div{padding:12px 0;border-bottom:1px solid var(--line)}.zpay-review dt{font-size:11px;color:var(--muted)}.zpay-review dd{font-size:16px;margin:6px 0 0;overflow-wrap:anywhere}.zpay-review>p{margin:0 0 16px}
-.zpay-page .zpay-error,.zpay-paused{margin:12px 0 18px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);font-size:12px;line-height:1.7;overflow-wrap:anywhere}.zpay-error button{display:block;min-height:44px;margin-top:7px;color:var(--accent-ink);font-weight:600}
-.zpay-success>svg{color:var(--accent-ink);margin-bottom:10px}.zpay-success>strong{display:block;font-size:26px}.zpay-success>p{margin:10px 0}.zpay-success .zpay-status{display:inline-flex;margin:3px 0 8px}
+.zpay-page h2{margin:0 0 8px;font-size:16px;line-height:22px;font-weight:700;letter-spacing:-.2px}
+
+/* The balance card and rules hero stay dark in both modes, like the reference. */
+:is(.zpay-card,.zpay-rules-hero){--zpay-card:var(--ink);--zpay-card-ink:var(--canvas)}
+[data-theme="dark"] :is(.zpay-card,.zpay-rules-hero){--zpay-card:var(--raised);--zpay-card-ink:var(--ink)}
+.zpay-card{display:flex;flex-direction:column;gap:14px;min-width:0;padding:16px;background:var(--zpay-card);color:var(--zpay-card-ink)}
+.zpay-card-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-width:0}
+.zpay-card-top>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.zpay-card-top>div>span,.zpay-card-goal{font-size:12px;line-height:16px;color:color-mix(in srgb,var(--zpay-card-ink) 62%,var(--zpay-card))}
+.zpay-card-top strong{display:flex;align-items:center;gap:8px;min-width:0;font-size:26px;line-height:32px;font-weight:700;letter-spacing:-.3px;color:var(--zpay-card-ink)}
+.zpay-card-top strong>svg{flex:none;color:var(--accent)}.zpay-card-top strong>span{min-width:0;overflow-wrap:anywhere}
+.zpay-card-top>b{flex:none;font-size:15px;line-height:32px;font-weight:600;color:var(--zpay-card-ink)}
+.zpay-card-progress{display:flex;flex-direction:column;gap:8px}
+.zpay-meter{height:4px;overflow:hidden;background:color-mix(in srgb,var(--zpay-card-ink) 16%,var(--zpay-card))}.zpay-meter>i{display:block;height:100%;background:var(--accent)}
+.zpay-card-goal{display:flex;justify-content:space-between;gap:12px}.zpay-card-goal>b{flex:none;font-weight:400;color:var(--zpay-card-ink);text-align:right}
+.zpay-page .zpay-card-note{margin:10px 0 0;line-height:16px}
+.zpay-balance{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font-size:12px;line-height:16px;color:var(--muted)}.zpay-balance>strong{font-size:13px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}.zpay-page .zpay-balance>p{flex-basis:100%;margin:0;text-align:right;line-height:16px}
+
+.zpay-form{display:flex;flex-direction:column;min-width:0;margin-top:24px}
+.zpay-form label{font-size:13px;line-height:18px;font-weight:600;color:var(--ink)}.zpay-form label~label{margin-top:16px}
+.zpay-form input{display:block;width:100%;height:48px;min-width:0;margin-top:8px;padding:0 14px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font:inherit;font-size:15px}
+.zpay-form input::placeholder{color:var(--muted)}.zpay-form input[readonly]{color:var(--muted)}
+.zpay-form>.zpay-primary{margin-top:16px}
+.zpay-primary,.zpay-secondary{display:flex;align-items:center;justify-content:center;width:100%;height:48px;padding:0 14px;border:0;font-size:15px;font-weight:600;line-height:1.2;background:var(--accent);color:var(--cta-ink)}
+.zpay-secondary{margin-top:10px;background:var(--raised);color:var(--ink)}
+.zpay-page button:disabled,.zpay-page input:disabled{opacity:.5;cursor:default}.zpay-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.zpay-rules-link{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;height:44px;margin-top:8px;font-size:14px;font-weight:500;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}.zpay-rules-link>svg{flex:none}
+.zpay-verification{margin:16px 0 0;padding:16px;border:1px solid var(--line);background:var(--surface)}
+
+.zpay-review,.zpay-success{min-width:0;margin-top:24px}
+.zpay-review dl{margin:0 0 16px}.zpay-review dl>div{position:relative;padding:12px 0}.zpay-review dl>div::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line)}.zpay-review dt{font-size:12px;color:var(--muted)}.zpay-review dd{margin:4px 0 0;font-size:15px;font-weight:600;overflow-wrap:anywhere}.zpay-review>p{margin:0 0 16px}
+.zpay-success>svg{color:var(--accent-ink);margin-bottom:8px}.zpay-success>strong{display:block;font-size:26px;line-height:32px;font-weight:700}.zpay-success>p{margin:10px 0}.zpay-success .zpay-status{display:inline-flex;margin:0 0 16px}
+.zpay-page .zpay-error,.zpay-paused{margin:16px 0 0;padding:14px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font-size:12px;line-height:1.7;overflow-wrap:anywhere}.zpay-error button{display:block;min-height:44px;margin-top:7px;color:var(--accent-ink);font-weight:600}
+
+.zpay-page hr{display:block;height:1px;margin:0;border:0;background:var(--line)}.zpay-divider{margin-top:16px!important}
+.zpay-reward{padding-top:16px}.zpay-reward progress{display:block;width:100%;height:4px;margin:12px 0;border:0;accent-color:var(--accent);appearance:none}.zpay-reward progress::-webkit-progress-bar{background:var(--line)}.zpay-reward progress::-webkit-progress-value{background:var(--accent)}.zpay-reward progress::-moz-progress-bar{background:var(--accent)}.zpay-reward dl{margin:12px 0}.zpay-reward dt{font-size:12px;color:var(--muted)}.zpay-reward dd{margin:4px 0 0;font-size:15px;font-weight:600;overflow-wrap:anywhere}.zpay-page .zpay-reward p{font-size:14px;line-height:22px;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}
+
+.zpay-rules-page{display:flex;flex-direction:column;min-height:100%;padding-bottom:0}
+.zpay-rules-hero{padding:16px 18px;background:var(--zpay-card);color:var(--zpay-card-ink)}
+.zpay-page .zpay-rules-hero h2{margin:0;font-size:20px;line-height:26px;font-weight:800;letter-spacing:-.3px;color:var(--zpay-card-ink)}
+.zpay-page .zpay-rules-hero p{margin:4px 0 0;font-size:13px;line-height:19px;color:color-mix(in srgb,var(--zpay-card-ink) 84%,var(--zpay-card))}
+.zpay-rules{display:flex;flex-direction:column;margin-top:8px;padding-bottom:16px}
+.zpay-rules>section{padding:16px 0}
+.zpay-rules h3{margin:0;font-size:16px;line-height:22px;font-weight:700;letter-spacing:-.2px;color:var(--ink)}
+.zpay-rules ul{display:flex;flex-direction:column;gap:6px;margin:8px 0 0;padding:0;list-style:none}
+.zpay-rules li{display:flex;gap:10px;font-size:14px;line-height:22px;color:color-mix(in srgb,var(--ink) 80%,var(--canvas));overflow-wrap:anywhere}
+.zpay-rules li>span:first-child{flex:none;width:5px;height:5px;margin-top:8.5px;background:var(--accent)}
+.zpay-rules strong{font-weight:700;color:var(--ink)}
+.zpay-page .zpay-rules-text{margin:8px 0 0;white-space:pre-wrap;font-size:14px;line-height:22px;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}
+.zpay-rules-footer{position:sticky;bottom:0;margin:auto -20px 0;padding:12px 20px calc(24px + var(--safe-bottom,0px));background:var(--canvas)}.zpay-page .zpay-rules-footer>hr{margin:-12px -20px 12px}
+
 .zpay-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 12px}.zpay-section-heading h2{margin:0}
-.zpay-history{list-style:none;padding:0;margin:0}.zpay-history li{padding:16px;margin-bottom:10px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}.zpay-history-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.zpay-history-heading strong{font-size:17px}.zpay-status{padding:5px 8px;border-radius:8px;background:var(--raised);color:var(--accent-ink);font-size:11px;font-weight:600;line-height:1.4}.zpay-history p{margin:8px 0 3px}.zpay-history time{font-size:11px;color:var(--muted)}.zpay-review-note{border-top:1px solid var(--line);padding-top:8px}
-.zpay-empty{text-align:center;padding:26px 14px;border:1px dashed var(--line);border-radius:16px}.zpay-empty>svg{color:var(--accent-ink);margin-bottom:9px}.zpay-empty h3{font-size:14px;margin:0 0 6px}.zpay-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}.zpay-pagination button{min-height:44px;padding:8px 12px;border-radius:10px;background:var(--raised);color:var(--ink)}
-@media(max-width:359px){.zpay-page{padding:14px 12px 30px}.zpay-wallet,.zpay-form,.zpay-review,.zpay-success{padding:16px}.zpay-balance>strong{font-size:28px}}
+.zpay-history{list-style:none;padding:0;margin:0}.zpay-history li{padding:16px;margin-bottom:10px;border:1px solid var(--line);background:var(--surface)}.zpay-history-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.zpay-history-heading strong{font-size:17px}.zpay-status{padding:5px 8px;background:var(--raised);color:var(--accent-ink);font-size:11px;font-weight:600;line-height:1.4}.zpay-history p{margin:8px 0 3px}.zpay-history time{font-size:11px;color:var(--muted)}.zpay-review-note{border-top:1px solid var(--line);padding-top:8px}
+.zpay-empty{text-align:center;padding:26px 14px;border:1px dashed var(--line)}.zpay-empty>svg{color:var(--accent-ink);margin-bottom:9px}.zpay-empty h3{font-size:14px;margin:0 0 6px}.zpay-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}.zpay-pagination button{min-height:44px;padding:8px 12px;background:var(--raised);color:var(--ink)}
+@media(max-width:359px){.zpay-page{padding:8px 14px 24px}.zpay-rules-footer{margin:auto -14px 0;padding-left:14px;padding-right:14px}.zpay-page .zpay-rules-footer>hr{margin:-12px -14px 12px}.zpay-card-top strong{font-size:22px}}

@@ -1,5 +1,6 @@
 import { API_CONFIGURATION_ERROR, API_URL } from "../config";
 import { getAppUpdateHeaders, notifyAppUpdate } from "../app-update-events";
+import { getInstallationId } from "../installation";
 import {
   expireSession, getSessionVersion, getSessionSnapshot, getToken,
   isSessionTokens, rotateSessionTokens, SessionStorageError,
@@ -12,6 +13,7 @@ export class ApiError extends Error {
     readonly code?: string,
     readonly retryAfterSeconds?: number,
     readonly requiredCoins?: number,
+    readonly payoutRejection?: { noReservation: true; idempotencyKey: string },
   ) {
     super(message);
     this.name = "ApiError";
@@ -123,7 +125,9 @@ function responseError(response: Response, body: unknown): ApiError {
   const message = response.status >= 500 && mediaMessage ? mediaMessage :
     response.status < 500 && raw.length > 0 && raw.length <= 500 && !/[<>\x00-\x08]/.test(raw) ? raw : fallback;
   const requiredCoins = code === "INSUFFICIENT_COINS" && object(body) && Number.isSafeInteger(body.requiredCoins) && Number(body.requiredCoins) > 0 ? Number(body.requiredCoins) : undefined;
-  return new ApiError(message, response.status, code, retryDelay(response, body), requiredCoins);
+  const rejection = response.status === 409 && ["PAYOUT_QUOTE_STALE", "PAYOUT_KYC_CHANGED"].includes(code ?? "") && object(body) && object(body.data) && body.data.noReservation === true &&
+    typeof body.data.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(body.data.idempotencyKey) ? { noReservation: true as const, idempotencyKey: body.data.idempotencyKey } : undefined;
+  return new ApiError(message, response.status, code, retryDelay(response, body), requiredCoins, rejection);
 }
 
 async function exchange<T>(method: Method, path: string, body?: unknown, token?: string | null): Promise<T> {
@@ -199,7 +203,9 @@ async function refreshAccess(expected: number): Promise<string> {
         throw new ApiError(SESSION_MESSAGE, 401, "SESSION_EXPIRED");
       }
       try {
-        const data = await exchange<unknown>("POST", "/auth/refresh", { refreshToken: snapshot.session.refreshToken });
+        const installationId = await getInstallationId();
+        if (getSessionVersion() !== expected) throw changedSession();
+        const data = await exchange<unknown>("POST", "/auth/refresh", { refreshToken: snapshot.session.refreshToken, ...(installationId ? { installationId } : {}) });
         if (getSessionVersion() !== expected) throw changedSession();
         if (!object(data) || !isSessionTokens(data.tokens)) {
           await expireSession(expected);

@@ -6,14 +6,14 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
-const artifacts = path.join(root, 'artifacts');
+const artifacts = path.join(require('node:os').tmpdir(), 'binzo-public-profile-presence-qa');
 const id = suffix => `507f1f77bcf86cd7994390${suffix}`;
 const account = { user: { id: id('01'), name: 'Profile tester', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, verification: 'none', balance: 1250, requiresOnboarding: false };
 const creatorAccount = { ...account, user: { ...account.user, id: id('02'), name: 'Approved creator', role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified' };
-const creator = { id: id('11'), name: 'Mira North', role: 'host', serverRole: 'host', category: 'Music', city: 'Pune', languages: ['English', 'Hindi'], about: 'Acoustic evenings and thoughtful conversations.', online: true, verified: true, availableForCall: true, followers: 127, following: false, ratePerMin: 15, entryFee: 0 };
-const other = { ...creator, id: id('12'), name: 'Asha Sen', city: 'Jaipur', online: false, availableForCall: false };
+const creator = { id: id('11'), name: 'Mira North', role: 'host', serverRole: 'host', category: 'Music', city: 'Pune', languages: ['English', 'Hindi'], about: 'Acoustic evenings and thoughtful conversations.', online: true, onlineForCalls: true, verified: true, availableForCall: true, followers: 127, following: false, ratePerMin: 15, entryFee: 0 };
+const other = { ...creator, id: id('12'), name: 'Asha Sen', city: 'Jaipur', online: true, onlineForCalls: false, availableForCall: false };
 const member = { id: id('13'), name: 'Rohan Patel', role: 'sender', serverRole: 'user', city: 'Kochi', online: false, verified: false, availableForCall: false, followers: 3 };
-const feed = { hosts: [creator, other], stage: [], featured: creator, total: 2, page: 1, limit: 20, categories: ['Music'], broadcasterCount: 0, availableCount: 1, unreadCount: 0 };
+const feed = { hosts: [creator], stage: [], featured: creator, total: 1, page: 1, limit: 20, categories: ['Music'], broadcasterCount: 0, availableCount: 1, unreadCount: 0 };
 const profile = (person = creator, extra = {}) => ({ ...person, followingCount: 9, following: false, joined: '2026-02-03T12:00:00.000Z', interests: ['Music', 'Travel'], level: 4, crown: false, ...extra });
 const photo = { id: id('41'), mediaUrl: 'https://media.example.test/profile-post.jpg', kind: 'photo', caption: 'An acoustic evening.' };
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
@@ -165,7 +165,7 @@ async function run() {
 
     const readsBeforePresence = await sentCount(page, 'profile.load');
     const unavailable = { ...creator, online: true, availableForCall: false, ratePerMin: 20, followers: 9999, following: true };
-    await receive(page, 'data.home', { ...feed, hosts: [unavailable, other], featured: unavailable });
+    await receive(page, 'data.home', { ...feed, hosts: [unavailable], featured: unavailable });
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A host availability toggle never prevents a member from opening a manual call');
     assert.match(await page.locator('.zu-call-info').innerText(), /20\s+coins \/ min/, 'The server call rate remains visible when the host is not taking instant calls');
     assert.equal(await page.locator('.zu-stats strong').first().innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
@@ -258,9 +258,13 @@ async function run() {
     await giftDialog.getByRole('button', { name: 'Send gift', exact: true }).click();
     const gift = await lastSent(page, 'gift.send');
     assert.equal(gift.to, creator.id); assert.equal(gift.gift, id('51')); assert.ok(gift.idempotencyKey);
-    assert.equal(await giftDialog.isVisible(), true, 'Gift delivery waits for server confirmation');
+    assert.equal(await giftDialog.count(), 0, 'The sender pending visual closes the picker without claiming delivery');
+    assert.equal(await page.evaluate(()=>Home.giftAttempt?.idempotencyKey),gift.idempotencyKey,'The pending gift retains its original recovery key');
+    assert.equal(await page.evaluate(()=>S.bal),1250,'A pending gift never invents an optimistic wallet debit');
     await receive(page, 'gift.sent', { to: creator.id, gift: id('51'), coins: 10, idempotencyKey: gift.idempotencyKey });
     assert.equal(await giftDialog.count(), 0);
+    assert.equal(await page.evaluate(()=>Home.giftAttempt),null,'Server confirmation retires the pending attempt');
+    await page.evaluate(()=>document.getElementById('app-notice')?.remove());
     console.log('PASS public profile: account copy, correctly targeted chat, call setup and gift delivery');
 
     const stale = await navigate(page, creator);
@@ -272,9 +276,15 @@ async function run() {
     await receive(page, 'data.publicProfile', { id: other.id, requestId: current.requestId, profile: profile(other) });
     await acceptPosts(page, other);
     await page.getByRole('heading', { name: other.name, exact: true }).waitFor();
-    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'An offline host is still shown available for a call');
-    assert.doesNotMatch(await page.locator('.zu-presence').innerText(), /offline/i, 'A host profile never says offline');
-    console.log('PASS public profile: stale profile data/errors cannot replace the current account; offline hosts are never shown offline');
+    assert.equal(await button(page, 'Start video call').isEnabled(), true, 'An offline host still permits an explicit manual call');
+    assert.equal(await page.locator('.zu-presence').innerText(), 'Currently offline', 'The availability toggle takes precedence over a connected socket');
+    assert.equal(await page.locator('.zu-presence.is-online').count(),0,'Call permission never gives an offline profile an Online badge');
+    const beforeOfflineSetup=await sentCount(page,'call.start');
+    await button(page,'Start video call').click();
+    assert.equal(await page.evaluate(()=>S.v),'precall','An offline profile opens manual video-call confirmation');
+    assert.equal(await sentCount(page,'call.start'),beforeOfflineSetup,'Manual call setup does not charge or ring before confirmation');
+    await navigate(page,other); await acceptProfile(page,other); await acceptPosts(page,other);
+    console.log('PASS public profile: stale response isolation, truthful offline presence and preserved manual call access');
 
     const blocksBefore = await sentCount(page, 'block.set');
     await button(page, 'More profile options').click();

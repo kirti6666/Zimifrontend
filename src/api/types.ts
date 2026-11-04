@@ -124,6 +124,7 @@ export interface Host {
   ratePerMin?: number;
   entryFee?: number;
   online?: boolean;
+  onlineForCalls?: boolean;
   live?: boolean;
   followers?: number;
   top?: boolean;
@@ -452,7 +453,7 @@ export interface Wallet {
   diamondScale?: 1000000;
   diamonds?: number;
   reservedDiamonds?: number;
-  conversion?: { diamondsPerCoin: number; paisePerDiamond: number };
+  conversion?: { paisePerDiamond: number };
   hostEarningsPolicy?: HostEarningsPolicy | null;
   hostReward?: HostReward | null;
   /** Regular calls and gifts only; task rewards belong to withdrawals. */
@@ -460,6 +461,9 @@ export interface Wallet {
   profileEarningsPaise?: number;
   profileReservedDiamondUnits?: number;
   profileReservedPaise?: number;
+  /** Server aggregates, never totals inferred from one page of history. */
+  alreadyPaidPaise?: number;
+  alreadyPaidDiamondUnits?: number;
 }
 export type DiamondStatisticsPeriod = "daily" | "weekly" | "monthly";
 export interface DiamondStatistics {
@@ -475,20 +479,34 @@ export interface DiamondStatistics {
 }
 export interface HostEarningsPolicy {
   enabled: true;
-  hostCallSharePercent: number;
-  hostCallRewardPercent: number;
-  hostGiftSharePercent: number;
-  agencySharePercent: number;
+  version?: number;
+  settingsVersionId?: string;
+  settingsVersion?: number;
+  hostTdsPercent?: number;
+  callBonusAvailable?: boolean;
+  bonusExample?: { callDiamonds: number; bonusDiamonds: number; giftDiamonds: number };
   hostWeeklyTargetMinutes: number;
   paisePerDiamond: number;
+  periodWeeks?: number;
+  shortWeekMakeupEnabled?: boolean;
+  activityBasis?: "online_available" | "paid_connected" | "paid_video";
   minimumWithdrawalDiamonds?: number;
-  wholeBalanceWithdrawal: true;
+  wholeBalanceWithdrawal: boolean;
   hostRules: string;
 }
 export interface HostReward {
   periodStart: string;
   periodEnd: string;
   weekNumber: number;
+  /** Snapshot of this period, independent from subsequently edited policy. */
+  periodWeeks?: number;
+  shortWeekMakeupEnabled?: boolean;
+  activityBasis?: "online_available" | "paid_connected" | "paid_video";
+  restart?: { eligible: boolean; periodId: string | null; behindMinutes: number; thresholdMinutes: number; nextPeriodStart: string; pendingDiamonds: number };
+  /** Server-resolved weekly copy; absent on the legacy online-hours policy. */
+  progressMessage?: string;
+  policyLocked?: boolean;
+  hoursStartAt?: string;
   weeklyTargetMinutes: number;
   weekMinutes: number[];
   thisWeekMinutes: number;
@@ -509,7 +527,10 @@ export interface Payout {
   id: string;
   amountPaise: number;
   payoutAddress: string;
-  status: "pending" | "approved" | "paid" | "rejected";
+  status: "pending" | "approved" | "paid" | "rejected" | "held";
+  grossAmountPaise?: number;
+  tdsPaise?: number;
+  netAmountPaise?: number;
   createdAt: string;
   reason?: string;
   payoutReference?: string;
@@ -523,6 +544,31 @@ export interface Payouts {
   total: number;
   page: number;
   limit: number;
+}
+export interface PayoutQuoteProof { settingsVersionId: string; kycId: string; netAmountPaise: number; diamondUnits: number; }
+export interface PayoutKycInput {
+  idempotencyKey: string;
+  legalName: string;
+  panNumber: string;
+  payoutType: "upi" | "bank";
+  upiId?: string;
+  bankAccountNumber?: string;
+  ifsc?: string;
+}
+export interface PayoutKyc {
+  required: boolean;
+  kyc: { status: "missing" | "pending" | "verified" | "rejected"; id?: string; ownerId?: string; revision?: number; legalName?: string; panMasked?: string; payoutType?: "upi" | "bank"; payoutAddress?: string; bankLast4?: string; ifsc?: string; reason?: string; };
+}
+export interface WithdrawalQuote {
+  policyVersion: 1 | 2;
+  grossAmountPaise: number;
+  tdsPaise: number;
+  netAmountPaise: number;
+  tdsPercent: number;
+  diamondUnits: number;
+  settingsVersionId?: string;
+  kycId?: string;
+  payoutAddress: string;
 }
 
 export type AdPlacement = "home" | "explore" | "chats" | "call_summary";

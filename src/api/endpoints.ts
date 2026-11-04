@@ -9,6 +9,10 @@ import { diamondStatisticsFrom, validStatisticsDate } from "./diamond-statistics
 import type { DiamondStatisticsPeriod } from "./types";
 import { leaderboardFrom, officialChatFrom, referralFrom } from "./adapters";
 import { relationshipsFrom } from "./adapters";
+import { payoutKycFrom, withdrawalQuoteFrom } from "./payout-verification";
+import { getInstallationId } from "../installation";
+import { validPayoutKycInput, validPayoutQuoteProof } from "../payout-verification";
+import type { PayoutKycInput, PayoutQuoteProof } from "./types";
 import { memberUsersFrom } from "./adapters";
 import { activeHostsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
@@ -130,7 +134,8 @@ export const api = {
   },
   async verifyOtp(phone: string, code: string, _role?: Role, _signup?: boolean, dialCode?: string): Promise<Session> {
     if (!/^\d{4,8}$/.test(code)) throw new ApiError("Enter the 4 to 8-digit verification code from your message.", 400);
-    const response = await request<{ tokens: SessionTokens; user: unknown; isNewUser: boolean; requiresOnboarding: boolean }>("POST", "/auth/otp/verify", { ...phonePayload(phone, dialCode), otp: code, client: "native" }, { auth: false });
+    const installationId = await getInstallationId();
+    const response = await request<{ tokens: SessionTokens; user: unknown; isNewUser: boolean; requiresOnboarding: boolean }>("POST", "/auth/otp/verify", { ...phonePayload(phone, dialCode), otp: code, client: "native", ...(installationId ? { installationId } : {}) }, { auth: false });
     const data = record(response), tokens = data.tokens;
     if (!isSessionTokens(tokens)) throw new ApiError("Sign-in could not be completed. Request a new code and try again.", 502);
     return { ...accountFrom(data), tokens, isNew: response.isNewUser === true };
@@ -327,9 +332,11 @@ export const api = {
     const version = getSessionVersion(), data = await request("POST", "/chats/official/thread/read", input.all === true ? { all: true } : { ids: input.ids });
     ensureSession(version);return officialReadFrom(data);
   },
-  registerPushDevice: (token: string, notificationProtocol?: "binzo.push.v1") => {
+  registerPushDevice: async (token: string, notificationProtocol?: "binzo.push.v1") => {
+    const ownerVersion = getSessionVersion(), installationId = await getInstallationId();
+    ensureSession(ownerVersion);
     const version = Number(getAppUpdateAuth().appVersionCode);
-    return request<void>("POST", "/notifications/devices", { token, platform: "android", ...(notificationProtocol === "binzo.push.v1" ? { notificationProtocol } : {}), ...(Number.isSafeInteger(version) && version > 0 ? { appVersionCode: version } : {}) });
+    return request<void>("POST", "/notifications/devices", { token, platform: "android", ...(installationId ? { installationId } : {}), ...(notificationProtocol === "binzo.push.v1" ? { notificationProtocol } : {}), ...(Number.isSafeInteger(version) && version > 0 ? { appVersionCode: version } : {}) });
   },
   async catalog() { const [gifts, packs] = await Promise.all([request("GET", "/gifts?limit=100"), request("GET", "/coins/packs")]); return catalogFrom(gifts, packs); },
   rtcConfig: () => request<RtcConfig>("GET", "/calls/ice-servers"),
@@ -472,6 +479,10 @@ export const api = {
       earlyEnds: { today: count(early.today), limit: count(early.limit), penaltyCoins: count(early.penaltyCoins) } };
   },
   async hostCallStatus() { return hostCallStatusFrom(await request("GET", "/calls/host-status")); },
+  async saveHostCallRate(rateCoinsPerMinute: number) {
+    if (!Number.isSafeInteger(rateCoinsPerMinute) || rateCoinsPerMinute < 1 || rateCoinsPerMinute > 1000000) throw new ApiError("Choose a valid member call price.", 400);
+    return hostCallStatusFrom(await request("PATCH", "/calls/host-status", { rateCoinsPerMinute }));
+  },
   async setVisibleDuringCalls(on: boolean) { const data = record(await request("PATCH", "/safety", { visibleDuringCalls: on })); return { on: data.visibleDuringCalls !== false }; },
   declineCall: (callId: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
   endCall: (callId: string, _reason?: string) => request<void>("POST", `/calls/${encodeURIComponent(callId)}/end`),
@@ -585,12 +596,33 @@ export const api = {
     if (!Number.isInteger(page) || page < 1 || page > 1000) throw new ApiError("Choose a valid withdrawal history page.", 400);
     return payoutsFrom(await request("GET", `/wallet/withdrawals?page=${page}&limit=20`));
   },
-  async requestPayout(amountPaise: number, payoutAddress: string, idempotencyKey: string) {
+  async payoutKyc() { return payoutKycFrom(await request("GET", "/wallet/payout-kyc")); },
+  async restartHostReward(periodId: string, idempotencyKey: string, expectedPendingDiamonds: number) {
+    if (!/^[a-f\d]{24}$/i.test(periodId) || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey) || !Number.isSafeInteger(expectedPendingDiamonds) || expectedPendingDiamonds < 0) throw new ApiError("Review the current reward period before restarting.", 400);
+    const receipt = record(await request("POST", "/wallet/reward-restart", { periodId, idempotencyKey, expectedPendingDiamonds, confirmed: true }));
+    if (receipt.periodId !== periodId || receipt.idempotencyKey !== idempotencyKey || !/^[a-f\d]{24}$/i.test(String(receipt.restartId)) ||
+      typeof receipt.nextPeriodStart !== "string" || !Number.isFinite(Date.parse(receipt.nextPeriodStart)) ||
+      receipt.cancelledPendingDiamonds !== expectedPendingDiamonds)
+      throw new ApiError("Your restart could not be confirmed. Refresh your reward progress or retry the same request.", 502);
+    return { periodId, idempotencyKey, restartId: String(receipt.restartId), nextPeriodStart: receipt.nextPeriodStart,
+      cancelledPendingDiamonds: Number(receipt.cancelledPendingDiamonds) };
+  },
+  async submitPayoutKyc(input: PayoutKycInput) {
+    if (!validPayoutKycInput(input)) throw new ApiError("Check your legal name, PAN and payout details.", 400);
+    const { idempotencyKey, legalName, panNumber, payoutType } = input;
+    return payoutKycFrom(await request("POST", "/wallet/payout-kyc", { idempotencyKey, legalName: legalName.trim(), panNumber, payoutType,
+      ...(payoutType === "upi" ? { upiId: input.upiId } : { bankAccountNumber: input.bankAccountNumber, ifsc: input.ifsc }) }));
+  },
+  async withdrawalQuote(amountPaise: number) {
+    if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0) throw new ApiError("Check your withdrawal amount.", 400);
+    return withdrawalQuoteFrom(await request("GET", `/wallet/withdrawal-quote?amountPaise=${amountPaise}`));
+  },
+  async requestPayout(amountPaise: number, payoutAddress: string, idempotencyKey: string, quote?: PayoutQuoteProof) {
     if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0 || typeof payoutAddress !== "string" ||
-      payoutAddress.trim().length < 3 || payoutAddress.trim().length > 200 || typeof idempotencyKey !== "string" || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey)) {
+      payoutAddress.trim().length < 3 || payoutAddress.trim().length > 200 || typeof idempotencyKey !== "string" || !/^[a-zA-Z0-9_-]{8,100}$/.test(idempotencyKey) || (quote !== undefined && !validPayoutQuoteProof(quote, amountPaise))) {
       throw new ApiError("Check your withdrawal amount and payout address.", 400);
     }
-    return payoutFrom(await request("POST", "/wallet/withdraw", { amountPaise, payoutAddress: payoutAddress.trim(), idempotencyKey }));
+    return payoutFrom(await request("POST", "/wallet/withdraw", { amountPaise, payoutAddress: payoutAddress.trim(), idempotencyKey, ...(quote ? { quote } : {}) }));
   },
   async ads() { return adFeedFrom(await request("GET", "/ads")); },
   async adImpression(id: string, placement: AdPlacement) {

@@ -124,13 +124,14 @@ keeps it identical to the original Next.js version.
   view per slide and a counted tap (`zaCampaigns` in `web/ads.js`). Sponsored
   cards (banner/video) follow ten hosts (`HOME_AD_AFTER`). A shorter grid keeps
   both below its hosts.
-- Never show a host as offline. `hostFrom` in `web/aurora-runtime.js` marks
-  every host online and lets members call an offline host (the server rings
-  until the call is missed). Members may manually call any approved host,
-  including admin-created profiles, regardless of the host's availability toggle.
-  The server checks approval, blocks and coins; a host must sign in to answer.
-  New screens must read `h.on`/`h.available`, never the
-  raw `online` field.
+- Explore includes only hosts who explicitly choose Online; the server filters
+  before pagination and keeps Online hosts reachable through background push.
+  Render the server's `onlineForCalls` choice, falling back to reported online
+  presence, rather than marking every host Online. Following and existing chats
+  can include Offline hosts. Members may still manually call an approved Offline
+  host from a profile or chat. Approval, blocks and Coins remain server checks.
+  New screens read `h.on` for presence and `h.available` for call permission;
+  those two values have different meanings.
 - The bottom tabs are Home, Chat, Profile and Settings (the chat route remains
   `chats`). Explore is removed; old Explore routes resolve to Home. `all-creators`
   (from the Home empty state) and the `board` leaderboard are detail pages
@@ -341,6 +342,14 @@ keeps it identical to the original Next.js version.
   chain, so wrapping it in an IIFE or loading it as a module breaks navigation.
 - Any change under `web/` needs `npm run build:web`, or the app still renders
   the old bundle.
+- Host-only Withdraw displays all seven host-rule sections as text after Review
+  withdrawal. Internal Coin-to-earning rates and host/agency/platform splits stay
+  in authenticated admin reporting. Public clients retain only their own balances,
+  costs, payout conversion and the host's own bonus illustration. New reward
+  periods count paid video-call time; older periods retain their recorded basis.
+  Restart requires server eligibility, an explicit pending-bonus review and the
+  same persisted owner/period/key/proof on an uncertain retry. Available Diamonds,
+  legacy rewards and agency maturity dates remain unchanged by a restart.
 - `npm run typecheck` covers the RN shell and `src/`; the `web/` sources are
   plain browser JS and are not typechecked.
 - Anything that fakes the other side (auto pick-up, fake callers, fake gifts or

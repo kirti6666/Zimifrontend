@@ -58,9 +58,9 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   await receive(page,'payout.requested',{payout,requestId:request.requestId});
   assert.match(await page.locator('.zpay-success').innerText(),/2,500 diamonds/,'Receipt uses the server-reserved diamond amount');
   await receive(page,'wallet.balance',{...wallet,diamondUnits:3672800000,reservedDiamondUnits:2750000000,earningsPaise:73456,reservedPaise:55000});
-  assert.match(await page.locator('.zpay-wallet').innerText(),/3,672\.8[\s\S]*2,750 diamonds reserved[\s\S]*734\.56/);
+  assert.match(await page.locator('.zpay-wallet').innerText(),/3,672\.8[\s\S]*734\.56[\s\S]*2,750 diamonds reserved/);
   await receive(page,'payout.loaded',{items:[payout],total:1,page:1,limit:20,requestId:(await sent(page,'payout.load')).at(-1).requestId});
-  assert.match(await page.locator('.zpay-history').innerText(),/2,500 diamonds/);
+  await go(page,'payout-history');assert.match(await page.locator('.zpay-history').innerText(),/2,500 diamonds/);
   const shots=path.join(root,'artifacts','diamonds');fs.mkdirSync(shots,{recursive:true});
   for(const dark of [false,true])for(const width of [320,390]){
    await page.setViewportSize({width,height:844});await page.evaluate(value=>ZimiThemes.setDark(value),dark);
@@ -68,7 +68,7 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
    assert.equal(overflow,false,`${width}px ${dark?'dark':'light'} payout fits`);
    await page.screenshot({path:path.join(shots,`payout-${dark?'dark':'light'}-${width}.png`)});
   }
-  const policy={enabled:true,hostCallSharePercent:28,hostCallRewardPercent:13,hostGiftSharePercent:41,agencySharePercent:13,hostWeeklyTargetMinutes:1950,paisePerDiamond:20,minimumWithdrawalDiamonds:10000,wholeBalanceWithdrawal:true,hostRules:'Respect members.\nNever share <script>private details</script>.'};
+  const policy={enabled:true,callBonusAvailable:true,bonusExample:{callDiamonds:2800,bonusDiamonds:1300,giftDiamonds:4100},hostWeeklyTargetMinutes:1950,paisePerDiamond:20,minimumWithdrawalDiamonds:10000,wholeBalanceWithdrawal:true,hostRules:'Internal model: 28 diamonds per 100 coins <script>private details</script>.'};
   const hostReward={periodStart:'2026-10-25T18:30:00.000Z',periodEnd:'2026-11-22T18:30:00.000Z',weekNumber:2,weeklyTargetMinutes:1950,weekMinutes:[1800,720,0,0],thisWeekMinutes:720,thisWeekTargetMinutes:2100,remainingThisWeekMinutes:1380,lastWeekMinutes:1800,pendingDiamonds:500,pendingPaise:10000,status:'pending'};
   const policyWallet={...wallet,earningsPaise:269000,reservedPaise:0,minimumWithdrawalPaise:200000,diamondUnits:13450*1000000,reservedDiamondUnits:0,profileDiamondUnits:12000*1000000,profileEarningsPaise:240000,hostEarningsPolicy:policy,hostReward};
   await receive(page,'wallet.balance',policyWallet);await go(page,'settings');
@@ -77,12 +77,18 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   await receive(page,'wallet.balance',{reservedDiamondUnits:2000*1000000,reservedPaise:40000,profileReservedDiamondUnits:1500*1000000,profileReservedPaise:30000,hostEarningsPolicy:{...policy,hostWeeklyTargetMinutes:3000}});
   assert.doesNotMatch(await page.locator('.zp-wallet').innerText(),/diamonds reserved/,'Reserved diamonds also stay out of Settings');
   await go(page,'payout');await page.evaluate(()=>payoutNew());
-  assert.match(await page.locator('.zpay-rules').innerText(),/Weekly target: 32.5 hours/,'Current period keeps its saved weekly target after an admin edit');
-  assert.match(await page.locator('.zpay-wallet').innerText(),/13,450[\s\S]*2,690/);
-  assert.equal(await page.locator('#zpay-amount').inputValue(),'2690.00');
-  assert.equal(await page.locator('#zpay-amount').getAttribute('readonly'),'');
-  assert.match(await page.getByRole('region',{name:'Weekly call reward'}).innerText(),/12 of 35 hours[\s\S]*23 more hours/,'Weekly carry-forward uses confirmed server progress');
+  assert.equal(await page.locator('.zpay-rules').count(),1,'Host rules are readable inline after Review withdrawal');
+  assert.equal(await page.evaluate(()=>!!(document.querySelector('.zpay-form').compareDocumentPosition(document.querySelector('.zpay-host-rules'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'Rules follow the review form');
+  assert.equal(await page.locator('.zpay-rules>section').count(),7,'All seven host-rule sections are present as text');
+  await go(page,'payout-rules');assert.equal(await page.evaluate(()=>S.v),'payout-rules');
+  assert.match(await page.locator('.zpay-rules').innerText(),/32.5 hours a week/,'Current period keeps its saved weekly target after an admin edit');
   assert.equal(await page.locator('.zpay-rules script').count(),0,'Published host rules remain escaped plain text');
+  assert.doesNotMatch(await page.locator('.zpay-rules').innerText(),/Internal model|per 100 coins|SharePercent|agency share|platform share|28%|13%|41%/,'Internal split rules are not rendered even from a legacy payload');
+  assert.match(await page.locator('.zpay-rules').innerText(),/1,300 extra diamonds for every 2,800[\s\S]*2,800 \+ 1,300 bonus = 4,100/,'Only the PDF own-bonus illustration is shown');
+  await page.getByRole('button',{name:'Got it',exact:true}).click();assert.equal(await page.evaluate(()=>S.v),'payout');
+  assert.match(await page.locator('.zpay-wallet').innerText(),/13,450[\s\S]*2,690/);
+  assert.equal(await page.locator('#zpay-amount').count(),0,'A whole-balance withdrawal needs only the UPI ID');
+  assert.match(await page.getByRole('region',{name:'Weekly call reward'}).innerText(),/12 of 35 hours[\s\S]*23 more hours/,'Weekly carry-forward uses confirmed server progress');
   await page.locator('#zpay-address').fill('policy@upi');await page.getByRole('button',{name:'Review withdrawal',exact:true}).click();
   assert.equal(await page.evaluate(()=>PayoutUI.review.amountPaise),269000,'Policy withdraws whole recorded value');
   await receive(page,'wallet.balance',{earningsPaise:270000});
@@ -93,10 +99,45 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   assert.equal(await page.evaluate(()=>PayoutUI.review.amountPaise),150000000,'Whole-balance policy supports balances above the former partial-withdrawal limit');
   await page.getByRole('button',{name:'Edit details',exact:true}).click();
   await receive(page,'wallet.balance',{...policyWallet,earningsPaise:100000,diamondUnits:5000*1000000,profileDiamondUnits:5000*1000000,profileEarningsPaise:100000});
-  assert.match(await page.locator('.zpay-withdrawal-message').innerText(),/5,000 more diamonds/);
+  assert.match(await page.getByRole('region',{name:'Diamond balance'}).innerText(),/Min ₹2,000 = 10,000 diamonds[\s\S]*5,000 to go/);
   assert.equal(await page.getByRole('button',{name:'Review withdrawal',exact:true}).isDisabled(),true);
   for(const dark of [false,true])for(const width of [320,390]){await page.setViewportSize({width,height:844});await page.evaluate(value=>ZimiThemes.setDark(value),dark);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:path.join(shots,`host-rules-${dark?'dark':'light'}-${width}.png`),fullPage:true})}
-  await page.locator('.zpay-rules').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(shots,'host-rules-detail.png')});
+  await go(page,'payout-rules');await page.screenshot({path:path.join(shots,'host-rules-detail.png')});await go(page,'payout');
+  const futurePolicy={...policy,bonusExample:{callDiamonds:1400,bonusDiamonds:650,giftDiamonds:2050},paisePerDiamond:40,periodWeeks:12,shortWeekMakeupEnabled:false,activityBasis:'paid_connected',wholeBalanceWithdrawal:false};
+  await receive(page,'wallet.balance',{...policyWallet,hostEarningsPolicy:futurePolicy});await page.evaluate(()=>payoutNew());
+  await go(page,'payout-rules');assert.match(await page.locator('.zpay-rules').innerText(),/online and available/,'An open legacy period retains its actual online basis after a policy edit');await go(page,'payout');
+  assert.match(await page.getByRole('region',{name:'Weekly call reward'}).innerText(),/Week 2 of 4/,'A legacy reward keeps four weeks independently of edited policy');
+  assert.equal(await page.locator('#zpay-amount').getAttribute('readonly'),null,'Explicit partial withdrawal policy allows an entered amount');
+  await page.locator('#zpay-amount').fill('2000.00');await page.locator('#zpay-address').fill('partial@upi');await page.getByRole('button',{name:'Review withdrawal',exact:true}).click();
+  assert.equal(await page.evaluate(()=>PayoutUI.review.amountPaise),200000,'Partial review reserves the entered cash amount without guessing a new Diamond value');
+  await page.getByRole('button',{name:'Edit details',exact:true}).click();
+  await go(page,'payout-rules');assert.match(await page.locator('.zpay-rules').innerText(),/650 extra diamonds for every 1,400[\s\S]*1,400 \+ 650 bonus = 2,050[\s\S]*any amount from the minimum/,'The example uses only the host-safe server illustration');await go(page,'payout');
+  assert.equal(await page.evaluate(()=>diamondFormat(diamondOwnWallet().diamondUnits)),'13,450','A changed example never revalues the confirmed historical balance');
+  for(const weeks of [1,4,12]){
+   const period={...hostReward,periodWeeks:weeks,weekNumber:weeks,weekMinutes:Array(weeks).fill(720),shortWeekMakeupEnabled:weeks!==12,activityBasis:'paid_connected'};
+   await receive(page,'wallet.balance',{...policyWallet,hostEarningsPolicy:futurePolicy,hostReward:period,alreadyPaidPaise:123456,alreadyPaidDiamondUnits:8000*1000000});
+   assert.match(await page.getByRole('region',{name:'Weekly call reward'}).innerText(),new RegExp(`Week ${weeks} of ${weeks}`));
+   assert.equal(await page.getByRole('progressbar',{name:"This week's billed call hours",exact:true}).count(),1,'Only an explicit billed-time snapshot is labelled paid');
+   assert.doesNotMatch(await page.locator('.zpay-reward').innerText(),/\b130\b/,'The admin-only period-hour total is not exposed');
+   await go(page,'payout-rules');
+   assert.match(await page.locator('.zpay-rules').innerText(),/Only paid call time counts/);
+   assert.match(await page.locator('.zpay-rules').innerText(),weeks===12?/Missed hours don't move/:weeks===1?/Each week starts fresh/:/Missing hours move to next week/,'Makeup messaging follows the open-period snapshot');
+   assert.doesNotMatch(await page.locator('.zpay-rules').innerText(),/\b130\b/,'The admin-only period-hour total is not exposed');
+   await go(page,'payout');
+  }
+  const progressMessage='Custom weekly progress: 12 more paid hours. <img src=x onerror=alert(1)>';
+  await receive(page,'wallet.balance',{...policyWallet,hostEarningsPolicy:futurePolicy,hostReward:{...hostReward,activityBasis:'paid_connected',progressMessage,policyLocked:false,hoursStartAt:hostReward.periodStart}});
+  assert.ok((await page.getByRole('region',{name:'Weekly call reward'}).innerText()).includes(progressMessage),'The host sees the server-resolved admin weekly message');assert.equal(await page.locator('.zpay-reward img').count(),0,'Editable progress is escaped plain text');
+  await receive(page,'wallet.balance',{...policyWallet,hostEarningsPolicy:futurePolicy,hostReward});assert.match(await page.getByRole('region',{name:'Weekly call reward'}).innerText(),/more hours to stay on track|target is complete/,'Legacy periods keep their existing fallback copy');
+  assert.match(await page.getByRole('region',{name:'Already paid withdrawals'}).innerText(),/8,000 diamonds[\s\S]*1,234\.56/,'Paid totals use server aggregates even when their historical valuation differs');
+  const held={...payout,status:'held',grossAmountPaise:50000,tdsPaise:5000,netAmountPaise:45000};
+  await go(page,'payout-history');await page.evaluate(()=>payoutLoad());
+  await receive(page,'payout.loaded',{items:[held],total:1,page:1,limit:20,requestId:(await sent(page,'payout.load')).at(-1).requestId});
+  assert.match(await page.locator('.zpay-history').innerText(),/On hold[\s\S]*Gross.*500.*TDS.*50.*Net.*450/,'Held history preserves confirmed gross, TDS and net');
+  assert.match(await page.getByRole('region',{name:'Already paid withdrawals'}).innerText(),/1,234\.56/,'Loading one history page cannot recompute the lifetime paid total');
+  assert.equal(await page.evaluate(()=>typeof diamondExampleAmount),'undefined','The app does not contain a Coin-to-host-earning model calculator');
+  assert.equal(await page.evaluate(()=>diamondFormat(1)),'0.000001','Historical fractional Diamonds remain exact');
+  for(const width of [320,390]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Expanded withdrawal metadata fits mobile widths')}
   await receive(page,'wallet.balance',{hostEarningsPolicy:null,hostReward:null});
   assert.equal(await page.locator('.zpay-rules').count(),0,'Disabled policy clears cached earning rules');
   for(const status of ['pending','rejected','suspended']){

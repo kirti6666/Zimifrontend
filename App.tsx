@@ -301,6 +301,7 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
               javaScriptEnabled
               webviewDebuggingEnabled={typeof __DEV__ !== "undefined" && __DEV__}
               domStorageEnabled
+              saveFormDataDisabled
               bounces={false}
               overScrollMode="never"
               setBuiltInZoomControls={false}

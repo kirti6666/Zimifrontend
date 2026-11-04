@@ -4,6 +4,7 @@ import { notificationTargetFrom } from "./notification-target";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUSES } from "./api/support";
 import { officialCursor, officialMessageId } from "./api/official";
 import { validNativeMediaLayout, validNativeMediaRequest } from "./native-media/protocol";
+import { validPayoutKycInput, validPayoutQuoteProof } from "./payout-verification";
 
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -185,7 +186,9 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "verification.submit": valid = (d.bio === undefined || text(d.bio, 2000)) && (d.langs === undefined || strings(d.langs, 20)); break;
     case "presence.set": valid = boolean(d.online) && boolean(d.visible); break;
     case "presence.duringCalls": valid = boolean(d.on); break;
-    case "host.callStatus.load": valid = true; break;
+    case "host.callStatus.load": valid = Object.keys(d).length === 0; break;
+    case "host.callRate.save": valid = Number.isSafeInteger(d.rateCoinsPerMinute) && Number(d.rateCoinsPerMinute) >= 1 && Number(d.rateCoinsPerMinute) <= 1000000 && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => ["rateCoinsPerMinute", "requestId"].includes(key)); break;
+    case "host.reward.restart": valid = supportId(d.periodId) && idempotency(d.idempotencyKey) && Number.isSafeInteger(d.expectedPendingDiamonds) && Number(d.expectedPendingDiamonds) >= 0 && d.confirmed === true && supportRequest(d) && supportKeys(d, ["periodId", "idempotencyKey", "expectedPendingDiamonds", "confirmed", "requestId"]); break;
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with) && (d.background === undefined || boolean(d.background)) && (d.knownIds === undefined || (Array.isArray(d.knownIds) && d.knownIds.length <= 200 && d.knownIds.every(id => typeof id === "string" && /^[a-f\d]{24}$/i.test(id)) && new Set(d.knownIds).size === d.knownIds.length)) && Object.keys(d).every(key => ["with", "background", "knownIds"].includes(key)); break;
     case "chat.activity": valid = identifier(d.with) && boolean(d.active) && Object.keys(d).every(key => ["with", "active"].includes(key)); break;
@@ -219,9 +222,12 @@ export function parseWebMessage(raw: string): WebMessage | null {
       Object.keys(d).every(key => ["period", "date", "requestId"].includes(key)); break;
     case "payout.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
       (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 1000)) && Object.keys(d).every(key => ["page", "requestId"].includes(key)); break;
+    case "payout.kyc.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
+    case "payout.kyc.submit": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && validPayoutKycInput(d); break;
+    case "payout.quote.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Number.isSafeInteger(d.amountPaise) && Number(d.amountPaise) > 0 && Object.keys(d).every(key => ["requestId", "amountPaise"].includes(key)); break;
     case "payout.request": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Number.isSafeInteger(d.amountPaise) && Number(d.amountPaise) > 0 &&
       typeof d.payoutAddress === "string" && d.payoutAddress.trim().length >= 3 && d.payoutAddress.length <= 200 && idempotency(d.idempotencyKey) &&
-      Object.keys(d).every(key => ["amountPaise", "payoutAddress", "idempotencyKey", "requestId"].includes(key)); break;
+      (d.quote === undefined || validPayoutQuoteProof(d.quote, Number(d.amountPaise))) && Object.keys(d).every(key => ["amountPaise", "payoutAddress", "idempotencyKey", "requestId", "quote"].includes(key)); break;
     case "awards.claim": valid = identifier(d.task); break;
     case "ads.load": valid = Object.keys(d).length === 0; break;
     case "ads.impression": case "ads.click": valid = typeof d.id === "string" && /^[a-f\d]{24}$/i.test(d.id) &&

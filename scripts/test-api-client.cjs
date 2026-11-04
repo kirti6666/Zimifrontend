@@ -45,6 +45,7 @@ function harness(options = {}) {
     console: { log: (...x) => logs.push(x), warn: (...x) => logs.push(x), error: (...x) => logs.push(x) },
     URL, AbortController, Date, setTimeout: (fn, ms) => setTimeout(fn, options.timeoutMs ?? ms), clearTimeout,
     __DEV__: options.dev ?? true,
+    expo: options.installationId ? {uuidv4:()=>options.installationId} : undefined,
     process: { env: { EXPO_PUBLIC_API_URL: options.apiUrl ?? 'http://192.168.1.6:5000/api/v1', ...options.env } },
     fetch: async (url, init) => { calls.push({ url, init }); return network(url, init); },
   });
@@ -70,6 +71,19 @@ function harness(options = {}) {
     disk, calls, logs, setFetch: (fetch) => { network = fetch; },
   };
 }
+
+test('native installation evidence is sent only on refresh and stays out of ordinary API headers/body',async()=>{
+  const installationId='5ee7ef02-1d49-4bd9-a280-f25996f77111',h=harness({installationId});await h.session.setSessionTokens(tokens());let first=true;
+  h.setFetch((url,init)=>{if(url.endsWith('/auth/refresh')){assert.equal(JSON.parse(init.body).installationId,installationId);return ok({tokens:tokens('rotated')})}assert.equal(JSON.stringify(init).includes(installationId),false);if(first){first=false;return unauthorized()}return ok({coins:100})});await h.client.request('GET','/wallet');assert.equal(h.disk.get('zimi.installation.v1'),installationId);assert.equal(JSON.stringify(h.logs).includes(installationId),false);
+});
+
+test('payout no-reservation proof requires an explicit committed stale-key envelope',async()=>{
+  const h=harness();await h.session.setSessionTokens(tokens());
+  const proof={noReservation:true,idempotencyKey:'owned-withdrawal-key'};
+  for(const [status,code,data,accepted] of [[409,'PAYOUT_QUOTE_STALE',proof,true],[409,'PAYOUT_KYC_CHANGED',proof,true],[400,'PAYOUT_QUOTE_STALE',proof,false],[409,'OTHER',proof,false],[409,'PAYOUT_QUOTE_STALE',{...proof,noReservation:'true'},false],[409,'PAYOUT_QUOTE_STALE',{...proof,idempotencyKey:'short'},false],[409,'PAYOUT_QUOTE_STALE',undefined,false]]){
+    h.setFetch(()=>json(status,{success:false,message:'Review again',code,data}));await assert.rejects(h.client.request('POST','/wallet/withdraw',{}),error=>{assert.equal(JSON.stringify(error.payoutRejection),accepted?JSON.stringify(proof):undefined);return true});
+  }
+});
 
 test('insufficient call coins retain only a valid server recharge requirement', async () => {
   const h = harness();

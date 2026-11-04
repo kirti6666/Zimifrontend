@@ -315,8 +315,11 @@ for it (login, call failed).
 | Payment methods | `GET /payments/routes` | `{mode,routeChoice,routes:[{route,pageStyle,upiIntent,takingPayments,currency}]}`; available INR routes only |
 | Buy a coin pack | `POST /coins/purchase` `{packId, idempotencyKey, route?}`, opens the PayPlus page; `POST /coins/purchase/verify` `{merchantOrderId}` when the app returns | `Purchase` |
 | Unlock lifetime premium | `POST /themes/premium/purchase` `{idempotencyKey, route?}`; `POST /themes/premium/verify` `{merchantOrderId}` | `Purchase` with `kind: "premium"` |
-| Request a withdrawal | `POST /wallet/withdraw` `{amountPaise, payoutAddress, idempotencyKey}` | A withdrawal record; reserves INR earnings pending admin review |
+| Payout verification | `GET /wallet/payout-kyc`, `POST /wallet/payout-kyc` | Current masked verification status; submit PAN and the selected UPI or bank destination using a new idempotency key |
+| Review a withdrawal | `GET /wallet/withdrawal-quote?amountPaise=...` | Own gross, TDS and net amounts, Diamonds, payout destination and immutable settings/KYC identifiers |
+| Request a withdrawal | `POST /wallet/withdraw` `{amountPaise, payoutAddress, idempotencyKey, quote?}` | Reserves earnings pending admin review; policy 2 requires the reviewed `{settingsVersionId,kycId,netAmountPaise,diamondUnits}` proof |
 | Withdrawal history | `GET /wallet/withdrawals?page=1&limit=20` | `{items,total,page,limit}` with pending, approved, paid, or rejected records |
+| Restart a host reward period | `POST /wallet/reward-restart` `{periodId,idempotencyKey,expectedPendingDiamonds,confirmed:true}` | Idempotent receipt for cancellation of the reviewed current period's pending bonus and the next Monday start date |
 | Host diamond statistics | `GET /wallet/diamond-statistics?period=daily\|weekly\|monthly&date=YYYY-MM-DD` | Own approved-host earnings only; IST period bounds, `diamondScale`, `totalDiamondUnits`, and contiguous zero-filled `buckets` with `startAt`, `endAt`, `label`, `diamondUnits` |
 | Receive an award | `POST /awards/:task/claim` | `Wallet` |
 | Sponsored cards (free plan) | `GET /ads` | `{adFree, items: AdCreative[]}`; premium members get `{adFree: true, items: []}` |
@@ -346,6 +349,40 @@ policy. Transaction `diamondUnits` is signed
 and uses `diamondScale: 1000000`; historical Coin receipts retain their currency
 instead of an invented conversion. Host call summaries link to the confirmed
 Diamond wallet rather than treating member-billed Coins as host earnings.
+
+The host rules appear as plain text directly after **Review withdrawal**. Public
+wallet, call, gift, agency and notification responses expose only the recipient's
+own permitted amounts. Internal Coin-to-Diamond earning rates, revenue splits,
+source Coin amounts on host earning receipts and gateway fee estimates remain
+admin-only. The native adapters also discard legacy private fields before passing
+data to the WebView. Hosts receive their own Diamond cash conversion and a safe
+bonus illustration; members receive no host earnings policy.
+
+New reward periods freeze `activityBasis: "paid_video"`: only paid video-call time
+counts toward targets. Existing periods retain their recorded activity basis.
+Initial week 1 begins on the Monday after admin approval; earlier pending call
+rewards carry into that first period. Explore excludes hosts whose explicit
+`onlineForCalls` setting is off. Their existing profile and chat call actions
+remain available, subject to the normal approval, privacy and availability checks.
+
+`wallet.hostReward.restart` supplies server-calculated eligibility, shortfall,
+threshold, current `periodId`, current-period `pendingDiamonds` and
+`nextPeriodStart`. Restart requires more than the configured shortfall (20 hours
+by default), an explicit review and no active or incompletely finalized paid call.
+It cancels only that unfinished period's pending call bonus; available, reserved,
+paid and legacy rewards and agency maturity dates stay unchanged. The next week 1
+starts on Monday in IST. A changed pending amount requires a fresh review.
+Zero-activity hosts can review a zero-Diamond restart too: the server supplies an
+owned preview reference without writing during wallet reads, and materializes
+that period only inside the confirmed restart transaction.
+
+The WebView sends `host.reward.restart` with the reviewed proof and a request ID.
+Native revalidates the approved host and emits `host.reward.restarted` or
+`host.reward.error`. Save the owner-scoped restart key and reviewed pending amount
+before sending; an uncertain result or reload retries that exact intent. Accept
+only a matching receipt, then refresh the server wallet without changing balances
+locally. Payout verification documents and destination details are never part of
+this durable restart intent.
 
 **Account > Statistics** opens three earned
 diamond bar graphs: Daily shows 24 hourly buckets, Weekly shows Monday-Sunday,

@@ -1608,7 +1608,7 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat","payout-kyc"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
@@ -1654,7 +1654,7 @@ const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997
    The server validates approval, blocks, wallet balance and the final call price.
    `ready` keeps the server's own availability for lists that promise an instant answer. */
 function isHostPayload(p){return p.serverRole==="host"||p.role==="host"||p.verified===true}
-function hostShownOnline(p){return isHostPayload(p)||!!p.online}
+function hostShownOnline(p){return typeof p.onlineForCalls==='boolean'?p.onlineForCalls:p.online===true}
 function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&!isHost()}
 function hostFrom(p){const id=String(p.id);
  // A fresh server quote supersedes a previous insufficient-coins response.
