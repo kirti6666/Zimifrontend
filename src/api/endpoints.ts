@@ -10,6 +10,7 @@ import type { DiamondStatisticsPeriod } from "./types";
 import { leaderboardFrom, officialChatFrom, referralFrom } from "./adapters";
 import { relationshipsFrom } from "./adapters";
 import { memberUsersFrom } from "./adapters";
+import { activeHostsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
 import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
 import type { HostAgencyStatus } from "./types";
@@ -299,6 +300,13 @@ export const api = {
     if (typeof q !== "string" || q.length > 100 || !Number.isSafeInteger(page) || page < 1 || page > 10000)
       throw new ApiError("Enter a name or user ID and try again.", 400);
     return memberUsersFrom(await request("GET", `/users/search?audience=members&q=${encodeURIComponent(q.trim())}&page=${page}&limit=20`));
+  },
+  async activeHosts(q = "", page = 1) {
+    if (typeof q !== "string" || q.length > 80 || !Number.isSafeInteger(page) || page < 1 || page > 1000)
+      throw new ApiError("Enter a host name and try again.", 400);
+    const result = activeHostsFrom(await request("GET", `/home?mode=active&q=${encodeURIComponent(q.trim())}&page=${page}&limit=20`));
+    if (result.page !== page || result.limit !== 20) throw new ApiError("Active hosts could not be loaded. Please try again.", 502);
+    return result;
   },
   async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
   async notifications(query?: NotificationsQuery) { return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100")); },

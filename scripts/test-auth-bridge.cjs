@@ -21,6 +21,8 @@ const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amou
 const plain = value => JSON.parse(JSON.stringify(value));
 const directoryMember = { id: '507f1f77bcf86cd799439081', name: 'Directory member', role: 'sender', serverRole: 'user', verified: false, online: false, availableForCall: true };
 const directoryPage = (users = [directoryMember], page = 1) => ({ users, total: users.length, page, limit: 20 });
+const directoryHost = { id: '507f1f77bcf86cd799439082', name: 'Active directory host', role: 'host', serverRole: 'host', verified: true, online: true, availableForCall: false };
+const activeHostsPage = (hosts = [directoryHost], page = 1) => ({ hosts, total: hosts.length, page, limit: 20 });
 
 function harness(initialAppState = 'active', initialLink = null, liveStreaming = false, initialIncoming = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
@@ -164,6 +166,146 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 const findShellWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findShellWeb).find(Boolean) || null;
+
+test('active host directory messages bound search and page and reject client authority fields', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  for (const data of [{ q: '' }, { q: '  Asha  ', page: 1 }, { q: 'x'.repeat(80), page: 1000 }])
+    assert.ok(parse({ type: 'hosts.active.load', data }), JSON.stringify(data));
+  for (const data of [{}, { q: null }, { q: 1 }, { q: 'x'.repeat(81) }, { q: '', page: 0 }, { q: '', page: -1 },
+    { q: '', page: 1.5 }, { q: '', page: 1001 }, { q: '', page: '2' }, { q: '', page: null },
+    { q: '', role: 'host' }, { q: '', audience: 'hosts' }, { q: '', userId: 'another-host' },
+    { q: '', mode: 'online' }, { q: '', isOnline: true }, { q: '', limit: 100 }]) {
+    const message = { type: 'hosts.active.load', data };
+    assert.equal(parse(message), null, JSON.stringify(data)); h.bridge.handle(message);
+  }
+  await settle(); assert.equal(h.count('activeHosts'), 0); assert.equal(h.count('me'), 0);
+  h.bridge.close();
+});
+
+test('active host directory requires fresh approved host authority and remembers hosts for direct chat', async () => {
+  for (const state of ['member', 'pending', 'suspended', 'admin', 'approved']) {
+    const h = harness();
+    h.overrides.me = () => state === 'member' ? { ...account(), requiresOnboarding: false } : {
+      ...approvedAccount(), user: { ...approvedAccount().user, serverRole: state === 'admin' ? 'admin' : 'host',
+        role: state === 'approved' ? 'host' : 'sender', hostStatus: state, isVerifiedHost: state === 'approved' },
+      verification: state === 'approved' ? 'verified' : 'rejected',
+    };
+    h.overrides.activeHosts = () => activeHostsPage();
+    await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    const previousChecks = h.count('me');
+    h.bridge.handle({ type: 'hosts.active.load', data: { q: '  Active directory host  ', page: 1 } }); await settle();
+    assert.equal(h.count('me'), previousChecks + 1, state + ' must revalidate current server approval');
+    assert.deepEqual(plain(h.calls.filter(call => call.name === 'me').at(-1).args), [true]);
+    if (state === 'approved') {
+      assert.equal(h.count('activeHosts'), 1);
+      assert.deepEqual(plain(h.calls.find(call => call.name === 'activeHosts').args), ['Active directory host', 1]);
+      assert.deepEqual(plain(h.find('data.activeHosts').at(-1).data), { ...activeHostsPage(), q: 'Active directory host' });
+      assert.equal(h.find('data.activeHosts').at(-1).data.hosts[0].serverRole, 'host', 'Active hosts never become member call targets');
+      h.overrides.sendMessage = () => ({ id: 'active-host-chat', text: 'Hello' });
+      h.bridge.handle({ type: 'chat.open', data: { with: directoryHost.id } }); await settle();
+      h.bridge.handle({ type: 'chat.send', data: { to: directoryHost.id, text: 'Hello' } }); await settle();
+      assert.equal(h.count('thread'), 1); assert.equal(h.count('sendMessage'), 1);
+      assert.equal(h.count('publicProfile'), 0, 'A discovered host can chat without a profile preload or follow');
+      assert.equal(h.count('startCall'), 0, 'Listing or chatting with active hosts never starts a call');
+      assert.equal(h.find('call.created').length, 0);
+    } else {
+      assert.equal(h.count('activeHosts'), 0, state + ' cannot enumerate active hosts');
+      assert.equal(h.find('data.activeHosts').length, 0);
+      assert.equal(h.find('operation.error').at(-1).data.action, 'hosts.active.load');
+    }
+    h.bridge.close();
+  }
+});
+
+test('active host directory rejects a cached approval revoked by its fresh authority check', async () => {
+  const h = harness(); h.overrides.me = () => approvedAccount();
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, role: 'sender', serverRole: 'host', hostStatus: 'suspended', isVerifiedHost: false }, verification: 'rejected' });
+  h.overrides.activeHosts = () => activeHostsPage();
+  h.bridge.handle({ type: 'hosts.active.load', data: { q: '' } }); await settle();
+  assert.equal(h.count('activeHosts'), 0); assert.equal(h.find('data.activeHosts').length, 0);
+  assert.equal(h.find('host.access').at(-1).data.approved, false);
+  h.bridge.close();
+});
+
+test('active host directory rejects a server response containing the current viewer', async () => {
+  const h = harness(); h.overrides.me = () => approvedAccount(directoryHost.id); h.overrides.activeHosts = () => activeHostsPage();
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.bridge.handle({ type: 'hosts.active.load', data: { q: '' } }); await settle();
+  assert.equal(h.count('activeHosts'), 1); assert.equal(h.find('data.activeHosts').length, 0);
+  const failure = h.find('operation.error').filter(event => event.data.action === 'hosts.active.load').at(-1).data;
+  assert.equal(failure.status, 502); assert.equal(failure.q, ''); assert.equal(failure.page, 1);
+  h.bridge.close();
+});
+
+test('active host directory discards a late older page without retiring the latest page', async () => {
+  const h = harness(), older = deferred(), latest = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.activeHosts = (_q, page) => page === 2 ? older.promise : latest.promise;
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.bridge.handle({ type: 'hosts.active.load', data: { q: 'same query', page: 2 } }); await settle();
+  h.bridge.handle({ type: 'hosts.active.load', data: { q: 'same query', page: 3 } }); await settle();
+  latest.resolve(activeHostsPage([{ ...directoryHost, id: '507f1f77bcf86cd799439083' }], 3)); await settle();
+  older.resolve(activeHostsPage([directoryHost], 2)); await settle();
+  assert.deepEqual(h.find('data.activeHosts').map(event => event.data.page), [3]);
+  assert.equal(h.find('data.activeHosts')[0].data.hosts[0].id, '507f1f77bcf86cd799439083');
+  const completed = h.find('data.loading').filter(event => event.data.resource === 'activeHosts' && event.data.loading === false);
+  assert.deepEqual(completed.map(event => event.data.page), [3], 'The retired page cannot complete a newer loading state');
+  h.bridge.close();
+});
+
+test('active host directory isolates newest query, member and home resources and correlated errors', async () => {
+  const h = harness(), first = deferred(), second = deferred(), members = deferred(), home = deferred();
+  h.overrides.me = () => approvedAccount();
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.activeHosts = q => q === 'old' ? first.promise : second.promise;
+  h.overrides.memberUsers = () => members.promise; h.overrides.home = () => home.promise;
+  h.bridge.handle({ type: 'hosts.active.load', data: { q: 'old', page: 2 } }); await settle();
+  h.bridge.handle({ type: 'hosts.active.load', data: { q: 'new', page: 1 } }); await settle();
+  h.bridge.handle({ type: 'users.load', data: { q: 'member', page: 1 } });
+  h.bridge.handle({ type: 'home.reload', data: { q: 'legacy', page: 1 } }); await settle();
+  second.resolve(activeHostsPage()); await settle(); first.reject(new h.ApiError('Retired active host error', 503)); await settle();
+  members.resolve(directoryPage()); home.resolve({ hosts: [{ ...directoryHost, id: 'legacy-home-host' }], stage: [], page: 1 }); await settle();
+  assert.deepEqual(h.find('data.activeHosts').map(event => event.data.q), ['new']);
+  assert.equal(h.find('data.activeHosts').at(-1).data.hosts[0].id, directoryHost.id);
+  assert.equal(h.find('data.users').at(-1).data.users[0].id, directoryMember.id);
+  assert.equal(h.find('data.home').at(-1).data.hosts[0].id, 'legacy-home-host');
+  assert.equal(h.find('operation.error').filter(event => event.data.action === 'hosts.active.load').length, 0, 'A retired error must not replace the current host results');
+  const resources = h.find('data.loading').filter(event => event.data.q).map(event => event.data.resource);
+  for (const resource of ['activeHosts', 'users', 'home']) assert.ok(resources.includes(resource), resource + ' has independent request state');
+  h.overrides.activeHosts = () => { throw new h.ApiError('Active hosts temporarily unavailable', 503); };
+  h.bridge.handle({ type: 'hosts.active.load', data: { q: '  failure  ', page: 3 } }); await settle();
+  const loading = h.find('data.loading').filter(event => event.data.resource === 'activeHosts').at(-1).data;
+  assert.equal(loading.q, 'failure'); assert.equal(loading.page, 3); assert.equal(loading.loading, false); assert.match(loading.error, /temporarily unavailable/);
+  const failure = h.find('operation.error').filter(event => event.data.action === 'hosts.active.load').at(-1).data;
+  assert.equal(failure.q, 'failure'); assert.equal(failure.page, 3);
+  h.bridge.close();
+});
+
+test('active host directory retires approval checks, results and errors when its owner or authority changes', async () => {
+  for (const change of ['account', 'logout', 'document', 'revocation']) for (const stage of ['approval', 'result']) for (const outcome of ['success', 'failure']) {
+    const h = harness(), pending = deferred(); h.overrides.me = () => approvedAccount();
+    await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    if (stage === 'approval') h.overrides.me = () => pending.promise;
+    h.overrides.activeHosts = () => pending.promise;
+    h.bridge.handle({ type: 'hosts.active.load', data: { q: 'private', page: 1 } }); await settle();
+    if (change === 'account') { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('next')); }
+    else if (change === 'logout') { h.bridge.handle({ type: 'auth.logout', data: {} }); await settle(); }
+    else if (change === 'document') h.bridge.documentLoading();
+    else {
+      h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, role: 'sender', serverRole: 'host', hostStatus: 'suspended', isVerifiedHost: false }, verification: 'rejected' });
+      h.live[0].onEvent({ type: 'verification.status', data: { status: 'rejected', hostStatus: 'suspended' } }); await settle();
+    }
+    if (outcome === 'failure') pending.reject(new h.ApiError('Retired active host error', 503));
+    else pending.resolve(stage === 'approval' ? approvedAccount() : activeHostsPage());
+    await settle();
+    const context = `${change}/${stage}/${outcome}`;
+    assert.equal(h.find('data.activeHosts').length, 0, context);
+    assert.equal(h.find('operation.error').filter(event => event.data.action === 'hosts.active.load').length, 0, context + ' cannot surface a stale failure');
+    assert.equal(h.find('data.loading').filter(event => event.data.resource === 'activeHosts' && event.data.error).length, 0, context + ' cannot publish a retired loading error');
+    assert.equal(h.count('activeHosts'), stage === 'approval' ? 0 : 1, context);
+    h.bridge.close();
+  }
+});
 
 test('member directory messages bound search and page and reject client authority fields', async () => {
   const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
@@ -1427,6 +1569,92 @@ test('invalid room, payment and oversized media input never reaches privileged d
   h.bridge.close();
 });
 
+test('fresh Coin checkout uses server financial role for members and every host status', async () => {
+  for (const status of ['member', 'approved', 'pending', 'rejected', 'suspended', 'admin']) {
+    const h = harness();
+    const member = { ...account(), user: { ...account().user, serverRole: 'user' }, requiresOnboarding: false };
+    h.overrides.me = () => member;
+    await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    // The fresh read must override a cached member role, including hosts whose
+    // presentation role was normalized to sender after approval was removed.
+    h.overrides.me = () => status === 'member' ? member : {
+      ...approvedAccount(), user: { ...approvedAccount().user, role: status === 'approved' ? 'host' : 'sender',
+        serverRole: status === 'admin' ? 'admin' : 'host', hostStatus: status, isVerifiedHost: status === 'approved' },
+      verification: status === 'approved' ? 'verified' : 'rejected',
+    };
+    h.overrides.checkout = () => ({ purchaseId: 'member-order', merchantOrderId: 'member_order', status: 'SUCCESS' });
+    const before = h.count('me');
+    h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'financial-role-attempt' } });
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), true, 'Checkout protection begins before its asynchronous role check');
+    await settle();
+    assert.equal(h.count('me'), before + 1, status + ' rechecks the authenticated server role');
+    assert.deepEqual(plain(h.calls.filter(call => call.name === 'me').at(-1).args), [true]);
+    assert.equal(h.count('checkout'), status === 'member' ? 1 : 0, status);
+    if (status !== 'member') {
+      const error = h.find('operation.error').at(-1).data;
+      assert.equal(error.action, 'wallet.checkout'); assert.equal(error.status, 403); assert.equal(error.code, 'COINS_MEMBERS_ONLY');
+      assert.equal(h.opened.length, 0); assert.equal(h.find('wallet.checkout').length, 0);
+    }
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), false, 'Role rejection/confirmed completion releases its lease');
+    h.bridge.close();
+  }
+});
+
+test('host Diamond wallets, premium checkout, payment methods and historical Coin verification remain available', async () => {
+  for (const hostStatus of ['approved', 'pending', 'suspended']) {
+    const h = harness(), current = { ...approvedAccount(), user: { ...approvedAccount().user,
+      role: hostStatus === 'approved' ? 'host' : 'sender', serverRole: 'host', hostStatus, isVerifiedHost: hostStatus === 'approved' } };
+    h.overrides.me = () => current;
+    h.overrides.wallet = () => ({ currency: 'diamonds', coins: 99, earningsPaise: 1234, diamondUnits: 61700000, reservedDiamondUnits: 0, diamondScale: 1000000 });
+    h.overrides.paymentRoutes = () => ({ mode: 'ROTATION', routeChoice: false, routes: [] });
+    h.overrides.checkoutPremium = () => ({ purchaseId: 'theme-order', merchantOrderId: 'theme_order', kind: 'premium', status: 'SUCCESS' });
+    h.overrides.verifyPurchase = () => ({ purchaseId: 'historic-order', merchantOrderId: 'historic_order', kind: 'coins', status: 'SUCCESS' });
+    await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.bridge.handle({ type: 'wallet.load', data: {} });
+    h.bridge.handle({ type: 'payments.routes.load', data: { requestId: 1 } });
+    h.bridge.handle({ type: 'themes.premium.checkout', data: { idempotencyKey: 'host-theme-attempt' } });
+    h.bridge.handle({ type: 'wallet.verify', data: { merchantOrderId: 'historic_order' } }); await settle();
+    assert.equal(h.find('wallet.balance').at(-1).data.currency, 'diamonds', hostStatus + ' can read their own Diamond balance');
+    assert.equal(h.find('wallet.balance').at(-1).data.diamondUnits, 61700000);
+    assert.equal(h.count('checkoutPremium'), 1); assert.equal(h.count('paymentRoutes'), 1); assert.equal(h.count('verifyPurchase'), 1);
+    assert.equal(h.find('wallet.purchase').at(-1).data.status, 'SUCCESS', 'Prior Coin purchases can still reconcile');
+    assert.equal(h.find('operation.error').length, 0); h.bridge.close();
+  }
+});
+
+test('retired Coin checkout role checks never create orders or deliver stale errors', async () => {
+  for (const retirement of ['document', 'session', 'logout']) for (const outcome of ['member', 'host', 'failure']) {
+    const h = harness(), pending = deferred();
+    h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user' }, requiresOnboarding: false });
+    await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.overrides.me = () => pending.promise;
+    h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'retired-role-attempt' } });
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), true);
+    if (retirement === 'document') h.bridge.documentLoading();
+    else if (retirement === 'logout') h.bridge.handle({ type: 'auth.logout', data: {} });
+    else { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('replacement')); }
+    if (outcome === 'failure') pending.reject(new h.ApiError('Retired role lookup failed', 503));
+    else pending.resolve(outcome === 'member' ? account() : { ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host' } });
+    await settle();
+    assert.equal(h.count('checkout'), 0, retirement + '/' + outcome);
+    assert.equal(h.find('operation.error').length, 0); assert.equal(h.find('wallet.checkout').length, 0); assert.equal(h.opened.length, 0);
+    assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), false); h.bridge.close();
+  }
+});
+
+test('Coin orders completing after a document retires persist for their original owner without opening a provider', async () => {
+  const h = harness(), pending = deferred();
+  h.overrides.me = () => ({ ...account(), user: { ...account().user, serverRole: 'user' }, requiresOnboarding: false });
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.overrides.checkout = () => pending.promise;
+  h.bridge.handle({ type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'retired-document-order' } }); await settle();
+  assert.equal(h.count('checkout'), 1); h.bridge.documentLoading();
+  pending.resolve({ purchaseId: 'retired-document', merchantOrderId: 'retired_document_order', status: 'PENDING', paymentUrl: 'https://checkout.example.test/pay' }); await settle();
+  assert.equal(h.opened.length, 0); assert.equal(h.find('wallet.checkout').length, 0);
+  assert.equal((await h.load('src/payment-cache.ts').readPendingPayments('alice'))[0].orderId, 'retired_document_order', 'Uncertain credit remains recoverable for its owner');
+  h.bridge.close();
+});
+
 test('payment-route messages accept safe dynamic tokens and reject unknown checkout authority fields', async () => {
   const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
   for (const type of ['wallet.checkout', 'themes.premium.checkout']) {
@@ -1510,6 +1738,7 @@ test('checkout opens provider outside WebView once and session changes cancel la
   h.overrides.checkout = () => pending.promise;
   const checkout = { type: 'wallet.checkout', data: { packId: 'pack-id', idempotencyKey: 'checkout-attempt-1' } };
   h.bridge.handle(checkout); h.bridge.handle(checkout);
+  await settle();
   assert.equal(h.count('checkout'), 1);
   pending.resolve({ purchaseId: 'purchase', merchantOrderId: 'order', paymentUrl: 'https://checkout.example.test/pay', status: 'PENDING' });
   await settle();

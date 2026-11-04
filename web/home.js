@@ -70,7 +70,7 @@ function homeFeedQuery(){
 }
 function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')+'|'+(query.country||'')}
 function homeLoad(more=false){
-  if(isApprovedHost()&&S.v==='home')return hostUsersLoad(more);
+  if(isApprovedHost()&&S.v==='home')return hostDirectoryLoad(more);
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
   Home.error='';Home.loadingMore=more;Home.loading=!DEMO;
   if(DEMO){Home.loaded=true;Home.loadingMore=false;r();return}
@@ -133,10 +133,10 @@ function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A li
 function homeScreen(){return homeDashboard()}
 
 function homeOpen(id){if(!window.ZIMI_LIVE_STREAMING_ENABLED){const h=g(id);if(!h)return;return h.available&&!isHost()?homeCall(id):go('host',id)}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
-function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
-function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
+function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHostWallet())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
+function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHostWallet())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return appNotice('Live streaming is temporarily unavailable. Go online for 1:1 calls from your creator settings.');if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
-function homeClaim(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
+function homeClaim(){if(isHostWallet()){appNotice('Host call rewards are credited as diamonds. View your progress in Withdraw.');return}if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
 function homeNotifications(){return window.ZimiNotifications.open()}
 
 function homeMarkRead(id){znUpdate(true,id?[id]:null,!id)}
@@ -179,7 +179,7 @@ function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
   if(S.bgCall)return appNotice('Finish your current call first.');
   if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
-  if(isHost()){appNotice('Calls can be started from a member account.');return}
+  if(isHostWallet()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
   const setup=Home.dashboardSetup,h=g(S.h);
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&setup?.hostId===S.h){
@@ -214,7 +214,7 @@ async function homePrepareCall(view,id){
   if(view==='dialback'&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
-  if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
+  if(view==='dial'&&isHostWallet()){appNotice('Calls can be started from a member account.');return}
   window.ZimiRingback?.prime();
   const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
@@ -231,7 +231,7 @@ async function homePrepareCall(view,id){
     const ready=await Promise.race([window.ZimiMedia.prepare(!voice).then(()=>true),cancelled]);
     if(!ready||homeCallPreparation!==pending)return;
     if(S.v!==pending.screen||S.h!==pending.screenPeer||(view==='dialback'&&(S.caller?.id!==pending.caller||!isApprovedHost()))){homeCancelPrepare('',false);return}
-    if(view==='dial'&&(isHost()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
+    if(view==='dial'&&(isHostWallet()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
     clearTimeout(pending.timer);homeCallPreparation=null;
     Home.preparingCall=false;Home.preparingVoice=false;Home.mediaStatus='Connecting…';
     document.getElementById('app-notice')?.remove();
@@ -250,16 +250,16 @@ function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAc
 function homeWaiting(){return hcWaitingView()}
 function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;if(host)return hcSummaryView(s);return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${s?.entryFee?`<span>Entry fee <b>${n(s.entryFee)} coins</b></span>`:''}${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
 let homeSearchTimer;
-function homeSearchInput(value){if(isApprovedHost())return hostUsersSearch(value);S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
+function homeSearchInput(value){if(isApprovedHost())return hostDirectorySearch(value);S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
 
-function homeSearchRequest(more=false){if(isApprovedHost()){HostUsers.query=S.sq||'';return hostUsersLoad(more)}if(more&&Home.searchLoading)return;const q=S.sq||'',page=more?(Home.searchPage||1)+1:1;Home.searchLoading=!DEMO;Home.searchMore=more;Home.searchError='';if(DEMO){const rows=Home.hosts.filter(h=>(h.n+' '+h.cat).toLowerCase().includes(q.toLowerCase()));Home.searchRows=rows;Home.searchTotal=rows.length;Home.searchPage=1;Home.searchQuery=q;Home.searchLoading=false;Home.searchMore=false;homePaintSearch();return}contentStart('search',{page});homePaintSearch();Native.send('hosts.search',{q,page})}
+function homeSearchRequest(more=false){if(isApprovedHost()){S.sq=hostDirectoryState().query;return hostDirectoryLoad(more)}if(more&&Home.searchLoading)return;const q=S.sq||'',page=more?(Home.searchPage||1)+1:1;Home.searchLoading=!DEMO;Home.searchMore=more;Home.searchError='';if(DEMO){const rows=Home.hosts.filter(h=>(h.n+' '+h.cat).toLowerCase().includes(q.toLowerCase()));Home.searchRows=rows;Home.searchTotal=rows.length;Home.searchPage=1;Home.searchQuery=q;Home.searchLoading=false;Home.searchMore=false;homePaintSearch();return}contentStart('search',{page});homePaintSearch();Native.send('hosts.search',{q,page})}
 
-function homeSearchResults(){if(isApprovedHost())return hostUsersResults();const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),list=Home.searchQuery===(S.sq||'')?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('cards','Finding creators',4);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;return `${list.length?`<div class="zh-grid">${list.map(homeTile).join('')}</div>`:!pending?'<div class="zh-empty"><h3>No creators found</h3><p>Try another name or category.</p></div>':''}${more?contentSkeleton('cards','Loading more search results',2):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more</button>':''}`}
+function homeSearchResults(){if(isApprovedHost())return hostDirectoryResults();const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),list=Home.searchQuery===(S.sq||'')?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('cards','Finding creators',4);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;return `${list.length?`<div class="zh-grid">${list.map(homeTile).join('')}</div>`:!pending?'<div class="zh-empty"><h3>No creators found</h3><p>Try another name or category.</p></div>':''}${more?contentSkeleton('cards','Loading more search results',2):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more</button>':''}`}
 
 function homePaintSearch(){const el=document.getElementById('home-search-results');if(el)el.innerHTML=homeSearchResults()}
 ZimiPullRefresh.register(['home','all-creators'],{refresh:()=>homeLoad(),busy:()=>Home.loading||contentPending('home')});
-ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>Home.searchLoading||contentPending('search')});
-function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>${isApprovedHost()?'Find users':'Find your next connection'}</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
+ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>isApprovedHost()?hostDirectoryState().loading:Home.searchLoading||contentPending('search')});
+function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>${isApprovedHost()?(HostBrowse.tab==='active'?'Find active hosts':'Find members'):'Find your next connection'}</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
 function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');document.documentElement.classList.toggle('zw-app',S.v==='coins');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','chats','profile','settings'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
   if(S.v==='home')return homeHeader();
@@ -270,7 +270,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='refer')return window.ZimiReferral.header();
   if(S.v==='agency')return window.ZimiAgency.header();
   if(['support','support-new','support-chat'].includes(S.v))return window.ZimiSupport.header();
-  if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="${isApprovedHost()?'Search users by name or ID':'Search creators or categories'}" aria-label="${isApprovedHost()?'Search users':'Search creators'}" oninput="homeSearchInput(this.value)"></div></header>`;
+  if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(isApprovedHost()?hostDirectoryState().query:S.sq||'')}" maxlength="${isApprovedHost()&&HostBrowse.tab==='active'?80:100}" placeholder="${isApprovedHost()?hostDirectorySearchLabel():'Search creators or categories'}" aria-label="${isApprovedHost()?(HostBrowse.tab==='active'?'Search active hosts':'Search users'):'Search creators'}" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
   const title={notifications:'Notifications',broadcast:'Go Live'}[S.v];
@@ -299,7 +299,7 @@ Native.on('stream.viewers',d=>{if(Home.stream?.id===d.streamId){Home.stream.view
 Native.on('stream.ended',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError=''}if(Home.stream?.id===d.streamId){window.ZimiMedia?.stop();Home.stream=null;go('home');appNotice('This live session has ended.');homeLoad()}});
 Native.on('stream.closed',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError='';if(S.v==='home')r()}});
 Native.on('operation.error',d=>{if(['stream.end','stream.leave'].includes(d.action)&&Home.pendingClose){Home.closeError=d.message;homeShowCloseError()}});
-Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;Home.loadingMore=false;Home.error=d.message}if(d.action==='call.match')Home.matching=false;if(d.action==='awards.claim')Home.claiming=false;if(d.action==='notifications.load')Home.notifyLoading=false;if(d.action==='presence.set')Home.presenceBusy=false;if(d.action==='call.accept'){S.acceptingCall=false;window.ZimiMedia?.stop()}if(d.action?.startsWith('stream.')){Home.streamBusy=false;Home.mediaStatus=d.message}if(['home','all-creators','chats','coins','notifications','live','broadcast','setup','waiting','ring'].includes(S.v))r()});
+Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;Home.loadingMore=false;Home.error=d.message}if(d.action==='call.match')Home.matching=false;if(d.action==='awards.claim')Home.claiming=false;if(d.action==='notifications.load')Home.notifyLoading=false;if(d.action==='presence.set')Home.presenceBusy=false;if(d.action==='call.accept'){S.acceptingCall=false;window.ZimiMedia?.stop()}if(d.action?.startsWith('stream.')){Home.streamBusy=false;Home.mediaStatus=d.message}if(isApprovedHost()&&['home.reload','users.load','hosts.active.load'].includes(d.action)&&['home','search'].includes(S.v))return;if(['home','all-creators','chats','coins','notifications','live','broadcast','setup','waiting','ring'].includes(S.v))r()});
 // Revocation immediately closes host surfaces; member calls and viewing remain available.
 window.addEventListener('zimi:host-access',event=>{
   // A reconnect checks permission for new activity without interrupting an existing session.

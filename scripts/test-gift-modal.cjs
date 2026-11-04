@@ -33,7 +33,7 @@ async function checkLayout(page,label){
   assert.equal(await sheet.locator('.zg-reference').count(),0,'The dialog itself owns the scoped reference class');
   assert.equal(await sheet.evaluate(node=>node.classList.contains('zg-reference')),true);
   await sheet.getByRole('heading',{name:'Send a gift',exact:true}).waitFor();
-  assert.equal(await sheet.getByText('Coins go straight to the host',{exact:true}).count(),1);
+  assert.equal(await sheet.getByText('Hosts earn diamonds from gifts',{exact:true}).count(),1);
   assert.match(await sheet.locator('.zg-balance').innerText(),/12,345/);
   assert.equal(await sheet.getByRole('button',{name:'Add coins',exact:true}).count(),1);
   assert.equal(await sheet.getByRole('button',{name:'Close gifts',exact:true}).count(),1);

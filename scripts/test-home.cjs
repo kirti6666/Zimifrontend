@@ -54,6 +54,9 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       // but may still open a creator profile from an existing relationship.
       if(account.verification==='verified'){
         assert.equal(await page.locator('.zh-host-users').count(),1);
+        assert.deepEqual(await page.getByRole('tablist',{name:'Host directory'}).getByRole('tab').allInnerTexts(),['Members','Active Hosts']);
+        assert.equal(await page.getByRole('tab',{name:'Members',exact:true}).getAttribute('aria-selected'),'true');
+        assert.equal(await page.locator('.zh-feed-tabs').count(),0,'Approved hosts use directory tabs in Home');
         await page.evaluate(id=>go('host',id),creator.id);
       }else{
       // The card offers its always-active video call; chat stays on the profile.
@@ -380,14 +383,19 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='awards.claim').length),0);
     home.bonus.progress=1;await receive('data.home',home);
     await real.evaluate(()=>homeClaim());
-    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='awards.claim').at(-1)?.data.task),missionId);
-    assert.equal(await real.evaluate(()=>S.bal),901,'rewards wait for authoritative wallet credit');
+    assert.equal(await real.evaluate(()=>window.__sent.filter(m=>m.type==='awards.claim').length),0,'Hosts receive Diamond call rewards instead of claiming legacy Coin missions');
+    assert.equal(await real.evaluate(()=>S.bal),901,'A retired reward never invents wallet credit');
     assert.equal(await real.locator('.zh-bell,.zh-wallet-icon').count(),0,'Home has no bell or wallet in its header');
     await real.evaluate(()=>homeNotifications());
     await receive('data.notifications',{items:[{id:'507f1f77bcf86cd799439016',title:'A real update',body:'Welcome back',createdAt:new Date().toISOString(),read:false}],unreadCount:1});
     await real.getByRole('button',{name:'Mark all read',exact:true}).click();
     assert.equal(typeof await real.evaluate(()=>window.__sent.filter(m=>m.type==='notifications.readAll').at(-1)?.data.requestId),'number');
     await real.getByRole('button',{name:'Back to home',exact:true}).click();
+    await real.evaluate(()=>go('coins'));
+    assert.equal(await real.evaluate(()=>S.v),'wallet','Host Coin purchase links open the Diamond wallet');
+    assert.equal(await real.getByRole('button',{name:'Get 200 coins',exact:true}).count(),0,'Host wallets never offer Coin packs');
+    await receive('session',{user:{id:'507f1f77bcf86cd799439001',name:'Member',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false},verification:'none',requiresOnboarding:false});
+    await receive('wallet.balance',{coins:901});
     await real.evaluate(()=>go('coins'));
     await receive('data.catalog',catalog);
     await real.getByRole('button',{name:'Get 200 coins',exact:true}).click();

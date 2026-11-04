@@ -32,6 +32,14 @@ function hcCallTerms(d) {
   if (d.earlyEnds) { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
 }
 function hcFeePending() { return !!S.callFee && !S.feeOk; }
+/* This is the authenticated wallet balance, never a conversion of the member's
+   call price or the local session timer. */
+function hcEarningsValue() {
+  const wallet = diamondOwnWallet();
+  return !contentPending('wallet') && !ContentLoading.wallet.error && diamondReady(wallet)
+    ? `${diamondIcon(14)} ${diamondFormat(Number.isSafeInteger(wallet.profileDiamondUnits) ? wallet.profileDiamondUnits : wallet.diamondUnits)}`
+    : `${diamondIcon(14)} —`;
+}
 
 /* ---- Before going online ---- */
 function hcRateCard() {
@@ -40,9 +48,9 @@ function hcRateCard() {
   if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}<div class="hc-tiers" aria-hidden="true">${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}</div></div>`;
   const tiers = st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
   return `<div class="hc-card">
-    <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)}/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} left to upgrade</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Your call rate</small>'}</button>
-    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)}/h</span>`).join('')}</div>` : ''}
-    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Earn ${n(Math.max(0, next.atCoins - st.earnedCoins))} more coins to unlock ${n(next.rate)}/min</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. It is yours once the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}</div>` : ''}
+    <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)} member coins/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins to next tier</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Member call price</small>'}</button>
+    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Member call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)} coins/h</span>`).join('')}</div>` : ''}
+    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `Member pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins unlocks a ${n(next.rate)}-coin/min member price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
   </div>`;
 }
 function hcVisibilityRow() {
@@ -127,12 +135,11 @@ function hcConfirm() {
   const k = S.confirm, left = Math.max(0, (S.feeHold || 0) - (S.sec - S.cstart)), nth = (S.early || 0) + 1;
   const limit = S.earlyLimit ?? EARLY_LIMIT, penalty = S.penaltyCoins || 0, verb = k === 'switch' ? 'switch' : 'end';
   const warn = !penalty ? `This would be early ending ${nth} today.`
-    : nth > limit ? `This would be early ending ${nth} today. Past ${n(limit)} a day, it takes ${n(penalty)} coins from your earnings.`
-    : `This would be early ending ${nth} today. Past ${n(limit)} a day, each one takes ${n(penalty)} coins from your earnings.`;
+    : `This would be early ending ${nth} today. Past ${n(limit)} a day, early endings can reduce your diamond earnings. Check Wallet for the confirmed adjustment.`;
   const title = `${k === 'switch' ? 'Switch calls' : 'End call'} before ${hcHold(S.feeHold)}?`;
   return `<div class="zr-sheet-backdrop" onclick="if(event.target===this){S.confirm=0;r()}"><section class="zr-sheet hc-confirm" role="dialog" aria-modal="true" aria-label="${title}" data-lenis-prevent>
     <span class="hc-confirm-icon" aria-hidden="true">${hi('clock', 22)}</span><h2>${title}</h2>
-    <p class="zr-sheet-note">${esc(first(S.caller.n))}’s ${n(S.callFee)}-coin entry fee unlocks in <b id="hc-left">${clock(left)}</b>. If you ${verb} now, you won’t receive it and it stays with BinzoLive.</p>
+    <p class="zr-sheet-note">${esc(first(S.caller.n))}’s ${n(S.callFee)}-coin entry fee unlocks in <b id="hc-left">${clock(left)}</b>. If you ${verb} now, its host share will not be credited in diamonds.</p>
     <p class="hc-warn">${warn}</p>
     <button class="zr-wide hc-keep" onclick="S.confirm=0;r()">Keep talking</button>
     <button class="zr-wide zr-danger hc-anyway" onclick="S.confirm=0;${k === 'switch' ? 'acceptInc()' : 'endCall()'}">${k === 'switch' ? 'Switch anyway' : 'End call anyway'}</button></section></div>`;
@@ -156,14 +163,14 @@ function hcSwitchFailed(message) {
 
 /* ---- After the session ---- */
 function hcSummaryView(s) {
-  const fees = (s.fees || []).filter(f => f.fee), received = fees.filter(f => f.ok).reduce((sum, f) => sum + f.fee, 0);
+  const fees = (s.fees || []).filter(f => f.fee);
   return `<section class="hc-summary" style="${hcSceneStyle('summary')}"><div class="hc-summary-content"><div class="hc-host-avatar">${hcIdentityAvatar(me, 80)}<span class="hc-summary-badge" aria-hidden="true">🏆</span></div>
-    <h1>${s.earned ? 'Congratulations!' : 'A moment well shared.'}</h1>
-    <p>${s.earned ? `You earned about <b>${n(s.earned)} coins</b> in this session and completed <b>${fmtDur(s.sec || 0)}</b> on calls.` : `You spent <b>${fmtDur(s.sec || 0)}</b> on calls.`}</p>
-    <div class="hc-session-stats"><div><span>Earned</span><b>${coinIcon(16)} ≈ ${n(s.earned || 0)}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
-    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Entry fees</span><b>${coinIcon(14)} +${n(received)}</b></div>
-      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `+${n(f.fee)} received` : 'Ended early · kept by BinzoLive'}</em></div>`).join('')}
-      ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, each one takes ${n(s.penaltyCoins)} coins from your earnings.` : ''}</p>` : ''}</div>` : ''}
+    <h1>A moment well shared.</h1>
+    <p>You spent <b>${fmtDur(s.sec || 0)}</b> on calls. Confirmed earnings appear in your diamond wallet.</p>
+    <div class="hc-session-stats"><div><span>Diamond balance</span><b>${hcEarningsValue()}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
+    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Member entry fees</span></div>
+      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `${n(f.fee)} member coins · hold completed` : 'Ended early · no host share'}</em></div>`).join('')}
+      ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, early endings can reduce diamond earnings. Check Wallet for confirmed adjustments.` : ''}</p>` : ''}</div>` : ''}
     <button type="button" class="hc-primary" onclick="S.callId=null;go('setup')">${hi('vid', 18)} Set targets &amp; continue</button>
     <div class="hc-summary-actions"><button type="button" onclick="S.callId=null;go('wallet')">${hi('wal', 17)} Wallet</button><button type="button" onclick="S.callId=null;go('home');homeLoad()">${hi('house', 17)} Home</button></div>
     ${window.ZimiAds?.card('call_summary') || ''}</div></section>`;
@@ -186,6 +193,8 @@ Native.on('presence.duringCalls.saved', d => {
   if (HostCalls.status) HostCalls.status.visibleDuringCalls = !!d.on;
   if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
 });
+Native.on('wallet.balance', () => { if (S.v === 'summary' && S.sum?.k === 'host') r(); });
+Native.on('data.loading', d => { if (d.resource === 'wallet' && S.v === 'summary' && S.sum?.k === 'host') r(); });
 Native.on('operation.error', d => {
   if (d.action === 'host.callStatus.load') {
     HostCalls.loading = false; HostCalls.error = d.message || 'Your call details could not be loaded.';

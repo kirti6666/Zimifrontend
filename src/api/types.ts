@@ -143,6 +143,14 @@ export interface MemberUsers {
   limit: number;
 }
 
+/** Connected, publicly active approved hosts for the host Home tab. */
+export interface ActiveHosts {
+  hosts: Host[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 /** Public identity and relationship data, never the target's account settings. */
 export interface PublicProfile extends Host {
   followingCount: number;
@@ -425,9 +433,12 @@ export interface Transaction {
   kind: "call" | "gift" | "topup" | "withdrawal" | "reward";
   amountPaise?: number;
   displayAmountPaise?: number; // Zero-coin purchases: negative paid, positive refunded (INR).
+  diamondUnits?: number;
+  diamondScale?: 1000000;
 }
 
 export interface Wallet {
+  currency?: "coins" | "diamonds";
   coins: number;
   earningsPaise: number;
   reservedPaise?: number;

@@ -5,6 +5,9 @@ function isApprovedHost() {
   return !!zimiHostAuthority && zimiHostAuthority.approved === true && zimiHostAuthority.role === 'host' &&
     zimiHostAuthority.hostStatus === 'approved' && zimiHostAuthority.verified === true;
 }
+/* Currency follows the authenticated account, including hosts awaiting review or
+   suspended by staff. This is display identity, never permission to host or withdraw. */
+function isHostWallet() { return zimiHostAuthority?.serverRole === 'host'; }
 function zimiSetHostAccess(data, source = 'server') {
   const old = zimiHostAuthority;
   const previous = isApprovedHost();
@@ -20,7 +23,7 @@ function zimiSetHostAccess(data, source = 'server') {
     S.acct.sender.kyc = verification; S.acct.host.kyc = verification;
     if (!approved) S.online = 0;
   }
-  if (previous !== approved || !!old?.checking !== checking) window.dispatchEvent(new CustomEvent('zimi:host-access', { detail: { ...zimiHostAuthority } }));
+  if (previous !== approved || !!old?.checking !== checking || old?.serverRole !== zimiHostAuthority.serverRole) window.dispatchEvent(new CustomEvent('zimi:host-access', { detail: { ...zimiHostAuthority } }));
   return !old || old.approved !== approved || old.checking !== checking || old.role !== zimiHostAuthority.role || old.serverRole !== zimiHostAuthority.serverRole || old.hostStatus !== zimiHostAuthority.hostStatus;
 }
 function zimiApplyHostAccount(account) {
@@ -29,6 +32,7 @@ function zimiApplyHostAccount(account) {
 }
 window.ZimiHostAccess = {
   approved: isApprovedHost,
+  financialHost: isHostWallet,
   checking: () => zimiHostAuthority?.checking === true,
   apply: zimiApplyHostAccount,
   reset() { zimiHostAuthority = null; zimiSetHostAccess({ approved: false }); },

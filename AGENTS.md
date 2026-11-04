@@ -92,8 +92,12 @@ keeps it identical to the original Next.js version.
   availability is a floating "Go online"/"Online" button at the bottom right of
   Home, where the reference has its LIVE button. Use the selected theme's
   colors. Filter hosts on the server before pagination.
-- Approved hosts use the Home member directory instead: Users heading, name/public
-  ID search and paginated member rows with Chat, Voice and Video actions. Keep
+- Approved hosts use Members and Active Hosts tabs in the Home header. Members
+  has name/public ID search and paginated rows with Chat, Voice and Video actions.
+  Active Hosts uses `hosts.active.load`/`data.activeHosts` and the server's strict
+  `mode=active` feed for connected, approved, privacy-visible hosts; show profile
+  and Chat actions without adding host-to-host calls. Keep tab queries/pages
+  separate and refresh stale Active Hosts when returning after 30 seconds. Keep
   member creator feeds unchanged. Use `users.load`/`data.users`, current approved
   host authority, real privacy-aware member presence and existing call/chat
   guards. Include offline members, and filter blocked, inactive and undiscoverable
@@ -145,8 +149,9 @@ keeps it identical to the original Next.js version.
   upload and own-photo actions. Keep its bottom tabs and owner-only controls;
   public gallery publishing still requires current approved creator access.
 - Settings follows the simple reference layout: Back header, compact profile,
-  balance card and one compact list of plain icon/title rows, led by "Refer a
-  Friend & Earn 1,000 Coins", with the Dark Mode switch after General. Account, Payments, Privacy & Terms and General open their
+  balance card and one compact list of plain icon/title rows. Members see "Refer a
+  Friend & Earn 1,000 Coins" first; all host states omit Coin promotions. The Dark
+  Mode switch follows General. Account, Payments, Privacy & Terms and General open their
   detailed options; Appearance & Theme lives under General. Call availability,
   Match & Speed Pulse and Notifications & Alerts are not settings items (hosts
   go online from Home; notification preferences open from the inbox). Anywhere
@@ -160,7 +165,7 @@ keeps it identical to the original Next.js version.
   the field (`referral.error`). A friend gets 100 coins for using a code; the
   inviter gets 1,000 when that friend's first coin purchase is confirmed. Two
   promotions, both only after `data.referral` arrives from the server: a Home
-  pop-up for members (not approved hosts) at most once a day per account, and a
+  pop-up for members (never host accounts) at most once a day per account, and a
   card under the call toolbar one minute into a member's video call, for eight
   seconds, once per call, never over the camera preview or the call controls;
   its Invite opens the share sheet over the running call. The design preview
@@ -311,6 +316,13 @@ keeps it identical to the original Next.js version.
 - Creator capabilities require current admin-approved host access.
   Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
   and backend; local role or verification presentation state grants no access.
+- Currency follows the authenticated account's server role separately from host
+  approval: approved, pending, rejected and suspended hosts use Diamonds;
+  members use Coins. Use `ZimiHostAccess.financialHost()` for financial display,
+  never to grant creator or withdrawal permissions. Hosts cannot start new Coin
+  purchases, send member gifts or claim legacy Coin promotions. Preserve owned
+  payment recovery, refunds and historic receipts after role changes. Show exact
+  ledger Diamond units when supplied; never relabel billed Coins as host earnings.
 - Always use layout-shaped skeletons for asynchronous content loading, including
   initial loads, refreshes and pagination. Tie them to actual request state;
   never use artificial loading timers. Keep empty and error states separate,

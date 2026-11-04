@@ -33,13 +33,14 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
 
     // Getting ready: the terms load, and the camera starts only when the host asks.
     await receive('session', host);
+    await receive('wallet.balance', { currency: 'diamonds', coins: 98765, earningsPaise: 2500, diamondUnits: 125000000, reservedDiamondUnits: 0, diamondScale: 1000000 });
     await page.evaluate(() => go('setup'));
     assert.equal((await sent('host.callStatus.load')).length, 1, 'Setup asks for the host call terms');
     await receive('host.callStatus', status);
-    assert.match(await page.locator('.hc-setup').innerText(), /3,000\/h\s*3,20,000 left to upgrade/, 'The rate leads the setup card');
+    assert.match(await page.locator('.hc-setup').innerText(), /3,000 member coins\/h\s*3,20,000 member coins to next tier/, 'The card explicitly quotes member spending');
     await button('Call price details').click();
     const setup = await page.locator('.hc-setup').innerText();
-    assert.match(setup, /50 coins \/ min[\s\S]*Tier 2 of 3[\s\S]*Earn 3,20,000 more coins to unlock 85\/min/);
+    assert.match(setup, /Member pays 50 coins \/ min[\s\S]*Tier 2 of 3[\s\S]*Another 3,20,000 member coins unlocks a 85-coin\/min member price/);
     assert.match(setup, /60-coin entry fee[\s\S]*passes 1 minute/);
     await page.getByRole('switch').click();
     assert.deepEqual((await sent('presence.duringCalls')).at(-1), { on: false });
@@ -69,13 +70,17 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     // A caller who arrives while another is ringing waits, then rings as a banner on the answered call.
     await receive('call.incoming', { callId: 'c1', from: { id: 'm1', name: 'Riya Sharma', level: 5, city: 'Pune' }, voice: false, ...terms });
     await page.waitForFunction(() => S.v === 'ring');
-    assert.match(await page.locator('.ringscr').innerText(), /You earn 50 coins\/min[\s\S]*\+60 entry fee once the call passes 1 minute/);
+    assert.match(await page.locator('.ringscr').innerText(), /Member pays 50 coins\/min[\s\S]*Member entry fee: 60 coins[\s\S]*diamonds/i);
     await receive('call.incoming', { callId: 'c5', from: { id: 'm5', name: 'Meera' }, voice: true, ...terms });
     assert.equal(await page.evaluate(() => S.caller.callId), 'c1', 'The ringing call keeps the screen');
     await button('Accept').click();
     await page.waitForFunction(() => __sent.some(message => message.type === 'call.accept' && message.data.callId === 'c1'));
     await receive('call.connected', { callId: 'c1', initiator: false, peerId: 'm1', voice: false, ...terms, earlyEnds: earlyEnds(2) });
     await page.waitForFunction(() => S.v === 'hcall');
+    assert.match(await page.locator('.zr-session-earned').innerText(), /Diamond balance\s*125/i, 'The host sees only confirmed Diamonds, never the member Coin balance');
+    await page.evaluate(() => { S.earned = 50000; hostTick(); });
+    assert.match(await page.locator('.zr-session-earned').innerText(), /Diamond balance\s*125/i, 'The local timer cannot turn billed Coins into host earnings');
+    assert.doesNotMatch(await page.locator('.zr-session-earned').innerText(), /50,000|98,765|coins/i);
     // The caller sees the host's targets; they are shared once per change, never per redraw.
     await page.waitForFunction(() => __sent.some(message => message.type === 'call.targets.set'));
     assert.deepEqual(await sent('call.targets.set'), [{ callId: 'c1', giftId: null, giftCount: 10, giftProgress: 0, goalCoins: 1000000, earnedCoins: 0 }], 'The host shares their targets with the caller');
@@ -99,7 +104,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await shot(page, 'banner');
     await page.getByRole('button', { name: 'Switch to Kabir Das' }).click();
     await page.locator('.hc-confirm').waitFor();
-    assert.match(await page.locator('.hc-confirm').innerText(), /early ending 3 today\. Past 2 a day, it takes 60 coins/);
+    assert.match(await page.locator('.hc-confirm').innerText(), /early ending 3 today\. Past 2 a day, early endings can reduce your diamond earnings/);
     await shot(page, 'switch-confirm');
     await button('Switch anyway').click();
     await page.locator('.hc-connecting').waitFor();
@@ -128,8 +133,14 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await page.waitForFunction(() => S.v === 'summary');
     const summary = await page.locator('.hc-summary').innerText();
     assert.match(summary, /Callers\s*2/i);
-    assert.match(summary, /Riya[\s\S]*Ended early[\s\S]*Kabir[\s\S]*\+60 received/);
-    assert.match(summary, /Early endings today: 3\. Past 2 a day, each one takes 60 coins/);
+    assert.match(summary, /Diamond balance\s*125/i);
+    assert.match(summary, /Riya[\s\S]*Ended early[\s\S]*Kabir[\s\S]*60 member coins · hold completed/);
+    assert.match(summary, /Early endings today: 3\. Past 2 a day, early endings can reduce diamond earnings/);
+    assert.doesNotMatch(summary, /You earned.*coins|≈|\+60 received/i, 'The summary never presents billed Coins as host earnings');
+    await receive('wallet.balance', { currency: 'diamonds', coins: 98765, earningsPaise: 3000, diamondUnits: 150000000, reservedDiamondUnits: 0, diamondScale: 1000000 });
+    assert.match(await page.locator('.hc-summary').innerText(), /Diamond balance\s*150/i, 'A later authenticated wallet update supplies the confirmed total');
+    await page.evaluate(() => { S.walletSnapshot.owner = 'another-account'; r(); });
+    assert.match(await page.locator('.hc-summary').innerText(), /Diamond balance\s*—/i, 'Another account’s cached Diamonds never enter the call summary');
     await shot(page, 'summary');
     assert.deepEqual(errors, [], 'No browser exceptions');
     console.log('PASS host calls: camera check on request, going online, visibility during calls, queued and banner callers, decline, switch with early-ending warning, entry fee hold and session summary');

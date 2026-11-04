@@ -30,8 +30,10 @@ handles errors and forwards live events.
 
 ## Host user directory
 
-An approved host's Home shows member users with name or public user ID search,
-Chat, Voice and Video actions. Members keep their creator feeds. The directory
+An approved host's Home header has Members and Active Hosts tabs. Members shows
+member users with name or public user ID search, Chat, Voice and Video actions.
+Active Hosts shows connected approved hosts with public profiles and Chat actions.
+Members keep their creator feeds. The directory
 includes offline members; it excludes inactive, undiscoverable and blocked
 accounts. Member online indicators respect activity privacy.
 
@@ -48,6 +50,16 @@ conversation. Calls and messages continue through the existing server approval,
 block and billing checks. Roll out the compatible backend before distributing
 the app bundle that uses the member directory. `npm run test:host-users` covers
 the UI, message boundary and API contract.
+
+`hosts.active.load {q,page}` calls `GET /home?mode=active&q=...&page=...&limit=20`
+and returns `data.activeHosts {hosts,total,page,limit,q}`. Search is limited to
+80 characters and pages to 1,000. The backend requires current approved host
+access and filters connected, verified, discoverable hosts who have not chosen
+Go Offline before pagination. Activity privacy, blocks and self exclusion apply;
+busy hosts remain viewable without granting host-to-host calls. Legacy `online`
+feeds retain their saved availability behavior. Each tab preserves its own query
+and pages; Active Hosts refreshes on returning after 30 seconds, foregrounding
+or pull to refresh, without polling or repainting the other tab's input.
 
 ## Conversation ordering and engagement
 
@@ -320,9 +332,22 @@ keeps its original idempotency key. A successful reservation remains confirmed
 even if the independent wallet refresh fails. Actual transfers and payment
 references are recorded by the admin after manual processing.
 
-Host diamond balances and rules live under **Payments > Withdraw**. Settings
-shows a diamond summary and Withdraw action for host accounts; members keep the
-spendable coin balance and Add coins action. **Account > Statistics** opens three earned
+Host diamond balances and rules live under **Payments > Withdraw**. Currency uses
+the authenticated server role: every host state, including pending or suspended,
+shows Diamonds in Settings, Profile and Wallet. Only approved hosts can withdraw
+or use creator tools. Members keep their spendable Coin balance and Add coins
+action, without host withdrawal controls. `GET /wallet` supplies optional
+`currency: "coins" | "diamonds"`; legacy balance fields remain for compatibility.
+Coin checkout revalidates the current account in native and on the server before
+creating an order. Existing owned payments can still be verified or refunded after
+a role change. New Coin referral rewards are member-only, and legacy host Coin
+missions no longer grant rewards. Host Diamond rewards keep the configured
+policy. Transaction `diamondUnits` is signed
+and uses `diamondScale: 1000000`; historical Coin receipts retain their currency
+instead of an invented conversion. Host call summaries link to the confirmed
+Diamond wallet rather than treating member-billed Coins as host earnings.
+
+**Account > Statistics** opens three earned
 diamond bar graphs: Daily shows 24 hourly buckets, Weekly shows Monday-Sunday,
 and Monthly shows each calendar date. Previous/next controls browse history.
 All boundaries use IST. Withdrawals and penalties do not reduce gross earned

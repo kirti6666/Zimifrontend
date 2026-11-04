@@ -639,6 +639,7 @@ button.acctrow:active{background:var(--raised)}
 .acctrow .main{display:block;font-size:13.5px;font-weight:600}
 .acctrow .meta{display:block;margin-top:2px;font-size:11px;color:var(--muted);line-height:1.35}
 .acctrow .end{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px;font-weight:700}
+.acctrow .tx-amount{max-width:55%;white-space:normal;overflow-wrap:anywhere;flex-shrink:0}
 .acctrow .neg{color:var(--live)}.acctrow .pos{color:var(--online)}
 .acctico{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:11px;background:var(--accent-wash);color:var(--accent-ink)}
 .accttabs{display:flex;gap:4px;margin:0 0 12px;padding:3px;border-radius:12px;background:var(--raised)}

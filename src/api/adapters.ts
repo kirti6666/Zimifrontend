@@ -108,6 +108,23 @@ export function memberUsersFrom(value: unknown): import("./types").MemberUsers {
   });
   return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
 }
+export function activeHostsFrom(value: unknown): import("./types").ActiveHosts {
+  const data = record(value);
+  const invalid = () => new ApiError("Active hosts could not be loaded. Please try again.", 502);
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < data.items.length ||
+    !Number.isSafeInteger(data.page) || Number(data.page) < 1 || Number(data.page) > 1000 ||
+    !Number.isSafeInteger(data.limit) || Number(data.limit) < 1 || Number(data.limit) > 100 || data.items.length > Number(data.limit)) throw invalid();
+  const seen = new Set<string>();
+  const hosts = data.items.map(value => {
+    const peer = record(value), id = idOf(peer);
+    if (!/^[a-f\d]{24}$/i.test(id) || seen.has(id) || peer.role !== "host" || peer.hostStatus !== "approved" ||
+      peer.isVerifiedHost !== true || peer.isOnline !== true ||
+      (peer.name != null && (typeof peer.name !== "string" || peer.name.length > 120))) throw invalid();
+    seen.add(id);
+    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive host" });
+  });
+  return { hosts, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
+}
 export function relationshipsFrom(value: unknown, kind: "followers" | "following") {
   const data = record(value);
   if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < 0 ||
@@ -365,6 +382,7 @@ export function missedFrom(value: unknown, userId: string): { calls: MissedCall[
 }
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);
+  if (wallet.currency !== undefined && wallet.currency !== "coins" && wallet.currency !== "diamonds") throw new ApiError("Your wallet currency could not be loaded. Try again.", 502);
   if (!Number.isSafeInteger(wallet.coins) || !Number.isSafeInteger(wallet.earningsPaise) || (wallet.coins as number) < 0 || (wallet.earningsPaise as number) < 0) throw new ApiError("Your wallet could not be loaded. Try again.", 502);
   const hasDiamonds = ["diamondUnits", "reservedDiamondUnits", "diamondScale", "conversion"].some(key => wallet[key] !== undefined);
   const conversion = wallet.conversion === undefined ? {} : record(wallet.conversion);
@@ -394,6 +412,7 @@ export function walletFrom(value: unknown): Wallet {
     throw new ApiError("Your weekly reward progress could not be loaded. Try again.", 502);
   return {
     coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
+    ...(wallet.currency === "coins" || wallet.currency === "diamonds" ? { currency: wallet.currency } : {}),
     reservedPaise: finite(wallet.reservedPaise),
     minimumWithdrawalPaise: Number.isSafeInteger(wallet.minimumWithdrawalPaise) && Number(wallet.minimumWithdrawalPaise) > 0 ? Number(wallet.minimumWithdrawalPaise) : undefined,
     withdrawalsEnabled: wallet.withdrawalsEnabled === true,
@@ -483,11 +502,15 @@ export function hostCallStatusFrom(value: unknown) {
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
   return { items: items(value).map(record).map(tx => {
     const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);
+    if ((tx.diamondUnits !== undefined && !Number.isSafeInteger(tx.diamondUnits)) ||
+      (tx.diamondScale !== undefined && (tx.diamondScale !== 1000000 || tx.diamondUnits === undefined)))
+      throw new ApiError("Your wallet activity could not be loaded. Try again.", 502);
     // The ledger stores purchase charges as positive and reversals as negative.
     // Monetary-only purchases display the account holder's spending/refund sign.
     const monetaryPurchase = coins === 0 && amountPaise !== undefined && Number.isSafeInteger(amountPaise) && amountPaise !== 0 && ["purchase", "purchase_reversal"].includes(type);
     return {
       title: string(tx.description) || type.replace(/_/g, " "), time: timeOf(tx.createdAt), coins, amountPaise,
+      ...(tx.diamondUnits !== undefined ? { diamondUnits: Number(tx.diamondUnits), diamondScale: 1000000 as const } : {}),
       ...(monetaryPurchase ? { displayAmountPaise: type === "purchase" ? -Math.abs(amountPaise) : Math.abs(amountPaise) } : {}),
       kind: type.startsWith("call") ? "call" : type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
     };

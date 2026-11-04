@@ -114,6 +114,8 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     // Choosing a mission target updates the open sheet in place instead of redrawing the screen.
     await button('Mission').click();
     await page.locator('.hs-sheet').waitFor();
+    assert.match(await page.locator('.hs-sheet').innerText(), /Track member gift spending\. Your earnings are diamonds/);
+    assert.equal(await page.locator('.hs-task,.hs-claim').count(), 0, 'Hosts receive no legacy Coin task offers, even from cached Home rewards');
     await page.evaluate(() => { window.__missionSheet = document.querySelector('.hs-sheet'); window.__setupVideo = document.querySelector('.hc-stage video'); });
     await button('500K').click();
     assert.equal(await page.evaluate(() => document.querySelector('.hs-sheet') === __missionSheet && document.querySelector('.hc-stage video') === __setupVideo), true, 'A mission choice keeps the sheet and camera mounted');
@@ -132,7 +134,7 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     await page.screenshot({ path: path.join(artifacts, 'host-online-light.png') });
     await button('Browse the app').click();
     assert.equal(await page.locator('.zh-host-status').innerText(), 'Online');
-    assert.ok(await page.locator('.zh-dashboard .zh-host-status').evaluate(el => { const box = el.getBoundingClientRect(); return box.height <= 48 && box.right > innerWidth - 30; }), 'Availability floats compactly at the bottom right of Home, like the reference LIVE button');
+    assert.ok(await page.locator('.zh-home .zh-host-status').evaluate(el => { const box = el.getBoundingClientRect(); return box.height <= 48 && box.right > innerWidth - 30; }), 'Availability floats compactly at the bottom right of Home, like the reference LIVE button');
     assert.equal(await page.locator('.zh-header .zh-host-status').count(), 0, 'The Home header keeps only the reference actions');
     await receive('app.background', {});
     await receive('app.foreground', {});
@@ -181,7 +183,8 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     assert.equal(await preview.locator('.hc-waiting').count(), 1, 'Preview shares the production waiting screen');
     await preview.getByRole('button', { name: 'Go offline', exact: true }).click();
     assert.equal(await preview.evaluate(() => S.online), 0);
-    await preview.evaluate(() => { S.caller = nextCaller(); go('hcall'); S.sec = 8; hostTick(); });
+    await preview.evaluate(() => { S.callId = 'preview-reference-call'; S.caller = { ...nextCaller(), callId: S.callId }; go('hcall'); S.sec = 8; hostTick(); });
+    await preview.waitForFunction(() => document.querySelector('.zr-gift-celebration')?.dataset.state === 'playing');
     assert.equal(await preview.locator('.zr-gift-celebration').count(), 1, 'Demo gifts use the same celebration as production receipts');
     assert.deepEqual(errors, [], 'No browser errors');
     console.log('PASS host reference: approved Home entry, terms retry, responsive themes, acknowledged presence, incoming acceptance/retry, and shared demo flow');

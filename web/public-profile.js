@@ -48,7 +48,7 @@ function zuOwnPeer(){
   const user=S.user||{},demo=DEMO?ZProfile.data:null,profile=demo?.profile||{};
   return {id:zuSelfId(),name:user.name||profile.name||me.n,avatarUrl:S.avatarData||user.avatarUrl||(DEMO?OB_MEDIA[0]:''),coverUrl:S.coverData||user.coverUrl||'',
     gender:user.gender||me.gender,city:user.city??profile.city??me.c,country:user.country??profile.country??me.country??'',about:user.about??profile.bio??me.about,
-    role:user.role||S.role,serverRole:isApprovedHost()?'host':'user',verified:isApprovedHost(),languages:user.languages||profile.languages||[],
+    role:user.role||S.role,serverRole:isHostWallet()?'host':'user',verified:isApprovedHost(),languages:user.languages||profile.languages||[],
     online:!!S.online,availableForCall:!!ZProfile.data?.privacy?.allowRequests,followers:demo?.stats?.fans,followingCount:demo?.stats?.following,joined:user.createdAt};
 }
 function zuRemember(profile){
@@ -159,7 +159,7 @@ function zuIdentity(p){
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
-    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${contentBalance()}</strong><span>Coins</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
+    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
     <p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>
     ${owner?`<button type="button" class="zu-agency-link" onclick="ZimiAgency.open('profile')">${zi('people',18)} ${isApprovedHost()?'My agency':'Become a Host'} ${hi('arrow',16)}</button>`:''}
     ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}

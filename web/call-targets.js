@@ -1,5 +1,6 @@
 /* The member's call screen shows the host's gift and mission targets in place of the call
    rate, so gifts visibly help the host. Hosts share their targets whenever they change.
+   Target Coin totals measure member gift spending, never the host's earnings.
    Staff set when the low-balance Recharge pop-up appears; the server sends the threshold. */
 const CallTargets = { data: null, loading: '', sent: '', shareTimer: 0, recharge: null, shownAt: 0 };
 const CT_PREVIEW_RECHARGE = { enabled: true, thresholdCoins: 500, lastRechargeCoins: 0, delaySeconds: 10, repeatSeconds: 180 };
@@ -35,7 +36,7 @@ function ctSenderTargets() {
   if (!data || !host) return '<div class="zr-call-stats ct-call-targets"></div>';
   const gift = data.gift, name = esc(first(host.n)), mission = hsPercent(data.earnedCoins, data.goalCoins);
   const giftCard = gift ? `<button type="button" class="hs-target-card" onclick="ctGive()" aria-label="Send ${esc(gift.name)} to help ${name} reach the gift target, ${n(data.giftProgress)} of ${n(data.giftCount)}"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(data.giftProgress)}/${n(data.giftCount)}</b></span><strong>${giftPriceMarkup(gift, 10)}</strong><i class="hs-target-track"><em style="width:${hsPercent(data.giftProgress, data.giftCount)}%"></em></i></span></button>` : '';
-  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
+  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done, member gift spending in Coins"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
 }
 /* Opens the gift panel, with the target gift chosen when the member tapped that card. */
 function ctGive(mission = false) {

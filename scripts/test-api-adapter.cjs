@@ -631,6 +631,15 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     assert.throws(() => adapters.walletFrom({ ...diamondWallet, ...broken }), /diamond balance/, 'Malformed diamond accounting fails closed');
   }
   assert.equal(adapters.walletFrom({ coins: 0, earningsPaise: 100 }).diamondUnits, undefined, 'An older server never invents a diamond balance');
+  assert.equal(adapters.walletFrom({ coins: 0, earningsPaise: 100 }).currency, undefined, 'A legacy response does not invent an account currency');
+  for (const currency of ['coins', 'diamonds']) {
+    const scoped = adapters.walletFrom({ ...diamondWallet, currency });
+    assert.equal(scoped.currency, currency, 'Server currency metadata survives normalization');
+    assert.equal(scoped.coins, diamondWallet.coins, 'Historical Coin fields stay intact');
+    assert.equal(scoped.diamondUnits, diamondWallet.diamondUnits, 'Currency presentation never converts or erases historical units');
+  }
+  for (const currency of ['', 'coin', 'diamond', 'INR', null, 1, {}, ['coins']])
+    assert.throws(() => adapters.walletFrom({ ...diamondWallet, currency }), /currency|wallet/, 'Malformed currency metadata fails closed');
   const hostPolicy={enabled:true,hostCallSharePercent:28,hostCallRewardPercent:13,hostGiftSharePercent:41,agencySharePercent:13,hostWeeklyTargetMinutes:1950,paisePerDiamond:20,wholeBalanceWithdrawal:true,hostRules:'Be respectful.'};
   assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:hostPolicy}).hostEarningsPolicy),hostPolicy);
   assert.equal(adapters.walletFrom({...diamondWallet,conversion:{diamondsPerCoin:0,paisePerDiamond:20},hostEarningsPolicy:{...hostPolicy,hostCallSharePercent:0}}).conversion.diamondsPerCoin,0,'Zero regular call share remains a valid policy');
@@ -1002,6 +1011,15 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(transactions.slice(2, 6).map(tx => tx.displayAmountPaise), [undefined, undefined, undefined, undefined]);
   assert.deepEqual(transactions.slice(0, 6).map(tx => tx.coins), [0, 0, 100, -100, -25, 0]);
   assert.deepEqual(transactions.filter(tx => tx.kind === 'gift').map(tx => tx.coins), [-25, 0]);
+  for (const diamondUnits of [0, 41000000, -1250000, Number.MAX_SAFE_INTEGER, -Number.MAX_SAFE_INTEGER]) {
+    const row = adapters.transactionsFrom({ items: [{ type: 'call_earning', coins: 100, amountPaise: 820, diamondUnits }] }).items[0];
+    assert.equal(row.diamondUnits, diamondUnits, 'Exact signed ledger Diamonds survive without a price conversion');
+    assert.equal(row.diamondScale, 1000000, 'Historical ledger units have the schema’s fixed microunit scale');
+    assert.equal(row.coins, 100, 'Member billing context remains intact beside host Diamonds');
+  }
+  assert.equal(adapters.transactionsFrom({ items: [{ type: 'call_earning', coins: 100, amountPaise: 820 }] }).items[0].diamondUnits, undefined, 'Older cash receipts do not invent Diamonds');
+  for (const patch of [{ diamondUnits: 1.5 }, { diamondUnits: Number.MAX_SAFE_INTEGER + 1 }, { diamondUnits: '100' }, { diamondUnits: null }, { diamondUnits: 1, diamondScale: 100 }, { diamondScale: 1000000 }])
+    assert.throws(() => adapters.transactionsFrom({ items: [{ type: 'call_earning', coins: 100, ...patch }] }), /wallet activity/, 'Malformed exact Diamond receipts fail closed');
   expect('POST', '/streams/stream-id/join', { count: 13 });
   expect('GET', '/streams/stream-id', { _id: 'stream-id', hostId: creator._id, host: creator, title: 'Acoustic night', viewers: 13 });
   assert.equal((await api.joinStream('stream-id')).host.name, 'Asha Live');
@@ -1219,6 +1237,50 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(requests.length, beforeInvalidDirectory, 'Malformed directory queries stop before HTTP');
   expect('GET', '/users/search?audience=members&q=&page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
   assert.deepEqual(plain((await api.memberUsers()).users), [], 'An empty query loads the first real member page without enumerating it in memory');
+  finished();
+  const activeHostId = '507f1f77bcf86cd799439082';
+  const activeHostRawUser = { _id: activeHostId, name: 'Active directory host', role: 'host', hostStatus: 'approved', isVerifiedHost: true,
+    avatar: { url: 'https://cdn.example.test/host.png' }, country: 'India', isOnline: true, availableForCall: false,
+    phone: 'private-phone', email: 'private@example.test', safety: { discoverable: true }, earningsPaise: 999, passwordHash: 'not-public', accessToken: 'not-public' };
+  const activeHostRaw = { items: [activeHostRawUser], total: 24, page: 2, limit: 20 };
+  const activeHostQuery = 'Asha&mode=online&role=admin';
+  expect('GET', `/home?mode=active&q=${encodeURIComponent(activeHostQuery)}&page=2&limit=20`, activeHostRaw);
+  const activeHosts = await api.activeHosts('  ' + activeHostQuery + '  ', 2);
+  assert.equal(activeHosts.total, 24); assert.equal(activeHosts.page, 2); assert.equal(activeHosts.limit, 20);
+  assert.equal(activeHosts.hosts[0].id, activeHostId); assert.equal(activeHosts.hosts[0].role, 'host');
+  assert.equal(activeHosts.hosts[0].serverRole, 'host'); assert.equal(activeHosts.hosts[0].verified, true); assert.equal(activeHosts.hosts[0].online, true);
+  assert.equal(activeHosts.hosts[0].availableForCall, false, 'An actually connected busy host remains visible without implying call availability');
+  for (const privateKey of ['phone', 'email', 'safety', 'earningsPaise', 'passwordHash', 'accessToken'])
+    assert.equal(activeHosts.hosts[0][privateKey], undefined, `Active hosts strip ${privateKey}`);
+  assert.equal(requests.at(-1)[2], undefined, 'The active host directory cannot choose a viewer or write authority fields');
+  assert.equal(adapters.activeHostsFrom({ ...activeHostRaw, items: [{ ...activeHostRawUser, name: '' }] }).hosts[0].name, 'BinzoLive host');
+  assert.equal(adapters.activeHostsFrom({ ...activeHostRaw, items: [{ ...activeHostRawUser, name: null }] }).hosts[0].name, 'BinzoLive host');
+  for (const patch of [{ items: undefined }, { items: 'untrusted' }, { total: -1 }, { total: 0 }, { total: Number.MAX_SAFE_INTEGER + 1 }, { total: '24' },
+    { page: 0 }, { page: 1.5 }, { page: 1001 }, { page: '2' }, { limit: 0 }, { limit: 101 }, { limit: 1.5 },
+    { items: [{ ...activeHostRawUser, _id: 'untrusted-id' }] }, { items: [{ ...activeHostRawUser, _id: undefined }] },
+    { items: [{ ...activeHostRawUser, role: 'user' }] }, { items: [{ ...activeHostRawUser, role: 'admin' }] },
+    { items: [{ ...activeHostRawUser, hostStatus: 'pending' }] }, { items: [{ ...activeHostRawUser, hostStatus: 'suspended' }] },
+    { items: [{ ...activeHostRawUser, isVerifiedHost: false }] }, { items: [{ ...activeHostRawUser, isVerifiedHost: 'true' }] },
+    { items: [{ ...activeHostRawUser, isOnline: false, online: true }] }, { items: [{ ...activeHostRawUser, isOnline: undefined, online: true }] },
+    { items: [{ ...activeHostRawUser, isOnline: 'true' }] }, { items: [{ ...activeHostRawUser, name: 42 }] },
+    { items: [{ ...activeHostRawUser, name: 'x'.repeat(121) }] }, { items: [activeHostRawUser, activeHostRawUser] },
+    { limit: 1, items: [activeHostRawUser, { ...activeHostRawUser, _id: '507f1f77bcf86cd799439083' }] }]) {
+    assert.throws(() => adapters.activeHostsFrom({ ...activeHostRaw, ...patch }), error => error instanceof ApiError && error.status === 502, JSON.stringify(patch));
+  }
+  for (const patch of [{ page: 1 }, { limit: 19 }]) {
+    expect('GET', '/home?mode=active&q=&page=2&limit=20', { ...activeHostRaw, ...patch });
+    await assert.rejects(api.activeHosts('', 2), error => error instanceof ApiError && error.status === 502, 'A response cannot replace the requested host page or page size');
+  }
+  const beforeInvalidActiveHosts = requests.length;
+  for (const [q, page] of [[null, 1], [1, 1], ['x'.repeat(81), 1], ['', 0], ['', -1], ['', 1.5], ['', 1001], ['', '2'], ['', null]])
+    await assert.rejects(api.activeHosts(q, page), error => error instanceof ApiError && error.status === 400);
+  assert.equal(requests.length, beforeInvalidActiveHosts, 'Malformed active host queries stop before HTTP');
+  expect('GET', '/home?mode=active&q=&page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
+  assert.deepEqual(plain(await api.activeHosts()), { hosts: [], total: 0, page: 1, limit: 20 });
+  expect('GET', '/home?mode=active&q=&page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
+  assert.deepEqual(plain((await api.activeHosts('   ')).hosts), [], 'Whitespace search uses the current first active host page');
+  expect('GET', `/home?mode=active&q=${'x'.repeat(80)}&page=1000&limit=20`, { items: [], total: 0, page: 1000, limit: 20 });
+  assert.equal((await api.activeHosts('x'.repeat(80), 1000)).page, 1000, 'The documented search and page boundaries stay usable');
   finished();
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, withdrawal configuration/history/receipts, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

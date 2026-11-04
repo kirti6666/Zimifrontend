@@ -43,7 +43,7 @@ function zrVoiceControls(host){
  const control=(icon,label,text,action,muted)=>`<span class="zr-voice-control"><button type="button" class="zr-round" aria-label="${label}" aria-pressed="${muted}" onclick="${action}">${hi(icon,23)}</button><small>${text}</small></span>`;
  return `<div class="zr-voice-controls" role="group" aria-label="Voice call controls">${control(S.mic?'mic':'micoff',S.mic?'Mute microphone':'Unmute microphone',S.mic?'Mute':'Unmute','zrMic()',!S.mic)}<span class="zr-voice-control"><button type="button" class="zr-round zr-hangup" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${hi('ph',24)}</button><small>End call</small></span>${control(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Unmute caller':'Mute caller',Room.playbackMuted?'Sound off':'Sound on','zrSound()',Room.playbackMuted)}</div>`;
 }
-function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl,gift.coverUrl),diamonds=zrIsHost()&&gift.diamondScale===1000000&&Number.isSafeInteger(gift.diamondUnits)&&gift.diamondUnits>=0;const value=giftIsFree(gift)?'Free gift':gift.sent?n(gift.coins)+' coins sent':diamonds?diamondIcon(12)+' +'+diamondFormat(gift.diamondUnits)+' diamonds received':n(gift.coins)+' coin gift';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${value}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl,gift.coverUrl),diamonds=zrIsHost()&&gift.diamondScale===1000000&&Number.isSafeInteger(gift.diamondUnits)&&gift.diamondUnits>=0;const value=giftIsFree(gift)?'Free gift':gift.sent?n(gift.coins)+' coins sent':diamonds?diamondIcon(12)+' +'+diamondFormat(gift.diamondUnits)+' diamonds received':zrIsHost()?'Gift received · confirmed diamonds in Wallet':n(gift.coins)+' coin gift';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${value}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
 /* Playback lives outside the HTML rebuilt by r(), keeping the same decoded
    animation running while chat, wallet updates and call controls redraw. */
 function zrGiftCelebration(){return ''}
@@ -111,12 +111,13 @@ function zrLive(){
   return `<section class="zh-room zr-room ${host?'zr-host':'zr-viewer'}" aria-label="${host?'Your live broadcast':'Live broadcast'}">${zrBackdrop(p,host)}<div class="zr-top">${host?'<div class="zr-diagnostics"><span><i></i><i></i><i></i><i></i> LIVE STUDIO</span><b data-room-quality>Camera ready</b></div>':''}${zrIdentity(p,host,false)}${host?zrSupporterStrip()+zrGoal():zrRequestBar()}${zrGiftBanner()}${host?zrStatus():''}</div>${host?zrTools():''}<div class="zr-floating-hearts" aria-hidden="true"></div><div class="zr-bottom">${!host?zrStatus():''}<div class="zr-messages" id="home-room-messages" role="log" aria-label="Live chat" aria-live="polite">${zrMessageHTML()}</div>${host?zrHostQueue():''}${zrChat(false,host)}${DEMO?'<span class="zr-demo-note">Interactive preview · sample activity</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
-function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
+function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return host?`Member price: ${n(rate)} coins/min`:`${n(rate)}/min · ${n(coins)} coins${S.bal<rate?' · under a minute left':''}`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
 function zrPaintCallWallet(){
   if(!zrIsCall())return false;
   const room=document.querySelector('.zr-call');if(!room)return false;
   const replace=(node,html)=>{if(node&&node.innerHTML!==html)node.innerHTML=html};
+  if(zrIsHost())replace(room.querySelector('#earn'),hcEarningsValue());
   room.querySelectorAll('[data-call-balance]').forEach(node=>replace(node,contentBalance()));
   const cost=room.querySelector('#zr-call-cost'),label=zrCallCost(zrIsHost());if(cost&&cost.textContent!==label)cost.textContent=label;
   const sheet=Home.giftTo&&room.querySelector('.zw-sheet');
@@ -166,7 +167,7 @@ function zrHostReferenceCall(p,voice){
     <div class="zr-top"><header class="zr-call-toolbar">
       ${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}
       <div class="zr-host-clock"><span class="zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-clock-divider" aria-hidden="true"></span>${hcVisPill()}</div>
-      <span class="zr-session-earned" title="${n(Math.round(S.earned||0))} coins this session"><small>This session</small><b id="earn">${coinIcon(14)}+${kfmt(Math.round(S.earned||0))}</b></span>
+      <span class="zr-session-earned" title="Confirmed call and gift diamond balance"><small>Diamond balance</small><b id="earn">${hcEarningsValue()}</b></span>
       ${zrRound('callmore','Call options',"zrOpen('host-options')",'zr-host-more')}
     </header><div class="zr-call-stats">${typeof hsTargets==='function'?hsTargets():''}</div>${hcFeeChip()}${zrGiftBanner()}</div>${voice?zrVoiceStage(p):''}
     <div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>

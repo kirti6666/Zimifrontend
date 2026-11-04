@@ -23,7 +23,8 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   await receive(page,'session',host);await go(page,'wallet');
   await receive(page,'wallet.balance',wallet);await receive(page,'data.transactions',{items:[]});
   assert.equal(await page.locator('.zd-balance').count(),0,'Diamond balance lives on Payments > Withdraw');
-  assert.match(await page.locator('.zwallet-balance .big').innerText(),/52,400/,'Purchased coins remain separate');
+  assert.match(await page.locator('.zwallet-balance').innerText(),/Diamond balance[\s\S]*6,172\.8/,'Hosts see their earned diamonds in Wallet & Activity');
+  assert.doesNotMatch(await page.locator('.zwallet-balance').innerText(),/Coin balance|52,400|Add coins/,'Host wallets never advertise spendable Coins');
   assert.match(await page.locator('.earnbox').innerText(),/1,234\.56/,'Current conversion does not revalue earned cash');
   assert.equal(await page.locator('.zd-conversion').count(),0,'Wallet activity does not duplicate the diamond section');
   assert.equal(await page.evaluate(()=>diamondFormat(9007199254740991)),'9,00,71,99,254.740991','All six fractional digits survive at the safe integer boundary');
@@ -98,8 +99,38 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   await page.locator('.zpay-rules').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(shots,'host-rules-detail.png')});
   await receive(page,'wallet.balance',{hostEarningsPolicy:null,hostReward:null});
   assert.equal(await page.locator('.zpay-rules').count(),0,'Disabled policy clears cached earning rules');
+  for(const status of ['pending','rejected','suspended']){
+   const inactiveHost={...host,user:{...host.user,role:'sender',serverRole:'host',hostStatus:status,isVerifiedHost:false},verification:status==='pending'?'pending':'rejected'};
+   await receive(page,'session',inactiveHost);await receive(page,'wallet.balance',wallet);await receive(page,'data.transactions',{items:[]});await go(page,'settings');
+   assert.equal(await page.evaluate(()=>isApprovedHost()),false,`${status} remains unapproved`);
+   assert.equal(await page.evaluate(()=>isHostWallet()),true,`${status} retains authenticated host currency`);
+   assert.match(await page.locator('.zp-wallet').innerText(),/Diamond balance[\s\S]*6,172\.8/);
+   assert.doesNotMatch(await page.locator('.zp-simple-section').innerText(),/Coins/,'Hosts do not receive member coin referral offers');
+   await go(page,'wallet');assert.match(await page.locator('.zwallet-balance').innerText(),/Diamond balance[\s\S]*6,172\.8/);
+   assert.equal(await page.getByRole('button',{name:'Withdraw',exact:true}).isDisabled(),true,`${status} cannot withdraw`);
+   await go(page,'coins');assert.equal(await page.evaluate(()=>S.v),'wallet',`${status} cannot navigate to Coin top-up`);
+   await go(page,'precall');assert.equal(await page.evaluate(()=>S.v),'wallet',`${status} cannot enter a member Coin-call checkout`);
+   assert.equal(await page.evaluate(()=>zciIdle()),false,`${status} is excluded from member paid-call invitations`);
+   const before=(await sent(page,'wallet.checkout')).length;
+   await page.evaluate(()=>{homeCheckout();coinConfirmCheckout();homeGiftTopup();homeGifts('507f1f77bcf86cd799439099');homeSendGift();coinRequireRecharge()});
+   assert.equal((await sent(page,'wallet.checkout')).length,before,'Direct UI functions cannot start host Coin purchases');
+   assert.equal(await page.locator('#zw-checkout-dialog,#zw-recharge-dialog,.zw-topup').count(),0);
+   await receive(page,'data.loading',{resource:'wallet',loading:false,error:'Host wallet unavailable'});await go(page,'settings');
+   assert.match(await page.locator('.zp-wallet').innerText(),/Diamond balance[\s\S]*—[\s\S]*Host wallet unavailable/,'Errors never become a zero balance');
+   assert.equal(await page.locator('.zp-wallet').getByRole('button',{name:'Retry',exact:true}).count(),1);
+  }
+  await receive(page,'session',host);await receive(page,'wallet.balance',wallet);await go(page,'wallet');
+  await receive(page,'data.transactions',{items:[{title:'Gift earning',time:'Today',coins:0,kind:'gift',diamondUnits:41000000,diamondScale:1000000},{title:'Historical gift cost',time:'Yesterday',coins:100,kind:'gift'}]});
+  assert.match(await page.locator('.zwallet-activity').innerText(),/Gift earning[\s\S]*\+41 diamonds[\s\S]*Historical gift cost[\s\S]*\+100 coins/,'Actual Diamond receipts and historical Coin costs keep their units');
   await receive(page,'session',member);await receive(page,'wallet.balance',{coins:9,earningsPaise:0});await go(page,'wallet');
   assert.equal(await page.locator('.zd-balance').count(),0,'A new account cannot inherit host diamonds');
+  assert.match(await page.locator('.zwallet-balance').innerText(),/Coin balance[\s\S]*9/);
+  await go(page,'settings');await page.getByRole('button',{name:'Payments',exact:true}).click();
+  assert.equal(await page.getByRole('dialog',{name:'Payments',exact:true}).getByRole('button',{name:/Withdraw/}).count(),0,'Members have no withdrawal entry points');
+  await page.evaluate(()=>zpClose());await go(page,'payout-history');assert.equal(await page.evaluate(()=>S.v),'settings','Members cannot open withdrawal history directly');
+  await page.evaluate(()=>{S.role='host';S.user.serverRole='host';S.acct.host.kyc='verified'});
+  assert.equal(await page.evaluate(()=>isHostWallet()),false,'Locally selected role and mutable presentation do not grant a Diamond wallet');
+  assert.equal(await page.evaluate(()=>isApprovedHost()),false,'Currency never grants creator capabilities');
   await receive(page,'session',host);await receive(page,'wallet.balance',{coins:10,earningsPaise:100,reservedPaise:0,minimumWithdrawalPaise:50,withdrawalsEnabled:true});await go(page,'wallet');
   assert.equal(await page.locator('.zd-balance').count(),0,'Legacy responses never invent diamond values');
   assert.match(await page.locator('.zwallet-earnings-amount').innerText(),/1\.00/,'Legacy cash remains available during an upgrade');

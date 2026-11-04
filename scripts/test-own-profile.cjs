@@ -192,6 +192,12 @@ async function audit(page,label) {
     assert.equal(await page.locator('.zu-photo').count(),0,'Confirmed deletion removes the post');
     assert.equal(await page.evaluate(()=>S.postData.includes('https://media.fixture.test/moment.jpg')),false);
     await receive(page,'session',creator);await navigate(page,'profile');await settleProfile(page,publicProfile(creator));await settlePosts(page);
+    await receive(page,'wallet.balance',{coins:9999,diamondScale:1000000,diamondUnits:1234500000,reservedDiamondUnits:0,profileDiamondUnits:1200000000,earningsPaise:24690,reservedPaise:0});
+    assert.deepEqual(await page.locator('.zu-stats>div>span').allInnerTexts(),['Diamonds'],'Own host profile keeps financial identity separate from member Coins');
+    assert.equal(await page.locator('.zu-stats strong').first().innerText(),'1,200','Own host profile uses confirmed call and gift Diamond units');
+    await receive(page,'data.loading',{resource:'wallet',loading:false,error:'Balance unavailable'});
+    assert.equal(await page.locator('.zu-stats strong').first().innerText(),'—','A failed host balance never falls back to Coins or zero');
+    await receive(page,'wallet.balance',{diamondScale:1000000,diamondUnits:1234500000,reservedDiamondUnits:0,profileDiamondUnits:1200000000});
     await audit(page,'Creator own profile');
     await button(page,'Open settings').click();await button(page,'Account').click();
     await button(page,'Deactivate account').click();

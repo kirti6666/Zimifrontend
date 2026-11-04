@@ -880,6 +880,7 @@ button.acctrow:active{background:var(--raised)}
 .acctrow .main{display:block;font-size:13.5px;font-weight:600}
 .acctrow .meta{display:block;margin-top:2px;font-size:11px;color:var(--muted);line-height:1.35}
 .acctrow .end{margin-left:auto;text-align:right;white-space:nowrap;font-size:12px;font-weight:700}
+.acctrow .tx-amount{max-width:55%;white-space:normal;overflow-wrap:anywhere;flex-shrink:0}
 .acctrow .neg{color:var(--live)}.acctrow .pos{color:var(--online)}
 .acctico{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border-radius:11px;background:var(--accent-wash);color:var(--accent-ink)}
 .accttabs{display:flex;gap:4px;margin:0 0 12px;padding:3px;border-radius:12px;background:var(--raised)}
@@ -4307,7 +4308,14 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* Host member directory keeps search and each contact action within reach. */
-.zh-users-header h1{margin:0;font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;color:var(--ink)}
+.zh-header.zh-users-header{gap:8px;padding-inline:14px}
+.zh-host-tabs{display:flex;align-items:center;align-self:stretch;flex:1;gap:12px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.zh-host-tabs::-webkit-scrollbar{display:none}
+.zh-host-tabs>[role="tab"]{flex:none;min-height:44px;padding:0;border:0;background:transparent;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
+.zh-host-tabs>[aria-selected="true"]{color:var(--ink);font-size:calc(21px * var(--theme-font-scale,1));font-weight:700;letter-spacing:-.5px}
+.zh-host-tabs>[role="tab"]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-3px}
+.zh-users-header .zh-header-actions{flex:none;gap:2px}
+.zh-users-header .zh-icon{width:44px;height:44px}
 .zh-users-header .zh-trophy{color:var(--gold)}
 .zh-host-users{padding:12px 20px 28px;color:var(--ink)}
 .zh-user-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;background:var(--raised);color:var(--muted);margin-bottom:12px}
@@ -4324,12 +4332,12 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zh-user-identity strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zh-user-identity small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zh-user-actions{display:flex;align-items:center;gap:4px;flex:none}
-.zh-user-actions>button{display:grid;place-items:center;width:40px;height:40px;background:var(--raised);color:var(--ink)}
+.zh-user-actions>button{display:grid;place-items:center;width:44px;height:44px;background:var(--raised);color:var(--ink)}
 .zh-user-actions>.zh-user-video{background:var(--accent);color:var(--cta-ink)}
 .zh-user-actions>button:focus-visible,.zh-user-person:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .zh-host-users .zh-error{color:var(--muted);background:var(--surface)}
 .zh-host-users .zh-error button{color:var(--accent-ink)}
-@media(max-width:359px){.zh-host-users{padding-inline:14px}.zh-user-person{gap:8px}.zh-user-actions>button{width:36px;height:40px}.zh-user-actions{gap:2px}.zh-user-avatar,.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:42px;height:42px}}
+@media(max-width:359px){.zh-host-users{padding-inline:14px}.zh-user-person{gap:8px}.zh-user-actions{gap:2px}.zh-user-avatar,.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:42px;height:42px}.zh-header.zh-users-header{padding-inline:10px;gap:6px}.zh-host-tabs{gap:10px}.zh-host-tabs>[aria-selected="true"]{font-size:calc(18px * var(--theme-font-scale,1))}}
 /* Home header, after the reference: Following, Explore, For You and New in place of the app
    name, the selected feed larger and bolder; then Search and the gold leaderboard trophy. */
 .zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}
@@ -8872,6 +8880,9 @@ function go(v,id){
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
+ if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact members.');return}
+ if(window.ZimiHostAccess?.financialHost()&&['coins','refer'].includes(v)){appNotice('Your host account earns diamonds. Open your wallet to view them.');v='wallet'}
+ if(v==='payout-history'&&window.ZimiHostAccess&&!window.ZimiHostAccess.financialHost()){appNotice('Withdrawals are available to host accounts.');return}
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout","host-statistics"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
@@ -9496,18 +9507,19 @@ const TXNS=[
  ["Call with Ananya","2 Sep, 10:24 PM",-285,"call"],
  ["Bonus coins","1 Sep, 9:00 AM",250,"topup"]];
 
-function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct zwallet-page">'+pending+'</div>';const activity=window.contentSurface?.('transactions','rows','Loading recent transactions');return `<div class="acct zwallet-page">
- <section class="accthero zwallet-balance" aria-label="Coin balance"><div><div class="eyebrow">Coin balance</div><div class="big">${coinIcon(25)}${contentBalance()}</div><p class="sub">Available for calls and gifts</p></div>
-  <button type="button" class="cta" onclick="go('coins')">Add coins</button></section>
+function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct zwallet-page">'+pending+'</div>';const activity=window.contentSurface?.('transactions','rows','Loading recent transactions'),host=isHostWallet(),w=diamondOwnWallet(),checking=!!window.ZimiHostAccess?.checking(),units=Number.isSafeInteger(w?.profileDiamondUnits)&&w.profileDiamondUnits>=0?w.profileDiamondUnits:w?.diamondUnits,ready=!checking&&diamondReady(w);return `<div class="acct zwallet-page">
+ <section class="accthero zwallet-balance" aria-label="${host?'Diamond':'Coin'} balance"><div><div class="eyebrow">${host?'Diamond':'Coin'} balance</div><div class="big">${host?diamondIcon(25)+(checking?'<span class="zh-skeleton" role="status" aria-label="Loading diamond balance" aria-busy="true">'+skeletonLine('110px',34)+'</span>':ready?diamondFormat(units):'—'):coinIcon(25)+contentBalance()}</div><p class="sub">${host?'Call & gift earnings':'Available for calls and gifts'}</p>${host&&!checking&&!ready?'<p class="zwallet-earnings-note">Diamond balance unavailable. <button type="button" onclick="contentRetry(\'wallet\')">Retry</button></p>':''}</div>
+  ${host?'':`<button type="button" class="cta" onclick="go('coins')">Add coins</button>`}</section>
  ${earnCard()}
  <section class="acctsec zwallet-recent"><div class="accttitle"><h2>Recent activity</h2><button type="button" onclick="go('transactions')">View all</button></div>
-  <div class="acctcard zwallet-activity">${activity||(TXNS.length?TXNS.slice(0,3).map(txRow).join(""):`<div class="zwallet-empty">${I('clock',25)}<h3>No activity yet</h3><p>Your coin purchases, calls and gifts will appear here.</p></div>`)}</div></section></div>`}
+  <div class="acctcard zwallet-activity">${activity||(TXNS.length?TXNS.slice(0,3).map(txRow).join(""):`<div class="zwallet-empty">${I('clock',25)}<h3>No activity yet</h3><p>${host?'Your call and gift earnings will appear here.':'Your coin purchases, calls and gifts will appear here.'}</p></div>`)}</div></section></div>`}
 
-function txAmount(x){return x[2]===0&&Number.isSafeInteger(x[4])&&x[4]!==0?x[4]:x[2]}
-function txRow(x){const [title,time,coins,type,paise]=x,amount=txAmount(x),money=coins===0&&Number.isSafeInteger(paise)&&paise!==0;return `<div class="acctrow">
+function txDiamond(x){return isHostWallet()&&x[6]===1000000&&Number.isSafeInteger(x[5])?x[5]:null}
+function txAmount(x){const diamonds=txDiamond(x);return diamonds!==null?diamonds:x[2]===0&&Number.isSafeInteger(x[4])&&x[4]!==0?x[4]:x[2]}
+function txRow(x){const [title,time,coins,type,paise]=x,amount=txAmount(x),diamonds=txDiamond(x),money=diamonds===null&&coins===0&&Number.isSafeInteger(paise)&&paise!==0;return `<div class="acctrow">
  <span class="acctico">${I(type==='call'?'ph':type==='gift'?'gift':'wal',16)}</span>
  <span style="flex:1;min-width:0"><span class="main">${esc(title)}</span><span class="meta">${esc(time)}</span></span>
- <span class="end ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${money?'₹'+(Math.abs(amount)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):n(Math.abs(amount))}</span></div>`}
+ <span class="end tx-amount ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${diamonds!==null?diamondFormat(Math.abs(diamonds))+' diamonds':money?'₹'+(Math.abs(amount)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):n(Math.abs(amount))+' coins'}</span></div>`}
 
 function vTransactions(){const pending=window.contentSurface?.('transactions','rows','Loading transactions');if(pending)return '<div class="acct">'+pending+'</div>';const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?txAmount(x)>0:txAmount(x)<0));return `<div class="acct">
  <div class="accttabs">${[['all','All'],['in','Added'],['out','Spent']].map(([k,l])=>`<button class="${S.txf===k?'on':''}" onclick="S.txf='${k}';r()">${l}</button>`).join('')}</div>
@@ -9820,8 +9832,8 @@ function vRing(){const c=S.caller;
   <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${hcIdentityAvatar(c,112)}</div>
   <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
-  <span class="ringearn">${rate?`${gem}You earn ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
-  ${fee?`<span class="ringfee">+${n(fee)} entry fee once the call passes ${hcHold(hold)}</span>`:''}
+  <span class="ringearn">${rate?`Member pays ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
+  ${fee?`<span class="ringfee">Member entry fee: ${n(fee)} coins. Your eligible host share is credited as diamonds after ${hcHold(hold)}.</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
    <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
@@ -9995,7 +10007,7 @@ function paintHostTick(){
  const c=document.getElementById("ck");if(c)c.textContent=clock(S.sec);
  const left=document.getElementById("hc-left");if(left)left.textContent=clock(Math.max(0,(S.feeHold||0)-(S.sec-S.cstart)));
  const fc=document.getElementById("fee");if(fc){if(feeShown()){fc.innerHTML=feeChip();fc.classList.toggle("ok",!!S.feeOk)}else fc.remove()}
- const e=document.getElementById("earn");if(e)e.innerHTML=`${gem}+${kfmt(Math.round(S.earned))}`
+ const e=document.getElementById("earn");if(e)e.innerHTML=window.ZimiHome&&typeof hcEarningsValue==='function'?hcEarningsValue():`${gem}+${kfmt(Math.round(S.earned))}`
  paintGoal();}
 
 /* ---- Ending a call: both sides land on a summary ---- */
@@ -10090,10 +10102,11 @@ function feeSummary(F){
 function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
 
 /* ---- Awards (host tasks) ---- */
-function claimAward(i){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;if(!DEMO){Native.send("awards.claim",{task:t.k});return}t.claimed=1;A().earn+=t.rw;r()}
+function claimAward(i){if(isHostWallet()){appNotice('Host call rewards are credited as diamonds. View your reward progress in Withdraw.');return}if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;if(!DEMO){Native.send("awards.claim",{task:t.k});return}t.claimed=1;A().earn+=t.rw;r()}
 function resetIn(){const now=new Date(),mid=new Date(now);mid.setHours(24,0,0,0);
  const m=Math.floor((mid-now)/60000);return `${Math.floor(m/60)}h ${m%60}m`}
 function vAwards(){
+ if(isHostWallet())return '<div class="acct"><div class="acctcard emptycompact"><h3>Diamond call rewards</h3><p>View your weekly reward progress and earning rules in Payments → Withdraw.</p><button type="button" class="softbtn" onclick="go(\'payout\')">View host rewards</button></div></div>';
  const T=S.tasks, ready=T.filter(t=>t.p>=t.goal&&!t.claimed), done=T.filter(t=>t.p>=t.goal).length;
  const readyCoins=ready.reduce((a,t)=>a+t.rw,0);
  const order=t=>t.claimed?2:t.p>=t.goal?0:1;
@@ -10148,11 +10161,11 @@ function toggleMvp(){A().mvp=A().mvp?0:1;Native.send("settings.set",{showMvps:!!
 
 /* ---- Wallet earnings, KYC and payouts ---- */
 function earnCard(){
- if(!isApprovedHost())return "";
+ if(!isHostWallet()||window.ZimiHostAccess?.checking())return "";
  const own=!!S.walletSnapshot&&S.walletSnapshot.owner===S.user?.id,w=own?S.walletSnapshot.data:null,ready=!DEMO&&!contentPending('wallet')&&!ContentLoading.wallet.error&&Number.isSafeInteger(w?.earningsPaise)&&w.earningsPaise>=0;
  const money=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);
- const minimum=Number.isSafeInteger(w?.minimumWithdrawalPaise)&&w.minimumWithdrawalPaise>0,canWithdraw=ready&&w.withdrawalsEnabled===true&&minimum&&w.earningsPaise>=w.minimumWithdrawalPaise;
- const copy=DEMO?'Sign in to view your creator earnings.':!ready?'Refresh your wallet to view available earnings.':w.withdrawalsEnabled===false?'Withdrawals are currently paused.':minimum?'Minimum withdrawal '+money(w.minimumWithdrawalPaise):'Refresh your wallet to check withdrawal availability.';
+ const minimum=Number.isSafeInteger(w?.minimumWithdrawalPaise)&&w.minimumWithdrawalPaise>0,canWithdraw=isApprovedHost()&&ready&&w.withdrawalsEnabled===true&&minimum&&w.earningsPaise>=w.minimumWithdrawalPaise;
+ const copy=DEMO?'Sign in to view your creator earnings.':!ready?'Refresh your wallet to view available earnings.':!isApprovedHost()?'Host approval is required to withdraw diamonds.':w.withdrawalsEnabled===false?'Withdrawals are currently paused.':minimum?'Minimum withdrawal '+money(w.minimumWithdrawalPaise):'Refresh your wallet to check withdrawal availability.';
  return `<section class="acctsec zwallet-earnings"><div class="accttitle"><h2>Creator earnings</h2></div><div class="earnbox"><div class="zwallet-earnings-heading"><span>Available earnings</span><span>INR</span></div><strong class="zwallet-earnings-amount">${ready?money(diamondProfilePaise(w)):'—'}</strong>${ready&&Number.isSafeInteger(diamondProfileReservedPaise(w))&&diamondProfileReservedPaise(w)>0?`<p class="zwallet-reserved">${money(diamondProfileReservedPaise(w))} reserved for withdrawals</p>`:''}<p class="zwallet-earnings-note">${copy}</p><div class="zwallet-earnings-actions"><button type="button" class="ebtn" onclick="go('payout')" ${canWithdraw?'':'disabled'}>Withdraw</button><button type="button" class="zwallet-history" onclick="go('payout-history')">Withdrawal history</button></div>${!ready&&!DEMO?`<button type="button" class="zwallet-refresh" onclick="contentStart('wallet');r();Native.send('wallet.load')">Refresh earnings</button>`:''}</div></section>`}
 
 function kf(k,ph,label,type){return `<div class="editgroup"><label class="editlabel" for="kf_${k}">${label}</label>
@@ -10403,7 +10416,7 @@ Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublish
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});
 Native.on("data.chats",d=>{CH.splice(0,CH.length,...(d.chats||[]).map(c=>[knowHost(c.user).id,c.last||"",c.time||"",c.unread||0]));refresh()});
 Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()?personFrom(c.user):knowHost(c.user)).id,when:c.when||"",at:c.at||"",kind:c.kind||"video"}));refresh()});
-Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise]));refresh()});
+Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise,x.diamondUnits,x.diamondScale]));refresh()});
 Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>({id:knowHost(c.user).id,time:c.time||"",at:c.at||"",duration:c.duration||"",coins:c.coins||0,
  kind:c.kind==="voice"?"voice":"video",direction:c.direction==="incoming"?"incoming":"outgoing",status:c.status||""})));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;
@@ -10866,6 +10879,9 @@ function isApprovedHost() {
   return !!zimiHostAuthority && zimiHostAuthority.approved === true && zimiHostAuthority.role === 'host' &&
     zimiHostAuthority.hostStatus === 'approved' && zimiHostAuthority.verified === true;
 }
+/* Currency follows the authenticated account, including hosts awaiting review or
+   suspended by staff. This is display identity, never permission to host or withdraw. */
+function isHostWallet() { return zimiHostAuthority?.serverRole === 'host'; }
 function zimiSetHostAccess(data, source = 'server') {
   const old = zimiHostAuthority;
   const previous = isApprovedHost();
@@ -10881,7 +10897,7 @@ function zimiSetHostAccess(data, source = 'server') {
     S.acct.sender.kyc = verification; S.acct.host.kyc = verification;
     if (!approved) S.online = 0;
   }
-  if (previous !== approved || !!old?.checking !== checking) window.dispatchEvent(new CustomEvent('zimi:host-access', { detail: { ...zimiHostAuthority } }));
+  if (previous !== approved || !!old?.checking !== checking || old?.serverRole !== zimiHostAuthority.serverRole) window.dispatchEvent(new CustomEvent('zimi:host-access', { detail: { ...zimiHostAuthority } }));
   return !old || old.approved !== approved || old.checking !== checking || old.role !== zimiHostAuthority.role || old.serverRole !== zimiHostAuthority.serverRole || old.hostStatus !== zimiHostAuthority.hostStatus;
 }
 function zimiApplyHostAccount(account) {
@@ -10890,6 +10906,7 @@ function zimiApplyHostAccount(account) {
 }
 window.ZimiHostAccess = {
   approved: isApprovedHost,
+  financialHost: isHostWallet,
   checking: () => zimiHostAuthority?.checking === true,
   apply: zimiApplyHostAccount,
   reset() { zimiHostAuthority = null; zimiSetHostAccess({ approved: false }); },
@@ -10958,6 +10975,9 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
+  // Approved-host Home directories own their request state and paint only their
+  // results. Unrelated creator-feed loading must not replace the search input.
+  if(key==='home'&&isApprovedHost()&&S.v==='home')return;
   // Billing refreshes the wallet during a call. Patch its small surfaces rather
   // than rebuilding the screen and moving the playing camera elements.
   if(key==='wallet'&&window.zrPaintCallWallet?.())return;
@@ -11019,7 +11039,8 @@ function diamondFormat(units){
  return whole.toLocaleString('en-IN')+(fraction?'.'+fraction:'');
 }
 function diamondReady(wallet){return wallet?.diamondScale===1000000&&Number.isSafeInteger(wallet.diamondUnits)&&wallet.diamondUnits>=0&&Number.isSafeInteger(wallet.reservedDiamondUnits)&&wallet.reservedDiamondUnits>=0}
-function diamondOwnWallet(){return S.walletSnapshot?.owner===S.user?.id?S.walletSnapshot.data:null}
+function diamondOwnWallet(){return S.user?.id&&S.walletSnapshot?.owner===S.user.id?S.walletSnapshot.data:null}
+function diamondProfileValue(){const wallet=diamondOwnWallet();if(window.ZimiHostAccess?.checking()||contentPending('wallet'))return '<span class="zh-skeleton" role="status" aria-label="Loading diamond balance" aria-busy="true">'+skeletonLine('60px',20)+'</span>';if(ContentLoading.wallet.error||!diamondReady(wallet))return '<span aria-label="Diamond balance unavailable">—</span>';return diamondFormat(Number.isSafeInteger(wallet.profileDiamondUnits)?wallet.profileDiamondUnits:wallet.diamondUnits)}
 function diamondProfilePaise(wallet){return Number.isSafeInteger(wallet?.profileEarningsPaise)?wallet.profileEarningsPaise:wallet?.earningsPaise}
 function diamondProfileReservedPaise(wallet){return Number.isSafeInteger(wallet?.profileReservedPaise)?wallet.profileReservedPaise:wallet?.hostEarningsPolicy?0:wallet?.reservedPaise}
 function diamondBalanceView(wallet,withdrawal=false){const units=!withdrawal&&Number.isSafeInteger(wallet?.profileDiamondUnits)?wallet.profileDiamondUnits:wallet?.diamondUnits,reserved=withdrawal?wallet?.reservedDiamondUnits:Number.isSafeInteger(wallet?.profileReservedDiamondUnits)?wallet.profileReservedDiamondUnits:wallet?.hostEarningsPolicy?0:wallet?.reservedDiamondUnits;return diamondReady(wallet)?`<div class="zd-balance"><span>${!withdrawal&&wallet.hostEarningsPolicy?'Call & gift diamonds':'Available diamonds'}</span><strong>${diamondIcon(23)}<span>${diamondFormat(units)}</span></strong>${reserved>0?`<small>${diamondFormat(reserved)} diamonds reserved for withdrawals</small>`:''}</div>`:''}
@@ -11286,7 +11307,7 @@ function homeFeedQuery(){
 }
 function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')+'|'+(query.country||'')}
 function homeLoad(more=false){
-  if(isApprovedHost()&&S.v==='home')return hostUsersLoad(more);
+  if(isApprovedHost()&&S.v==='home')return hostDirectoryLoad(more);
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
   Home.error='';Home.loadingMore=more;Home.loading=!DEMO;
   if(DEMO){Home.loaded=true;Home.loadingMore=false;r();return}
@@ -11349,10 +11370,10 @@ function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A li
 function homeScreen(){return homeDashboard()}
 
 function homeOpen(id){if(!window.ZIMI_LIVE_STREAMING_ENABLED){const h=g(id);if(!h)return;return h.available&&!isHost()?homeCall(id):go('host',id)}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
-function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
-function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
+function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHostWallet())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
+function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHostWallet())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return appNotice('Live streaming is temporarily unavailable. Go online for 1:1 calls from your creator settings.');if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
-function homeClaim(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
+function homeClaim(){if(isHostWallet()){appNotice('Host call rewards are credited as diamonds. View your progress in Withdraw.');return}if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
 function homeNotifications(){return window.ZimiNotifications.open()}
 
 function homeMarkRead(id){znUpdate(true,id?[id]:null,!id)}
@@ -11395,7 +11416,7 @@ function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
   if(S.bgCall)return appNotice('Finish your current call first.');
   if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
-  if(isHost()){appNotice('Calls can be started from a member account.');return}
+  if(isHostWallet()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
   const setup=Home.dashboardSetup,h=g(S.h);
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&setup?.hostId===S.h){
@@ -11430,7 +11451,7 @@ async function homePrepareCall(view,id){
   if(view==='dialback'&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
-  if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
+  if(view==='dial'&&isHostWallet()){appNotice('Calls can be started from a member account.');return}
   window.ZimiRingback?.prime();
   const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
@@ -11447,7 +11468,7 @@ async function homePrepareCall(view,id){
     const ready=await Promise.race([window.ZimiMedia.prepare(!voice).then(()=>true),cancelled]);
     if(!ready||homeCallPreparation!==pending)return;
     if(S.v!==pending.screen||S.h!==pending.screenPeer||(view==='dialback'&&(S.caller?.id!==pending.caller||!isApprovedHost()))){homeCancelPrepare('',false);return}
-    if(view==='dial'&&(isHost()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
+    if(view==='dial'&&(isHostWallet()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
     clearTimeout(pending.timer);homeCallPreparation=null;
     Home.preparingCall=false;Home.preparingVoice=false;Home.mediaStatus='Connecting…';
     document.getElementById('app-notice')?.remove();
@@ -11466,16 +11487,16 @@ function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAc
 function homeWaiting(){return hcWaitingView()}
 function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;if(host)return hcSummaryView(s);return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${s?.entryFee?`<span>Entry fee <b>${n(s.entryFee)} coins</b></span>`:''}${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
 let homeSearchTimer;
-function homeSearchInput(value){if(isApprovedHost())return hostUsersSearch(value);S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
+function homeSearchInput(value){if(isApprovedHost())return hostDirectorySearch(value);S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
 
-function homeSearchRequest(more=false){if(isApprovedHost()){HostUsers.query=S.sq||'';return hostUsersLoad(more)}if(more&&Home.searchLoading)return;const q=S.sq||'',page=more?(Home.searchPage||1)+1:1;Home.searchLoading=!DEMO;Home.searchMore=more;Home.searchError='';if(DEMO){const rows=Home.hosts.filter(h=>(h.n+' '+h.cat).toLowerCase().includes(q.toLowerCase()));Home.searchRows=rows;Home.searchTotal=rows.length;Home.searchPage=1;Home.searchQuery=q;Home.searchLoading=false;Home.searchMore=false;homePaintSearch();return}contentStart('search',{page});homePaintSearch();Native.send('hosts.search',{q,page})}
+function homeSearchRequest(more=false){if(isApprovedHost()){S.sq=hostDirectoryState().query;return hostDirectoryLoad(more)}if(more&&Home.searchLoading)return;const q=S.sq||'',page=more?(Home.searchPage||1)+1:1;Home.searchLoading=!DEMO;Home.searchMore=more;Home.searchError='';if(DEMO){const rows=Home.hosts.filter(h=>(h.n+' '+h.cat).toLowerCase().includes(q.toLowerCase()));Home.searchRows=rows;Home.searchTotal=rows.length;Home.searchPage=1;Home.searchQuery=q;Home.searchLoading=false;Home.searchMore=false;homePaintSearch();return}contentStart('search',{page});homePaintSearch();Native.send('hosts.search',{q,page})}
 
-function homeSearchResults(){if(isApprovedHost())return hostUsersResults();const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),list=Home.searchQuery===(S.sq||'')?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('cards','Finding creators',4);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;return `${list.length?`<div class="zh-grid">${list.map(homeTile).join('')}</div>`:!pending?'<div class="zh-empty"><h3>No creators found</h3><p>Try another name or category.</p></div>':''}${more?contentSkeleton('cards','Loading more search results',2):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more</button>':''}`}
+function homeSearchResults(){if(isApprovedHost())return hostDirectoryResults();const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),list=Home.searchQuery===(S.sq||'')?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('cards','Finding creators',4);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;return `${list.length?`<div class="zh-grid">${list.map(homeTile).join('')}</div>`:!pending?'<div class="zh-empty"><h3>No creators found</h3><p>Try another name or category.</p></div>':''}${more?contentSkeleton('cards','Loading more search results',2):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more</button>':''}`}
 
 function homePaintSearch(){const el=document.getElementById('home-search-results');if(el)el.innerHTML=homeSearchResults()}
 ZimiPullRefresh.register(['home','all-creators'],{refresh:()=>homeLoad(),busy:()=>Home.loading||contentPending('home')});
-ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>Home.searchLoading||contentPending('search')});
-function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>${isApprovedHost()?'Find users':'Find your next connection'}</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
+ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>isApprovedHost()?hostDirectoryState().loading:Home.searchLoading||contentPending('search')});
+function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>${isApprovedHost()?(HostBrowse.tab==='active'?'Find active hosts':'Find members'):'Find your next connection'}</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
 function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');document.documentElement.classList.toggle('zw-app',S.v==='coins');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','chats','profile','settings'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
   if(S.v==='home')return homeHeader();
@@ -11486,7 +11507,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='refer')return window.ZimiReferral.header();
   if(S.v==='agency')return window.ZimiAgency.header();
   if(['support','support-new','support-chat'].includes(S.v))return window.ZimiSupport.header();
-  if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="${isApprovedHost()?'Search users by name or ID':'Search creators or categories'}" aria-label="${isApprovedHost()?'Search users':'Search creators'}" oninput="homeSearchInput(this.value)"></div></header>`;
+  if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(isApprovedHost()?hostDirectoryState().query:S.sq||'')}" maxlength="${isApprovedHost()&&HostBrowse.tab==='active'?80:100}" placeholder="${isApprovedHost()?hostDirectorySearchLabel():'Search creators or categories'}" aria-label="${isApprovedHost()?(HostBrowse.tab==='active'?'Search active hosts':'Search users'):'Search creators'}" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
   const title={notifications:'Notifications',broadcast:'Go Live'}[S.v];
@@ -11515,7 +11536,7 @@ Native.on('stream.viewers',d=>{if(Home.stream?.id===d.streamId){Home.stream.view
 Native.on('stream.ended',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError=''}if(Home.stream?.id===d.streamId){window.ZimiMedia?.stop();Home.stream=null;go('home');appNotice('This live session has ended.');homeLoad()}});
 Native.on('stream.closed',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError='';if(S.v==='home')r()}});
 Native.on('operation.error',d=>{if(['stream.end','stream.leave'].includes(d.action)&&Home.pendingClose){Home.closeError=d.message;homeShowCloseError()}});
-Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;Home.loadingMore=false;Home.error=d.message}if(d.action==='call.match')Home.matching=false;if(d.action==='awards.claim')Home.claiming=false;if(d.action==='notifications.load')Home.notifyLoading=false;if(d.action==='presence.set')Home.presenceBusy=false;if(d.action==='call.accept'){S.acceptingCall=false;window.ZimiMedia?.stop()}if(d.action?.startsWith('stream.')){Home.streamBusy=false;Home.mediaStatus=d.message}if(['home','all-creators','chats','coins','notifications','live','broadcast','setup','waiting','ring'].includes(S.v))r()});
+Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;Home.loadingMore=false;Home.error=d.message}if(d.action==='call.match')Home.matching=false;if(d.action==='awards.claim')Home.claiming=false;if(d.action==='notifications.load')Home.notifyLoading=false;if(d.action==='presence.set')Home.presenceBusy=false;if(d.action==='call.accept'){S.acceptingCall=false;window.ZimiMedia?.stop()}if(d.action?.startsWith('stream.')){Home.streamBusy=false;Home.mediaStatus=d.message}if(isApprovedHost()&&['home.reload','users.load','hosts.active.load'].includes(d.action)&&['home','search'].includes(S.v))return;if(['home','all-creators','chats','coins','notifications','live','broadcast','setup','waiting','ring'].includes(S.v))r()});
 // Revocation immediately closes host surfaces; member calls and viewing remain available.
 window.addEventListener('zimi:host-access',event=>{
   // A reconnect checks permission for new activity without interrupting an existing session.
@@ -11647,7 +11668,7 @@ function homeDashboardEmpty(){
 }
 // Like the reference: the country chips, then one square-card grid. Hosts keep loading with "Load more".
 function homeDashboard(){
-  if(isApprovedHost())return hostUsersScreen();
+  if(isApprovedHost())return hostDirectoryScreen();
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
@@ -11655,34 +11676,61 @@ function homeDashboard(){
   return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
 }
 
-/* Approved hosts browse members separately from the creator feeds. Requests are
-   paginated and searched on the server; only public identity is held here. */
-const HostUsers={owner:'',rows:[],query:'',resultQuery:'',page:0,requestedPage:1,total:0,loaded:false,loading:false,more:false,error:'',timer:null,remembered:new Set()};
-function hostUsersHeader(){return `<header class="zh-header zh-users-header"><h1>Users</h1><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="document.getElementById('host-user-search')?.focus()" aria-label="Search users">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
-function hostUsersPaint(){if(!isApprovedHost())return;const results=document.getElementById(S.v==='search'?'home-search-results':'host-user-results');if(results)results.innerHTML=hostUsersResults();contentImagesReady();window.ZimiLaunch?.check()}
-function hostUsersLoad(more=false){
+/* Each approved-host directory keeps its own query and pages. Only the selected
+   tab paints, so an in-flight read cannot replace the other tab's input/caret. */
+function hostDirectoryStateNew(){return {owner:'',rows:[],query:'',resultQuery:'',page:0,requestedPage:1,total:0,loaded:false,loadedAt:0,loading:false,more:false,error:'',timer:null,remembered:new Set()}}
+const HostUsers=hostDirectoryStateNew(),HostActiveHosts=hostDirectoryStateNew(),HostBrowse={tab:'members'};
+const HOST_DIRECTORY_TABS=[['members','Members'],['active','Active Hosts']];
+function hostDirectoryState(tab=HostBrowse.tab){return tab==='active'?HostActiveHosts:HostUsers}
+function hostDirectoryNeedsLoad(tab=HostBrowse.tab){const state=hostDirectoryState(tab);return !state.loading&&(!state.loaded||tab==='active'&&Date.now()-state.loadedAt>30000)}
+function hostDirectorySearchLabel(){return HostBrowse.tab==='active'?'Search active hosts':'Search users by name or ID'}
+function hostUsersHeader(){return `<header class="zh-header zh-users-header"><div class="zh-host-tabs" role="tablist" aria-label="Host directory" onkeydown="hostDirectoryTabKey(event)">${HOST_DIRECTORY_TABS.map(([tab,label])=>`<button type="button" id="host-directory-tab-${tab}" role="tab" aria-selected="${HostBrowse.tab===tab}" aria-controls="host-directory-panel" tabindex="${HostBrowse.tab===tab?'0':'-1'}" onclick="hostDirectoryTab('${tab}')">${label}</button>`).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="document.getElementById('host-user-search')?.focus()" aria-label="${HostBrowse.tab==='active'?'Search active hosts':'Search users'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
+function hostDirectoryTab(tab){
+  if(!isApprovedHost()||!HOST_DIRECTORY_TABS.some(([key])=>key===tab)||HostBrowse.tab===tab)return;
+  HostBrowse.tab=tab;S.sq=hostDirectoryState().query;r();document.getElementById('host-directory-tab-'+tab)?.focus();
+  if(hostDirectoryNeedsLoad())hostDirectoryLoad();
+}
+function hostDirectoryTabKey(event){
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const tabs=HOST_DIRECTORY_TABS.map(([key])=>key),at=tabs.indexOf(HostBrowse.tab);
+  const next=event.key==='Home'?tabs[0]:event.key==='End'?tabs.at(-1):tabs[(at+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];
+  hostDirectoryTab(next);document.getElementById('host-directory-tab-'+next)?.focus();
+}
+function hostDirectoryPaint(tab){
+  if(!isApprovedHost()||HostBrowse.tab!==tab||!['home','search'].includes(S.v))return;
+  const results=document.getElementById(S.v==='search'?'home-search-results':'host-user-results');
+  if(results){results.innerHTML=hostDirectoryResults();results.setAttribute('aria-busy',String(hostDirectoryState().loading))}
+  contentImagesReady();window.ZimiLaunch?.check();
+}
+function hostUsersPaint(){hostDirectoryPaint('members')}
+function hostDirectoryLoad(more=false,tab=HostBrowse.tab){
   if(!isApprovedHost())return;
-  if(more&&(HostUsers.loading||HostUsers.rows.length>=HostUsers.total))return;
-  clearTimeout(HostUsers.timer);HostUsers.timer=null;
-  const q=HostUsers.query.trim(),page=more?HostUsers.page+1:1;
-  Object.assign(HostUsers,{loading:true,more,error:'',requestedPage:page});hostUsersPaint();
-  if(DEMO){Object.assign(HostUsers,{rows:[],loaded:true,loading:false,more:false,page:1,total:0,resultQuery:q});hostUsersPaint();return}
-  Native.send('users.load',{q,page});
+  const state=hostDirectoryState(tab),maxPage=tab==='active'?1000:10000;
+  if(more&&(state.loading||state.rows.length>=state.total||state.page>=maxPage))return;
+  clearTimeout(state.timer);state.timer=null;
+  const q=state.query.trim(),page=more?state.page+1:1;
+  Object.assign(state,{loading:true,more,error:'',requestedPage:page});hostDirectoryPaint(tab);
+  if(DEMO){Object.assign(state,{rows:[],loaded:true,loading:false,more:false,page:1,total:0,resultQuery:q});hostDirectoryPaint(tab);return}
+  Native.send(tab==='active'?'hosts.active.load':'users.load',{q,page});
 }
-function hostUsersSearch(value){
-  HostUsers.query=String(value).slice(0,100);S.sq=HostUsers.query;
-  clearTimeout(HostUsers.timer);Object.assign(HostUsers,{loading:true,more:false,error:'',requestedPage:1});hostUsersPaint();
-  HostUsers.timer=setTimeout(()=>hostUsersLoad(),280);
+function hostUsersLoad(more=false){hostDirectoryLoad(more,'members')}
+function hostDirectorySearch(value,tab=HostBrowse.tab){
+  const state=hostDirectoryState(tab);state.query=String(value).slice(0,tab==='active'?80:100);S.sq=state.query;
+  clearTimeout(state.timer);Object.assign(state,{loading:true,more:false,error:'',requestedPage:1});hostDirectoryPaint(tab);
+  state.timer=setTimeout(()=>hostDirectoryLoad(false,tab),280);
 }
-function hostUsersPeer(id){
+function hostUsersSearch(value){hostDirectorySearch(value,'members')}
+function hostDirectoryPeer(id,tab){
   if(!isApprovedHost()){window.ZimiHostAccess?.guard();return null}
-  const user=HostUsers.rows.find(row=>row.id===id);if(!user)return null;
+  const state=hostDirectoryState(tab),user=state.rows.find(row=>row.id===id);if(!user)return null;
   // Chat/profile helpers share identity through g(), without turning this member
   // into a verified creator or inventing online presence.
   const known=g(id);if(known)Object.assign(known,user);else EXTRA.push({...user});
-  HostUsers.remembered.add(id);
+  state.remembered.add(id);
   return user;
 }
+function hostUsersPeer(id){return hostDirectoryPeer(id,'members')}
 function hostUsersOpen(id,action){
   const user=hostUsersPeer(id);if(!user)return;
   if(action==='chat')return zcOpen(id);
@@ -11693,35 +11741,55 @@ function hostUsersRow(user){
   const id=domId(user.id),name=esc(user.n);
   return `<article class="zh-user-row" data-user-id="${esc(user.id)}"><button type="button" class="zh-user-person" onclick="hostUsersOpen('${id}','profile')" aria-label="View ${name} profile"><span class="zh-user-avatar">${homeCover(user)}<i class="${user.on?'is-online':''}" aria-hidden="true"></i></span><span class="zh-user-identity"><strong>${name}</strong><small>${user.on?'Online':'Offline'}${user.c?' · '+esc(user.c):''}</small></span></button><div class="zh-user-actions"><button type="button" onclick="hostUsersOpen('${id}','chat')" aria-label="Chat with ${name}">${hi('chat',20)}</button><button type="button" onclick="hostUsersOpen('${id}','voice')" aria-label="Voice call ${name}">${hi('ph',20)}</button><button type="button" class="zh-user-video" onclick="hostUsersOpen('${id}','video')" aria-label="Video call ${name}">${hi('vid',20)}</button></div></article>`;
 }
-function hostUsersResults(){
-  const pending=HostUsers.loading||!HostUsers.loaded,rows=HostUsers.resultQuery===HostUsers.query.trim()?HostUsers.rows:[],more=pending&&HostUsers.more;
-  if(pending&&!more)return contentSkeleton('rows','Loading users',6);
-  const error=HostUsers.error,moreError=error&&HostUsers.requestedPage>1;
-  if(error&&!moreError)return `<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="hostUsersLoad()">Retry</button></div>`;
-  return `${rows.length?`<div class="zh-user-list" aria-label="Users">${rows.map(hostUsersRow).join('')}</div>`:`<div class="zh-empty"><h3>${HostUsers.query.trim()?'No users found':'No users to show yet'}</h3><p>${HostUsers.query.trim()?'Try another name or user ID.':'Members will appear here when they join.'}</p></div>`}${more?contentSkeleton('rows','Loading more users',3):moreError?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="hostUsersLoad(true)">Retry loading more users</button></div>`:rows.length<HostUsers.total?'<button type="button" class="zh-load-more" onclick="hostUsersLoad(true)">Load more users</button>':''}`;
+function hostActiveHostsOpen(id,action){
+  const host=hostDirectoryPeer(id,'active');if(!host)return;
+  if(action==='chat')return zcOpen(id);
+  if(action==='profile')go('host',id);
 }
-function hostUsersScreen(){return `<section class="zh-home zh-host-users"><label class="zh-user-search">${hi('srch',20)}<input type="search" id="host-user-search" aria-label="Search users by name or ID" placeholder="Search users by name or ID" maxlength="100" value="${esc(HostUsers.query)}" oninput="hostUsersSearch(this.value)"></label><div id="host-user-results">${hostUsersResults()}</div>${homeDashboardHostEntry()}</section>`}
-function hostUsersForget(id){for(const list of [H,EXTRA]){const at=list.findIndex(user=>user.id===id);if(at>=0)list.splice(at,1)}delete PEOPLE[id];HostUsers.remembered.delete(id)}
-function hostUsersReset(){clearTimeout(HostUsers.timer);for(const id of HostUsers.remembered)hostUsersForget(id);S.sq='';Object.assign(HostUsers,{owner:'',rows:[],query:'',resultQuery:'',page:0,requestedPage:1,total:0,loaded:false,loading:false,more:false,error:'',timer:null})}
-function hostUsersEnsureAccount(){const owner=S.user?.id||'';if(HostUsers.owner!==owner){hostUsersReset();HostUsers.owner=owner}}
+function hostActiveHostsRow(host){
+  const id=domId(host.id),name=esc(host.n);
+  return `<article class="zh-user-row zh-active-host-row" data-user-id="${esc(host.id)}"><button type="button" class="zh-user-person" onclick="hostActiveHostsOpen('${id}','profile')" aria-label="View ${name} profile"><span class="zh-user-avatar">${homeCover(host)}<i class="${host.on?'is-online':''}" aria-hidden="true"></i></span><span class="zh-user-identity"><strong>${name}</strong><small>${host.on?'Online':'Offline'}${host.c?' · '+esc(host.c):''}</small></span></button><div class="zh-user-actions"><button type="button" onclick="hostActiveHostsOpen('${id}','chat')" aria-label="Chat with ${name}">${hi('chat',20)}</button></div></article>`;
+}
+function hostDirectoryResults(tab=HostBrowse.tab){
+  const active=tab==='active',state=hostDirectoryState(tab),noun=active?'active hosts':'users',pending=state.loading||!state.loaded,rows=state.resultQuery===state.query.trim()?state.rows:[],more=pending&&state.more;
+  if(pending&&!more)return contentSkeleton('rows','Loading '+noun,6);
+  const error=state.error,moreError=error&&state.requestedPage>1,load=`hostDirectoryLoad(false,'${tab}')`,loadMore=`hostDirectoryLoad(true,'${tab}')`;
+  if(error&&!moreError)return `<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="${load}">Retry</button></div>`;
+  return `${rows.length?`<div class="zh-user-list" aria-label="${active?'Active hosts':'Members'}">${rows.map(active?hostActiveHostsRow:hostUsersRow).join('')}</div>`:`<div class="zh-empty"><h3>${active?'No active hosts found':state.query.trim()?'No users found':'No users to show yet'}</h3><p>${active?(state.query.trim()?'Try another host name.':'Hosts will appear here when they are online.'):state.query.trim()?'Try another name or user ID.':'Members will appear here when they join.'}</p></div>`}${more?contentSkeleton('rows','Loading more '+noun,3):moreError?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="${loadMore}">Retry loading more ${noun}</button></div>`:rows.length<state.total&&state.page<(active?1000:10000)?`<button type="button" class="zh-load-more" onclick="${loadMore}">Load more ${noun}</button>`:''}`;
+}
+function hostUsersResults(){return hostDirectoryResults('members')}
+function hostDirectoryScreen(){const state=hostDirectoryState(),label=hostDirectorySearchLabel();return `<section id="host-directory-panel" class="zh-home zh-host-users" role="tabpanel" aria-labelledby="host-directory-tab-${HostBrowse.tab}"><label class="zh-user-search">${hi('srch',20)}<input type="search" id="host-user-search" aria-label="${label}" placeholder="${label}" maxlength="${HostBrowse.tab==='active'?80:100}" value="${esc(state.query)}" oninput="hostDirectorySearch(this.value)"></label><div id="host-user-results" aria-busy="${state.loading}">${hostDirectoryResults()}</div>${homeDashboardHostEntry()}</section>`}
+function hostUsersForget(id){for(const list of [H,EXTRA]){const at=list.findIndex(user=>user.id===id);if(at>=0)list.splice(at,1)}delete PEOPLE[id];HostUsers.remembered.delete(id);HostActiveHosts.remembered.delete(id)}
+function hostUsersReset(){for(const state of [HostUsers,HostActiveHosts]){clearTimeout(state.timer);for(const id of state.remembered)hostUsersForget(id);Object.assign(state,hostDirectoryStateNew())}HostBrowse.tab='members';S.sq=''}
+function hostUsersEnsureAccount(){const owner=S.user?.id||'';if(HostUsers.owner!==owner){hostUsersReset();HostUsers.owner=owner;HostActiveHosts.owner=owner}}
 Native.on('data.users',data=>{
   if(!isApprovedHost()||data.q!==HostUsers.query.trim()||data.page!==HostUsers.requestedPage)return;
   const rows=(data.users||[]).filter(user=>user.serverRole==='user'&&user.id!==S.user?.id).map(homeCreator);
   HostUsers.rows=data.page>1?[...HostUsers.rows,...rows.filter(user=>!HostUsers.rows.some(old=>old.id===user.id))]:rows;
   Object.assign(HostUsers,{loaded:true,loading:false,more:false,error:'',page:data.page,total:data.total,resultQuery:data.q});hostUsersPaint();
 });
-Native.on('data.loading',data=>{
-  if(data.resource!=='users'||!isApprovedHost()||(data.q||'')!==HostUsers.query.trim()||data.page!==HostUsers.requestedPage)return;
-  Object.assign(HostUsers,{loading:!!data.loading,more:!!data.loading&&data.page>1,error:data.error||''});
-  if(data.error)HostUsers.loaded=true;hostUsersPaint();
+Native.on('data.activeHosts',data=>{
+  if(!isApprovedHost()||data.q!==HostActiveHosts.query.trim()||data.page!==HostActiveHosts.requestedPage)return;
+  // The dedicated server read applies online/approval/privacy filters before
+  // pagination. Keep its real presence instead of hostFrom's callable-host tag.
+  const rows=(data.hosts||[]).filter(host=>(host.serverRole==='host'||host.role==='host')&&host.verified===true&&host.online===true&&host.id!==S.user?.id).map(host=>({...homeCreator(host),on:host.online?1:0}));
+  HostActiveHosts.rows=data.page>1?[...HostActiveHosts.rows,...rows.filter(host=>!HostActiveHosts.rows.some(old=>old.id===host.id))]:rows;
+  Object.assign(HostActiveHosts,{loaded:true,loadedAt:Date.now(),loading:false,more:false,error:'',page:data.page,total:data.total,resultQuery:data.q});hostDirectoryPaint('active');
 });
-Native.on('session',()=>{hostUsersEnsureAccount();if(isApprovedHost()&&S.v==='home'&&!HostUsers.loaded&&!HostUsers.loading)hostUsersLoad()});
+Native.on('data.loading',data=>{
+  const tab=data.resource==='users'?'members':data.resource==='activeHosts'?'active':null;if(!tab||!isApprovedHost())return;
+  const state=hostDirectoryState(tab);if((data.q||'')!==state.query.trim()||data.page!==state.requestedPage)return;
+  Object.assign(state,{loading:!!data.loading,more:!!data.loading&&data.page>1,error:data.error||''});
+  if(data.error)state.loaded=true;hostDirectoryPaint(tab);
+});
+function hostDirectoryEnsureLoaded(){hostUsersEnsureAccount();if(hostDirectoryNeedsLoad())hostDirectoryLoad()}
+Native.on('session',()=>{hostUsersEnsureAccount();if(isApprovedHost()&&S.v==='home')hostDirectoryEnsureLoaded()});
 Native.on('session.none',hostUsersReset);Native.on('session.expired',hostUsersReset);
-window.addEventListener('zimi:host-access',event=>{if(event.detail.checking)return;if(!event.detail.approved){hostUsersReset();if(S.v==='search')r()}else if(S.v==='home'){hostUsersEnsureAccount();if(!HostUsers.loaded&&!HostUsers.loading)hostUsersLoad()}});
-document.addEventListener('aurora:navigate',()=>{if(isApprovedHost()&&S.v==='home'){hostUsersEnsureAccount();if(!HostUsers.loaded&&!HostUsers.loading)hostUsersLoad()}});
-Native.on('block.saved',data=>{if(!isApprovedHost())return;if(data.blocked){HostUsers.rows=HostUsers.rows.filter(user=>user.id!==data.id);hostUsersForget(data.id);hostUsersPaint()}if(['home','search'].includes(S.v))hostUsersLoad();else HostUsers.loaded=false});
-Native.on('app.foreground',()=>{if(isApprovedHost()&&['home','search'].includes(S.v)&&!HostUsers.loading)hostUsersLoad()});
-ZimiPullRefresh.register('home',{refresh:()=>isApprovedHost()?hostUsersLoad():homeLoad(),busy:()=>isApprovedHost()?HostUsers.loading:Home.loading||contentPending('home')});
+window.addEventListener('zimi:host-access',event=>{if(event.detail.checking)return;if(!event.detail.approved){hostUsersReset();if(['home','search'].includes(S.v))r()}else if(S.v==='home')hostDirectoryEnsureLoaded()});
+document.addEventListener('aurora:navigate',()=>{if(isApprovedHost()&&S.v==='home')hostDirectoryEnsureLoaded()});
+Native.on('block.saved',data=>{if(!isApprovedHost())return;for(const state of [HostUsers,HostActiveHosts]){if(data.blocked)state.rows=state.rows.filter(user=>user.id!==data.id);state.loaded=false}if(data.blocked){hostUsersForget(data.id);hostDirectoryPaint(HostBrowse.tab)}if(['home','search'].includes(S.v))hostDirectoryLoad()});
+Native.on('app.foreground',()=>{if(isApprovedHost()&&['home','search'].includes(S.v)&&!hostDirectoryState().loading)hostDirectoryLoad()});
+ZimiPullRefresh.register('home',{refresh:()=>isApprovedHost()?hostDirectoryLoad():homeLoad(),busy:()=>isApprovedHost()?hostDirectoryState().loading:Home.loading||contentPending('home')});
 
 /* All Creators reuses the authenticated popular feed and its server pagination.
    Availability presentation comes from homeRemember/hostFrom; never filter a
@@ -11791,11 +11859,12 @@ const ZREFER_DEMO={code:'BZ7K4Q',shareUrl:'https://binzolive.com/?ref=BZ7K4Q',re
 // The preview keeps its sample apart from server data, so trying the code form never turns the pop-ups on.
 function zrfData(){return ZRefer.data||(DEMO?ZRefer.demo||ZREFER_DEMO:null)}
 function zrfCoins(value){return Number(value||0).toLocaleString('en-IN')}
-function zrfLoad(){if(DEMO){r();return}contentStart('referral');Native.send('referral.load');if(S.v==='refer')r()}
+function zrfLoad(){if(isHostWallet())return;if(DEMO){r();return}contentStart('referral');Native.send('referral.load');if(S.v==='refer')r()}
 function zrfOpen(from){ZRefer.from=['home','settings'].includes(from)?from:'settings';go('refer')}
 function zrfHeader(){const home=ZRefer.from==='home';return `<header class="zh-subheader zrf-header">${backButton(`go('${home?'home':'settings'}')`,{label:home?'Back to home':'Back to settings'})}<h1>Refer &amp; Earn</h1></header>`}
 
 function zrfView(){
+  if(isHostWallet())return '<section class="zrf-page"><p>Coin referral rewards are available to member accounts.</p></section>';
   const data=zrfData(),pending=!DEMO&&contentPending('referral')&&!data,error=!DEMO&&!data&&ContentLoading.referral.error;
   if(pending)return `<section class="zrf-page">${contentSkeleton('rows','Loading your invite code',3)}</section>`;
   if(error)return `<section class="zrf-page">${contentError('referral')}</section>`;
@@ -11822,6 +11891,7 @@ async function zrfCopy(){
 }
 function zrfShare(){if(DEMO){appNotice('Design preview · this opens your phone’s share sheet.');return}Native.send('referral.share')}
 function zrfApply(){
+  if(isHostWallet())return;
   const input=document.getElementById('zrf-code'),code=(input?.value||'').replace(/[\s-]/g,'').toUpperCase();
   if(ZRefer.applying)return;
   if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){ZRefer.applyError='Enter the 6-character code your friend shared.';r();document.getElementById('zrf-code')?.focus();return}
@@ -11834,7 +11904,7 @@ function zrfApply(){
 function zrfPromoKey(){return 'zimi.referPromo.'+(S.user?.id||'me')}
 function zrfToday(){const d=new Date();return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`}
 function zrfPromoDue(){
-  if(!(ZRefer.data||ZREFER_PREVIEW)||S.v!=='home'||!S.loggedIn||isHost()||document.querySelector('dialog[open]')||Home.giftTo)return false;
+  if(!(ZRefer.data||ZREFER_PREVIEW)||S.v!=='home'||!S.loggedIn||isHostWallet()||document.querySelector('dialog[open]')||Home.giftTo)return false;
   try{return localStorage.getItem(zrfPromoKey())!==zrfToday()}catch{return true}
 }
 // Home redraws often; a pending pop-up keeps its timer instead of starting over on every redraw.
@@ -11864,6 +11934,7 @@ function zrfShowPromo(){
    at the top of the call so it never covers the call controls. Invite opens the share
    sheet over the running call. */
 function zrfCallCard(){
+  if(isHostWallet())return '';
   const card=ZRefer.card;if(!card||card.callId!==zrfCallKey())return '';
   return `<aside class="zrf-call-card" role="status"><span class="zrf-call-icon" aria-hidden="true">${hi('gift',18)}</span><span class="zrf-call-copy"><b>Refer a friend, earn ${zrfCoins(card.reward)} coins</b><small>When they make their first coin purchase</small></span><button type="button" class="zrf-call-invite" onclick="zrfCallInvite()">Invite</button><button type="button" class="zrf-call-close" aria-label="Close" onclick="zrfHideCallCard()">${hi('close',16)}</button></aside>`;
 }
@@ -11872,13 +11943,13 @@ function zrfHideCallCard(){clearTimeout(ZRefer.cardTimer);if(!ZRefer.card)return
 function zrfCallInvite(){zrfHideCallCard();zrfShare()}
 function zrfCallCheck(){
   const data=ZRefer.data||(ZREFER_PREVIEW?ZREFER_DEMO:null),key=zrfCallKey();
-  if(S.v!=='call'||isHost()||!data||S.sec<60||ZRefer.callShown.has(key))return;
+  if(S.v!=='call'||isHostWallet()||!data||S.sec<60||ZRefer.callShown.has(key))return;
   ZRefer.callShown.add(key);ZRefer.card={callId:key,reward:data.rewardCoins};r();
   ZRefer.cardTimer=setTimeout(zrfHideCallCard,8000);
 }
 function zrfWatchCall(){
   clearInterval(ZRefer.checkTimer);ZRefer.checkTimer=null;
-  if(S.v==='call'&&!isHost())ZRefer.checkTimer=setInterval(zrfCallCheck,1000);
+  if(S.v==='call'&&!isHostWallet())ZRefer.checkTimer=setInterval(zrfCallCheck,1000);
   else if(ZRefer.card){clearTimeout(ZRefer.cardTimer);ZRefer.card=null}
 }
 
@@ -11895,7 +11966,7 @@ document.addEventListener('aurora:navigate',()=>{
   zrfWatchCall();
   if(S.v!=='home')zrfCancelPromo();
   if(S.v==='refer'){ZRefer.requested=true;zrfLoad();if(ZRefer.focusCode){ZRefer.focusCode=false;setTimeout(()=>document.getElementById('zrf-code')?.focus(),0)}}
-  else if(S.v==='home'&&S.loggedIn&&!DEMO&&!ZRefer.requested){ZRefer.requested=true;Native.send('referral.load')}
+  else if(S.v==='home'&&S.loggedIn&&!isHostWallet()&&!DEMO&&!ZRefer.requested){ZRefer.requested=true;Native.send('referral.load')}
 });
 // Once Home has its hosts on screen, a due pop-up follows.
 const zrfPreviousAfterRender=ZimiHome.afterRender;
@@ -11978,6 +12049,7 @@ const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',ve
 /* One refusal prompt for paid actions, including an authoritative server refusal
    after a locally sufficient balance. Opening it never spends or retries coins. */
 function coinRequireRecharge(proceed=null){
+ if(isHostWallet()){appNotice('Coins are for member accounts. Your host earnings are diamonds.');return}
  if(CoinUI.rechargePrompt)return;
  if(typeof ctRechargeClose==='function')ctRechargeClose();
  const focus=document.activeElement;
@@ -11997,6 +12069,7 @@ function coinCloseRecharge(restore=true){
  target?.focus({preventScroll:true});
 }
 function coinRechargeContinue(){
+ if(isHostWallet()){coinCloseRecharge(false);return}
  const prompt=CoinUI.rechargePrompt;if(!prompt)return;coinCloseRecharge(false);
  if(prompt.proceed)return prompt.proceed();
  if(S.v==='incoming'&&S.memberRing)return memberRingAddCoins();
@@ -12006,7 +12079,7 @@ function coinRechargeContinue(){
  Home.giftTo=null;CoinUI.topup=false;S.tray=0;S.sh=0;go('coins');
 }
 function coinPaint(){const catalog=document.querySelector('.zg-catalog');if(catalog)CoinUI.giftScroll=catalog.scrollTop;if(Home.giftTo||S.v==='coins')r()}
-function coinWalletReady(){return DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error)}
+function coinWalletReady(){return !isHostWallet()&&(DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error))}
 function coinHasPendingPayment(){return coinPendingPayment()||Array.from(CoinUI.orders.values()).some(p=>p.status==='PENDING'&&!CoinUI.dismissedOrders.has(p.merchantOrderId))}
 function coinPendingPayment(){return !!Home.checkout&&!CoinUI.dismissedOrders.has(Home.checkout.merchantOrderId)&&!['SUCCESS','FAILED','REVERTED'].includes(Home.checkout.status)}
 function coinPrice(paise){return '₹'+(Number(paise||0)/100).toLocaleString('en-IN',{maximumFractionDigits:2})}
@@ -12033,6 +12106,7 @@ function coinCloseCheckoutPrompt(restore=true){
  if(restore){const target=prompt?.focus?.isConnected?prompt.focus:document.querySelector(Home.giftTo?'.zw-sheet .zw-buy':'.zw-buy');target?.focus({preventScroll:true})}
 }
 function coinOpenCheckoutPrompt(){
+ if(isHostWallet())return;
  if(CoinUI.checkoutPrompt||Home.checkoutBusy||Home.checkoutAttempt||coinHasPendingPayment())return;
  const pack=Home.packs.find(item=>item.id===Home.packId)||Home.packs[0],owner=coinCheckoutOwner();if(!pack||!owner||!DEMO&&!S.loggedIn)return;
  CoinUI.checkoutPrompt={owner,pack:{...pack},choice:null,error:'',focus:document.activeElement};
@@ -12044,6 +12118,7 @@ function coinChoosePayment(route){
 }
 function coinPaintCheckoutPrompt(){
  const prompt=CoinUI.checkoutPrompt;if(!prompt)return;
+ if(isHostWallet()){coinCloseCheckoutPrompt(false);return}
  if(prompt.owner!==coinCheckoutOwner()||!['coins'].includes(S.v)&&!(Home.giftTo&&CoinUI.topup)||Home.checkoutAttempt||coinHasPendingPayment()){coinCloseCheckoutPrompt(false);return}
  const current=Home.packs.find(pack=>pack.id===prompt.pack.id);
  if(!current){prompt.choice=null;prompt.error='This coin pack is no longer available. Close this window and choose another pack.'}
@@ -12062,6 +12137,7 @@ function coinPaintCheckoutPrompt(){
  if(creating)dialog.showModal();else if(focused&&dialog.querySelector('#'+CSS.escape(focused)))dialog.querySelector('#'+CSS.escape(focused)).focus({preventScroll:true});
 }
 function coinConfirmCheckout(){
+ if(isHostWallet())return;
  const prompt=CoinUI.checkoutPrompt;if(!prompt||prompt.owner!==coinCheckoutOwner()||Home.checkoutBusy||CoinUI.verifyBusy||Home.checkoutAttempt||coinHasPendingPayment()||window.ZimiOffline?.isOffline())return;
  const pack=Home.packs.find(item=>item.id===prompt.pack.id),option=paymentCoinOptions().find(item=>item.route===prompt.choice);
  if(!pack||!option||pack.coins!==prompt.pack.coins||pack.pricePaise!==prompt.pack.pricePaise){coinPaintCheckoutPrompt();return}
@@ -12072,10 +12148,12 @@ function coinConfirmCheckout(){
  coinCloseCheckoutPrompt(false);homeCheckout();
 }
 function homeCoins(embedded=false){
+ if(isHostWallet())return '<section class="zw-coins"><p>Your host account earns diamonds. View your balance in Wallet &amp; Activity.</p><button type="button" class="zh-primary" onclick="go(\'wallet\')">Open diamond wallet</button></section>';
  const selected=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs'),pending=coinHasPendingPayment();
  return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${!embedded?window.ZimiCallInvitations?.coinsContext()||'':''}${coinWalletView(embedded)}${coinWalletError()}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&!pending?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
 }
 function homeCheckout(resume=false){
+ if(isHostWallet())return;
  if(Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
  if(coinHasPendingPayment()&&!resume)return;
  if(!resume&&!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
@@ -12127,6 +12205,7 @@ function coinAcceptPayment(d,checkout=false){
  coinPaint();
 }
 function homeGifts(id,selectedGiftId=''){
+ if(isHostWallet()){appNotice('Gifts are sent from member accounts. Hosts receive diamonds.');return}
  if(!id)return;CoinUI.focus={label:document.activeElement?.getAttribute('aria-label'),id:document.activeElement?.id};
  if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError='';CoinUI.giftScroll=0}
  if(selectedGiftId&&!Home.giftBusy&&Home.gifts.some(gift=>gift.id===selectedGiftId))CoinUI.giftId=selectedGiftId;
@@ -12138,7 +12217,7 @@ function homeGifts(id,selectedGiftId=''){
 function coinWarmGift(id){const gift=Home.gifts.find(item=>item.id===id);if(gift)window.ZimiGiftPlayback?.preload(giftMotionUrl(gift.name,gift.mediaUrl))}
 function homeSelectGift(id){if(Home.giftBusy)return;CoinUI.giftId=id;CoinUI.giftError='';coinWarmGift(id);coinPaint()}
 function homeGiftUrl(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password&&!/[<>"'`\s]/.test(raw)?esc(u.href):''}catch{return ''}}
-function homeGiftTopup(){CoinUI.topup=true;CoinUI.paymentError='';coinPaint()}
+function homeGiftTopup(){if(isHostWallet())return;CoinUI.topup=true;CoinUI.paymentError='';coinPaint()}
 function homeGiftDisplayOrder(){
  const names=['rosewaterfall','rose','kiss','berry','bear','cheers','party','tulip','bunny','blossom','bouquet','hibiscus'];
  const rank=name=>{const index=names.indexOf(String(name).toLowerCase().replace(/[^a-z0-9]/g,''));return index<0?names.length:index};
@@ -12157,13 +12236,15 @@ function coinGiftFooter({recover,gift,ready,short,catalogUnavailable}=coinGiftWa
 }
 function coinGiftWalletError(ready=coinGiftWalletState().ready){return !ready&&!contentPending('wallet')?'<p class="zw-error" data-coin-wallet-error role="alert">Refresh your balance before sending. <button onclick="coinRefresh()">Retry</button></p>':''}
 function homeGiftSheet(){
+ if(isHostWallet())return '';
  if(!Home.giftTo)return '';
  if(CoinUI.topup)return `<div class="zh-sheet-backdrop zw-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zw-topup" role="dialog" aria-modal="true" aria-label="Add coins"><div class="zw-topup-heading">${backButton('coinLeaveTopup()',{label:'Back to gifts'})}<h2>Add coins</h2><button class="zw-icon-button" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',20)}</button></div>${homeCoins(true)}</section></div>`;
  const state=coinGiftWalletState(),{ready}=state,surface=DEMO?null:contentPending('catalog')?contentSkeleton('gifts','Loading gifts',12):ContentLoading.catalog.error?contentError('catalog'):null,footer=coinGiftFooter(state);
- return `<div class="zh-sheet-backdrop zw-backdrop zg-reference-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zg-reference" role="dialog" aria-modal="true" aria-label="Send a gift"><header class="zg-heading"><div class="zg-heading-copy"><h2>Send a gift</h2><p>Coins go straight to the host</p></div><button type="button" class="zg-balance" aria-label="Add coins" onclick="homeGiftTopup()">${coinIcon(17)}<span>${contentBalance()}</span>${hi('plus',13)}</button><button type="button" class="zg-close" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',19)}</button></header><div class="zg-catalog">${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${homeGiftDisplayOrder().map(homeGiftTile).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${coinGiftWalletError(ready)}</div>${footer}</section></div>`;
+ return `<div class="zh-sheet-backdrop zw-backdrop zg-reference-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zg-reference" role="dialog" aria-modal="true" aria-label="Send a gift"><header class="zg-heading"><div class="zg-heading-copy"><h2>Send a gift</h2><p>Hosts earn diamonds from gifts</p></div><button type="button" class="zg-balance" aria-label="Add coins" onclick="homeGiftTopup()">${coinIcon(17)}<span>${contentBalance()}</span>${hi('plus',13)}</button><button type="button" class="zg-close" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',19)}</button></header><div class="zg-catalog">${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${homeGiftDisplayOrder().map(homeGiftTile).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${coinGiftWalletError(ready)}</div>${footer}</section></div>`;
 }
 function homeCloseGifts(e){if(e&&e.target!==e.currentTarget)return;if(CoinUI.topup)coinClosePurchase();Home.giftTo=null;S.tray=0;if(S.sh==='gift')S.sh=0;CoinUI.topup=false;r();const saved=CoinUI.focus;if(saved){const target=saved.id?document.getElementById(saved.id):Array.from(document.querySelectorAll('button[aria-label]')).find(x=>x.getAttribute('aria-label')===saved.label);target?.focus({preventScroll:true})}}
 function homeSendGift(id=CoinUI.giftId){
+ if(isHostWallet())return;
  if(Home.giftAttempt&&Home.giftAttempt.to===Home.giftTo&&Home.giftAttempt.gift===id)return homeRetryGift();
  const gift=Home.gifts.find(x=>x.id===id),to=Home.giftTo;
  if(!to||!gift||Home.giftBusy||(!giftIsFree(gift)&&!coinWalletReady())||window.ZimiOffline?.isOffline()||(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error)))return;
@@ -12181,7 +12262,7 @@ function homeSendGift(id=CoinUI.giftId){
  else window.ZimiChatGifts?.preview(to,gift,attempt);
  Native.send('gift.send',{...attempt});
 }
-function homeRetryGift(){if(!Home.giftAttempt||Home.giftBusy||window.ZimiOffline?.isOffline())return;Home.giftBusy=true;CoinUI.giftError='';Native.send('gift.send',{...Home.giftAttempt});coinPaint()}
+function homeRetryGift(){if(isHostWallet()||!Home.giftAttempt||Home.giftBusy||window.ZimiOffline?.isOffline())return;Home.giftBusy=true;CoinUI.giftError='';Native.send('gift.send',{...Home.giftAttempt});coinPaint()}
 function coinGiftMatches(d){const a=Home.giftAttempt;return !!a&&d.idempotencyKey===a.idempotencyKey&&(!d.to||d.to===a.to)&&(!d.gift||d.gift===a.gift)}
 function coinCallGiftFeedback(d){
  const saved=CoinUI.receipts.get(d.idempotencyKey),gift=d.giftDetails?{...saved,...d.giftDetails,_callId:d.callId||saved?._callId}:saved;if(!gift?._callId)return;
@@ -12220,6 +12301,7 @@ Native.on('operation.error',d=>{
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });
 Native.on('call.failed',d=>{if(d.code==='INSUFFICIENT_COINS'&&!isHost())coinRequireRecharge()});
+window.addEventListener('zimi:host-access',()=>{if(isHostWallet()){coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Home.giftTo=null;CoinUI.topup=false;if(S.loggedIn&&['coins','refer'].includes(S.v))go('wallet')}});
 document.addEventListener('aurora:navigate',()=>{coinCloseRecharge(false);if(S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup))coinClosePurchase();if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
 document.addEventListener('keydown',e=>{if(CoinUI.rechargePrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseRecharge()}return}if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
 window.ZimiCoins={requireRecharge:coinRequireRecharge,giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!CoinUI.rechargePrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};
@@ -17491,7 +17573,7 @@ function zrVoiceControls(host){
  const control=(icon,label,text,action,muted)=>`<span class="zr-voice-control"><button type="button" class="zr-round" aria-label="${label}" aria-pressed="${muted}" onclick="${action}">${hi(icon,23)}</button><small>${text}</small></span>`;
  return `<div class="zr-voice-controls" role="group" aria-label="Voice call controls">${control(S.mic?'mic':'micoff',S.mic?'Mute microphone':'Unmute microphone',S.mic?'Mute':'Unmute','zrMic()',!S.mic)}<span class="zr-voice-control"><button type="button" class="zr-round zr-hangup" aria-label="End call" onclick="${host?"hostEnd('end')":"endCall()"}">${hi('ph',24)}</button><small>End call</small></span>${control(Room.playbackMuted?'micoff':'vol',Room.playbackMuted?'Unmute caller':'Mute caller',Room.playbackMuted?'Sound off':'Sound on','zrSound()',Room.playbackMuted)}</div>`;
 }
-function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl,gift.coverUrl),diamonds=zrIsHost()&&gift.diamondScale===1000000&&Number.isSafeInteger(gift.diamondUnits)&&gift.diamondUnits>=0;const value=giftIsFree(gift)?'Free gift':gift.sent?n(gift.coins)+' coins sent':diamonds?diamondIcon(12)+' +'+diamondFormat(gift.diamondUnits)+' diamonds received':n(gift.coins)+' coin gift';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${value}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
+function zrGiftBanner(){const gift=Room.gift;if(!gift)return '';const media=giftStillUrl(gift.giftName,gift.mediaUrl,gift.coverUrl),diamonds=zrIsHost()&&gift.diamondScale===1000000&&Number.isSafeInteger(gift.diamondUnits)&&gift.diamondUnits>=0;const value=giftIsFree(gift)?'Free gift':gift.sent?n(gift.coins)+' coins sent':diamonds?diamondIcon(12)+' +'+diamondFormat(gift.diamondUnits)+' diamonds received':zrIsHost()?'Gift received · confirmed diamonds in Wallet':n(gift.coins)+' coin gift';return `<aside class="zr-gift-alert" role="status"><span class="zr-gift-emoji">${media?`<img src="${media}" alt="">`:esc(gift.emoji||'💎')}</span><div>${zrIsHost()?'<small>SUPER GIFT ALERT</small>':''}<strong>${esc(gift.name)} sent ${esc(gift.giftName)}</strong><span>${value}</span></div>${gift.combo>1?`<b class="zr-combo">COMBO<br>×${gift.combo}</b>`:''}</aside>`}
 /* Playback lives outside the HTML rebuilt by r(), keeping the same decoded
    animation running while chat, wallet updates and call controls redraw. */
 function zrGiftCelebration(){return ''}
@@ -17559,12 +17641,13 @@ function zrLive(){
   return `<section class="zh-room zr-room ${host?'zr-host':'zr-viewer'}" aria-label="${host?'Your live broadcast':'Live broadcast'}">${zrBackdrop(p,host)}<div class="zr-top">${host?'<div class="zr-diagnostics"><span><i></i><i></i><i></i><i></i> LIVE STUDIO</span><b data-room-quality>Camera ready</b></div>':''}${zrIdentity(p,host,false)}${host?zrSupporterStrip()+zrGoal():zrRequestBar()}${zrGiftBanner()}${host?zrStatus():''}</div>${host?zrTools():''}<div class="zr-floating-hearts" aria-hidden="true"></div><div class="zr-bottom">${!host?zrStatus():''}<div class="zr-messages" id="home-room-messages" role="log" aria-label="Live chat" aria-live="polite">${zrMessageHTML()}</div>${host?zrHostQueue():''}${zrChat(false,host)}${DEMO?'<span class="zr-demo-note">Interactive preview · sample activity</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
-function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return `${n(rate)}/min · ${n(coins)} coins${host?' earned':S.bal<rate?' · under a minute left':''}`}
+function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return host?`Member price: ${n(rate)} coins/min`:`${n(rate)}/min · ${n(coins)} coins${S.bal<rate?' · under a minute left':''}`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
 function zrPaintCallWallet(){
   if(!zrIsCall())return false;
   const room=document.querySelector('.zr-call');if(!room)return false;
   const replace=(node,html)=>{if(node&&node.innerHTML!==html)node.innerHTML=html};
+  if(zrIsHost())replace(room.querySelector('#earn'),hcEarningsValue());
   room.querySelectorAll('[data-call-balance]').forEach(node=>replace(node,contentBalance()));
   const cost=room.querySelector('#zr-call-cost'),label=zrCallCost(zrIsHost());if(cost&&cost.textContent!==label)cost.textContent=label;
   const sheet=Home.giftTo&&room.querySelector('.zw-sheet');
@@ -17614,7 +17697,7 @@ function zrHostReferenceCall(p,voice){
     <div class="zr-top"><header class="zr-call-toolbar">
       ${backButton('callMinimize()',{label:'Minimize call',slot:'zr-call-back'})}
       <div class="zr-host-clock"><span class="zr-timer"><i aria-hidden="true"></i><span id="ck">${clock(S.sec)}</span></span><span class="zr-clock-divider" aria-hidden="true"></span>${hcVisPill()}</div>
-      <span class="zr-session-earned" title="${n(Math.round(S.earned||0))} coins this session"><small>This session</small><b id="earn">${coinIcon(14)}+${kfmt(Math.round(S.earned||0))}</b></span>
+      <span class="zr-session-earned" title="Confirmed call and gift diamond balance"><small>Diamond balance</small><b id="earn">${hcEarningsValue()}</b></span>
       ${zrRound('callmore','Call options',"zrOpen('host-options')",'zr-host-more')}
     </header><div class="zr-call-stats">${typeof hsTargets==='function'?hsTargets():''}</div>${hcFeeChip()}${zrGiftBanner()}</div>${voice?zrVoiceStage(p):''}
     <div class="zr-bottom">${zrStatus()}<div id="rfeed" class="zr-call-feed" role="log" aria-label="Call chat" aria-live="polite"></div>
@@ -18076,6 +18159,14 @@ function hcCallTerms(d) {
   if (d.earlyEnds) { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
 }
 function hcFeePending() { return !!S.callFee && !S.feeOk; }
+/* This is the authenticated wallet balance, never a conversion of the member's
+   call price or the local session timer. */
+function hcEarningsValue() {
+  const wallet = diamondOwnWallet();
+  return !contentPending('wallet') && !ContentLoading.wallet.error && diamondReady(wallet)
+    ? `${diamondIcon(14)} ${diamondFormat(Number.isSafeInteger(wallet.profileDiamondUnits) ? wallet.profileDiamondUnits : wallet.diamondUnits)}`
+    : `${diamondIcon(14)} —`;
+}
 
 /* ---- Before going online ---- */
 function hcRateCard() {
@@ -18084,9 +18175,9 @@ function hcRateCard() {
   if (!st) return `<div class="hc-card" role="status" aria-label="Loading your call price" aria-busy="true">${skeletonLine('55%', 15)}${skeletonLine('85%', 11)}<div class="hc-tiers" aria-hidden="true">${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}${skeletonLine('25%', 24)}</div></div>`;
   const tiers = st.tiers.length > 1 ? st.tiers : [], next = st.next, fee = st.entryFeeCoins;
   return `<div class="hc-card">
-    <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)}/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} left to upgrade</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Your call rate</small>'}</button>
-    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)}/h</span>`).join('')}</div>` : ''}
-    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Earn ${n(Math.max(0, next.atCoins - st.earnedCoins))} more coins to unlock ${n(next.rate)}/min</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. It is yours once the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}</div>` : ''}
+    <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)} member coins/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins to next tier</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Member call price</small>'}</button>
+    ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Member call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)} coins/h</span>`).join('')}</div>` : ''}
+    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `Member pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins unlocks a ${n(next.rate)}-coin/min member price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
   </div>`;
 }
 function hcVisibilityRow() {
@@ -18171,12 +18262,11 @@ function hcConfirm() {
   const k = S.confirm, left = Math.max(0, (S.feeHold || 0) - (S.sec - S.cstart)), nth = (S.early || 0) + 1;
   const limit = S.earlyLimit ?? EARLY_LIMIT, penalty = S.penaltyCoins || 0, verb = k === 'switch' ? 'switch' : 'end';
   const warn = !penalty ? `This would be early ending ${nth} today.`
-    : nth > limit ? `This would be early ending ${nth} today. Past ${n(limit)} a day, it takes ${n(penalty)} coins from your earnings.`
-    : `This would be early ending ${nth} today. Past ${n(limit)} a day, each one takes ${n(penalty)} coins from your earnings.`;
+    : `This would be early ending ${nth} today. Past ${n(limit)} a day, early endings can reduce your diamond earnings. Check Wallet for the confirmed adjustment.`;
   const title = `${k === 'switch' ? 'Switch calls' : 'End call'} before ${hcHold(S.feeHold)}?`;
   return `<div class="zr-sheet-backdrop" onclick="if(event.target===this){S.confirm=0;r()}"><section class="zr-sheet hc-confirm" role="dialog" aria-modal="true" aria-label="${title}" data-lenis-prevent>
     <span class="hc-confirm-icon" aria-hidden="true">${hi('clock', 22)}</span><h2>${title}</h2>
-    <p class="zr-sheet-note">${esc(first(S.caller.n))}’s ${n(S.callFee)}-coin entry fee unlocks in <b id="hc-left">${clock(left)}</b>. If you ${verb} now, you won’t receive it and it stays with BinzoLive.</p>
+    <p class="zr-sheet-note">${esc(first(S.caller.n))}’s ${n(S.callFee)}-coin entry fee unlocks in <b id="hc-left">${clock(left)}</b>. If you ${verb} now, its host share will not be credited in diamonds.</p>
     <p class="hc-warn">${warn}</p>
     <button class="zr-wide hc-keep" onclick="S.confirm=0;r()">Keep talking</button>
     <button class="zr-wide zr-danger hc-anyway" onclick="S.confirm=0;${k === 'switch' ? 'acceptInc()' : 'endCall()'}">${k === 'switch' ? 'Switch anyway' : 'End call anyway'}</button></section></div>`;
@@ -18200,14 +18290,14 @@ function hcSwitchFailed(message) {
 
 /* ---- After the session ---- */
 function hcSummaryView(s) {
-  const fees = (s.fees || []).filter(f => f.fee), received = fees.filter(f => f.ok).reduce((sum, f) => sum + f.fee, 0);
+  const fees = (s.fees || []).filter(f => f.fee);
   return `<section class="hc-summary" style="${hcSceneStyle('summary')}"><div class="hc-summary-content"><div class="hc-host-avatar">${hcIdentityAvatar(me, 80)}<span class="hc-summary-badge" aria-hidden="true">🏆</span></div>
-    <h1>${s.earned ? 'Congratulations!' : 'A moment well shared.'}</h1>
-    <p>${s.earned ? `You earned about <b>${n(s.earned)} coins</b> in this session and completed <b>${fmtDur(s.sec || 0)}</b> on calls.` : `You spent <b>${fmtDur(s.sec || 0)}</b> on calls.`}</p>
-    <div class="hc-session-stats"><div><span>Earned</span><b>${coinIcon(16)} ≈ ${n(s.earned || 0)}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
-    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Entry fees</span><b>${coinIcon(14)} +${n(received)}</b></div>
-      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `+${n(f.fee)} received` : 'Ended early · kept by BinzoLive'}</em></div>`).join('')}
-      ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, each one takes ${n(s.penaltyCoins)} coins from your earnings.` : ''}</p>` : ''}</div>` : ''}
+    <h1>A moment well shared.</h1>
+    <p>You spent <b>${fmtDur(s.sec || 0)}</b> on calls. Confirmed earnings appear in your diamond wallet.</p>
+    <div class="hc-session-stats"><div><span>Diamond balance</span><b>${hcEarningsValue()}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
+    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Member entry fees</span></div>
+      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `${n(f.fee)} member coins · hold completed` : 'Ended early · no host share'}</em></div>`).join('')}
+      ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, early endings can reduce diamond earnings. Check Wallet for confirmed adjustments.` : ''}</p>` : ''}</div>` : ''}
     <button type="button" class="hc-primary" onclick="S.callId=null;go('setup')">${hi('vid', 18)} Set targets &amp; continue</button>
     <div class="hc-summary-actions"><button type="button" onclick="S.callId=null;go('wallet')">${hi('wal', 17)} Wallet</button><button type="button" onclick="S.callId=null;go('home');homeLoad()">${hi('house', 17)} Home</button></div>
     ${window.ZimiAds?.card('call_summary') || ''}</div></section>`;
@@ -18230,6 +18320,8 @@ Native.on('presence.duringCalls.saved', d => {
   if (HostCalls.status) HostCalls.status.visibleDuringCalls = !!d.on;
   if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
 });
+Native.on('wallet.balance', () => { if (S.v === 'summary' && S.sum?.k === 'host') r(); });
+Native.on('data.loading', d => { if (d.resource === 'wallet' && S.v === 'summary' && S.sum?.k === 'host') r(); });
 Native.on('operation.error', d => {
   if (d.action === 'host.callStatus.load') {
     HostCalls.loading = false; HostCalls.error = d.message || 'Your call details could not be loaded.';
@@ -18276,8 +18368,8 @@ Native.on('call.nativeAction', data => {
   })();
 });
 
-/* Host targets are personal session preferences. Progress comes only from accepted
-   gift receipts; reward amounts and eligibility come from the authenticated Home feed. */
+/* Host targets track member gift spending from accepted receipts. They are not
+   host earnings; confirmed Diamond rewards and eligibility belong to Wallet. */
 const HostStudio = {
   sheet: '', goal: 1000000, giftId: '', giftCount: 10,
   receivedCoins: 0, received: Object.create(null), giftNames: Object.create(null),
@@ -18359,11 +18451,7 @@ function hsCatalogPlaceholder(rail = false) {
   return `<div class="hs-empty" ${error ? 'role="alert"' : ''}><span>${esc(error || 'Gift targets will appear when gifts are available.')}</span>${!DEMO ? `<button type="button" onclick="hsReloadCatalog()" data-hs-focus="retry-catalog">${error ? 'Retry gift targets' : 'Load gift targets'}</button>` : ''}</div>`;
 }
 function hsTaskRows() {
-  if (DEMO) return S.tasks.slice(0, 3).map(task => `<div class="hs-task"><span class="hs-task-icon">${hi(task.ico || 'cup', 18)}</span><span class="hs-task-copy"><b>${esc(task.d || task.t)}</b><small>${n(Math.min(task.p, task.goal))} / ${n(task.goal)} ${esc(task.u || '')}</small><i><em style="width:${hsPercent(task.p, task.goal)}%"></em></i></span><strong>${coinIcon(14)} ${n(task.rw)}</strong></div>`).join('');
-  const bonus = Home.bonus;
-  if (!bonus) return '<p class="hs-tasks-empty">No active rewards right now. Your gift targets still track this session.</p>';
-  const progress = Math.max(0, Number(bonus.progress) || 0), target = Math.max(1, Number(bonus.target) || 1);
-  return `<div class="hs-task"><span class="hs-task-icon">${hi('cup', 18)}</span><span class="hs-task-copy"><b>${esc(bonus.title)}</b><small>${esc(bonus.description || '')}</small><small>${n(Math.min(progress, target))} / ${n(target)} completed</small><i><em style="width:${hsPercent(progress, target)}%"></em></i></span><strong>${coinIcon(14)} ${n(bonus.rewardCoins || 0)}</strong></div>${bonus.claimed ? '<p class="hs-tasks-empty">Reward claimed</p>' : progress >= target ? `<button class="hs-claim" type="button" onclick="homeClaim()" ${Home.claiming ? 'disabled' : ''}>${Home.claiming ? 'Claiming…' : 'Claim reward'}</button>` : ''}`;
+  return '<p class="hs-tasks-empty">View call rewards and withdrawal eligibility in your diamond wallet.</p>';
 }
 function hsSheet() {
   const kind = HostStudio.sheet;
@@ -18371,13 +18459,13 @@ function hsSheet() {
   if (kind === 'appearance' && S.v === 'hcall' && S.caller?.voice) return '';
   let title = '', subtitle = '', body = '';
   if (kind === 'mission') {
-    title = 'Mission'; subtitle = 'Your target rises as coins come in';
+    title = 'Mission'; subtitle = 'Track member gift spending. Your earnings are diamonds.';
     const progress = HostStudio.receivedCoins, percent = hsPercent(progress, HostStudio.goal);
-    body = `<div class="hs-options" role="group" aria-label="Mission target">${HS_GOALS.map(([value, label]) => `<button type="button" class="${HostStudio.goal === value ? 'is-on' : ''}" aria-pressed="${HostStudio.goal === value}" data-hs-focus="goal-${value}" onclick="hsSetGoal(${value})">${label}</button>`).join('')}</div><div class="hs-mission-total"><strong>${n(progress)}</strong><span>of ${hsGoalLabel()} · ${percent.toFixed(1)}%</span></div><div class="hs-progress" role="progressbar" aria-label="Mission progress" aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></div><div class="hs-section-label"><b>Tasks</b><span>${DEMO ? 'Design preview' : 'Your available rewards'}</span></div>${hsTaskRows()}`;
+    body = `<div class="hs-options" role="group" aria-label="Mission target in member coins">${HS_GOALS.map(([value, label]) => `<button type="button" class="${HostStudio.goal === value ? 'is-on' : ''}" aria-pressed="${HostStudio.goal === value}" data-hs-focus="goal-${value}" onclick="hsSetGoal(${value})">${label}</button>`).join('')}</div><div class="hs-mission-total"><strong>${n(progress)}</strong><span>of ${hsGoalLabel()} · ${percent.toFixed(1)}%</span></div><div class="hs-progress" role="progressbar" aria-label="Member gift support progress" aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></div>${hsTaskRows()}`;
   } else if (kind === 'gift-target') {
     title = 'Gift target'; subtitle = 'Pick the gift you’d love to receive';
     const gift = hsTargetGift();
-    body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${giftPriceMarkup(item,10)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${giftIsFree(gift)?'Free':n((gift?.coins || 0)*HostStudio.giftCount)+' coins'}</span></div><p class="hs-sheet-note">A personal target for gifts you receive during this session.</p>`;
+    body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${giftPriceMarkup(item,10)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${giftIsFree(gift)?'Free':n((gift?.coins || 0)*HostStudio.giftCount)+' member coins'}</span></div><p class="hs-sheet-note">Gift prices are paid by members in Coins. Your confirmed gift earnings are Diamonds in Wallet.</p>`;
   } else if (kind === 'card-image') {
     title = 'Creator card image'; subtitle = 'Shown on your creator card';
     const src=imageSrc(HostStudio.cardDraft||S.user?.creatorCardUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
@@ -18420,7 +18508,7 @@ Native.on('creator.card.error',d=>{if(d.requestId!==HostStudio.cardRequestId)ret
 function hsTargets() {
   if (typeof ctShareTargets === 'function') ctShareTargets();
   const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
-  return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong>${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(percent)}%</b></span><strong>${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
+  return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong title="Member price in Coins">${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MEMBER SUPPORT <b>${Math.floor(percent)}%</b></span><strong title="Member gift spending in Coins">${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
 }
 function hsGiftRail() {
   if (!hsCatalog().length || !DEMO && contentPending('catalog')) return hsCatalogPlaceholder(true);
@@ -18724,8 +18812,8 @@ function zcConfirmMessage(d,kind){
 
 /* Inbox rows carry identity and presence; a known creator record adds rate and live status. */
 function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'BinzoLive member',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
-function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
-function zcThreadHeader(h){const id=domId(h.id),member=!isHost();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}',true)">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:zcPeerIsMember(h)?zcHostCallButtons(h):''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
+function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',!isHostWallet()&&h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
+function zcThreadHeader(h){const id=domId(h.id),member=!isHostWallet();return `<header class="zc-thread-header">${backButton("go('chats')",{slot:"zc-thread-back"})}<button class="zc-thread-person" onclick="go('host','${id}')" aria-label="Open ${esc(h.n)} profile"><span class="zc-avatar-wrap">${zcPhoto(h)}<i class="zc-thread-presence ${h.on?'online':''}"></i></span><span class="zc-thread-title"><b><span>${esc(h.n)}</span>${homeVerified(h)}</b><small>${esc(zcThreadStatus(h))}</small></span></button><div class="zc-thread-actions">${member?`<button aria-label="Voice call" onclick="homeCall('${id}',true)">${hi('ph',22)}</button><button class="zc-thread-video" aria-label="Video call" onclick="homeCall('${id}')">${hi('vid',22)}</button>`:isApprovedHost()&&zcPeerIsMember(h)?zcHostCallButtons(h):''}<div class="zc-thread-more"><button aria-label="More options" aria-haspopup="menu" aria-expanded="false" onclick="zcThreadMenu()">${ci('more',22)}</button><div class="zc-thread-menu" role="menu" hidden><button role="menuitem" onclick="go('host','${id}')">${hi('user',18)} View profile</button>${member?`<button role="menuitem" onclick="zcThreadMenu(false);homeGifts('${id}')">${hi('gift',18)} Send a gift</button>`:''}${h.stream?`<button role="menuitem" onclick="homeOpen('${id}')">${hi('broadcast',18)} Join live stream</button>`:''}</div></div></div></header>`}
 /* A host may call a member at any time, by voice or video. */
 function zcPeerIsMember(h){return h?.serverRole==='user'||(!!h&&!h.verified&&h.role!=='host'&&h.serverRole!=='host')}
 function zcHostCallButtons(h){const id=domId(h.id);return `<button id="zc-host-voice" aria-label="Voice call" onclick="zcHostCall('${id}',true)">${hi('ph',22)}</button><button id="zc-host-video" class="zc-thread-video" aria-label="Video call" onclick="zcHostCall('${id}',false)">${hi('vid',22)}</button>`}
@@ -18766,7 +18854,7 @@ function zcThreadTimeline(h){
 function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;const rows=zcThreadTimeline(h);if(!rows.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;let day='';return rows.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+(m.kind==='call'?zcCallBubble(m.call,h):zcBubble(m,h))}).join('')}
 /* The gift catalog, one tap from the composer. A tap opens the gift sheet with that gift chosen,
    so coins are only spent from its Send button. Members only, as with the composer's gift button. */
-function zcCanGift(h){return (DEMO?!isHost():zcSelfRole()==='user')&&!Chats.rows.find(c=>c.user.id===h.id)?.bot}
+function zcCanGift(h){return !isHostWallet()&&(DEMO?!isHost():zcSelfRole()==='user')&&!Chats.rows.find(c=>c.user.id===h.id)?.bot}
 function zcThreadGifts(h){
  if(!zcCanGift(h))return '';
  const blocked=!!zcThreadBlocked(),gifts=homeGiftDisplayOrder().slice(0,6);
@@ -19599,12 +19687,12 @@ function zpIdentity(){
     <button type="button" class="zp-edit-profile zp-public-view" onclick="zpViewPublic()">${hi('eye',16)} View as others see it ${hi('arrow',16)}</button></div></section>`;
 }
 function zpWallet(){
-  if(isApprovedHost()||S.user?.serverRole==='host'){
+  if(isHostWallet()){
     const wallet=diamondOwnWallet(),checking=!!window.ZimiHostAccess?.checking(),error=ContentLoading.wallet.error,
-      loading=checking||contentPending('wallet')||(!wallet&&!error),ready=isApprovedHost()&&!loading&&!error&&diamondReady(wallet),
+      loading=checking||contentPending('wallet')||(!wallet&&!error),ready=!loading&&!error&&diamondReady(wallet),
       units=Number.isSafeInteger(wallet?.profileDiamondUnits)&&wallet.profileDiamondUnits>=0?wallet.profileDiamondUnits:wallet?.diamondUnits;
     const amount=loading?`<span class="zh-skeleton" role="status" aria-label="Loading diamond balance" aria-busy="true">${skeletonLine('110px',34)}</span>`:ready?diamondFormat(units):'—';
-    return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Diamond balance</h2><div class="zp-balance">${diamondIcon(23)}<strong>${amount}</strong></div></div>${isApprovedHost()?`<button type="button" class="zp-topup" onclick="zpGo('payout')">Withdraw</button>`:''}</div>${!loading&&!ready?`<p class="zp-wallet-note" ${error?'role="alert"':''}>${esc(error||'Diamond balance unavailable.')}${isApprovedHost()?` <button type="button" onclick="contentRetry('wallet')">Retry</button>`:''}</p>`:''}</section>`;
+    return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Diamond balance</h2><div class="zp-balance">${diamondIcon(23)}<strong>${amount}</strong></div></div>${isApprovedHost()?`<button type="button" class="zp-topup" onclick="zpGo('payout')">Withdraw</button>`:''}</div>${!loading&&!ready?`<p class="zp-wallet-note" ${error?'role="alert"':''}>${esc(error||'Diamond balance unavailable.')} <button type="button" onclick="contentRetry('wallet')">Retry</button></p>`:''}</section>`;
   }
   return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Coin balance</h2><div class="zp-balance">${coinIcon(23)}<strong>${contentBalance()}</strong></div></div><button type="button" class="zp-topup" onclick="zpGo('coins')">Add coins</button></div></section>`;
 }
@@ -19614,7 +19702,7 @@ function zpAccountSummary(){
 }
 function zpSettingsRows(){
   // Refer a Friend leads the list; its page explains the code and the rewards.
-  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & support',"zpClose();ZimiSupport.open('settings')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
+  return `<section class="zp-simple-section" aria-label="Settings">${isHostWallet()?'':zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & support',"zpClose();ZimiSupport.open('settings')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
@@ -19623,7 +19711,7 @@ function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-
 function zpMenuRows(kind){
   const rows={
     account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+(isApprovedHost()?zpRow('stats','Statistics',"ZimiHostStatistics.open()"):'')+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')")+zpRow('logout','Deactivate account',"zpOpen('deactivate')"),
-    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+zpRow('cash','Withdrawal history',"zpGo('payout-history')"),
+    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+(isHostWallet()?zpRow('cash','Withdrawal history',"zpGo('payout-history')"):''),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
     creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
@@ -19681,7 +19769,7 @@ function zpDialogContent(kind){
   if(kind==='help')return `<details open><summary>Getting started</summary><p>Explore creators and start a private 1:1 call with an available host.</p></details><details><summary>Coins & gifts</summary><p>Use Top Up to view current coin packs. Gift prices are shown before you send. Find completed payments and gifts in your transaction history.</p></details><details><summary>Becoming a creator</summary><p>Submit a creator application for admin review. Only approved hosts can receive calls and publish videos. Members and approved hosts can share photo posts.</p></details><details><summary>Staying safe</summary><p>Manage discovery, activity visibility and your blocked accounts in Privacy & Blocked Users.</p></details><button class="zp-secondary" onclick="zpOpen('privacy')">Privacy & blocked users</button>`;
   if(kind==='guidelines')return `<div class="zp-guidelines"><h3>Be kind. Be yourself.</h3><p>BinzoLive is for adults aged 18 and over. Respect other people’s boundaries and personal information.</p><h3>Keep connections safe</h3><p>Never share your sign-in code or payment details in a chat. Block or report accounts that make you uncomfortable.</p><h3>Your creator account</h3><p>Host features require admin approval. Account reviews and moderation decisions determine whether these features remain available.</p></div>`;
   if(kind==='logout')return '<p>You’ll need a verification code to sign in again on this device.</p><button class="zp-save zp-danger" onclick="zpClose();logout()">Log out of this device</button><button class="zp-secondary" onclick="zpClose()">Stay signed in</button>';
-  if(kind==='deactivate')return `<p>Your profile and posts will be hidden, active calls will end, and you’ll be signed out on all devices. Your coins and account data are kept. Sign in again with a verification code to reactivate your account.</p><button type="button" class="zp-save zp-danger" onclick="zpDeactivate()" ${ZProfile.deactivating?'disabled':''}>${ZProfile.deactivating?'<span role="status" aria-label="Deactivating account">Deactivating…</span>':'Deactivate account'}</button><button type="button" class="zp-secondary" onclick="zpClose()" ${ZProfile.deactivating?'disabled':''}>Keep my account</button>`;
+  if(kind==='deactivate')return `<p>Your profile and posts will be hidden, active calls will end, and you’ll be signed out on all devices. Your wallet balance and account data are kept. Sign in again with a verification code to reactivate your account.</p><button type="button" class="zp-save zp-danger" onclick="zpDeactivate()" ${ZProfile.deactivating?'disabled':''}>${ZProfile.deactivating?'<span role="status" aria-label="Deactivating account">Deactivating…</span>':'Deactivate account'}</button><button type="button" class="zp-secondary" onclick="zpClose()" ${ZProfile.deactivating?'disabled':''}>Keep my account</button>`;
   return '';
 }
 function zpPaintDialog(){const el=document.getElementById('zp-dialog');if(!el)return;el.setAttribute('aria-busy',String(!!ZProfile.deactivating));const titles={account:'Account',payments:'Payments','privacy-menu':'Privacy & Terms',general:'General',creator:'Creator tools',about:'About',identity:'Your BinzoLive ID',language:'Language & Region',notifications:'Notification preferences',security:'Phone & Email Security',privacy:'Privacy & Blocked Users',gifts:'Gift History',earnings:'Your Earnings',help:'Help Center',guidelines:'Community Guidelines',logout:'Log Out',deactivate:'Deactivate account?'};el.innerHTML=`<div class="zp-dialog-heading"><h2 id="zp-dialog-title">${titles[ZProfile.dialog]||'Your settings'}</h2><button aria-label="Close settings" onclick="zpClose()" ${ZProfile.deactivating?'disabled':''}>×</button></div><div class="zp-dialog-body">${zpDialogContent(ZProfile.dialog)}${ZProfile.saveError?`<p class="zp-save-error" role="alert">${esc(ZProfile.saveError)}</p>`:''}</div>`}
@@ -20722,7 +20810,7 @@ function zuOwnPeer(){
   const user=S.user||{},demo=DEMO?ZProfile.data:null,profile=demo?.profile||{};
   return {id:zuSelfId(),name:user.name||profile.name||me.n,avatarUrl:S.avatarData||user.avatarUrl||(DEMO?OB_MEDIA[0]:''),coverUrl:S.coverData||user.coverUrl||'',
     gender:user.gender||me.gender,city:user.city??profile.city??me.c,country:user.country??profile.country??me.country??'',about:user.about??profile.bio??me.about,
-    role:user.role||S.role,serverRole:isApprovedHost()?'host':'user',verified:isApprovedHost(),languages:user.languages||profile.languages||[],
+    role:user.role||S.role,serverRole:isHostWallet()?'host':'user',verified:isApprovedHost(),languages:user.languages||profile.languages||[],
     online:!!S.online,availableForCall:!!ZProfile.data?.privacy?.allowRequests,followers:demo?.stats?.fans,followingCount:demo?.stats?.following,joined:user.createdAt};
 }
 function zuRemember(profile){
@@ -20833,7 +20921,7 @@ function zuIdentity(p){
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
     <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
-    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${contentBalance()}</strong><span>Coins</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
+    <div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>
     <p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>
     ${owner?`<button type="button" class="zu-agency-link" onclick="ZimiAgency.open('profile')">${zi('people',18)} ${isApprovedHost()?'My agency':'Become a Host'} ${hi('arrow',16)}</button>`:''}
     ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
@@ -21429,7 +21517,7 @@ function payoutMoney(paise){return new Intl.NumberFormat('en-IN',{style:'currenc
 function payoutPaise(value){const text=String(value).trim();if(!/^\d+(?:\.\d{1,2})?$/.test(text))return null;const [whole,fraction='']=text.split('.'),amount=Number(whole)*100+Number(fraction.padEnd(2,'0'));return Number.isSafeInteger(amount)&&amount>0&&amount<=100000000?amount:null}
 function payoutActive(){return ['payout','payout-history'].includes(S.v)}
 function payoutPaint(){if(payoutActive())r()}
-function payoutOwnAccount(){return !!S.loggedIn&&!!PayoutUI.accountId&&PayoutUI.accountId===S.user?.id}
+function payoutOwnAccount(){return isHostWallet()&&!!S.loggedIn&&!!PayoutUI.accountId&&PayoutUI.accountId===S.user?.id}
 function payoutWalletReady(){const w=PayoutUI.wallet;return !DEMO&&!contentPending('wallet')&&!ContentLoading.wallet.error&&!!w&&Number.isSafeInteger(w.earningsPaise)&&Number.isSafeInteger(w.minimumWithdrawalPaise)&&typeof w.withdrawalsEnabled==='boolean'}
 function payoutWalletRefresh(){if(DEMO||PayoutUI.busy)return;PayoutUI.walletRequested=true;contentStart('wallet');payoutPaint();Native.send('wallet.load')}
 function payoutLoad(page=1){if(DEMO||!payoutOwnAccount()||PayoutUI.loading)return;PayoutUI.requested=true;PayoutUI.loading=true;PayoutUI.loadError='';PayoutUI.loadRequest=++PayoutUI.sequence;PayoutUI.loadSubmitRequest=PayoutUI.submitRequest;PayoutUI.page=Math.max(1,page);payoutPaint();Native.send('payout.load',{page:PayoutUI.page,requestId:PayoutUI.loadRequest})}
@@ -21444,6 +21532,7 @@ function payoutNew(){if(PayoutUI.busy||PayoutUI.attempt?.uncertain)return;Payout
 function payoutStatus(status){return {pending:'Pending review',approved:'Approved',paid:'Paid',rejected:'Rejected'}[status]||'Pending review'}
 function payoutHistory(){const p=PayoutUI;if(DEMO)return '<p class="zpay-muted">Withdrawal history is available in the signed-in app.</p>';if(p.loading||!p.requested)return contentSkeleton('rows','Loading withdrawal history',3);if(p.loadError)return `<div class="zpay-error" role="alert">${esc(p.loadError)}<button type="button" onclick="payoutLoad(${p.page})">Retry history</button></div>`;if(!p.items.length)return `<div class="zpay-empty">${hi('wallet',27)}<h3>No withdrawal requests yet</h3><p>Your requests and review updates will appear here.</p></div>`;return `<ol class="zpay-history">${p.items.map(item=>`<li><div class="zpay-history-heading"><strong>${payoutMoney(item.amountPaise)}</strong><span class="zpay-status" data-status="${esc(item.status)}">${payoutStatus(item.status)}</span></div>${diamondPayoutReceipt(item)}<p>${esc(item.payoutAddress)}</p><time>${esc(new Date(item.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}))}</time>${item.reason?`<p class="zpay-review-note">${esc(item.reason)}</p>`:''}${item.payoutReference?`<p>Payment reference: ${esc(item.payoutReference)}</p>`:''}</li>`).join('')}</ol>${p.total>p.limit?`<div class="zpay-pagination"><button type="button" onclick="payoutLoad(${p.page-1})" ${p.page<=1?'disabled':''}>Previous</button><span>Page ${p.page} of ${Math.max(1,Math.ceil(p.total/p.limit))}</span><button type="button" onclick="payoutLoad(${p.page+1})" ${p.page*p.limit>=p.total?'disabled':''}>Next</button></div>`:''}`}
 function payoutScreen(){
+ if(!isHostWallet())return '<div class="zpay-page"><p>Withdrawals are available to host accounts.</p></div>';
  const p=PayoutUI,historyOnly=S.v==='payout-history'||!isApprovedHost();if(!DEMO&&!payoutOwnAccount())return '<div class="zpay-page"><p>Sign in to view your withdrawals.</p></div>';
  const ready=payoutWalletReady(),locked=p.busy||p.recoveryRequired||!!p.attempt?.uncertain,w=p.wallet,whole=!!w?.hostEarningsPolicy?.wholeBalanceWithdrawal;
  const wallet=DEMO?'<p class="zpay-muted">Preview only. Withdrawals are available in the signed-in app.</p>':contentPending('wallet')||(!w&&!ContentLoading.wallet.error)?contentSkeleton('rows','Loading available earnings',1):ContentLoading.wallet.error||!ready?`<div class="zpay-error" role="alert">${esc(ContentLoading.wallet.error||'Your earnings could not be loaded.')}<button type="button" onclick="payoutWalletRefresh()" ${p.busy?'disabled':''}>Refresh earnings</button></div>`:`${diamondBalanceView(w,true)}<div class="zpay-balance"><span>Available earnings</span><strong>${payoutMoney(w.earningsPaise)}</strong><p>Minimum withdrawal ${payoutMoney(w.minimumWithdrawalPaise)}</p>${whole?`<p class="zpay-withdrawal-message" role="status">${esc(diamondWithdrawalMessage(w))}</p>`:''}${w.reservedPaise>0?`<small>${payoutMoney(w.reservedPaise)} reserved for withdrawals</small>`:''}</div>`;
@@ -21981,7 +22070,7 @@ window.ZimiCardVideo = (() => {
 const CallInvitations={owner:'',invitation:null,requested:false,request:0,pending:0,busy:'',error:'',foreground:true,realtimeReady:false,readyAt:0,nullRetried:false,retryTimer:null,topup:null,ended:new Set(),timer:null};
 function zciOwner(){return S.loggedIn?S.user?.id||'':''}
 function zciMuted(){try{return localStorage.getItem('binzo.automaticCalls.muted.'+zciOwner())==='1'}catch{return false}}
-function zciIdle(ownDialog=false){return !!zciOwner()&&!isHost()&&S.v==='home'&&!S.bgCall&&CallInvitations.foreground&&!document.hidden&&!homeContentPending()&&!Home.preparingCall&&!Home.matching&&!Home.checkoutBusy&&!Home.checkoutAttempt&&!CoinUI.checkoutPrompt&&!coinHasPendingPayment()&&!Home.giftTo&&!S.memberRing&&!S.inc&&!S.queuedInc&&!S.connecting&&!S.acceptingCall&&!ZVerify.state&&!window.ZimiChatVoice?.active()&&!document.querySelector(ownDialog?'dialog[open]:not(#zci-invitation)':'dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable=true]')}
+function zciIdle(ownDialog=false){return !!zciOwner()&&!isHostWallet()&&S.v==='home'&&!S.bgCall&&CallInvitations.foreground&&!document.hidden&&!homeContentPending()&&!Home.preparingCall&&!Home.matching&&!Home.checkoutBusy&&!Home.checkoutAttempt&&!CoinUI.checkoutPrompt&&!coinHasPendingPayment()&&!Home.giftTo&&!S.memberRing&&!S.inc&&!S.queuedInc&&!S.connecting&&!S.acceptingCall&&!ZVerify.state&&!window.ZimiChatVoice?.active()&&!document.querySelector(ownDialog?'dialog[open]:not(#zci-invitation)':'dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable=true]')}
 function zciValid(invitation=CallInvitations.invitation){return !!invitation&&invitation.source==='automatic'&&invitation.label==='Automatic call invitation'&&invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()}
 function zciClose(){const dialog=document.getElementById('zci-invitation');if(dialog){dialog.close();dialog.remove()}}
 function zciWatchDeadline(){
@@ -21997,7 +22086,7 @@ function zciWatchDeadline(){
 function zciReset(){zciClose();clearTimeout(CallInvitations.timer);clearTimeout(CallInvitations.retryTimer);Object.assign(CallInvitations,{owner:zciOwner(),invitation:null,requested:false,pending:++CallInvitations.request,busy:'',error:'',topup:null,timer:null,retryTimer:null,realtimeReady:false,nullRetried:false,readyAt:0});CallInvitations.ended.clear();S.callInvitationIntent=null;S.automaticCall=null;S.hostTopupWaiting=null}
 function zciRequest(active=false){
   if(CallInvitations.owner!==zciOwner())zciReset();
-  if(!zciOwner()||isHost()||!CallInvitations.realtimeReady||CallInvitations.busy||(!active&&(!zciIdle(true)||CallInvitations.requested||zciMuted())))return;
+  if(!zciOwner()||isHostWallet()||!CallInvitations.realtimeReady||CallInvitations.busy||(!active&&(!zciIdle(true)||CallInvitations.requested||zciMuted())))return;
   if(active&&(!CallInvitations.foreground||document.hidden))return;
   CallInvitations.requested=true;CallInvitations.busy=active?'review':'load';CallInvitations.error='';CallInvitations.pending=++CallInvitations.request;
   Native.send('call.invitation.load',{requestId:CallInvitations.pending,...(active?{active:true}:{})});zciPaint();
@@ -22102,6 +22191,7 @@ window.ZimiCallInvitations={request:zciRequest,connect:zciConnect,dismiss:zciDis
 
 /* The member's call screen shows the host's gift and mission targets in place of the call
    rate, so gifts visibly help the host. Hosts share their targets whenever they change.
+   Target Coin totals measure member gift spending, never the host's earnings.
    Staff set when the low-balance Recharge pop-up appears; the server sends the threshold. */
 const CallTargets = { data: null, loading: '', sent: '', shareTimer: 0, recharge: null, shownAt: 0 };
 const CT_PREVIEW_RECHARGE = { enabled: true, thresholdCoins: 500, lastRechargeCoins: 0, delaySeconds: 10, repeatSeconds: 180 };
@@ -22137,7 +22227,7 @@ function ctSenderTargets() {
   if (!data || !host) return '<div class="zr-call-stats ct-call-targets"></div>';
   const gift = data.gift, name = esc(first(host.n)), mission = hsPercent(data.earnedCoins, data.goalCoins);
   const giftCard = gift ? `<button type="button" class="hs-target-card" onclick="ctGive()" aria-label="Send ${esc(gift.name)} to help ${name} reach the gift target, ${n(data.giftProgress)} of ${n(data.giftCount)}"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(data.giftProgress)}/${n(data.giftCount)}</b></span><strong>${giftPriceMarkup(gift, 10)}</strong><i class="hs-target-track"><em style="width:${hsPercent(data.giftProgress, data.giftCount)}%"></em></i></span></button>` : '';
-  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
+  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done, member gift spending in Coins"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
 }
 /* Opens the gift panel, with the target gift chosen when the member tapped that card. */
 function ctGive(mission = false) {

@@ -11,11 +11,12 @@ const ZREFER_DEMO={code:'BZ7K4Q',shareUrl:'https://binzolive.com/?ref=BZ7K4Q',re
 // The preview keeps its sample apart from server data, so trying the code form never turns the pop-ups on.
 function zrfData(){return ZRefer.data||(DEMO?ZRefer.demo||ZREFER_DEMO:null)}
 function zrfCoins(value){return Number(value||0).toLocaleString('en-IN')}
-function zrfLoad(){if(DEMO){r();return}contentStart('referral');Native.send('referral.load');if(S.v==='refer')r()}
+function zrfLoad(){if(isHostWallet())return;if(DEMO){r();return}contentStart('referral');Native.send('referral.load');if(S.v==='refer')r()}
 function zrfOpen(from){ZRefer.from=['home','settings'].includes(from)?from:'settings';go('refer')}
 function zrfHeader(){const home=ZRefer.from==='home';return `<header class="zh-subheader zrf-header">${backButton(`go('${home?'home':'settings'}')`,{label:home?'Back to home':'Back to settings'})}<h1>Refer &amp; Earn</h1></header>`}
 
 function zrfView(){
+  if(isHostWallet())return '<section class="zrf-page"><p>Coin referral rewards are available to member accounts.</p></section>';
   const data=zrfData(),pending=!DEMO&&contentPending('referral')&&!data,error=!DEMO&&!data&&ContentLoading.referral.error;
   if(pending)return `<section class="zrf-page">${contentSkeleton('rows','Loading your invite code',3)}</section>`;
   if(error)return `<section class="zrf-page">${contentError('referral')}</section>`;
@@ -42,6 +43,7 @@ async function zrfCopy(){
 }
 function zrfShare(){if(DEMO){appNotice('Design preview · this opens your phone’s share sheet.');return}Native.send('referral.share')}
 function zrfApply(){
+  if(isHostWallet())return;
   const input=document.getElementById('zrf-code'),code=(input?.value||'').replace(/[\s-]/g,'').toUpperCase();
   if(ZRefer.applying)return;
   if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code)){ZRefer.applyError='Enter the 6-character code your friend shared.';r();document.getElementById('zrf-code')?.focus();return}
@@ -54,7 +56,7 @@ function zrfApply(){
 function zrfPromoKey(){return 'zimi.referPromo.'+(S.user?.id||'me')}
 function zrfToday(){const d=new Date();return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`}
 function zrfPromoDue(){
-  if(!(ZRefer.data||ZREFER_PREVIEW)||S.v!=='home'||!S.loggedIn||isHost()||document.querySelector('dialog[open]')||Home.giftTo)return false;
+  if(!(ZRefer.data||ZREFER_PREVIEW)||S.v!=='home'||!S.loggedIn||isHostWallet()||document.querySelector('dialog[open]')||Home.giftTo)return false;
   try{return localStorage.getItem(zrfPromoKey())!==zrfToday()}catch{return true}
 }
 // Home redraws often; a pending pop-up keeps its timer instead of starting over on every redraw.
@@ -84,6 +86,7 @@ function zrfShowPromo(){
    at the top of the call so it never covers the call controls. Invite opens the share
    sheet over the running call. */
 function zrfCallCard(){
+  if(isHostWallet())return '';
   const card=ZRefer.card;if(!card||card.callId!==zrfCallKey())return '';
   return `<aside class="zrf-call-card" role="status"><span class="zrf-call-icon" aria-hidden="true">${hi('gift',18)}</span><span class="zrf-call-copy"><b>Refer a friend, earn ${zrfCoins(card.reward)} coins</b><small>When they make their first coin purchase</small></span><button type="button" class="zrf-call-invite" onclick="zrfCallInvite()">Invite</button><button type="button" class="zrf-call-close" aria-label="Close" onclick="zrfHideCallCard()">${hi('close',16)}</button></aside>`;
 }
@@ -92,13 +95,13 @@ function zrfHideCallCard(){clearTimeout(ZRefer.cardTimer);if(!ZRefer.card)return
 function zrfCallInvite(){zrfHideCallCard();zrfShare()}
 function zrfCallCheck(){
   const data=ZRefer.data||(ZREFER_PREVIEW?ZREFER_DEMO:null),key=zrfCallKey();
-  if(S.v!=='call'||isHost()||!data||S.sec<60||ZRefer.callShown.has(key))return;
+  if(S.v!=='call'||isHostWallet()||!data||S.sec<60||ZRefer.callShown.has(key))return;
   ZRefer.callShown.add(key);ZRefer.card={callId:key,reward:data.rewardCoins};r();
   ZRefer.cardTimer=setTimeout(zrfHideCallCard,8000);
 }
 function zrfWatchCall(){
   clearInterval(ZRefer.checkTimer);ZRefer.checkTimer=null;
-  if(S.v==='call'&&!isHost())ZRefer.checkTimer=setInterval(zrfCallCheck,1000);
+  if(S.v==='call'&&!isHostWallet())ZRefer.checkTimer=setInterval(zrfCallCheck,1000);
   else if(ZRefer.card){clearTimeout(ZRefer.cardTimer);ZRefer.card=null}
 }
 
@@ -115,7 +118,7 @@ document.addEventListener('aurora:navigate',()=>{
   zrfWatchCall();
   if(S.v!=='home')zrfCancelPromo();
   if(S.v==='refer'){ZRefer.requested=true;zrfLoad();if(ZRefer.focusCode){ZRefer.focusCode=false;setTimeout(()=>document.getElementById('zrf-code')?.focus(),0)}}
-  else if(S.v==='home'&&S.loggedIn&&!DEMO&&!ZRefer.requested){ZRefer.requested=true;Native.send('referral.load')}
+  else if(S.v==='home'&&S.loggedIn&&!isHostWallet()&&!DEMO&&!ZRefer.requested){ZRefer.requested=true;Native.send('referral.load')}
 });
 // Once Home has its hosts on screen, a due pop-up follows.
 const zrfPreviousAfterRender=ZimiHome.afterRender;
