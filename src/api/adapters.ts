@@ -108,6 +108,23 @@ export function memberUsersFrom(value: unknown): import("./types").MemberUsers {
   });
   return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
 }
+export function activeHostsFrom(value: unknown): import("./types").ActiveHosts {
+  const data = record(value);
+  const invalid = () => new ApiError("Active hosts could not be loaded. Please try again.", 502);
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < data.items.length ||
+    !Number.isSafeInteger(data.page) || Number(data.page) < 1 || Number(data.page) > 1000 ||
+    !Number.isSafeInteger(data.limit) || Number(data.limit) < 1 || Number(data.limit) > 100 || data.items.length > Number(data.limit)) throw invalid();
+  const seen = new Set<string>();
+  const hosts = data.items.map(value => {
+    const peer = record(value), id = idOf(peer);
+    if (!/^[a-f\d]{24}$/i.test(id) || seen.has(id) || peer.role !== "host" || peer.hostStatus !== "approved" ||
+      peer.isVerifiedHost !== true || peer.isOnline !== true ||
+      (peer.name != null && (typeof peer.name !== "string" || peer.name.length > 120))) throw invalid();
+    seen.add(id);
+    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive host" });
+  });
+  return { hosts, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
+}
 export function relationshipsFrom(value: unknown, kind: "followers" | "following") {
   const data = record(value);
   if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < 0 ||

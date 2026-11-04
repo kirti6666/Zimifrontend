@@ -50,6 +50,7 @@ export type WebMessage =
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
   | { type: "users.load"; data: { q: string; page?: number } }
+  | { type: "hosts.active.load"; data: { q: string; page?: number } }
   | { type: "catalog.load" | "rtc.config"; data: Record<string, never> }
   | { type: "beauty.auth"; data: { requestId: number; userAgent?: string } }
   | { type: "notifications.load"; data: NotificationsQuery & { requestId?: number } }
@@ -145,7 +146,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "users" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
+export type DataResource = "home" | "search" | "users" | "activeHosts" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
   | NativeMediaEvent
   | OfficialAppMessage
@@ -189,6 +190,7 @@ export type AppMessage =
   | { type: "data.home"; data: HomeData & { background?: boolean } }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
   | { type: "data.users"; data: import("./api/types").MemberUsers & { q: string } }
+  | { type: "data.activeHosts"; data: import("./api/types").ActiveHosts & { q: string } }
   | { type: "home.updated"; data: Record<string, never> }
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> & { requestId?: number } }
   | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
@@ -1322,6 +1324,28 @@ export function createBridge(post: (msg: AppMessage) => void) {
           emit({ type: "data.users", data: { ...data, q } });
         }, { q, page });
       }
+      case "hosts.active.load": {
+        const q = msg.data.q.trim(), page = msg.data.page ?? 1;
+        const sessionVersion = getSessionVersion(), document = documentRevision, authority = hostRevision;
+        const requestId = (readRequests.get("activeHosts") ?? 0) + 1;
+        let approval: number;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && authority === hostRevision && requestId === readRequests.get("activeHosts");
+        return readResource("activeHosts", async () => {
+          try {
+            approval = await requireApprovedHost();
+            if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+            const data = await api.activeHosts(q, page);
+            if (data.hosts.some(peer => peer.id === accountId)) throw new ApiError("Active hosts could not be loaded. Please try again.", 502);
+            return data;
+          } catch (error) {
+            if (applicable()) throw error;
+          }
+        }, data => {
+          if (!data || !applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          for (const peer of data.hosts) chatPeers.set(peer.id, peer);
+          emit({ type: "data.activeHosts", data: { ...data, q } });
+        }, { q, page });
+      }
       case "notifications.load": {
         const { requestId, ...query } = msg.data;
         return loadNotifications(Object.keys(query).length ? query : undefined, requestId, requestId !== undefined || Object.keys(query).length > 0);
@@ -2261,7 +2285,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId }
           : msg.type === "ads.click" ? { id: msg.data.id }
-          : msg.type === "users.load" ? { q: msg.data.q.trim(), page: msg.data.page ?? 1 }
+          : msg.type === "users.load" || msg.type === "hosts.active.load" ? { q: msg.data.q.trim(), page: msg.data.page ?? 1 }
           : msg.type === "referral.apply" ? { requestId: msg.data.requestId } : {};
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));

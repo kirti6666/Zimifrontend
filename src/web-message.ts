@@ -100,6 +100,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
       Object.keys(d).every(key => ["code", "requestId"].includes(key)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
     case "users.load": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => key === "q" || key === "page"); break;
+    case "hosts.active.load": valid = typeof d.q === "string" && d.q.length <= 80 && (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 1000)) && Object.keys(d).every(key => key === "q" || key === "page"); break;
     case "notifications.load": valid = notificationQuery(d); break;
     case "notifications.open": {
       const target = notificationTargetFrom(d);

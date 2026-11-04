@@ -54,6 +54,9 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       // but may still open a creator profile from an existing relationship.
       if(account.verification==='verified'){
         assert.equal(await page.locator('.zh-host-users').count(),1);
+        assert.deepEqual(await page.getByRole('tablist',{name:'Host directory'}).getByRole('tab').allInnerTexts(),['Members','Active Hosts']);
+        assert.equal(await page.getByRole('tab',{name:'Members',exact:true}).getAttribute('aria-selected'),'true');
+        assert.equal(await page.locator('.zh-feed-tabs').count(),0,'Approved hosts use directory tabs in Home');
         await page.evaluate(id=>go('host',id),creator.id);
       }else{
       // The card offers its always-active video call; chat stays on the profile.

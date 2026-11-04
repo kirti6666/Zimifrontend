@@ -30,8 +30,10 @@ handles errors and forwards live events.
 
 ## Host user directory
 
-An approved host's Home shows member users with name or public user ID search,
-Chat, Voice and Video actions. Members keep their creator feeds. The directory
+An approved host's Home header has Members and Active Hosts tabs. Members shows
+member users with name or public user ID search, Chat, Voice and Video actions.
+Active Hosts shows connected approved hosts with public profiles and Chat actions.
+Members keep their creator feeds. The directory
 includes offline members; it excludes inactive, undiscoverable and blocked
 accounts. Member online indicators respect activity privacy.
 
@@ -48,6 +50,16 @@ conversation. Calls and messages continue through the existing server approval,
 block and billing checks. Roll out the compatible backend before distributing
 the app bundle that uses the member directory. `npm run test:host-users` covers
 the UI, message boundary and API contract.
+
+`hosts.active.load {q,page}` calls `GET /home?mode=active&q=...&page=...&limit=20`
+and returns `data.activeHosts {hosts,total,page,limit,q}`. Search is limited to
+80 characters and pages to 1,000. The backend requires current approved host
+access and filters connected, verified, discoverable hosts who have not chosen
+Go Offline before pagination. Activity privacy, blocks and self exclusion apply;
+busy hosts remain viewable without granting host-to-host calls. Legacy `online`
+feeds retain their saved availability behavior. Each tab preserves its own query
+and pages; Active Hosts refreshes on returning after 30 seconds, foregrounding
+or pull to refresh, without polling or repainting the other tab's input.
 
 ## Conversation ordering and engagement
 

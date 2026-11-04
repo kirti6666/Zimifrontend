@@ -92,8 +92,12 @@ keeps it identical to the original Next.js version.
   availability is a floating "Go online"/"Online" button at the bottom right of
   Home, where the reference has its LIVE button. Use the selected theme's
   colors. Filter hosts on the server before pagination.
-- Approved hosts use the Home member directory instead: Users heading, name/public
-  ID search and paginated member rows with Chat, Voice and Video actions. Keep
+- Approved hosts use Members and Active Hosts tabs in the Home header. Members
+  has name/public ID search and paginated rows with Chat, Voice and Video actions.
+  Active Hosts uses `hosts.active.load`/`data.activeHosts` and the server's strict
+  `mode=active` feed for connected, approved, privacy-visible hosts; show profile
+  and Chat actions without adding host-to-host calls. Keep tab queries/pages
+  separate and refresh stale Active Hosts when returning after 30 seconds. Keep
   member creator feeds unchanged. Use `users.load`/`data.users`, current approved
   host authority, real privacy-aware member presence and existing call/chat
   guards. Include offline members, and filter blocked, inactive and undiscoverable

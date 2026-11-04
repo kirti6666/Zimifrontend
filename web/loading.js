@@ -45,6 +45,9 @@ function contentBeforeNavigate(view){
 }
 function contentRender(key){
   if(key==='thread'){if(S.v==='thread')paint();return}
+  // Approved-host Home directories own their request state and paint only their
+  // results. Unrelated creator-feed loading must not replace the search input.
+  if(key==='home'&&isApprovedHost()&&S.v==='home')return;
   // Billing refreshes the wallet during a call. Patch its small surfaces rather
   // than rebuilding the screen and moving the playing camera elements.
   if(key==='wallet'&&window.zrPaintCallWallet?.())return;
