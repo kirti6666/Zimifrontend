@@ -19,7 +19,7 @@ function shell() {
     useCallback(work, dependencies) { return react.useMemo(() => work, dependencies); },
     useEffect(work, dependencies) { const index = cursor++; if (!hooks[index] || !hooksEqual(hooks[index].dependencies, dependencies)) { const before = hooks[index]; hooks[index] = { dependencies }; pendingEffects.push(() => { before?.cleanup?.(); hooks[index].cleanup = work(); }); } },
   };
-  const jsx = (type, props) => ({ type, props });
+  const jsx = (type, props, key) => ({ type, props, key });
   const bridge = {
     handle: message => serverWrites.push(plain(message)), documentLoading: () => calls.push('documentLoading'),
     prepareForUpdate: () => calls.push('prepareForUpdate'), close: () => calls.push('bridge.close'),
@@ -28,7 +28,7 @@ function shell() {
     requests: [], events: [], handle(request) { this.requests.push(plain(request)); }, event(message) { this.events.push(plain(message)); },
     stop: () => calls.push('media.stop'), close: () => calls.push('media.close'),
   };
-  const cache = new Map(), timers = new Set();
+  const cache = new Map(), timers = new Map();
   const load = relative => {
     const filename = path.resolve(root, relative);
     if (cache.has(filename)) return cache.get(filename).exports;
@@ -62,7 +62,7 @@ function shell() {
       if (name.startsWith('.')) return load(path.relative(root, path.resolve(path.dirname(filename), `${name}.ts`)));
       throw new Error(`Unexpected dependency ${name}`);
     };
-    vm.runInNewContext(code, { module, exports: module.exports, require: requireMock, console, setTimeout: work => { const id = Symbol(); timers.add(id); return id; }, clearTimeout: id => timers.delete(id) }, { filename });
+    vm.runInNewContext(code, { module, exports: module.exports, require: requireMock, console, setTimeout: (work, delay) => { const id = Symbol(); timers.set(id, { work, delay }); return id; }, clearTimeout: id => timers.delete(id) }, { filename });
     return module.exports;
   };
   const app = load('App.tsx');
@@ -73,6 +73,39 @@ function shell() {
   function unmount() { hooks.forEach(hook => hook?.cleanup?.()); }
   return { render, find, send, unmount, posts, calls, media, serverWrites, activities, incoming, server: message => receiveServer(message), nativeSend: message => nativeSend(message), state: value => nativeState(value), timers };
 }
+
+test('renderer death replaces the native WebView, retires media and bounds repeated recovery', () => {
+  const h = shell();
+  let web = h.find(h.render(), 'WebView');
+  const firstKey = web.key;
+  assert.equal(web.props.onRenderProcessGone(), true);
+  web = h.find(h.render(), 'WebView');
+  assert.notEqual(web.key, firstKey, 'A dead renderer must get a different native WebView instance');
+  assert.deepEqual(h.calls.slice(-2), ['documentLoading', 'media.stop']);
+  web.props.onRenderProcessGone();
+  web = h.find(h.render(), 'WebView');
+  web.props.onRenderProcessGone();
+  let tree = h.render();
+  assert.equal(h.find(tree, 'WebView'), undefined, 'Repeated renderer failures show recovery instead of an OOM restart loop');
+  h.find(tree, 'Pressable').props.onPress();
+  web = h.find(h.render(), 'WebView');
+  assert.ok(web, 'Manual retry mounts a new WebView and resets the automatic retry allowance');
+  web.props.onContentProcessDidTerminate();
+  assert.ok(h.find(h.render(), 'WebView'));
+  h.unmount();
+});
+
+test('a document that never starts reaches a retry screen; an offline ready document stays mounted', () => {
+  for (const ready of [false, true]) {
+    const h = shell(); h.render();
+    if (ready) h.send('ready', { demo: false });
+    [...h.timers.values()].find(timer => timer.delay === 20000).work();
+    assert.equal(!!h.find(h.render(), 'WebView'), ready);
+    if (!ready) assert.ok(h.find(h.render(), 'Pressable'), 'Script startup failure has a usable Retry action');
+    h.unmount();
+    assert.equal(h.timers.size, 0);
+  }
+});
 
 test('enabled Android shell declares native media before the document loads and keeps controls above native video', () => {
   const h = shell(), tree = h.render(), web = h.find(tree, 'WebView'), renderer = h.find(tree, 'NativeMediaLayer');

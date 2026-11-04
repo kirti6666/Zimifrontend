@@ -28,6 +28,27 @@ Native.on("call.connected")      <--  postToWeb(...)
 The screens never call the server directly. The app adds the login token,
 handles errors and forwards live events.
 
+## Host user directory
+
+An approved host's Home shows member users with name or public user ID search,
+Chat, Voice and Video actions. Members keep their creator feeds. The directory
+includes offline members; it excludes inactive, undiscoverable and blocked
+accounts. Member online indicators respect activity privacy.
+
+`users.load {q,page}` calls
+`GET /users/search?audience=members&q=...&page=...&limit=20` and returns
+`data.users {users,total,page,limit,q}`. Search is debounced; MongoDB filters and
+paginates before loading public identities and page-scoped presence. The native
+bridge checks current host approval and discards responses/errors after a newer
+query, account, document or approval change. These member identities retain
+`serverRole:user`; they never gain creator badges or forced online presence.
+
+Opening a discovered member profile no longer requires an earlier follow or
+conversation. Calls and messages continue through the existing server approval,
+block and billing checks. Roll out the compatible backend before distributing
+the app bundle that uses the member directory. `npm run test:host-users` covers
+the UI, message boundary and API contract.
+
 ## Conversation ordering and engagement
 
 Message history and realtime delivery use the conversation's positive server

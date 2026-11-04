@@ -135,6 +135,14 @@ export interface Host {
   stream?: HomeStream | null;
 }
 
+/** Public member identities that an approved host may contact. */
+export interface MemberUsers {
+  users: Host[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 /** Public identity and relationship data, never the target's account settings. */
 export interface PublicProfile extends Host {
   followingCount: number;

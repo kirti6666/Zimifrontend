@@ -13,6 +13,23 @@ The supplied [Android quick-start](https://docs.facebetter.net/android/quick-sta
 5. `src/native-media/view.tsx` presents local and remote streams with native `RTCView` surfaces beneath the WebView's transparent video slots. The local preview and outgoing sender share the native camera track. Muting, camera-off, camera flips, minimized calls and the existing authenticated signaling continue through the controller. Connecting a call obtains transient communication audio focus and defaults video to speaker/voice to earpiece while respecting wired/Bluetooth devices; ending it restores the previous audio mode/route. Camera preview alone does not take call audio focus. A beauty authorization, GL or processing failure passes the original camera through and preserves audio and the call.
 6. Native call encoding starts at a 2.5 Mbps / 30 fps / 1920-pixel long-edge ceiling and prioritizes frame rate at every profile. WebRTC may lower adapted resolution under pressure; fresh packet-loss, pacing and encoder intervals also select lower 480/720/1280-pixel ceilings, with sustained recovery before increasing quality. Capture framing and the microphone stay intact; the encoder scales its output. Native previews use `contain` to show the entire source image without zoom/crop. Ending the session releases beauty before stopping capture.
 
+## Background private calls
+
+Native private calls also own a camera/microphone foreground service. An outgoing
+permissioned preview promotes it once the server creates the ringing call; an
+incoming call starts it only after explicit acceptance and successful capture.
+Service promotion is acknowledged before RTP setup/audio focus, and a failed or
+timed-out promotion ends the affected call and retires capture. The ongoing
+notification returns to BinzoLive or ends that specific call. Session changes,
+cancel/end, task removal and native module teardown release the service. Preview
+and unanswered incoming notifications never start it. Android's while-in-use
+rules still require a visible Activity for a new service; an existing same-call
+service can be reused when its remote peer answers while the app is hidden.
+See [Android foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types)
+and [background-start restrictions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start).
+Controller/manifest tests cover these boundaries. Service-only instrumentation
+does not establish long-call RTP, thermal behavior or network handoff reliability.
+
 ## Browser and older-binary processing path
 
 1. `web/media.js` captures the camera and microphone.
@@ -67,6 +84,18 @@ Run native controller/lifecycle and Android packaging regressions, then the regu
 ```powershell
 node --test scripts/test-native-media-controller.cjs scripts/test-native-media-plugin.cjs
 ```
+
+After an Android Gradle build has populated the Kotlin compiler cache, the
+credential-free JVM cleanup probe executes the production Kotlin cleanup
+methods with injected EGL loss and resource-release failures:
+
+```powershell
+node scripts/test-native-media-cleanup.cjs
+```
+
+It also checks retained-frame lifetime and failed-license cleanup. This does
+not exercise an actual graphics driver; suspend/resume and two-device call
+checks are still required on the release APK.
 
 ```powershell
 npm run test:facebetter

@@ -1,6 +1,30 @@
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Host member directory keeps search and each contact action within reach. */
+.zh-users-header h1{margin:0;font-size:calc(24px * var(--theme-font-scale,1));font-weight:600;color:var(--ink)}
+.zh-users-header .zh-trophy{color:var(--gold)}
+.zh-host-users{padding:12px 20px 28px;color:var(--ink)}
+.zh-user-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;background:var(--raised);color:var(--muted);margin-bottom:12px}
+.zh-user-search input{flex:1;min-width:0;min-height:46px;padding:0;border:0;outline:0;background:transparent;color:var(--ink);font-size:14px}
+.zh-user-search:focus-within{outline:2px solid var(--accent-ink);outline-offset:2px}
+.zh-user-row{display:flex;align-items:center;gap:8px;min-height:84px;padding:12px 0}
+.zh-user-person{display:flex;align-items:center;flex:1;min-width:0;gap:12px;text-align:left;background:transparent;color:var(--ink)}
+.zh-user-avatar{position:relative;flex:none;display:block;width:48px;height:48px;background:var(--raised)}
+.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:48px;height:48px;object-fit:cover;overflow:hidden}
+.zh-user-avatar .zh-fallback>span{font-size:22px;color:var(--muted)}
+.zh-user-avatar>i{position:absolute;bottom:0;right:0;width:9px;height:9px;background:var(--muted);border:2px solid var(--canvas)}
+.zh-user-avatar>i.is-online{background:var(--online)}
+.zh-user-identity{display:flex;flex-direction:column;gap:4px;min-width:0}
+.zh-user-identity strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zh-user-identity small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zh-user-actions{display:flex;align-items:center;gap:4px;flex:none}
+.zh-user-actions>button{display:grid;place-items:center;width:40px;height:40px;background:var(--raised);color:var(--ink)}
+.zh-user-actions>.zh-user-video{background:var(--accent);color:var(--cta-ink)}
+.zh-user-actions>button:focus-visible,.zh-user-person:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.zh-host-users .zh-error{color:var(--muted);background:var(--surface)}
+.zh-host-users .zh-error button{color:var(--accent-ink)}
+@media(max-width:359px){.zh-host-users{padding-inline:14px}.zh-user-person{gap:8px}.zh-user-actions>button{width:36px;height:40px}.zh-user-actions{gap:2px}.zh-user-avatar,.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:42px;height:42px}}
 /* Home header, after the reference: Following, Explore, For You and New in place of the app
    name, the selected feed larger and bolder; then Search and the gold leaderboard trophy. */
 .zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}

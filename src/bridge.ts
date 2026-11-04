@@ -49,6 +49,7 @@ export type WebMessage =
   | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
+  | { type: "users.load"; data: { q: string; page?: number } }
   | { type: "catalog.load" | "rtc.config"; data: Record<string, never> }
   | { type: "beauty.auth"; data: { requestId: number; userAgent?: string } }
   | { type: "notifications.load"; data: NotificationsQuery & { requestId?: number } }
@@ -144,7 +145,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
+export type DataResource = "home" | "search" | "users" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
   | NativeMediaEvent
   | OfficialAppMessage
@@ -178,7 +179,7 @@ export type AppMessage =
   | { type: "account.deactivated"; data: { requestId: number } }
   | { type: "account.deactivate.error"; data: { message: string; requestId: number } }
   | { type: "data.posts"; data: { posts: UserPost[] } }
-  | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } }
+  | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string; q?: string; page?: number } }
   | { type: "data.loaded"; data: Record<string, never> }
   | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string; background?: boolean } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
@@ -187,6 +188,7 @@ export type AppMessage =
   | { type: "data.hosts"; data: { hosts: Host[] } }
   | { type: "data.home"; data: HomeData & { background?: boolean } }
   | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
+  | { type: "data.users"; data: import("./api/types").MemberUsers & { q: string } }
   | { type: "home.updated"; data: Record<string, never> }
   | { type: "data.notifications"; data: Awaited<ReturnType<typeof api.notifications>> & { requestId?: number } }
   | { type: "notifications.saved"; data: NotificationReadPatch & NotificationReadResult & { requestId: number } }
@@ -459,7 +461,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     message: errorMessage(error),
     ...(error instanceof ApiError ? { code: error.code, retryAfterSeconds: error.retryAfterSeconds } : {}),
   });
-  const operationError = (error: unknown, action?: string, context: { to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string } = {}) => {
+  const operationError = (error: unknown, action?: string, context: { to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string; q?: string; page?: number } = {}) => {
     if (action?.startsWith("themes.")) emit({ type: "themes.error", data: { message: errorMessage(error), action, ...(error instanceof ApiError ? { code: error.code } : {}) } });
     // A refused friend code is explained beside the code field, not in a toast.
     else if (action === "referral.apply") emit({ type: "referral.error", data: { message: errorMessage(error), requestId: context.requestId, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
@@ -1299,6 +1301,26 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "hosts.search": {
         const q = msg.data.q, page = msg.data.page ?? 1;
         return readResource("search", () => api.home({ q, mode: "popular", page }), data => { rememberHomePeers(data); emit({ type: "data.search", data: { q, hosts: data.hosts, total: data.total, page: data.page } }); }, { q, page });
+      }
+      case "users.load": {
+        const q = msg.data.q.trim(), page = msg.data.page ?? 1;
+        const sessionVersion = getSessionVersion(), document = documentRevision, authority = hostRevision;
+        const requestId = (readRequests.get("users") ?? 0) + 1;
+        let approval: number;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && authority === hostRevision && requestId === readRequests.get("users");
+        return readResource("users", async () => {
+          try {
+            approval = await requireApprovedHost();
+            if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+            return await api.memberUsers(q, page);
+          } catch (error) {
+            if (applicable()) throw error;
+          }
+        }, data => {
+          if (!data || !applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          for (const peer of data.users) chatPeers.set(peer.id, peer);
+          emit({ type: "data.users", data: { ...data, q } });
+        }, { q, page });
       }
       case "notifications.load": {
         const { requestId, ...query } = msg.data;
@@ -2239,6 +2261,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "wallet.verify" ? { merchantOrderId: msg.data.merchantOrderId }
           : msg.type === "ads.click" ? { id: msg.data.id }
+          : msg.type === "users.load" ? { q: msg.data.q.trim(), page: msg.data.page ?? 1 }
           : msg.type === "referral.apply" ? { requestId: msg.data.requestId } : {};
         operationError(error, msg.type, context);
       }).finally(() => operations.delete(key));

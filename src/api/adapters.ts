@@ -92,6 +92,22 @@ export function hostFrom(value: unknown): Host {
 }
 
 const count = (value: unknown) => Math.max(0, Math.floor(finite(value) ?? 0));
+export function memberUsersFrom(value: unknown): import("./types").MemberUsers {
+  const data = record(value);
+  const invalid = () => new ApiError("Users could not be loaded. Please try again.", 502);
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < 0 ||
+    !Number.isSafeInteger(data.page) || Number(data.page) < 1 || Number(data.page) > 10000 ||
+    !Number.isSafeInteger(data.limit) || Number(data.limit) < 1 || Number(data.limit) > 100 || data.items.length > Number(data.limit)) throw invalid();
+  const seen = new Set<string>();
+  const users = data.items.map(value => {
+    const peer = record(value), id = idOf(peer);
+    if (!/^[a-f\d]{24}$/i.test(id) || seen.has(id) || peer.role !== "user" || peer.isVerifiedHost === true ||
+      (peer.name != null && (typeof peer.name !== "string" || peer.name.length > 120))) throw invalid();
+    seen.add(id);
+    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive member", role: "user", isVerifiedHost: false, stream: null });
+  });
+  return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
+}
 export function relationshipsFrom(value: unknown, kind: "followers" | "following") {
   const data = record(value);
   if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < 0 ||

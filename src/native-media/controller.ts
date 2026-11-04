@@ -3,6 +3,7 @@ import { api } from "../api/endpoints";
 import {
   applyBeauty, BEAUTY_PROCESSOR, beautySupported, configureBeauty, onBeautyStatus,
   releaseBeauty, setBeautyEnabled, startCallAudio, stopCallAudio, type BeautyCommand, type BeautyStatus,
+  startCallService, stopCallService, onCallServiceStopped,
 } from "../../modules/binzo-media";
 
 export type NativeMediaMessage = { type: string; data?: Record<string, unknown> };
@@ -37,6 +38,7 @@ const VIDEO_MAX_LEVEL = PROFILES.length - 1;
 const VIDEO_START_LEVEL = VIDEO_MAX_LEVEL;
 const RECEIVER_EVIDENCE_MS = 8000;
 const VIDEO_RECOVERY_DWELL_MS = 10000;
+let callServiceSequence = 0;
 type QualitySnapshot = {
   sampledAt: number; timestamp?: number; received?: number; lost?: number;
   sent?: number; frames?: number; encode?: number; delay?: number; bytes?: number;
@@ -83,6 +85,7 @@ export function createNativeMedia(
   let retiring: Promise<void> = Promise.resolve(), mutations: Promise<unknown> = Promise.resolve();
   let session: Session | null = null, expectedCall: string | null = null, handoffCall: string | null = null;
   let earlySignals: Signal[] = [], beautyWanted = false, settings: BeautyCommand[] = [];
+  let callService: { id: string; video: boolean; lease: string; ready: Promise<void> } | null = null;
   let beautyRequest: Promise<void> | null = null, beautyRevision = 0, beautyConfigured = false, beautyNeedsReset = false, processorTrack: MediaStreamTrack | null = null;
 
   function publish(next: Partial<NativeMediaState> = {}) {
@@ -101,10 +104,23 @@ export function createNativeMedia(
   }
   const valid = (current: Session) => !closed && session === current && generation === current.version;
   const connected = (pc: RTCPeerConnection) => pc.connectionState === "connected" && !["failed", "disconnected", "closed"].includes(pc.iceConnectionState);
+  function releaseCallService() {
+    const previous = callService; callService = null;
+    if (previous) stopCallService(previous.lease);
+  }
+  function ensureCallService(id: string, video: boolean): Promise<void> {
+    if (callService?.id === id && callService.video === video) return callService.ready;
+    releaseCallService();
+    const lease = `${Date.now()}:${++callServiceSequence}`;
+    const ready = startCallService(id, video, lease);
+    callService = { id, video, lease, ready };
+    return ready;
+  }
   function disposePeer() {
     const current = session;
     session = null;
     if (current) {
+      releaseCallService();
       stopCallAudio();
       clearInterval(current.monitor); clearTimeout(current.recovery);
       if (current.pc) {
@@ -119,6 +135,7 @@ export function createNativeMedia(
   }
   function stop() {
     generation++; beautyRevision++;
+    releaseCallService();
     disposePeer();
     const pendingCapture = capture;
     expectedCall = handoffCall = null; earlySignals = []; capture = null; beautyRequest = null; processorTrack = null; beautyConfigured = false; beautyNeedsReset = false;
@@ -202,6 +219,12 @@ export function createNativeMedia(
     }
     publish({ beautyStatus: status });
   });
+  const serviceSubscription = onCallServiceStopped((callId, lease) => {
+    if (closed || callService?.id !== callId || callService.lease !== lease || session?.id !== callId && expectedCall !== callId) return;
+    send({ type: "call.end", data: { callId, reason: "ended_from_notification" } });
+    stop();
+    send({ type: "call.ended", data: { callId } });
+  });
 
   async function prepare(video: boolean): Promise<MediaStream> {
     if (closed) throw cancelled();
@@ -237,6 +260,14 @@ export function createNativeMedia(
       if (version !== generation || closed) throw cancelled();
       const opened = await mediaDevices.getUserMedia({ audio: !existing, video: video ? { ...CAMERA, facingMode: state.facing } : false });
       if (version !== generation || closed) { stopStream(opened); throw cancelled(); }
+      // WebRTC resolves partial capture when only one requested permission is
+      // granted. Reject it before adding tracks or signaling the media session.
+      const microphone = [...opened.getAudioTracks(), ...(existing?.getAudioTracks() || [])].some(track => track.readyState === "live");
+      const camera = opened.getVideoTracks().some(track => track.readyState === "live");
+      if (!microphone || video && !camera) {
+        stopStream(opened);
+        throw new Error(`${!microphone ? "Microphone" : "Camera"} access is required. Allow it in your device settings and try again.`);
+      }
       let local = opened;
       if (existing) {
         opened.getTracks().forEach(track => existing.addTrack(track));
@@ -529,9 +560,14 @@ export function createNativeMedia(
       try {
         // Preview capture does not change communication audio routing. An
         // accepted call owns the route/focus until its peer is retired.
-        startCallAudio(!current.voice);
         const local = await prepare(!current.voice);
         if (!valid(current)) return;
+        // Start while the accepting/calling Activity is visible. Android 14+
+        // rejects while-in-use camera/microphone service starts in background.
+        // Promotion must succeed before RTP or server signaling proceeds.
+        await ensureCallService(callId, !current.voice);
+        if (!valid(current)) return;
+        startCallAudio(!current.voice);
         const config = await api.rtcConfig();
         if (!valid(current)) return;
         if (!Array.isArray(config.iceServers)) throw new Error("The server returned invalid video connection settings.");
@@ -621,7 +657,24 @@ export function createNativeMedia(
     switch (event.type) {
       case "rtc.signal": receive(data as Signal); break;
       case "call.connected": case "verify.connected": void connect(data).catch(() => {}); break;
-      case "call.created": case "call.incoming": case "verify.incoming": if (!session) expectedCall = String(data.callId || ""); break;
+      case "call.created": {
+        if (session) break;
+        const callId = String(data.callId || ""), version = generation;
+        expectedCall = callId;
+        // Outgoing calls already have a permissioned preview. Protect it while
+        // ringing, rather than trying to start a service after a hidden app's
+        // remote peer answers. Incoming pushes never enter this path.
+        if (callId && state.local?.getAudioTracks().some(track => track.readyState === "live")) {
+          void ensureCallService(callId, state.local.getVideoTracks().some(track => track.readyState === "live")).catch(error => {
+            if (closed || generation !== version || expectedCall !== callId || session?.id === callId) return;
+            send({ type: "call.end", data: { callId, reason: "media_failed" } });
+            stop(); publish({ status: message(error) });
+            send({ type: "call.ended", data: { callId } });
+          });
+        }
+        break;
+      }
+      case "call.incoming": case "verify.incoming": if (!session) expectedCall = String(data.callId || ""); break;
       case "call.ended": case "verify.ended": {
         if (handoffCall && handoffCall === data.callId) {
           handoffCall = null;
@@ -643,6 +696,6 @@ export function createNativeMedia(
       }
     }
   }
-  function close() { if (closed) return; stop(); beautySubscription?.remove(); closed = true; }
+  function close() { if (closed) return; stop(); beautySubscription?.remove(); serviceSubscription?.remove(); closed = true; }
   return { handle, event, stop, close };
 }
