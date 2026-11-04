@@ -98,11 +98,15 @@ const promo = page => page.locator('#zrf-promo[open]');
     assert.ok((await sent(page, 'referral.load')).length >= 2, 'Opening the page refreshes the stats');
     await page.close();
 
-    // Approved hosts get the row and the page, but no Home pop-up.
+    // Hosts earn Diamonds, so member Coin referral offers stay hidden.
     const hosting = await open('assets/aurora.html', '?role=host', host);
     await receive(hosting, 'data.referral', summary);
     await hosting.waitForTimeout(2200);
     assert.equal(await promo(hosting).count(), 0, 'Hosts are not interrupted on Home');
+    assert.equal((await sent(hosting,'referral.load')).length,0,'Host Home does not request member Coin rewards');
+    await hosting.evaluate(()=>go('settings'));
+    assert.equal(await hosting.getByRole('button',{name:'Refer a Friend & Earn 1,000 Coins',exact:true}).count(),0);
+    await hosting.evaluate(()=>go('refer'));assert.equal(await hosting.evaluate(()=>S.v),'wallet','Direct host referral navigation opens the Diamond wallet');
     await hosting.close();
 
     // The call card: a minute into a member's video call, for eight seconds, once per call.

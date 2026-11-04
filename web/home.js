@@ -133,10 +133,10 @@ function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A li
 function homeScreen(){return homeDashboard()}
 
 function homeOpen(id){if(!window.ZIMI_LIVE_STREAMING_ENABLED){const h=g(id);if(!h)return;return h.available&&!isHost()?homeCall(id):go('host',id)}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
-function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHost())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
-function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHost())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
+function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHostWallet())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
+function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHostWallet())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return appNotice('Live streaming is temporarily unavailable. Go online for 1:1 calls from your creator settings.');if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
-function homeClaim(){if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
+function homeClaim(){if(isHostWallet()){appNotice('Host call rewards are credited as diamonds. View your progress in Withdraw.');return}if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
 function homeNotifications(){return window.ZimiNotifications.open()}
 
 function homeMarkRead(id){znUpdate(true,id?[id]:null,!id)}
@@ -179,7 +179,7 @@ function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
   if(S.bgCall)return appNotice('Finish your current call first.');
   if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
-  if(isHost()){appNotice('Calls can be started from a member account.');return}
+  if(isHostWallet()){appNotice('Calls can be started from a member account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
   const setup=Home.dashboardSetup,h=g(S.h);
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&setup?.hostId===S.h){
@@ -214,7 +214,7 @@ async function homePrepareCall(view,id){
   if(view==='dialback'&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
-  if(view==='dial'&&isHost()){appNotice('Calls can be started from a member account.');return}
+  if(view==='dial'&&isHostWallet()){appNotice('Calls can be started from a member account.');return}
   window.ZimiRingback?.prime();
   const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
@@ -231,7 +231,7 @@ async function homePrepareCall(view,id){
     const ready=await Promise.race([window.ZimiMedia.prepare(!voice).then(()=>true),cancelled]);
     if(!ready||homeCallPreparation!==pending)return;
     if(S.v!==pending.screen||S.h!==pending.screenPeer||(view==='dialback'&&(S.caller?.id!==pending.caller||!isApprovedHost()))){homeCancelPrepare('',false);return}
-    if(view==='dial'&&(isHost()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
+    if(view==='dial'&&(isHostWallet()||homeCallUnavailable(target))){homeCancelPrepare('This creator is no longer available. Please try again later.');return}
     clearTimeout(pending.timer);homeCallPreparation=null;
     Home.preparingCall=false;Home.preparingVoice=false;Home.mediaStatus='Connecting…';
     document.getElementById('app-notice')?.remove();

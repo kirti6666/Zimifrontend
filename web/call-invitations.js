@@ -3,7 +3,7 @@
 const CallInvitations={owner:'',invitation:null,requested:false,request:0,pending:0,busy:'',error:'',foreground:true,realtimeReady:false,readyAt:0,nullRetried:false,retryTimer:null,topup:null,ended:new Set(),timer:null};
 function zciOwner(){return S.loggedIn?S.user?.id||'':''}
 function zciMuted(){try{return localStorage.getItem('binzo.automaticCalls.muted.'+zciOwner())==='1'}catch{return false}}
-function zciIdle(ownDialog=false){return !!zciOwner()&&!isHost()&&S.v==='home'&&!S.bgCall&&CallInvitations.foreground&&!document.hidden&&!homeContentPending()&&!Home.preparingCall&&!Home.matching&&!Home.checkoutBusy&&!Home.checkoutAttempt&&!CoinUI.checkoutPrompt&&!coinHasPendingPayment()&&!Home.giftTo&&!S.memberRing&&!S.inc&&!S.queuedInc&&!S.connecting&&!S.acceptingCall&&!ZVerify.state&&!window.ZimiChatVoice?.active()&&!document.querySelector(ownDialog?'dialog[open]:not(#zci-invitation)':'dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable=true]')}
+function zciIdle(ownDialog=false){return !!zciOwner()&&!isHostWallet()&&S.v==='home'&&!S.bgCall&&CallInvitations.foreground&&!document.hidden&&!homeContentPending()&&!Home.preparingCall&&!Home.matching&&!Home.checkoutBusy&&!Home.checkoutAttempt&&!CoinUI.checkoutPrompt&&!coinHasPendingPayment()&&!Home.giftTo&&!S.memberRing&&!S.inc&&!S.queuedInc&&!S.connecting&&!S.acceptingCall&&!ZVerify.state&&!window.ZimiChatVoice?.active()&&!document.querySelector(ownDialog?'dialog[open]:not(#zci-invitation)':'dialog[open]')&&!document.activeElement?.matches('input,textarea,[contenteditable=true]')}
 function zciValid(invitation=CallInvitations.invitation){return !!invitation&&invitation.source==='automatic'&&invitation.label==='Automatic call invitation'&&invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()}
 function zciClose(){const dialog=document.getElementById('zci-invitation');if(dialog){dialog.close();dialog.remove()}}
 function zciWatchDeadline(){
@@ -19,7 +19,7 @@ function zciWatchDeadline(){
 function zciReset(){zciClose();clearTimeout(CallInvitations.timer);clearTimeout(CallInvitations.retryTimer);Object.assign(CallInvitations,{owner:zciOwner(),invitation:null,requested:false,pending:++CallInvitations.request,busy:'',error:'',topup:null,timer:null,retryTimer:null,realtimeReady:false,nullRetried:false,readyAt:0});CallInvitations.ended.clear();S.callInvitationIntent=null;S.automaticCall=null;S.hostTopupWaiting=null}
 function zciRequest(active=false){
   if(CallInvitations.owner!==zciOwner())zciReset();
-  if(!zciOwner()||isHost()||!CallInvitations.realtimeReady||CallInvitations.busy||(!active&&(!zciIdle(true)||CallInvitations.requested||zciMuted())))return;
+  if(!zciOwner()||isHostWallet()||!CallInvitations.realtimeReady||CallInvitations.busy||(!active&&(!zciIdle(true)||CallInvitations.requested||zciMuted())))return;
   if(active&&(!CallInvitations.foreground||document.hidden))return;
   CallInvitations.requested=true;CallInvitations.busy=active?'review':'load';CallInvitations.error='';CallInvitations.pending=++CallInvitations.request;
   Native.send('call.invitation.load',{requestId:CallInvitations.pending,...(active?{active:true}:{})});zciPaint();

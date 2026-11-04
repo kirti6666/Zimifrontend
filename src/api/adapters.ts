@@ -382,6 +382,7 @@ export function missedFrom(value: unknown, userId: string): { calls: MissedCall[
 }
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);
+  if (wallet.currency !== undefined && wallet.currency !== "coins" && wallet.currency !== "diamonds") throw new ApiError("Your wallet currency could not be loaded. Try again.", 502);
   if (!Number.isSafeInteger(wallet.coins) || !Number.isSafeInteger(wallet.earningsPaise) || (wallet.coins as number) < 0 || (wallet.earningsPaise as number) < 0) throw new ApiError("Your wallet could not be loaded. Try again.", 502);
   const hasDiamonds = ["diamondUnits", "reservedDiamondUnits", "diamondScale", "conversion"].some(key => wallet[key] !== undefined);
   const conversion = wallet.conversion === undefined ? {} : record(wallet.conversion);
@@ -411,6 +412,7 @@ export function walletFrom(value: unknown): Wallet {
     throw new ApiError("Your weekly reward progress could not be loaded. Try again.", 502);
   return {
     coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
+    ...(wallet.currency === "coins" || wallet.currency === "diamonds" ? { currency: wallet.currency } : {}),
     reservedPaise: finite(wallet.reservedPaise),
     minimumWithdrawalPaise: Number.isSafeInteger(wallet.minimumWithdrawalPaise) && Number(wallet.minimumWithdrawalPaise) > 0 ? Number(wallet.minimumWithdrawalPaise) : undefined,
     withdrawalsEnabled: wallet.withdrawalsEnabled === true,
@@ -500,11 +502,15 @@ export function hostCallStatusFrom(value: unknown) {
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
   return { items: items(value).map(record).map(tx => {
     const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);
+    if ((tx.diamondUnits !== undefined && !Number.isSafeInteger(tx.diamondUnits)) ||
+      (tx.diamondScale !== undefined && (tx.diamondScale !== 1000000 || tx.diamondUnits === undefined)))
+      throw new ApiError("Your wallet activity could not be loaded. Try again.", 502);
     // The ledger stores purchase charges as positive and reversals as negative.
     // Monetary-only purchases display the account holder's spending/refund sign.
     const monetaryPurchase = coins === 0 && amountPaise !== undefined && Number.isSafeInteger(amountPaise) && amountPaise !== 0 && ["purchase", "purchase_reversal"].includes(type);
     return {
       title: string(tx.description) || type.replace(/_/g, " "), time: timeOf(tx.createdAt), coins, amountPaise,
+      ...(tx.diamondUnits !== undefined ? { diamondUnits: Number(tx.diamondUnits), diamondScale: 1000000 as const } : {}),
       ...(monetaryPurchase ? { displayAmountPaise: type === "purchase" ? -Math.abs(amountPaise) : Math.abs(amountPaise) } : {}),
       kind: type.startsWith("call") ? "call" : type.startsWith("gift") ? "gift" : type.startsWith("purchase") ? "topup" : type.startsWith("withdrawal") ? "withdrawal" : "reward",
     };

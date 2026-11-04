@@ -1489,15 +1489,28 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "wallet.checkout": case "themes.premium.checkout": {
-        const kind: PurchaseKind = msg.type === "themes.premium.checkout" ? "premium" : "coins", sessionVersion = getSessionVersion(), owner = accountId;
+        const kind: PurchaseKind = msg.type === "themes.premium.checkout" ? "premium" : "coins", sessionVersion = getSessionVersion(), document = documentRevision;
+        let owner = accountId;
+        const sessionCurrent = () => current(version) && sessionVersion === getSessionVersion() && (!owner || owner === accountId);
+        const applicable = () => sessionCurrent() && document === documentRevision;
         const activity = purchaseActivity(kind, msg.data.idempotencyKey);
         const checkoutGeneration = ++activity.generation;
         activity.inFlight++;
         let retained = !!activity.orderId;
         try {
+        if (kind === "coins") {
+          const account = await api.me(true);
+          if (!applicable()) return;
+          if (!account.user.id || owner && account.user.id !== owner) throw new ApiError("Your sign-in changed. Please try again.", 409);
+          owner = account.user.id;
+          activity.owner = owner;
+          applyHostAccount(account);
+          const role = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
+          if (role !== "user") throw new ApiError("Coins are for member accounts. Hosts use diamonds.", 403, "COINS_MEMBERS_ONLY");
+        }
         const result = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey, msg.data.route) : api.checkoutPremium(msg.data.idempotencyKey, msg.data.route));
         const purchase = { ...result, idempotencyKey: msg.data.idempotencyKey, ...(msg.data.route ? { requestedRoute: msg.data.route } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
-        if (!current(version) || sessionVersion !== getSessionVersion()) return;
+        if (!sessionCurrent()) return;
         if (purchase.status === "PENDING" && purchase.merchantOrderId) {
           activity.orderId = purchase.merchantOrderId; retained = true;
           expirePurchaseActivity(activity, purchase.expiresAt);
@@ -1508,7 +1521,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           pendingPurchases.delete(purchase.merchantOrderId);
           if (owner) void forgetPendingPayment(owner, purchase.merchantOrderId);
         }
-        if (!current(version) || sessionVersion !== getSessionVersion() || activity.dismissed) return;
+        if (!applicable() || activity.dismissed) return;
         // Deliver the owned order before opening a provider app. A failed launch
         // or app restart can then resume exactly this checkout without paying twice.
         emit({ type: kind === "premium" ? "themes.premium.checkout" : "wallet.checkout", data: purchase });
@@ -1527,10 +1540,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
           }
         }
         return;
+        } catch (error) {
+          if (applicable()) throw error;
         } finally {
           activity.inFlight--;
           if (!retained || activity.dismissed || !purchaseActivityCurrent(activity)) finishPurchaseActivity(activity);
         }
+        return;
       }
       case "wallet.verify": return verifyPurchase(msg.data.merchantOrderId);
       case "themes.premium.verify": return verifyPurchase(msg.data.merchantOrderId, "premium");

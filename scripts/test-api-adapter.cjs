@@ -631,6 +631,15 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     assert.throws(() => adapters.walletFrom({ ...diamondWallet, ...broken }), /diamond balance/, 'Malformed diamond accounting fails closed');
   }
   assert.equal(adapters.walletFrom({ coins: 0, earningsPaise: 100 }).diamondUnits, undefined, 'An older server never invents a diamond balance');
+  assert.equal(adapters.walletFrom({ coins: 0, earningsPaise: 100 }).currency, undefined, 'A legacy response does not invent an account currency');
+  for (const currency of ['coins', 'diamonds']) {
+    const scoped = adapters.walletFrom({ ...diamondWallet, currency });
+    assert.equal(scoped.currency, currency, 'Server currency metadata survives normalization');
+    assert.equal(scoped.coins, diamondWallet.coins, 'Historical Coin fields stay intact');
+    assert.equal(scoped.diamondUnits, diamondWallet.diamondUnits, 'Currency presentation never converts or erases historical units');
+  }
+  for (const currency of ['', 'coin', 'diamond', 'INR', null, 1, {}, ['coins']])
+    assert.throws(() => adapters.walletFrom({ ...diamondWallet, currency }), /currency|wallet/, 'Malformed currency metadata fails closed');
   const hostPolicy={enabled:true,hostCallSharePercent:28,hostCallRewardPercent:13,hostGiftSharePercent:41,agencySharePercent:13,hostWeeklyTargetMinutes:1950,paisePerDiamond:20,wholeBalanceWithdrawal:true,hostRules:'Be respectful.'};
   assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:hostPolicy}).hostEarningsPolicy),hostPolicy);
   assert.equal(adapters.walletFrom({...diamondWallet,conversion:{diamondsPerCoin:0,paisePerDiamond:20},hostEarningsPolicy:{...hostPolicy,hostCallSharePercent:0}}).conversion.diamondsPerCoin,0,'Zero regular call share remains a valid policy');
@@ -1002,6 +1011,15 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(transactions.slice(2, 6).map(tx => tx.displayAmountPaise), [undefined, undefined, undefined, undefined]);
   assert.deepEqual(transactions.slice(0, 6).map(tx => tx.coins), [0, 0, 100, -100, -25, 0]);
   assert.deepEqual(transactions.filter(tx => tx.kind === 'gift').map(tx => tx.coins), [-25, 0]);
+  for (const diamondUnits of [0, 41000000, -1250000, Number.MAX_SAFE_INTEGER, -Number.MAX_SAFE_INTEGER]) {
+    const row = adapters.transactionsFrom({ items: [{ type: 'call_earning', coins: 100, amountPaise: 820, diamondUnits }] }).items[0];
+    assert.equal(row.diamondUnits, diamondUnits, 'Exact signed ledger Diamonds survive without a price conversion');
+    assert.equal(row.diamondScale, 1000000, 'Historical ledger units have the schema’s fixed microunit scale');
+    assert.equal(row.coins, 100, 'Member billing context remains intact beside host Diamonds');
+  }
+  assert.equal(adapters.transactionsFrom({ items: [{ type: 'call_earning', coins: 100, amountPaise: 820 }] }).items[0].diamondUnits, undefined, 'Older cash receipts do not invent Diamonds');
+  for (const patch of [{ diamondUnits: 1.5 }, { diamondUnits: Number.MAX_SAFE_INTEGER + 1 }, { diamondUnits: '100' }, { diamondUnits: null }, { diamondUnits: 1, diamondScale: 100 }, { diamondScale: 1000000 }])
+    assert.throws(() => adapters.transactionsFrom({ items: [{ type: 'call_earning', coins: 100, ...patch }] }), /wallet activity/, 'Malformed exact Diamond receipts fail closed');
   expect('POST', '/streams/stream-id/join', { count: 13 });
   expect('GET', '/streams/stream-id', { _id: 'stream-id', hostId: creator._id, host: creator, title: 'Acoustic night', viewers: 13 });
   assert.equal((await api.joinStream('stream-id')).host.name, 'Asha Live');

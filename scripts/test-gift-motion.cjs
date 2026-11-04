@@ -90,13 +90,14 @@ async function checkTransparentGift(page, label) {
       S.caller = { id: 'caller', n: 'Imran', callId: S.callId, voice: false };
       go('hcall'); Home.mediaStatus = 'Connected'; r();
     });
-    const gift = { id: 'receipt-1', callId: 'gift-motion-call', senderId: 'caller', senderName: 'Imran', giftName: 'Berry', emoji: '🍓', coins: 299, mediaUrl:'https://gift-motion.fixture.test/berry.svg',durationMs:2400 };
+    const gift = { id: 'receipt-1', callId: 'gift-motion-call', senderId: 'caller', senderName: 'Imran', giftName: 'Berry', emoji: '🍓', coins: 299, diamondUnits: 41000000, diamondScale: 1000000, mediaUrl:'https://gift-motion.fixture.test/berry.svg',durationMs:2400 };
     assert.equal(await page.locator('.zr-gift-celebration').count(), 0, 'No celebration before a real receipt');
     await receive('gift.received', gift);
     await playing(page,gift.id);
     await stage(page).locator('img').evaluate(image=>{window.__giftImage=image});
     const start = await page.evaluate(() => Room.giftMotion.at);
-    assert.match(await page.locator('.zr-gift-alert').innerText(), /Imran[\s\S]*Berry[\s\S]*299/);
+    assert.match(await page.locator('.zr-gift-alert').innerText(), /Imran[\s\S]*Berry[\s\S]*41 diamonds received/, 'Host gift earnings use the confirmed exact Diamond receipt');
+    assert.doesNotMatch(await page.locator('.zr-gift-alert').innerText(), /299|coins/i, 'Member gift cost is never shown as host earnings');
     assert.equal(await page.locator('.zr-gift-celebration').locator('.zr-gift-halo,.zr-gift-wave,.zr-gift-sparks,.zr-gift-caption').count(),0,'The supplied animation has no added layers');
     assert.deepEqual(await page.locator('.zr-gift-stage-art').evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.backgroundImage,s.boxShadow,s.filter,s.animationName]}),['rgba(0, 0, 0, 0)','none','none','none','none'],'The file owns the animation and transparency');
     assert.equal(await page.evaluate(() => S.recvN), 1);
@@ -140,10 +141,12 @@ async function checkTransparentGift(page, label) {
     assert.equal(await page.locator('.zr-gift-celebration').count(), 0, 'A receipt from another call cannot animate here');
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await receive('gift.received', { ...gift, id: 'receipt-2', giftName: '<img src=x onerror=alert(1)>', mediaUrl: 'javascript:alert(1)' });
+    await receive('gift.received', { ...gift, id: 'receipt-2', diamondUnits: undefined, diamondScale: undefined, giftName: '<img src=x onerror=alert(1)>', mediaUrl: 'javascript:alert(1)' });
     await playing(page,'receipt-2');
     assert.equal(await page.locator('.zr-gift-stage-art img').count(), 0, 'Unsafe media falls back to the gift emoji');
     assert.equal(await page.locator('.zr-gift-alert strong img').count(), 0, 'Gift names are escaped');
+    assert.match(await page.locator('.zr-gift-alert').innerText(), /confirmed diamonds in Wallet/, 'Older receipts defer to Wallet rather than converting Coins');
+    assert.doesNotMatch(await page.locator('.zr-gift-alert').innerText(), /299|coins/i);
     const animations = await page.locator('.zr-gift-celebration').evaluate(el => [el, ...el.querySelectorAll('*')].map(node => getComputedStyle(node).animationName));
     assert.ok(animations.every(name => name === 'none'), 'Gift artwork has no additional CSS movement');
     await page.evaluate(() => go('home'));

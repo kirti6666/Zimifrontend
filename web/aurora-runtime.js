@@ -180,6 +180,9 @@ function go(v,id){
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
+ if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact members.');return}
+ if(window.ZimiHostAccess?.financialHost()&&['coins','refer'].includes(v)){appNotice('Your host account earns diamonds. Open your wallet to view them.');v='wallet'}
+ if(v==='payout-history'&&window.ZimiHostAccess&&!window.ZimiHostAccess.financialHost()){appNotice('Withdrawals are available to host accounts.');return}
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
  if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout","host-statistics"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
@@ -804,18 +807,19 @@ const TXNS=[
  ["Call with Ananya","2 Sep, 10:24 PM",-285,"call"],
  ["Bonus coins","1 Sep, 9:00 AM",250,"topup"]];
 
-function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct zwallet-page">'+pending+'</div>';const activity=window.contentSurface?.('transactions','rows','Loading recent transactions');return `<div class="acct zwallet-page">
- <section class="accthero zwallet-balance" aria-label="Coin balance"><div><div class="eyebrow">Coin balance</div><div class="big">${coinIcon(25)}${contentBalance()}</div><p class="sub">Available for calls and gifts</p></div>
-  <button type="button" class="cta" onclick="go('coins')">Add coins</button></section>
+function vWallet(){const pending=window.contentSurface?.('wallet','wallet','Loading wallet');if(pending)return '<div class="acct zwallet-page">'+pending+'</div>';const activity=window.contentSurface?.('transactions','rows','Loading recent transactions'),host=isHostWallet(),w=diamondOwnWallet(),checking=!!window.ZimiHostAccess?.checking(),units=Number.isSafeInteger(w?.profileDiamondUnits)&&w.profileDiamondUnits>=0?w.profileDiamondUnits:w?.diamondUnits,ready=!checking&&diamondReady(w);return `<div class="acct zwallet-page">
+ <section class="accthero zwallet-balance" aria-label="${host?'Diamond':'Coin'} balance"><div><div class="eyebrow">${host?'Diamond':'Coin'} balance</div><div class="big">${host?diamondIcon(25)+(checking?'<span class="zh-skeleton" role="status" aria-label="Loading diamond balance" aria-busy="true">'+skeletonLine('110px',34)+'</span>':ready?diamondFormat(units):'—'):coinIcon(25)+contentBalance()}</div><p class="sub">${host?'Call & gift earnings':'Available for calls and gifts'}</p>${host&&!checking&&!ready?'<p class="zwallet-earnings-note">Diamond balance unavailable. <button type="button" onclick="contentRetry(\'wallet\')">Retry</button></p>':''}</div>
+  ${host?'':`<button type="button" class="cta" onclick="go('coins')">Add coins</button>`}</section>
  ${earnCard()}
  <section class="acctsec zwallet-recent"><div class="accttitle"><h2>Recent activity</h2><button type="button" onclick="go('transactions')">View all</button></div>
-  <div class="acctcard zwallet-activity">${activity||(TXNS.length?TXNS.slice(0,3).map(txRow).join(""):`<div class="zwallet-empty">${I('clock',25)}<h3>No activity yet</h3><p>Your coin purchases, calls and gifts will appear here.</p></div>`)}</div></section></div>`}
+  <div class="acctcard zwallet-activity">${activity||(TXNS.length?TXNS.slice(0,3).map(txRow).join(""):`<div class="zwallet-empty">${I('clock',25)}<h3>No activity yet</h3><p>${host?'Your call and gift earnings will appear here.':'Your coin purchases, calls and gifts will appear here.'}</p></div>`)}</div></section></div>`}
 
-function txAmount(x){return x[2]===0&&Number.isSafeInteger(x[4])&&x[4]!==0?x[4]:x[2]}
-function txRow(x){const [title,time,coins,type,paise]=x,amount=txAmount(x),money=coins===0&&Number.isSafeInteger(paise)&&paise!==0;return `<div class="acctrow">
+function txDiamond(x){return isHostWallet()&&x[6]===1000000&&Number.isSafeInteger(x[5])?x[5]:null}
+function txAmount(x){const diamonds=txDiamond(x);return diamonds!==null?diamonds:x[2]===0&&Number.isSafeInteger(x[4])&&x[4]!==0?x[4]:x[2]}
+function txRow(x){const [title,time,coins,type,paise]=x,amount=txAmount(x),diamonds=txDiamond(x),money=diamonds===null&&coins===0&&Number.isSafeInteger(paise)&&paise!==0;return `<div class="acctrow">
  <span class="acctico">${I(type==='call'?'ph':type==='gift'?'gift':'wal',16)}</span>
  <span style="flex:1;min-width:0"><span class="main">${esc(title)}</span><span class="meta">${esc(time)}</span></span>
- <span class="end ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${money?'₹'+(Math.abs(amount)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):n(Math.abs(amount))}</span></div>`}
+ <span class="end tx-amount ${amount>0?'pos':'neg'}">${amount>0?'+':'−'}${diamonds!==null?diamondFormat(Math.abs(diamonds))+' diamonds':money?'₹'+(Math.abs(amount)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):n(Math.abs(amount))+' coins'}</span></div>`}
 
 function vTransactions(){const pending=window.contentSurface?.('transactions','rows','Loading transactions');if(pending)return '<div class="acct">'+pending+'</div>';const L=TXNS.filter(x=>S.txf==='all'||(S.txf==='in'?txAmount(x)>0:txAmount(x)<0));return `<div class="acct">
  <div class="accttabs">${[['all','All'],['in','Added'],['out','Spent']].map(([k,l])=>`<button class="${S.txf===k?'on':''}" onclick="S.txf='${k}';r()">${l}</button>`).join('')}</div>
@@ -1128,8 +1132,8 @@ function vRing(){const c=S.caller;
   <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${hcIdentityAvatar(c,112)}</div>
   <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
-  <span class="ringearn">${rate?`${gem}You earn ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
-  ${fee?`<span class="ringfee">+${n(fee)} entry fee once the call passes ${hcHold(hold)}</span>`:''}
+  <span class="ringearn">${rate?`Member pays ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
+  ${fee?`<span class="ringfee">Member entry fee: ${n(fee)} coins. Your eligible host share is credited as diamonds after ${hcHold(hold)}.</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
    <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
@@ -1303,7 +1307,7 @@ function paintHostTick(){
  const c=document.getElementById("ck");if(c)c.textContent=clock(S.sec);
  const left=document.getElementById("hc-left");if(left)left.textContent=clock(Math.max(0,(S.feeHold||0)-(S.sec-S.cstart)));
  const fc=document.getElementById("fee");if(fc){if(feeShown()){fc.innerHTML=feeChip();fc.classList.toggle("ok",!!S.feeOk)}else fc.remove()}
- const e=document.getElementById("earn");if(e)e.innerHTML=`${gem}+${kfmt(Math.round(S.earned))}`
+ const e=document.getElementById("earn");if(e)e.innerHTML=window.ZimiHome&&typeof hcEarningsValue==='function'?hcEarningsValue():`${gem}+${kfmt(Math.round(S.earned))}`
  paintGoal();}
 
 /* ---- Ending a call: both sides land on a summary ---- */
@@ -1398,10 +1402,11 @@ function feeSummary(F){
 function t_left(t){const left=t.goal-t.p;return `${n(left)} ${t.u} to go: ${t.t}`}
 
 /* ---- Awards (host tasks) ---- */
-function claimAward(i){if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;if(!DEMO){Native.send("awards.claim",{task:t.k});return}t.claimed=1;A().earn+=t.rw;r()}
+function claimAward(i){if(isHostWallet()){appNotice('Host call rewards are credited as diamonds. View your reward progress in Withdraw.');return}if(window.ZimiHostAccess&&!window.ZimiHostAccess.guard())return;const t=S.tasks[i];if(t.p<t.goal||t.claimed)return;if(!DEMO){Native.send("awards.claim",{task:t.k});return}t.claimed=1;A().earn+=t.rw;r()}
 function resetIn(){const now=new Date(),mid=new Date(now);mid.setHours(24,0,0,0);
  const m=Math.floor((mid-now)/60000);return `${Math.floor(m/60)}h ${m%60}m`}
 function vAwards(){
+ if(isHostWallet())return '<div class="acct"><div class="acctcard emptycompact"><h3>Diamond call rewards</h3><p>View your weekly reward progress and earning rules in Payments → Withdraw.</p><button type="button" class="softbtn" onclick="go(\'payout\')">View host rewards</button></div></div>';
  const T=S.tasks, ready=T.filter(t=>t.p>=t.goal&&!t.claimed), done=T.filter(t=>t.p>=t.goal).length;
  const readyCoins=ready.reduce((a,t)=>a+t.rw,0);
  const order=t=>t.claimed?2:t.p>=t.goal?0:1;
@@ -1456,11 +1461,11 @@ function toggleMvp(){A().mvp=A().mvp?0:1;Native.send("settings.set",{showMvps:!!
 
 /* ---- Wallet earnings, KYC and payouts ---- */
 function earnCard(){
- if(!isApprovedHost())return "";
+ if(!isHostWallet()||window.ZimiHostAccess?.checking())return "";
  const own=!!S.walletSnapshot&&S.walletSnapshot.owner===S.user?.id,w=own?S.walletSnapshot.data:null,ready=!DEMO&&!contentPending('wallet')&&!ContentLoading.wallet.error&&Number.isSafeInteger(w?.earningsPaise)&&w.earningsPaise>=0;
  const money=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);
- const minimum=Number.isSafeInteger(w?.minimumWithdrawalPaise)&&w.minimumWithdrawalPaise>0,canWithdraw=ready&&w.withdrawalsEnabled===true&&minimum&&w.earningsPaise>=w.minimumWithdrawalPaise;
- const copy=DEMO?'Sign in to view your creator earnings.':!ready?'Refresh your wallet to view available earnings.':w.withdrawalsEnabled===false?'Withdrawals are currently paused.':minimum?'Minimum withdrawal '+money(w.minimumWithdrawalPaise):'Refresh your wallet to check withdrawal availability.';
+ const minimum=Number.isSafeInteger(w?.minimumWithdrawalPaise)&&w.minimumWithdrawalPaise>0,canWithdraw=isApprovedHost()&&ready&&w.withdrawalsEnabled===true&&minimum&&w.earningsPaise>=w.minimumWithdrawalPaise;
+ const copy=DEMO?'Sign in to view your creator earnings.':!ready?'Refresh your wallet to view available earnings.':!isApprovedHost()?'Host approval is required to withdraw diamonds.':w.withdrawalsEnabled===false?'Withdrawals are currently paused.':minimum?'Minimum withdrawal '+money(w.minimumWithdrawalPaise):'Refresh your wallet to check withdrawal availability.';
  return `<section class="acctsec zwallet-earnings"><div class="accttitle"><h2>Creator earnings</h2></div><div class="earnbox"><div class="zwallet-earnings-heading"><span>Available earnings</span><span>INR</span></div><strong class="zwallet-earnings-amount">${ready?money(diamondProfilePaise(w)):'—'}</strong>${ready&&Number.isSafeInteger(diamondProfileReservedPaise(w))&&diamondProfileReservedPaise(w)>0?`<p class="zwallet-reserved">${money(diamondProfileReservedPaise(w))} reserved for withdrawals</p>`:''}<p class="zwallet-earnings-note">${copy}</p><div class="zwallet-earnings-actions"><button type="button" class="ebtn" onclick="go('payout')" ${canWithdraw?'':'disabled'}>Withdraw</button><button type="button" class="zwallet-history" onclick="go('payout-history')">Withdrawal history</button></div>${!ready&&!DEMO?`<button type="button" class="zwallet-refresh" onclick="contentStart('wallet');r();Native.send('wallet.load')">Refresh earnings</button>`:''}</div></section>`}
 
 function kf(k,ph,label,type){return `<div class="editgroup"><label class="editlabel" for="kf_${k}">${label}</label>
@@ -1711,7 +1716,7 @@ Native.on("post.error",d=>{if(d.requestId!==S.postRequestId)return;S.postPublish
 Native.on("data.hosts",d=>{H.splice(0,H.length,...(d.hosts||[]).map(hostFrom));refresh()});
 Native.on("data.chats",d=>{CH.splice(0,CH.length,...(d.chats||[]).map(c=>[knowHost(c.user).id,c.last||"",c.time||"",c.unread||0]));refresh()});
 Native.on("data.missed",d=>{S.missed[S.role]=(d.calls||[]).map(c=>({id:(isHost()?personFrom(c.user):knowHost(c.user)).id,when:c.when||"",at:c.at||"",kind:c.kind||"video"}));refresh()});
-Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise]));refresh()});
+Native.on("data.transactions",d=>{TXNS.splice(0,TXNS.length,...(d.items||[]).map(x=>[x.title,x.time,x.coins,x.kind,x.displayAmountPaise,x.diamondUnits,x.diamondScale]));refresh()});
 Native.on("data.calls",d=>{CALLS.splice(0,CALLS.length,...(d.calls||[]).map(c=>({id:knowHost(c.user).id,time:c.time||"",at:c.at||"",duration:c.duration||"",coins:c.coins||0,
  kind:c.kind==="voice"?"voice":"video",direction:c.direction==="incoming"?"incoming":"outgoing",status:c.status||""})));refresh()});
 Native.on("data.thread",d=>{if(S.v!=="thread"||S.h!==String(d.with))return;

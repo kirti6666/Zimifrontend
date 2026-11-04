@@ -3,6 +3,7 @@ const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',ve
 /* One refusal prompt for paid actions, including an authoritative server refusal
    after a locally sufficient balance. Opening it never spends or retries coins. */
 function coinRequireRecharge(proceed=null){
+ if(isHostWallet()){appNotice('Coins are for member accounts. Your host earnings are diamonds.');return}
  if(CoinUI.rechargePrompt)return;
  if(typeof ctRechargeClose==='function')ctRechargeClose();
  const focus=document.activeElement;
@@ -22,6 +23,7 @@ function coinCloseRecharge(restore=true){
  target?.focus({preventScroll:true});
 }
 function coinRechargeContinue(){
+ if(isHostWallet()){coinCloseRecharge(false);return}
  const prompt=CoinUI.rechargePrompt;if(!prompt)return;coinCloseRecharge(false);
  if(prompt.proceed)return prompt.proceed();
  if(S.v==='incoming'&&S.memberRing)return memberRingAddCoins();
@@ -31,7 +33,7 @@ function coinRechargeContinue(){
  Home.giftTo=null;CoinUI.topup=false;S.tray=0;S.sh=0;go('coins');
 }
 function coinPaint(){const catalog=document.querySelector('.zg-catalog');if(catalog)CoinUI.giftScroll=catalog.scrollTop;if(Home.giftTo||S.v==='coins')r()}
-function coinWalletReady(){return DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error)}
+function coinWalletReady(){return !isHostWallet()&&(DEMO||(!contentPending('wallet')&&!ContentLoading.wallet.error))}
 function coinHasPendingPayment(){return coinPendingPayment()||Array.from(CoinUI.orders.values()).some(p=>p.status==='PENDING'&&!CoinUI.dismissedOrders.has(p.merchantOrderId))}
 function coinPendingPayment(){return !!Home.checkout&&!CoinUI.dismissedOrders.has(Home.checkout.merchantOrderId)&&!['SUCCESS','FAILED','REVERTED'].includes(Home.checkout.status)}
 function coinPrice(paise){return '₹'+(Number(paise||0)/100).toLocaleString('en-IN',{maximumFractionDigits:2})}
@@ -58,6 +60,7 @@ function coinCloseCheckoutPrompt(restore=true){
  if(restore){const target=prompt?.focus?.isConnected?prompt.focus:document.querySelector(Home.giftTo?'.zw-sheet .zw-buy':'.zw-buy');target?.focus({preventScroll:true})}
 }
 function coinOpenCheckoutPrompt(){
+ if(isHostWallet())return;
  if(CoinUI.checkoutPrompt||Home.checkoutBusy||Home.checkoutAttempt||coinHasPendingPayment())return;
  const pack=Home.packs.find(item=>item.id===Home.packId)||Home.packs[0],owner=coinCheckoutOwner();if(!pack||!owner||!DEMO&&!S.loggedIn)return;
  CoinUI.checkoutPrompt={owner,pack:{...pack},choice:null,error:'',focus:document.activeElement};
@@ -69,6 +72,7 @@ function coinChoosePayment(route){
 }
 function coinPaintCheckoutPrompt(){
  const prompt=CoinUI.checkoutPrompt;if(!prompt)return;
+ if(isHostWallet()){coinCloseCheckoutPrompt(false);return}
  if(prompt.owner!==coinCheckoutOwner()||!['coins'].includes(S.v)&&!(Home.giftTo&&CoinUI.topup)||Home.checkoutAttempt||coinHasPendingPayment()){coinCloseCheckoutPrompt(false);return}
  const current=Home.packs.find(pack=>pack.id===prompt.pack.id);
  if(!current){prompt.choice=null;prompt.error='This coin pack is no longer available. Close this window and choose another pack.'}
@@ -87,6 +91,7 @@ function coinPaintCheckoutPrompt(){
  if(creating)dialog.showModal();else if(focused&&dialog.querySelector('#'+CSS.escape(focused)))dialog.querySelector('#'+CSS.escape(focused)).focus({preventScroll:true});
 }
 function coinConfirmCheckout(){
+ if(isHostWallet())return;
  const prompt=CoinUI.checkoutPrompt;if(!prompt||prompt.owner!==coinCheckoutOwner()||Home.checkoutBusy||CoinUI.verifyBusy||Home.checkoutAttempt||coinHasPendingPayment()||window.ZimiOffline?.isOffline())return;
  const pack=Home.packs.find(item=>item.id===prompt.pack.id),option=paymentCoinOptions().find(item=>item.route===prompt.choice);
  if(!pack||!option||pack.coins!==prompt.pack.coins||pack.pricePaise!==prompt.pack.pricePaise){coinPaintCheckoutPrompt();return}
@@ -97,10 +102,12 @@ function coinConfirmCheckout(){
  coinCloseCheckoutPrompt(false);homeCheckout();
 }
 function homeCoins(embedded=false){
+ if(isHostWallet())return '<section class="zw-coins"><p>Your host account earns diamonds. View your balance in Wallet &amp; Activity.</p><button type="button" class="zh-primary" onclick="go(\'wallet\')">Open diamond wallet</button></section>';
  const selected=(Home.checkoutAttempt&&CoinUI.packSnapshot)||Home.packs.find(x=>x.id===(Home.checkoutAttempt?.packId||Home.packId))||Home.packs[0],surface=DEMO?null:contentSurface('catalog','packs','Loading coin packs'),pending=coinHasPendingPayment();
  return `<section class="zw-coins zw-compact zw-reference ${embedded?'zw-embedded':''}" aria-label="BinzoLive Coins">${!embedded?window.ZimiCallInvitations?.coinsContext()||'':''}${coinWalletView(embedded)}${coinWalletError()}${coinPaymentView()}${coinOtherPayments()}<div class="zw-section-heading"><h2>${DEMO||Home.packs.some(coinPackBonus)?'Welcome Bonus for You!':'Choose your coin pack'}</h2></div>${surface??(Home.packs.length?`<div class="zh-packs zw-packs" role="group" aria-label="Coin packs">${Home.packs.map(x=>coinPackView(x,selected,pending)).join('')}</div>`:'<div class="zw-empty">Coin packs are currently unavailable. Please check again later.</div>')}${CoinUI.paymentError?`<p class="zw-error" role="alert">${esc(CoinUI.paymentError)}</p>`:''}<p class="zw-note">${DEMO?'Design preview · sample coins only':'Coins are used for calls and gifts. Select a pack, then continue securely.'}</p>${!surface&&!Home.paymentsAvailable?'<p class="zw-empty">Payments are temporarily unavailable. Your existing coins are still safe.</p>':''}${!surface&&selected&&!pending?`<footer class="zw-checkout-footer"><button class="zh-primary zw-buy" aria-label="${Home.checkoutBusy?'Opening checkout':Home.paymentsAvailable?'Get '+n(selected.coins)+' coins':'Checkout unavailable'}" onclick="homeCheckout()" ${Home.checkoutBusy||!Home.paymentsAvailable?'disabled':''}>${coinIcon(19)} ${Home.checkoutBusy?'Opening checkout…':Home.paymentsAvailable?`Get ${n(selected.coins)} coins`:'Checkout unavailable'}${Home.paymentsAvailable&&!Home.checkoutBusy?`<span>${coinPrice(selected.pricePaise)}</span>`:''}</button></footer>`:''}</section>`;
 }
 function homeCheckout(resume=false){
+ if(isHostWallet())return;
  if(Home.checkoutBusy||CoinUI.verifyBusy||window.ZimiOffline?.isOffline())return;
  if(coinHasPendingPayment()&&!resume)return;
  if(!resume&&!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error||!Home.paymentsAvailable))return;
@@ -152,6 +159,7 @@ function coinAcceptPayment(d,checkout=false){
  coinPaint();
 }
 function homeGifts(id,selectedGiftId=''){
+ if(isHostWallet()){appNotice('Gifts are sent from member accounts. Hosts receive diamonds.');return}
  if(!id)return;CoinUI.focus={label:document.activeElement?.getAttribute('aria-label'),id:document.activeElement?.id};
  if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError='';CoinUI.giftScroll=0}
  if(selectedGiftId&&!Home.giftBusy&&Home.gifts.some(gift=>gift.id===selectedGiftId))CoinUI.giftId=selectedGiftId;
@@ -163,7 +171,7 @@ function homeGifts(id,selectedGiftId=''){
 function coinWarmGift(id){const gift=Home.gifts.find(item=>item.id===id);if(gift)window.ZimiGiftPlayback?.preload(giftMotionUrl(gift.name,gift.mediaUrl))}
 function homeSelectGift(id){if(Home.giftBusy)return;CoinUI.giftId=id;CoinUI.giftError='';coinWarmGift(id);coinPaint()}
 function homeGiftUrl(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password&&!/[<>"'`\s]/.test(raw)?esc(u.href):''}catch{return ''}}
-function homeGiftTopup(){CoinUI.topup=true;CoinUI.paymentError='';coinPaint()}
+function homeGiftTopup(){if(isHostWallet())return;CoinUI.topup=true;CoinUI.paymentError='';coinPaint()}
 function homeGiftDisplayOrder(){
  const names=['rosewaterfall','rose','kiss','berry','bear','cheers','party','tulip','bunny','blossom','bouquet','hibiscus'];
  const rank=name=>{const index=names.indexOf(String(name).toLowerCase().replace(/[^a-z0-9]/g,''));return index<0?names.length:index};
@@ -182,13 +190,15 @@ function coinGiftFooter({recover,gift,ready,short,catalogUnavailable}=coinGiftWa
 }
 function coinGiftWalletError(ready=coinGiftWalletState().ready){return !ready&&!contentPending('wallet')?'<p class="zw-error" data-coin-wallet-error role="alert">Refresh your balance before sending. <button onclick="coinRefresh()">Retry</button></p>':''}
 function homeGiftSheet(){
+ if(isHostWallet())return '';
  if(!Home.giftTo)return '';
  if(CoinUI.topup)return `<div class="zh-sheet-backdrop zw-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zw-topup" role="dialog" aria-modal="true" aria-label="Add coins"><div class="zw-topup-heading">${backButton('coinLeaveTopup()',{label:'Back to gifts'})}<h2>Add coins</h2><button class="zw-icon-button" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',20)}</button></div>${homeCoins(true)}</section></div>`;
  const state=coinGiftWalletState(),{ready}=state,surface=DEMO?null:contentPending('catalog')?contentSkeleton('gifts','Loading gifts',12):ContentLoading.catalog.error?contentError('catalog'):null,footer=coinGiftFooter(state);
- return `<div class="zh-sheet-backdrop zw-backdrop zg-reference-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zg-reference" role="dialog" aria-modal="true" aria-label="Send a gift"><header class="zg-heading"><div class="zg-heading-copy"><h2>Send a gift</h2><p>Coins go straight to the host</p></div><button type="button" class="zg-balance" aria-label="Add coins" onclick="homeGiftTopup()">${coinIcon(17)}<span>${contentBalance()}</span>${hi('plus',13)}</button><button type="button" class="zg-close" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',19)}</button></header><div class="zg-catalog">${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${homeGiftDisplayOrder().map(homeGiftTile).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${coinGiftWalletError(ready)}</div>${footer}</section></div>`;
+ return `<div class="zh-sheet-backdrop zw-backdrop zg-reference-backdrop" onclick="homeCloseGifts(event)"><section class="zh-sheet zw-sheet zg-reference" role="dialog" aria-modal="true" aria-label="Send a gift"><header class="zg-heading"><div class="zg-heading-copy"><h2>Send a gift</h2><p>Hosts earn diamonds from gifts</p></div><button type="button" class="zg-balance" aria-label="Add coins" onclick="homeGiftTopup()">${coinIcon(17)}<span>${contentBalance()}</span>${hi('plus',13)}</button><button type="button" class="zg-close" aria-label="Close gifts" onclick="homeCloseGifts()">${hi('close',19)}</button></header><div class="zg-catalog">${surface??(Home.gifts.length?`<div class="zh-gifts zw-gifts" role="group" aria-label="Choose a gift">${homeGiftDisplayOrder().map(homeGiftTile).join('')}</div>`:'<p class="zw-empty">No gifts are available right now.</p>')}${Home.giftAttempt&&!Home.giftBusy?`<div class="zw-recovery"><p>Your previous gift is awaiting confirmation. Check its delivery before sending another.</p><button class="zh-soft" onclick="homeRetryGift()">Check previous gift</button></div>`:''}${CoinUI.giftError?`<p class="zw-error" role="alert">${esc(CoinUI.giftError)}</p>`:''}${coinGiftWalletError(ready)}</div>${footer}</section></div>`;
 }
 function homeCloseGifts(e){if(e&&e.target!==e.currentTarget)return;if(CoinUI.topup)coinClosePurchase();Home.giftTo=null;S.tray=0;if(S.sh==='gift')S.sh=0;CoinUI.topup=false;r();const saved=CoinUI.focus;if(saved){const target=saved.id?document.getElementById(saved.id):Array.from(document.querySelectorAll('button[aria-label]')).find(x=>x.getAttribute('aria-label')===saved.label);target?.focus({preventScroll:true})}}
 function homeSendGift(id=CoinUI.giftId){
+ if(isHostWallet())return;
  if(Home.giftAttempt&&Home.giftAttempt.to===Home.giftTo&&Home.giftAttempt.gift===id)return homeRetryGift();
  const gift=Home.gifts.find(x=>x.id===id),to=Home.giftTo;
  if(!to||!gift||Home.giftBusy||(!giftIsFree(gift)&&!coinWalletReady())||window.ZimiOffline?.isOffline()||(!DEMO&&(contentPending('catalog')||ContentLoading.catalog.error)))return;
@@ -206,7 +216,7 @@ function homeSendGift(id=CoinUI.giftId){
  else window.ZimiChatGifts?.preview(to,gift,attempt);
  Native.send('gift.send',{...attempt});
 }
-function homeRetryGift(){if(!Home.giftAttempt||Home.giftBusy||window.ZimiOffline?.isOffline())return;Home.giftBusy=true;CoinUI.giftError='';Native.send('gift.send',{...Home.giftAttempt});coinPaint()}
+function homeRetryGift(){if(isHostWallet()||!Home.giftAttempt||Home.giftBusy||window.ZimiOffline?.isOffline())return;Home.giftBusy=true;CoinUI.giftError='';Native.send('gift.send',{...Home.giftAttempt});coinPaint()}
 function coinGiftMatches(d){const a=Home.giftAttempt;return !!a&&d.idempotencyKey===a.idempotencyKey&&(!d.to||d.to===a.to)&&(!d.gift||d.gift===a.gift)}
 function coinCallGiftFeedback(d){
  const saved=CoinUI.receipts.get(d.idempotencyKey),gift=d.giftDetails?{...saved,...d.giftDetails,_callId:d.callId||saved?._callId}:saved;if(!gift?._callId)return;
@@ -245,6 +255,7 @@ Native.on('operation.error',d=>{
  if(d.action==='wallet.verify'&&Home.checkout?.merchantOrderId===d.merchantOrderId){CoinUI.verifyBusy=false;CoinUI.paymentError=d.message;coinPaint()}
 });
 Native.on('call.failed',d=>{if(d.code==='INSUFFICIENT_COINS'&&!isHost())coinRequireRecharge()});
+window.addEventListener('zimi:host-access',()=>{if(isHostWallet()){coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Home.giftTo=null;CoinUI.topup=false;if(S.loggedIn&&['coins','refer'].includes(S.v))go('wallet')}});
 document.addEventListener('aurora:navigate',()=>{coinCloseRecharge(false);if(S.v!=='coins'&&!(Home.giftTo&&CoinUI.topup))coinClosePurchase();if(!DEMO&&['wallet','transactions'].includes(S.v)){contentStart('transactions');Native.send('transactions.load');r()}});
 document.addEventListener('keydown',e=>{if(CoinUI.rechargePrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseRecharge()}return}if(CoinUI.checkoutPrompt){if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();coinCloseCheckoutPrompt()}return}if(!Home.giftTo)return;const sheet=document.querySelector('.zw-sheet');if(!sheet)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();homeCloseGifts();return}if(e.key==='Tab'){const items=Array.from(sheet.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]'));if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&(document.activeElement===first||!sheet.contains(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!sheet.contains(document.activeElement))){e.preventDefault();first.focus()}}},true);
 window.ZimiCoins={requireRecharge:coinRequireRecharge,giftReceipt:d=>CoinUI.receipts.get(d.idempotencyKey),reset:()=>{coinCloseRecharge(false);coinCloseCheckoutPrompt(false);Object.assign(CoinUI,{giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',verifyBusy:false,focus:null,packSnapshot:null});CoinUI.orders.clear();CoinUI.dismissedOrders.clear();CoinUI.returnedOrders.clear();CoinUI.receipts.clear();CoinUI.confirmed.clear()},afterRender:()=>{coinPaintCheckoutPrompt();const catalog=document.querySelector('.zg-catalog');if(catalog){catalog.scrollTop=CoinUI.giftScroll;catalog.onscroll=()=>{if(catalog.isConnected)CoinUI.giftScroll=catalog.scrollTop}}const sheet=document.querySelector('.zw-sheet');if(sheet&&!CoinUI.checkoutPrompt&&!CoinUI.rechargePrompt&&!sheet.contains(document.activeElement))sheet.querySelector('[aria-pressed="true"],button:not(:disabled)')?.focus({preventScroll:true})}};

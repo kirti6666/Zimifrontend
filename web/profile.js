@@ -38,12 +38,12 @@ function zpIdentity(){
     <button type="button" class="zp-edit-profile zp-public-view" onclick="zpViewPublic()">${hi('eye',16)} View as others see it ${hi('arrow',16)}</button></div></section>`;
 }
 function zpWallet(){
-  if(isApprovedHost()||S.user?.serverRole==='host'){
+  if(isHostWallet()){
     const wallet=diamondOwnWallet(),checking=!!window.ZimiHostAccess?.checking(),error=ContentLoading.wallet.error,
-      loading=checking||contentPending('wallet')||(!wallet&&!error),ready=isApprovedHost()&&!loading&&!error&&diamondReady(wallet),
+      loading=checking||contentPending('wallet')||(!wallet&&!error),ready=!loading&&!error&&diamondReady(wallet),
       units=Number.isSafeInteger(wallet?.profileDiamondUnits)&&wallet.profileDiamondUnits>=0?wallet.profileDiamondUnits:wallet?.diamondUnits;
     const amount=loading?`<span class="zh-skeleton" role="status" aria-label="Loading diamond balance" aria-busy="true">${skeletonLine('110px',34)}</span>`:ready?diamondFormat(units):'—';
-    return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Diamond balance</h2><div class="zp-balance">${diamondIcon(23)}<strong>${amount}</strong></div></div>${isApprovedHost()?`<button type="button" class="zp-topup" onclick="zpGo('payout')">Withdraw</button>`:''}</div>${!loading&&!ready?`<p class="zp-wallet-note" ${error?'role="alert"':''}>${esc(error||'Diamond balance unavailable.')}${isApprovedHost()?` <button type="button" onclick="contentRetry('wallet')">Retry</button>`:''}</p>`:''}</section>`;
+    return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Diamond balance</h2><div class="zp-balance">${diamondIcon(23)}<strong>${amount}</strong></div></div>${isApprovedHost()?`<button type="button" class="zp-topup" onclick="zpGo('payout')">Withdraw</button>`:''}</div>${!loading&&!ready?`<p class="zp-wallet-note" ${error?'role="alert"':''}>${esc(error||'Diamond balance unavailable.')} <button type="button" onclick="contentRetry('wallet')">Retry</button></p>`:''}</section>`;
   }
   return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Coin balance</h2><div class="zp-balance">${coinIcon(23)}<strong>${contentBalance()}</strong></div></div><button type="button" class="zp-topup" onclick="zpGo('coins')">Add coins</button></div></section>`;
 }
@@ -53,7 +53,7 @@ function zpAccountSummary(){
 }
 function zpSettingsRows(){
   // Refer a Friend leads the list; its page explains the code and the rewards.
-  return `<section class="zp-simple-section" aria-label="Settings">${zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & support',"zpClose();ZimiSupport.open('settings')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
+  return `<section class="zp-simple-section" aria-label="Settings">${isHostWallet()?'':zpSimpleRow('gift','Refer a Friend &amp; Earn 1,000 Coins',"zpClose();window.ZimiReferral.open('settings')")}${zpSimpleRow('user','Account',"zpOpen('account')")}${zpSimpleRow('wallet','Payments',"zpOpen('payments')")}${zpSimpleRow('lock','Privacy & Terms',"zpOpen('privacy-menu')")}${zpSimpleRow('set','General',"zpOpen('general')")}${zpDarkModeRow()}${isApprovedHost()?zpSimpleRow('people','Creator tools',"zpOpen('creator')"):zpSimpleRow('badge','Become a Host',"zpClose();ZimiAgency.open('settings')")}${zpSimpleRow('help','Help & support',"zpClose();ZimiSupport.open('settings')")}${zpSimpleRow('info','About',"zpOpen('about')")}</section><button type="button" class="zp-simple-logout" onclick="zpOpen('logout')">Log out</button>`;
 }
 /* Dark Mode is a device setting: it switches the canvas and keeps the account theme's accent. */
 function zpDarkModeRow(){const on=!!window.ZimiThemes?.dark();return `<button type="button" class="zp-simple-row zp-toggle-row" role="switch" aria-checked="${on}" onclick="zpDarkMode()"><span class="zp-simple-icon">${zi('moon',25)}</span><span>Dark Mode</span><span class="zp-switch ${on?'is-on':''}" aria-hidden="true"><i></i></span></button>`}
@@ -62,7 +62,7 @@ function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-
 function zpMenuRows(kind){
   const rows={
     account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+(isApprovedHost()?zpRow('stats','Statistics',"ZimiHostStatistics.open()"):'')+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')")+zpRow('logout','Deactivate account',"zpOpen('deactivate')"),
-    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+zpRow('cash','Withdrawal history',"zpGo('payout-history')"),
+    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+(isHostWallet()?zpRow('cash','Withdrawal history',"zpGo('payout-history')"):''),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
     creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
