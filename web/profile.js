@@ -1,6 +1,7 @@
 /* Account settings use server summaries; sample identities exist only in preview. */
 const ZProfile={data:null,requested:false,error:'',dialog:'',draft:{},saving:false,saveError:'',requestId:0,privacyBusy:false,blocked:[],blockedTotal:0,blockedPage:1,blockBusy:'',wallet:null};
 const zpIcons={
+  stats:'<path d="M4 3v18h17M8 17v-5M13 17V8M18 17V4"/>',
   qr:'<path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h2v2h-2zM20 13v3M13 20h3v-2M19 19h2v2h-2zM12 3v2M3 12h3M9 12h4v3M12 8v2M17 12h4"/>',
   edit:'<path d="m16 3 5 5M4 15 16 3l5 5L9 20l-6 1zM4 15l5 5"/>',
   camera:'<path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/>',
@@ -36,7 +37,16 @@ function zpIdentity(){
     <button type="button" class="zp-edit-profile" onclick="zpGo('editprofile')">${zi('edit',16)} Edit profile ${hi('arrow',16)}</button>
     <button type="button" class="zp-edit-profile zp-public-view" onclick="zpViewPublic()">${hi('eye',16)} View as others see it ${hi('arrow',16)}</button></div></section>`;
 }
-function zpWallet(){const wallet=diamondOwnWallet();return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Coin balance</h2><div class="zp-balance">${coinIcon(23)}<strong>${contentBalance()}</strong></div></div><button type="button" class="zp-topup" onclick="zpGo('coins')">Add coins</button></div>${isApprovedHost()&&diamondReady(wallet)?`${diamondBalanceView(wallet)}<p class="zd-conversion">${zpMoney(wallet.earningsPaise)} available for withdrawal</p><button type="button" class="zp-diamond-link" onclick="zpGo('payout')">View diamonds & payouts</button>`:''}</section>`}
+function zpWallet(){
+  if(isApprovedHost()||S.user?.serverRole==='host'){
+    const wallet=diamondOwnWallet(),checking=!!window.ZimiHostAccess?.checking(),error=ContentLoading.wallet.error,
+      loading=checking||contentPending('wallet')||(!wallet&&!error),ready=isApprovedHost()&&!loading&&!error&&diamondReady(wallet),
+      units=Number.isSafeInteger(wallet?.profileDiamondUnits)&&wallet.profileDiamondUnits>=0?wallet.profileDiamondUnits:wallet?.diamondUnits;
+    const amount=loading?`<span class="zh-skeleton" role="status" aria-label="Loading diamond balance" aria-busy="true">${skeletonLine('110px',34)}</span>`:ready?diamondFormat(units):'—';
+    return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Diamond balance</h2><div class="zp-balance">${diamondIcon(23)}<strong>${amount}</strong></div></div>${isApprovedHost()?`<button type="button" class="zp-topup" onclick="zpGo('payout')">Withdraw</button>`:''}</div>${!loading&&!ready?`<p class="zp-wallet-note" ${error?'role="alert"':''}>${esc(error||'Diamond balance unavailable.')}${isApprovedHost()?` <button type="button" onclick="contentRetry('wallet')">Retry</button>`:''}</p>`:''}</section>`;
+  }
+  return `<section class="zp-wallet" aria-label="Wallet balance"><div class="zp-wallet-top"><div><h2>Coin balance</h2><div class="zp-balance">${coinIcon(23)}<strong>${contentBalance()}</strong></div></div><button type="button" class="zp-topup" onclick="zpGo('coins')">Add coins</button></div></section>`;
+}
 function zpAccountSummary(){
   const p=ZProfile.data?.profile||{},name=p.name||S.user?.name||me.n||'Your profile',avatar=S.avatarData||(DEMO?OB_MEDIA[0]:''),stats=ZProfile.data?.stats||{};
   return `<button type="button" class="zp-account-summary" onclick="zpGo('profile')" aria-label="Open your profile"><span class="zp-summary-avatar">${imageSrc(avatar)?`<img class="zh-photo-pending" src="${imageSrc(avatar)}" alt="" data-face="${faceKind(me)}">`:face(me)}</span><span class="zp-summary-copy"><b>${esc(name)}</b><span class="zp-summary-stats">${zpPending()?skeletonLine('115px',12):ZProfile.error?'Account details unavailable':[['gift','Gifts received',stats.giftsReceived],['people','Fans',stats.fans],['follow','Following',stats.following]].map(([icon,label,value])=>`<span aria-label="${label}: ${zpNumber(value)}">${zi(icon,14)} ${zpNumber(value)}</span>`).join('')}</span></span>${hi('chev',20)}</button>`;
@@ -51,11 +61,11 @@ function zpDarkMode(){if(!window.ZimiThemes)return;window.ZimiThemes.setDark(!wi
 function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-simple-row" onclick="${action}"><span class="zp-simple-icon">${zi(icon,25)}</span><span>${title}</span></button>`}
 function zpMenuRows(kind){
   const rows={
-    account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')")+zpRow('logout','Deactivate account',"zpOpen('deactivate')"),
-    payments:()=>zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+zpRow('cash','Withdrawal history',"zpGo('payout-history')"),
+    account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+(isApprovedHost()?zpRow('stats','Statistics',"ZimiHostStatistics.open()"):'')+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')")+zpRow('logout','Deactivate account',"zpOpen('deactivate')"),
+    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+zpRow('cash','Withdrawal history',"zpGo('payout-history')"),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
-    creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('cash','Earnings & Wallet',"zpOpen('earnings')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
+    creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
   };
   return rows[kind]?`<div class="zp-settings-detail">${rows[kind]()}</div>`:'';
 }
@@ -67,6 +77,7 @@ function zpScreen(){
   return `<div class="zp-page ${settings?'zp-settings-page zp-simple-settings':'zp-profile-page'}">${heading}${unavailable?`<div class="zh-error" role="alert">${esc(unavailable)}<button onclick="zpLoad()">Retry</button></div>`:''}${settings?settingsContent:profileContent}${settings?'':`<footer class="zp-footer"><span><img class="zp-footer-logo" src="${BRAND_LOGO}" alt="BinzoLive" width="61" height="24" decoding="async"></span><p>Made for connections · Version ${esc(window.ZIMI_APP_VERSION||'1.0.0')}</p>${DEMO?'<small>Design preview · Sample account</small>':''}</footer>`}</div>`
 }
 function zpGo(view){if(ZProfile.deactivating)return;zpClose();go(view)}
+function zpPaymentsBack(){go('settings');zpOpen('payments')}
 /* Opens your public profile, the same page other people see. */
 function zpViewPublic(){const id=S.user?.id||ZProfile.data?.profile?.id;if(!id)return;zpClose();go(isApprovedHost()?'host':'user',id)}
 // Asks Android again, or opens system settings once it stops asking.
@@ -105,7 +116,7 @@ function zpDialogContent(kind){
   if(kind==='security')return `<div class="zp-detail"><span>Phone number</span><b>${esc(p.maskedPhone||'Not available')}</b><small>${p.isPhoneVerified?'Verified for sign-in':'Not verified'}</small></div><div class="zp-detail"><span>Contact email</span><b>${esc(S.user?.email||'Not added')}</b></div><p>Sign-in uses a one-time code sent to your registered phone. Never share your code with anyone.</p><button class="zp-secondary" onclick="zpOpen('logout')">Sign out of this device</button>`;
   if(kind==='privacy')return `${zpToggle('Discoverable profile','discoverable',draft.discoverable!==false)}${zpToggle('Show activity status','showActivity',draft.showActivity!==false)}${zpSaveButton('zpPrivacySave()')}<div class="zp-blocked-list" role="group" aria-label="Blocked accounts">${zpBlockedContent()}</div>`;
   if(kind==='gifts'){const surface=contentSurface('transactions','rows','Loading gift history');if(surface)return surface;const gifts=TXNS.filter(x=>x[3]==='gift');return gifts.length?`<div class="zp-history">${gifts.map(txRow).join('')}</div><button class="zp-secondary" onclick="zpGo('transactions')">All transactions</button>`:'<div class="zp-empty">'+hi('gift',34)+'<h3>No gifts yet</h3><p>Your gift transactions will appear here.</p></div>'}
-  if(kind==='earnings'){const surface=contentSurface('wallet','wallet','Loading earnings');if(surface)return surface;if(!isApprovedHost())return '<p>Creator earnings are available after admin approval.</p>';return `${diamondBalanceView(ZProfile.wallet)}<div class="zp-earnings"><span>Available earnings</span><strong>${contentPending('wallet')?skeletonLine('140px',32):zpMoney(ZProfile.wallet?.earningsPaise)}</strong><small>${Number(ZProfile.wallet?.reservedPaise)>0?zpMoney(ZProfile.wallet.reservedPaise)+' reserved for withdrawals':'Currency: INR'}</small></div><button class="zp-save" onclick="zpGo('payout')">Withdraw earnings</button><button class="zp-secondary" onclick="zpGo('transactions')">View earning history</button>`}
+  if(kind==='earnings'){if(!isApprovedHost())return '<p>Creator earnings are available after admin approval.</p>';return `<button class="zp-save" onclick="zpGo('payout')">View diamonds & withdraw</button><button class="zp-secondary" onclick="zpGo('transactions')">View earning history</button>`}
   if(kind==='help')return `<details open><summary>Getting started</summary><p>Explore creators and start a private 1:1 call with an available host.</p></details><details><summary>Coins & gifts</summary><p>Use Top Up to view current coin packs. Gift prices are shown before you send. Find completed payments and gifts in your transaction history.</p></details><details><summary>Becoming a creator</summary><p>Submit a creator application for admin review. Only approved hosts can receive calls and publish videos. Members and approved hosts can share photo posts.</p></details><details><summary>Staying safe</summary><p>Manage discovery, activity visibility and your blocked accounts in Privacy & Blocked Users.</p></details><button class="zp-secondary" onclick="zpOpen('privacy')">Privacy & blocked users</button>`;
   if(kind==='guidelines')return `<div class="zp-guidelines"><h3>Be kind. Be yourself.</h3><p>BinzoLive is for adults aged 18 and over. Respect other people’s boundaries and personal information.</p><h3>Keep connections safe</h3><p>Never share your sign-in code or payment details in a chat. Block or report accounts that make you uncomfortable.</p><h3>Your creator account</h3><p>Host features require admin approval. Account reviews and moderation decisions determine whether these features remain available.</p></div>`;
   if(kind==='logout')return '<p>You’ll need a verification code to sign in again on this device.</p><button class="zp-save zp-danger" onclick="zpClose();logout()">Log out of this device</button><button class="zp-secondary" onclick="zpClose()">Stay signed in</button>';

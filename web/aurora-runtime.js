@@ -182,7 +182,7 @@ function go(v,id){
  if(v==='explore')v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
  if(v==='thread'&&window.zcGuardChat&&!zcGuardChat(id||S.h))return;
- if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
+ if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout","host-statistics"].includes(v)&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
  if(window.ZimiHome&&S.v==='live'&&v!=='live'&&Home.stream){
   homeRequestStreamClose(Home.stream.id,Home.hosting);
   window.ZimiMedia?.stop();Home.stream=null;Home.messages=[];
@@ -1461,7 +1461,7 @@ function earnCard(){
  const money=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);
  const minimum=Number.isSafeInteger(w?.minimumWithdrawalPaise)&&w.minimumWithdrawalPaise>0,canWithdraw=ready&&w.withdrawalsEnabled===true&&minimum&&w.earningsPaise>=w.minimumWithdrawalPaise;
  const copy=DEMO?'Sign in to view your creator earnings.':!ready?'Refresh your wallet to view available earnings.':w.withdrawalsEnabled===false?'Withdrawals are currently paused.':minimum?'Minimum withdrawal '+money(w.minimumWithdrawalPaise):'Refresh your wallet to check withdrawal availability.';
- return `<section class="acctsec zwallet-earnings"><div class="accttitle"><h2>Creator earnings</h2></div><div class="earnbox">${ready?diamondBalanceView(w):''}<div class="zwallet-earnings-heading"><span>Available earnings</span><span>INR</span></div><strong class="zwallet-earnings-amount">${ready?money(w.earningsPaise):'—'}</strong>${ready&&Number.isSafeInteger(w.reservedPaise)&&w.reservedPaise>0?`<p class="zwallet-reserved">${money(w.reservedPaise)} reserved for withdrawals</p>`:''}${ready&&diamondReady(w)?`<p class="zd-conversion">${esc(diamondConversionText(w))} Existing diamonds keep their recorded cash value.</p>`:''}<p class="zwallet-earnings-note">${copy}</p><div class="zwallet-earnings-actions"><button type="button" class="ebtn" onclick="go('payout')" ${canWithdraw?'':'disabled'}>Withdraw</button><button type="button" class="zwallet-history" onclick="go('payout-history')">Withdrawal history</button></div>${!ready&&!DEMO?`<button type="button" class="zwallet-refresh" onclick="contentStart('wallet');r();Native.send('wallet.load')">Refresh earnings</button>`:''}</div></section>`}
+ return `<section class="acctsec zwallet-earnings"><div class="accttitle"><h2>Creator earnings</h2></div><div class="earnbox"><div class="zwallet-earnings-heading"><span>Available earnings</span><span>INR</span></div><strong class="zwallet-earnings-amount">${ready?money(diamondProfilePaise(w)):'—'}</strong>${ready&&Number.isSafeInteger(diamondProfileReservedPaise(w))&&diamondProfileReservedPaise(w)>0?`<p class="zwallet-reserved">${money(diamondProfileReservedPaise(w))} reserved for withdrawals</p>`:''}<p class="zwallet-earnings-note">${copy}</p><div class="zwallet-earnings-actions"><button type="button" class="ebtn" onclick="go('payout')" ${canWithdraw?'':'disabled'}>Withdraw</button><button type="button" class="zwallet-history" onclick="go('payout-history')">Withdrawal history</button></div>${!ready&&!DEMO?`<button type="button" class="zwallet-refresh" onclick="contentStart('wallet');r();Native.send('wallet.load')">Refresh earnings</button>`:''}</div></section>`}
 
 function kf(k,ph,label,type){return `<div class="editgroup"><label class="editlabel" for="kf_${k}">${label}</label>
  <input class="editinput" id="kf_${k}" ${type?`type="${type}"`:""} placeholder="${ph}" value="${esc(S.kf[k]||"")}" oninput="S.kf['${k}']=this.value"></div>`}
@@ -1586,7 +1586,7 @@ function topFor(){
   kyc:isHost()||S.creatorSetup?"Creator application":"Payout verification",payout:"Withdraw",awards:"Awards"};
  const backTo={editprofile:S.editBack||'profile',kyc:window.ZimiAgency?.linked()?'agency':'settings',payout:'wallet'}[S.v]||'settings';
  if(acctTitles[S.v])return `<div class="hdr" style="gap:8px">
-   ${backButton(`go('${backTo}')`)}
+   ${S.v==='payout'?backButton('zpPaymentsBack()',{label:'Back to payments'}):backButton(`go('${backTo}')`)}
    <span class="disp title">${acctTitles[S.v]}</span>
    ${S.v==='wallet'?`<button onclick="go('transactions')" style="margin-left:auto;color:var(--accent-ink);font-size:12px;font-weight:700">History</button>`:''}</div>`;
  if(S.v==="chats")return `<div class="hdr"><span class="disp title">Chats</span>
@@ -1607,7 +1607,7 @@ function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","s
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
- if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
+ if(window.ZimiHostAccess&&["broadcast","setup","waiting","ring","hcall","dialback","awards","payout","host-statistics"].includes(S.v)&&!isApprovedHost()&&!(window.ZimiHostAccess.checking?.()&&S.v==="hcall"&&S.callId))S.v="home";
  const inboxFocus=window.zcCaptureFocus?.();
  const supportFocus=window.ZimiSupport?.capture();
  const officialFocus=window.ZimiOfficialChat?.capture();

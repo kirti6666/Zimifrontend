@@ -137,6 +137,7 @@ export type WebMessage =
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
   | { type: "payout.load"; data: { page?: number; requestId: number } }
   | { type: "payout.request"; data: { amountPaise: number; payoutAddress: string; idempotencyKey: string; requestId: number } }
+  | { type: "diamonds.statistics.load"; data: { period: import("./api/types").DiamondStatisticsPeriod; date?: string; requestId: number } }
   | { type: "awards.claim"; data: { task: string } }
   | { type: "ads.load"; data: Record<string, never> }
   | { type: "ads.impression" | "ads.click"; data: { id: string; placement: AdPlacement } };
@@ -267,6 +268,8 @@ export type AppMessage =
   | { type: "referral.error"; data: { message: string; requestId?: number; code?: string; status?: number } }
   | { type: "wallet.balance"; data: Partial<Wallet> }
   | { type: "payout.loaded"; data: Payouts & { requestId: number; pending?: PendingPayout | null; recovered?: Payout | null } }
+  | { type: "diamonds.statistics.loaded"; data: import("./api/types").DiamondStatistics & { requestId: number } }
+  | { type: "diamonds.statistics.error"; data: { period: import("./api/types").DiamondStatisticsPeriod; date?: string; requestId: number; message: string } }
   | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
   | { type: "payout.error"; data: { action: "payout.load" | "payout.request"; requestId: number; idempotencyKey?: string; message: string; code?: string; status?: number } }
   | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null; clientId?: string; createdAt?: string; sequence?: number } }
@@ -313,6 +316,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let webReady = false, sessionAvailable = false, runtimeLinkReceived = false;
   let documentRevision = 0;
   let payoutReadRevision = 0;
+  let diamondStatisticsRevision = 0;
   let paymentRoutesRevision = 0;
   const photoDownloads = new Map<string, Promise<void>>();
   let linkRevision = 0;
@@ -2078,6 +2082,20 @@ export function createBridge(post: (msg: AppMessage) => void) {
         if (callId === activeCall) { activeCall = undefined; activeHostCall = false; }
         callRecovery?.sync();
         if (callId) quietly(api.endCall(callId, msg.data.reason).finally(() => finishCallActivity(callId)), msg.type);
+        return;
+      }
+      case "diamonds.statistics.load": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, revision = ++diamondStatisticsRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === diamondStatisticsRevision;
+        try {
+          const approval = await requireApprovedHost(), owner = accountId;
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          const statistics = await api.diamondStatistics(msg.data.period, msg.data.date);
+          if (applicable() && owner === accountId && approval === hostRevision && hasHostAccess())
+            emit({ type: "diamonds.statistics.loaded", data: { ...statistics, requestId: msg.data.requestId } });
+        } catch (error) {
+          if (applicable()) emit({ type: "diamonds.statistics.error", data: { period: msg.data.period, date: msg.data.date, requestId: msg.data.requestId, message: errorMessage(error) } });
+        }
         return;
       }
       case "payout.load": {

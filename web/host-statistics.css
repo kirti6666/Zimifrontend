@@ -1,0 +1,23 @@
+.zhs-page{max-width:680px;margin:0 auto;padding:16px 20px 40px;color:var(--ink);min-width:0}
+.zhs-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;background:var(--raised)}
+.zhs-tabs button{min-width:0;min-height:44px;padding:10px 4px;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:500}
+.zhs-tabs button[aria-selected=true]{background:var(--surface);color:var(--accent-ink);font-weight:600}
+.zhs-range{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center;margin:24px 0}
+.zhs-range p{margin:0;text-align:center;font-size:14px;font-weight:600;line-height:1.5}.zhs-range small{display:block;margin-top:2px;font-size:11px;font-weight:400;color:var(--muted)}
+.zhs-range-button{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--ink)}.zhs-next svg{transform:rotate(180deg)}
+.zhs-page button:disabled{opacity:.35;cursor:default}.zhs-page button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.zhs-total{margin-bottom:26px}.zhs-total>span{font-size:12px;color:var(--muted)}.zhs-total strong{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:32px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}.zhs-total svg{flex:none;color:var(--accent-ink)}
+.zhs-chart{display:grid;grid-template-columns:38px minmax(0,1fr);gap:6px;min-width:0;margin:0 0 12px}
+.zhs-yaxis{height:212px;display:flex;flex-direction:column;justify-content:space-between;text-align:right;font-size:10px;line-height:12px;color:var(--muted);padding-right:2px;transform:translateY(-6px)}
+.zhs-plot{position:relative;min-width:0}.zhs-grid{height:200px;display:flex;flex-direction:column;justify-content:space-between;position:absolute;inset:0 0 auto;pointer-events:none}
+.zhs-gridline{display:block;height:1px;width:100%;background:var(--line)}
+.zhs-bars{position:relative;display:grid;grid-template-columns:repeat(var(--zhs-count),minmax(0,1fr));gap:3px;height:200px;min-width:0}
+.zhs-bar{display:flex;align-items:flex-end;justify-content:center;width:100%;min-width:0;height:100%;padding:0;background:transparent;border:0;position:relative}
+.zhs-fill{display:block;width:100%;min-width:0;background:var(--accent);opacity:.6;max-height:100%}.zhs-bar[aria-pressed=true] .zhs-fill{opacity:1}.zhs-bar[aria-pressed=true]::after{content:'';position:absolute;bottom:-5px;left:50%;height:3px;width:3px;background:var(--accent-ink)}
+:root .zhs-page :is(.zhs-fill,.zhs-gridline){border-radius:0!important}
+.zhs-xaxis{display:grid;grid-template-columns:repeat(var(--zhs-count),minmax(0,1fr));gap:3px;margin-top:10px;min-height:16px;font-size:10px;line-height:14px;color:var(--muted)}.zhs-xaxis span{text-align:center;white-space:nowrap;overflow:visible;min-width:0}
+.zhs-selection{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:16px 0 22px;padding:12px;background:var(--raised);font-size:12px;line-height:1.6;color:var(--muted)}.zhs-selection strong{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.zhs-note{font-size:12px;line-height:1.7;color:var(--muted);margin:14px 0}.zhs-empty{margin:20px 0}.zhs-empty h2{font-size:16px;font-weight:600;margin:0 0 7px}.zhs-empty p{font-size:12px;line-height:1.7;color:var(--muted);margin:0}
+.zhs-error{padding:20px 0;font-size:14px;line-height:1.7}.zhs-error p{margin:0 0 12px}.zhs-error button{min-height:44px;padding:10px 16px;border:1px solid var(--line);background:var(--surface);color:var(--accent-ink);font:inherit;font-weight:600}
+.zhs-total-skeleton{display:grid;gap:12px;margin-bottom:26px}.zhs-chart-skeleton{height:212px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:7px;align-items:end;padding-bottom:12px;margin-bottom:20px}.zhs-chart-skeleton span{width:100%}
+@media(max-width:359px){.zhs-page{padding-left:16px;padding-right:16px}.zhs-chart{grid-template-columns:32px minmax(0,1fr);gap:4px}.zhs-bars,.zhs-xaxis{gap:2px}.zhs-total strong{font-size:28px}.zhs-range{gap:4px}.zhs-range p{font-size:12px}}

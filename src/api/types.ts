@@ -434,6 +434,51 @@ export interface Wallet {
   diamonds?: number;
   reservedDiamonds?: number;
   conversion?: { diamondsPerCoin: number; paisePerDiamond: number };
+  hostEarningsPolicy?: HostEarningsPolicy | null;
+  hostReward?: HostReward | null;
+  /** Regular calls and gifts only; task rewards belong to withdrawals. */
+  profileDiamondUnits?: number;
+  profileEarningsPaise?: number;
+  profileReservedDiamondUnits?: number;
+  profileReservedPaise?: number;
+}
+export type DiamondStatisticsPeriod = "daily" | "weekly" | "monthly";
+export interface DiamondStatistics {
+  period: DiamondStatisticsPeriod;
+  timeZone: "Asia/Kolkata";
+  anchorDate: string;
+  startAt: string;
+  endAt: string;
+  totalDiamondUnits: number;
+  diamondScale: 1000000;
+  historicalTiming: boolean;
+  buckets: { startAt: string; endAt: string; label: string; diamondUnits: number }[];
+}
+export interface HostEarningsPolicy {
+  enabled: true;
+  hostCallSharePercent: number;
+  hostCallRewardPercent: number;
+  hostGiftSharePercent: number;
+  agencySharePercent: number;
+  hostWeeklyTargetMinutes: number;
+  paisePerDiamond: number;
+  minimumWithdrawalDiamonds?: number;
+  wholeBalanceWithdrawal: true;
+  hostRules: string;
+}
+export interface HostReward {
+  periodStart: string;
+  periodEnd: string;
+  weekNumber: number;
+  weeklyTargetMinutes: number;
+  weekMinutes: number[];
+  thisWeekMinutes: number;
+  thisWeekTargetMinutes: number;
+  remainingThisWeekMinutes: number;
+  lastWeekMinutes: number;
+  pendingDiamonds: number;
+  pendingPaise: number;
+  status: "pending" | "eligible" | "paid" | "missed";
 }
 /** Staff-set rule for the low-balance Recharge pop-up on a member's call screen. */
 export interface RechargePrompt { enabled: boolean; thresholdCoins: number; lastRechargeCoins: number; delaySeconds: number; repeatSeconds: number; }

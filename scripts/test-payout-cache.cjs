@@ -48,6 +48,12 @@ test('a pending withdrawal persists across module restart with account-only acce
   assert.equal(h.disk.size, 2, 'Signing in as another account leaves the prior recovery record intact');
 });
 
+test('large whole-balance withdrawals persist and recover without lowering their amount', async () => {
+  const h=harness(),large={...attempt(),amountPaise:150000000};
+  await h.cache.rememberPendingPayout('alice',large);
+  assert.deepEqual(plain(await h.restart().readPendingPayout('alice')),large);
+});
+
 test('same-key retries reuse one durable intent and cannot change its amount or destination', async () => {
   const h = harness(), submitted = attempt();
   const remembering = h.cache.rememberPendingPayout('alice', submitted);
@@ -93,7 +99,7 @@ test('reads and competing writes serialize per account while another account rem
 test('invalid attempts and account identifiers are rejected before secure storage is accessed', async () => {
   const h = harness();
   for (const value of [null, [], {}, { ...attempt(), extra: true }, ...[
-    { amountPaise: 0 }, { amountPaise: 1.5 }, { amountPaise: '50000' }, { amountPaise: 100000001 },
+    { amountPaise: 0 }, { amountPaise: 1.5 }, { amountPaise: '50000' }, { amountPaise: Number.MAX_SAFE_INTEGER+1 },
     { payoutAddress: '  ' }, { payoutAddress: 'ab' }, { payoutAddress: 'x'.repeat(201) },
     { idempotencyKey: 'short' }, { idempotencyKey: 'bad/key-1' }, { idempotencyKey: 'x'.repeat(101) },
   ].map(patch => ({ ...attempt(), ...patch }))]) await assert.rejects(h.cache.rememberPendingPayout('alice', value), /withdrawal attempt/);
