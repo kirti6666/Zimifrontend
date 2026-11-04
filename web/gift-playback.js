@@ -35,7 +35,7 @@ window.ZimiGiftPlayback=(()=>{
       if(!entry.ready)entry.controller.abort();
     }
   }
-  function originalFile(media,retain=false){
+  function originalFile(media,retain=false,completedImage=false){
     let entry=artwork.get(media);
     if(entry){artwork.delete(media);artwork.set(media,entry)}
     else{
@@ -49,6 +49,7 @@ window.ZimiGiftPlayback=(()=>{
       })().catch(error=>{if(artwork.get(media)===entry)artwork.delete(media);throw error});
       artwork.set(media,entry);
     }
+    if(completedImage)entry.completedImage=true;
     if(retain){entry.users++;entry.warm=false}else entry.warm=true;
     trim();
     if(!retain)return entry.promise;
@@ -147,8 +148,9 @@ window.ZimiGiftPlayback=(()=>{
     async function source(item){
       let lease;
       try{
-        item.releaseWarm?.();item.releaseWarm=null;
-        if(isNetwork(item.media)&&!artwork.get(item.media)?.ready){
+        const cached=artwork.get(item.media);
+        if(isNetwork(item.media)&&!cached?.ready&&!cached?.completedImage){
+          item.releaseWarm?.();item.releaseWarm=null;
           // A cold animation can paint authored frames as they arrive. Waiting
           // for a complete Blob would delay a large original by many seconds.
           // Stop unused selection fetches before the image owns this download.
@@ -163,6 +165,9 @@ window.ZimiGiftPlayback=(()=>{
           item.frameRequest=requestAnimationFrame(incoming);return;
         }
         lease=originalFile(item.media,true);item.releaseFile=lease.release;
+        // Acquire the active lease before releasing the queued one. A pending
+        // fill from a fully loaded original must survive this handoff.
+        item.releaseWarm?.();item.releaseWarm=null;
         const blob=await lease.promise;
         if(active!==item)return;
         // A unique original-byte URL restarts animation from frame one. Never
@@ -183,7 +188,7 @@ window.ZimiGiftPlayback=(()=>{
       // Anonymous image loading and this fetch share the same stable HTTP cache
       // entry. Keep the displayed network image alive; only later gifts use a
       // fresh Blob URL, so filling the byte cache never restarts this animation.
-      const lease=originalFile(item.media,true);item.releaseFile=lease.release;
+      const lease=originalFile(item.media,true,true);item.releaseFile=lease.release;
       try{await lease.promise}catch{}
       finally{lease.release();if(item.releaseFile===lease.release)item.releaseFile=null}
     }
@@ -249,7 +254,8 @@ window.ZimiGiftPlayback=(()=>{
       const item=queue[0];if(!item?.media||item.releaseWarm)return;
       // Do not fetch a second cold copy while the active image is streaming.
       // Completed originals remain pinned for the next queued transfer.
-      if(isNetwork(item.media)&&!artwork.get(item.media)?.ready)return;
+      const cached=artwork.get(item.media);
+      if(isNetwork(item.media)&&!cached?.ready&&!cached?.completedImage)return;
       const lease=originalFile(item.media,true);item.releaseWarm=lease.release;
       lease.promise.catch(()=>{});
     }
@@ -262,6 +268,13 @@ window.ZimiGiftPlayback=(()=>{
       if(!options.available(data)||keys(data).some(key=>identities.has(key)))return false;
       const item={...data,aliases:new Set(),receivedAt:Date.now(),state:'queued'};
       remember(item);
+      // Priority insertion can finish the current image before next() runs.
+      // Reserve its existing byte fill first, without starting a cold fetch.
+      const cached=artwork.get(item.media);
+      if(cached?.completedImage&&!cached.ready){
+        const lease=originalFile(item.media,true);item.releaseWarm=lease.release;
+        lease.promise.catch(()=>{});
+      }
       if(data.priority){if(active)finish(active,false);queue.unshift(item)}else queue.push(item);
       next();warmNext();return true;
     }
