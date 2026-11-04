@@ -55,7 +55,9 @@ class BinzoMediaModule : Module() {
     AsyncFunction("beginCallService") { callId: String, video: Boolean, lease: String, promise: Promise ->
       serviceLeases.add(lease)
       val context = appContext.reactContext?.applicationContext
-      val visible = appContext.currentActivity != null && activityVisible
+      // A lazily created module can miss an already-delivered resume event.
+      // The focused Activity is foreground evidence at the actual call start.
+      val visible = appContext.currentActivity?.let { activityVisible || it.hasWindowFocus() } == true
       if (!alive || context == null || !visible && !CallForegroundService.isRunning(lease)) {
         serviceLeases.remove(lease)
         context?.let { CallForegroundService.stop(it, lease) }
