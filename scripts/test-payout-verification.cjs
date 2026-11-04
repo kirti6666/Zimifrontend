@@ -1,0 +1,54 @@
+/* Public KYC/withdrawal UI contracts. A recording bridge replaces all native
+   network/storage edges; PAN fixtures are synthetic and no payout is sent. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+const {chromium}=require('playwright');
+const root=path.resolve(__dirname,'..');
+assert.match(fs.readFileSync(path.join(root,'assets/aurora.html'),'utf8'),/PayoutVerification/,'Build the current web source before running verification UI checks');
+const host={user:{id:'507f1f77bcf86cd799439011',name:'Verification tester',role:'host',serverRole:'host',hostStatus:'approved',isVerifiedHost:true,isPhoneVerified:true},verification:'verified',requiresOnboarding:false};
+const wallet={coins:0,earningsPaise:50001,reservedPaise:0,minimumWithdrawalPaise:50000,withdrawalsEnabled:true,hostEarningsPolicy:{version:2,wholeBalanceWithdrawal:true,paisePerDiamond:20,hostTdsPercent:2}};
+const kyc={required:true,kyc:{status:'verified',id:'507f1f77bcf86cd799439071',ownerId:host.user.id,legalName:'Payout Tester',panMasked:'******234F',payoutType:'bank',payoutAddress:'Bank ending 0123 / SBIN0001234',bankLast4:'0123',ifsc:'SBIN0001234'}};
+const quote={policyVersion:2,grossAmountPaise:50001,tdsPaise:1000,netAmountPaise:49001,tdsPercent:2,diamondUnits:2500050000,settingsVersionId:'507f1f77bcf86cd799439072',kycId:kyc.kyc.id,payoutAddress:kyc.kyc.payoutAddress};
+const receive=(page,type,data={})=>page.evaluate(message=>Native.receive(message),{type,data});
+const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type===type).map(message=>message.data),type);
+const last=async(page,type)=>(await sent(page,type)).at(-1);
+const button=(page,name)=>page.getByRole('button',{name,exact:true});
+const settleKyc=async(page,data=kyc)=>receive(page,'payout.kyc.loaded',{...data,requestId:(await last(page,'payout.kyc.load')).requestId});
+const settleHistory=async(page,extra={})=>receive(page,'payout.loaded',{items:[],total:0,page:1,limit:20,requestId:(await last(page,'payout.load')).requestId,...extra});
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})}),errors=[];
+ const open=async()=>{
+  const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});page.setDefaultTimeout(7000);page.on('pageerror',error=>errors.push(error.message));
+  await page.route('https://**/*',route=>route.abort());await page.addInitScript(()=>{window.__sent=[];window.ReactNativeWebView={postMessage:raw=>__sent.push(JSON.parse(raw))}});
+  await page.goto(pathToFileURL(path.join(root,'assets/aurora.html')).href+'?role=sender');await receive(page,'session',host);await page.evaluate(()=>go('payout'));await receive(page,'wallet.balance',wallet);await settleHistory(page);return page;
+ };
+ try{
+  const page=await open();assert.equal(await button(page,'Review withdrawal').isDisabled(),true);await settleKyc(page,{required:true,kyc:{status:'missing'}});
+  await button(page,'Verify payout details').click();assert.equal((await last(page,'screen.secure')).on,true);await settleKyc(page,{required:true,kyc:{status:'missing'}});await button(page,'Add payout details').click();
+  await page.locator('#zpay-legal-name').fill('Payout Tester');await page.locator('#zpay-pan').fill('abcde1234f');await page.locator('#zpay-method').selectOption('bank');await page.locator('#zpay-bank-account').fill('00000123');await page.locator('#zpay-ifsc').fill('sbin0001234');await button(page,'Submit for verification').click();
+  const submission=await last(page,'payout.kyc.submit');assert.equal(submission.panNumber,'ABCDE1234F');assert.equal(submission.bankAccountNumber,'00000123');assert.equal(submission.ifsc,'SBIN0001234');await page.evaluate(()=>payoutKycSubmit());assert.equal((await sent(page,'payout.kyc.submit')).length,1);
+  await receive(page,'payout.kyc.error',{action:'payout.kyc.submit',requestId:submission.requestId,message:'Connection interrupted'});assert.equal(await page.locator('#zpay-pan').isDisabled(),true);await button(page,'Retry same verification').click();const retry=await last(page,'payout.kyc.submit');assert.equal(retry.idempotencyKey,submission.idempotencyKey);assert.equal(retry.panNumber,submission.panNumber);
+  await receive(page,'payout.kyc.submitted',{...kyc,kyc:{...kyc.kyc,status:'pending'},requestId:retry.requestId});assert.equal(await page.locator('#zpay-pan').count(),0);assert.deepEqual(await page.evaluate(()=>PayoutVerification.form),{});assert.doesNotMatch(await page.locator('.zpay-page').innerText(),/ABCDE1234F|00000123/);
+  await button(page,'Update payout details').click();await page.locator('#zpay-pan').fill('ABCDE1234F');await receive(page,'app.background');assert.equal(await page.locator('#zpay-pan').count(),0);assert.deepEqual(await page.evaluate(()=>PayoutVerification.form),{});
+  await button(page,'Update payout details').click();await page.locator('#zpay-pan').fill('ABCDE1234F');await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));assert.equal(await page.locator('#zpay-pan').inputValue(),'');assert.deepEqual(await page.evaluate(()=>PayoutVerification.form),{});await button(page,'Back to payments').click();assert.deepEqual(await page.evaluate(()=>PayoutVerification.form),{});assert.equal((await last(page,'screen.secure')).on,false);
+  console.log('PASS verification: host-only secure form, bank leading zeros, same-key retry and private input cleared after submit/background/close');
+
+  await page.evaluate(()=>payoutKycLoad());await settleKyc(page);assert.equal(await button(page,'Review withdrawal').isEnabled(),true);assert.equal(await page.locator('#zpay-address').getAttribute('readonly'),'');assert.equal(await page.locator('#zpay-address').inputValue(),kyc.kyc.payoutAddress);
+  await button(page,'Review withdrawal').click();const request=await last(page,'payout.quote.load');assert.equal(request.amountPaise,50001);assert.equal((await sent(page,'payout.request')).length,0);await page.evaluate(()=>payoutReview());assert.equal((await sent(page,'payout.quote.load')).length,1);
+  await receive(page,'payout.quote.loaded',{...quote,requestId:request.requestId+1});assert.equal(await page.getByRole('region',{name:'Review withdrawal'}).count(),0);await receive(page,'payout.quote.loaded',{...quote,requestId:request.requestId});
+  const review=await page.getByRole('region',{name:'Review withdrawal'}).innerText();assert.match(review,/Gross amount[\s\S]*500\.01[\s\S]*TDS \(2%\)[\s\S]*10\.00[\s\S]*Net payout[\s\S]*490\.01/);assert.match(review,/Diamonds to reserve[\s\S]*2,500\.05/);
+  await button(page,'Confirm withdrawal request').click();const payout=await last(page,'payout.request');assert.deepEqual(payout.quote,{settingsVersionId:quote.settingsVersionId,kycId:quote.kycId,netAmountPaise:49001,diamondUnits:quote.diamondUnits});assert.equal(payout.payoutAddress,kyc.kyc.payoutAddress);assert.doesNotMatch(JSON.stringify(payout),/ABCDE1234F|00000123/);
+  await receive(page,'payout.error',{action:'payout.request',requestId:payout.requestId,idempotencyKey:payout.idempotencyKey,status:409,code:'PAYOUT_QUOTE_STALE',message:'Review changed settings',noReservation:true});assert.equal(await page.evaluate(()=>PayoutUI.attempt),null);assert.equal(await page.getByRole('region',{name:'Review withdrawal'}).count(),0);
+  await button(page,'Review withdrawal').click();const secondQuote=await last(page,'payout.quote.load');await receive(page,'payout.quote.loaded',{...quote,requestId:secondQuote.requestId});await button(page,'Confirm withdrawal request').click();const fresh=await last(page,'payout.request');assert.notEqual(fresh.idempotencyKey,payout.idempotencyKey);
+  await receive(page,'payout.error',{action:'payout.request',requestId:fresh.requestId,idempotencyKey:fresh.idempotencyKey,message:'Connection interrupted'});await receive(page,'wallet.balance',{...wallet,earningsPaise:0});await button(page,'Retry same withdrawal').click();const recovered=await last(page,'payout.request');assert.equal(recovered.idempotencyKey,fresh.idempotencyKey);assert.deepEqual(recovered.quote,fresh.quote);
+  console.log('PASS verification: authoritative gross/TDS/net/diamonds, readonly payee, quote before reservation, terminal stale reset and immutable uncertain recovery');
+
+  const legacy=await open();await receive(legacy,'wallet.balance',{...wallet,hostEarningsPolicy:{version:1,wholeBalanceWithdrawal:false}});assert.equal(await button(legacy,'Review withdrawal').isEnabled(),true,'Legacy flow remains usable when a new KYC endpoint is unserved');await legacy.locator('#zpay-amount').fill('500.00');await legacy.locator('#zpay-address').fill('legacy@upi');await button(legacy,'Review withdrawal').click();assert.equal(await legacy.getByRole('region',{name:'Review withdrawal'}).count(),1);assert.equal((await sent(legacy,'payout.quote.load')).length,0);
+  const restarted=await open(),pending={amountPaise:50001,payoutAddress:kyc.kyc.payoutAddress,idempotencyKey:'restarted-v2-attempt',quote:fresh.quote};await restarted.evaluate(()=>payoutLoad());await settleHistory(restarted,{pending});const recoveryView=await restarted.getByRole('region',{name:'Review withdrawal'}).innerText();assert.match(recoveryView,/Previously reviewed net payout[\s\S]*490\.01/);assert.match(recoveryView,/Diamonds to reserve[\s\S]*2,500\.05/);await button(restarted,'Retry same withdrawal').click();assert.deepEqual((await last(restarted,'payout.request')).quote,pending.quote);
+  await page.evaluate(()=>payoutKycOpen('payout'));await settleKyc(page);await button(page,'Update payout details').click();await page.locator('#zpay-pan').fill('ABCDE1234F');
+  for(const mode of ['dark','light']){await page.evaluate(mode=>Native.receive({type:'data.themes',data:{items:[ZThemeOriginal,ZThemeRose],selectedThemeId:mode==='dark'?ZThemeOriginal.id:ZThemeRose.id,premium:{active:false}}}),mode);for(const width of [320,390]){await page.setViewportSize({width,height:844});const boxes=await page.locator('.zpay-page,.zpay-form input,.zpay-form select,.zpay-form button').evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return{left:box.left,right:box.right,overflow:node.scrollWidth>node.clientWidth+1}}));assert.ok(boxes.every(box=>box.left>=0&&box.right<=width+1&&!box.overflow),`${mode} verification fits ${width}px`)}}
+  await receive(page,'session.none');assert.deepEqual(await page.evaluate(()=>PayoutVerification.form),{});assert.equal(await page.evaluate(()=>PayoutVerification.data),null);assert.equal(errors.length,0,errors.join('\n'));console.log('PASS verification: legacy compatibility, theme/320px layout and logout isolation');
+ }finally{await browser.close()}
+})().catch(error=>{console.error(error);process.exitCode=1});

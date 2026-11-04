@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 const root = path.resolve(__dirname, '..');
-let version = 1, token = 'native-access-token', requests = [], uploads = [], expected = [], uploadError, tokenListeners = [];
+let version = 1, token = 'native-access-token', requests = [], uploads = [], expected = [], uploadError, tokenListeners = [], installationId;
 class ApiError extends Error { constructor(message, status, code) { super(message); Object.assign(this, { status, code }); } }
 const session = {
   getSessionVersion: () => version,
@@ -48,6 +48,7 @@ function load(relative) {
   const localRequire = name => {
     if (name === './client') return client;
     if (name === '../session') return session;
+    if (name === '../installation') return {getInstallationId:async()=>installationId};
     if (name === '../config') return { SOCKET_URL: 'https://api.example.test' };
     if (name === 'socket.io-client') return { io };
     return load(path.relative(root, path.resolve(path.dirname(filename), `${name}.ts`)));
@@ -69,6 +70,41 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
+  const kycId='507f1f77bcf86cd799439071',settingsId='507f1f77bcf86cd799439072';
+  const publicKyc={required:true,kyc:{status:'verified',id:kycId,ownerId:'host-id',ownerType:'host',revision:1,legalName:'Payout Tester',panMasked:'******234F',payoutType:'bank',payoutAddress:'Bank ending 0123 / SBIN0001234',bankLast4:'0123',ifsc:'SBIN0001234',reason:null}};
+  expect('GET','/wallet/payout-kyc',publicKyc);
+  const maskedKyc=await api.payoutKyc();
+  assert.equal(maskedKyc.kyc.panMasked,'******234F');assert.equal(maskedKyc.kyc.reason,undefined);assert.equal(maskedKyc.kyc.ownerType,undefined);
+  for(const invalid of [{panNumber:'ABCDE1234F'},{bankAccountNumber:'00000123'},{ownerType:'agency'},{panMasked:'ABCDE1234F'},{panMasked:'*ABCDE1234F'},{payoutAddress:'Bank 0000001234567890'},{reason:'Please check ABCDE1234F'}]){
+    expect('GET','/wallet/payout-kyc',{...publicKyc,kyc:{...publicKyc.kyc,...invalid}});
+    await assert.rejects(api.payoutKyc(),error=>!error.message.includes('ABCDE1234F')&&/verification details/.test(error.message));
+  }
+  const bankKyc={idempotencyKey:'kyc-bank-attempt',legalName:'  Payout Tester  ',panNumber:'ABCDE1234F',payoutType:'bank',bankAccountNumber:'00000123',ifsc:'SBIN0001234',requestId:9};
+  expect('POST','/wallet/payout-kyc',{required:true,kyc:{...publicKyc.kyc,status:'pending'}},body=>assert.deepEqual(plain(body),{idempotencyKey:bankKyc.idempotencyKey,legalName:'Payout Tester',panNumber:bankKyc.panNumber,payoutType:'bank',bankAccountNumber:'00000123',ifsc:bankKyc.ifsc}));
+  assert.equal((await api.submitPayoutKyc(bankKyc)).kyc.status,'pending');
+  const kycRequests=requests.length;
+  for(const invalid of [{panNumber:'abcde1234f'},{bankAccountNumber:123456},{bankAccountNumber:'0'.repeat(25)},{ifsc:'sbin0001234'},{userId:'other'},{legalName:'x'},{requestId:0}])await assert.rejects(api.submitPayoutKyc({...bankKyc,...invalid}),/Check your legal name/);
+  assert.equal(requests.length,kycRequests,'Invalid KYC never reaches the transport');
+  const quote={policyVersion:2,grossAmountPaise:50001,tdsPaise:1000,netAmountPaise:49001,tdsPercent:2,diamondUnits:2500050000,settingsVersionId:settingsId,kycId,payoutAddress:publicKyc.kyc.payoutAddress};
+  expect('GET','/wallet/withdrawal-quote?amountPaise=50001',quote);assert.deepEqual(plain(await api.withdrawalQuote(50001)),quote);
+  for(const invalid of [{tdsPaise:1001,netAmountPaise:49000},{netAmountPaise:49002},{diamondUnits:1.2},{settingsVersionId:undefined},{kycId:undefined},{tdsPercent:'2'},{policyVersion:1}]){
+    expect('GET','/wallet/withdrawal-quote?amountPaise=50001',{...quote,...invalid});await assert.rejects(api.withdrawalQuote(50001),/quote could not be confirmed/);
+  }
+  const legacyQuote={...quote,policyVersion:1,tdsPaise:0,netAmountPaise:50001,tdsPercent:0,payoutAddress:''};delete legacyQuote.settingsVersionId;delete legacyQuote.kycId;
+  expect('GET','/wallet/withdrawal-quote?amountPaise=50001',legacyQuote);assert.deepEqual(plain(await api.withdrawalQuote(50001)),legacyQuote);
+  const quoteProof={settingsVersionId:settingsId,kycId,netAmountPaise:49001,diamondUnits:quote.diamondUnits};
+  expect('POST','/wallet/withdraw',{_id:kycId,amountPaise:50001,payoutAddress:quote.payoutAddress,status:'pending',createdAt:'2026-11-04T10:00:00Z',grossAmountPaise:50001,tdsPaise:1000,netAmountPaise:49001,diamondUnits:quote.diamondUnits,diamondScale:1000000},body=>assert.deepEqual(plain(body),{amountPaise:50001,payoutAddress:quote.payoutAddress,idempotencyKey:'withdrawal-v2-attempt',quote:quoteProof}));
+  assert.equal((await api.requestPayout(50001,quote.payoutAddress,'withdrawal-v2-attempt',quoteProof)).netAmountPaise,49001);
+  for(const invalid of [{...quoteProof,diamondUnits:undefined},{...quoteProof,diamondUnits:-1},{...quoteProof,ownerId:'other'}])await assert.rejects(api.requestPayout(50001,quote.payoutAddress,'withdrawal-v2-attempt',invalid),/withdrawal amount/);
+  finished();
+  const configurableStatus={rate:50,configurableRate:true,minRate:10,maxRate:100,selectedRate:50,tier:1,earnedCoins:0,next:null,tiers:[],entryFeeCoins:0,entryFeeHoldSeconds:0,earlyEnds:{today:0,limit:2,penaltyCoins:0},visibleDuringCalls:true};
+  expect('GET','/calls/host-status',configurableStatus);assert.equal((await api.hostCallStatus()).selectedRate,50);
+  expect('PATCH','/calls/host-status',{...configurableStatus,rate:75,selectedRate:75},body=>assert.deepEqual(plain(body),{rateCoinsPerMinute:75}));assert.equal((await api.saveHostCallRate(75)).rate,75);
+  for(const invalid of [{minRate:0},{minRate:101},{maxRate:9},{selectedRate:101},{rate:49},{minRate:'10'},{configurableRate:false}]){
+    expect('GET','/calls/host-status',{...configurableStatus,...invalid});await assert.rejects(api.hostCallStatus(),/call price limits/);
+  }
+  const previousRateRequests=requests.length;for(const invalid of [0,1.5,'50',1000001])await assert.rejects(api.saveHostCallRate(invalid),/valid member call price/);assert.equal(requests.length,previousRateRequests);
+  const legacyStatus={...configurableStatus};for(const key of ['configurableRate','minRate','maxRate','selectedRate'])delete legacyStatus[key];expect('GET','/calls/host-status',legacyStatus);assert.equal((await api.hostCallStatus()).configurableRate,undefined);finished();
   const officialIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
   const officialAt = '2026-11-02T10:00:00.000Z', officialId = '507f1f77bcf86cd799439041', officialTicket = '507f1f77bcf86cd799439042';
   const officialNote = {id:'announcement:'+officialId,kind:'announcement',senderType:'official',body:'An official update',createdAt:officialAt,read:false};
@@ -172,7 +208,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   await assert.rejects(api.connectAutomaticInvitation('invite-1', 1000001, 0), /current call price/);
   expect('POST', '/calls/automatic-invitation/invite-1/dismiss', { ...invitation, status: 'dismissed' }, body => assert.deepEqual(plain(body), {}));
   assert.equal((await api.dismissAutomaticInvitation('invite-1')).status, 'dismissed');
-  const held = { _id: 'real-incoming', status: 'ringing', hostInitiated: true, waitingForTopup: true, topupHoldStartedAt: new Date().toISOString(), topupHoldUntil: new Date(Date.now() + 300000).toISOString() };
+  const holdStartedAt = Date.now();
+  const held = { _id: 'real-incoming', status: 'ringing', hostInitiated: true, waitingForTopup: true, topupHoldStartedAt: new Date(holdStartedAt).toISOString(), topupHoldUntil: new Date(holdStartedAt + 300000).toISOString() };
   expect('POST', '/calls/real-incoming/topup-hold', held, body => assert.deepEqual(plain(body), {}));
   assert.deepEqual(plain(await api.holdIncomingForTopup('real-incoming')), { callId: 'real-incoming', until: held.topupHoldUntil });
   for (const bad of [{ _id: 'other' }, { status: 'ended' }, { hostInitiated: false }, { waitingForTopup: false }, { topupHoldUntil: new Date(Date.now() + 301000).toISOString() }]) {
@@ -225,6 +262,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const signedIn = await api.verifyOtp('+919876543210', '123456', 'host', true);
   assert.equal(signedIn.user.role, 'sender'); assert.equal(signedIn.tokens.refreshToken, 'refresh');
   assert.equal(signedIn.balance, undefined); assert.equal(signedIn.earned, undefined); assert.equal(signedIn.requiresOnboarding, true);
+  installationId='5ee7ef02-1d49-4bd9-a280-f25996f77111';
+  expect('POST','/auth/otp/verify',{user,tokens:{accessToken:'access',refreshToken:'refresh',expiresIn:900,refreshExpiresIn:3600},isNewUser:false,requiresOnboarding:false},body=>assert.equal(body.installationId,installationId));await api.verifyOtp('+919876543210','123456');installationId=undefined;
   for (const code of ['0123', '01234567']) {
     expect('POST', '/auth/otp/verify', { user, tokens: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 900, refreshExpiresIn: 3600 }, isNewUser: false, requiresOnboarding: false }, body => {
       assert.equal(body.otp, code, 'Provider OTP length and leading zeroes survive the native API');
@@ -626,8 +665,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const parsedDiamonds = adapters.walletFrom({ ...diamondWallet, diamonds: 999999, reservedDiamonds: 999999 });
   assert.equal(parsedDiamonds.diamonds, 6172.8, 'Display diamonds derive from exact server units, never an untrusted duplicate');
   assert.equal(parsedDiamonds.reservedDiamonds, 250);
-  assert.deepEqual(plain(parsedDiamonds.conversion), diamondWallet.conversion);
-  for (const broken of [{ diamondUnits: -1 }, { diamondUnits: 1.5 }, { diamondUnits: Number.MAX_SAFE_INTEGER + 1 }, { diamondScale: 100 }, { reservedDiamondUnits: -1 }, { conversion: { diamondsPerCoin: 0, paisePerDiamond: 20 } }, { conversion: { diamondsPerCoin: 1, paisePerDiamond: Infinity } }]) {
+  assert.deepEqual(plain(parsedDiamonds.conversion), {paisePerDiamond:20.5}, 'Internal Coin-to-Diamond earning ratios never cross into the WebView');
+  for (const broken of [{ diamondUnits: -1 }, { diamondUnits: 1.5 }, { diamondUnits: Number.MAX_SAFE_INTEGER + 1 }, { diamondScale: 100 }, { reservedDiamondUnits: -1 }, { conversion: { paisePerDiamond: Infinity } }]) {
     assert.throws(() => adapters.walletFrom({ ...diamondWallet, ...broken }), /diamond balance/, 'Malformed diamond accounting fails closed');
   }
   assert.equal(adapters.walletFrom({ coins: 0, earningsPaise: 100 }).diamondUnits, undefined, 'An older server never invents a diamond balance');
@@ -640,13 +679,57 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   }
   for (const currency of ['', 'coin', 'diamond', 'INR', null, 1, {}, ['coins']])
     assert.throws(() => adapters.walletFrom({ ...diamondWallet, currency }), /currency|wallet/, 'Malformed currency metadata fails closed');
-  const hostPolicy={enabled:true,hostCallSharePercent:28,hostCallRewardPercent:13,hostGiftSharePercent:41,agencySharePercent:13,hostWeeklyTargetMinutes:1950,paisePerDiamond:20,wholeBalanceWithdrawal:true,hostRules:'Be respectful.'};
+  const hostPolicy={enabled:true,callBonusAvailable:true,bonusExample:{callDiamonds:2800,bonusDiamonds:1300,giftDiamonds:4100},hostWeeklyTargetMinutes:1950,paisePerDiamond:20,wholeBalanceWithdrawal:true,hostRules:''};
   assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:hostPolicy}).hostEarningsPolicy),hostPolicy);
-  assert.equal(adapters.walletFrom({...diamondWallet,conversion:{diamondsPerCoin:0,paisePerDiamond:20},hostEarningsPolicy:{...hostPolicy,hostCallSharePercent:0}}).conversion.diamondsPerCoin,0,'Zero regular call share remains a valid policy');
+  const safeLegacyPolicy=adapters.walletFrom({...diamondWallet,conversion:{diamondsPerCoin:0,paisePerDiamond:20},hostEarningsPolicy:{...hostPolicy,hostCallSharePercent:28,hostCallRewardPercent:13,hostGiftSharePercent:41,agencySharePercent:13,paisePerCoin:20,hostRules:'Calls: 28 diamonds per 100 coins'}});
+  assert.doesNotMatch(JSON.stringify(safeLegacyPolicy),/diamondsPerCoin|SharePercent|RewardPercent|paisePerCoin|28 diamonds per/, 'Old server model fields and unchecked financial rules are discarded');
   assert.throws(()=>adapters.walletFrom({...diamondWallet,profileDiamondUnits:diamondWallet.diamondUnits+1}),/profile balance/);
   assert.equal(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:null,hostReward:null}).hostEarningsPolicy,null,'Explicit null clears a cached policy');
-  for(const broken of [{...hostPolicy,hostCallSharePercent:-1},{...hostPolicy,paisePerDiamond:0},{...hostPolicy,hostWeeklyTargetMinutes:0},{...hostPolicy,wholeBalanceWithdrawal:false}])assert.throws(()=>adapters.walletFrom({...diamondWallet,hostEarningsPolicy:broken}),/host earning rules/);
+  assert.equal(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:{...hostPolicy,wholeBalanceWithdrawal:false}}).hostEarningsPolicy.wholeBalanceWithdrawal,false,'An explicit partial-withdrawal policy survives normalization');
+  for(const broken of [{...hostPolicy,callBonusAvailable:'true'},{...hostPolicy,bonusExample:{callDiamonds:1,bonusDiamonds:-1,giftDiamonds:1}},{...hostPolicy,paisePerDiamond:0},{...hostPolicy,hostWeeklyTargetMinutes:0},{...hostPolicy,wholeBalanceWithdrawal:'false'}])assert.throws(()=>adapters.walletFrom({...diamondWallet,hostEarningsPolicy:broken}),/host earning rules/);
   assert.throws(()=>adapters.walletFrom({...diamondWallet,hostReward:{status:'eligible',pendingDiamonds:100}}),/weekly reward progress/);
+  const versionMetadata={settingsVersionId:'507f1f77bcf86cd799439090',settingsVersion:7};
+  const futurePolicy={...hostPolicy,wholeBalanceWithdrawal:false,periodWeeks:12,shortWeekMakeupEnabled:false,activityBasis:'paid_connected',version:3,...versionMetadata};
+  assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:futurePolicy}).hostEarningsPolicy),futurePolicy,'Optional policy configuration and its version remain authoritative');
+  assert.equal(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:hostPolicy}).hostEarningsPolicy.periodWeeks,undefined,'Legacy policy does not invent new period metadata');
+  const rewardStart=Date.parse('2026-10-25T18:30:00.000Z');
+  const rewardFixture={periodStart:new Date(rewardStart).toISOString(),periodEnd:new Date(rewardStart+28*86400000).toISOString(),weekNumber:1,weeklyTargetMinutes:1950,weekMinutes:[80,0,0,0],thisWeekMinutes:80,thisWeekTargetMinutes:1950,remainingThisWeekMinutes:1870,lastWeekMinutes:0,pendingDiamonds:80,pendingPaise:1600,status:'pending'};
+  const restartInfo={eligible:true,periodId:'507f1f77bcf86cd799439087',behindMinutes:1300,thresholdMinutes:1200,nextPeriodStart:'2026-11-15T18:30:00.000Z',pendingDiamonds:80};
+  const videoReward={...rewardFixture,activityBasis:'paid_video',restart:restartInfo};
+  assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostReward:videoReward}).hostReward),videoReward,'Video-only hours and the current-period restart proof survive normalization');
+  for(const change of [{eligible:'yes'},{periodId:'bad'},{periodId:null},{behindMinutes:-1},{thresholdMinutes:Infinity},{pendingDiamonds:0.5},{nextPeriodStart:'bad'}])assert.throws(()=>adapters.walletFrom({...diamondWallet,hostReward:{...videoReward,restart:{...restartInfo,...change}}}),/restart eligibility/);
+  const restartReceipt={periodId:restartInfo.periodId,idempotencyKey:'restart-adapter-fixture',restartId:'507f1f77bcf86cd799439088',nextPeriodStart:restartInfo.nextPeriodStart,cancelledPendingDiamonds:80};
+  expect('POST','/wallet/reward-restart',restartReceipt,body=>assert.deepEqual(plain(body),{periodId:restartInfo.periodId,idempotencyKey:restartReceipt.idempotencyKey,expectedPendingDiamonds:80,confirmed:true}));
+  assert.deepEqual(plain(await api.restartHostReward(restartInfo.periodId,restartReceipt.idempotencyKey,80)),restartReceipt);
+  for(const change of [{periodId:'507f1f77bcf86cd799439099'},{idempotencyKey:'other-reference'},{cancelledPendingDiamonds:81},{nextPeriodStart:'bad'}]){
+    expect('POST','/wallet/reward-restart',{...restartReceipt,...change});await assert.rejects(api.restartHostReward(restartInfo.periodId,restartReceipt.idempotencyKey,80),/restart could not be confirmed/);
+  }
+  await assert.rejects(api.restartHostReward('not-a-period',restartReceipt.idempotencyKey,80),/current reward period/);
+  assert.equal(adapters.walletFrom({...diamondWallet,hostEarningsPolicy:futurePolicy,hostReward:rewardFixture}).hostReward.weekMinutes.length,4,'An open legacy period is independent from edited policy');
+  const progressReward={...rewardFixture,progressMessage:'You need 12 more paid-call hours this week. <b>Keep going</b>',policyLocked:false,hoursStartAt:rewardFixture.periodStart};
+  assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostReward:progressReward}).hostReward),progressReward,'Optional server weekly copy and its period metadata stay authoritative');
+  for(const change of [{progressMessage:7},{progressMessage:'x'.repeat(8193)},{progressMessage:'bad\u0000text'},{policyLocked:'false'},{hoursStartAt:'not-a-date'}])assert.throws(()=>adapters.walletFrom({...diamondWallet,hostReward:{...rewardFixture,...change}}),/weekly reward progress/);
+  for(const weeks of [1,4,12]){
+    const reward={...rewardFixture,periodWeeks:weeks,periodEnd:new Date(rewardStart+weeks*7*86400000).toISOString(),weekNumber:weeks,weekMinutes:Array(weeks).fill(80),shortWeekMakeupEnabled:weeks!==12,activityBasis:'paid_connected'};
+    assert.deepEqual(plain(adapters.walletFrom({...diamondWallet,hostReward:reward}).hostReward),reward,`${weeks}-week reward snapshot survives normalization`);
+  }
+  for(const change of [{periodWeeks:0},{periodWeeks:13},{periodWeeks:1.5},{shortWeekMakeupEnabled:'ON'},{activityBasis:'waiting'},{version:0},{minimumWithdrawalDiamonds:-1}])
+    assert.throws(()=>adapters.walletFrom({...diamondWallet,hostEarningsPolicy:{...hostPolicy,...change}}),/host earning rules/);
+  for(const change of [{periodWeeks:12},{periodWeeks:0},{periodWeeks:13},{weekNumber:5},{weekMinutes:[1]},{activityBasis:'online'},{shortWeekMakeupEnabled:'false'}])
+    assert.throws(()=>adapters.walletFrom({...diamondWallet,hostReward:{...rewardFixture,...change}}),/weekly reward progress/);
+  for(const change of [{settingsVersionId:'bad',settingsVersion:1},{settingsVersionId:versionMetadata.settingsVersionId},{settingsVersion:1},{...versionMetadata,settingsVersion:0}])
+    assert.throws(()=>adapters.walletFrom({...diamondWallet,hostEarningsPolicy:{...hostPolicy,...change}}),/rule version/);
+  const paidTotals={alreadyPaidPaise:123456,alreadyPaidDiamondUnits:8000000000};
+  const normalizedTotals=adapters.walletFrom({...diamondWallet,...paidTotals});
+  for(const key of Object.keys(paidTotals))assert.equal(normalizedTotals[key],paidTotals[key],'Server paid totals are never inferred from history');
+  assert.equal(adapters.walletFrom(diamondWallet).alreadyPaidPaise,undefined,'A legacy wallet does not invent a paid total');
+  for(const key of Object.keys(paidTotals))for(const value of [-1,0.5,'0',null])assert.throws(()=>adapters.walletFrom({...diamondWallet,[key]:value}),/paid withdrawal totals/);
+  const historicalRate={diamondsPerCoinUnits:280000,paisePerDiamondUnits:20000000,wholeDiamonds:true};
+  const rateReceipt=adapters.transactionsFrom({items:[{type:'gift',coins:0,diamondUnits:1,earningRate:{...historicalRate,...versionMetadata}}]}).items[0];
+  assert.equal(rateReceipt.earningRate,undefined,'Internal earning-rule snapshots remain server-side');
+  assert.equal(adapters.transactionsFrom({items:[{type:'gift',coins:0,earningRate:historicalRate}]}).items[0].earningRate,undefined,'Historical receipts do not receive invented version metadata');
+  assert.equal(adapters.transactionsFrom({items:[{earningRate:{settingsVersion:1}}]}).items[0].earningRate,undefined,'Even malformed internal metadata is discarded');
+  assert.equal(adapters.transactionsFrom({items:[{earningRate:{...versionMetadata,paisePerDiamondUnits:-1}}]}).items[0].earningRate,undefined);
   const statisticStart=Date.parse('2026-11-03T18:30:00.000Z');
   const statistic={period:'daily',timeZone:'Asia/Kolkata',anchorDate:'2026-11-04',startAt:new Date(statisticStart).toISOString(),endAt:new Date(statisticStart+86400000).toISOString(),totalDiamondUnits:3000000,diamondScale:1000000,historicalTiming:false,buckets:Array.from({length:24},(_,index)=>({startAt:new Date(statisticStart+index*3600000).toISOString(),endAt:new Date(statisticStart+(index+1)*3600000).toISOString(),label:String(index).padStart(2,'0')+':00',diamondUnits:index===1?3000000:0}))};
   expect('GET','/wallet/diamond-statistics?period=daily&date=2026-11-04',statistic);
@@ -675,6 +758,13 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     assert.throws(() => adapters.callTargetsFrom(broken), /targets/);
   const payoutDto = { _id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: '2026-10-22T08:00:00.000Z', reason: 'Reviewed', payoutReference: 'bank-reference', userId: 'private-owner' };
   const payoutReceipt = { id: 'payout-id', amountPaise: 50000, payoutAddress: 'creator@upi', status: 'paid', createdAt: payoutDto.createdAt, reason: 'Reviewed', payoutReference: 'bank-reference' };
+  const taxedHeld={...payoutDto,status:'held',grossAmountPaise:50000,tdsPaise:5000,netAmountPaise:45000};
+  const normalizedHeld=adapters.payoutFrom(taxedHeld);
+  assert.equal(normalizedHeld.status,'held');assert.equal(normalizedHeld.grossAmountPaise,50000);assert.equal(normalizedHeld.tdsPaise,5000);assert.equal(normalizedHeld.netAmountPaise,45000);
+  assert.equal(adapters.payoutFrom({...payoutDto,grossAmountPaise:50000}).tdsPaise,undefined,'An uncomputed deduction is never guessed');
+  assert.equal(adapters.payoutFrom({...taxedHeld,tdsPaise:50000,netAmountPaise:0}).netAmountPaise,0,'An explicit zero net receipt remains exact');
+  for(const change of [{grossAmountPaise:40000},{tdsPaise:-1},{tdsPaise:50001},{netAmountPaise:44999},{tdsPaise:null},{netAmountPaise:undefined}])
+    assert.throws(()=>adapters.payoutFrom({...taxedHeld,...change}),/withdrawal tax details/);
   assert.deepEqual(plain(adapters.payoutFrom({ ...payoutDto, diamondUnits: 2500000000, diamondScale: 1000000 })), { ...payoutReceipt, diamondUnits: 2500000000, diamondScale: 1000000 }, 'Withdrawal keeps the immutable diamond reservation');
   for (const broken of [{ diamondUnits: -1, diamondScale: 1000000 }, { diamondUnits: 1.5, diamondScale: 1000000 }, { diamondUnits: 1, diamondScale: 1000 }, { diamondScale: 1000000 }]) assert.throws(() => adapters.payoutFrom({ ...payoutDto, ...broken }), /diamond details/);
   expect('GET', '/wallet/withdrawals?page=2&limit=20', { items: [payoutDto], total: 21, page: 2, limit: 20 });
@@ -765,7 +855,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(plain(notificationCall),activeRing,'The one authenticated incoming-call response provides caller, recipient, kind, expiry and the actual price');
   assert.equal(requests.length-beforeIncomingLookup,1,'Opening a notification requires no separate account, active-call or caller-profile lookup');
   for(const changed of [{callId:'507f1f77bcf86cd799439099'},{recipientId:'bad-id'},{from:{...activeRing.from,id:'bad-id'}},{from:{...activeRing.from,name:''}},{from:{...activeRing.from,name:'x'.repeat(101)}},
-    {expiresAt:new Date(0).toISOString()},{expiresAt:new Date(Date.now()+180001).toISOString()},{expiresAt:'tomorrow'},{voice:'audio'},{fromHost:1},
+    {expiresAt:new Date(0).toISOString()},{expiresAt:new Date(Date.now()+181000).toISOString()},{expiresAt:'tomorrow'},{voice:'audio'},{fromHost:1},
     {rate:-1},{rate:1.5},{rate:'35'},{entryFee:undefined},{entryFee:1_000_001},{feeHoldSeconds:null}]){
     expect('GET',`/calls/${pushCallId}/incoming`,{...activeRing,...changed});assert.equal(await api.notificationCall(pushCallId),null,'Wrong-target, expired, malformed identity and unsupported metadata cannot become incoming rings');
   }
@@ -1117,6 +1207,10 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(plain(events.at(-1)), { type: 'call.connected', data: { callId: 'paid-call', initiator: true, peerId: 'host-id', voice: false, rate: 60 } }, 'A paid call carries its price');
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged: 150, endReason: 'out_of_coins' });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'paid-call', coins: 150, reason: 'out_of_coins' } }, 'An ended call reports its charge and why it ended');
+  for (const coinsCharged of [undefined, -1, 1.5, '150']) {
+    socket.emitServer('call:updated', { _id: 'private-host-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged, endReason: 'host_unavailable' });
+    assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'private-host-call', reason: 'host_unavailable' } }, 'A private or invalid charge never becomes an invented zero-Coin receipt');
+  }
   socket.emitServer('call:updated', { _id: 'free-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 0, coinsCharged: 0 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.ended', data: { callId: 'free-call' } }, 'Free calls report no charge');
   for (const status of ['ended', 'missed', 'declined']) {
@@ -1173,6 +1267,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   backgroundStop();
   expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'legacy-device', platform: 'android' }));
   await api.registerPushDevice('legacy-device');
+  installationId='5ee7ef02-1d49-4bd9-a280-f25996f77111';expect('POST','/notifications/devices',undefined,body=>assert.deepEqual(plain(body),{token:'known-installation-device',platform:'android',installationId}));await api.registerPushDevice('known-installation-device');installationId=undefined;
   const { configureAppUpdates } = load('src/app-update-events.ts');
   configureAppUpdates({ packageName: 'com.aurora.liveapp', versionName: '1.0.29', versionCode: 29 });
   expect('POST', '/notifications/devices', undefined, body => assert.deepEqual(plain(body), { token: 'native-device', platform: 'android', appVersionCode: 29, notificationProtocol: 'binzo.push.v1' }));

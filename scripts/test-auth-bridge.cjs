@@ -19,6 +19,7 @@ const themeCatalog = (premium = false, selectedThemeId = '0000000000000000000000
 const payoutReceipt = (id = 'payout-1') => ({ id, amountPaise: 50000, payoutAddress: 'creator@upi', status: 'pending', createdAt: '2026-10-22T08:00:00.000Z' });
 const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1', requestId } });
 const plain = value => JSON.parse(JSON.stringify(value));
+const rewardRestartMessage=(requestId=1)=>({type:'host.reward.restart',data:{periodId:'507f1f77bcf86cd799439087',idempotencyKey:'reward-restart-fixture',expectedPendingDiamonds:80,confirmed:true,requestId}});
 const directoryMember = { id: '507f1f77bcf86cd799439081', name: 'Directory member', role: 'sender', serverRole: 'user', verified: false, online: false, availableForCall: true };
 const directoryPage = (users = [directoryMember], page = 1) => ({ users, total: users.length, page, limit: 20 });
 const directoryHost = { id: '507f1f77bcf86cd799439082', name: 'Active directory host', role: 'host', serverRole: 'host', verified: true, online: true, availableForCall: false };
@@ -60,7 +61,7 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
     openDevicePermissionSettings: async isCurrent => { devicePermissions.actions.push('settings'); if (overrides.openDevicePermissionSettings) await overrides.openDevicePermissionSettings(isCurrent); },
   };
   class ApiError extends Error {
-    constructor(message, status, code, retryAfterSeconds, requiredCoins) { super(message); Object.assign(this, { status, code, retryAfterSeconds, requiredCoins }); }
+    constructor(message, status, code, retryAfterSeconds, requiredCoins, payoutRejection) { super(message); Object.assign(this, { status, code, retryAfterSeconds, requiredCoins, payoutRejection }); }
   }
   const connectionListeners = new Set();
   let connectionStatus;
@@ -1051,6 +1052,7 @@ test('native shell resizes the WebView for keyboard overlap before applying safe
   const keyboard = shell.type(shell.props);
   const safeArea = keyboard.props.children;
   const web = findShellWeb(safeArea);
+  assert.equal(web.props.saveFormDataDisabled,true,'Sensitive payout forms never join the Android WebView form-data store');
   const style = node => Object.assign({}, ...[node.props.style].flat());
   assert.equal(provider.type, 'SafeAreaProvider');
   assert.equal(keyboard.type, 'KeyboardAvoidingView', 'Measure keyboard overlap from the full root, outside safe-area padding');
@@ -1829,6 +1831,91 @@ test('free gifts pass native validation and preserve zero receipts without needi
   assert.equal(h.count('sendGift'),1,'The zero-priced gift still follows the server-controlled gift endpoint');h.bridge.close();
 });
 
+const verificationInput={idempotencyKey:'kyc-attempt-one',legalName:'Payout Tester',panNumber:'ABCDE1234F',payoutType:'bank',bankAccountNumber:'00000123',ifsc:'SBIN0001234',requestId:1};
+const configurableCallStatus={rate:50,configurableRate:true,minRate:10,maxRate:100,selectedRate:50,tier:1,earnedCoins:0,next:null,tiers:[],entryFeeCoins:0,entryFeeHoldSeconds:0,earlyEnds:{today:0,limit:2,penaltyCoins:0},visibleDuringCalls:true};
+test('host call rate messages validate bounds and save only with fresh creator approval',async()=>{
+  const h=harness(),parse=message=>h.webMessages.parseWebMessage(JSON.stringify(message));
+  const message={type:'host.callRate.save',data:{rateCoinsPerMinute:50,requestId:1}};assert.ok(parse(message));
+  for(const patch of [{rateCoinsPerMinute:0},{rateCoinsPerMinute:1.5},{rateCoinsPerMinute:'50'},{rateCoinsPerMinute:1000001},{requestId:0},{userId:'other'},{approved:true}]){const invalid={...message,data:{...message.data,...patch}};assert.equal(parse(invalid),null);h.bridge.handle(invalid)}await settle();assert.equal(h.calls.length,0);
+  h.overrides.me=()=>account();h.bridge.handle(message);await settle();assert.equal(h.count('saveHostCallRate'),0);assert.equal(h.find('host.callRate.error').at(-1).data.status,403);
+  h.overrides.me=()=>approvedAccount();const response=deferred();h.overrides.saveHostCallRate=()=>response.promise;h.bridge.handle({...message,data:{...message.data,requestId:2}});h.bridge.handle({...message,data:{...message.data,requestId:2}});await settle();assert.equal(h.count('saveHostCallRate'),1);response.resolve(configurableCallStatus);await settle();assert.equal(h.find('host.callRate.saved').at(-1).data.requestId,2);h.bridge.close();
+});
+test('host call rate saves invalidate older status reads and isolate retired owners/documents',async()=>{
+  const h=harness(),old=deferred();h.overrides.me=()=>approvedAccount();h.overrides.hostCallStatus=()=>old.promise;h.overrides.saveHostCallRate=()=>({...configurableCallStatus,rate:75,selectedRate:75});h.bridge.handle({type:'host.callStatus.load',data:{}});await settle();h.bridge.handle({type:'host.callRate.save',data:{rateCoinsPerMinute:75,requestId:1}});await settle();old.resolve(configurableCallStatus);await settle();assert.equal(h.find('host.callStatus').length,0);assert.equal(h.find('host.callRate.saved').at(-1).data.status.selectedRate,75);h.bridge.close();
+  for(const retirement of ['document','account']){const n=harness(),pending=deferred();await n.session.setSessionTokens(tokenPair());n.overrides.me=()=>approvedAccount();n.overrides.saveHostCallRate=()=>pending.promise;n.bridge.handle({type:'host.callRate.save',data:{rateCoinsPerMinute:50,requestId:1}});await settle();if(retirement==='document')n.bridge.documentLoading();else {await n.session.clearToken();await n.session.setSessionTokens(tokenPair('bob'))}pending.resolve(configurableCallStatus);await settle();assert.equal(n.find('host.callRate.saved').length+n.find('host.callRate.error').length,0);n.bridge.close()}
+});
+const verificationSummary={required:true,kyc:{status:'verified',id:'507f1f77bcf86cd799439071',ownerId:'alice',legalName:'Payout Tester',panMasked:'******234F',payoutAddress:'Bank ending 0123 / SBIN0001234'}};
+const verificationQuote={policyVersion:2,grossAmountPaise:50000,tdsPaise:1000,netAmountPaise:49000,tdsPercent:2,diamondUnits:2500000000,settingsVersionId:'507f1f77bcf86cd799439072',kycId:verificationSummary.kyc.id,payoutAddress:verificationSummary.kyc.payoutAddress};
+const reviewedPayout=(requestId=1)=>({type:'payout.request',data:{...payoutMessage(requestId).data,payoutAddress:verificationQuote.payoutAddress,quote:{settingsVersionId:verificationQuote.settingsVersionId,kycId:verificationQuote.kycId,netAmountPaise:49000,diamondUnits:verificationQuote.diamondUnits}}});
+
+test('payout verification messages restrict private input and bind all four quote proof fields', async()=>{
+  const h=harness(),parse=message=>h.webMessages.parseWebMessage(JSON.stringify(message));
+  assert.ok(parse({type:'payout.kyc.submit',data:verificationInput}));assert.ok(parse({type:'payout.kyc.load',data:{requestId:1}}));assert.ok(parse({type:'payout.quote.load',data:{amountPaise:50000,requestId:1}}));assert.ok(parse(reviewedPayout()));
+  for(const patch of [{panNumber:'abcde1234f'},{bankAccountNumber:123456},{bankAccountNumber:'0'.repeat(25)},{userId:'other'},{status:'verified'},{requestId:0},{payoutType:'upi',upiId:'abc@bank'}]){
+    const message={type:'payout.kyc.submit',data:{...verificationInput,...patch}};assert.equal(parse(message),null);h.bridge.handle(message);
+  }
+  for(const quote of [{...reviewedPayout().data.quote,diamondUnits:undefined},{...reviewedPayout().data.quote,diamondUnits:-1},{...reviewedPayout().data.quote,ownerId:'other'}])assert.equal(parse({type:'payout.request',data:{...reviewedPayout().data,quote}}),null);
+  await settle();assert.equal(h.calls.length,0);h.bridge.close();
+});
+
+test('payout KYC preparation requires fresh host identity without granting withdrawal approval',async()=>{
+  for(const status of ['approved','pending','rejected','suspended','member']){
+    const h=harness();h.overrides.me=()=>status==='member'?account():{...approvedAccount(),user:{...approvedAccount().user,serverRole:'host',hostStatus:status,isVerifiedHost:status==='approved'},verification:status==='approved'?'verified':'rejected'};
+    h.overrides.payoutKyc=()=>verificationSummary;h.overrides.submitPayoutKyc=()=>({...verificationSummary,kyc:{...verificationSummary.kyc,status:'pending'}});
+    h.bridge.handle({type:'payout.kyc.load',data:{requestId:1}});await settle();
+    h.bridge.handle({type:'payout.kyc.submit',data:{...verificationInput,requestId:2}});await settle();
+    assert.equal(h.count('me'),2,status+' always revalidates identity');assert.equal(h.count('payoutKyc'),status==='member'?0:1);assert.equal(h.count('submitPayoutKyc'),status==='member'?0:1);
+    assert.equal(h.count('requestPayout'),0);assert.equal(h.disk.has('zimi.payouts.v1.alice'),false,'PAN input never enters durable payout storage');
+    if(status!=='member')assert.equal(h.find('payout.kyc.submitted').at(-1).data.requestId,2);h.bridge.close();
+  }
+});
+
+test('payout KYC callbacks isolate newest reads, owned documents and generic private errors',async()=>{
+  const h=harness(),old=deferred(),latest=deferred();h.overrides.me=()=>approvedAccount();h.overrides.payoutKyc=()=>h.count('payoutKyc')===1?old.promise:latest.promise;
+  h.bridge.handle({type:'payout.kyc.load',data:{requestId:1}});await settle();h.bridge.handle({type:'payout.kyc.load',data:{requestId:2}});await settle();latest.resolve(verificationSummary);await settle();old.resolve(verificationSummary);await settle();
+  assert.deepEqual(h.find('payout.kyc.loaded').map(item=>item.data.requestId),[2]);
+  h.overrides.submitPayoutKyc=()=>{throw new h.ApiError('Rejected PAN ABCDE1234F / bank 00000123',400)};h.bridge.handle({type:'payout.kyc.submit',data:{...verificationInput,requestId:3}});await settle();assert.doesNotMatch(JSON.stringify(h.find('payout.kyc.error')),/ABCDE1234F|00000123/);h.bridge.close();
+  for(const retirement of ['document','account']){
+    const n=harness(),pending=deferred();await n.session.setSessionTokens(tokenPair());n.overrides.me=()=>approvedAccount();n.overrides.submitPayoutKyc=()=>pending.promise;n.bridge.handle({type:'payout.kyc.submit',data:verificationInput});await settle();
+    if(retirement==='document')n.bridge.documentLoading();else {await n.session.clearToken();await n.session.setSessionTokens(tokenPair('bob'))}
+    pending.resolve(verificationSummary);await settle();assert.equal(n.find('payout.kyc.submitted').length+n.find('payout.kyc.error').length,0);n.bridge.close();
+  }
+});
+
+test('withdrawal quotes require approval, exact amount and latest owned response',async()=>{
+  const h=harness(),old=deferred(),latest=deferred();h.overrides.me=()=>approvedAccount();h.overrides.withdrawalQuote=()=>h.count('withdrawalQuote')===1?old.promise:latest.promise;
+  h.bridge.handle({type:'payout.quote.load',data:{amountPaise:50000,requestId:1}});await settle();h.bridge.handle({type:'payout.quote.load',data:{amountPaise:50000,requestId:2}});await settle();latest.resolve(verificationQuote);await settle();old.resolve(verificationQuote);await settle();assert.deepEqual(h.find('payout.quote.loaded').map(item=>item.data.requestId),[2]);
+  h.overrides.withdrawalQuote=()=>({...verificationQuote,grossAmountPaise:50001});h.bridge.handle({type:'payout.quote.load',data:{amountPaise:50000,requestId:3}});await settle();assert.equal(h.find('payout.quote.error').at(-1).data.requestId,3);
+  h.overrides.me=()=>account();h.bridge.handle({type:'payout.quote.load',data:{amountPaise:50000,requestId:4}});await settle();assert.equal(h.count('withdrawalQuote'),3);h.bridge.close();
+});
+
+test('reviewed withdrawal recovery preserves proof and rejects mismatched asset or tax receipts',async()=>{
+  const h=harness();h.overrides.me=()=>approvedAccount();h.overrides.requestPayout=()=>{throw new h.ApiError('Interrupted',503)};
+  h.bridge.handle(reviewedPayout());await settle();const saved=JSON.parse(h.disk.get('zimi.payouts.v1.alice'));assert.deepEqual(saved.quote,reviewedPayout().data.quote);
+  const changed=reviewedPayout(2);changed.data.quote.diamondUnits++;h.bridge.handle(changed);await settle();assert.equal(h.count('requestPayout'),1);assert.equal(h.find('payout.error').at(-1).data.code,'PAYOUT_PENDING_RECOVERY');
+  h.overrides.requestPayout=()=>({...payoutReceipt(),payoutAddress:verificationQuote.payoutAddress,netAmountPaise:49000,diamondUnits:1});h.bridge.handle(reviewedPayout(3));await settle();assert.equal(h.find('payout.requested').length,0);assert.ok(h.disk.has('zimi.payouts.v1.alice'));
+  h.overrides.payouts=()=>({items:[{...payoutReceipt(),payoutAddress:verificationQuote.payoutAddress,idempotencyKey:saved.idempotencyKey,netAmountPaise:1,diamondUnits:saved.quote.diamondUnits}],total:1,page:1,limit:20});h.bridge.handle({type:'payout.load',data:{requestId:4}});await settle();assert.equal(h.find('payout.loaded').at(-1).data.recovered,null);
+  h.overrides.requestPayout=()=>({...payoutReceipt(),payoutAddress:verificationQuote.payoutAddress,netAmountPaise:49000,diamondUnits:verificationQuote.diamondUnits});h.bridge.handle(reviewedPayout(5));await settle();assert.equal(h.find('payout.requested').length,1);assert.equal(h.disk.has('zimi.payouts.v1.alice'),false);h.bridge.close();
+});
+
+test('only matching committed no-reservation proof unlocks uncertain withdrawal recovery',async()=>{
+  for(const scenario of ['generic','wrong-key','wrong-code','delete-failure','proof']){
+    const h=harness();h.overrides.me=()=>approvedAccount();h.overrides.requestPayout=()=>{throw new h.ApiError('Interrupted',503)};h.bridge.handle(reviewedPayout());await settle();
+    const proof={noReservation:true,idempotencyKey:scenario==='wrong-key'?'another-attempt-key':reviewedPayout().data.idempotencyKey};
+    h.overrides.requestPayout=()=>{throw new h.ApiError('Review again',409,scenario==='wrong-code'?'OTHER':scenario==='generic'?undefined:'PAYOUT_QUOTE_STALE',undefined,undefined,scenario==='generic'?undefined:proof)};
+    if(scenario==='delete-failure')h.overrides.deleteStorage=()=>{throw new Error('Storage locked')};h.bridge.handle(reviewedPayout(2));await settle();
+    assert.equal(h.find('payout.error').at(-1).data.noReservation,scenario==='proof'?true:undefined,scenario);assert.equal(h.disk.has('zimi.payouts.v1.alice'),scenario!=='proof',scenario);h.bridge.close();
+  }
+});
+test('local session-change errors after a possibly committed withdrawal retain its recovery key',async()=>{
+  for(const retirement of ['none','document','account']){
+    const h=harness(),pending=deferred();await h.session.setSessionTokens(tokenPair());h.overrides.me=()=>approvedAccount();h.overrides.requestPayout=()=>pending.promise;h.bridge.handle(reviewedPayout());await settle();assert.ok(h.disk.has('zimi.payouts.v1.alice'));
+    if(retirement==='document')h.bridge.documentLoading();else if(retirement==='account'){await h.session.clearToken();await h.session.setSessionTokens(tokenPair('bob'))}
+    pending.reject(new h.ApiError('Your session changed. Please try again.',401,'SESSION_CHANGED'));await settle();assert.ok(h.disk.has('zimi.payouts.v1.alice'),retirement+' preserves owned uncertain financial intent');
+    if(retirement!=='none')assert.equal(h.find('payout.error').length,0);h.bridge.close();
+  }
+});
+
 test('withdrawal messages reject legacy amounts, malformed requests and extra authority fields', async () => {
   const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
   const invalidWrites = [{ coins: 100, upi: 'creator@upi' }, ...[
@@ -1933,7 +2020,7 @@ test('withdrawal submission serializes clicks, preserves retry keys and survives
   h.bridge.handle(retry); h.bridge.handle(retry);
   h.bridge.handle({ type: 'payout.request', data: { ...payoutMessage(9).data, idempotencyKey: 'different-attempt-2' } }); await settle();
   assert.equal(h.count('requestPayout'), 2, 'One failed attempt plus one retry; duplicate or competing clicks cannot submit again');
-  assert.deepEqual(plain(h.calls.filter(call => call.name === 'requestPayout').map(call => call.args)), [[50000, 'creator@upi', 'withdrawal-attempt-1'], [50000, '  creator@upi  ', 'withdrawal-attempt-1']], 'Retries preserve the exact idempotency key; the API adapter normalizes the destination');
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'requestPayout').map(call => call.args)), [[50000, 'creator@upi', 'withdrawal-attempt-1'], [50000, 'creator@upi', 'withdrawal-attempt-1']], 'Retries use the exact normalized durable destination and idempotency key');
   pending.resolve(payoutReceipt()); await settle();
   assert.deepEqual(plain(h.find('payout.requested')[0].data), { payout: payoutReceipt(), requestId: 8 });
   assert.equal(h.find('payout.error').length, 1, 'Wallet failure does not turn a committed withdrawal into a failed request');
@@ -4749,4 +4836,26 @@ test('call targets reach only the call on screen and target messages need that a
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'call.targets.set', data: { callId: 'target-call', ...input, extra: 1 } })), null);
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'call.targets.load', data: { callId: 'target-call', extra: 1 } })), null);
   h.bridge.close();
+});
+
+
+test('reward restart requires fresh approved host authority and an explicit reviewed bonus proof',async()=>{
+ const h=harness();await h.session.setSessionTokens(tokenPair());
+ const valid=rewardRestartMessage();
+ for(const patch of [{confirmed:false},{expectedPendingDiamonds:-1},{expectedPendingDiamonds:0.5},{periodId:'bad'},{requestId:0},{coins:99}])assert.equal(h.webMessages.parseWebMessage(JSON.stringify({...valid,data:{...valid.data,...patch}})),null);
+ h.overrides.me=()=>account();h.bridge.handle(valid);await settle();assert.equal(h.count('restartHostReward'),0);assert.equal(h.find('host.reward.error').at(-1).data.status,403);
+ h.overrides.me=()=>approvedAccount();const pending=deferred();h.overrides.restartHostReward=()=>pending.promise;
+ h.bridge.handle(rewardRestartMessage(2));h.bridge.handle(rewardRestartMessage(2));await settle();assert.equal(h.count('restartHostReward'),1);
+ assert.deepEqual(plain(h.calls.find(row=>row.name==='restartHostReward').args),[valid.data.periodId,valid.data.idempotencyKey,80]);
+ const receipt={periodId:valid.data.periodId,idempotencyKey:valid.data.idempotencyKey,restartId:'507f1f77bcf86cd799439088',nextPeriodStart:'2026-11-15T18:30:00.000Z',cancelledPendingDiamonds:80};
+ pending.resolve(receipt);await settle();assert.equal(h.find('host.reward.restarted').at(-1).data.requestId,2);assert.deepEqual(plain(h.find('host.reward.restarted').at(-1).data.receipt),receipt);assert.ok(h.count('wallet')>0);h.bridge.close();
+});
+
+test('reward restart completion cannot cross a replaced document or account',async()=>{
+ for(const retirement of ['document','account']){
+  const h=harness(),pending=deferred();await h.session.setSessionTokens(tokenPair());h.overrides.me=()=>approvedAccount();h.overrides.restartHostReward=()=>pending.promise;
+  h.bridge.handle(rewardRestartMessage());await settle();assert.equal(h.count('restartHostReward'),1);
+  if(retirement==='document')h.bridge.documentLoading();else{await h.session.clearToken();await h.session.setSessionTokens(tokenPair('bob'))}
+  pending.resolve({});await settle();assert.equal(h.find('host.reward.restarted').length+h.find('host.reward.error').length,0);h.bridge.close();
+ }
 });

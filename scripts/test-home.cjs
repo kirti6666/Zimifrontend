@@ -4,7 +4,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
-const artifacts = path.join(root, 'artifacts');
+const artifacts = path.join(require('node:os').tmpdir(), 'binzo-home-presence-qa');
 
 // Pulls the page down from the top the way a finger does, then releases.
 const pullToRefresh=page=>page.evaluate(()=>{
@@ -238,31 +238,33 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     // Like the reference, cards carry no price; the rate appears in the call confirmation.
     assert.equal(await real.locator('.zh-creator-price,.zh-featured-price').count(),0,'Cards show no price pill');
     assert.doesNotMatch(await real.locator('.zh-dashboard').innerText(),/\bpremium\b|call rate|coins\s*\/\s*min/i,'Detailed call pricing appears only after opening call confirmation');
-    const online={...host,id:'507f1f77bcf86cd799439031',name:'Online host',category:'Talk',stream:null};
-    const busy={...online,id:'507f1f77bcf86cd799439032',name:'Online with calls off',availableForCall:false};
-    const offline={...online,id:'507f1f77bcf86cd799439033',name:'Offline host',online:false,availableForCall:false};
-    const ended={...offline,id:'507f1f77bcf86cd799439034',name:'Ended broadcast',stream:{...host.stream,id:'507f1f77bcf86cd799439035',status:'ended'}};
-    await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
+    const online={...host,id:'507f1f77bcf86cd799439031',name:'Online host',category:'Talk',onlineForCalls:true,stream:null};
+    const busy={...online,id:'507f1f77bcf86cd799439032',name:'Online host currently busy',availableForCall:false};
+    const offline={...online,id:'507f1f77bcf86cd799439033',name:'Offline host',online:true,onlineForCalls:false,availableForCall:false};
+    // Explore is filtered by the server before pagination. A connected host
+    // with availability switched off is absent even if socket online is true.
+    await receive('data.home',{...home,hosts:[host,online,busy],stage:[host],total:3});
     assert.equal(await real.locator('.zh-live-section').getByRole('button',{name:/^Join .* live$/}).count(),0,'Streaming discovery stays disabled even with live server metadata');
-    assert.equal(await real.locator('.zh-discover article[data-host-id]').count(),5,'Discovery lists every host, online or offline');
-    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'Offline hosts are listed and live hosts are not duplicated');
-    assert.deepEqual(await real.locator('article[data-host-id] :is(.zh-person-status,.zh-creator-status)').allInnerTexts(),['Online','Online','Online','Online','Online'],'Members never see a host as offline');
-    assert.deepEqual(await real.locator('.zh-discover article.zh-creator-card .zh-creator-call').evaluateAll(nodes=>nodes.map(node=>node.disabled)),[false,false,false,false,false],'The video call button stays active for busy and offline hosts');
+    assert.equal(await real.locator('.zh-discover article[data-host-id]').count(),3,'Explore displays the authoritative online-only server page');
+    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id],'Explore preserves server order without inventing unavailable creators');
+    assert.equal(await real.locator(`article[data-host-id="${offline.id}"]`).count(),0,'An offline host is absent from Explore');
+    assert.deepEqual(await real.locator('article[data-host-id] :is(.zh-person-status,.zh-creator-status)').allInnerTexts(),['Online','Online','Online'],'Explore status labels follow real host presence');
+    assert.deepEqual(await real.locator('.zh-discover article.zh-creator-card .zh-creator-call').evaluateAll(nodes=>nodes.map(node=>node.disabled)),[false,false,false],'Manual video call buttons remain active for every returned approved host');
     assert.equal(await real.getByRole('button',{name:'View '+busy.name+' profile',exact:true}).isEnabled(),true,'Unavailable hosts still open their profile, where chat is offered');
-    assert.equal(await real.getByRole('button',{name:'View '+offline.name+' profile',exact:true}).isEnabled(),true,'Offline hosts still open their profile for messaging');
     await openProfile(busy);
     assert.equal(await real.locator('#zu-call').isEnabled(),true,'Members can manually call an approved host whose availability toggle is off');
-    await real.getByRole('button',{name:'Back',exact:true}).click();
-    await openProfile(offline);
-    assert.equal(await real.locator('#zu-call').isEnabled(),true,'An offline host can still be called from their profile; the server rings until missed');
-    assert.doesNotMatch(await real.locator('.zu-presence').innerText(),/offline/i,'The profile never presents a host as offline');
     await real.getByRole('button',{name:'Back',exact:true}).click();
     await real.getByRole('tab',{name:'Following',exact:true}).click();
     assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'following'},'Following requests the authenticated followed-user feed');
     assert.equal(await real.getByRole('status',{name:'Loading creators',exact:true}).count(),1,'Filter changes wait for the server feed');
     assert.equal(await real.locator('.zh-region-chips').count(),0,'Following has no country chips');
-    await receive('data.home',{...home,hosts:[host,online],stage:[],total:2});
-    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id],'Following displays only the server-provided followed users');
+    await receive('data.home',{...home,hosts:[host,offline],stage:[],total:2});
+    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,offline.id],'Following preserves the server-provided followed users, including offline hosts');
+    assert.deepEqual(await real.locator('.zh-creator-status').allInnerTexts(),['Online','Offline'],'Availability off remains truthful even when a host socket is connected');
+    await openProfile(offline);
+    assert.equal(await real.locator('#zu-call').isEnabled(),true,'An offline followed host still permits an explicit manual call');
+    assert.equal(await real.locator('.zu-presence').innerText(),'Currently offline','Profile presence does not borrow manual-call permission');
+    await real.getByRole('button',{name:'Back',exact:true}).click();
     assert.equal(await real.getByRole('tab',{name:'Following',exact:true}).getAttribute('aria-selected'),'true');
     for(const [tab,mode] of [['For You','foryou'],['New','new']]){
       await real.getByRole('tab',{name:tab,exact:true}).click();
@@ -277,9 +279,9 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.locator('.zh-empty-actions').getByRole('button',{name:/Show Popular/}).click();
     assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'new'},'Popular shows creators from every country again');
     await real.getByRole('tab',{name:'Explore',exact:true}).click();
-    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Explore restores the full host feed');
-    await receive('data.home',{...home,hosts:[host,online,busy,offline,ended],stage:[host,ended],total:5});
-    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id,offline.id,ended.id],'All restores every host without duplicates');
+    assert.deepEqual(await lastSent('home.reload'),{page:1,mode:'popular'},'Explore requests its authoritative online host feed');
+    await receive('data.home',{...home,hosts:[host,online,busy],stage:[host],total:3});
+    assert.deepEqual(await real.locator('article[data-host-id]').evaluateAll(nodes=>nodes.map(node=>node.dataset.hostId)),[host.id,online.id,busy.id],'Returning to Explore restores the online page without duplicates');
     await openProfile();
     await real.getByRole('button',{name:'Message',exact:true}).click();
     assert.equal(await real.evaluate(()=>S.v),'thread','Chat opens the selected conversation');

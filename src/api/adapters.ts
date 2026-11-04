@@ -83,6 +83,7 @@ export function hostFrom(value: unknown): Host {
     ...(typeof host.role === "string" ? { role: host.role === "host" && host.hostStatus === "approved" && host.isVerifiedHost === true ? "host" as const : "sender" as const } : {}),
     ...(host.role === "user" || host.role === "host" || host.role === "admin" ? { serverRole: host.role } : {}),
     ...(typeof (host.isOnline ?? host.online) === "boolean" ? { online: (host.isOnline ?? host.online) as boolean } : {}), ...(typeof host.live === "boolean" ? { live: host.live } : {}),
+    ...(typeof host.onlineForCalls === "boolean" ? { onlineForCalls: host.onlineForCalls } : {}),
     ...(typeof host.availableForCall === "boolean" ? { availableForCall: host.availableForCall } : {}),
     ...(host.stream && typeof host.stream === "object" ? { stream: streamFrom(host.stream, idOf(host)), live: true } : host.stream === null ? { stream: null, live: false } : {}),
     ...(typeof host.isFollowing === "boolean" ? { following: host.isFollowing } : {}),
@@ -380,6 +381,17 @@ export function callsFrom(value: unknown, userId: string): { calls: CallRecord[]
 export function missedFrom(value: unknown, userId: string): { calls: MissedCall[] } {
   return { calls: items(value).map(record).filter(call => idOf(call.calleeId) === userId && call.status === "missed").map(call => ({ user: hostFrom(call.callerId), when: timeOf(call.createdAt), at: string(call.createdAt) || undefined, kind: call.kind === "audio" ? "voice" : "video" })) };
 }
+const positiveInteger = (value: unknown) => Number.isSafeInteger(value) && Number(value) > 0;
+const financialVersion = (data: Record<string, unknown>) => {
+  if (data.settingsVersionId === undefined && data.settingsVersion === undefined) return undefined;
+  if (typeof data.settingsVersionId !== "string" || !/^[a-f\d]{24}$/i.test(data.settingsVersionId) || !positiveInteger(data.settingsVersion))
+    throw new ApiError("Financial rule version could not be loaded. Try again.", 502);
+  return { settingsVersionId: data.settingsVersionId, settingsVersion: Number(data.settingsVersion) };
+};
+const periodMetadataValid = (data: Record<string, unknown>) =>
+  (data.periodWeeks === undefined || positiveInteger(data.periodWeeks) && Number(data.periodWeeks) <= 12) &&
+  (data.shortWeekMakeupEnabled === undefined || typeof data.shortWeekMakeupEnabled === "boolean") &&
+  (data.activityBasis === undefined || data.activityBasis === "online_available" || data.activityBasis === "paid_connected" || data.activityBasis === "paid_video");
 export function walletFrom(value: unknown): Wallet {
   const wallet = record(value);
   if (wallet.currency !== undefined && wallet.currency !== "coins" && wallet.currency !== "diamonds") throw new ApiError("Your wallet currency could not be loaded. Try again.", 502);
@@ -389,12 +401,16 @@ export function walletFrom(value: unknown): Wallet {
   const policy = wallet.hostEarningsPolicy == null ? undefined : record(wallet.hostEarningsPolicy);
   if (hasDiamonds && (!Number.isSafeInteger(wallet.diamondUnits) || Number(wallet.diamondUnits) < 0 ||
     !Number.isSafeInteger(wallet.reservedDiamondUnits) || Number(wallet.reservedDiamondUnits) < 0 || wallet.diamondScale !== 1000000 ||
-    (wallet.conversion !== undefined && (typeof conversion.diamondsPerCoin !== "number" || !Number.isFinite(conversion.diamondsPerCoin) || conversion.diamondsPerCoin < 0 || (conversion.diamondsPerCoin === 0 && policy?.enabled !== true) ||
-      typeof conversion.paisePerDiamond !== "number" || !Number.isFinite(conversion.paisePerDiamond) || conversion.paisePerDiamond < 0)))) {
+    (wallet.conversion !== undefined && (typeof conversion.paisePerDiamond !== "number" || !Number.isFinite(conversion.paisePerDiamond) || conversion.paisePerDiamond < 0)))) {
     throw new ApiError("Your diamond balance could not be loaded. Try again.", 502);
   }
-  if (policy && (policy.enabled !== true || policy.wholeBalanceWithdrawal !== true ||
-    !["hostCallSharePercent", "hostCallRewardPercent", "hostGiftSharePercent", "agencySharePercent"].every(key => typeof policy[key] === "number" && Number.isFinite(policy[key]) && Number(policy[key]) >= 0 && Number(policy[key]) <= 100) ||
+  if (policy) financialVersion(policy);
+  if (policy && (policy.enabled !== true || typeof policy.wholeBalanceWithdrawal !== "boolean" || !periodMetadataValid(policy) ||
+    (policy.version !== undefined && !positiveInteger(policy.version)) ||
+    (policy.hostTdsPercent !== undefined && (typeof policy.hostTdsPercent !== "number" || !Number.isFinite(policy.hostTdsPercent) || policy.hostTdsPercent < 0 || policy.hostTdsPercent > 100)) ||
+    (policy.callBonusAvailable !== undefined && typeof policy.callBonusAvailable !== "boolean") ||
+    (policy.bonusExample !== undefined && !["callDiamonds", "bonusDiamonds", "giftDiamonds"].every(key => Number.isSafeInteger(record(policy.bonusExample)[key]) && Number(record(policy.bonusExample)[key]) >= 0)) ||
+    (policy.minimumWithdrawalDiamonds !== undefined && !positiveInteger(policy.minimumWithdrawalDiamonds)) ||
     !Number.isSafeInteger(policy.hostWeeklyTargetMinutes) || Number(policy.hostWeeklyTargetMinutes) <= 0 ||
     typeof policy.paisePerDiamond !== "number" || !Number.isFinite(policy.paisePerDiamond) || policy.paisePerDiamond <= 0 || typeof policy.hostRules !== "string"))
     throw new ApiError("Your host earning rules could not be loaded. Try again.", 502);
@@ -404,19 +420,50 @@ export function walletFrom(value: unknown): Wallet {
     (wallet.profileReservedPaise !== undefined && (!Number.isSafeInteger(wallet.profileReservedPaise) || Number(wallet.profileReservedPaise) < 0 || Number(wallet.profileReservedPaise) > Number(wallet.reservedPaise))))
     throw new ApiError("Your host profile balance could not be loaded. Try again.", 502);
   const reward = wallet.hostReward == null ? undefined : record(wallet.hostReward);
+  const restart = reward?.restart === undefined ? undefined : record(reward.restart);
+  if (restart && (typeof restart.eligible !== "boolean" || !(restart.periodId === null || typeof restart.periodId === "string" && /^[a-f\d]{24}$/i.test(restart.periodId)) ||
+    restart.eligible && !restart.periodId || ![restart.behindMinutes,restart.thresholdMinutes].every(value=>typeof value === "number" && Number.isFinite(value) && value >= 0) ||
+    !Number.isSafeInteger(restart.pendingDiamonds) || Number(restart.pendingDiamonds) < 0 ||
+    typeof restart.nextPeriodStart !== "string" || !Number.isFinite(Date.parse(restart.nextPeriodStart))))
+    throw new ApiError("Your reward restart eligibility could not be loaded. Try again.", 502);
+  // Existing periods stay four weeks even if the current policy has changed.
+  const rewardWeeks = reward?.periodWeeks ?? 4;
   if (reward && (!['pending', 'eligible', 'paid', 'missed'].includes(String(reward.status)) ||
+    !periodMetadataValid(reward) ||
+    (reward.progressMessage !== undefined && (typeof reward.progressMessage !== "string" || reward.progressMessage.length > 8192 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(reward.progressMessage))) ||
+    (reward.policyLocked !== undefined && typeof reward.policyLocked !== "boolean") ||
+    (reward.hoursStartAt !== undefined && (typeof reward.hoursStartAt !== "string" || !Number.isFinite(Date.parse(reward.hoursStartAt)))) ||
     ![reward.periodStart, reward.periodEnd].every(value => typeof value === "string" && Number.isFinite(Date.parse(value))) ||
-    !Number.isSafeInteger(reward.weekNumber) || Number(reward.weekNumber) < 1 || Number(reward.weekNumber) > 4 ||
-    !Array.isArray(reward.weekMinutes) || reward.weekMinutes.length !== 4 || !reward.weekMinutes.every(value => typeof value === "number" && Number.isFinite(value) && value >= 0) ||
+    !Number.isSafeInteger(reward.weekNumber) || Number(reward.weekNumber) < 1 || Number(reward.weekNumber) > Number(rewardWeeks) ||
+    !Array.isArray(reward.weekMinutes) || reward.weekMinutes.length !== rewardWeeks || !reward.weekMinutes.every(value => typeof value === "number" && Number.isFinite(value) && value >= 0) ||
     !["weeklyTargetMinutes", "thisWeekMinutes", "thisWeekTargetMinutes", "remainingThisWeekMinutes", "lastWeekMinutes", "pendingDiamonds", "pendingPaise"].every(key => typeof reward[key] === "number" && Number.isFinite(reward[key]) && Number(reward[key]) >= 0)))
     throw new ApiError("Your weekly reward progress could not be loaded. Try again.", 502);
+  for (const key of ["alreadyPaidPaise", "alreadyPaidDiamondUnits"])
+    if (wallet[key] !== undefined && (!Number.isSafeInteger(wallet[key]) || Number(wallet[key]) < 0))
+      throw new ApiError("Your paid withdrawal totals could not be loaded. Try again.", 502);
   return {
     coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
     ...(wallet.currency === "coins" || wallet.currency === "diamonds" ? { currency: wallet.currency } : {}),
     reservedPaise: finite(wallet.reservedPaise),
     minimumWithdrawalPaise: Number.isSafeInteger(wallet.minimumWithdrawalPaise) && Number(wallet.minimumWithdrawalPaise) > 0 ? Number(wallet.minimumWithdrawalPaise) : undefined,
     withdrawalsEnabled: wallet.withdrawalsEnabled === true,
-    ...(wallet.hostEarningsPolicy !== undefined ? { hostEarningsPolicy: policy ? policy as unknown as NonNullable<Wallet["hostEarningsPolicy"]> : null } : {}),
+    ...(wallet.alreadyPaidPaise !== undefined ? { alreadyPaidPaise: Number(wallet.alreadyPaidPaise) } : {}),
+    ...(wallet.alreadyPaidDiamondUnits !== undefined ? { alreadyPaidDiamondUnits: Number(wallet.alreadyPaidDiamondUnits) } : {}),
+    ...(wallet.hostEarningsPolicy !== undefined ? { hostEarningsPolicy: policy ? {
+      enabled: true as const, ...financialVersion(policy),
+      ...(policy.version !== undefined ? { version: Number(policy.version) } : {}),
+      ...(policy.hostTdsPercent !== undefined ? { hostTdsPercent: Number(policy.hostTdsPercent) } : {}),
+      ...(policy.callBonusAvailable !== undefined ? { callBonusAvailable: policy.callBonusAvailable === true } : {}),
+      ...(policy.bonusExample !== undefined ? { bonusExample: {
+        callDiamonds: Number(record(policy.bonusExample).callDiamonds), bonusDiamonds: Number(record(policy.bonusExample).bonusDiamonds), giftDiamonds: Number(record(policy.bonusExample).giftDiamonds),
+      } } : {}),
+      hostWeeklyTargetMinutes: Number(policy.hostWeeklyTargetMinutes), paisePerDiamond: Number(policy.paisePerDiamond),
+      ...(policy.periodWeeks !== undefined ? { periodWeeks: Number(policy.periodWeeks) } : {}),
+      ...(policy.shortWeekMakeupEnabled !== undefined ? { shortWeekMakeupEnabled: policy.shortWeekMakeupEnabled === true } : {}),
+      ...(policy.activityBasis === "paid_connected" || policy.activityBasis === "online_available" || policy.activityBasis === "paid_video" ? { activityBasis: policy.activityBasis } : {}),
+      ...(policy.minimumWithdrawalDiamonds !== undefined ? { minimumWithdrawalDiamonds: Number(policy.minimumWithdrawalDiamonds) } : {}),
+      wholeBalanceWithdrawal: policy.wholeBalanceWithdrawal === true, hostRules: "",
+    } : null } : {}),
     ...(wallet.hostReward !== undefined ? { hostReward: reward ? reward as unknown as NonNullable<Wallet["hostReward"]> : null } : {}),
     ...(Number.isSafeInteger(wallet.profileDiamondUnits) && Number(wallet.profileDiamondUnits) >= 0 ? { profileDiamondUnits: Number(wallet.profileDiamondUnits) } : {}),
     ...(Number.isSafeInteger(wallet.profileEarningsPaise) && Number(wallet.profileEarningsPaise) >= 0 ? { profileEarningsPaise: Number(wallet.profileEarningsPaise) } : {}),
@@ -424,7 +471,7 @@ export function walletFrom(value: unknown): Wallet {
     ...(Number.isSafeInteger(wallet.profileReservedPaise) && Number(wallet.profileReservedPaise) >= 0 ? { profileReservedPaise: Number(wallet.profileReservedPaise) } : {}),
     ...(hasDiamonds ? { diamondUnits: Number(wallet.diamondUnits), reservedDiamondUnits: Number(wallet.reservedDiamondUnits), diamondScale: 1000000 as const,
       diamonds: Number(wallet.diamondUnits) / 1000000, reservedDiamonds: Number(wallet.reservedDiamondUnits) / 1000000,
-      ...(wallet.conversion !== undefined ? { conversion: { diamondsPerCoin: Number(conversion.diamondsPerCoin), paisePerDiamond: Number(conversion.paisePerDiamond) } } : {}) } : {}),
+      ...(wallet.conversion !== undefined ? { conversion: { paisePerDiamond: Number(conversion.paisePerDiamond) } } : {}) } : {}),
     ...(rechargePromptFrom(wallet.rechargePrompt) ? { rechargePrompt: rechargePromptFrom(wallet.rechargePrompt) } : {}),
   };
 }
@@ -450,14 +497,21 @@ export function payoutFrom(value: unknown): Payout {
   const payout = record(value), id = idOf(payout);
   if (!id || !Number.isSafeInteger(payout.amountPaise) || Number(payout.amountPaise) <= 0 ||
     typeof payout.payoutAddress !== "string" || payout.payoutAddress.trim().length < 3 || payout.payoutAddress.length > 200 ||
-    !["pending", "approved", "paid", "rejected"].includes(String(payout.status)) || typeof payout.createdAt !== "string" || !Number.isFinite(Date.parse(payout.createdAt))) {
+    !["pending", "approved", "paid", "rejected", "held"].includes(String(payout.status)) || typeof payout.createdAt !== "string" || !Number.isFinite(Date.parse(payout.createdAt))) {
     throw new ApiError("Your withdrawal could not be confirmed. Check its status and try again.", 502);
   }
+  const hasTax = payout.tdsPaise !== undefined || payout.netAmountPaise !== undefined;
+  if ((payout.grossAmountPaise !== undefined && (!positiveInteger(payout.grossAmountPaise) || payout.grossAmountPaise !== payout.amountPaise)) ||
+    hasTax && (!Number.isSafeInteger(payout.tdsPaise) || Number(payout.tdsPaise) < 0 || !Number.isSafeInteger(payout.netAmountPaise) || Number(payout.netAmountPaise) < 0 ||
+      !positiveInteger(payout.grossAmountPaise) || BigInt(Number(payout.tdsPaise)) + BigInt(Number(payout.netAmountPaise)) !== BigInt(Number(payout.grossAmountPaise))))
+    throw new ApiError("Your withdrawal tax details could not be confirmed. Check its status and try again.", 502);
   if ((payout.diamondUnits !== undefined || payout.diamondScale !== undefined) &&
     (!Number.isSafeInteger(payout.diamondUnits) || Number(payout.diamondUnits) < 0 || payout.diamondScale !== 1000000)) {
     throw new ApiError("Your withdrawal diamond details could not be confirmed. Check its status and try again.", 502);
   }
   return { id, amountPaise: Number(payout.amountPaise), payoutAddress: payout.payoutAddress, status: payout.status as Payout["status"], createdAt: payout.createdAt,
+    ...(payout.grossAmountPaise !== undefined ? { grossAmountPaise: Number(payout.grossAmountPaise) } : {}),
+    ...(hasTax ? { tdsPaise: Number(payout.tdsPaise), netAmountPaise: Number(payout.netAmountPaise) } : {}),
     ...(payout.diamondUnits !== undefined ? { diamondUnits: Number(payout.diamondUnits), diamondScale: 1000000 as const } : {}),
     ...(typeof payout.idempotencyKey === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(payout.idempotencyKey) ? { idempotencyKey: payout.idempotencyKey } : {}),
     ...(typeof payout.reason === "string" ? { reason: payout.reason } : {}), ...(typeof payout.payoutReference === "string" ? { payoutReference: payout.payoutReference } : {}) };
@@ -490,7 +544,12 @@ export function callerFrom(call: Record<string, unknown>) {
 export function hostCallStatusFrom(value: unknown) {
   const data = record(value), early = record(data.earlyEnds), next = data.next && typeof data.next === "object" ? record(data.next) : null;
   const count = (v: unknown) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : 0;
+  if (data.configurableRate !== undefined && (data.configurableRate !== true ||
+    ![data.minRate, data.maxRate, data.selectedRate].every(rate => Number.isSafeInteger(rate) && Number(rate) >= 1 && Number(rate) <= 1000000) ||
+    Number(data.minRate) > Number(data.maxRate) || Number(data.selectedRate) < Number(data.minRate) || Number(data.selectedRate) > Number(data.maxRate) || data.rate !== data.selectedRate))
+    throw new ApiError("Your call price limits could not be confirmed. Refresh and try again.", 502);
   return {
+    ...(data.configurableRate === true ? { configurableRate: true as const, minRate: Number(data.minRate), maxRate: Number(data.maxRate), selectedRate: Number(data.selectedRate) } : {}),
     rate: count(data.rate), tier: Math.max(1, count(data.tier)), earnedCoins: count(data.earnedCoins),
     next: next ? { tier: count(next.tier), rate: count(next.rate), atCoins: count(next.atCoins) } : null,
     tiers: (Array.isArray(data.tiers) ? data.tiers : []).map(record).map(tier => ({ tier: count(tier.tier), rate: count(tier.rate), minCoins: count(tier.minCoins) })),
@@ -502,6 +561,7 @@ export function hostCallStatusFrom(value: unknown) {
 export function transactionsFrom(value: unknown): { items: Transaction[] } {
   return { items: items(value).map(record).map(tx => {
     const type = string(tx.type), coins = finite(tx.coins) ?? 0, amountPaise = finite(tx.amountPaise);
+    // Discard internal rate snapshots from older servers before bridging data.
     if ((tx.diamondUnits !== undefined && !Number.isSafeInteger(tx.diamondUnits)) ||
       (tx.diamondScale !== undefined && (tx.diamondScale !== 1000000 || tx.diamondUnits === undefined)))
       throw new ApiError("Your wallet activity could not be loaded. Try again.", 502);

@@ -7,6 +7,9 @@ const { test } = require('node:test');
 const ts = require('typescript');
 const source = fs.readFileSync(path.resolve(__dirname, '../src/payout-cache.ts'), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+const validationCode = ts.transpileModule(fs.readFileSync(path.resolve(__dirname, '../src/payout-verification.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+const validationModule = { exports: {} };
+vm.runInNewContext(validationCode, { module: validationModule, exports: validationModule.exports, require: name => { throw Error(`Pure payout validation must not import ${name}`); } });
 const plain = value => JSON.parse(JSON.stringify(value));
 const attempt = (idempotencyKey = 'withdrawal-attempt-1') => ({ amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey });
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };
@@ -28,6 +31,7 @@ function harness() {
   function restart() {
     const module = { exports: {} };
     vm.runInNewContext(compiled, { module, exports: module.exports, require: name => {
+      if (name === './payout-verification') return validationModule.exports;
       assert.equal(name, 'expo-secure-store', 'Recovery storage has no session/logout dependency'); return storage;
     } }, { filename: 'src/payout-cache.ts' });
     return module.exports;
@@ -46,6 +50,17 @@ test('a pending withdrawal persists across module restart with account-only acce
   assert.equal((await h.cache.readPendingPayout('bob')).payoutAddress, 'bob@upi');
   assert.ok(h.calls.every(call => call.options?.keychainAccessible === 7), 'Every secure-storage read/write uses WHEN_UNLOCKED_THIS_DEVICE_ONLY');
   assert.equal(h.disk.size, 2, 'Signing in as another account leaves the prior recovery record intact');
+});
+
+test('reviewed quote proof survives restart exactly and cannot change on same-key recovery', async () => {
+  const h=harness(),quote={settingsVersionId:'507f1f77bcf86cd799439091',kycId:'507f1f77bcf86cd799439092',netAmountPaise:49000,diamondUnits:2500000000},next={...attempt(),payoutAddress:'Bank ending 1234 / TEST0123456',quote};
+  await h.cache.rememberPendingPayout('alice',next);
+  assert.deepEqual(plain(await h.restart().readPendingPayout('alice')),next);
+  assert.doesNotMatch(h.disk.get(h.key('alice')),/panNumber|bankAccountNumber|legalName/,'Personal KYC is never durable payout intent');
+  for(const changed of [{...quote,netAmountPaise:48000},{...quote,kycId:'507f1f77bcf86cd799439093'}])await assert.rejects(h.cache.rememberPendingPayout('alice',{...next,quote:changed}),/pending withdrawal/);
+  for(const bad of [{...quote,netAmountPaise:50001},{...quote,netAmountPaise:-1},{...quote,kycId:'another'},{...quote,panNumber:'ABCDE1234F'}]){
+    const fresh=harness();await assert.rejects(fresh.cache.rememberPendingPayout('alice',{...next,quote:bad}),/withdrawal attempt/);assert.equal(fresh.calls.length,0);
+  }
 });
 
 test('large whole-balance withdrawals persist and recover without lowering their amount', async () => {

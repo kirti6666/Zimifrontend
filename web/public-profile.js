@@ -142,8 +142,8 @@ function zuSkeleton(kind='profile'){
 function zuStatus(p){
   if(Zu.loading||Zu.error)return '';
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
-  const callable=zuApproved(p)&&zuMember();
-  return `<span class="zu-presence ${callable||p.online?'is-online':''}"><i></i>${callable?'Available for a call':p.online?'Online':'Currently offline'}</span>`;
+  const online=isHostPayload(p)?hostShownOnline(p):p.online===true;
+  return `<span class="zu-presence ${online?'is-online':''}"><i></i>${online?'Online':'Currently offline'}</span>`;
 }
 function zuAvatar(p){
   const source=imageSrc(p?.avatarUrl);
@@ -403,7 +403,8 @@ Native.on('post.delete.error',d=>{
 });
 Native.on('post.saved',()=>{if(zuActive()&&zuSelf()&&Zu.profile)zuLoadPosts()});
 
-/* Profiles follow the same rule as cards: a host is never shown offline (see hostFrom). */
+/* Availability is server-owned. Permission to place a manual call does not
+   make an offline host appear online. */
 function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostShownOnline(p),availableForCall:hostCallable(p)});return p}
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
@@ -435,7 +436,7 @@ Native.on('data.home',d=>{
   if(!peer)return;
   // Live discovery events may update availability without replacing profile
   // counts, a pending relationship write, or the current gallery selection.
-  for(const key of ['online','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
+  for(const key of ['online','onlineForCalls','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
   zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);

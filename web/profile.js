@@ -62,7 +62,7 @@ function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-
 function zpMenuRows(kind){
   const rows={
     account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+(isApprovedHost()?zpRow('stats','Statistics',"ZimiHostStatistics.open()"):'')+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')")+zpRow('logout','Deactivate account',"zpOpen('deactivate')"),
-    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+(isHostWallet()?zpRow('cash','Withdrawal history',"zpGo('payout-history')"):''),
+    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+(isHostWallet()?zpRow('shield','Payout verification',"zpClose();payoutKycOpen('settings')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+(isHostWallet()?zpRow('cash','Withdrawal history',"zpGo('payout-history')"):''),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
     creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'

@@ -40,7 +40,7 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
  try{
   const page=await open();
   assert.equal(await page.getByRole('status',{name:'Loading available earnings',exact:true}).count(),1);
-  assert.equal(await page.getByRole('status',{name:'Loading withdrawal history',exact:true}).count(),1);
+  assert.equal(await page.getByRole('status',{name:'Loading withdrawal history',exact:true}).count(),0,'Withdraw keeps history on its own screen');
   assert.equal(await button(page,'Review withdrawal').isDisabled(),true);
   assert.equal((await sent(page,'payout.request')).length,0,'Opening payouts only reads data');
   await settleHistory(page);
@@ -49,7 +49,7 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   assert.match(await page.locator('.zpay-page').innerText(),/Withdrawals are currently paused/);
   await receive(page,'wallet.balance',wallet);
   assert.equal(await button(page,'Review withdrawal').isEnabled(),true);
-  assert.match(await page.locator('.zpay-balance').innerText(),/1,234\.56/);
+  assert.match(await page.getByRole('region',{name:'Diamond balance'}).innerText(),/Available earnings[\s\S]*1,234\.56[\s\S]*Min ₹500[\s\S]*Ready/,'Legacy cash earnings still show progress to the minimum');
   assert.doesNotMatch(await page.locator('.zpay-page').innerText(),/coins|instant|on its way/i);
   for(const [amount,message] of [['500.001',/two decimal places/],['5e2',/two decimal places/],['499.99',/minimum withdrawal/],['2000',/more than your available earnings/]]){
    await fill(page,amount);await button(page,'Review withdrawal').click();assert.match(await page.locator('.zpay-error').innerText(),message);
@@ -83,8 +83,10 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   await receive(page,'data.loading',{resource:'wallet',loading:false,error:'Wallet refresh failed'});
   assert.equal(await page.getByRole('heading',{name:'Withdrawal requested',exact:true}).count(),1,'Wallet refresh failure cannot undo saved request');
   assert.match(await page.locator('.zpay-success').innerText(),/Pending review/);
+  await button(page,'View withdrawal history').click();assert.equal(await page.evaluate(()=>S.v),'payout-history');
   await settleHistory(page,[record]);
   assert.match(await page.locator('.zpay-history').innerText(),/500\.10[\s\S]*Pending review[\s\S]*creator@upi/);
+  await go(page,'payout');assert.equal(await page.locator('.zpay-history').count(),0,'Withdraw shows the request, not the history list');
   await receive(page,'wallet.balance',wallet);await button(page,'Make another request').click();await fill(page);await button(page,'Review withdrawal').click();await button(page,'Confirm withdrawal request').click();
   const next=await last(page,'payout.request');assert.notEqual(next.idempotencyKey,request.idempotencyKey,'Confirmed request permits a fresh request identity');
   await receive(page,'payout.error',{action:'payout.request',requestId:next.requestId,idempotencyKey:next.idempotencyKey,status:400,message:'Minimum changed'});
@@ -92,7 +94,7 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   const changed=await last(page,'payout.request');assert.notEqual(changed.idempotencyKey,next.idempotencyKey,'Changed details after a definite failure get a new identity');
   console.log('PASS payouts: uncertain retry identity, locked details, late response isolation and success independent of wallet refresh');
 
-  const history=await open();await receive(history,'wallet.balance',wallet);await settleHistory(history,[record],{total:2,limit:1});
+  const history=await open();await go(history,'payout-history');await receive(history,'wallet.balance',wallet);await settleHistory(history,[record],{total:2,limit:1});
   await button(history,'Next').click();const pageTwo=await last(history,'payout.load');assert.equal(pageTwo.page,2);
   assert.equal(await history.getByRole('status',{name:'Loading withdrawal history',exact:true}).count(),1);
   await receive(history,'payout.error',{action:'payout.load',requestId:pageTwo.requestId,message:'History unavailable'});

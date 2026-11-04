@@ -3246,7 +3246,7 @@ html:root[data-theme="dark"] .zc-thread{
 :root[data-theme-id] :is(input,textarea)::placeholder{color:var(--muted)}
 :root[data-theme-id] :is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 /* An input inside a pill-shaped field would draw a box inside the pill; the field shows focus instead. */
-:root :is(.zc-composer-field,.zc-compose-search,.zh-search-header>div)>:is(input,textarea):focus-visible{outline:none}
+:root :is(.zc-composer-field,.zc-compose-search,.zh-search-header>div,.zh-user-search)>:is(input,textarea):focus-visible{outline:none}
 :root[data-theme-id] input[type=checkbox]{accent-color:var(--accent)}
 :root[data-theme-id] .zh-packs>button.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 :root[data-theme-id] :is(.zp-camera,.zp-avatar,.zh-story-create .zh-story-ring,.zh-rate,.ob-toast){background:var(--raised);color:var(--ink);border-color:var(--line)}
@@ -3735,6 +3735,14 @@ html:root[data-theme="dark"] .zc-thread{
 .hc-preview-tools>button[aria-pressed="true"]{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
 .hc-setup-panels{position:relative;z-index:1;border-radius:16px;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(14px);border:1px solid var(--line);padding:11px 13px 0}
 .hc-card{display:flex;flex-direction:column;gap:8px;color:var(--ink)}
+.hc-rate-picker{display:flex;flex-direction:column;gap:6px;margin:0;padding:5px 0 10px}
+.hc-rate-picker label{font-size:12px;font-weight:600}
+.hc-rate-picker>div{display:flex;gap:8px;min-width:0}
+.hc-rate-picker input{flex:1;min-width:0;max-width:100%;min-height:44px;padding:9px 11px;background:var(--canvas);color:var(--ink);border:1px solid var(--line);font:inherit;font-size:14px}
+.hc-rate-picker button{min-height:44px;padding:9px 12px;background:var(--cta);color:var(--cta-ink);font-size:12px;font-weight:600}
+.hc-rate-picker p{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}
+.hc-rate-picker .hc-rate-error{color:var(--theme-danger)}
+.hc-rate-picker :disabled{opacity:.65}
 .hc-card-head{display:flex;align-items:baseline;gap:7px;width:100%;min-height:18px;padding:0;text-align:left;background:none;border:0;color:inherit}
 .hc-card-head>b{font-size:13px;font-weight:var(--theme-heading-weight,750);color:var(--accent-ink);white-space:nowrap}
 .hc-card-head small{font-size:10.5px;font-weight:500;line-height:1.3;color:var(--muted)}
@@ -4546,27 +4554,67 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 @media(min-width:761px){.zn-page{padding-top:18px}.zn-notice-main{padding:19px 14px}.zn-notice-icon{width:38px;height:38px}.zn-page .zh-notification h3{font-size:1em}.zn-page .zh-notification p{font-size:.9em}}
 @media(max-width:360px){.zn-page{padding:8px 12px 24px}.zn-period-tabs{gap:5px}.zn-period-tabs button{padding:7px 9px;font-size:.75em}.zn-filter-toggle{width:36px}.zn-notice-main{gap:10px;padding:14px 9px}.zn-notice-icon{width:30px;height:30px}.zn-notice-heading{gap:8px}.zn-page .zh-notification h3{font-size:.9em}.zn-controls{padding:12px}.zn-audience button{padding:7px 9px}.zn-filter-row{gap:8px}}
 @media(prefers-reduced-motion:reduce){.zn-page *,.zn-dialog *{animation:none!important;transition:none!important}}
-.zpay-page{width:100%;max-width:640px;margin:auto;padding:18px 18px 40px;color:var(--ink)}
+/* Withdraw follows "Withdrawal Page.html": inverse balance card, one UPI field, one action, Host rules. Colors stay theme tokens. */
+.zpay-page{width:100%;max-width:430px;margin:auto;padding:8px 20px 24px;color:var(--ink)}
 .zd-balance{margin:0 0 14px;min-width:0}.zd-balance>span,.zd-balance>small{display:block;color:var(--muted);font-size:12px;line-height:1.6}.zd-balance>strong{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:28px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}.zd-balance>strong>svg{flex:none;color:var(--accent-ink)}.zd-conversion{font-size:12px;line-height:1.6;color:var(--muted);margin-top:10px;overflow-wrap:anywhere}.zp-wallet .zd-balance{margin-top:18px}.zp-wallet .zd-balance>strong{font-size:24px}.zp-diamond-link{min-height:44px;padding:8px 0;color:var(--accent-ink);font-size:13px;font-weight:600;text-align:left}
 .zp-wallet-actions>.zp-withdrawal-history{grid-column:1/-1}
 .zd-balance>strong>span{min-width:0;overflow-wrap:anywhere}
-.zpay-page section,.zpay-form{min-width:0;margin-bottom:18px}
-.zpay-rules,.zpay-reward{padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.zpay-rules-text{white-space:pre-wrap}.zpay-reward progress{display:block;width:100%;height:8px;margin:14px 0;accent-color:var(--accent);border-radius:0}.zpay-reward progress::-webkit-progress-bar{background:var(--line)}.zpay-reward progress::-webkit-progress-value{background:var(--accent)}.zpay-reward progress::-moz-progress-bar{background:var(--accent)}.zpay-reward dl{margin:12px 0}.zpay-reward dt{font-size:12px;color:var(--muted)}.zpay-reward dd{margin:6px 0 0;font-size:16px;font-weight:600;overflow-wrap:anywhere}.zpay-form input[readonly]{background:var(--surface)}
-.zpay-wallet,.zpay-form,.zpay-review,.zpay-success{padding:20px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
-.zpay-balance>span,.zpay-balance>small{display:block;color:var(--muted);font-size:12px;line-height:1.6}
-.zpay-balance>strong{display:block;margin:10px 0;color:var(--ink);font-size:32px;line-height:1.25;overflow-wrap:anywhere}
 .zpay-page p{font-size:12px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere}
-.zpay-form{display:flex;flex-direction:column;gap:10px}.zpay-form label{font-size:13px;font-weight:600}.zpay-form label:not(:first-child){margin-top:8px}
-.zpay-form input{display:block;width:100%;min-height:48px;min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);font:inherit;font-size:15px}.zpay-form input::placeholder{color:var(--faint)}
-.zpay-primary,.zpay-secondary{display:flex;align-items:center;justify-content:center;min-height:46px;width:100%;padding:12px 14px;border:0;border-radius:12px;font-size:13px;font-weight:650;line-height:1.5;background:var(--accent);color:var(--cta-ink)}
-.zpay-secondary{margin-top:10px;background:var(--raised);color:var(--ink)}.zpay-page button:disabled,.zpay-page input:disabled{opacity:.5;cursor:default}.zpay-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
-.zpay-page h2{font-size:18px;line-height:1.4;margin:0 0 13px}.zpay-review dl{margin:0 0 16px}.zpay-review dl>div{padding:12px 0;border-bottom:1px solid var(--line)}.zpay-review dt{font-size:11px;color:var(--muted)}.zpay-review dd{font-size:16px;margin:6px 0 0;overflow-wrap:anywhere}.zpay-review>p{margin:0 0 16px}
-.zpay-page .zpay-error,.zpay-paused{margin:12px 0 18px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);font-size:12px;line-height:1.7;overflow-wrap:anywhere}.zpay-error button{display:block;min-height:44px;margin-top:7px;color:var(--accent-ink);font-weight:600}
-.zpay-success>svg{color:var(--accent-ink);margin-bottom:10px}.zpay-success>strong{display:block;font-size:26px}.zpay-success>p{margin:10px 0}.zpay-success .zpay-status{display:inline-flex;margin:3px 0 8px}
+.zpay-page h2{margin:0 0 8px;font-size:16px;line-height:22px;font-weight:700;letter-spacing:-.2px}
+
+/* The balance card and rules hero stay dark in both modes, like the reference. */
+:is(.zpay-card,.zpay-rules-hero){--zpay-card:var(--ink);--zpay-card-ink:var(--canvas)}
+[data-theme="dark"] :is(.zpay-card,.zpay-rules-hero){--zpay-card:var(--raised);--zpay-card-ink:var(--ink)}
+.zpay-card{display:flex;flex-direction:column;gap:14px;min-width:0;padding:16px;background:var(--zpay-card);color:var(--zpay-card-ink)}
+.zpay-card-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-width:0}
+.zpay-card-top>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.zpay-card-top>div>span,.zpay-card-goal{font-size:12px;line-height:16px;color:color-mix(in srgb,var(--zpay-card-ink) 62%,var(--zpay-card))}
+.zpay-card-top strong{display:flex;align-items:center;gap:8px;min-width:0;font-size:26px;line-height:32px;font-weight:700;letter-spacing:-.3px;color:var(--zpay-card-ink)}
+.zpay-card-top strong>svg{flex:none;color:var(--accent)}.zpay-card-top strong>span{min-width:0;overflow-wrap:anywhere}
+.zpay-card-top>b{flex:none;font-size:15px;line-height:32px;font-weight:600;color:var(--zpay-card-ink)}
+.zpay-card-progress{display:flex;flex-direction:column;gap:8px}
+.zpay-meter{height:4px;overflow:hidden;background:color-mix(in srgb,var(--zpay-card-ink) 16%,var(--zpay-card))}.zpay-meter>i{display:block;height:100%;background:var(--accent)}
+.zpay-card-goal{display:flex;justify-content:space-between;gap:12px}.zpay-card-goal>b{flex:none;font-weight:400;color:var(--zpay-card-ink);text-align:right}
+.zpay-page .zpay-card-note{margin:10px 0 0;line-height:16px}
+.zpay-balance{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font-size:12px;line-height:16px;color:var(--muted)}.zpay-balance>strong{font-size:13px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}.zpay-page .zpay-balance>p{flex-basis:100%;margin:0;text-align:right;line-height:16px}
+
+.zpay-form{display:flex;flex-direction:column;min-width:0;margin-top:24px}
+.zpay-form label{font-size:13px;line-height:18px;font-weight:600;color:var(--ink)}.zpay-form label~label{margin-top:16px}
+.zpay-form input{display:block;width:100%;height:48px;min-width:0;margin-top:8px;padding:0 14px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font:inherit;font-size:15px}
+.zpay-form input::placeholder{color:var(--muted)}.zpay-form input[readonly]{color:var(--muted)}
+.zpay-form>.zpay-primary{margin-top:16px}
+.zpay-primary,.zpay-secondary{display:flex;align-items:center;justify-content:center;width:100%;height:48px;padding:0 14px;border:0;font-size:15px;font-weight:600;line-height:1.2;background:var(--accent);color:var(--cta-ink)}
+.zpay-secondary{margin-top:10px;background:var(--raised);color:var(--ink)}
+.zpay-page button:disabled,.zpay-page input:disabled{opacity:.5;cursor:default}.zpay-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.zpay-rules-link{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;height:44px;margin-top:8px;font-size:14px;font-weight:500;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}.zpay-rules-link>svg{flex:none}
+.zpay-verification{margin:16px 0 0;padding:16px;border:1px solid var(--line);background:var(--surface)}
+
+.zpay-review,.zpay-success{min-width:0;margin-top:24px}
+.zpay-review dl{margin:0 0 16px}.zpay-review dl>div{position:relative;padding:12px 0}.zpay-review dl>div::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line)}.zpay-review dt{font-size:12px;color:var(--muted)}.zpay-review dd{margin:4px 0 0;font-size:15px;font-weight:600;overflow-wrap:anywhere}.zpay-review>p{margin:0 0 16px}
+.zpay-success>svg{color:var(--accent-ink);margin-bottom:8px}.zpay-success>strong{display:block;font-size:26px;line-height:32px;font-weight:700}.zpay-success>p{margin:10px 0}.zpay-success .zpay-status{display:inline-flex;margin:0 0 16px}
+.zpay-page .zpay-error,.zpay-paused{margin:16px 0 0;padding:14px;border:1px solid var(--line);background:var(--raised);color:var(--ink);font-size:12px;line-height:1.7;overflow-wrap:anywhere}.zpay-error button{display:block;min-height:44px;margin-top:7px;color:var(--accent-ink);font-weight:600}
+
+.zpay-page hr{display:block;height:1px;margin:0;border:0;background:var(--line)}.zpay-divider{margin-top:16px!important}
+.zpay-reward{padding-top:16px}.zpay-reward progress{display:block;width:100%;height:4px;margin:12px 0;border:0;accent-color:var(--accent);appearance:none}.zpay-reward progress::-webkit-progress-bar{background:var(--line)}.zpay-reward progress::-webkit-progress-value{background:var(--accent)}.zpay-reward progress::-moz-progress-bar{background:var(--accent)}.zpay-reward dl{margin:12px 0}.zpay-reward dt{font-size:12px;color:var(--muted)}.zpay-reward dd{margin:4px 0 0;font-size:15px;font-weight:600;overflow-wrap:anywhere}.zpay-page .zpay-reward p{font-size:14px;line-height:22px;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}
+
+.zpay-rules-page{display:flex;flex-direction:column;min-height:100%;padding-bottom:0}
+.zpay-rules-hero{padding:16px 18px;background:var(--zpay-card);color:var(--zpay-card-ink)}
+.zpay-page .zpay-rules-hero h2{margin:0;font-size:20px;line-height:26px;font-weight:800;letter-spacing:-.3px;color:var(--zpay-card-ink)}
+.zpay-page .zpay-rules-hero p{margin:4px 0 0;font-size:13px;line-height:19px;color:color-mix(in srgb,var(--zpay-card-ink) 84%,var(--zpay-card))}
+.zpay-rules{display:flex;flex-direction:column;margin-top:8px;padding-bottom:16px}
+.zpay-rules>section{padding:16px 0}
+.zpay-rules h3{margin:0;font-size:16px;line-height:22px;font-weight:700;letter-spacing:-.2px;color:var(--ink)}
+.zpay-rules ul{display:flex;flex-direction:column;gap:6px;margin:8px 0 0;padding:0;list-style:none}
+.zpay-rules li{display:flex;gap:10px;font-size:14px;line-height:22px;color:color-mix(in srgb,var(--ink) 80%,var(--canvas));overflow-wrap:anywhere}
+.zpay-rules li>span:first-child{flex:none;width:5px;height:5px;margin-top:8.5px;background:var(--accent)}
+.zpay-rules strong{font-weight:700;color:var(--ink)}
+.zpay-page .zpay-rules-text{margin:8px 0 0;white-space:pre-wrap;font-size:14px;line-height:22px;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}
+.zpay-rules-footer{position:sticky;bottom:0;margin:auto -20px 0;padding:12px 20px calc(24px + var(--safe-bottom,0px));background:var(--canvas)}.zpay-page .zpay-rules-footer>hr{margin:-12px -20px 12px}
+
 .zpay-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 12px}.zpay-section-heading h2{margin:0}
-.zpay-history{list-style:none;padding:0;margin:0}.zpay-history li{padding:16px;margin-bottom:10px;border:1px solid var(--line);border-radius:15px;background:var(--surface)}.zpay-history-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.zpay-history-heading strong{font-size:17px}.zpay-status{padding:5px 8px;border-radius:8px;background:var(--raised);color:var(--accent-ink);font-size:11px;font-weight:600;line-height:1.4}.zpay-history p{margin:8px 0 3px}.zpay-history time{font-size:11px;color:var(--muted)}.zpay-review-note{border-top:1px solid var(--line);padding-top:8px}
-.zpay-empty{text-align:center;padding:26px 14px;border:1px dashed var(--line);border-radius:16px}.zpay-empty>svg{color:var(--accent-ink);margin-bottom:9px}.zpay-empty h3{font-size:14px;margin:0 0 6px}.zpay-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}.zpay-pagination button{min-height:44px;padding:8px 12px;border-radius:10px;background:var(--raised);color:var(--ink)}
-@media(max-width:359px){.zpay-page{padding:14px 12px 30px}.zpay-wallet,.zpay-form,.zpay-review,.zpay-success{padding:16px}.zpay-balance>strong{font-size:28px}}
+.zpay-history{list-style:none;padding:0;margin:0}.zpay-history li{padding:16px;margin-bottom:10px;border:1px solid var(--line);background:var(--surface)}.zpay-history-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.zpay-history-heading strong{font-size:17px}.zpay-status{padding:5px 8px;background:var(--raised);color:var(--accent-ink);font-size:11px;font-weight:600;line-height:1.4}.zpay-history p{margin:8px 0 3px}.zpay-history time{font-size:11px;color:var(--muted)}.zpay-review-note{border-top:1px solid var(--line);padding-top:8px}
+.zpay-empty{text-align:center;padding:26px 14px;border:1px dashed var(--line)}.zpay-empty>svg{color:var(--accent-ink);margin-bottom:9px}.zpay-empty h3{font-size:14px;margin:0 0 6px}.zpay-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}.zpay-pagination button{min-height:44px;padding:8px 12px;background:var(--raised);color:var(--ink)}
+@media(max-width:359px){.zpay-page{padding:8px 14px 24px}.zpay-rules-footer{margin:auto -14px 0;padding-left:14px;padding-right:14px}.zpay-page .zpay-rules-footer>hr{margin:-12px -14px 12px}.zpay-card-top strong{font-size:22px}}
 .zhs-page{max-width:680px;margin:0 auto;padding:16px 20px 40px;color:var(--ink);min-width:0}
 .zhs-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;background:var(--raised)}
 .zhs-tabs button{min-width:0;min-height:44px;padding:10px 4px;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:500}
@@ -10309,7 +10357,7 @@ function appNotice(message){
 }
 /* Private calls and chats can't be screenshotted or recorded; the app is told only when that changes, and once on load. */
 let zimiSecured=null;
-function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
+function zimiSecureScreen(){const on=["call","voice","hcall","chats","thread","support-chat","official-chat","payout-kyc"].includes(S.v)||!!document.getElementById("zv-call")||!!S.bgCall;if(on!==zimiSecured){zimiSecured=on;Native.send("screen.secure",{on})}}
 function r(){
  if(S.v==='explore')S.v='home';
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(S.v))S.v='home';
@@ -10355,7 +10403,7 @@ const seedOf=id=>{let x=7;for(const c of String(id))x=(x*31+c.charCodeAt(0))%997
    The server validates approval, blocks, wallet balance and the final call price.
    `ready` keeps the server's own availability for lists that promise an instant answer. */
 function isHostPayload(p){return p.serverRole==="host"||p.role==="host"||p.verified===true}
-function hostShownOnline(p){return isHostPayload(p)||!!p.online}
+function hostShownOnline(p){return typeof p.onlineForCalls==='boolean'?p.onlineForCalls:p.online===true}
 function hostCallable(p){return p.availableForCall===true||isHostPayload(p)&&!isHost()}
 function hostFrom(p){const id=String(p.id);
  // A fresh server quote supersedes a previous insufficient-coins response.
@@ -11032,6 +11080,7 @@ window.ZimiLaunch={check:launchCheck};
 
 /* Coins remain spendable. Server-confirmed host diamonds carry their original
    cash value even after staff changes the rate for future earnings. */
+P.chevronRight='<path d="M9 6l6 6-6 6"/>';
 P.diamond='<path d="m3 8 4-5h10l4 5-9 13L3 8Zm0 0h18M7 3l5 18 5-18M7 3l5 5 5-5"/>';
 function diamondIcon(size=20){return hi('diamond',size)}
 function diamondFormat(units){
@@ -11045,29 +11094,88 @@ function diamondProfileValue(){const wallet=diamondOwnWallet();if(window.ZimiHos
 function diamondProfilePaise(wallet){return Number.isSafeInteger(wallet?.profileEarningsPaise)?wallet.profileEarningsPaise:wallet?.earningsPaise}
 function diamondProfileReservedPaise(wallet){return Number.isSafeInteger(wallet?.profileReservedPaise)?wallet.profileReservedPaise:wallet?.hostEarningsPolicy?0:wallet?.reservedPaise}
 function diamondBalanceView(wallet,withdrawal=false){const units=!withdrawal&&Number.isSafeInteger(wallet?.profileDiamondUnits)?wallet.profileDiamondUnits:wallet?.diamondUnits,reserved=withdrawal?wallet?.reservedDiamondUnits:Number.isSafeInteger(wallet?.profileReservedDiamondUnits)?wallet.profileReservedDiamondUnits:wallet?.hostEarningsPolicy?0:wallet?.reservedDiamondUnits;return diamondReady(wallet)?`<div class="zd-balance"><span>${!withdrawal&&wallet.hostEarningsPolicy?'Call & gift diamonds':'Available diamonds'}</span><strong>${diamondIcon(23)}<span>${diamondFormat(units)}</span></strong>${reserved>0?`<small>${diamondFormat(reserved)} diamonds reserved for withdrawals</small>`:''}</div>`:''}
-function diamondConversionText(wallet){
- const policy=wallet?.hostEarningsPolicy;if(policy?.enabled){const cash=new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:8}).format(policy.paisePerDiamond/100);return `Calls: ${policy.hostCallSharePercent} diamonds per 100 coins. Gifts: ${policy.hostGiftSharePercent} diamonds per 100 coins, rounded down per gift. 1 diamond = ${cash}.`}
- const quote=wallet?.conversion;if(!quote||!Number.isFinite(quote.diamondsPerCoin)||!Number.isFinite(quote.paisePerDiamond))return '';
- const cash=new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:8}).format(quote.paisePerDiamond/100);
- return `New earnings: 1 coin = ${new Intl.NumberFormat('en-IN',{maximumFractionDigits:6}).format(quote.diamondsPerCoin)} diamonds · 1 diamond = ${cash}.`;
+/* A current policy must never relabel the snapshot of an already-open period. */
+function diamondPeriodRules(wallet){
+ const source=wallet?.hostReward||wallet?.hostEarningsPolicy||{};
+ return {weeks:Number.isSafeInteger(source.periodWeeks)&&source.periodWeeks>=1&&source.periodWeeks<=12?source.periodWeeks:4,
+  makeup:source.shortWeekMakeupEnabled!==false,basis:source.activityBasis==='paid_video'?'paid_video':source.activityBasis==='paid_connected'?'paid_connected':'online_available'};
 }
-function diamondWithdrawalMessage(wallet){
- if(!diamondReady(wallet)||!wallet.hostEarningsPolicy?.enabled||!Number.isSafeInteger(wallet.minimumWithdrawalPaise)||wallet.minimumWithdrawalPaise<=0)return '';
- const current=wallet.earningsPaise,minimum=wallet.minimumWithdrawalPaise,quote=wallet.hostEarningsPolicy.paisePerDiamond;
- if(current>=minimum)return `You can withdraw with ${diamondFormat(wallet.diamondUnits)} diamonds and redeem ${payoutMoney(current)}. Your whole available balance is withdrawn at once.`;
- const denominator=BigInt(Math.round(quote*1000000)),numerator=BigInt(minimum-current)*1000000n,missing=(numerator+denominator-1n)/denominator;
- return `Collect ${missing.toLocaleString('en-IN')} more diamonds to reach the ${payoutMoney(minimum)} minimum. Withdrawing does not reduce your call reward.`;
+function diamondRatePaise(wallet){const value=wallet?.hostEarningsPolicy?.enabled?wallet.hostEarningsPolicy.paisePerDiamond:wallet?.conversion?.paisePerDiamond;return typeof value==='number'&&Number.isFinite(value)&&value>0?BigInt(Math.round(value*1000000)):null}
+/* Whole diamonds needed to cover a cash amount, rounded up. */
+function diamondsForPaise(wallet,paise){const rate=diamondRatePaise(wallet);if(rate===null||!Number.isSafeInteger(paise)||paise<0)return null;const amount=BigInt(paise)*1000000n;return (amount+rate-1n)/rate}
+function diamondMinimum(wallet){const set=wallet?.hostEarningsPolicy?.enabled?wallet.hostEarningsPolicy.minimumWithdrawalDiamonds:null;return Number.isSafeInteger(set)&&set>0?BigInt(set):diamondsForPaise(wallet,wallet?.minimumWithdrawalPaise)}
+/* Withdraw balance card: total, cash value and progress to the minimum. */
+function diamondWithdrawCard(wallet){
+ const earned=wallet.earningsPaise,minimum=wallet.minimumWithdrawalPaise,enough=earned>=minimum,progress=minimum>0?Math.min(100,Math.floor(earned*100/minimum)):100;
+ const units=diamondMinimum(wallet),missing=enough?null:diamondsForPaise(wallet,minimum-earned),diamonds=diamondReady(wallet);
+ const goal=minimum>0?`Min ${payoutMoneyShort(minimum)}${units!==null?` = ${units.toLocaleString('en-IN')} diamonds`:''}`:'';
+ const left=enough?'Ready':missing!==null?`${missing.toLocaleString('en-IN')} to go`:`${payoutMoneyShort(minimum-earned)} to go`;
+ return `<section class="zpay-card" aria-label="Diamond balance"><div class="zpay-card-top"><div><span>${diamonds?'Total diamonds':'Available earnings'}</span><strong>${diamonds?`${diamondIcon(22)}<span>${diamondFormat(wallet.diamondUnits)}</span>`:`<span>${payoutMoney(earned)}</span>`}</strong></div>${diamonds?`<b>≈ ${payoutMoney(earned)}</b>`:''}</div><div class="zpay-card-progress"><div class="zpay-meter" role="progressbar" aria-label="Progress to minimum withdrawal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i style="width:${progress}%"></i></div><div class="zpay-card-goal"><span>${goal}</span><b>${left}</b></div></div></section>`;
 }
+/* Host rules page. Wording follows the reference; every number comes from the
+   host's saved policy and open reward period, so admin edits stay accurate. */
 function diamondHostRules(wallet){
  const policy=wallet?.hostEarningsPolicy;if(!policy?.enabled)return '';
- const hours=new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format((wallet.hostReward?.weeklyTargetMinutes??policy.hostWeeklyTargetMinutes)/60);
- return `<section class="zpay-rules" aria-label="Host earning rules"><h2>Host rules</h2><p>${esc(diamondConversionText(wallet))}</p><p>Weekly target: ${hours} hours online and available for calls. Weeks run Monday to Sunday in IST. Short or extra hours adjust the next week's target within the same four-week reward period.</p><p>Call reward: ${policy.hostCallRewardPercent}% after week 4 if you complete your targets. Rewards appear here in Withdrawals. Gifts have no target.</p>${policy.hostRules?`<p class="zpay-rules-text">${esc(policy.hostRules)}</p>`:''}</section>`;
+ const period=diamondPeriodRules(wallet),weeks=period.weeks,weekText=weeks===1?'1 week':`${weeks} weeks`,fmt=value=>value.toLocaleString('en-IN');
+ const example=policy.bonusExample,bonus=policy.callBonusAvailable===true,hasExample=example&&['callDiamonds','bonusDiamonds','giftDiamonds'].every(key=>Number.isSafeInteger(example[key])&&example[key]>=0)&&example.callDiamonds>0;
+ const minutes=wallet.hostReward?.weeklyTargetMinutes??policy.hostWeeklyTargetMinutes,hours=Number.isFinite(minutes)&&minutes>0?minutes/60:null;
+ const hourText=hours===null?'':new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(hours),daily=hours===null?0:hours/7,dailyText=Number.isInteger(daily)?`${daily} hours a day`:`under ${Math.ceil(daily)} hours a day`;
+ const video=period.basis==='paid_video',paid=video||period.basis==='paid_connected',minimum=wallet.minimumWithdrawalPaise,minimumUnits=diamondMinimum(wallet);
+ const restartHours=Number.isFinite(wallet.hostReward?.restart?.thresholdMinutes)?wallet.hostReward.restart.thresholdMinutes/60:20;
+ const sections=[
+  ['Earn on every call',[
+   'Every minute on a call earns you diamonds. The longer the call, the more you earn.',
+   'Your diamonds land on your profile instantly. Watch them grow as you talk.',
+   ...(policy.version===2?['Set your own call rate. A higher rate means more diamonds every minute.']:[]),
+   'No limit on your earnings. The more you perform, the more diamonds you earn.',
+  ]],
+  ['Unlock your big bonus',bonus?[
+   ...(hasExample?[`Earn ${fmt(example.bonusDiamonds)} extra diamonds for every ${fmt(example.callDiamonds)} you make on calls.`]:['Complete your weekly targets to unlock your call bonus.']),
+   `Unlock it by completing your weekly targets by the end of week ${weeks}.${period.makeup?' Catch-up hours count.':''}`,
+   `It waits in your withdraw section and is added at the end of week ${weeks}. Don't leave it behind!`,
+  ]:['Your current earnings policy has no separate call bonus. Your available call diamonds stay yours.']],
+  ['Gifts pay you instantly',[
+   ...(bonus&&hasExample&&example.callDiamonds+example.bonusDiamonds===example.giftDiamonds?[`On gifts, you get your bonus straight away: ${fmt(example.callDiamonds)} + ${fmt(example.bonusDiamonds)} bonus = ${fmt(example.giftDiamonds)}.`]:['Gift diamonds are added straight away.']),
+   'No target, no waiting. Every gift is extra on top of your call earnings.',
+  ]],
+  ['Hit your weekly target',[
+   ...(hours!==null?[`${video?'Be on video calls':paid?'Be on paid calls':'Stay online and available for calls'} ${hourText} hours a week, for ${weekText}: ${dailyText}, no daily minimum.`]:[]),
+   'Each week runs Monday 12:00 AM to Sunday 11:59 PM (Indian time).',
+   video?'Only time on a paid video call counts, to the minute. Being online without a call does not count.':paid?'Only paid call time counts, to the minute. Being online without a call does not count.':'Your current reward period counts time online and available for calls.',
+   ...(weeks>1?[period.makeup?'Short week? Missing hours move to next week. Ahead? Next week gets easier.':"Each week has its own target. Missed hours don't move to the next week."]:['Each week starts fresh.']),
+   ...(wallet.hostReward?.restart?[`Over ${restartHours} hours behind? Tap Restart when eligible and week 1 begins again next Monday. The call bonus from the unfinished weeks is not added either way, so start fresh and unlock your next bonus.`]:[]),
+   `After week ${weeks}, a fresh ${weekText} begins. Hours don't carry over into the new ${weekText}.`,
+  ]],
+  ['Your online status',[
+   'Online: you appear on the Explore page, where users can find you and start a video call.',
+   "Offline: switch it off any time you don't want to be disturbed. You won't appear on Explore.",
+   "Calls from chat still come through. Even when you're offline, users you chat with can video-call you.",
+  ]],
+  ['Missed the target? You keep your diamonds',[
+   bonus?`Only the call bonus for those ${weekText} is missed.`:'Your available call diamonds stay yours.',
+   'Every diamond on your profile stays yours, including all gift diamonds and gift bonus.',
+  ]],
+  ['Cash out your earnings',[
+   ...(minimum>0?[`Withdraw as soon as you reach ${minimumUnits!==null?`${fmt(minimumUnits)} diamonds (${payoutMoneyShort(minimum)})`:payoutMoneyShort(minimum)}.`]:[]),
+   policy.wholeBalanceWithdrawal?'Take out your whole balance at once, any time.':'Withdraw any amount from the minimum up to your balance, any time.',
+   `Call and gift diamonds are ready straight away${bonus?`; your call bonus after week ${weeks}`:''}.`,
+   'Withdrawing never reduces your pending bonus.',
+  ]],
+ ];
+ const list=items=>`<ul>${items.map(item=>`<li><span aria-hidden="true"></span><span>${esc(item)}</span></li>`).join('')}</ul>`;
+ return `<section class="zpay-rules-hero"><h2>Earn More on Binzo</h2><p>${bonus?'Every call pays. Hit your weekly target and unlock your bonus.':'Every call pays. Gifts pay instantly.'}</p></section><div class="zpay-rules" role="region" aria-label="Host earning rules">${sections.map(([title,items],index)=>`<section><h3>${index+1}. ${esc(title)}</h3>${list(items)}</section>`).join('<hr>')}</div>`;
 }
 function diamondRewardView(wallet){
  const reward=wallet?.hostReward;if(!wallet?.hostEarningsPolicy?.enabled||!reward)return '';
- const hours=value=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(value/60),diamonds=new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(reward.pendingDiamonds);
+ const hours=value=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(value/60),diamonds=new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(reward.pendingDiamonds),period=diamondPeriodRules(wallet);
  const ends=new Date(new Date(reward.periodEnd).getTime()-1).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kolkata'});
- return `<section class="zpay-reward" aria-label="Weekly call reward"><h2>Weekly reward progress</h2><p>Week ${reward.weekNumber} of 4 · ${hours(reward.thisWeekMinutes)} of ${hours(reward.thisWeekTargetMinutes)} hours this week</p><progress max="${Math.max(1,reward.thisWeekTargetMinutes)}" value="${Math.min(reward.thisWeekMinutes,Math.max(1,reward.thisWeekTargetMinutes))}" aria-label="This week's available hours"></progress>${reward.weekNumber>1?`<p>Last week: ${hours(reward.lastWeekMinutes)} hours.</p>`:''}<p>${reward.remainingThisWeekMinutes>0?`${hours(reward.remainingThisWeekMinutes)} more hours to stay on track this week.`:'This week’s target is complete.'}</p><dl><div><dt>Pending call reward</dt><dd>${diamonds} diamonds · ${payoutMoney(reward.pendingPaise)}</dd></div></dl><p>${reward.status==='missed'?'The previous period’s target was missed. Its reward is not withdrawable.':reward.status==='paid'?'Reward credited to your withdrawal balance.':`Reward is checked after all four weeks end, ${esc(ends)} (IST). Pending rewards cannot be withdrawn yet.`}</p></section>`;
+ const progress=typeof reward.progressMessage==='string'&&reward.progressMessage.trim()?esc(reward.progressMessage):reward.remainingThisWeekMinutes>0?`${hours(reward.remainingThisWeekMinutes)} more hours to stay on track this week.`:'This week’s target is complete.';
+ return `<section class="zpay-reward" aria-label="Weekly call reward"><h2>Weekly reward progress</h2><p>Week ${reward.weekNumber} of ${period.weeks} · ${hours(reward.thisWeekMinutes)} of ${hours(reward.thisWeekTargetMinutes)} hours this week</p><progress max="${Math.max(1,reward.thisWeekTargetMinutes)}" value="${Math.min(reward.thisWeekMinutes,Math.max(1,reward.thisWeekTargetMinutes))}" aria-label="${period.basis==='paid_video'?"This week's paid video-call hours":period.basis==='paid_connected'?"This week's billed call hours":"This week's available hours"}"></progress>${reward.weekNumber>1?`<p>Last week: ${hours(reward.lastWeekMinutes)} hours.</p>`:''}<p>${progress}</p><dl><div><dt>Pending call reward</dt><dd>${diamonds} diamonds · ${payoutMoney(reward.pendingPaise)}</dd></div></dl><p>${reward.status==='missed'?'The previous period’s target was missed. Its reward is not withdrawable.':reward.status==='paid'?'Reward credited to your withdrawal balance.':`Reward is checked after the ${period.weeks}-week period ends, ${esc(ends)} (IST). Pending rewards cannot be withdrawn yet.`}</p>${hostRewardRestartView(wallet)}</section>`;
+}
+function diamondAlreadyPaidView(wallet){
+ const units=Number.isSafeInteger(wallet?.alreadyPaidDiamondUnits)&&wallet.alreadyPaidDiamondUnits>=0?wallet.alreadyPaidDiamondUnits:null,cash=Number.isSafeInteger(wallet?.alreadyPaidPaise)&&wallet.alreadyPaidPaise>=0?wallet.alreadyPaidPaise:null;
+ if(units===null&&cash===null)return '';
+ return `<section class="zpay-balance" aria-label="Already paid withdrawals"><span>Already paid</span><strong>${units!==null?`${diamondFormat(units)} diamonds`:payoutMoney(cash)}</strong>${units!==null&&cash!==null?`<p>${payoutMoney(cash)}</p>`:''}</section>`;
 }
 function diamondPayoutEstimate(wallet,amountPaise){
  if(!diamondReady(wallet)||!Number.isSafeInteger(amountPaise)||amountPaise<=0||!Number.isSafeInteger(wallet.earningsPaise)||wallet.earningsPaise<=0||amountPaise>wallet.earningsPaise)return null;
@@ -11079,6 +11187,71 @@ function diamondPayoutEstimate(wallet,amountPaise){
 }
 function diamondPayoutReceipt(payout){return payout?.diamondScale===1000000&&Number.isSafeInteger(payout.diamondUnits)&&payout.diamondUnits>=0?`<p class="zd-payout-diamonds">${diamondFormat(payout.diamondUnits)} diamonds</p>`:''}
 window.ZimiDiamonds={format:diamondFormat,ready:diamondReady,ownWallet:diamondOwnWallet};
+
+/* Restart is a confirmed cancellation of this period's pending bonus only.
+   Durable intent stores only the owner, period, key and reviewed pending amount;
+   it contains no identity documents or payout destination. */
+const HostRewardRestart={owner:'',attempt:null,review:null,busy:false,uncertain:false,error:'',success:'',request:0,sequence:0,storageError:false};
+function hrRestartKey(owner){return `binzo.host.reward-restart.${owner}`}
+function hrRestartOwner(){return isHostWallet()&&S.loggedIn?String(S.user?.id||''):''}
+function hrRestartSync(){
+ const owner=hrRestartOwner(),state=HostRewardRestart;if(state.owner===owner)return;
+ Object.assign(state,{owner,attempt:null,review:null,busy:false,uncertain:false,error:'',success:'',storageError:false,request:0});
+ if(!owner)return;
+ try{
+  const raw=localStorage.getItem(hrRestartKey(owner));if(!raw)return;const saved=JSON.parse(raw);
+  if(saved.owner!==owner||!/^[a-f\d]{24}$/i.test(saved.periodId)||!/^[a-zA-Z0-9_-]{8,100}$/.test(saved.idempotencyKey)||!Number.isSafeInteger(saved.expectedPendingDiamonds)||saved.expectedPendingDiamonds<0)throw Error('Invalid restart intent');
+  state.attempt={owner,periodId:saved.periodId,idempotencyKey:saved.idempotencyKey,expectedPendingDiamonds:saved.expectedPendingDiamonds};state.uncertain=true;
+ }catch{state.storageError=true;state.error='Your previous restart could not be checked. Refresh your reward progress before trying again.'}
+}
+function hrRestartForget(){
+ const state=HostRewardRestart;if(!state.owner)return;
+ localStorage.removeItem(hrRestartKey(state.owner));state.attempt=null;state.review=null;state.uncertain=false;
+}
+function hrRestartDate(value){return new Date(value).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kolkata'})}
+function hrRestartReview(){
+ hrRestartSync();const state=HostRewardRestart,info=diamondOwnWallet()?.hostReward?.restart;
+ if(DEMO||!state.owner||!isApprovedHost()||state.busy||state.attempt||state.storageError||!info?.eligible||!info.periodId)return;
+ state.review={periodId:info.periodId,expectedPendingDiamonds:info.pendingDiamonds,nextPeriodStart:info.nextPeriodStart};state.error='';state.success='';payoutPaint();
+}
+function hrRestartCancel(){if(HostRewardRestart.busy||HostRewardRestart.attempt)return;HostRewardRestart.review=null;payoutPaint()}
+function hrRestartConfirm(){
+ hrRestartSync();const state=HostRewardRestart;if(DEMO||!state.owner||!isApprovedHost()||state.busy||state.storageError||!state.attempt&&!state.review)return;
+ if(!state.attempt){
+  const current=diamondOwnWallet()?.hostReward?.restart,review=state.review;
+  if(!current?.eligible||current.periodId!==review.periodId||current.pendingDiamonds!==review.expectedPendingDiamonds){state.review=null;state.error='Your pending bonus changed. Review your latest progress before restarting.';payoutPaint();return}
+  const attempt={owner:state.owner,periodId:review.periodId,expectedPendingDiamonds:review.expectedPendingDiamonds,idempotencyKey:crypto.randomUUID()};
+  try{localStorage.setItem(hrRestartKey(state.owner),JSON.stringify(attempt))}catch{state.error='Your restart reference could not be saved. Try again before restarting.';payoutPaint();return}
+  state.attempt=attempt;
+ }
+ state.busy=true;state.error='';state.request=++state.sequence;payoutPaint();
+ Native.send('host.reward.restart',{periodId:state.attempt.periodId,idempotencyKey:state.attempt.idempotencyKey,expectedPendingDiamonds:state.attempt.expectedPendingDiamonds,confirmed:true,requestId:state.request});
+}
+function hostRewardRestartView(wallet){
+ hrRestartSync();const state=HostRewardRestart,info=wallet?.hostReward?.restart;if(!state.owner||!isApprovedHost()||!info&&!state.attempt)return '';
+ if(!info?.eligible&&!state.attempt&&!state.review&&!state.error&&!state.success)return '';
+ const hours=value=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(value/60),review=state.review;
+ const explanation=info?.eligible?`You are ${hours(info.behindMinutes)} hours behind the targets for completed weeks. You can restart week 1 next Monday.`:'';
+ const confirmation=review?`<div class="zpay-review" role="region" aria-label="Confirm reward restart"><h3>Restart your reward period?</h3><p>This cancels ${esc(review.expectedPendingDiamonds.toLocaleString('en-IN'))} pending bonus diamonds from this unfinished period. Week 1 starts ${esc(hrRestartDate(review.nextPeriodStart))} (IST).</p><p>Your available diamonds, gifts and existing withdrawals stay yours.</p><button type="button" class="zpay-secondary" onclick="hrRestartCancel()" ${state.busy||state.attempt?'disabled':''}>Keep current period</button><button type="button" class="zpay-primary" onclick="hrRestartConfirm()" ${state.busy?'disabled':''}>${state.busy?'Restarting…':'Confirm reward restart'}</button></div>`:'';
+ const retry=state.attempt&&!state.busy?`<p>Check or complete your earlier restart using the same reference. It will not cancel another period.</p><button type="button" class="zpay-secondary" onclick="hrRestartConfirm()">Retry same restart</button>`:'';
+ return `<section class="zpay-restart" aria-label="Reward restart">${explanation?`<p>${esc(explanation)}</p>`:''}${info?.eligible&&!review&&!state.attempt&&!state.storageError?'<button type="button" class="zpay-secondary" onclick="hrRestartReview()">Restart reward period</button>':''}${confirmation}${retry}${state.error?`<p class="zpay-error" role="alert">${esc(state.error)}</p>`:''}${state.success?`<p role="status">${esc(state.success)}</p>`:''}</section>`;
+}
+Native.on('host.reward.restarted',data=>{
+ hrRestartSync();const state=HostRewardRestart,receipt=data.receipt,attempt=state.attempt;
+ if(!attempt||!state.busy||data.requestId!==state.request||attempt.owner!==hrRestartOwner()||receipt?.periodId!==attempt.periodId||receipt?.idempotencyKey!==attempt.idempotencyKey||receipt?.cancelledPendingDiamonds!==attempt.expectedPendingDiamonds)return;
+ state.busy=false;state.error='';state.success=`Reward period restarted. Week 1 starts ${hrRestartDate(receipt.nextPeriodStart)} (IST).`;
+ try{hrRestartForget()}catch{state.attempt=null;state.review=null;state.uncertain=false}
+ Native.send('wallet.load',{});payoutPaint();
+});
+Native.on('host.reward.error',data=>{
+ hrRestartSync();const state=HostRewardRestart,attempt=state.attempt;
+ if(!attempt||!state.busy||data.requestId!==state.request||data.periodId!==attempt.periodId||data.idempotencyKey!==attempt.idempotencyKey)return;
+ state.busy=false;state.error=data.message||'Your restart could not be confirmed.';
+ const definite=!state.uncertain&&[400,401,403,404,409,422].includes(data.status);
+ if(definite){try{hrRestartForget()}catch{state.storageError=true}}else state.uncertain=true;
+ Native.send('wallet.load',{});payoutPaint();
+});
+Native.on('session',()=>{hrRestartSync();if(!isApprovedHost()){HostRewardRestart.review=null;HostRewardRestart.busy=false}});
 
 /* Pull down from the top of a screen to reload it; there are no refresh buttons.
    Screens register how they reload and when a reload is already running. The
@@ -12085,7 +12258,7 @@ function zagView(){
   const data=ZAgency.data,agency=data?.agency,verified=ZAgency.verifiedCode===ZAgency.code?ZAgency.verified:null,busy=!!ZAgency.busy;
   if(agency){
     const active=isApprovedHost(),review=data.nextStep==='review'||data.hostStatus==='pending',suspended=data.hostStatus==='suspended';
-    return `<section class="za-page" aria-label="Your host agency">${ZAgency.error?`<div class="za-message" role="alert"><p>${esc(ZAgency.error)}</p><button type="button" class="za-secondary" onclick="zagLoad()">Try again</button></div>`:''}${zagCard(agency)}${data.joiningCode?`<p class="za-note za-joined-code">Your used joining code: <strong>${esc(data.joiningCode)}</strong></p>`:''}<div class="za-intro"><h2>${active?'Your host account is active':suspended?'Hosting is suspended':review?'Your application is under review':'Your agency is connected'}</h2><p>${active?'Your agency supports your host journey. Manage your availability from Home.':suspended?'Contact the BinzoLive team about your host account.':review?'The BinzoLive team will review your details and contact you for a verification video call. Hosting starts after approval.':'Complete your creator application next. The team verifies your identity and eligibility before approving hosting.'}</p></div>${zagRequirements(data)}${agency.status==='SUSPENDED'?'<p class="za-note">This agency is suspended for new recruitment. Your current host approval is managed separately by the BinzoLive team.</p>':''}${!active&&!suspended?`<button type="button" class="za-primary" onclick="go('kyc')">${review?'View application status':'Continue host application'}</button>`:active?'<button type="button" class="za-primary" onclick="go(\'home\')">Go to Home</button>':''}<p class="za-note">Your account belongs to one agency. Contact the BinzoLive team if a change is needed. Agency commission comes from the platform share and does not reduce your host earnings.</p></section>`;
+    return `<section class="za-page" aria-label="Your host agency">${ZAgency.error?`<div class="za-message" role="alert"><p>${esc(ZAgency.error)}</p><button type="button" class="za-secondary" onclick="zagLoad()">Try again</button></div>`:''}${zagCard(agency)}${data.joiningCode?`<p class="za-note za-joined-code">Your used joining code: <strong>${esc(data.joiningCode)}</strong></p>`:''}<div class="za-intro"><h2>${active?'Your host account is active':suspended?'Hosting is suspended':review?'Your application is under review':'Your agency is connected'}</h2><p>${active?'Your agency supports your host journey. Manage your availability from Home.':suspended?'Contact the BinzoLive team about your host account.':review?'The BinzoLive team will review your details and contact you for a verification video call. Hosting starts after approval.':'Complete your creator application next. The team verifies your identity and eligibility before approving hosting.'}</p></div>${zagRequirements(data)}${agency.status==='SUSPENDED'?'<p class="za-note">This agency is suspended for new recruitment. Your current host approval is managed separately by the BinzoLive team.</p>':''}${!active&&!suspended?`<button type="button" class="za-primary" onclick="go('kyc')">${review?'View application status':'Continue host application'}</button>`:active?'<button type="button" class="za-primary" onclick="go(\'home\')">Go to Home</button>':''}<p class="za-note">Your account belongs to one agency. Contact the BinzoLive team if a change is needed.</p></section>`;
   }
   return `<section class="za-page" aria-labelledby="za-title"><div class="za-intro"><span class="za-mark">${zi('people',28)}</span><h2 id="za-title">Start your host journey</h2><p>Join through a BinzoLive agency. Enter the one-time host joining code your agency issued just for you.</p></div><ol class="za-steps"><li><b>1</b><span>Connect your agency</span></li><li><b>2</b><span>Complete your application</span></li><li><b>3</b><span>Get verified and approved</span></li></ol>${!verified?zagRequirements(data):''}<form class="za-form" onsubmit="event.preventDefault();zagVerify()" novalidate><label for="za-code">Host joining code</label><input id="za-code" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="BINZO7K9Q2M8X4R" value="${esc(ZAgency.code)}" oninput="zagCode(this.value)" aria-describedby="za-code-note za-error" ${busy?'disabled':''}><p id="za-code-note" class="za-note">Each host needs a unique one-time code. The shorter agency ID and a friend's referral code cannot be used to join.</p><p id="za-error" class="za-error" role="alert">${esc(ZAgency.error)}</p><button type="submit" class="za-primary" ${busy?'disabled':''} ${ZAgency.busy==='verify'?'aria-busy="true"':''}>${ZAgency.busy==='verify'?'Verifying…':'Verify joining code'}</button></form>${verified?.agency?`<div id="za-confirm" class="za-confirm">${zagCard(verified.agency)}${zagRequirements(verified)}<p>Confirm this is your agency. Verification does not use your code; it is claimed when you join. Only the BinzoLive team can change your agency later.</p><button type="button" class="za-primary" onclick="zagJoin()" ${busy||!verified.eligible||verified.codeType!=='host-invite'||verified.canJoin!==true||verified.joiningCode!==ZAgency.verifiedCode?'disabled':''} ${ZAgency.busy==='join'?'aria-busy="true"':''}>${ZAgency.busy==='join'?'Joining agency…':'Join agency & continue'}</button></div>`:''}<p class="za-note">Hosts must be 18 or older and complete identity and platform checks. Joining an agency does not activate hosting until your application is approved.</p><p class="za-note">Your agency issues a separate joining code for each host. The agency ID identifies the agency; it is not a joining code.</p></section>`;
 }
@@ -18186,7 +18359,7 @@ document.addEventListener('aurora:navigate', ongoingPaint);
    while a call is in progress (decline or switch, never a busy signal), and the entry fee
    that unlocks once a call lasts the hold. The call screen itself is zrCall in live-room.js. */
 /* preview: '' until the host asks to check their camera, then 'starting', 'ready' or 'failed'. */
-const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false };
+const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false, rateDraft:null, rateBusy:false, rateError:'', rateRequest:0, rateSequence:0 };
 
 function hcIdentityAvatar(person, size = 104) {
   const name = String(person?.n || person?.name || 'Host').trim();
@@ -18234,6 +18407,7 @@ function hcRateCard() {
   return `<div class="hc-card">
     <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)} member coins/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins to next tier</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Member call price</small>'}</button>
     ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Member call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)} coins/h</span>`).join('')}</div>` : ''}
+    ${st.configurableRate?`<form class="hc-rate-picker" onsubmit="event.preventDefault();hcSaveRate()"><label for="hc-call-rate">Member call price (coins/min)</label><div><input id="hc-call-rate" type="number" inputmode="numeric" min="${st.minRate}" max="${st.maxRate}" step="1" value="${esc(HostCalls.rateDraft===null?String(st.selectedRate):HostCalls.rateDraft)}" oninput="hcDraftRate(this.value)" ${HostCalls.rateBusy?'disabled':''}><button type="submit" ${HostCalls.rateBusy||DEMO?'disabled':''}>${HostCalls.rateBusy?'Saving...':'Save price'}</button></div><p>Choose ${n(st.minRate)}–${n(st.maxRate)} member coins per minute. This applies to new calls. Confirmed earnings appear as Diamonds in Wallet.</p>${HostCalls.rateError?`<p class="hc-rate-error" role="alert">${esc(HostCalls.rateError)}</p>`:''}</form>`:''}
     ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `Member pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins unlocks a ${n(next.rate)}-coin/min member price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
   </div>`;
 }
@@ -18280,6 +18454,13 @@ function hcLoadStatus() {
   if (HostCalls.loading || !isApprovedHost()) return;
   HostCalls.loading = true; HostCalls.error = '';
   Native.send('host.callStatus.load', {}); r();
+}
+function hcDraftRate(value){if(HostCalls.rateBusy)return;HostCalls.rateDraft=String(value);HostCalls.rateError=''}
+function hcSaveRate(){
+ const h=HostCalls,st=h.status;if(DEMO||S.v!=='setup'||h.rateBusy||!isApprovedHost()||!st?.configurableRate)return;
+ const raw=h.rateDraft===null?String(st.selectedRate):h.rateDraft,value=/^\d+$/.test(raw)?Number(raw):NaN;
+ if(!Number.isSafeInteger(value)||value<st.minRate||value>st.maxRate){h.rateError=`Choose a whole number from ${n(st.minRate)} to ${n(st.maxRate)}.`;r();return}
+ h.rateBusy=true;h.rateError='';h.rateRequest=++h.rateSequence;Native.send('host.callRate.save',{rateCoinsPerMinute:value,requestId:h.rateRequest});r();
 }
 function hcStartPreview() {
   if (!S.cam || S.v !== 'setup' || HostCalls.preview === 'starting') return;
@@ -18368,10 +18549,14 @@ document.addEventListener('aurora:navigate', () => {
   hcLoadStatus();
 });
 Native.on('host.callStatus', d => {
+  if(HostCalls.rateBusy)return;
   HostCalls.loading = false; HostCalls.error = ''; HostCalls.status = d; S.callVis = d.visibleDuringCalls !== false;
   if (S.v !== 'hcall') { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
   if (['setup', 'waiting'].includes(S.v)) r();
 });
+Native.on('host.access',d=>{if(!d.checking&&!d.approved){const h=HostCalls;h.loading=false;h.rateBusy=false;h.rateDraft=null;h.rateError='';h.rateRequest=++h.rateSequence}});
+Native.on('host.callRate.saved',d=>{const h=HostCalls;if(!h.rateBusy||d.requestId!==h.rateRequest||!isApprovedHost())return;h.rateBusy=false;h.rateDraft=null;h.rateError='';h.status=d.status;if(S.v==='setup')r()});
+Native.on('host.callRate.error',d=>{const h=HostCalls;if(!h.rateBusy||d.requestId!==h.rateRequest)return;h.rateBusy=false;h.rateError=d.message||'Your call price could not be saved. Refresh and try again.';if(S.v==='setup')r()});
 Native.on('presence.duringCalls.saved', d => {
   HostCalls.visBusy = false; S.callVis = !!d.on;
   if (HostCalls.status) HostCalls.status.visibleDuringCalls = !!d.on;
@@ -18389,7 +18574,7 @@ Native.on('operation.error', d => {
     if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
   }
 });
-['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false })));
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false, rateDraft:null,rateBusy:false,rateError:'',rateRequest:++HostCalls.rateSequence })));
 
 if (DEMO) HostCalls.status = { rate: MY_RATE, tier: 1, earnedCoins: 0, next: null, tiers: [], entryFeeCoins: MY_FEE, entryFeeHoldSeconds: FEE_HOLD, earlyEnds: { today: 0, limit: EARLY_LIMIT, penaltyCoins: MY_FEE }, visibleDuringCalls: true };
 
@@ -19768,7 +19953,7 @@ function zpSimpleRow(icon,title,action){return `<button type="button" class="zp-
 function zpMenuRows(kind){
   const rows={
     account:()=>zpRow('user','Edit profile',"zpGo('editprofile')")+(isApprovedHost()?zpRow('stats','Statistics',"ZimiHostStatistics.open()"):'')+zpRow('shield','Phone & Email Security',"zpOpen('security')")+zpRow('qr','Account ID & QR code',"zpOpen('identity')")+zpRow('logout','Deactivate account',"zpOpen('deactivate')"),
-    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+(isHostWallet()?zpRow('cash','Withdrawal history',"zpGo('payout-history')"):''),
+    payments:()=>(isApprovedHost()?zpRow('cash','Withdraw',"zpGo('payout')"):'')+(isHostWallet()?zpRow('shield','Payout verification',"zpClose();payoutKycOpen('settings')"):'')+zpRow('wallet','Wallet & Activity',"zpGo('wallet')")+zpRow('gift','Gift History',"zpOpen('gifts')")+(isHostWallet()?zpRow('cash','Withdrawal history',"zpGo('payout-history')"):''),
     'privacy-menu':()=>zpRow('lock','Privacy & Blocked Users',"zpOpen('privacy')")+zpRow('shield','Community Guidelines',"zpOpen('guidelines')"),
     general:()=>zpRow('language','Language & Region',"zpOpen('language')")+zpRow('set','Appearance & Theme',"ztOpen()"),
     creator:()=>isApprovedHost()?zpRow('vid','1:1 Call Studio',"zpGo('setup')")+zpRow('people','My agency',"zpClose();ZimiAgency.open('settings')")+zpRow('badge','Creator Verification',"zpGo('kyc')"):'<p>Creator tools are available after admin approval.</p>'
@@ -20961,8 +21146,8 @@ function zuSkeleton(kind='profile'){
 function zuStatus(p){
   if(Zu.loading||Zu.error)return '';
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&p.stream)return `<button class="zu-presence is-live" onclick="zuWatch()"><i></i> Live now ${hi('arrow',13)}</button>`;
-  const callable=zuApproved(p)&&zuMember();
-  return `<span class="zu-presence ${callable||p.online?'is-online':''}"><i></i>${callable?'Available for a call':p.online?'Online':'Currently offline'}</span>`;
+  const online=isHostPayload(p)?hostShownOnline(p):p.online===true;
+  return `<span class="zu-presence ${online?'is-online':''}"><i></i>${online?'Online':'Currently offline'}</span>`;
 }
 function zuAvatar(p){
   const source=imageSrc(p?.avatarUrl);
@@ -21222,7 +21407,8 @@ Native.on('post.delete.error',d=>{
 });
 Native.on('post.saved',()=>{if(zuActive()&&zuSelf()&&Zu.profile)zuLoadPosts()});
 
-/* Profiles follow the same rule as cards: a host is never shown offline (see hostFrom). */
+/* Availability is server-owned. Permission to place a manual call does not
+   make an offline host appear online. */
 function zuShownPresence(p){if(p&&isHostPayload(p))Object.assign(p,{online:hostShownOnline(p),availableForCall:hostCallable(p)});return p}
 Native.on('data.publicProfile',d=>{
   if(!zuMatches(d))return;
@@ -21254,7 +21440,7 @@ Native.on('data.home',d=>{
   if(!peer)return;
   // Live discovery events may update availability without replacing profile
   // counts, a pending relationship write, or the current gallery selection.
-  for(const key of ['online','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
+  for(const key of ['online','onlineForCalls','availableForCall','verified','ratePerMin','stream'])if(Object.hasOwn(peer,key))Zu.profile[key]=peer[key];
   zuShownPresence(Zu.profile);zuPaint();
 });
 Native.on('follow.saved',zuFollowSaved);
@@ -21570,50 +21756,155 @@ for(const type of ['session.none','session.expired'])Native.on(type,()=>{ZuFeed.
 
 /* Server-confirmed diamonds and their locked INR value are reserved together. */
 const PayoutUI={accountId:'',sequence:0,loadRequest:0,loadSubmitRequest:0,submitRequest:0,recoveryRequired:false,wallet:null,walletRequested:false,requested:false,loading:false,loadError:'',items:[],total:0,page:1,limit:20,amount:'',address:'',review:null,attempt:null,busy:false,error:'',success:null};
+function payoutMoneyShort(paise){const value=Number(paise||0);return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:value%100?2:0,maximumFractionDigits:2}).format(value/100)}
 function payoutMoney(paise){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(paise||0)/100)}
 function payoutPaise(value){const text=String(value).trim();if(!/^\d+(?:\.\d{1,2})?$/.test(text))return null;const [whole,fraction='']=text.split('.'),amount=Number(whole)*100+Number(fraction.padEnd(2,'0'));return Number.isSafeInteger(amount)&&amount>0&&amount<=100000000?amount:null}
 function payoutActive(){return ['payout','payout-history'].includes(S.v)}
-function payoutPaint(){if(payoutActive())r()}
+function payoutPaint(){if(payoutActive()||S.v==='payout-rules')r()}
 function payoutOwnAccount(){return isHostWallet()&&!!S.loggedIn&&!!PayoutUI.accountId&&PayoutUI.accountId===S.user?.id}
 function payoutWalletReady(){const w=PayoutUI.wallet;return !DEMO&&!contentPending('wallet')&&!ContentLoading.wallet.error&&!!w&&Number.isSafeInteger(w.earningsPaise)&&Number.isSafeInteger(w.minimumWithdrawalPaise)&&typeof w.withdrawalsEnabled==='boolean'}
 function payoutWalletRefresh(){if(DEMO||PayoutUI.busy)return;PayoutUI.walletRequested=true;contentStart('wallet');payoutPaint();Native.send('wallet.load')}
 function payoutLoad(page=1){if(DEMO||!payoutOwnAccount()||PayoutUI.loading)return;PayoutUI.requested=true;PayoutUI.loading=true;PayoutUI.loadError='';PayoutUI.loadRequest=++PayoutUI.sequence;PayoutUI.loadSubmitRequest=PayoutUI.submitRequest;PayoutUI.page=Math.max(1,page);payoutPaint();Native.send('payout.load',{page:PayoutUI.page,requestId:PayoutUI.loadRequest})}
 ZimiPullRefresh.register('payout',{refresh:()=>{payoutWalletRefresh();payoutLoad()},busy:()=>PayoutUI.busy||PayoutUI.loading||contentPending('wallet')});
 ZimiPullRefresh.register('payout-history',{refresh:()=>payoutLoad(),busy:()=>PayoutUI.loading});
-function payoutDraft(key,value){if(PayoutUI.busy||PayoutUI.recoveryRequired||PayoutUI.attempt?.uncertain)return;if(PayoutUI[key]!==value)PayoutUI.attempt=null;PayoutUI[key]=value;PayoutUI.review=null;PayoutUI.error=''}
-function payoutValidation(amount,address){if(!isApprovedHost())return 'Creator approval is required to withdraw earnings.';if(!payoutWalletReady())return 'Refresh your earnings before requesting a withdrawal.';if(!PayoutUI.wallet.withdrawalsEnabled)return 'Withdrawals are currently paused.';if(amount===null)return 'Enter a valid INR amount with no more than two decimal places.';if(amount<PayoutUI.wallet.minimumWithdrawalPaise)return 'The minimum withdrawal is '+payoutMoney(PayoutUI.wallet.minimumWithdrawalPaise)+'.';if(amount>PayoutUI.wallet.earningsPaise)return 'This amount is more than your available earnings.';if(PayoutUI.wallet.hostEarningsPolicy?.wholeBalanceWithdrawal&&amount!==PayoutUI.wallet.earningsPaise)return 'Your whole available diamond balance must be withdrawn. Refresh earnings and review again.';if(address.length<3||address.length>200)return 'Enter your payout address, such as your UPI ID (3–200 characters).';return ''}
-function payoutReview(){if(DEMO||PayoutUI.busy||PayoutUI.recoveryRequired||PayoutUI.attempt?.uncertain)return;const amountPaise=PayoutUI.wallet?.hostEarningsPolicy?.wholeBalanceWithdrawal?PayoutUI.wallet.earningsPaise:payoutPaise(PayoutUI.amount),payoutAddress=PayoutUI.address.trim();PayoutUI.error=payoutValidation(amountPaise,payoutAddress);if(!PayoutUI.error)PayoutUI.review={amountPaise,payoutAddress};payoutPaint()}
-function payoutEdit(){if(PayoutUI.busy||PayoutUI.attempt?.uncertain)return;PayoutUI.review=null;PayoutUI.error='';payoutPaint()}
-function payoutConfirm(){if(DEMO||PayoutUI.busy||PayoutUI.recoveryRequired||!payoutOwnAccount()||!PayoutUI.review)return;const review=PayoutUI.review,retry=!!PayoutUI.attempt?.uncertain;if(!isApprovedHost()&&!retry)return;if(!retry){PayoutUI.error=payoutValidation(review.amountPaise,review.payoutAddress);if(PayoutUI.error){PayoutUI.review=null;payoutPaint();return}if(!PayoutUI.attempt||PayoutUI.attempt.amountPaise!==review.amountPaise||PayoutUI.attempt.payoutAddress!==review.payoutAddress)PayoutUI.attempt={...review,idempotencyKey:crypto.randomUUID(),uncertain:false}}PayoutUI.busy=true;PayoutUI.error='';PayoutUI.submitRequest=++PayoutUI.sequence;payoutPaint();Native.send('payout.request',{amountPaise:PayoutUI.attempt.amountPaise,payoutAddress:PayoutUI.attempt.payoutAddress,idempotencyKey:PayoutUI.attempt.idempotencyKey,requestId:PayoutUI.submitRequest})}
-function payoutNew(){if(PayoutUI.busy||PayoutUI.attempt?.uncertain)return;PayoutUI.success=null;PayoutUI.review=null;PayoutUI.attempt=null;PayoutUI.amount='';PayoutUI.error='';payoutPaint()}
-function payoutStatus(status){return {pending:'Pending review',approved:'Approved',paid:'Paid',rejected:'Rejected'}[status]||'Pending review'}
-function payoutHistory(){const p=PayoutUI;if(DEMO)return '<p class="zpay-muted">Withdrawal history is available in the signed-in app.</p>';if(p.loading||!p.requested)return contentSkeleton('rows','Loading withdrawal history',3);if(p.loadError)return `<div class="zpay-error" role="alert">${esc(p.loadError)}<button type="button" onclick="payoutLoad(${p.page})">Retry history</button></div>`;if(!p.items.length)return `<div class="zpay-empty">${hi('wallet',27)}<h3>No withdrawal requests yet</h3><p>Your requests and review updates will appear here.</p></div>`;return `<ol class="zpay-history">${p.items.map(item=>`<li><div class="zpay-history-heading"><strong>${payoutMoney(item.amountPaise)}</strong><span class="zpay-status" data-status="${esc(item.status)}">${payoutStatus(item.status)}</span></div>${diamondPayoutReceipt(item)}<p>${esc(item.payoutAddress)}</p><time>${esc(new Date(item.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}))}</time>${item.reason?`<p class="zpay-review-note">${esc(item.reason)}</p>`:''}${item.payoutReference?`<p>Payment reference: ${esc(item.payoutReference)}</p>`:''}</li>`).join('')}</ol>${p.total>p.limit?`<div class="zpay-pagination"><button type="button" onclick="payoutLoad(${p.page-1})" ${p.page<=1?'disabled':''}>Previous</button><span>Page ${p.page} of ${Math.max(1,Math.ceil(p.total/p.limit))}</span><button type="button" onclick="payoutLoad(${p.page+1})" ${p.page*p.limit>=p.total?'disabled':''}>Next</button></div>`:''}`}
+function payoutDraft(key,value){if(window.ZimiPayoutVerification?.busy()||PayoutUI.busy||PayoutUI.recoveryRequired||PayoutUI.attempt?.uncertain)return;if(PayoutUI[key]!==value){PayoutUI.attempt=null;window.ZimiPayoutVerification?.clearQuote()}PayoutUI[key]=value;PayoutUI.review=null;PayoutUI.error=''}
+function payoutValidation(amount,address){if(window.ZimiPayoutVerification?.needed()&&!window.ZimiPayoutVerification.verified())return 'Verified payout details are required before withdrawal.';if(!isApprovedHost())return 'Creator approval is required to withdraw earnings.';if(!payoutWalletReady())return 'Refresh your earnings before requesting a withdrawal.';if(!PayoutUI.wallet.withdrawalsEnabled)return 'Withdrawals are currently paused.';if(amount===null)return 'Enter a valid INR amount with no more than two decimal places.';if(amount<PayoutUI.wallet.minimumWithdrawalPaise)return 'The minimum withdrawal is '+payoutMoney(PayoutUI.wallet.minimumWithdrawalPaise)+'.';if(amount>PayoutUI.wallet.earningsPaise)return 'This amount is more than your available earnings.';if(PayoutUI.wallet.hostEarningsPolicy?.wholeBalanceWithdrawal&&amount!==PayoutUI.wallet.earningsPaise)return 'Your whole available diamond balance must be withdrawn. Refresh earnings and review again.';if(address.length<3||address.length>200)return 'Enter your payout address, such as your UPI ID (3–200 characters).';return ''}
+function payoutReview(){if(window.ZimiPayoutVerification?.needed())return window.ZimiPayoutVerification.review();if(DEMO||PayoutUI.busy||PayoutUI.recoveryRequired||PayoutUI.attempt?.uncertain)return;const amountPaise=PayoutUI.wallet?.hostEarningsPolicy?.wholeBalanceWithdrawal?PayoutUI.wallet.earningsPaise:payoutPaise(PayoutUI.amount),payoutAddress=PayoutUI.address.trim();PayoutUI.error=payoutValidation(amountPaise,payoutAddress);if(!PayoutUI.error)PayoutUI.review={amountPaise,payoutAddress};payoutPaint()}
+function payoutEdit(){if(PayoutUI.busy||PayoutUI.attempt?.uncertain)return;window.ZimiPayoutVerification?.clearQuote();PayoutUI.review=null;PayoutUI.error='';payoutPaint()}
+function payoutProofSame(a,b){return !a&&!b||!!a&&!!b&&a.settingsVersionId===b.settingsVersionId&&a.kycId===b.kycId&&a.netAmountPaise===b.netAmountPaise&&a.diamondUnits===b.diamondUnits}
+function payoutConfirm(){if(DEMO||PayoutUI.busy||PayoutUI.recoveryRequired||!payoutOwnAccount()||!PayoutUI.review)return;const review=PayoutUI.review,retry=!!PayoutUI.attempt?.uncertain;if(!isApprovedHost()&&!retry)return;if(!retry){PayoutUI.error=payoutValidation(review.amountPaise,review.payoutAddress);if(PayoutUI.error){PayoutUI.review=null;payoutPaint();return}if(!PayoutUI.attempt||PayoutUI.attempt.amountPaise!==review.amountPaise||PayoutUI.attempt.payoutAddress!==review.payoutAddress||!payoutProofSame(PayoutUI.attempt.quote,review.quote))PayoutUI.attempt={...review,idempotencyKey:crypto.randomUUID(),uncertain:false}}PayoutUI.busy=true;PayoutUI.error='';PayoutUI.submitRequest=++PayoutUI.sequence;payoutPaint();Native.send('payout.request',{amountPaise:PayoutUI.attempt.amountPaise,payoutAddress:PayoutUI.attempt.payoutAddress,idempotencyKey:PayoutUI.attempt.idempotencyKey,requestId:PayoutUI.submitRequest,...(PayoutUI.attempt.quote?{quote:PayoutUI.attempt.quote}:{})})}
+function payoutNew(){if(PayoutUI.busy||PayoutUI.attempt?.uncertain)return;window.ZimiPayoutVerification?.clearQuote();PayoutUI.success=null;PayoutUI.review=null;PayoutUI.attempt=null;PayoutUI.amount='';PayoutUI.error='';payoutPaint()}
+function payoutStatus(status){return {pending:'Pending review',approved:'Approved',paid:'Paid',rejected:'Rejected',held:'On hold'}[status]||'Pending review'}
+function payoutTaxReceipt(item){return Number.isSafeInteger(item?.grossAmountPaise)&&Number.isSafeInteger(item?.tdsPaise)&&Number.isSafeInteger(item?.netAmountPaise)?`<p class="zpay-tax-receipt">Gross ${payoutMoney(item.grossAmountPaise)} · TDS ${payoutMoney(item.tdsPaise)} · Net ${payoutMoney(item.netAmountPaise)}</p>`:''}
+function payoutHistory(){const p=PayoutUI;if(DEMO)return '<p class="zpay-muted">Withdrawal history is available in the signed-in app.</p>';if(p.loading||!p.requested)return contentSkeleton('rows','Loading withdrawal history',3);if(p.loadError)return `<div class="zpay-error" role="alert">${esc(p.loadError)}<button type="button" onclick="payoutLoad(${p.page})">Retry history</button></div>`;if(!p.items.length)return `<div class="zpay-empty">${hi('wallet',27)}<h3>No withdrawal requests yet</h3><p>Your requests and review updates will appear here.</p></div>`;return `<ol class="zpay-history">${p.items.map(item=>`<li><div class="zpay-history-heading"><strong>${payoutMoney(item.amountPaise)}</strong><span class="zpay-status" data-status="${esc(item.status)}">${payoutStatus(item.status)}</span></div>${diamondPayoutReceipt(item)}${payoutTaxReceipt(item)}<p>${esc(item.payoutAddress)}</p><time>${esc(new Date(item.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}))}</time>${item.reason?`<p class="zpay-review-note">${esc(item.reason)}</p>`:''}${item.payoutReference?`<p>Payment reference: ${esc(item.payoutReference)}</p>`:''}</li>`).join('')}</ol>${p.total>p.limit?`<div class="zpay-pagination"><button type="button" onclick="payoutLoad(${p.page-1})" ${p.page<=1?'disabled':''}>Previous</button><span>Page ${p.page} of ${Math.max(1,Math.ceil(p.total/p.limit))}</span><button type="button" onclick="payoutLoad(${p.page+1})" ${p.page*p.limit>=p.total?'disabled':''}>Next</button></div>`:''}`}
 function payoutScreen(){
  if(!isHostWallet())return '<div class="zpay-page"><p>Withdrawals are available to host accounts.</p></div>';
  const p=PayoutUI,historyOnly=S.v==='payout-history'||!isApprovedHost();if(!DEMO&&!payoutOwnAccount())return '<div class="zpay-page"><p>Sign in to view your withdrawals.</p></div>';
- const ready=payoutWalletReady(),locked=p.busy||p.recoveryRequired||!!p.attempt?.uncertain,w=p.wallet,whole=!!w?.hostEarningsPolicy?.wholeBalanceWithdrawal;
- const wallet=DEMO?'<p class="zpay-muted">Preview only. Withdrawals are available in the signed-in app.</p>':contentPending('wallet')||(!w&&!ContentLoading.wallet.error)?contentSkeleton('rows','Loading available earnings',1):ContentLoading.wallet.error||!ready?`<div class="zpay-error" role="alert">${esc(ContentLoading.wallet.error||'Your earnings could not be loaded.')}<button type="button" onclick="payoutWalletRefresh()" ${p.busy?'disabled':''}>Refresh earnings</button></div>`:`${diamondBalanceView(w,true)}<div class="zpay-balance"><span>Available earnings</span><strong>${payoutMoney(w.earningsPaise)}</strong><p>Minimum withdrawal ${payoutMoney(w.minimumWithdrawalPaise)}</p>${whole?`<p class="zpay-withdrawal-message" role="status">${esc(diamondWithdrawalMessage(w))}</p>`:''}${w.reservedPaise>0?`<small>${payoutMoney(w.reservedPaise)} reserved for withdrawals</small>`:''}</div>`;
- const success=p.success?`<section class="zpay-success" role="status">${hi('check',27)}<h2>Withdrawal requested</h2><strong>${payoutMoney(p.success.amountPaise)}</strong>${diamondPayoutReceipt(p.success)}<p>Your request for ${esc(p.success.payoutAddress)} is saved. Follow its review and payment status below.</p><span class="zpay-status">${payoutStatus(p.success.status)}</span>${!historyOnly?'<button type="button" class="zpay-secondary" onclick="payoutNew()">Make another request</button>':''}</section>`:'';
- const estimated=p.review?diamondPayoutEstimate(w,p.review.amountPaise):null;
- const review=p.review&&(!historyOnly||p.attempt?.uncertain)?`<section class="zpay-review" aria-label="Review withdrawal"><h2>Review your withdrawal</h2><dl><div><dt>Amount (INR)</dt><dd>${payoutMoney(p.review.amountPaise)}</dd></div>${estimated!==null?`<div><dt>Estimated diamonds to reserve</dt><dd>${diamondFormat(estimated)}</dd></div>`:''}<div><dt>Payout address</dt><dd>${esc(p.review.payoutAddress)}</dd></div></dl><p>The amount is reserved from earnings when a request is accepted for review. Payment is confirmed separately.</p>${p.attempt?.uncertain?'<p class="zpay-recovery">The previous request could not be confirmed. Retry this same request to check or complete it without creating a duplicate.</p>':''}<button type="button" class="zpay-primary" onclick="payoutConfirm()" ${p.busy?'disabled':''}>${p.busy?'Requesting withdrawal…':p.attempt?.uncertain?'Retry same withdrawal':'Confirm withdrawal request'}</button><button type="button" class="zpay-secondary" onclick="payoutEdit()" ${locked?'disabled':''}>Edit details</button></section>`:'';
- const form=!historyOnly&&!p.success&&!p.review?`<form class="zpay-form" onsubmit="event.preventDefault();payoutReview()"><label for="zpay-amount">${whole?'Whole available balance (INR)':'Amount (INR)'}</label><input id="zpay-amount" inputmode="decimal" autocomplete="off" placeholder="500.00" value="${esc(whole&&ready?(w.earningsPaise/100).toFixed(2):p.amount)}" oninput="payoutDraft('amount',this.value)" ${whole?'readonly':''} ${locked||DEMO?'disabled':''}><label for="zpay-address">Payout address / UPI ID</label><input id="zpay-address" autocomplete="off" maxlength="200" placeholder="name@upi" value="${esc(p.address)}" oninput="payoutDraft('address',this.value)" ${locked||DEMO?'disabled':''}><p>Check your payout address carefully before confirming.</p><button type="submit" class="zpay-primary" ${!ready||!w?.withdrawalsEnabled||locked||(whole&&w.earningsPaise<w.minimumWithdrawalPaise)?'disabled':''}>Review withdrawal</button></form>`:'';
- return `<div class="zpay-page">${success}<section class="zpay-wallet" aria-label="Earnings available for withdrawal">${wallet}</section>${ready&&!w.withdrawalsEnabled?'<p class="zpay-paused" role="status">Withdrawals are currently paused. You can still view your request history.</p>':''}${form}${review}${p.error?`<p class="zpay-error" role="alert">${esc(p.error)}</p>`:''}${ready&&!historyOnly?diamondRewardView(w)+diamondHostRules(w):''}<section class="zpay-history-section" aria-label="Withdrawal history"><div class="zpay-section-heading"><h2>Withdrawal history</h2></div>${payoutHistory()}</section></div>`;
+ const ready=payoutWalletReady(),locked=p.busy||p.recoveryRequired||!!p.attempt?.uncertain||!!window.ZimiPayoutVerification?.busy(),w=p.wallet,whole=!!w?.hostEarningsPolicy?.wholeBalanceWithdrawal;
+ const kyc=window.ZimiPayoutVerification,kycNeeded=!!kyc?.needed(),kycVerified=!kycNeeded||!!kyc.verified();
+ const reserved=ready?w.reservedDiamondUnits>0&&diamondReady(w)?`${diamondFormat(w.reservedDiamondUnits)} diamonds reserved for withdrawals`:w.reservedPaise>0?`${payoutMoney(w.reservedPaise)} reserved for withdrawals`:'':'';
+ const wallet=DEMO?'<p class="zpay-muted">Preview only. Withdrawals are available in the signed-in app.</p>':contentPending('wallet')||(!w&&!ContentLoading.wallet.error)?contentSkeleton('rows','Loading available earnings',1):ContentLoading.wallet.error||!ready?`<div class="zpay-error" role="alert">${esc(ContentLoading.wallet.error||'Your earnings could not be loaded.')}<button type="button" onclick="payoutWalletRefresh()" ${p.busy?'disabled':''}>Refresh earnings</button></div>`:`${diamondWithdrawCard(w)}${reserved?`<p class="zpay-card-note">${reserved}</p>`:''}${diamondAlreadyPaidView(w)}`;
+ const success=p.success?`<section class="zpay-success" role="status">${hi('check',27)}<h2>Withdrawal requested</h2><strong>${payoutMoney(p.success.amountPaise)}</strong>${diamondPayoutReceipt(p.success)}${payoutTaxReceipt(p.success)}<p>Your request for ${esc(p.success.payoutAddress)} is saved. Follow its review and payment status in Withdrawal history.</p><span class="zpay-status">${payoutStatus(p.success.status)}</span>${!historyOnly?'<button type="button" class="zpay-primary" onclick="go(\'payout-history\')">View withdrawal history</button><button type="button" class="zpay-secondary" onclick="payoutNew()">Make another request</button>':''}</section>`:'';
+ const estimated=p.review&&!p.review.quote?diamondPayoutEstimate(w,p.review.amountPaise):null;
+ const review=p.review&&(!historyOnly||p.attempt?.uncertain)?`<section class="zpay-review" aria-label="Review withdrawal"><h2>Review your withdrawal</h2><dl>${p.review.quoteDetails?'':`<div><dt>Amount (INR)</dt><dd>${payoutMoney(p.review.amountPaise)}</dd></div>`}${p.review?.quote?`<div><dt>Diamonds to reserve</dt><dd>${diamondFormat(p.review.quote.diamondUnits)}</dd></div>`:''}${kyc?.reviewDetails(p.review)||''}${estimated!==null?`<div><dt>Estimated diamonds to reserve</dt><dd>${diamondFormat(estimated)}</dd></div>`:''}<div><dt>UPI ID</dt><dd>${esc(p.review.payoutAddress)}</dd></div></dl><p>The amount is reserved from earnings when a request is accepted for review. Payment is confirmed separately.</p>${p.attempt?.uncertain?'<p class="zpay-recovery">The previous request could not be confirmed. Retry this same request to check or complete it without creating a duplicate.</p>':''}<button type="button" class="zpay-primary" onclick="payoutConfirm()" ${p.busy?'disabled':''}>${p.busy?'Requesting withdrawal…':p.attempt?.uncertain?'Retry same withdrawal':'Confirm withdrawal request'}</button><button type="button" class="zpay-secondary" onclick="payoutEdit()" ${locked?'disabled':''}>Edit details</button></section>`:'';
+ const blocked=!ready||!w?.withdrawalsEnabled||locked||!kycVerified||w.earningsPaise<w.minimumWithdrawalPaise;
+ const form=!historyOnly&&!p.success&&!p.review?`<form class="zpay-form" aria-label="UPI payout" onsubmit="event.preventDefault();payoutReview()">${whole?'':`<label for="zpay-amount">Amount (INR)</label><input id="zpay-amount" inputmode="decimal" autocomplete="off" placeholder="500.00" value="${esc(p.amount)}" oninput="payoutDraft('amount',this.value)" ${locked||DEMO?'disabled':''}>`}<label for="zpay-address">UPI ID</label><input id="zpay-address" type="text" inputmode="email" autocomplete="off" maxlength="200" placeholder="name@upi" value="${esc(kycNeeded?PayoutVerification.data?.kyc?.payoutAddress||'':p.address)}" oninput="payoutDraft('address',this.value)" ${kycNeeded?'readonly':''} ${locked||DEMO?'disabled':''}>${kycVerified?'':kyc.summary()}<button type="submit" class="zpay-primary" ${blocked?'disabled':''}>Review withdrawal</button></form>`:'';
+ const rules=S.v==='payout'&&ready&&w.hostEarningsPolicy?.enabled?`<section class="zpay-host-rules" aria-label="Host rules"><h2>Host rules</h2>${diamondHostRules(w)}</section>`:'';
+ const reward=ready&&!historyOnly?diamondRewardView(w):'';
+ const history=historyOnly?`<section class="zpay-history-section" aria-label="Withdrawal history"><div class="zpay-section-heading"><h2>Withdrawal history</h2></div>${payoutHistory()}</section>`:'';
+ return `<div class="zpay-page"><div class="zpay-wallet">${wallet}</div>${ready&&!w.withdrawalsEnabled?'<p class="zpay-paused" role="status">Withdrawals are currently paused. You can still view your request history.</p>':''}${kyc?.busy()?'<p role="status" aria-label="Loading withdrawal quote">Loading withdrawal quote...</p>':''}${success}${form}${review}${p.error?`<p class="zpay-error" role="alert">${esc(p.error)}</p>`:''}${rules}${reward?`<hr class="zpay-divider">${reward}`:''}${history}</div>`;
+}
+function payoutRulesScreen(){
+ const w=PayoutUI.wallet,body=isHostWallet()&&payoutOwnAccount()&&payoutWalletReady()?diamondHostRules(w):'';
+ if(!body)return `<div class="zpay-page"><p>Host rules are shown once your earnings load.</p><button type="button" class="zpay-secondary" onclick="go('payout')">Back to withdraw</button></div>`;
+ return `<div class="zpay-page zpay-rules-page">${body}<div class="zpay-rules-footer"><hr><button type="button" class="zpay-primary" onclick="go('payout')">Got it</button></div></div>`;
 }
 function payoutReset(){const sequence=PayoutUI.sequence+1;Object.assign(PayoutUI,{accountId:'',sequence,loadRequest:0,loadSubmitRequest:0,submitRequest:0,recoveryRequired:false,wallet:null,walletRequested:false,requested:false,loading:false,loadError:'',items:[],total:0,page:1,limit:20,amount:'',address:'',review:null,attempt:null,busy:false,error:'',success:null})}
 Native.on('wallet.balance',data=>{if(!payoutOwnAccount())return;PayoutUI.wallet={...(PayoutUI.wallet||{}),...data};payoutPaint()});
 Native.on('data.loading',data=>{if(data.resource==='wallet')payoutPaint()});
-Native.on('payout.loaded',data=>{if(!payoutOwnAccount()||!PayoutUI.loading||data.requestId!==PayoutUI.loadRequest)return;const p=PayoutUI;p.loading=false;p.loadError='';p.items=data.items||[];p.total=data.total||0;p.page=data.page||1;p.limit=data.limit||20;if(!p.busy&&p.submitRequest===p.loadSubmitRequest){if(data.recovered&&(!p.attempt||p.attempt.idempotencyKey===data.recovered.idempotencyKey)){p.success=data.recovered;p.review=null;p.attempt=null;p.error='';p.amount='';p.recoveryRequired=false}else if(data.pending&&(!p.attempt||p.attempt.idempotencyKey===data.pending.idempotencyKey)){p.attempt={...data.pending,uncertain:true};p.review={amountPaise:data.pending.amountPaise,payoutAddress:data.pending.payoutAddress};p.amount=(data.pending.amountPaise/100).toFixed(2);p.address=data.pending.payoutAddress;p.success=null;p.recoveryRequired=false;p.error='An earlier withdrawal still needs confirmation. Retry the same request to avoid a duplicate.'}else if(!data.pending&&!p.attempt)p.recoveryRequired=false}payoutPaint()});
+Native.on('payout.loaded',data=>{if(!payoutOwnAccount()||!PayoutUI.loading||data.requestId!==PayoutUI.loadRequest)return;const p=PayoutUI;p.loading=false;p.loadError='';p.items=data.items||[];p.total=data.total||0;p.page=data.page||1;p.limit=data.limit||20;if(!p.busy&&p.submitRequest===p.loadSubmitRequest){if(data.recovered&&(!p.attempt||p.attempt.idempotencyKey===data.recovered.idempotencyKey)){p.success=data.recovered;p.review=null;p.attempt=null;p.error='';p.amount='';p.recoveryRequired=false}else if(data.pending&&(!p.attempt||p.attempt.idempotencyKey===data.pending.idempotencyKey)){p.attempt={...data.pending,uncertain:true};p.review={amountPaise:data.pending.amountPaise,payoutAddress:data.pending.payoutAddress,...(data.pending.quote?{quote:{...data.pending.quote}}:{})};p.amount=(data.pending.amountPaise/100).toFixed(2);p.address=data.pending.payoutAddress;p.success=null;p.recoveryRequired=false;p.error='An earlier withdrawal still needs confirmation. Retry the same request to avoid a duplicate.'}else if(!data.pending&&!p.attempt)p.recoveryRequired=false}payoutPaint()});
 Native.on('payout.requested',data=>{if(!payoutOwnAccount()||!PayoutUI.busy||data.requestId!==PayoutUI.submitRequest||!PayoutUI.attempt)return;PayoutUI.busy=false;PayoutUI.success=data.payout;PayoutUI.error='';PayoutUI.review=null;PayoutUI.attempt=null;PayoutUI.amount='';PayoutUI.items=[data.payout,...PayoutUI.items.filter(item=>item.id!==data.payout.id)];PayoutUI.requested=true;PayoutUI.total=Math.max(PayoutUI.total,PayoutUI.items.length);PayoutUI.loading=false;payoutPaint();payoutLoad()});
-Native.on('payout.error',data=>{if(!payoutOwnAccount())return;if(data.action==='payout.load'&&PayoutUI.loading&&data.requestId===PayoutUI.loadRequest){PayoutUI.loading=false;PayoutUI.loadError=data.message;payoutPaint();return}if(data.action!=='payout.request'||!PayoutUI.busy||data.requestId!==PayoutUI.submitRequest||!PayoutUI.attempt||(data.idempotencyKey&&data.idempotencyKey!==PayoutUI.attempt.idempotencyKey))return;PayoutUI.busy=false;PayoutUI.error=data.message;if(data.code==='PAYOUT_PENDING_RECOVERY'){PayoutUI.recoveryRequired=true;PayoutUI.review=null;PayoutUI.attempt=null;PayoutUI.loading=false;payoutLoad();return}const definite=!PayoutUI.attempt.uncertain&&[400,401,403,404,409,422].includes(data.status);if(definite)PayoutUI.review=null;else PayoutUI.attempt.uncertain=true;payoutPaint()});
+Native.on('payout.error',data=>{if(!payoutOwnAccount())return;if(data.action==='payout.load'&&PayoutUI.loading&&data.requestId===PayoutUI.loadRequest){PayoutUI.loading=false;PayoutUI.loadError=data.message;payoutPaint();return}if(data.action!=='payout.request'||!PayoutUI.busy||data.requestId!==PayoutUI.submitRequest||!PayoutUI.attempt||(data.idempotencyKey&&data.idempotencyKey!==PayoutUI.attempt.idempotencyKey))return;PayoutUI.busy=false;PayoutUI.error=data.message;if(data.noReservation===true&&data.idempotencyKey===PayoutUI.attempt.idempotencyKey){PayoutUI.attempt=null;PayoutUI.review=null;PayoutUI.recoveryRequired=false;window.ZimiPayoutVerification?.clearQuote();payoutPaint();return}if(data.code==='PAYOUT_PENDING_RECOVERY'){PayoutUI.recoveryRequired=true;PayoutUI.review=null;PayoutUI.attempt=null;PayoutUI.loading=false;payoutLoad();return}const definite=!PayoutUI.attempt.uncertain&&[400,401,403,404,409,422].includes(data.status);if(definite)PayoutUI.review=null;else PayoutUI.attempt.uncertain=true;payoutPaint()});
 for(const event of ['session.none','session.expired'])Native.on(event,payoutReset);
 for(const event of ['session','auth.ok'])Native.on(event,data=>{const id=data.user?.id||'';if(id!==PayoutUI.accountId){payoutReset();PayoutUI.accountId=id}});
 const payoutPreviousAfterRender=window.ZimiHome.afterRender;
 window.ZimiHome.afterRender=()=>{payoutPreviousAfterRender();if(payoutActive()&&!DEMO&&payoutOwnAccount()){if(!PayoutUI.requested){PayoutUI.requested=true;queueMicrotask(()=>{if(payoutActive())payoutLoad()})}if(!PayoutUI.wallet&&!PayoutUI.walletRequested){PayoutUI.walletRequested=true;queueMicrotask(()=>{if(payoutActive())payoutWalletRefresh()})}}};
 const payoutPreviousHeader=window.ZimiHome.header,payoutPreviousNav=window.ZimiHome.nav;
-window.ZimiHome.header=()=>S.v==='payout-history'?`<header class="zh-subheader">${backButton('zpPaymentsBack()',{label:'Back to payments'})}<h1>Withdrawal history</h1></header>`:payoutPreviousHeader();
-window.ZimiHome.nav=()=>{if(S.v==='payout-history'){document.getElementById('nav').style.display='none';return true}return payoutPreviousNav()};
-window.ZimiHome.views.payout=payoutScreen;window.ZimiHome.views['payout-history']=payoutScreen;vPayout=payoutScreen;withdraw=payoutReview;
+window.ZimiHome.header=()=>S.v==='payout-history'?`<header class="zh-subheader">${backButton('zpPaymentsBack()',{label:'Back to payments'})}<h1>Withdrawal history</h1></header>`:S.v==='payout-rules'?`<header class="zh-subheader">${backButton("go('payout')",{label:'Back to withdraw'})}<h1>Host rules</h1></header>`:payoutPreviousHeader();
+window.ZimiHome.nav=()=>{if(['payout-history','payout-rules'].includes(S.v)){document.getElementById('nav').style.display='none';return true}return payoutPreviousNav()};
+window.ZimiHome.views.payout=payoutScreen;window.ZimiHome.views['payout-history']=payoutScreen;window.ZimiHome.views['payout-rules']=payoutRulesScreen;vPayout=payoutScreen;withdraw=payoutReview;
 window.ZimiPayouts={reset:payoutReset};
+
+/* PAN and full bank details live only in the open form. They never join account
+   state, storage, receipts or recovery intents. Only masked server summaries do. */
+const PayoutVerification={owner:'',sequence:0,loadRequest:0,submitRequest:0,quoteRequest:0,loading:false,submitting:false,requested:false,error:'',data:null,editing:false,form:{},attemptKey:'',uncertain:false,quoteLoading:false,quoteAmount:0,quoteError:'',quote:null,back:'settings'};
+function payoutKycOwn(){return !!S.user?.id&&PayoutVerification.owner===S.user.id&&isHostWallet()}
+function payoutNeedsQuote(){return payoutOwnAccount()&&(PayoutUI.wallet?.hostEarningsPolicy?.version===2||PayoutVerification.data?.required===true)}
+function payoutKycVerified(){return payoutKycOwn()&&PayoutVerification.data?.kyc?.status==='verified'}
+function payoutKycClearForm(){for(const id of ['zpay-legal-name','zpay-pan','zpay-bank-account','zpay-ifsc','zpay-kyc-upi']){const input=document.getElementById(id);if(input)input.value=''}PayoutVerification.form={};PayoutVerification.attemptKey='';PayoutVerification.uncertain=false;PayoutVerification.editing=false}
+function payoutQuoteClear(){PayoutVerification.quoteRequest=++PayoutVerification.sequence;PayoutVerification.quoteLoading=false;PayoutVerification.quoteAmount=0;PayoutVerification.quote=null;PayoutVerification.quoteError=''}
+function payoutKycPaint(){if(S.v==='payout-kyc'||payoutActive())r()}
+function payoutKycLoad(){
+ if(DEMO||!payoutKycOwn()||PayoutVerification.loading||PayoutVerification.submitting)return;
+ const p=PayoutVerification;p.requested=true;p.loading=true;p.error='';p.loadRequest=++p.sequence;Native.send('payout.kyc.load',{requestId:p.loadRequest});payoutKycPaint();
+}
+function payoutKycOpen(from){
+ if(!isHostWallet())return;
+ const p=PayoutVerification;p.back=['payout','payout-history','wallet','settings'].includes(from)?from:['payout','payout-history','wallet','settings'].includes(S.v)?S.v:'settings';
+ payoutKycClearForm();go('payout-kyc');if(!p.loading&&!p.submitting)payoutKycLoad();
+}
+function payoutKycClose(){const back=PayoutVerification.back;payoutKycClearForm();go(back||'settings')}
+function payoutKycEdit(){
+ const p=PayoutVerification;if(!payoutKycOwn()||p.submitting)return;
+ p.editing=true;p.error='';p.uncertain=false;p.attemptKey='';p.form={legalName:p.data?.kyc?.legalName||'',panNumber:'',payoutType:p.data?.kyc?.payoutType||'upi',upiId:'',bankAccountNumber:'',ifsc:''};payoutKycPaint();
+}
+function payoutKycDraft(key,value){
+ const p=PayoutVerification;if(S.v!=='payout-kyc'||!p.editing||p.submitting||p.uncertain||!['legalName','panNumber','payoutType','upiId','bankAccountNumber','ifsc'].includes(key))return;
+ p.form[key]=['panNumber','ifsc'].includes(key)?String(value).toUpperCase():String(value);p.attemptKey='';p.error='';
+ if(key==='payoutType'){p.form.upiId='';p.form.bankAccountNumber='';p.form.ifsc='';payoutKycPaint()}
+}
+function payoutKycSubmit(){
+ const p=PayoutVerification;if(DEMO||!payoutKycOwn()||S.v!=='payout-kyc'||!p.editing||p.submitting)return;
+ const f=p.form,legalName=String(f.legalName||'').trim(),panNumber=String(f.panNumber||'').trim().toUpperCase(),payoutType=f.payoutType;
+ let message='';if(legalName.length<2||legalName.length>100)message='Enter your legal name.';
+ else if(!/^[A-Z]{5}\d{4}[A-Z]$/.test(panNumber))message='Enter a valid PAN number.';
+ else if(payoutType==='upi'&&!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/.test(String(f.upiId||'').trim()))message='Enter a valid UPI ID.';
+ else if(payoutType==='bank'&&(!/^\d{6,24}$/.test(String(f.bankAccountNumber||'').trim())||!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(String(f.ifsc||'').trim().toUpperCase())))message='Check the bank account number and IFSC.';
+ else if(!['upi','bank'].includes(payoutType))message='Choose a payout method.';
+ if(message){p.error=message;payoutKycPaint();return}
+ if(!p.attemptKey)p.attemptKey=crypto.randomUUID();p.submitting=true;p.error='';p.submitRequest=++p.sequence;
+ Native.send('payout.kyc.submit',{requestId:p.submitRequest,idempotencyKey:p.attemptKey,legalName,panNumber,payoutType,
+  ...(payoutType==='upi'?{upiId:String(f.upiId).trim()}:{bankAccountNumber:String(f.bankAccountNumber).trim(),ifsc:String(f.ifsc).trim().toUpperCase()})});payoutKycPaint();
+}
+function payoutKycStatus(status){return {missing:'Not submitted',pending:'Pending verification',verified:'Verified',rejected:'Needs correction'}[status]||'Not submitted'}
+function payoutKycSummary(){
+ if(!payoutKycOwn())return '';
+ const p=PayoutVerification,k=p.data?.kyc,needed=payoutNeedsQuote();
+ return `<section class="zpay-verification" aria-label="Payout verification"><h2>Payout verification</h2>${k?`<p>${payoutKycStatus(k.status)}${k.payoutAddress?` · ${esc(k.payoutAddress)}`:''}</p>`:p.loading?'<p role="status">Loading payout verification…</p>':`<p>${needed?'Verify PAN and payout details before withdrawing.':'You can prepare your PAN and payout details for verification.'}</p>`}${p.error?`<p class="zpay-error" role="alert">${esc(p.error)}</p>`:''}<button type="button" class="zpay-secondary" onclick="payoutKycOpen()">${k?.status==='verified'?'View verified payout details':'Verify payout details'}</button></section>`;
+}
+function payoutKycScreen(){
+ if(!payoutKycOwn())return '<section class="zpay-page"><p>Payout verification is available to host accounts.</p></section>';
+ const p=PayoutVerification,k=p.data?.kyc,f=p.form,locked=p.submitting||p.uncertain;
+ const summary=k?`<section class="zpay-verification"><h2>${payoutKycStatus(k.status)}</h2>${k.legalName?`<p>${esc(k.legalName)}</p>`:''}${k.panMasked?`<p>PAN: ${esc(k.panMasked)}</p>`:''}${k.payoutAddress?`<p>${esc(k.payoutAddress)}</p>`:''}${k.reason?`<p>${esc(k.reason)}</p>`:''}</section>`:'';
+ const form=p.editing?`<form class="zpay-form" autocomplete="off" onsubmit="event.preventDefault();payoutKycSubmit()"><label for="zpay-legal-name">Legal name</label><input id="zpay-legal-name" autocomplete="off" maxlength="100" value="${esc(f.legalName||'')}" oninput="payoutKycDraft('legalName',this.value)" ${locked?'disabled':''}><label for="zpay-pan">PAN number</label><input id="zpay-pan" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="10" value="${esc(f.panNumber||'')}" oninput="payoutKycDraft('panNumber',this.value)" ${locked?'disabled':''}><label for="zpay-method">Payout method</label><select id="zpay-method" onchange="payoutKycDraft('payoutType',this.value)" ${locked?'disabled':''}><option value="upi" ${f.payoutType==='upi'?'selected':''}>UPI</option><option value="bank" ${f.payoutType==='bank'?'selected':''}>Bank account</option></select>${f.payoutType==='bank'?`<label for="zpay-bank-account">Bank account number</label><input id="zpay-bank-account" inputmode="numeric" autocomplete="off" maxlength="24" value="${esc(f.bankAccountNumber||'')}" oninput="payoutKycDraft('bankAccountNumber',this.value)" ${locked?'disabled':''}><label for="zpay-ifsc">IFSC</label><input id="zpay-ifsc" autocomplete="off" autocapitalize="characters" maxlength="11" value="${esc(f.ifsc||'')}" oninput="payoutKycDraft('ifsc',this.value)" ${locked?'disabled':''}>`:`<label for="zpay-kyc-upi">UPI ID</label><input id="zpay-kyc-upi" autocomplete="off" maxlength="150" value="${esc(f.upiId||'')}" oninput="payoutKycDraft('upiId',this.value)" ${locked?'disabled':''}>`}<button class="zpay-primary" type="submit" ${p.submitting?'disabled':''}>${p.submitting?'Submitting for verification…':p.uncertain?'Retry same verification':'Submit for verification'}</button></form>`:`<button type="button" class="zpay-primary" onclick="payoutKycEdit()" ${p.submitting?'disabled':''}>${k&&k.status!=='missing'?'Update payout details':'Add payout details'}</button>`;
+ return `<section class="zpay-page" aria-label="Payout identity verification">${p.loading?contentSkeleton('rows','Loading payout verification',2):summary}${p.error?`<p class="zpay-error" role="alert">${esc(p.error)}</p>`:''}${form}<button type="button" class="zpay-secondary" onclick="payoutKycLoad()" ${p.loading||p.submitting?'disabled':''}>Refresh verification status</button></section>`;
+}
+function payoutQuoteStart(){
+ const p=PayoutVerification,w=PayoutUI.wallet;if(p.quoteLoading||PayoutUI.busy||PayoutUI.attempt?.uncertain)return;
+ if(!payoutKycVerified()){PayoutUI.error='Verified payout details are required before withdrawal.';payoutKycPaint();return}
+ const amountPaise=w?.hostEarningsPolicy?.wholeBalanceWithdrawal?w.earningsPaise:payoutPaise(PayoutUI.amount),address=p.data.kyc.payoutAddress||'';
+ PayoutUI.error=payoutValidation(amountPaise,address);if(PayoutUI.error){payoutKycPaint();return}
+ p.quote=null;p.quoteError='';p.quoteLoading=true;p.quoteAmount=amountPaise;p.quoteRequest=++p.sequence;PayoutUI.review=null;Native.send('payout.quote.load',{amountPaise,requestId:p.quoteRequest});payoutKycPaint();
+}
+function payoutQuoteReview(review){
+ const full=review?.quoteDetails,proof=review?.quote;
+ if(full)return `<div><dt>Gross amount</dt><dd>${payoutMoney(full.grossAmountPaise)}</dd></div><div><dt>TDS (${full.tdsPercent}%)</dt><dd>${payoutMoney(full.tdsPaise)}</dd></div><div><dt>Net payout</dt><dd>${payoutMoney(full.netAmountPaise)}</dd></div>`;
+ return proof?`<div><dt>Previously reviewed net payout</dt><dd>${payoutMoney(proof.netAmountPaise)}</dd></div>`:'';
+}
+function payoutVerificationReset(){const sequence=PayoutVerification.sequence+1;Object.assign(PayoutVerification,{owner:'',sequence,loadRequest:0,submitRequest:0,quoteRequest:0,loading:false,submitting:false,requested:false,error:'',data:null,editing:false,form:{},attemptKey:'',uncertain:false,quoteLoading:false,quoteAmount:0,quoteError:'',quote:null,back:'settings'})}
+for(const [event,action] of [['payout.kyc.loaded','load'],['payout.kyc.submitted','submit']])Native.on(event,data=>{
+ const p=PayoutVerification;if(!payoutKycOwn()||data.requestId!==(action==='load'?p.loadRequest:p.submitRequest)||data.kyc?.ownerId&&data.kyc.ownerId!==p.owner)return;
+ if(action==='load')p.loading=false;else{p.submitting=false;p.loading=false;payoutKycClearForm()}
+ p.requested=true;p.error='';p.data={required:data.required===true,kyc:data.kyc};payoutQuoteClear();if(PayoutUI.review?.quote&&!PayoutUI.busy&&!PayoutUI.attempt?.uncertain){PayoutUI.review=null;PayoutUI.attempt=null}payoutKycPaint();
+});
+Native.on('payout.kyc.error',data=>{const p=PayoutVerification;if(!payoutKycOwn()||data.requestId!==(data.action==='payout.kyc.load'?p.loadRequest:p.submitRequest))return;if(data.action==='payout.kyc.load')p.loading=false;else{p.submitting=false;p.uncertain=![400,401,403,404,409,422].includes(data.status)}p.error=data.message||'Payout verification is unavailable. Try again.';payoutKycPaint()});
+Native.on('payout.quote.loaded',data=>{
+ const p=PayoutVerification;if(!payoutKycOwn()||!p.quoteLoading||data.requestId!==p.quoteRequest)return;p.quoteLoading=false;
+ if(!payoutActive()||!payoutKycVerified()||data.grossAmountPaise!==p.quoteAmount||data.policyVersion!==2||data.kycId!==p.data.kyc.id){p.quoteError='Your payout details changed. Refresh and review again.';payoutKycPaint();return}
+ p.quote=data;PayoutUI.error='';PayoutUI.review={amountPaise:data.grossAmountPaise,payoutAddress:data.payoutAddress,quote:{settingsVersionId:data.settingsVersionId,kycId:data.kycId,netAmountPaise:data.netAmountPaise,diamondUnits:data.diamondUnits},quoteDetails:data};payoutKycPaint();
+});
+Native.on('payout.quote.error',data=>{const p=PayoutVerification;if(!payoutKycOwn()||!p.quoteLoading||data.requestId!==p.quoteRequest)return;p.quoteLoading=false;p.quoteError=data.message||'Your withdrawal quote could not be loaded.';PayoutUI.error=p.quoteError;payoutKycPaint()});
+for(const event of ['session.none','session.expired'])Native.on(event,payoutVerificationReset);
+for(const event of ['session','auth.ok'])Native.on(event,data=>{const owner=data.user?.id||'';if(owner!==PayoutVerification.owner){payoutVerificationReset();PayoutVerification.owner=owner}});
+document.addEventListener('aurora:navigate',()=>{if(S.v!=='payout-kyc')payoutKycClearForm();if(!payoutActive())payoutQuoteClear()});
+Native.on('app.background',()=>{payoutKycClearForm();if(S.v==='payout-kyc')payoutKycPaint()});
+window.addEventListener('pagehide',payoutKycClearForm);
+const payoutVerificationPreviousAfter=ZimiHome.afterRender,payoutVerificationPreviousHeader=ZimiHome.header,payoutVerificationPreviousNav=ZimiHome.nav;
+ZimiHome.afterRender=()=>{payoutVerificationPreviousAfter();if((payoutActive()||S.v==='payout-kyc')&&payoutKycOwn()&&!PayoutVerification.requested&&!DEMO){PayoutVerification.requested=true;queueMicrotask(()=>{if(payoutActive()||S.v==='payout-kyc')payoutKycLoad()})}};
+ZimiHome.header=()=>S.v==='payout-kyc'?`<header class="zh-subheader">${backButton('payoutKycClose()',{label:'Back to payments'})}<h1>Payout verification</h1></header>`:payoutVerificationPreviousHeader();
+ZimiHome.nav=()=>{if(S.v==='payout-kyc'){document.getElementById('nav').style.display='none';return true}return payoutVerificationPreviousNav()};
+ZimiHome.views['payout-kyc']=payoutKycScreen;
+window.ZimiPayoutVerification={needed:payoutNeedsQuote,verified:payoutKycVerified,summary:payoutKycSummary,review:payoutQuoteStart,reviewDetails:payoutQuoteReview,clearQuote:payoutQuoteClear,busy:()=>PayoutVerification.quoteLoading,reset:payoutVerificationReset};
 
 /* Private host earning history. These are earned diamonds, never wallet balances. */
 const HostStatistics={owner:'',sequence:0,requestId:0,period:'daily',date:null,loading:false,requested:false,error:'',data:null,selected:0};

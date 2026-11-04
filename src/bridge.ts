@@ -14,7 +14,8 @@ import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, Cha
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
-import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, type PendingPayout } from "./payout-cache";
+import { forgetPendingPayout, readPendingPayout, rememberPendingPayout, samePayoutIntent, type PendingPayout } from "./payout-cache";
+import type { PayoutKyc, PayoutKycInput, PayoutQuoteProof, WithdrawalQuote } from "./api/types";
 import { parseLiveLink, parseWebMessage } from "./web-message";
 import { downloadChatPhoto } from "./chat-photo-download";
 import { approvedHost } from "./host-access";
@@ -104,6 +105,8 @@ export type WebMessage =
   | { type: "presence.set"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls"; data: { on: boolean } }
   | { type: "host.callStatus.load"; data: Record<string, never> }
+  | { type: "host.callRate.save"; data: { rateCoinsPerMinute: number; requestId: number } }
+  | { type: "host.reward.restart"; data: { periodId: string; idempotencyKey: string; expectedPendingDiamonds: number; confirmed: true; requestId: number } }
   | { type: "profile.settings.load"; data: Record<string, never> }
   | { type: "profile.load"; data: { id: string; requestId?: number } }
   | { type: "profile.posts.load"; data: { id: string; page?: number; requestId?: number } }
@@ -138,7 +141,10 @@ export type WebMessage =
   | { type: "call.nativeResult"; data: { callId: string; actionId: string; action: "open" | "answer"; outcome: "handedOff" | "error" } }
   | { type: "verify.accept" | "verify.end"; data: { callId: string } }
   | { type: "payout.load"; data: { page?: number; requestId: number } }
-  | { type: "payout.request"; data: { amountPaise: number; payoutAddress: string; idempotencyKey: string; requestId: number } }
+  | { type: "payout.kyc.load"; data: { requestId: number } }
+  | { type: "payout.kyc.submit"; data: PayoutKycInput & { requestId: number } }
+  | { type: "payout.quote.load"; data: { amountPaise: number; requestId: number } }
+  | { type: "payout.request"; data: { amountPaise: number; payoutAddress: string; idempotencyKey: string; requestId: number; quote?: PayoutQuoteProof } }
   | { type: "diamonds.statistics.load"; data: { period: import("./api/types").DiamondStatisticsPeriod; date?: string; requestId: number } }
   | { type: "awards.claim"; data: { task: string } }
   | { type: "ads.load"; data: Record<string, never> }
@@ -227,6 +233,10 @@ export type AppMessage =
   | { type: "presence.saved"; data: { online: boolean; visible: boolean } }
   | { type: "presence.duringCalls.saved"; data: { on: boolean } }
   | { type: "host.callStatus"; data: Awaited<ReturnType<typeof api.hostCallStatus>> }
+  | { type: "host.callRate.saved"; data: { status: Awaited<ReturnType<typeof api.hostCallStatus>>; requestId: number } }
+  | { type: "host.callRate.error"; data: { message: string; requestId: number; status?: number } }
+  | { type: "host.reward.restarted"; data: { receipt: Awaited<ReturnType<typeof api.restartHostReward>>; requestId: number } }
+  | { type: "host.reward.error"; data: { message: string; requestId: number; periodId: string; idempotencyKey: string; status?: number } }
   | { type: "host.access"; data: { approved: boolean; role: Role; serverRole?: ServerRole; hostStatus: string; verified: boolean; checking?: boolean } }
   | { type: "awards.claimed"; data: { task: string } }
   | { type: "data.ads"; data: AdFeed }
@@ -275,7 +285,12 @@ export type AppMessage =
   | { type: "diamonds.statistics.loaded"; data: import("./api/types").DiamondStatistics & { requestId: number } }
   | { type: "diamonds.statistics.error"; data: { period: import("./api/types").DiamondStatisticsPeriod; date?: string; requestId: number; message: string } }
   | { type: "payout.requested"; data: { payout: Payout; requestId: number } }
-  | { type: "payout.error"; data: { action: "payout.load" | "payout.request"; requestId: number; idempotencyKey?: string; message: string; code?: string; status?: number } }
+  | { type: "payout.kyc.loaded"; data: PayoutKyc & { requestId: number } }
+  | { type: "payout.kyc.submitted"; data: PayoutKyc & { requestId: number } }
+  | { type: "payout.kyc.error"; data: { action: "payout.kyc.load" | "payout.kyc.submit"; requestId: number; message: string; status?: number } }
+  | { type: "payout.quote.loaded"; data: WithdrawalQuote & { requestId: number } }
+  | { type: "payout.quote.error"; data: { requestId: number; message: string; code?: string; status?: number } }
+  | { type: "payout.error"; data: { action: "payout.load" | "payout.request"; requestId: number; idempotencyKey?: string; message: string; code?: string; status?: number; noReservation?: true } }
   | { type: "chat.sent"; data: { to: string; sent: string; text: string; id: string; inCall: boolean; reply: NonNullable<Message["reply"]> | null; clientId?: string; createdAt?: string; sequence?: number } }
   | { type: "chat.photoSent"; data: { to: string; id: string; reply: NonNullable<Message["reply"]> | null; clientId?: string; createdAt?: string; sequence?: number } }
   | { type: "chat.photoDownloaded"; data: { to: string; id: string; requestId: number } }
@@ -320,6 +335,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let webReady = false, sessionAvailable = false, runtimeLinkReceived = false;
   let documentRevision = 0;
   let payoutReadRevision = 0;
+  let payoutKycReadRevision = 0, payoutQuoteRevision = 0;
+  let hostCallStatusRevision = 0;
   let diamondStatisticsRevision = 0;
   let paymentRoutesRevision = 0;
   const photoDownloads = new Map<string, Promise<void>>();
@@ -1835,8 +1852,49 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "host.callStatus.load": {
-        const data = await api.hostCallStatus();
-        if (current(version)) emit({ type: "host.callStatus", data });
+        const sessionVersion = getSessionVersion(), document = documentRevision, revision = ++hostCallStatusRevision;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === hostCallStatusRevision;
+        try {
+          const approval = await requireApprovedHost(), owner = accountId;
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          const data = await api.hostCallStatus();
+          if (applicable() && owner === accountId && approval === hostRevision && hasHostAccess()) emit({ type: "host.callStatus", data });
+        } catch (error) { if (applicable()) emit({ type: "operation.error", data: { action: msg.type, message: errorMessage(error) } }); }
+        return;
+      }
+      case "host.callRate.save": {
+        const sessionVersion = getSessionVersion(), document = documentRevision;
+        ++hostCallStatusRevision;
+        let owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && (!owner || owner === accountId);
+        try {
+          const approval = await requireApprovedHost(); owner = accountId;
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          const status = await api.saveHostCallRate(msg.data.rateCoinsPerMinute);
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          if (!status.configurableRate) throw new ApiError("Your call price settings changed. Refresh and try again.", 409);
+          ++hostCallStatusRevision;
+          emit({ type: "host.callRate.saved", data: { status, requestId: msg.data.requestId } });
+        } catch (error) {
+          if (applicable()) emit({ type: "host.callRate.error", data: { requestId: msg.data.requestId, message: errorMessage(error), ...(error instanceof ApiError ? { status: error.status } : {}) } });
+        }
+        return;
+      }
+      case "host.reward.restart": {
+        const sessionVersion = getSessionVersion(), document = documentRevision;
+        let owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && (!owner || owner === accountId);
+        try {
+          const approval = await requireApprovedHost(); owner = accountId;
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          const receipt = await api.restartHostReward(msg.data.periodId, msg.data.idempotencyKey, msg.data.expectedPendingDiamonds);
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          emit({ type: "host.reward.restarted", data: { receipt, requestId: msg.data.requestId } });
+          quietly(refreshWallet(), "wallet.load");
+        } catch (error) {
+          if (applicable()) emit({ type: "host.reward.error", data: { requestId: msg.data.requestId, periodId: msg.data.periodId,
+            idempotencyKey: msg.data.idempotencyKey, message: errorMessage(error), ...(error instanceof ApiError ? { status: error.status } : {}) } });
+        }
         return;
       }
       case "profile.settings.save": case "settings.set": {
@@ -2160,6 +2218,48 @@ export function createBridge(post: (msg: AppMessage) => void) {
         }
         return;
       }
+      case "payout.kyc.load": case "payout.kyc.submit": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, approval = hostRevision;
+        const revision = ++payoutKycReadRevision, submitting = msg.type === "payout.kyc.submit";
+        let owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && (!owner || owner === accountId) && (submitting || revision === payoutKycReadRevision);
+        try {
+          const account = await api.me(true);
+          if (!applicable()) return;
+          if (!account.user.id || owner && owner !== account.user.id || approval !== hostRevision) throw new ApiError("Your account access changed. Please try again.", 409);
+          owner = account.user.id;
+          applyHostAccount(account);
+          const role = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
+          if (role !== "host") throw new ApiError("Payout verification is available to host accounts.", 403);
+          const data = msg.type === "payout.kyc.submit" ? await api.submitPayoutKyc(msg.data) : await api.payoutKyc();
+          if (!applicable()) return;
+          if (data.kyc.ownerId !== undefined && data.kyc.ownerId !== owner) throw new ApiError("Payout verification ownership could not be confirmed.", 502);
+          if (submitting) payoutKycReadRevision++;
+          emit({ type: submitting ? "payout.kyc.submitted" : "payout.kyc.loaded", data: { ...data, requestId: msg.data.requestId } });
+        } catch (error) {
+          // Never reflect an input or a provider message containing PAN/bank data.
+          if (applicable()) emit({ type: "payout.kyc.error", data: { action: msg.type, requestId: msg.data.requestId, message: submitting ? "Your payout verification could not be confirmed. Check its status or retry the same details." : "Your payout verification details could not be loaded. Try again.", ...(error instanceof ApiError ? { status: error.status } : {}) } });
+        }
+        return;
+      }
+      case "payout.quote.load": {
+        const sessionVersion = getSessionVersion(), document = documentRevision, revision = ++payoutQuoteRevision;
+        let owner = accountId;
+        const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === payoutQuoteRevision && (!owner || owner === accountId);
+        try {
+          const approval = await requireApprovedHost();
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          owner = accountId;
+          if (!owner) throw new ApiError("Sign in to review your withdrawal.", 401);
+          const quote = await api.withdrawalQuote(msg.data.amountPaise);
+          if (!applicable() || approval !== hostRevision || !hasHostAccess()) return;
+          if (quote.grossAmountPaise !== msg.data.amountPaise) throw new ApiError("Withdrawal quote amount changed. Review again.", 502);
+          emit({ type: "payout.quote.loaded", data: { ...quote, requestId: msg.data.requestId } });
+        } catch (error) {
+          if (applicable()) emit({ type: "payout.quote.error", data: { requestId: msg.data.requestId, message: "Your withdrawal quote could not be confirmed. Refresh payout verification and review again.", ...(error instanceof ApiError ? { status: error.status, code: error.code } : {}) } });
+        }
+        return;
+      }
       case "payout.load": {
         const sessionVersion = getSessionVersion(), document = documentRevision, revision = ++payoutReadRevision;
         const applicable = () => current(version) && sessionVersion === getSessionVersion() && document === documentRevision && revision === payoutReadRevision;
@@ -2175,7 +2275,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!applicable()) return;
           const result = await api.payouts(msg.data.page);
           if (!applicable()) return;
-          const recovered = pending ? result.items.find(item => item.idempotencyKey === pending.idempotencyKey && item.amountPaise === pending.amountPaise && item.payoutAddress.trim() === pending.payoutAddress) : undefined;
+          const recovered = pending ? result.items.find(item => item.idempotencyKey === pending.idempotencyKey && item.amountPaise === pending.amountPaise && item.payoutAddress.trim() === pending.payoutAddress && (!pending.quote || item.diamondUnits === pending.quote.diamondUnits && item.netAmountPaise === pending.quote.netAmountPaise)) : undefined;
           if (recovered && pending) await forgetPendingPayout(owner, pending.idempotencyKey).catch(() => {});
           if (applicable()) emit({ type: "payout.loaded", data: { ...result, requestId: msg.data.requestId, pending: recovered ? null : pending, recovered: recovered ?? null } });
         } catch (error) {
@@ -2195,8 +2295,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (!owner || (accountId && owner !== accountId)) throw new ApiError("Your sign-in changed. Please try again.", 409);
           if (approval === hostRevision) applyHostAccount(account);
           previous = await readPendingPayout(owner);
-          const attempt = { amountPaise: msg.data.amountPaise, payoutAddress: msg.data.payoutAddress.trim(), idempotencyKey: msg.data.idempotencyKey };
-          if (previous && (previous.idempotencyKey !== attempt.idempotencyKey || previous.amountPaise !== attempt.amountPaise || previous.payoutAddress !== attempt.payoutAddress)) {
+          const attempt: PendingPayout = { amountPaise: msg.data.amountPaise, payoutAddress: msg.data.payoutAddress.trim(), idempotencyKey: msg.data.idempotencyKey, ...(msg.data.quote ? { quote: { ...msg.data.quote } } : {}) };
+          if (previous && !samePayoutIntent(previous, attempt)) {
             throw new ApiError("An earlier withdrawal still needs confirmation. Refresh withdrawal history to recover it before making another request.", 409, "PAYOUT_PENDING_RECOVERY");
           }
           if (!applicable()) return;
@@ -2209,7 +2309,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
           // establish whether it committed. Replaying it is idempotent.
           if (!applicable()) return;
           if (!previous && (approval !== hostRevision || !hasHostAccess())) throw new ApiError("Your creator approval changed. Please try again.", 403);
-          const payout = await api.requestPayout(msg.data.amountPaise, msg.data.payoutAddress, msg.data.idempotencyKey);
+          const payout = await api.requestPayout(attempt.amountPaise, attempt.payoutAddress, attempt.idempotencyKey, ...(attempt.quote ? [attempt.quote] as const : []));
+          if (payout.amountPaise !== attempt.amountPaise || payout.payoutAddress.trim() !== attempt.payoutAddress || payout.idempotencyKey !== undefined && payout.idempotencyKey !== attempt.idempotencyKey || attempt.quote && (payout.diamondUnits !== attempt.quote.diamondUnits || payout.netAmountPaise !== attempt.quote.netAmountPaise)) throw new ApiError("Withdrawal receipt does not match the owned request. Retry the same request.", 502);
           // Cleanup remains scoped to its original account/key even after sign-out.
           await forgetPendingPayout(owner, attempt.idempotencyKey).catch(() => {});
           if (!applicable()) return;
@@ -2219,12 +2320,16 @@ export function createBridge(post: (msg: AppMessage) => void) {
           emit({ type: "payout.requested", data: { payout, requestId: msg.data.requestId } });
           quietly(refreshWallet(), "wallet.load");
         } catch (error) {
+          let noReservation = false;
+          if (owner && error instanceof ApiError && error.status === 409 && ["PAYOUT_QUOTE_STALE", "PAYOUT_KYC_CHANGED"].includes(error.code ?? "") && error.payoutRejection?.noReservation === true && error.payoutRejection.idempotencyKey === msg.data.idempotencyKey) {
+            try { await forgetPendingPayout(owner, msg.data.idempotencyKey); noReservation = true; } catch { /* Keep durable recovery locked until storage is usable. */ }
+          }
           // A preexisting attempt may already have committed on another run.
           // Only a first, definitively rejected submission can be discarded.
-          if (owner && saved && !previous && error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.status)) {
+          if (!noReservation && owner && saved && !previous && sessionVersion === getSessionVersion() && error instanceof ApiError && error.code !== "SESSION_CHANGED" && [400, 401, 403, 404, 409, 422].includes(error.status)) {
             await forgetPendingPayout(owner, msg.data.idempotencyKey).catch(() => {});
           }
-          if (applicable()) emit({ type: "payout.error", data: { action: msg.type, requestId: msg.data.requestId, idempotencyKey: msg.data.idempotencyKey, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+          if (applicable()) emit({ type: "payout.error", data: { action: msg.type, requestId: msg.data.requestId, idempotencyKey: msg.data.idempotencyKey, message: errorMessage(error), ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}), ...(noReservation ? { noReservation: true } : {}) } });
         }
         return;
       }
@@ -2287,8 +2392,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       ringing.handle(msg as unknown as { type: string; data: Record<string, unknown> });
       const version = epoch;
       const notificationWrite = (msg.type === "notifications.read" || msg.type === "notifications.unread" || msg.type === "notifications.readAll") && msg.data.requestId !== undefined;
-      const serialized = notificationWrite || ((msg.type === "chat.send" || msg.type === "chat.photo") && !!msg.data.clientId) || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.invitation.connect", "call.invitation.dismiss", "call.topup.hold", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "ads.click"].includes(msg.type);
-      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "profile.cover.save" || msg.type === "creator.card.save" ? `:${documentRevision}` : ""}`;
+      const serialized = notificationWrite || ((msg.type === "chat.send" || msg.type === "chat.photo") && !!msg.data.clientId) || ["account.deactivate", "creator.card.save", "profile.cover.save", "media.post.delete", "call.start", "call.invitation.connect", "call.invitation.dismiss", "call.topup.hold", "call.accept", "verify.accept", "call.match", "stream.start", "stream.join", "stream.share", "stream.request", "stream.request.cancel", "stream.request.decline", "stream.request.accept", "stream.react", "wallet.checkout", "themes.premium.checkout", "themes.select", "gift.send", "awards.claim", "chats.readAll", "chat.voice", "chat.photoDownload", "profile.settings.save", "settings.set", "privacy.save", "block.set", "follow.set", "payout.request", "payout.kyc.submit", "host.callRate.save", "host.reward.restart", "ads.click"].includes(msg.type);
+      const key = `${version}:${msg.type === "settings.set" ? "profile.settings.save" : msg.type}${notificationWrite ? `:${documentRevision}:${msg.data.requestId}` : msg.type === "block.set" || msg.type === "follow.set" || msg.type === "ads.click" ? `:${msg.data.id}` : msg.type === "gift.send" ? `:${msg.data.idempotencyKey ?? "legacy"}` : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? `:${msg.data.clientId}` : msg.type === "chat.photoDownload" ? `:${documentRevision}:${msg.data.to}:${msg.data.id}:${msg.data.requestId}` : msg.type === "payout.request" || msg.type === "payout.kyc.submit" || msg.type === "host.callRate.save" || msg.type === "profile.cover.save" || msg.type === "creator.card.save" ? `:${documentRevision}` : ""}`;
       if (serialized && operations.has(key)) return;
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {

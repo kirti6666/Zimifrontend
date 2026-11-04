@@ -1,6 +1,12 @@
 import * as SecureStore from "expo-secure-store";
+import type { PayoutQuoteProof } from "./api/types";
+import { validPayoutQuoteProof } from "./payout-verification";
 
-export interface PendingPayout { amountPaise: number; payoutAddress: string; idempotencyKey: string }
+export interface PendingPayout { amountPaise: number; payoutAddress: string; idempotencyKey: string; quote?: PayoutQuoteProof; }
+export function samePayoutIntent(a: PendingPayout, b: PendingPayout): boolean {
+  return a.idempotencyKey === b.idempotencyKey && a.amountPaise === b.amountPaise && a.payoutAddress === b.payoutAddress &&
+    (a.quote === undefined && b.quote === undefined || !!a.quote && !!b.quote && a.quote.settingsVersionId === b.quote.settingsVersionId && a.quote.kycId === b.quote.kycId && a.quote.netAmountPaise === b.quote.netAmountPaise && a.quote.diamondUnits === b.quote.diamondUnits);
+}
 
 const OPTIONS = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
 const queues = new Map<string, Promise<void>>();
@@ -14,12 +20,14 @@ function storageKey(accountId: string): string {
 function validated(value: unknown): PendingPayout {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("The saved withdrawal attempt could not be verified.");
   const item = value as Record<string, unknown>;
-  if (Object.keys(item).length !== 3 || !Object.keys(item).every(key => ["amountPaise", "payoutAddress", "idempotencyKey"].includes(key)) ||
+  if (!Object.keys(item).every(key => ["amountPaise", "payoutAddress", "idempotencyKey", "quote"].includes(key)) ||
     !Number.isSafeInteger(item.amountPaise) || Number(item.amountPaise) <= 0 ||
-    typeof item.payoutAddress !== "string" || item.payoutAddress.trim().length < 3 || item.payoutAddress.trim().length > 200 || !validKey(item.idempotencyKey)) {
+    typeof item.payoutAddress !== "string" || item.payoutAddress.trim().length < 3 || item.payoutAddress.trim().length > 200 || !validKey(item.idempotencyKey) || (item.quote !== undefined && !validPayoutQuoteProof(item.quote, Number(item.amountPaise)))) {
     throw new Error("The saved withdrawal attempt could not be verified.");
   }
-  return { amountPaise: Number(item.amountPaise), payoutAddress: item.payoutAddress.trim(), idempotencyKey: item.idempotencyKey };
+  const quote = item.quote as PayoutQuoteProof | undefined;
+  return { amountPaise: Number(item.amountPaise), payoutAddress: item.payoutAddress.trim(), idempotencyKey: item.idempotencyKey,
+    ...(quote ? { quote: { settingsVersionId: quote.settingsVersionId, kycId: quote.kycId, netAmountPaise: quote.netAmountPaise, diamondUnits: quote.diamondUnits } } : {}) };
 }
 
 function parse(raw: string | null): PendingPayout | null {
@@ -53,7 +61,7 @@ export async function rememberPendingPayout(accountId: string, attempt: PendingP
   return serialized(key, async () => {
     const pending = parse(await SecureStore.getItemAsync(key, OPTIONS));
     if (pending) {
-      if (pending.idempotencyKey !== next.idempotencyKey || pending.amountPaise !== next.amountPaise || pending.payoutAddress !== next.payoutAddress) {
+      if (!samePayoutIntent(pending, next)) {
         throw new Error("Resolve the pending withdrawal before starting a different request.");
       }
       return;

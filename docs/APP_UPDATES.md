@@ -15,14 +15,16 @@ For subsequent releases:
    the draft. The server extracts the real package, build number and version;
    the admin label does not change the Android manifest. Start the signed APK
    on a device and verify production connectivity before publishing.
-3. Review the draft and choose **Publish mandatory update**, then confirm.
-   Publication requires an updater-capable APK with a strictly higher build
-   number. It changes the download pointer and minimum supported build together.
+3. Review the draft, choose **Publish update**, then pick **Optional update**
+   (default) or **Required update** and confirm. Publication requires an
+   updater-capable APK with a strictly higher build number. It always changes
+   the download pointer; only a required update raises the minimum supported
+   build. Installed builds above that minimum keep working, including calls.
    The server cryptographically verifies the APK with Android's official
    verifier and requires the existing app's signing certificate before saving
    a release. Another signing key cannot become a mandatory update.
 
-After mandatory publication, outdated and headerless legacy clients are blocked
+After a required publication, outdated and headerless legacy clients are blocked
 by HTTP 426. Legacy clients still need their one-time bootstrap installation;
 they cannot show the new native update screen from their old code. Current
 devices check before mounting the app, every 30 seconds while active, on resume,

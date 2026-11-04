@@ -169,6 +169,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/host-access.js") +
   "\n" + read("web/loading.js") +
   "\n" + read("web/diamonds.js") +
+  "\n" + read("web/host-reward-restart.js") +
   "\n" + read("web/pull-refresh.js") +
   "\n" + read("web/home-render.js") +
   "\n" + read("web/home.js") +
@@ -211,6 +212,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/post-create.js") +
   "\n" + read("web/post-view.js") +
   "\n" + read("web/payouts.js") +
+  "\n" + read("web/payout-verification.js") +
   "\n" + read("web/host-statistics.js") +
   "\n" + read("web/payment-routes.js") +
   "\n" + read("web/ads.js") +

@@ -2,7 +2,7 @@
    while a call is in progress (decline or switch, never a busy signal), and the entry fee
    that unlocks once a call lasts the hold. The call screen itself is zrCall in live-room.js. */
 /* preview: '' until the host asks to check their camera, then 'starting', 'ready' or 'failed'. */
-const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false };
+const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false, rateDraft:null, rateBusy:false, rateError:'', rateRequest:0, rateSequence:0 };
 
 function hcIdentityAvatar(person, size = 104) {
   const name = String(person?.n || person?.name || 'Host').trim();
@@ -50,6 +50,7 @@ function hcRateCard() {
   return `<div class="hc-card">
     <button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><b>${st.rate ? `${n(st.rate * 60)} member coins/h` : 'Free calls'}</b>${next ? `<small>${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins to next tier</small>` : tiers.length ? '<small>Top tier unlocked</small>' : '<small>Member call price</small>'}</button>
     ${tiers.length ? `<div class="hc-tiers" role="list" aria-label="Member call price tiers">${tiers.map(t => `<span role="listitem" class="${t.tier === st.tier ? 'is-on' : t.tier < st.tier ? 'is-done' : ''}">${n(t.rate * 60)} coins/h</span>`).join('')}</div>` : ''}
+    ${st.configurableRate?`<form class="hc-rate-picker" onsubmit="event.preventDefault();hcSaveRate()"><label for="hc-call-rate">Member call price (coins/min)</label><div><input id="hc-call-rate" type="number" inputmode="numeric" min="${st.minRate}" max="${st.maxRate}" step="1" value="${esc(HostCalls.rateDraft===null?String(st.selectedRate):HostCalls.rateDraft)}" oninput="hcDraftRate(this.value)" ${HostCalls.rateBusy?'disabled':''}><button type="submit" ${HostCalls.rateBusy||DEMO?'disabled':''}>${HostCalls.rateBusy?'Saving...':'Save price'}</button></div><p>Choose ${n(st.minRate)}–${n(st.maxRate)} member coins per minute. This applies to new calls. Confirmed earnings appear as Diamonds in Wallet.</p>${HostCalls.rateError?`<p class="hc-rate-error" role="alert">${esc(HostCalls.rateError)}</p>`:''}</form>`:''}
     ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `Member pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins unlocks a ${n(next.rate)}-coin/min member price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
   </div>`;
 }
@@ -96,6 +97,13 @@ function hcLoadStatus() {
   if (HostCalls.loading || !isApprovedHost()) return;
   HostCalls.loading = true; HostCalls.error = '';
   Native.send('host.callStatus.load', {}); r();
+}
+function hcDraftRate(value){if(HostCalls.rateBusy)return;HostCalls.rateDraft=String(value);HostCalls.rateError=''}
+function hcSaveRate(){
+ const h=HostCalls,st=h.status;if(DEMO||S.v!=='setup'||h.rateBusy||!isApprovedHost()||!st?.configurableRate)return;
+ const raw=h.rateDraft===null?String(st.selectedRate):h.rateDraft,value=/^\d+$/.test(raw)?Number(raw):NaN;
+ if(!Number.isSafeInteger(value)||value<st.minRate||value>st.maxRate){h.rateError=`Choose a whole number from ${n(st.minRate)} to ${n(st.maxRate)}.`;r();return}
+ h.rateBusy=true;h.rateError='';h.rateRequest=++h.rateSequence;Native.send('host.callRate.save',{rateCoinsPerMinute:value,requestId:h.rateRequest});r();
 }
 function hcStartPreview() {
   if (!S.cam || S.v !== 'setup' || HostCalls.preview === 'starting') return;
@@ -184,10 +192,14 @@ document.addEventListener('aurora:navigate', () => {
   hcLoadStatus();
 });
 Native.on('host.callStatus', d => {
+  if(HostCalls.rateBusy)return;
   HostCalls.loading = false; HostCalls.error = ''; HostCalls.status = d; S.callVis = d.visibleDuringCalls !== false;
   if (S.v !== 'hcall') { S.early = d.earlyEnds.today; S.earlyLimit = d.earlyEnds.limit; S.penaltyCoins = d.earlyEnds.penaltyCoins; }
   if (['setup', 'waiting'].includes(S.v)) r();
 });
+Native.on('host.access',d=>{if(!d.checking&&!d.approved){const h=HostCalls;h.loading=false;h.rateBusy=false;h.rateDraft=null;h.rateError='';h.rateRequest=++h.rateSequence}});
+Native.on('host.callRate.saved',d=>{const h=HostCalls;if(!h.rateBusy||d.requestId!==h.rateRequest||!isApprovedHost())return;h.rateBusy=false;h.rateDraft=null;h.rateError='';h.status=d.status;if(S.v==='setup')r()});
+Native.on('host.callRate.error',d=>{const h=HostCalls;if(!h.rateBusy||d.requestId!==h.rateRequest)return;h.rateBusy=false;h.rateError=d.message||'Your call price could not be saved. Refresh and try again.';if(S.v==='setup')r()});
 Native.on('presence.duringCalls.saved', d => {
   HostCalls.visBusy = false; S.callVis = !!d.on;
   if (HostCalls.status) HostCalls.status.visibleDuringCalls = !!d.on;
@@ -205,7 +217,7 @@ Native.on('operation.error', d => {
     if (['setup', 'waiting', 'hcall'].includes(S.v)) r();
   }
 });
-['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false })));
+['session.none', 'session.expired'].forEach(type => Native.on(type, () => Object.assign(HostCalls, { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: HostCalls.previewRun + 1, visBusy: false, rateDraft:null,rateBusy:false,rateError:'',rateRequest:++HostCalls.rateSequence })));
 
 if (DEMO) HostCalls.status = { rate: MY_RATE, tier: 1, earnedCoins: 0, next: null, tiers: [], entryFeeCoins: MY_FEE, entryFeeHoldSeconds: FEE_HOLD, earlyEnds: { today: 0, limit: EARLY_LIMIT, penaltyCoins: MY_FEE }, visibleDuringCalls: true };
 

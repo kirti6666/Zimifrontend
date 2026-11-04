@@ -10,7 +10,7 @@ import { getAppUpdateAuth, notifyAppUpdate } from "../app-update-events";
 export interface ServerEvent { type: string; data?: Record<string, unknown> }
 /** What an ended call cost, and whether it ended because the caller's coins ran out. */
 const callCharge = (call: Record<string, unknown>) => ({
-  ...(coinCount(call.coinsPerMinute) ? { coins: coinCount(call.coinsCharged) } : {}),
+  ...(coinCount(call.coinsPerMinute) && typeof call.coinsCharged === "number" && Number.isSafeInteger(call.coinsCharged) && call.coinsCharged >= 0 ? { coins: call.coinsCharged } : {}),
   ...(call.endReason === "out_of_coins" || call.endReason === "switch" || call.endReason === "host_unavailable" ? { reason: call.endReason } : {}),
 });
 /** The staff side of a verification call, as the call's media peer. */
