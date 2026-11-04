@@ -26,10 +26,12 @@ export type BeautyStats = {
 /** Same shape as the WebView worker's apply commands: [operation, args]. */
 export type BeautyCommand = [operation: string, args: Array<number | boolean>];
 
-declare class BinzoMediaNative extends NativeModule<{ onBeautyStatus: (event: { status: BeautyStatus }) => void }> {
+declare class BinzoMediaNative extends NativeModule<{ onBeautyStatus: (event: { status: BeautyStatus }) => void; onCallServiceStopped: (event: { callId: string }) => void }> {
   isBeautySupported(): boolean;
   beginCallAudio(video: boolean): void;
   endCallAudio(): void;
+  beginCallService(callId: string, video: boolean): Promise<void>;
+  endCallService(callId: string): void;
   configureBeauty(licenseToken: string): void;
   applyBeauty(commandsJson: string): void;
   setBeautyEnabled(enabled: boolean): void;
@@ -49,6 +51,13 @@ export const nativeMediaAvailable = !!native;
 export function startCallAudio(video: boolean): void { native?.beginCallAudio(video); }
 
 export function stopCallAudio(): void { native?.endCallAudio(); }
+
+/** The native service starts only for a trusted ringing/accepted call, after capture permission. */
+export async function startCallService(callId: string, video: boolean): Promise<void> { await native?.beginCallService?.(callId, video); }
+export function stopCallService(callId: string): void { native?.endCallService?.(callId); }
+export function onCallServiceStopped(listener: (callId: string) => void): { remove(): void } | null {
+  return native ? native.addListener("onCallServiceStopped", event => listener(event.callId)) : null;
+}
 
 export function beautySupported(): boolean {
   try { return !!native?.isBeautySupported(); } catch { return false; }

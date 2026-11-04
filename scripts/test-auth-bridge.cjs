@@ -19,6 +19,8 @@ const themeCatalog = (premium = false, selectedThemeId = '0000000000000000000000
 const payoutReceipt = (id = 'payout-1') => ({ id, amountPaise: 50000, payoutAddress: 'creator@upi', status: 'pending', createdAt: '2026-10-22T08:00:00.000Z' });
 const payoutMessage = (requestId = 1) => ({ type: 'payout.request', data: { amountPaise: 50000, payoutAddress: 'creator@upi', idempotencyKey: 'withdrawal-attempt-1', requestId } });
 const plain = value => JSON.parse(JSON.stringify(value));
+const directoryMember = { id: '507f1f77bcf86cd799439081', name: 'Directory member', role: 'sender', serverRole: 'user', verified: false, online: false, availableForCall: true };
+const directoryPage = (users = [directoryMember], page = 1) => ({ users, total: users.length, page, limit: 20 });
 
 function harness(initialAppState = 'active', initialLink = null, liveStreaming = false, initialIncoming = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
@@ -162,6 +164,98 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 const findShellWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findShellWeb).find(Boolean) || null;
+
+test('member directory messages bound search and page and reject client authority fields', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  const message = { type: 'users.load', data: { q: '', page: 1 } };
+  assert.ok(parse(message));
+  assert.ok(parse({ type: 'users.load', data: { q: 'x'.repeat(100), page: 10000 } }));
+  for (const data of [{}, { q: 1 }, { q: null }, { q: 'x'.repeat(101) }, { q: '', page: 0 }, { q: '', page: 1.5 }, { q: '', page: 10001 }, { q: '', page: '2' },
+    { q: '', role: 'host' }, { q: '', audience: 'members' }, { q: '', userId: 'another-host' }, { q: '', limit: 100 }]) {
+    const invalid = { type: 'users.load', data };
+    assert.equal(parse(invalid), null, JSON.stringify(data)); h.bridge.handle(invalid);
+  }
+  await settle(); assert.equal(h.count('memberUsers'), 0); assert.equal(h.count('me'), 0);
+  h.bridge.close();
+});
+
+test('member directory requires approved host authority and preserves member identities for chat and calls', async () => {
+  for (const state of ['member', 'pending', 'suspended', 'approved']) {
+    const h = harness();
+    h.overrides.me = () => state === 'member' ? { ...account(), requiresOnboarding: false } : {
+      ...approvedAccount(), user: { ...approvedAccount().user, serverRole: 'host', role: state === 'approved' ? 'host' : 'sender', hostStatus: state,
+        isVerifiedHost: state === 'approved' }, verification: state === 'approved' ? 'verified' : 'rejected',
+    };
+    h.overrides.memberUsers = () => directoryPage();
+    await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    h.bridge.handle({ type: 'users.load', data: { q: '  Directory member  ', page: 1 } }); await settle();
+    if (state === 'approved') {
+      assert.equal(h.count('memberUsers'), 1);
+      assert.deepEqual(plain(h.calls.find(call => call.name === 'memberUsers').args), ['Directory member', 1]);
+      assert.deepEqual(plain(h.find('data.users').at(-1).data), { ...directoryPage(), q: 'Directory member' });
+      assert.equal(h.find('data.users').at(-1).data.users[0].serverRole, 'user', 'Directory members must never acquire host identity');
+      h.overrides.sendMessage = () => ({ id: 'member-chat', text: 'Hello' });
+      h.bridge.handle({ type: 'chat.open', data: { with: directoryMember.id } }); await settle();
+      h.bridge.handle({ type: 'chat.send', data: { to: directoryMember.id, text: 'Hello' } }); await settle();
+      assert.equal(h.count('thread'), 1); assert.equal(h.count('sendMessage'), 1, 'A discovered stranger can open an authorized conversation');
+      h.overrides.startCall = () => ({ callId: 'member-directory-call' });
+      h.bridge.handle({ type: 'call.start', data: { to: directoryMember.id, voice: true } }); await settle();
+      assert.deepEqual(plain(h.calls.find(call => call.name === 'startCall').args), [directoryMember.id, true]);
+      assert.equal(h.find('call.created').at(-1).data.to, directoryMember.id);
+      assert.equal(h.count('publicProfile'), 0, 'Chat and call actions do not require a follow or separate profile preload');
+    } else {
+      assert.equal(h.count('memberUsers'), 0, state + ' cannot enumerate members');
+      assert.equal(h.find('data.users').length, 0);
+      assert.equal(h.find('operation.error').at(-1).data.action, 'users.load');
+    }
+    h.bridge.close();
+  }
+});
+
+test('member directory isolates the newest query and reports only its correlated error', async () => {
+  const h = harness(), first = deferred(), second = deferred(); h.overrides.me = () => approvedAccount();
+  h.overrides.memberUsers = q => q === 'old' ? first.promise : second.promise;
+  await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.bridge.handle({ type: 'users.load', data: { q: 'old', page: 2 } }); await settle();
+  h.bridge.handle({ type: 'users.load', data: { q: 'new', page: 1 } }); await settle();
+  second.resolve(directoryPage()); await settle(); first.reject(new h.ApiError('Retired directory error', 503)); await settle();
+  assert.deepEqual(h.find('data.users').map(event => event.data.q), ['new']);
+  assert.equal(h.find('operation.error').filter(event => event.data.action === 'users.load').length, 0, 'An old error must not finish or replace the new search');
+  h.overrides.memberUsers = () => { throw new h.ApiError('Directory is temporarily unavailable', 503); };
+  h.bridge.handle({ type: 'users.load', data: { q: 'failure', page: 3 } }); await settle();
+  const loading = h.find('data.loading').filter(event => event.data.resource === 'users').at(-1).data;
+  assert.equal(loading.q, 'failure'); assert.equal(loading.page, 3); assert.equal(loading.loading, false); assert.match(loading.error, /temporarily unavailable/);
+  const failure = h.find('operation.error').filter(event => event.data.action === 'users.load').at(-1).data;
+  assert.equal(failure.q, 'failure'); assert.equal(failure.page, 3);
+  h.bridge.close();
+});
+
+test('member directory retires approval checks, results and failures after account, document or authority changes', async () => {
+  for (const change of ['account', 'document', 'revocation']) for (const stage of ['approval', 'result']) for (const outcome of ['success', 'failure']) {
+    const h = harness(), pending = deferred(); h.overrides.me = () => approvedAccount();
+    await h.session.setSessionTokens(tokenPair()); h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+    if (stage === 'approval') {
+      h.live[0].onEvent({ type: 'realtime.status', data: { connected: false } });
+      h.overrides.me = () => pending.promise;
+    }
+    h.overrides.memberUsers = () => pending.promise;
+    h.bridge.handle({ type: 'users.load', data: { q: 'private', page: 1 } }); await settle();
+    if (change === 'account') { await h.session.clearToken(); await h.session.setSessionTokens(tokenPair('next')); }
+    else if (change === 'document') h.bridge.documentLoading();
+    else {
+      h.overrides.me = () => ({ ...approvedAccount(), user: { ...approvedAccount().user, role: 'sender', serverRole: 'host', hostStatus: 'suspended', isVerifiedHost: false }, verification: 'rejected' });
+      h.live[0].onEvent({ type: 'verification.status', data: { status: 'rejected', hostStatus: 'suspended' } }); await settle();
+    }
+    if (outcome === 'failure') pending.reject(new h.ApiError('Retired directory error', 503));
+    else pending.resolve(stage === 'approval' ? approvedAccount() : directoryPage());
+    await settle();
+    assert.equal(h.find('data.users').length, 0, `${change}/${stage}/${outcome}`);
+    assert.equal(h.find('operation.error').filter(event => event.data.action === 'users.load').length, 0, `${change}/${stage}/${outcome} cannot surface a stale failure`);
+    assert.equal(h.find('data.loading').filter(event => event.data.resource === 'users' && event.data.error).length, 0, `${change}/${stage}/${outcome} cannot publish a retired loading error`);
+    assert.equal(h.count('memberUsers'), stage === 'approval' ? 0 : 1);
+    h.bridge.close();
+  }
+});
 
 const officialFixture = () => {
   const identity={id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};

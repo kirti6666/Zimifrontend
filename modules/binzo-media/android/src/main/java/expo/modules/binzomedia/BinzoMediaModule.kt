@@ -8,16 +8,19 @@ import expo.modules.kotlin.modules.ModuleDefinition
 
 class BinzoMediaModule : Module() {
   private var audio: CallAudioSession? = null
+  @Volatile private var activityVisible = false
 
   override fun definition() = ModuleDefinition {
     Name("BinzoMedia")
 
-    Events("onBeautyStatus")
+    Events("onBeautyStatus", "onCallServiceStopped")
 
     OnCreate {
+      activityVisible = appContext.currentActivity?.hasWindowFocus() == true
       BeautyController.appContext = appContext.reactContext?.applicationContext
       audio = appContext.reactContext?.let { CallAudioSession(it.applicationContext) }
       BeautyController.onStatus = { status -> sendEvent("onBeautyStatus", mapOf("status" to status)) }
+      CallForegroundService.onStopped = { callId -> sendEvent("onCallServiceStopped", mapOf("callId" to callId)) }
       ProcessorProvider.addProcessor(
         BeautyController.PROCESSOR,
         VideoFrameProcessorFactoryInterface { FacebetterFrameProcessor() },
@@ -25,17 +28,38 @@ class BinzoMediaModule : Module() {
     }
 
     OnDestroy {
+      activityVisible = false
       audio?.end()
       audio = null
+      appContext.reactContext?.applicationContext?.let { CallForegroundService.stop(it) }
+      CallForegroundService.onStopped = null
       BeautyController.onStatus = null
       BeautyController.release {}
     }
 
     Function("isBeautySupported") { BeautyController.supported }
 
+    OnActivityEntersForeground { activityVisible = true }
+    OnActivityEntersBackground { activityVisible = false }
+    OnUserLeavesActivity { activityVisible = false }
+
     Function("beginCallAudio") { video: Boolean -> audio?.begin(video) }
 
     Function("endCallAudio") { audio?.end() }
+
+    AsyncFunction("beginCallService") { callId: String, video: Boolean, promise: Promise ->
+      val context = appContext.reactContext?.applicationContext
+      val visible = appContext.currentActivity != null && activityVisible
+      if (context == null || !visible && !CallForegroundService.isRunning(callId, video)) promise.reject("CALL_SERVICE_UNAVAILABLE", "Return to BinzoLive before connecting your call.", null)
+      else CallForegroundService.start(context, callId, video) { error ->
+        if (error == null) promise.resolve(null)
+        else promise.reject("CALL_SERVICE_UNAVAILABLE", "Your call could not continue in the background. Return to BinzoLive and try again.", error)
+      }
+    }
+
+    Function("endCallService") { callId: String ->
+      appContext.reactContext?.applicationContext?.let { CallForegroundService.stop(it, callId) }
+    }
 
     // The server mints the Android license; app keys never reach the device.
     Function("configureBeauty") { licenseToken: String -> BeautyController.configure(licenseToken) }

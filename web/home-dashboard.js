@@ -86,9 +86,78 @@ function homeDashboardEmpty(){
 }
 // Like the reference: the country chips, then one square-card grid. Hosts keep loading with "Load more".
 function homeDashboard(){
+  if(isApprovedHost())return hostUsersScreen();
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
   const grid=pending?homeDashboardSkeleton('Loading creators',6):error?'':all.length?`<div id="home-host-grid" class="zh-grid">${homeGridWithAd(all.map(homeTile),'home')}</div>`:homeDashboardEmpty()+(window.ZimiAds?.campaigns('home')||'')+(window.ZimiAds?.card('home')||'');
   return `<div id="home-feed-panel" class="zh-home zh-dashboard" role="tabpanel" aria-labelledby="home-tab-${feed[0]}"><h1 class="zh-home-title">${feed[1]}</h1>${homeRegionChips()}${homeDashboardStories(hosts,pending,error,more)}${error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="homeLoad()">Retry</button></div>`:''}<section class="zh-discover" aria-label="${feed[1]} creators">${grid}</section>${homeRefreshNotice()}${more?homeDashboardSkeleton('Loading more hosts',2):moreError?`<div class="zh-error" role="alert">${esc(moreError)}<button onclick="homeLoad(true)">Retry loading more hosts</button></div>`:!pending&&!error&&Home.hosts.length<Home.total?'<button class="zh-load-more" onclick="homeLoad(true)">Load more hosts</button>':''}${DEMO?'<p class="zh-preview-note">Design preview &middot; sample hosts'+MODEL_NOTE+'</p>':''}${homeDashboardHostEntry()}</div>${homeGiftSheet()}`;
 }
+
+/* Approved hosts browse members separately from the creator feeds. Requests are
+   paginated and searched on the server; only public identity is held here. */
+const HostUsers={owner:'',rows:[],query:'',resultQuery:'',page:0,requestedPage:1,total:0,loaded:false,loading:false,more:false,error:'',timer:null,remembered:new Set()};
+function hostUsersHeader(){return `<header class="zh-header zh-users-header"><h1>Users</h1><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="document.getElementById('host-user-search')?.focus()" aria-label="Search users">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
+function hostUsersPaint(){if(!isApprovedHost())return;const results=document.getElementById(S.v==='search'?'home-search-results':'host-user-results');if(results)results.innerHTML=hostUsersResults();contentImagesReady();window.ZimiLaunch?.check()}
+function hostUsersLoad(more=false){
+  if(!isApprovedHost())return;
+  if(more&&(HostUsers.loading||HostUsers.rows.length>=HostUsers.total))return;
+  clearTimeout(HostUsers.timer);HostUsers.timer=null;
+  const q=HostUsers.query.trim(),page=more?HostUsers.page+1:1;
+  Object.assign(HostUsers,{loading:true,more,error:'',requestedPage:page});hostUsersPaint();
+  if(DEMO){Object.assign(HostUsers,{rows:[],loaded:true,loading:false,more:false,page:1,total:0,resultQuery:q});hostUsersPaint();return}
+  Native.send('users.load',{q,page});
+}
+function hostUsersSearch(value){
+  HostUsers.query=String(value).slice(0,100);S.sq=HostUsers.query;
+  clearTimeout(HostUsers.timer);Object.assign(HostUsers,{loading:true,more:false,error:'',requestedPage:1});hostUsersPaint();
+  HostUsers.timer=setTimeout(()=>hostUsersLoad(),280);
+}
+function hostUsersPeer(id){
+  if(!isApprovedHost()){window.ZimiHostAccess?.guard();return null}
+  const user=HostUsers.rows.find(row=>row.id===id);if(!user)return null;
+  // Chat/profile helpers share identity through g(), without turning this member
+  // into a verified creator or inventing online presence.
+  const known=g(id);if(known)Object.assign(known,user);else EXTRA.push({...user});
+  HostUsers.remembered.add(id);
+  return user;
+}
+function hostUsersOpen(id,action){
+  const user=hostUsersPeer(id);if(!user)return;
+  if(action==='chat')return zcOpen(id);
+  if(action==='voice'||action==='video')return hostCallMember(id,action==='voice',{name:user.n,avatarUrl:user.avatarUrl,city:user.c,gender:user.gender});
+  go('user',id);
+}
+function hostUsersRow(user){
+  const id=domId(user.id),name=esc(user.n);
+  return `<article class="zh-user-row" data-user-id="${esc(user.id)}"><button type="button" class="zh-user-person" onclick="hostUsersOpen('${id}','profile')" aria-label="View ${name} profile"><span class="zh-user-avatar">${homeCover(user)}<i class="${user.on?'is-online':''}" aria-hidden="true"></i></span><span class="zh-user-identity"><strong>${name}</strong><small>${user.on?'Online':'Offline'}${user.c?' · '+esc(user.c):''}</small></span></button><div class="zh-user-actions"><button type="button" onclick="hostUsersOpen('${id}','chat')" aria-label="Chat with ${name}">${hi('chat',20)}</button><button type="button" onclick="hostUsersOpen('${id}','voice')" aria-label="Voice call ${name}">${hi('ph',20)}</button><button type="button" class="zh-user-video" onclick="hostUsersOpen('${id}','video')" aria-label="Video call ${name}">${hi('vid',20)}</button></div></article>`;
+}
+function hostUsersResults(){
+  const pending=HostUsers.loading||!HostUsers.loaded,rows=HostUsers.resultQuery===HostUsers.query.trim()?HostUsers.rows:[],more=pending&&HostUsers.more;
+  if(pending&&!more)return contentSkeleton('rows','Loading users',6);
+  const error=HostUsers.error,moreError=error&&HostUsers.requestedPage>1;
+  if(error&&!moreError)return `<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="hostUsersLoad()">Retry</button></div>`;
+  return `${rows.length?`<div class="zh-user-list" aria-label="Users">${rows.map(hostUsersRow).join('')}</div>`:`<div class="zh-empty"><h3>${HostUsers.query.trim()?'No users found':'No users to show yet'}</h3><p>${HostUsers.query.trim()?'Try another name or user ID.':'Members will appear here when they join.'}</p></div>`}${more?contentSkeleton('rows','Loading more users',3):moreError?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="hostUsersLoad(true)">Retry loading more users</button></div>`:rows.length<HostUsers.total?'<button type="button" class="zh-load-more" onclick="hostUsersLoad(true)">Load more users</button>':''}`;
+}
+function hostUsersScreen(){return `<section class="zh-home zh-host-users"><label class="zh-user-search">${hi('srch',20)}<input type="search" id="host-user-search" aria-label="Search users by name or ID" placeholder="Search users by name or ID" maxlength="100" value="${esc(HostUsers.query)}" oninput="hostUsersSearch(this.value)"></label><div id="host-user-results">${hostUsersResults()}</div>${homeDashboardHostEntry()}</section>`}
+function hostUsersForget(id){for(const list of [H,EXTRA]){const at=list.findIndex(user=>user.id===id);if(at>=0)list.splice(at,1)}delete PEOPLE[id];HostUsers.remembered.delete(id)}
+function hostUsersReset(){clearTimeout(HostUsers.timer);for(const id of HostUsers.remembered)hostUsersForget(id);S.sq='';Object.assign(HostUsers,{owner:'',rows:[],query:'',resultQuery:'',page:0,requestedPage:1,total:0,loaded:false,loading:false,more:false,error:'',timer:null})}
+function hostUsersEnsureAccount(){const owner=S.user?.id||'';if(HostUsers.owner!==owner){hostUsersReset();HostUsers.owner=owner}}
+Native.on('data.users',data=>{
+  if(!isApprovedHost()||data.q!==HostUsers.query.trim()||data.page!==HostUsers.requestedPage)return;
+  const rows=(data.users||[]).filter(user=>user.serverRole==='user'&&user.id!==S.user?.id).map(homeCreator);
+  HostUsers.rows=data.page>1?[...HostUsers.rows,...rows.filter(user=>!HostUsers.rows.some(old=>old.id===user.id))]:rows;
+  Object.assign(HostUsers,{loaded:true,loading:false,more:false,error:'',page:data.page,total:data.total,resultQuery:data.q});hostUsersPaint();
+});
+Native.on('data.loading',data=>{
+  if(data.resource!=='users'||!isApprovedHost()||(data.q||'')!==HostUsers.query.trim()||data.page!==HostUsers.requestedPage)return;
+  Object.assign(HostUsers,{loading:!!data.loading,more:!!data.loading&&data.page>1,error:data.error||''});
+  if(data.error)HostUsers.loaded=true;hostUsersPaint();
+});
+Native.on('session',()=>{hostUsersEnsureAccount();if(isApprovedHost()&&S.v==='home'&&!HostUsers.loaded&&!HostUsers.loading)hostUsersLoad()});
+Native.on('session.none',hostUsersReset);Native.on('session.expired',hostUsersReset);
+window.addEventListener('zimi:host-access',event=>{if(event.detail.checking)return;if(!event.detail.approved){hostUsersReset();if(S.v==='search')r()}else if(S.v==='home'){hostUsersEnsureAccount();if(!HostUsers.loaded&&!HostUsers.loading)hostUsersLoad()}});
+document.addEventListener('aurora:navigate',()=>{if(isApprovedHost()&&S.v==='home'){hostUsersEnsureAccount();if(!HostUsers.loaded&&!HostUsers.loading)hostUsersLoad()}});
+Native.on('block.saved',data=>{if(!isApprovedHost())return;if(data.blocked){HostUsers.rows=HostUsers.rows.filter(user=>user.id!==data.id);hostUsersForget(data.id);hostUsersPaint()}if(['home','search'].includes(S.v))hostUsersLoad();else HostUsers.loaded=false});
+Native.on('app.foreground',()=>{if(isApprovedHost()&&['home','search'].includes(S.v)&&!HostUsers.loading)hostUsersLoad()});
+ZimiPullRefresh.register('home',{refresh:()=>isApprovedHost()?hostUsersLoad():homeLoad(),busy:()=>isApprovedHost()?HostUsers.loading:Home.loading||contentPending('home')});

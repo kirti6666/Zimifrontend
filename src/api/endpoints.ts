@@ -9,6 +9,7 @@ import { diamondStatisticsFrom, validStatisticsDate } from "./diamond-statistics
 import type { DiamondStatisticsPeriod } from "./types";
 import { leaderboardFrom, officialChatFrom, referralFrom } from "./adapters";
 import { relationshipsFrom } from "./adapters";
+import { memberUsersFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
 import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
 import type { HostAgencyStatus } from "./types";
@@ -294,6 +295,11 @@ export const api = {
   async blockedUsers(page = 1) { return blockedUsersFrom(await request("GET", `/users/blocked?page=${page}&limit=20`)); },
   setBlocked: (id: string, blocked: boolean) => request<void>(blocked ? "POST" : "DELETE", `/users/${encodeURIComponent(id)}/block`, blocked ? {} : undefined),
   async home(query: HomeQuery = {}) { return homeFrom(await request("GET", `/home?${queryString({ ...query, limit: 20 })}`)); },
+  async memberUsers(q = "", page = 1) {
+    if (typeof q !== "string" || q.length > 100 || !Number.isSafeInteger(page) || page < 1 || page > 10000)
+      throw new ApiError("Enter a name or user ID and try again.", 400);
+    return memberUsersFrom(await request("GET", `/users/search?audience=members&q=${encodeURIComponent(q.trim())}&page=${page}&limit=20`));
+  },
   async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
   async notifications(query?: NotificationsQuery) { return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100")); },
   async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },

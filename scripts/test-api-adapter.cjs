@@ -1192,5 +1192,33 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     await assert.rejects(api.adClick(adId, 'home'), /secure link/, url);
   }
   finished();
+  const directoryId = '507f1f77bcf86cd799439081';
+  const directoryRawUser = { _id: directoryId, name: 'Directory member', role: 'user', hostStatus: 'none', isVerifiedHost: false,
+    avatar: { url: 'https://cdn.example.test/member.png' }, country: 'India', isOnline: false, availableForCall: true,
+    phone: 'private-phone', email: 'private@example.test', safety: { discoverable: true }, coins: 999, passwordHash: 'not-public' };
+  const directoryRaw = { items: [directoryRawUser], total: 24, page: 2, limit: 20 };
+  const directoryQuery = 'Member&audience=hosts';
+  expect('GET', `/users/search?audience=members&q=${encodeURIComponent(directoryQuery)}&page=2&limit=20`, directoryRaw);
+  const directory = await api.memberUsers('  ' + directoryQuery + '  ', 2);
+  assert.equal(directory.total, 24); assert.equal(directory.page, 2); assert.equal(directory.limit, 20);
+  assert.equal(directory.users[0].id, directoryId); assert.equal(directory.users[0].role, 'sender');
+  assert.equal(directory.users[0].serverRole, 'user'); assert.equal(directory.users[0].verified, false);
+  assert.equal(directory.users[0].online, false, 'Offline members remain discoverable without inventing an Online badge');
+  assert.equal(directory.users[0].availableForCall, true, 'Invitation availability is distinct from online presence');
+  for (const privateKey of ['phone', 'email', 'safety', 'coins', 'passwordHash']) assert.equal(directory.users[0][privateKey], undefined, `Directory strips ${privateKey}`);
+  assert.equal(requests.at(-1)[2], undefined, 'Directory reads cannot submit a write or choose another viewer');
+  assert.equal(adapters.memberUsersFrom({ ...directoryRaw, items: [{ ...directoryRawUser, name: '' }] }).users[0].name, 'BinzoLive member', 'An unnamed real member gets a neutral identity fallback');
+  for (const patch of [{ items: undefined }, { items: 'untrusted' }, { total: -1 }, { total: Number.MAX_SAFE_INTEGER + 1 }, { total: '24' }, { page: 0 }, { page: 10001 }, { limit: 0 }, { limit: 101 },
+    { items: [{ ...directoryRawUser, _id: 'untrusted-id' }] }, { items: [{ ...directoryRawUser, role: 'host', hostStatus: 'approved', isVerifiedHost: true }] },
+    { items: [{ ...directoryRawUser, name: 42 }] }, { items: [{ ...directoryRawUser, isVerifiedHost: true }] }, { items: [directoryRawUser, directoryRawUser] }]) {
+    assert.throws(() => adapters.memberUsersFrom({ ...directoryRaw, ...patch }), /member|users|directory|loaded|response/i, JSON.stringify(patch));
+  }
+  const beforeInvalidDirectory = requests.length;
+  for (const [q, page] of [[null, 1], [1, 1], ['x'.repeat(101), 1], ['', 0], ['', 1.5], ['', 10001], ['', '2']])
+    await assert.rejects(api.memberUsers(q, page), error => error instanceof ApiError && error.status === 400);
+  assert.equal(requests.length, beforeInvalidDirectory, 'Malformed directory queries stop before HTTP');
+  expect('GET', '/users/search?audience=members&q=&page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
+  assert.deepEqual(plain((await api.memberUsers()).users), [], 'An empty query loads the first real member page without enumerating it in memory');
+  finished();
   console.log('API adapter checks passed: authentication, media, home feed, matches, presence, notifications, catalog, server-priced gifts, missions, checkout, withdrawal configuration/history/receipts, streams, and Socket.IO.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

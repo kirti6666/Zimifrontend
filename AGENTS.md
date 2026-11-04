@@ -92,6 +92,12 @@ keeps it identical to the original Next.js version.
   availability is a floating "Go online"/"Online" button at the bottom right of
   Home, where the reference has its LIVE button. Use the selected theme's
   colors. Filter hosts on the server before pagination.
+- Approved hosts use the Home member directory instead: Users heading, name/public
+  ID search and paginated member rows with Chat, Voice and Video actions. Keep
+  member creator feeds unchanged. Use `users.load`/`data.users`, current approved
+  host authority, real privacy-aware member presence and existing call/chat
+  guards. Include offline members, and filter blocked, inactive and undiscoverable
+  accounts on the server. Never normalize directory members into creator identities.
 - Every host list (Home grid, All Creators, Search) uses the square photo card
   `homeTile` in `web/home.js`, matching the user's reference: an Online tag in
   the photo's top-left corner, then the name with the country flag (India as a

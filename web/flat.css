@@ -323,13 +323,14 @@ html,body,.app,#top,#scroll-root,#screen {
 html:root :is(
   .zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zr-round,.zb-lens-swatch,
   .zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline,
+  .zh-user-actions>button,.zh-user-avatar,.zh-user-avatar>i,
   .hc-preview-tools>button,.zv-actions button,.zv-controls button,.zh-call-controls button,.incban button,.zc-thread-actions>button,.zc-voice-play,
   .av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
   .hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i,
   .zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified,
   .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,.zc-call-badge,.zc-call-back,.zlb-avatar
 ) {border-radius:999px!important}
-html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
+html:root :is(.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic,.zh-user-avatar)>:is(img,video,svg,.zh-photo,.zh-fallback,.zf-face),
 html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::before,
 html:root :is(.ringorb,.zpc-orbit,.hc-identity-avatar,.hc-switch,.switch)::after {border-radius:999px!important}
 /* The pull-to-refresh spinner is a disc like the platform's own (also in ROUND). */

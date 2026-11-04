@@ -99,6 +99,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "referral.apply": valid = typeof d.code === "string" && d.code.trim().length > 0 && d.code.length <= 20 && Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 &&
       Object.keys(d).every(key => ["code", "requestId"].includes(key)); break;
     case "hosts.search": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)); break;
+    case "users.load": valid = typeof d.q === "string" && d.q.length <= 100 && (d.page === undefined || (Number.isSafeInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => key === "q" || key === "page"); break;
     case "notifications.load": valid = notificationQuery(d); break;
     case "notifications.open": {
       const target = notificationTargetFrom(d);

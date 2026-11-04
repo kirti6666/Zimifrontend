@@ -50,12 +50,19 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await receive('data.home',{...home,hosts:[creator],stage:[creator],featured:creator});
       await receive('wallet.balance',{coins:1000});
       await page.evaluate(()=>{window.__prepared=0;window.ZimiMedia.prepare=async()=>{window.__prepared++};window.ZimiMedia.openStream=()=>{};window.ZimiMedia.attach=()=>{};});
+      // Members discover creator cards. Approved hosts now browse member users,
+      // but may still open a creator profile from an existing relationship.
+      if(account.verification==='verified'){
+        assert.equal(await page.locator('.zh-host-users').count(),1);
+        await page.evaluate(id=>go('host',id),creator.id);
+      }else{
       // The card offers its always-active video call; chat stays on the profile.
       assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Chat belongs on the profile');
       assert.equal(await page.locator('.zh-discover .zh-creator-call').isEnabled(),true,'The card has the always-active video call button');
       assert.equal(await page.locator('.zh-person-cost').count(),0,'Home does not disclose call rates before the call action');
       assert.doesNotMatch(await page.locator('.zh-dashboard').innerText(),/\bpremium\b|call rate|coins\s*\/\s*min/i,'Home discovery has no detailed pricing');
       await page.getByRole('button',{name:'View '+creator.name+' profile',exact:true}).click();
+      }
       assert.equal(await page.evaluate(()=>S.v),'host','The card opens the selected creator profile');
       assert.equal((await sent('call.start')).length,0,'Opening the profile never places a call');
       assert.equal(await page.evaluate(()=>__prepared),0,'Opening the profile never activates capture');
@@ -403,6 +410,7 @@ async function testHomeVideoCalls(browser, errors, host, home) {
     await real.evaluate(()=>{go('live');go('broadcast');homeGoLive();homeStartStream()});
     assert.equal(await real.evaluate(()=>S.v),'home','Direct stream entry points stay closed');
     assert.equal(await real.evaluate(()=>window.__sent.filter(m=>['stream.start','stream.join','stream.request'].includes(m.type)).length),0,'Disabled entry points send no streaming commands');
+    await receive('session',{user:{id:'507f1f77bcf86cd799439001',name:'Member',role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false},verification:'none',requiresOnboarding:false});
     await receive('data.home',home);
     await receive('operation.error',{action:'home.reload',message:'Temporarily offline'});
     assert.equal(await real.locator('.zh-error').innerText(),'Temporarily offlineRetry');
