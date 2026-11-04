@@ -38,6 +38,7 @@ const VIDEO_MAX_LEVEL = PROFILES.length - 1;
 const VIDEO_START_LEVEL = VIDEO_MAX_LEVEL;
 const RECEIVER_EVIDENCE_MS = 8000;
 const VIDEO_RECOVERY_DWELL_MS = 10000;
+let callServiceSequence = 0;
 type QualitySnapshot = {
   sampledAt: number; timestamp?: number; received?: number; lost?: number;
   sent?: number; frames?: number; encode?: number; delay?: number; bytes?: number;
@@ -84,7 +85,7 @@ export function createNativeMedia(
   let retiring: Promise<void> = Promise.resolve(), mutations: Promise<unknown> = Promise.resolve();
   let session: Session | null = null, expectedCall: string | null = null, handoffCall: string | null = null;
   let earlySignals: Signal[] = [], beautyWanted = false, settings: BeautyCommand[] = [];
-  let callService: { id: string; video: boolean; ready: Promise<void> } | null = null;
+  let callService: { id: string; video: boolean; lease: string; ready: Promise<void> } | null = null;
   let beautyRequest: Promise<void> | null = null, beautyRevision = 0, beautyConfigured = false, beautyNeedsReset = false, processorTrack: MediaStreamTrack | null = null;
 
   function publish(next: Partial<NativeMediaState> = {}) {
@@ -105,13 +106,14 @@ export function createNativeMedia(
   const connected = (pc: RTCPeerConnection) => pc.connectionState === "connected" && !["failed", "disconnected", "closed"].includes(pc.iceConnectionState);
   function releaseCallService() {
     const previous = callService; callService = null;
-    if (previous) stopCallService(previous.id);
+    if (previous) stopCallService(previous.lease);
   }
   function ensureCallService(id: string, video: boolean): Promise<void> {
     if (callService?.id === id && callService.video === video) return callService.ready;
     releaseCallService();
-    const ready = startCallService(id, video);
-    callService = { id, video, ready };
+    const lease = `${Date.now()}:${++callServiceSequence}`;
+    const ready = startCallService(id, video, lease);
+    callService = { id, video, lease, ready };
     return ready;
   }
   function disposePeer() {
@@ -217,8 +219,8 @@ export function createNativeMedia(
     }
     publish({ beautyStatus: status });
   });
-  const serviceSubscription = onCallServiceStopped(callId => {
-    if (closed || callService?.id !== callId || session?.id !== callId && expectedCall !== callId) return;
+  const serviceSubscription = onCallServiceStopped((callId, lease) => {
+    if (closed || callService?.id !== callId || callService.lease !== lease || session?.id !== callId && expectedCall !== callId) return;
     send({ type: "call.end", data: { callId, reason: "ended_from_notification" } });
     stop();
     send({ type: "call.ended", data: { callId } });

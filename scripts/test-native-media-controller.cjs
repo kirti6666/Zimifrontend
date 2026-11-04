@@ -54,8 +54,8 @@ function fixture(options = {}) {
     setBeautyEnabled: enabled => calls.push(['beautyEnabled', enabled]),
     configureBeauty: token => calls.push(['configure', token]),
     startCallAudio: video => calls.push(['startCallAudio', video]), stopCallAudio: () => calls.push(['stopCallAudio']),
-    startCallService: async (id, video) => { calls.push(['startCallService', id, video]); if (options.service) await options.service.promise; if (options.serviceFailure) throw new Error('Return to the app before connecting'); },
-    stopCallService: id => calls.push(['stopCallService', id]),
+    startCallService: async (id, video, lease) => { calls.push(['startCallService', id, video, lease]); if (options.service) await options.service.promise; if (options.serviceFailure) throw new Error('Return to the app before connecting'); },
+    stopCallService: lease => calls.push(['stopCallService', lease]),
     onCallServiceStopped: listener => { serviceStopped = listener; return { remove() { calls.push(['unsubscribeService']); } }; },
     releaseBeauty: async () => { calls.push(['releaseBeauty']); if (options.release) await options.release.promise; },
     onBeautyStatus: listener => { beautyListener = listener; return { remove() { calls.push(['unsubscribe']); } }; },
@@ -93,7 +93,7 @@ function fixture(options = {}) {
   async function rpc(action, data = {}) { const id = ++requestId; await controller.handle({ action, requestId: id, data }); return events.find(event => event.type === 'native.media.result' && event.data.requestId === id)?.data; }
   async function connect(data = {}) { controller.event({ type: 'call.connected', data: { callId: 'call-one', peerId: 'peer-one', initiator: true, ...data } }); await flush(); return peers.at(-1); }
   async function tick(delay) { now += delay; const found = [...timers].filter(([, timer]) => timer.delay === delay); found.forEach(([id, timer]) => { if (!timer.interval) timers.delete(id); timer.work(); }); await flush(); }
-  return { controller, rpc, connect, tick, calls, events, states, peers, captures, timers, makeStream, Track, Stream, beautyListener: status => beautyListener(status), serviceStopped: id => serviceStopped(id), state: () => states.at(-1) };
+  return { controller, rpc, connect, tick, calls, events, states, peers, captures, timers, makeStream, Track, Stream, beautyListener: status => beautyListener(status), serviceStopped: (id, lease = calls.filter(call => call[0] === 'startCallService' && call[1] === id).at(-1)?.[3]) => serviceStopped(id, lease), state: () => states.at(-1) };
 }
 
 test('permissioned preview and an unanswered incoming call do not start a foreground capture service', async () => {
@@ -101,18 +101,18 @@ test('permissioned preview and an unanswered incoming call do not start a foregr
   h.controller.event({ type: 'call.incoming', data: { callId: 'incoming-one' } }); await flush();
   assert.equal(h.calls.filter(call => call[0] === 'startCallService').length, 0);
   await h.connect({ callId: 'incoming-one', initiator: false });
-  assert.deepEqual(h.calls.find(call => call[0] === 'startCallService'), ['startCallService', 'incoming-one', true]);
+  assert.deepEqual(h.calls.find(call => call[0] === 'startCallService').slice(0, 3), ['startCallService', 'incoming-one', true]);
   h.controller.close();
 });
 
 test('outgoing ringing promotes capture while visible, reuses that service after answer, and retires it on cancel', async () => {
   const h = fixture(); await h.rpc('prepare', { video: false });
   h.controller.event({ type: 'call.created', data: { callId: 'call-one' } }); await flush();
-  assert.deepEqual(h.calls.find(call => call[0] === 'startCallService'), ['startCallService', 'call-one', false]);
+  assert.deepEqual(h.calls.find(call => call[0] === 'startCallService').slice(0, 3), ['startCallService', 'call-one', false]);
   await h.connect({ voice: true });
   assert.equal(h.calls.filter(call => call[0] === 'startCallService').length, 1, 'A background answer reuses the already promoted ringing service');
   h.controller.event({ type: 'call.ended', data: { callId: 'call-one' } }); await flush();
-  assert.deepEqual(h.calls.filter(call => call[0] === 'stopCallService'), [['stopCallService', 'call-one']]);
+  assert.deepEqual(h.calls.filter(call => call[0] === 'stopCallService'), [['stopCallService', h.calls.find(call => call[0] === 'startCallService')[3]]]);
   h.controller.close();
 });
 
@@ -154,6 +154,21 @@ test('late service completion cannot revive a cancelled call or retire another c
   assert.ok(h.events.find(event => event.type === 'call.end' && event.data.callId === 'call-two' && event.data.reason === 'ended_from_notification'));
   h.controller.close();
   assert.ok(h.calls.find(call => call[0] === 'unsubscribeService'));
+});
+
+test('a changed capture mode uses a new service lease and ignores delayed events from its retired same-ID lease', async () => {
+  const h = fixture(); await h.rpc('prepare', { video: true });
+  h.controller.event({ type: 'call.created', data: { callId: 'call-one' } }); await flush();
+  const first = h.calls.find(call => call[0] === 'startCallService');
+  await h.connect({ voice: true });
+  const next = h.calls.filter(call => call[0] === 'startCallService').at(-1);
+  assert.equal(first[1], next[1]); assert.notEqual(first[3], next[3], 'Each native start owns a unique cancellation identity');
+  assert.ok(h.calls.find(call => call[0] === 'stopCallService' && call[1] === first[3]));
+  h.serviceStopped('call-one', first[3]); await flush();
+  assert.equal(h.peers.at(-1).connectionState, 'new');
+  h.serviceStopped('call-one', next[3]); await flush();
+  assert.equal(h.peers.at(-1).connectionState, 'closed');
+  h.controller.close();
 });
 
 test('native capture uses reference framing; preview and sender share one GPU-processed camera track', async () => {
