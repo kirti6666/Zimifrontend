@@ -50,22 +50,19 @@ async function testHomeVideoCalls(browser, errors, host, home) {
       await receive('data.home',{...home,hosts:[creator],stage:[creator],featured:creator});
       await receive('wallet.balance',{coins:1000});
       await page.evaluate(()=>{window.__prepared=0;window.ZimiMedia.prepare=async()=>{window.__prepared++};window.ZimiMedia.openStream=()=>{};window.ZimiMedia.attach=()=>{};});
-      // Members discover creator cards. Approved hosts now browse member users,
-      // but may still open a creator profile from an existing relationship.
+      // Hosts and members share Home discovery; account call guards still apply.
       if(account.verification==='verified'){
-        assert.equal(await page.locator('.zh-host-users').count(),1);
-        assert.deepEqual(await page.getByRole('tablist',{name:'Host directory'}).getByRole('tab').allInnerTexts(),['Members','Active Hosts']);
-        assert.equal(await page.getByRole('tab',{name:'Members',exact:true}).getAttribute('aria-selected'),'true');
-        assert.equal(await page.locator('.zh-feed-tabs').count(),0,'Approved hosts use directory tabs in Home');
-        await page.evaluate(id=>go('host',id),creator.id);
-      }else{
+        assert.equal(await page.locator('.zh-host-users').count(),0);
+        assert.deepEqual(await page.getByRole('tablist',{name:'Home feed'}).getByRole('tab').allInnerTexts(),['Following','Explore','For You','New']);
+        assert.equal(await page.getByRole('tab',{name:'Explore',exact:true}).getAttribute('aria-selected'),'true');
+        assert.equal(await page.locator('.zh-feed-tabs').count(),1,'Approved hosts use the reference feed tabs in Home');
+      }
       // The card offers its always-active video call; chat stays on the profile.
       assert.equal(await page.locator('.zh-dashboard').getByRole('button',{name:/^Chat with /}).count(),0,'Chat belongs on the profile');
       assert.equal(await page.locator('.zh-discover .zh-creator-call').isEnabled(),true,'The card has the always-active video call button');
       assert.equal(await page.locator('.zh-person-cost').count(),0,'Home does not disclose call rates before the call action');
       assert.doesNotMatch(await page.locator('.zh-dashboard').innerText(),/\bpremium\b|call rate|coins\s*\/\s*min/i,'Home discovery has no detailed pricing');
       await page.getByRole('button',{name:'View '+creator.name+' profile',exact:true}).click();
-      }
       assert.equal(await page.evaluate(()=>S.v),'host','The card opens the selected creator profile');
       assert.equal((await sent('call.start')).length,0,'Opening the profile never places a call');
       assert.equal(await page.evaluate(()=>__prepared),0,'Opening the profile never activates capture');

@@ -48,14 +48,26 @@
 .zu-call-voice{background:var(--raised);color:var(--ink);border:1px solid var(--line)}
 .zu-stat-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;min-height:44px;color:var(--ink);background:transparent}
 .zu-stat-button:focus-visible,.zu-relationship-row:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.zu-relationship-tabs{display:flex;gap:8px;margin:0 0 16px}
-.zu-relationship-tabs>button{flex:1;min-height:44px;padding:10px 12px;background:var(--raised);color:var(--muted);font-size:14px;font-weight:600}
+.zu-dialog.zu-relationships-dialog{inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:calc(12px + var(--safe-top)) max(20px,var(--safe-right)) max(12px,var(--safe-bottom)) max(20px,var(--safe-left));border:0;background:var(--canvas);overscroll-behavior:contain}
+.zu-relationships-dialog>header{justify-content:flex-start;gap:12px;height:44px;max-width:640px;margin:0 auto 16px}
+:root[data-theme-id] .zu-relationships-dialog>header h2{margin:0;font-size:calc(18px * var(--theme-font-scale,1));font-weight:600;line-height:24px;letter-spacing:0}
+.zu-relationships-dialog #zu-relationships{max-width:640px;margin:0 auto}
+.zu-relationship-tabs{display:flex;gap:0;padding:4px;margin:0 0 12px;min-height:48px;background:var(--raised)}
+.zu-relationship-tabs>button{flex:1;min-width:0;min-height:40px;padding:8px 12px;background:transparent;color:var(--muted);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600}
 .zu-relationship-tabs>button[aria-selected=true]{background:var(--accent);color:var(--cta-ink)}
 .zu-relationship-list{list-style:none;margin:0;padding:0}
-.zu-relationship-row{display:flex;align-items:center;gap:12px;min-height:68px;width:100%;padding:10px 0;text-align:left;background:transparent;color:var(--ink)}
-.zu-relationship-name{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
-.zu-relationship-name>strong{font-size:14px;font-weight:600;overflow-wrap:anywhere}
-.zu-relationship-name>small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.zu-relationship-row{display:flex;align-items:center;gap:14px;min-height:72px;width:100%;padding:12px 0;text-align:left;background:transparent;color:var(--ink)}
+.zu-relationship-avatar{--zu-avatar-color:var(--muted);--zu-avatar-text:var(--ink);width:48px;height:48px;background:color-mix(in srgb,var(--zu-avatar-color) 14%,var(--canvas));color:color-mix(in srgb,var(--zu-avatar-text) 80%,var(--ink));font-size:calc(16px * var(--theme-font-scale,1));font-weight:600}
+.zu-relationship-color-0{--zu-avatar-color:#d9368b;--zu-avatar-text:#9d174d}
+.zu-relationship-color-1{--zu-avatar-color:#397ced;--zu-avatar-text:#2444a1}
+.zu-relationship-color-2{--zu-avatar-color:#f4cd26;--zu-avatar-text:#a54f15}
+.zu-relationship-color-3{--zu-avatar-color:#35cf8a;--zu-avatar-text:#20653f}
+.zu-relationship-color-4{--zu-avatar-color:#9d7ce8;--zu-avatar-text:#6232a6}
+:root[data-theme=dark] .zu-relationship-avatar{color:color-mix(in srgb,var(--zu-avatar-text) 55%,var(--ink))}
+.zu-relationship-avatar>img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+.zu-relationship-name{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
+.zu-relationship-name>strong{font-size:calc(16px * var(--theme-font-scale,1));line-height:22px;font-weight:600;overflow-wrap:anywhere}
+.zu-relationship-name>small{font-size:calc(14px * var(--theme-font-scale,1));line-height:20px;color:var(--muted);overflow-wrap:anywhere}
 .zu-relationship-row>svg{flex:none;color:var(--muted)}
 .zu-relationship-more{width:100%;margin-top:12px}
 .zu-cover-preview{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--raised)}

@@ -107,7 +107,7 @@ const waitRequest=(page,number,count=1,mode='popular')=>page.waitForFunction(({n
    await scrollBottom(page);await waitRequest(page,2,2);
    await page.close();
   }
-  // Queued scroll work must respect the active route, feed, visibility and role.
+  // Queued scroll work must respect the active route, feed, visibility and session.
   {
    const {page,receive}=await open();
    await page.evaluate(()=>go('chats'));const before=await requests(page);
@@ -125,11 +125,14 @@ const waitRequest=(page,number,count=1,mode='popular')=>page.waitForFunction(({n
    await page.evaluate(()=>{delete document.hidden;document.dispatchEvent(new Event('visibilitychange'))});
    await waitRequest(page,2,1,'following');
    await receive('data.home',feed(hosts.slice(20,40),2,40));
-   await receive('session',hostSession);const hostBefore=await requests(page);
+   await receive('session',hostSession);
    await receive('data.users',{users:hosts.slice(0,2).map((row,index)=>({...row,role:'sender',serverRole:'user',verified:false,name:`Member ${index+1}`})),total:3,page:1,limit:2,q:''});
+   await page.evaluate(()=>homeDashboardFilter('popular'));
+   const hostBefore=await requestsFor(page,2);
+   await receive('data.home',feed(hosts.slice(0,20),1,40));
    await scrollBottom(page);await settle(page);
-   assert.deepEqual(await requests(page),hostBefore,'Approved-host Home never enters member auto-pagination');
-   assert.equal(await page.getByRole('button',{name:'Load more users',exact:true}).count(),1,'Host Members pagination stays independent');
+   assert.equal(await requestsFor(page,2),hostBefore+1,'Approved hosts use the same automatic creator-feed pagination');
+   assert.equal(await page.getByRole('button',{name:/^Load more/}).count(),0,'Host Home keeps the reference grid without directory pagination controls');
    await receive('session.expired',{});const expiredBefore=await requests(page);
    await scrollBottom(page);await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await settle(page);
    assert.deepEqual(await requests(page),expiredBefore,'Expired sessions cannot resume a detached feed observer');
@@ -148,6 +151,6 @@ const waitRequest=(page,number,count=1,mode='popular')=>page.waitForFunction(({n
    await page.close();
   }
   assert.deepEqual(errors,[],'Infinite scrolling introduces no browser errors');
-  console.log('PASS member Home auto-pagination: near-bottom loading, single in-flight page, stable cards/scroll, dedup, explicit retry, exhaustion/empty-page stop, feed/route/visibility/session/role isolation and scroll fallback without IntersectionObserver');
+  console.log('PASS shared Home auto-pagination: near-bottom loading, single in-flight page, stable cards/scroll, dedup, explicit retry, exhaustion/empty-page stop, host/member feeds, route/visibility/session isolation and scroll fallback without IntersectionObserver');
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
