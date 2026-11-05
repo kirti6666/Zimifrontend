@@ -1,17 +1,7 @@
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-/* Host member directory keeps search and each contact action within reach. */
-.zh-header.zh-users-header{gap:8px;padding-inline:14px}
-.zh-host-tabs{display:flex;align-items:center;align-self:stretch;flex:1;gap:12px;min-width:0;overflow-x:auto;scrollbar-width:none}
-.zh-host-tabs::-webkit-scrollbar{display:none}
-.zh-host-tabs>[role="tab"]{flex:none;min-height:44px;padding:0;border:0;background:transparent;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:500;white-space:nowrap}
-.zh-host-tabs>[aria-selected="true"]{color:var(--ink);font-size:calc(21px * var(--theme-font-scale,1));font-weight:700;letter-spacing:-.5px}
-.zh-host-tabs>[role="tab"]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-3px}
-.zh-users-header .zh-header-actions{flex:none;gap:2px}
-.zh-users-header .zh-icon{width:44px;height:44px}
-.zh-users-header .zh-trophy{color:var(--gold)}
-.zh-host-users{padding:12px 20px 28px;color:var(--ink)}
+/* Search retains the existing host directory rows. */
 .zh-user-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;background:var(--raised);color:var(--muted);margin-bottom:12px}
 .zh-user-search input{flex:1;min-width:0;min-height:46px;padding:0;border:0;outline:0;background:transparent;color:var(--ink);font-size:14px}
 .zh-user-search:focus-within{outline:2px solid var(--accent-ink);outline-offset:2px}
@@ -31,21 +21,21 @@
 .zh-user-actions>button:focus-visible,.zh-user-person:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 .zh-host-users .zh-error{color:var(--muted);background:var(--surface)}
 .zh-host-users .zh-error button{color:var(--accent-ink)}
-@media(max-width:359px){.zh-host-users{padding-inline:14px}.zh-user-person{gap:8px}.zh-user-actions{gap:2px}.zh-user-avatar,.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:42px;height:42px}.zh-header.zh-users-header{padding-inline:10px;gap:6px}.zh-host-tabs{gap:10px}.zh-host-tabs>[aria-selected="true"]{font-size:calc(18px * var(--theme-font-scale,1))}}
+@media(max-width:359px){.zh-user-person{gap:8px}.zh-user-actions{gap:2px}.zh-user-avatar,.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:42px;height:42px}}
 /* Home header, after the reference: Following, Explore, For You and New in place of the app
    name, the selected feed larger and bolder; then Search and the gold leaderboard trophy. */
 .zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}
-.zh-feed-tabs{display:flex;align-items:center;align-self:stretch;gap:12px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
-.zh-feed-tabs::-webkit-scrollbar{display:none}
-.zh-feed-tabs>[role="tab"]{display:flex;align-items:center;justify-content:center;flex:none;min-width:30px;min-height:44px;padding:0 1px;border:0;background:transparent;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:500;letter-spacing:-.2px;white-space:nowrap;transition:color .18s ease,font-size .18s ease}
-.zh-feed-tabs>[aria-selected="true"]{color:var(--ink);font-size:calc(21px * var(--theme-font-scale,1));font-weight:700;letter-spacing:-.5px}
-.zh-feed-tabs>[role="tab"]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-6px}
+:is(.zh-feed-tabs,.zh-host-tabs){display:flex;align-items:center;align-self:stretch;gap:12px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+:is(.zh-feed-tabs,.zh-host-tabs)::-webkit-scrollbar{display:none}
+:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{display:flex;align-items:center;justify-content:center;flex:none;min-width:30px;min-height:44px;padding:0 1px;border:0;background:transparent;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:500;letter-spacing:-.2px;white-space:nowrap;transition:color .18s ease,font-size .18s ease}
+:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{color:var(--ink);font-size:calc(21px * var(--theme-font-scale,1));font-weight:700;letter-spacing:-.5px}
+:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-6px}
 .zh-home-header .zh-header-actions{flex:none;gap:2px}
 .zh-home-header .zh-icon{width:38px;height:44px;color:var(--ink)}
 .zh-home-header .zh-trophy{color:var(--gold)}
-@media(max-width:380px){.zh-header.zh-home-header{padding-left:12px}.zh-feed-tabs{gap:10px}.zh-feed-tabs>[role="tab"]{font-size:calc(14px * var(--theme-font-scale,1))}.zh-feed-tabs>[aria-selected="true"]{font-size:calc(19px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:34px}}
-@media(max-width:340px){.zh-feed-tabs{gap:8px}.zh-feed-tabs>[role="tab"]{font-size:calc(13px * var(--theme-font-scale,1))}.zh-feed-tabs>[aria-selected="true"]{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:32px}}
-@media(prefers-reduced-motion:reduce){.zh-feed-tabs>[role="tab"]{transition:none}}
+@media(max-width:380px){.zh-header.zh-home-header{padding-left:12px}:is(.zh-feed-tabs,.zh-host-tabs){gap:10px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(14px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(19px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:34px}}
+@media(max-width:340px){:is(.zh-feed-tabs,.zh-host-tabs){gap:8px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(13px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:32px}}
+@media(prefers-reduced-motion:reduce){:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{transition:none}}
 /* Country chips under the header: Popular, then India (the only country for now). */
 .zh-region-chips{display:flex;gap:8px;margin:0 0 12px;overflow-x:auto;scrollbar-width:none}
 .zh-region-chips::-webkit-scrollbar{display:none}
@@ -53,9 +43,12 @@
 .zh-region-chips>button:has(.zh-flag){padding-left:9px}
 .zh-region-chips>button[aria-pressed="true"]{background:var(--accent);color:var(--cta-ink);font-weight:600}
 /* An approved host's availability floats over Home where the reference places its LIVE button. */
-.zh-host-status{position:sticky;z-index:6;bottom:14px;display:flex;align-items:center;gap:7px;width:max-content;min-height:46px;margin:16px 0 0 auto;padding:0 18px 0 15px;border:0;background:var(--accent);color:var(--cta-ink);font-size:calc(15px * var(--theme-font-scale,1));font-weight:700;white-space:nowrap}
+.zh-home.zh-dashboard:has(>.zh-host-status){padding-bottom:74px}
+.zh-host-status{position:fixed;z-index:6;right:max(14px,calc((100vw - 812px)/2));bottom:calc(58px + var(--tab-safe-bottom) + 14px);display:flex;align-items:center;gap:7px;width:max-content;min-height:46px;margin:0;padding:0 18px 0 15px;border:0;background:var(--accent);color:var(--cta-ink);font-size:calc(15px * var(--theme-font-scale,1));font-weight:700;white-space:nowrap}
 .zh-host-status>i{width:8px;height:8px;flex:none;border-radius:50%;background:var(--online);outline:2px solid var(--cta-ink)}
 .zh-host-status:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+@media(min-width:760px){.zh-host-status{right:max(24px,calc((100vw - 792px)/2))}}
+@media(max-width:359px){.zh-host-status{right:10px}}
 .zh-home.zh-dashboard .zh-live-section{margin:0}
 .zh-home.zh-dashboard .zh-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;margin:0 0 12px}
 .zh-home.zh-dashboard .zh-section-title h2{display:flex;align-items:center;gap:8px;min-width:0;margin:0;color:var(--ink);font-size:calc(19px * var(--theme-font-scale,1));line-height:1.35;letter-spacing:-.4px;font-weight:700}

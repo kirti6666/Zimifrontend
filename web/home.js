@@ -70,7 +70,6 @@ function homeFeedQuery(){
 }
 function homeFeedKey(query=homeFeedQuery()){return query.mode+'|'+(query.category||'')+'|'+(query.country||'')}
 function homeLoad(more=false){
-  if(isApprovedHost()&&S.v==='home')return hostDirectoryLoad(more);
   if(!DEMO&&(Home.loading||contentPending('home'))&&more)return;
   Home.error='';Home.loadingMore=more;Home.loading=!DEMO;
   if(DEMO){Home.loaded=true;Home.loadingMore=false;r();return}
@@ -95,7 +94,7 @@ function homeFeedTabKey(event){
   homeDashboardFilter(next);document.getElementById('home-tab-'+next)?.focus();
 }
 // Like the reference: the feed tabs, then Search and the creator leaderboard.
-function homeHeader(){if(isApprovedHost())return hostUsersHeader();return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="Search creators">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
+function homeHeader(){return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="${isApprovedHost()?'Search users':'Search creators'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
 function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="zh-region-chips" role="group" aria-label="Country">${HOME_REGIONS.map(([key,label])=>`<button type="button" aria-pressed="${Home.region===key}" onclick="homeRegion('${key}')">${key?homeFlag(key,'zh-flag-chip',true):''}<span>${label}</span></button>`).join('')}</div>`}
 function homeNav(){
   const el=document.getElementById('nav');
@@ -290,7 +289,7 @@ Native.on('data.home',d=>{
   // A foreground refresh resets the boundary; background presence reads retain it.
   if(!retainPages)Home.paginationStopped=!list.length||d.page>1&&Home.hosts.length<=previousCount;
   Home.hasMore=!Home.paginationStopped&&pagesRemain;
-  homeValidatePreparingPeer();if(!(isApprovedHost()&&S.v==='home')&&['home','all-creators','chats','precall'].includes(S.v))r();
+  homeValidatePreparingPeer();if(['home','all-creators','chats','precall'].includes(S.v))r();
 });
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
@@ -306,7 +305,7 @@ Native.on('stream.viewers',d=>{if(Home.stream?.id===d.streamId){Home.stream.view
 Native.on('stream.ended',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError=''}if(Home.stream?.id===d.streamId){window.ZimiMedia?.stop();Home.stream=null;go('home');appNotice('This live session has ended.');homeLoad()}});
 Native.on('stream.closed',d=>{if(Home.pendingClose?.streamId===d.streamId){Home.pendingClose=null;Home.closeError='';if(S.v==='home')r()}});
 Native.on('operation.error',d=>{if(['stream.end','stream.leave'].includes(d.action)&&Home.pendingClose){Home.closeError=d.message;homeShowCloseError()}});
-Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;Home.loadingMore=false;Home.error=d.message}if(d.action==='call.match')Home.matching=false;if(d.action==='awards.claim')Home.claiming=false;if(d.action==='notifications.load')Home.notifyLoading=false;if(d.action==='presence.set')Home.presenceBusy=false;if(d.action==='call.accept'){S.acceptingCall=false;window.ZimiMedia?.stop()}if(d.action?.startsWith('stream.')){Home.streamBusy=false;Home.mediaStatus=d.message}if(isApprovedHost()&&['home.reload','users.load','hosts.active.load'].includes(d.action)&&['home','search'].includes(S.v))return;if(['home','all-creators','chats','coins','notifications','live','broadcast','setup','waiting','ring'].includes(S.v))r()});
+Native.on('operation.error',d=>{if(d.action==='home.reload'){Home.loading=false;Home.loadingMore=false;Home.error=d.message}if(d.action==='call.match')Home.matching=false;if(d.action==='awards.claim')Home.claiming=false;if(d.action==='notifications.load')Home.notifyLoading=false;if(d.action==='presence.set')Home.presenceBusy=false;if(d.action==='call.accept'){S.acceptingCall=false;window.ZimiMedia?.stop()}if(d.action?.startsWith('stream.')){Home.streamBusy=false;Home.mediaStatus=d.message}if(isApprovedHost()&&['home','search'].includes(S.v)&&(['users.load','hosts.active.load'].includes(d.action)||S.v==='search'&&d.action==='home.reload'))return;if(['home','all-creators','chats','coins','notifications','live','broadcast','setup','waiting','ring'].includes(S.v))r()});
 // Revocation immediately closes host surfaces; member calls and viewing remain available.
 window.addEventListener('zimi:host-access',event=>{
   // A reconnect checks permission for new activity without interrupting an existing session.

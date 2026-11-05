@@ -84,9 +84,8 @@ function homeDashboardEmpty(){
     <div class="zh-empty-actions">${primary}</div>
   </div><div class="zh-empty-links" aria-label="More ways to connect"><button type="button" onclick="go('chats')"><span class="zh-empty-link-icon">${hi('chat',22)}</span><strong>Your chats</strong><span>Keep the conversation going</span>${hi('arrow',16)}</button><button type="button" aria-label="Find a creator" onclick="go('search')"><span class="zh-empty-link-icon">${hi('srch',22)}</span><strong>Find your people</strong><span>Search for a creator you love</span>${hi('arrow',16)}</button></div>`;
 }
-// Member feeds append the next page as their footer approaches the viewport.
+// Hosts and members share the same discovery feed; approved hosts also go online.
 function homeDashboard(){
-  if(isApprovedHost())return hostDirectoryScreen();
   const pending=homeContentPending(),more=!DEMO&&Home.loadingMore&&(Home.loading||contentPending('home'));
   const failure=!pending&&!more&&homeContentError(),moreError=ContentLoading.home.page>1?failure:'',error=moreError?'':failure;
   const hosts=homeDashboardHosts(),all=hosts.all,feed=HOME_FEEDS.find(([key])=>key===Home.dashboardFilter)||HOME_FEEDS[1];
@@ -100,7 +99,7 @@ function homeDashboard(){
 const HomeInfinite=(()=>{
   const margin=240;
   let root=null,target=null,observer=null,frame=0,generation=0,query='',foreground=true;
-  const scope=()=>!DEMO&&S.loggedIn&&S.v==='home'&&!isApprovedHost();
+  const scope=()=>!DEMO&&S.loggedIn&&S.v==='home';
   function ready(){return scope()&&foreground&&!document.hidden&&!window.ZimiOffline?.isOffline()&&Home.loaded&&Home.hasMore&&Home.page<1000&&Home.hosts.length<Home.total&&Home.queryKey===homeFeedKey()&&!Home.loading&&!contentPending('home')&&!Home.error&&!ContentLoading.home.error}
   function check(){
     frame=0;
@@ -151,10 +150,10 @@ const HOST_DIRECTORY_TABS=[['members','Members'],['active','Active Hosts']];
 function hostDirectoryState(tab=HostBrowse.tab){return tab==='active'?HostActiveHosts:HostUsers}
 function hostDirectoryNeedsLoad(tab=HostBrowse.tab){const state=hostDirectoryState(tab);return !state.loading&&(!state.loaded||tab==='active'&&Date.now()-state.loadedAt>30000)}
 function hostDirectorySearchLabel(){return HostBrowse.tab==='active'?'Search active hosts':'Search users by name or ID'}
-function hostUsersHeader(){return `<header class="zh-header zh-users-header"><div class="zh-host-tabs" role="tablist" aria-label="Host directory" onkeydown="hostDirectoryTabKey(event)">${HOST_DIRECTORY_TABS.map(([tab,label])=>`<button type="button" id="host-directory-tab-${tab}" role="tab" aria-selected="${HostBrowse.tab===tab}" aria-controls="host-directory-panel" tabindex="${HostBrowse.tab===tab?'0':'-1'}" onclick="hostDirectoryTab('${tab}')">${label}</button>`).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="document.getElementById('host-user-search')?.focus()" aria-label="${HostBrowse.tab==='active'?'Search active hosts':'Search users'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
+function hostUsersHeader(){return `<header class="zh-header zh-home-header zh-users-header"><div class="zh-host-tabs" role="tablist" aria-label="Host directory" onkeydown="hostDirectoryTabKey(event)">${HOST_DIRECTORY_TABS.map(([tab,label])=>`<button type="button" id="host-directory-tab-${tab}" role="tab" aria-selected="${HostBrowse.tab===tab}" aria-controls="host-directory-panel" tabindex="${HostBrowse.tab===tab?'0':'-1'}" onclick="hostDirectoryTab('${tab}')">${label}</button>`).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="document.getElementById('host-user-search')?.focus()" aria-label="${HostBrowse.tab==='active'?'Search active hosts':'Search users'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
 function hostDirectoryTab(tab){
-  if(!isApprovedHost()||!HOST_DIRECTORY_TABS.some(([key])=>key===tab)||HostBrowse.tab===tab)return;
-  HostBrowse.tab=tab;S.sq=hostDirectoryState().query;r();document.getElementById('host-directory-tab-'+tab)?.focus();
+  if(!isApprovedHost()||S.v!=='search'||!HOST_DIRECTORY_TABS.some(([key])=>key===tab)||HostBrowse.tab===tab)return;
+  HostBrowse.tab=tab;S.sq=hostDirectoryState().query;r();document.getElementById('sq')?.focus();
   if(hostDirectoryNeedsLoad())hostDirectoryLoad();
 }
 function hostDirectoryTabKey(event){
@@ -165,9 +164,9 @@ function hostDirectoryTabKey(event){
   hostDirectoryTab(next);document.getElementById('host-directory-tab-'+next)?.focus();
 }
 function hostDirectoryPaint(tab){
-  if(!isApprovedHost()||HostBrowse.tab!==tab||!['home','search'].includes(S.v))return;
-  const results=document.getElementById(S.v==='search'?'home-search-results':'host-user-results');
-  if(results){results.innerHTML=hostDirectoryResults();results.setAttribute('aria-busy',String(hostDirectoryState().loading))}
+  if(!isApprovedHost()||HostBrowse.tab!==tab||S.v!=='search')return;
+  const results=document.getElementById('home-search-results');
+  if(results){results.innerHTML=hostDirectoryResults(tab);results.setAttribute('aria-busy',String(hostDirectoryState().loading))}
   contentImagesReady();window.ZimiLaunch?.check();
 }
 function hostUsersPaint(){hostDirectoryPaint('members')}
@@ -225,7 +224,6 @@ function hostDirectoryResults(tab=HostBrowse.tab){
   return `${rows.length?`<div class="zh-user-list" aria-label="${active?'Active hosts':'Members'}">${rows.map(active?hostActiveHostsRow:hostUsersRow).join('')}</div>`:`<div class="zh-empty"><h3>${active?'No active hosts found':state.query.trim()?'No users found':'No users to show yet'}</h3><p>${active?(state.query.trim()?'Try another host name.':'Hosts will appear here when they are online.'):state.query.trim()?'Try another name or user ID.':'Members will appear here when they join.'}</p></div>`}${more?contentSkeleton('rows','Loading more '+noun,3):moreError?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="${loadMore}">Retry loading more ${noun}</button></div>`:rows.length<state.total&&state.page<(active?1000:10000)?`<button type="button" class="zh-load-more" onclick="${loadMore}">Load more ${noun}</button>`:''}`;
 }
 function hostUsersResults(){return hostDirectoryResults('members')}
-function hostDirectoryScreen(){const state=hostDirectoryState(),label=hostDirectorySearchLabel();return `<section id="host-directory-panel" class="zh-home zh-host-users" role="tabpanel" aria-labelledby="host-directory-tab-${HostBrowse.tab}"><label class="zh-user-search">${hi('srch',20)}<input type="search" id="host-user-search" aria-label="${label}" placeholder="${label}" maxlength="${HostBrowse.tab==='active'?80:100}" value="${esc(state.query)}" oninput="hostDirectorySearch(this.value)"></label><div id="host-user-results" aria-busy="${state.loading}">${hostDirectoryResults()}</div>${homeDashboardHostEntry()}</section>`}
 function hostUsersForget(id){for(const list of [H,EXTRA]){const at=list.findIndex(user=>user.id===id);if(at>=0)list.splice(at,1)}delete PEOPLE[id];HostUsers.remembered.delete(id);HostActiveHosts.remembered.delete(id)}
 function hostUsersReset(){for(const state of [HostUsers,HostActiveHosts]){clearTimeout(state.timer);for(const id of state.remembered)hostUsersForget(id);Object.assign(state,hostDirectoryStateNew())}HostBrowse.tab='members';S.sq=''}
 function hostUsersEnsureAccount(){const owner=S.user?.id||'';if(HostUsers.owner!==owner){hostUsersReset();HostUsers.owner=owner;HostActiveHosts.owner=owner}}
@@ -250,10 +248,9 @@ Native.on('data.loading',data=>{
   if(data.error)state.loaded=true;hostDirectoryPaint(tab);
 });
 function hostDirectoryEnsureLoaded(){hostUsersEnsureAccount();if(hostDirectoryNeedsLoad())hostDirectoryLoad()}
-Native.on('session',()=>{hostUsersEnsureAccount();if(isApprovedHost()&&S.v==='home')hostDirectoryEnsureLoaded()});
+Native.on('session',()=>{hostUsersEnsureAccount();if(isApprovedHost()&&S.v==='search')hostDirectoryEnsureLoaded()});
 Native.on('session.none',hostUsersReset);Native.on('session.expired',hostUsersReset);
-window.addEventListener('zimi:host-access',event=>{if(event.detail.checking)return;if(!event.detail.approved){hostUsersReset();if(['home','search'].includes(S.v))r()}else if(S.v==='home')hostDirectoryEnsureLoaded()});
-document.addEventListener('aurora:navigate',()=>{if(isApprovedHost()&&S.v==='home')hostDirectoryEnsureLoaded()});
-Native.on('block.saved',data=>{if(!isApprovedHost())return;for(const state of [HostUsers,HostActiveHosts]){if(data.blocked)state.rows=state.rows.filter(user=>user.id!==data.id);state.loaded=false}if(data.blocked){hostUsersForget(data.id);hostDirectoryPaint(HostBrowse.tab)}if(['home','search'].includes(S.v))hostDirectoryLoad()});
-Native.on('app.foreground',()=>{if(isApprovedHost()&&['home','search'].includes(S.v)&&!hostDirectoryState().loading)hostDirectoryLoad()});
-ZimiPullRefresh.register('home',{refresh:()=>isApprovedHost()?hostDirectoryLoad():homeLoad(),busy:()=>isApprovedHost()?hostDirectoryState().loading:Home.loading||contentPending('home')});
+window.addEventListener('zimi:host-access',event=>{if(event.detail.checking)return;if(!event.detail.approved){hostUsersReset();if(['home','search'].includes(S.v))r()}else if(S.v==='search')hostDirectoryEnsureLoaded()});
+document.addEventListener('aurora:navigate',()=>{if(isApprovedHost()&&S.v==='search')hostDirectoryEnsureLoaded()});
+Native.on('block.saved',data=>{if(!isApprovedHost())return;for(const state of [HostUsers,HostActiveHosts]){if(data.blocked)state.rows=state.rows.filter(user=>user.id!==data.id);state.loaded=false}if(data.blocked){hostUsersForget(data.id);hostDirectoryPaint(HostBrowse.tab)}if(S.v==='search')hostDirectoryLoad()});
+Native.on('app.foreground',()=>{if(isApprovedHost()&&S.v==='search'&&!hostDirectoryState().loading)hostDirectoryLoad()});
