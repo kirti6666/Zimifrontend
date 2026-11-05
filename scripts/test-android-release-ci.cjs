@@ -139,6 +139,7 @@ for (const platform of ['linux', 'win32']) test(`the ${platform} release command
   assert.equal(calls.length, 1);
   const call = calls[0], gradleArgs = platform === 'win32' ? call.args.at(-1).split(/\s+/) : Array.from(call.args);
   assert.equal(call.command, platform === 'win32' ? 'cmd.exe' : './gradlew');
+  if (platform === 'win32') assert.equal(gradleArgs[0], '.\\gradlew.bat', 'The local wrapper must run even when Windows disables implicit current-directory executable lookup');
   assert.deepEqual(gradleArgs.filter(arg => arg.startsWith('-PreactNativeArchitectures=')), ['-PreactNativeArchitectures=armeabi-v7a,arm64-v8a'], 'The release CLI property must outrank a local x86 Gradle environment property');
   assert.ok(gradleArgs.includes(':app:createBundleReleaseJsAndAssets'));
   assert.ok(gradleArgs.includes(':app:assembleRelease'));
