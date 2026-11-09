@@ -49,16 +49,16 @@ function diamondHostRules(wallet){
    ...(policy.version===2?['Set your own call rate. A higher rate means more diamonds every minute.']:[]),
    'No limit on your earnings. The more you perform, the more diamonds you earn.',
   ]],
-  ['Unlock your big bonus',bonus?[
+  ['Call bonus',bonus?[
    ...(hasExample?[`Earn ${fmt(example.bonusDiamonds)} extra diamonds for every ${fmt(example.callDiamonds)} you make on calls.`]:['Complete your weekly targets to unlock your call bonus.']),
    `Unlock it by completing your weekly targets by the end of week ${weeks}.${period.makeup?' Catch-up hours count.':''}`,
    `It waits in your withdraw section and is added at the end of week ${weeks}. Don't leave it behind!`,
   ]:['Your current earnings policy has no separate call bonus. Your available call diamonds stay yours.']],
-  ['Gifts pay you instantly',[
+  ['Gifts pay instantly',[
    ...(bonus&&hasExample&&example.callDiamonds+example.bonusDiamonds===example.giftDiamonds?[`On gifts, you get your bonus straight away: ${fmt(example.callDiamonds)} + ${fmt(example.bonusDiamonds)} bonus = ${fmt(example.giftDiamonds)}.`]:['Gift diamonds are added straight away.']),
    'No target, no waiting. Every gift is extra on top of your call earnings.',
   ]],
-  ['Hit your weekly target',[
+  [`Weekly target${hours!==null?`: ${hourText} hours`:''}`,[
    ...(hours!==null?[`${video?'Be on video calls':paid?'Be on paid calls':'Stay online and available for calls'} ${hourText} hours a week, for ${weekText}: ${dailyText}, no daily minimum.`]:[]),
    'Each week runs Monday 12:00 AM to Sunday 11:59 PM (Indian time).',
    video?'Only time on a paid video call counts, to the minute. Being online without a call does not count.':paid?'Only paid call time counts, to the minute. Being online without a call does not count.':'Your current reward period counts time online and available for calls.',
@@ -66,16 +66,16 @@ function diamondHostRules(wallet){
    ...(wallet.hostReward?.restart?[`Over ${restartHours} hours behind? Tap Restart when eligible and week 1 begins again next Monday. The call bonus from the unfinished weeks is not added either way, so start fresh and unlock your next bonus.`]:[]),
    `After week ${weeks}, a fresh ${weekText} begins. Hours don't carry over into the new ${weekText}.`,
   ]],
-  ['Your online status',[
+  ['Online status',[
    'Online: you appear on the Explore page, where users can find you and start a video call.',
    "Offline: switch it off any time you don't want to be disturbed. You won't appear on Explore.",
    "Calls from chat still come through. Even when you're offline, users you chat with can video-call you.",
   ]],
-  ['Missed the target? You keep your diamonds',[
+  ['Missed the target?',[
    bonus?`Only the call bonus for those ${weekText} is missed.`:'Your available call diamonds stay yours.',
    'Every diamond on your profile stays yours, including all gift diamonds and gift bonus.',
   ]],
-  ['Cash out your earnings',[
+  ['Cash out',[
    ...(minimum>0?[`Withdraw as soon as you reach ${minimumUnits!==null?`${fmt(minimumUnits)} diamonds (${payoutMoneyShort(minimum)})`:payoutMoneyShort(minimum)}.`]:[]),
    policy.wholeBalanceWithdrawal?'Take out your whole balance at once, any time.':'Withdraw any amount from the minimum up to your balance, any time.',
    `Call and gift diamonds are ready straight away${bonus?`; your call bonus after week ${weeks}`:''}.`,
@@ -83,7 +83,7 @@ function diamondHostRules(wallet){
   ]],
  ];
  const list=items=>`<ul>${items.map(item=>`<li><span aria-hidden="true"></span><span>${esc(item)}</span></li>`).join('')}</ul>`;
- return `<section class="zpay-rules-hero"><h2>Earn More on Binzo</h2><p>${bonus?'Every call pays. Hit your weekly target and unlock your bonus.':'Every call pays. Gifts pay instantly.'}</p></section><div class="zpay-rules" role="region" aria-label="Host earning rules">${sections.map(([title,items],index)=>`<section><h3>${index+1}. ${esc(title)}</h3>${list(items)}</section>`).join('<hr>')}</div>`;
+ return `<section class="zpay-rules-hero"><h2>Earn more on Binzo</h2><p>${bonus?'Every call pays. Hit your weekly target and unlock your bonus.':'Every call pays. Gifts pay instantly.'}</p></section><div class="zpay-rules" role="region" aria-label="Host earning rules">${sections.map(([title,items])=>`<section><h3>${esc(title)}</h3>${list(items)}</section>`).join('<hr>')}</div>`;
 }
 function diamondRewardView(wallet){
  const reward=wallet?.hostReward;if(!wallet?.hostEarningsPolicy?.enabled||!reward)return '';

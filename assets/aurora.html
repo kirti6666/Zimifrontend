@@ -4591,7 +4591,7 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 .zpay-primary,.zpay-secondary{display:flex;align-items:center;justify-content:center;width:100%;height:48px;padding:0 14px;border:0;font-size:15px;font-weight:600;line-height:1.2;background:var(--accent);color:var(--cta-ink)}
 .zpay-secondary{margin-top:10px;background:var(--raised);color:var(--ink)}
 .zpay-page button:disabled,.zpay-page input:disabled{opacity:.5;cursor:default}.zpay-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
-.zpay-rules-link{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;height:44px;margin-top:8px;font-size:14px;font-weight:500;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}.zpay-rules-link>svg{flex:none}
+.zpay-rules-link{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;height:44px;margin-top:8px;padding:0;border:0;background:transparent;color:color-mix(in srgb,var(--ink) 80%,var(--canvas));font:inherit;font-size:14px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}.zpay-rules-link>svg{flex:none}
 .zpay-verification{margin:16px 0 0;padding:16px;border:1px solid var(--line);background:var(--surface)}
 
 .zpay-review,.zpay-success{min-width:0;margin-top:24px}
@@ -5544,7 +5544,7 @@ html video[data-zimi-native-video] { color: transparent; object-fit: contain !im
 <!-- Loaded as a classic script so its inline onclick handlers keep resolving globals. -->
 <script>
 window.ZIMI_DEMO = false;
-window.ZIMI_APP_VERSION = "1.2.1";
+window.ZIMI_APP_VERSION = "1.2.2";
 //---------------------------------------------------------------------
 //
 // QR Code Generator for JavaScript
@@ -11144,16 +11144,16 @@ function diamondHostRules(wallet){
    ...(policy.version===2?['Set your own call rate. A higher rate means more diamonds every minute.']:[]),
    'No limit on your earnings. The more you perform, the more diamonds you earn.',
   ]],
-  ['Unlock your big bonus',bonus?[
+  ['Call bonus',bonus?[
    ...(hasExample?[`Earn ${fmt(example.bonusDiamonds)} extra diamonds for every ${fmt(example.callDiamonds)} you make on calls.`]:['Complete your weekly targets to unlock your call bonus.']),
    `Unlock it by completing your weekly targets by the end of week ${weeks}.${period.makeup?' Catch-up hours count.':''}`,
    `It waits in your withdraw section and is added at the end of week ${weeks}. Don't leave it behind!`,
   ]:['Your current earnings policy has no separate call bonus. Your available call diamonds stay yours.']],
-  ['Gifts pay you instantly',[
+  ['Gifts pay instantly',[
    ...(bonus&&hasExample&&example.callDiamonds+example.bonusDiamonds===example.giftDiamonds?[`On gifts, you get your bonus straight away: ${fmt(example.callDiamonds)} + ${fmt(example.bonusDiamonds)} bonus = ${fmt(example.giftDiamonds)}.`]:['Gift diamonds are added straight away.']),
    'No target, no waiting. Every gift is extra on top of your call earnings.',
   ]],
-  ['Hit your weekly target',[
+  [`Weekly target${hours!==null?`: ${hourText} hours`:''}`,[
    ...(hours!==null?[`${video?'Be on video calls':paid?'Be on paid calls':'Stay online and available for calls'} ${hourText} hours a week, for ${weekText}: ${dailyText}, no daily minimum.`]:[]),
    'Each week runs Monday 12:00 AM to Sunday 11:59 PM (Indian time).',
    video?'Only time on a paid video call counts, to the minute. Being online without a call does not count.':paid?'Only paid call time counts, to the minute. Being online without a call does not count.':'Your current reward period counts time online and available for calls.',
@@ -11161,16 +11161,16 @@ function diamondHostRules(wallet){
    ...(wallet.hostReward?.restart?[`Over ${restartHours} hours behind? Tap Restart when eligible and week 1 begins again next Monday. The call bonus from the unfinished weeks is not added either way, so start fresh and unlock your next bonus.`]:[]),
    `After week ${weeks}, a fresh ${weekText} begins. Hours don't carry over into the new ${weekText}.`,
   ]],
-  ['Your online status',[
+  ['Online status',[
    'Online: you appear on the Explore page, where users can find you and start a video call.',
    "Offline: switch it off any time you don't want to be disturbed. You won't appear on Explore.",
    "Calls from chat still come through. Even when you're offline, users you chat with can video-call you.",
   ]],
-  ['Missed the target? You keep your diamonds',[
+  ['Missed the target?',[
    bonus?`Only the call bonus for those ${weekText} is missed.`:'Your available call diamonds stay yours.',
    'Every diamond on your profile stays yours, including all gift diamonds and gift bonus.',
   ]],
-  ['Cash out your earnings',[
+  ['Cash out',[
    ...(minimum>0?[`Withdraw as soon as you reach ${minimumUnits!==null?`${fmt(minimumUnits)} diamonds (${payoutMoneyShort(minimum)})`:payoutMoneyShort(minimum)}.`]:[]),
    policy.wholeBalanceWithdrawal?'Take out your whole balance at once, any time.':'Withdraw any amount from the minimum up to your balance, any time.',
    `Call and gift diamonds are ready straight away${bonus?`; your call bonus after week ${weeks}`:''}.`,
@@ -11178,7 +11178,7 @@ function diamondHostRules(wallet){
   ]],
  ];
  const list=items=>`<ul>${items.map(item=>`<li><span aria-hidden="true"></span><span>${esc(item)}</span></li>`).join('')}</ul>`;
- return `<section class="zpay-rules-hero"><h2>Earn More on Binzo</h2><p>${bonus?'Every call pays. Hit your weekly target and unlock your bonus.':'Every call pays. Gifts pay instantly.'}</p></section><div class="zpay-rules" role="region" aria-label="Host earning rules">${sections.map(([title,items],index)=>`<section><h3>${index+1}. ${esc(title)}</h3>${list(items)}</section>`).join('<hr>')}</div>`;
+ return `<section class="zpay-rules-hero"><h2>Earn more on Binzo</h2><p>${bonus?'Every call pays. Hit your weekly target and unlock your bonus.':'Every call pays. Gifts pay instantly.'}</p></section><div class="zpay-rules" role="region" aria-label="Host earning rules">${sections.map(([title,items])=>`<section><h3>${esc(title)}</h3>${list(items)}</section>`).join('<hr>')}</div>`;
 }
 function diamondRewardView(wallet){
  const reward=wallet?.hostReward;if(!wallet?.hostEarningsPolicy?.enabled||!reward)return '';
@@ -21807,7 +21807,7 @@ function payoutScreen(){
  const review=p.review&&(!historyOnly||p.attempt?.uncertain)?`<section class="zpay-review" aria-label="Review withdrawal"><h2>Review your withdrawal</h2><dl>${p.review.quoteDetails?'':`<div><dt>Amount (INR)</dt><dd>${payoutMoney(p.review.amountPaise)}</dd></div>`}${p.review?.quote?`<div><dt>Diamonds to reserve</dt><dd>${diamondFormat(p.review.quote.diamondUnits)}</dd></div>`:''}${kyc?.reviewDetails(p.review)||''}${estimated!==null?`<div><dt>Estimated diamonds to reserve</dt><dd>${diamondFormat(estimated)}</dd></div>`:''}<div><dt>UPI ID</dt><dd>${esc(p.review.payoutAddress)}</dd></div></dl><p>The amount is reserved from earnings when a request is accepted for review. Payment is confirmed separately.</p>${p.attempt?.uncertain?'<p class="zpay-recovery">The previous request could not be confirmed. Retry this same request to check or complete it without creating a duplicate.</p>':''}<button type="button" class="zpay-primary" onclick="payoutConfirm()" ${p.busy?'disabled':''}>${p.busy?'Requesting withdrawal…':p.attempt?.uncertain?'Retry same withdrawal':'Confirm withdrawal request'}</button><button type="button" class="zpay-secondary" onclick="payoutEdit()" ${locked?'disabled':''}>Edit details</button></section>`:'';
  const blocked=!ready||!w?.withdrawalsEnabled||locked||!kycVerified||w.earningsPaise<w.minimumWithdrawalPaise;
  const form=!historyOnly&&!p.success&&!p.review?`<form class="zpay-form" aria-label="UPI payout" onsubmit="event.preventDefault();payoutReview()">${whole?'':`<label for="zpay-amount">Amount (INR)</label><input id="zpay-amount" inputmode="decimal" autocomplete="off" placeholder="500.00" value="${esc(p.amount)}" oninput="payoutDraft('amount',this.value)" ${locked||DEMO?'disabled':''}>`}<label for="zpay-address">UPI ID</label><input id="zpay-address" type="text" inputmode="email" autocomplete="off" maxlength="200" placeholder="name@upi" value="${esc(kycNeeded?PayoutVerification.data?.kyc?.payoutAddress||'':p.address)}" oninput="payoutDraft('address',this.value)" ${kycNeeded?'readonly':''} ${locked||DEMO?'disabled':''}>${kycVerified?'':kyc.summary()}<button type="submit" class="zpay-primary" ${blocked?'disabled':''}>Review withdrawal</button></form>`:'';
- const rules=S.v==='payout'&&ready&&w.hostEarningsPolicy?.enabled?`<section class="zpay-host-rules" aria-label="Host rules"><h2>Host rules</h2>${diamondHostRules(w)}</section>`:'';
+ const rules=S.v==='payout'&&ready&&w.hostEarningsPolicy?.enabled?`<button type="button" class="zpay-rules-link" onclick="go('payout-rules')"><span>Host rules</span>${hi('chevronRight',14)}</button>`:'';
  const reward=ready&&!historyOnly?diamondRewardView(w):'';
  const history=historyOnly?`<section class="zpay-history-section" aria-label="Withdrawal history"><div class="zpay-section-heading"><h2>Withdrawal history</h2></div>${payoutHistory()}</section>`:'';
  return `<div class="zpay-page"><div class="zpay-wallet">${wallet}</div>${ready&&!w.withdrawalsEnabled?'<p class="zpay-paused" role="status">Withdrawals are currently paused. You can still view your request history.</p>':''}${kyc?.busy()?'<p role="status" aria-label="Loading withdrawal quote">Loading withdrawal quote...</p>':''}${success}${form}${review}${p.error?`<p class="zpay-error" role="alert">${esc(p.error)}</p>`:''}${rules}${reward?`<hr class="zpay-divider">${reward}`:''}${history}</div>`;

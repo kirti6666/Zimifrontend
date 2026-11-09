@@ -510,7 +510,7 @@ test('HTTP requests carry native version headers and 426 update errors invalidat
   const observed = [], invalidations = [];
   let response = { status: 200, ok: true, headers: new Headers(), text: async () => JSON.stringify({ success: true, data: { value: 'ok' } }) };
   const session = { SessionStorageError: class extends Error {}, getSessionVersion: () => 1, getSessionSnapshot: async () => ({ generation: 1, session: { accessToken: 'account-access-token' } }), getToken: async () => 'account-access-token' };
-  const h = modules({ '../config': { API_URL: 'https://api.binzolive.com/api/v1' }, '../session': session }, { fetch: async (...args) => { observed.push(args); return response; } });
+  const h = modules({ '../config': { API_URL: 'https://api.binzolive.com/api/v1' }, '../session': session, '../installation': { getInstallationId: async () => undefined } }, { fetch: async (...args) => { observed.push(args); return response; } });
   const events = h.load('src/app-update-events.ts'); events.configureAppUpdates(installed()); events.onAppUpdate(required => invalidations.push(required));
   const client = h.load('src/api/client.ts');
   await client.request('GET', '/home');
@@ -534,7 +534,7 @@ test('Socket.IO native build auth and release/version errors trigger fresh polic
   const { connectRealtime } = h.load('src/api/realtime.ts');
   const stop = connectRealtime('stale-token', () => {}, 'member-id');
   const auth = await new Promise(resolve => sockets[0].options.auth(resolve));
-  assert.deepEqual(plain(auth), { token: 'current-access-token', appPlatform: 'android', appVersionCode: 6, appUpdateCapable: 1 });
+  assert.deepEqual(plain(auth), { token: 'current-access-token', appPlatform: 'android', appVersionCode: 6, appUpdateCapable: 1, reliableEvents: 1 });
   assert.equal(sockets[0].url, 'https://api.binzolive.com');
   handlers.get('app:release-updated')({ arbitraryUntrustedPayload: true });
   handlers.get('connect_error')({ data: { code: 'APP_UPDATE_REQUIRED' } });
