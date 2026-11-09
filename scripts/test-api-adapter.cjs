@@ -35,7 +35,7 @@ const io = (url, options) => {
     disconnect: () => { socket.connected = false; },
     removeAllListeners: () => handlers.clear(),
     emit: (name, data) => { socket.emitted.push({ name, data: plain(data) }); },
-    emitServer: (name, data) => handlers.get(name)?.(data),
+    emitServer: (name, ...args) => handlers.get(name)?.(...args),
   };
   return socket;
 };
@@ -1136,7 +1136,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const events = [], stop = connectRealtime(token, event => events.push(event), 'member-id');
   assert.equal(socketUrl, 'https://api.example.test'); assert.equal(socketOptions.query, undefined);
   let handshake; socketOptions.auth(value => { handshake = value; }); await Promise.resolve();
-  assert.deepEqual(plain(handshake), { token });
+  assert.deepEqual(plain(handshake), { token, reliableEvents: 1 }, 'The APK opts into replayable signaling and committed gift delivery');
   socket.emitServer('chat:message', { senderId: 'member-id', recipientId: 'host-id', text: 'Own echo' });
   socket.emitServer('chat:message', { _id: 'message-id', senderId: 'host-id', recipientId: 'member-id', text: 'Hello', createdAt: chatAt, automated: true });
   socket.emitServer('chat:message', { senderId: 'stranger', recipientId: 'other-user', text: 'Private unrelated message' });
@@ -1189,6 +1189,30 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.emitServer('gift:sent',{...committedOwn,_id:'socket-stream-transfer',callId:undefined,scope:'stream',streamId:'stream-id',message:null});
   const streamSocketReceipt=events.filter(event=>event.type==='gift.sent').at(-1).data;
   assert.equal(streamSocketReceipt.scope,'stream');assert.equal(streamSocketReceipt.streamId,'stream-id');assert.equal(streamSocketReceipt.message,null,'A public-room commit cannot turn into a fabricated direct chat receipt');
+  const reliableAcks=[];
+  const reliableSignal={deliveryId:'signal:reconnect-offer',event:'webrtc:signal',data:{callId:'accepted-call',from:'host-id',description:{type:'offer',sdp:'v=0\r\n'}}};
+  const rtcBefore=events.filter(event=>event.type==='rtc.signal').length;
+  socket.emitServer('realtime:delivery',reliableSignal,receipt=>reliableAcks.push(plain(receipt)));
+  socket.emitServer('realtime:delivery',reliableSignal,receipt=>reliableAcks.push(plain(receipt)));
+  assert.equal(events.filter(event=>event.type==='rtc.signal').length,rtcBefore+1,'A replayed SDP envelope is applied once');
+  assert.deepEqual(plain(events.filter(event=>event.type==='rtc.signal').at(-1).data),reliableSignal.data);
+  assert.deepEqual(reliableAcks,[{deliveryId:reliableSignal.deliveryId},{deliveryId:reliableSignal.deliveryId}],'Original and duplicate deliveries receive the stable acknowledgement');
+  const incomingBefore=events.filter(event=>event.type==='gift.received').length,sentBefore=events.filter(event=>event.type==='gift.sent').length;
+  for(const envelope of [
+    {deliveryId:'gift:reliable:received',event:'gift:received',data:{...receivedGift,_id:'reliable-incoming'}},
+    {deliveryId:'gift:reliable:sent',event:'gift:sent',data:{...committedOwn,_id:'reliable-sent'}},
+  ])socket.emitServer('realtime:delivery',envelope,receipt=>reliableAcks.push(plain(receipt)));
+  assert.equal(events.filter(event=>event.type==='gift.received').length,incomingBefore+1,'Reliable incoming gifts reuse the existing validated normalizer');
+  assert.equal(events.filter(event=>event.type==='gift.sent').length,sentBefore+1,'Reliable sender receipts reuse the existing validated normalizer');
+  const rejectedAcks=[],eventsBeforeMalformed=events.length;
+  for(const envelope of [null,{deliveryId:'bad space',event:'webrtc:signal',data:reliableSignal.data},{deliveryId:'unknown:event',event:'call:updated',data:{}}])
+    socket.emitServer('realtime:delivery',envelope,receipt=>rejectedAcks.push(receipt));
+  assert.equal(events.length,eventsBeforeMalformed);assert.deepEqual(rejectedAcks,[],'Malformed or unsupported envelopes are neither applied nor acknowledged');
+  const malformedDataAck=[];
+  socket.emitServer('realtime:delivery',{deliveryId:'signal:malformed-data',event:'webrtc:signal',data:null},receipt=>malformedDataAck.push(plain(receipt)));
+  assert.deepEqual(malformedDataAck,[]);assert.equal(events.length,eventsBeforeMalformed,'A recognized but malformed payload is neither acknowledged nor allowed to reach media');
+  socket.emitServer('webrtc:signal',{callId:'legacy-direct-call',from:'host-id',candidate:{candidate:'candidate:legacy'}});
+  assert.equal(events.filter(event=>event.type==='rtc.signal').at(-1).data.callId,'legacy-direct-call','Direct signaling from an older backend remains compatible');
   const walletRefreshesBeforeFree = events.filter(event => event.type === 'wallet.refresh').length;
   socket.emitServer('gift:received', { ...receivedGift, _id: 'free-live-transfer', coins: 0, durationMs: 6400 });
   const freeIncoming = events.filter(event => event.type === 'gift.received').at(-1).data;

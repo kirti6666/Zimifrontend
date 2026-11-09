@@ -95,16 +95,17 @@ keeps it identical to the original Next.js version.
   availability is a floating "Go online"/"Online" button at the bottom right of
   Home, where the reference has its LIVE button. Use the selected theme's
   colors. Filter hosts on the server before pagination.
-- Approved hosts use Members and Active Hosts tabs in the Home header. Members
-  has name/public ID search and paginated rows with Chat, Voice and Video actions.
-  Active Hosts uses `hosts.active.load`/`data.activeHosts` and the server's strict
-  `mode=active` feed for connected, approved, privacy-visible hosts; show profile
-  and Chat actions without adding host-to-host calls. Keep tab queries/pages
-  separate and refresh stale Active Hosts when returning after 30 seconds. Keep
-  member creator feeds unchanged. Use `users.load`/`data.users`, current approved
-  host authority, real privacy-aware member presence and existing call/chat
-  guards. Include offline members, and filter blocked, inactive and undiscoverable
-  accounts on the server. Never normalize directory members into creator identities.
+- Approved hosts use the same Following, Explore, For You and New Home feeds as
+  members. Their Search screen retains the separate Members and Active Hosts
+  directories. Members has name/public ID search and paginated rows with Chat,
+  Voice and Video actions. Active Hosts uses `hosts.active.load`/`data.activeHosts`
+  and the server's strict `mode=active` feed for connected, approved,
+  privacy-visible hosts; show profile and Chat actions without adding host-to-host
+  calls. Keep directory tab queries/pages separate and refresh stale Active Hosts
+  when returning after 30 seconds. Use `users.load`/`data.users`, current approved
+  host authority, real privacy-aware member presence and existing call/chat guards.
+  Include offline members, and filter blocked, inactive and undiscoverable accounts
+  on the server. Never normalize directory members into creator identities.
 - Every host list (Home grid, All Creators, Search) uses the square photo card
   `homeTile` in `web/home.js`, matching the user's reference: an Online tag in
   the photo's top-left corner, then the name with the country flag (India as a
@@ -124,14 +125,18 @@ keeps it identical to the original Next.js version.
   view per slide and a counted tap (`zaCampaigns` in `web/ads.js`). Sponsored
   cards (banner/video) follow ten hosts (`HOME_AD_AFTER`). A shorter grid keeps
   both below its hosts.
-- Explore includes only hosts who explicitly choose Online; the server filters
-  before pagination and keeps Online hosts reachable through background push.
-  Render the server's `onlineForCalls` choice, falling back to reported online
-  presence, rather than marking every host Online. Following and existing chats
-  can include Offline hosts. Members may still manually call an approved Offline
-  host from a profile or chat. Approval, blocks and Coins remain server checks.
-  New screens read `h.on` for presence and `h.available` for call permission;
-  those two values have different meanings.
+- Explore normally includes only hosts who explicitly choose Online; the server
+  filters before pagination and keeps Online hosts reachable through background
+  push. Approved staff-created dummy hosts are the deliberate exception: include
+  them in both member and approved-host Explore before their first OTP sign-in,
+  even while Offline and unverified, without marking them Online or call-available.
+  Their private fixture classification remains server-only, and calls retain the
+  existing short-ring unavailable behavior. Render the server's `onlineForCalls`
+  choice, falling back to reported online presence, rather than marking every host
+  Online. Following and existing chats can include Offline hosts. Members may still
+  manually call an approved Offline host from a profile or chat. Approval, blocks
+  and Coins remain server checks. New screens read `h.on` for presence and
+  `h.available` for call permission; those two values have different meanings.
 - The bottom tabs are Home, Chat, Profile and Settings (the chat route remains
   `chats`). Explore is removed; old Explore routes resolve to Home. `all-creators`
   (from the Home empty state) and the `board` leaderboard are detail pages

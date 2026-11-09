@@ -24,7 +24,8 @@ function wrapper(osName = 'android', available = true) {
 function jar(group, artifact, version) {
   const folder = path.join(process.env.GRADLE_USER_HOME || path.join(os.homedir(), '.gradle'), 'caches/modules-2/files-2.1', group, artifact, version);
   assert.ok(fs.existsSync(folder), `Run the Android Gradle build first to cache ${artifact}:${version}`);
-  for (const hash of fs.readdirSync(folder)) for (const file of fs.readdirSync(path.join(folder, hash))) if (file.endsWith('.jar')) return path.join(folder, hash, file);
+  const expected = `${artifact}-${version}.jar`;
+  for (const hash of fs.readdirSync(folder)) for (const file of fs.readdirSync(path.join(folder, hash))) if (file === expected) return path.join(folder, hash, file);
   throw new Error(`Missing cached ${artifact}:${version}`);
 }
 (async () => {
