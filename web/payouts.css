@@ -30,7 +30,7 @@
 .zpay-primary,.zpay-secondary{display:flex;align-items:center;justify-content:center;width:100%;height:48px;padding:0 14px;border:0;font-size:15px;font-weight:600;line-height:1.2;background:var(--accent);color:var(--cta-ink)}
 .zpay-secondary{margin-top:10px;background:var(--raised);color:var(--ink)}
 .zpay-page button:disabled,.zpay-page input:disabled{opacity:.5;cursor:default}.zpay-page :is(button,input):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
-.zpay-rules-link{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;height:44px;margin-top:8px;font-size:14px;font-weight:500;color:color-mix(in srgb,var(--ink) 80%,var(--canvas))}.zpay-rules-link>svg{flex:none}
+.zpay-rules-link{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;height:44px;margin-top:8px;padding:0;border:0;background:transparent;color:color-mix(in srgb,var(--ink) 80%,var(--canvas));font:inherit;font-size:14px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent}.zpay-rules-link>svg{flex:none}
 .zpay-verification{margin:16px 0 0;padding:16px;border:1px solid var(--line);background:var(--surface)}
 
 .zpay-review,.zpay-success{min-width:0;margin-top:24px}

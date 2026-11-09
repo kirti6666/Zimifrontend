@@ -77,19 +77,30 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   await receive(page,'wallet.balance',{reservedDiamondUnits:2000*1000000,reservedPaise:40000,profileReservedDiamondUnits:1500*1000000,profileReservedPaise:30000,hostEarningsPolicy:{...policy,hostWeeklyTargetMinutes:3000}});
   assert.doesNotMatch(await page.locator('.zp-wallet').innerText(),/diamonds reserved/,'Reserved diamonds also stay out of Settings');
   await go(page,'payout');await page.evaluate(()=>payoutNew());
-  assert.equal(await page.locator('.zpay-rules').count(),1,'Host rules are readable inline after Review withdrawal');
-  assert.equal(await page.evaluate(()=>!!(document.querySelector('.zpay-form').compareDocumentPosition(document.querySelector('.zpay-host-rules'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'Rules follow the review form');
-  assert.equal(await page.locator('.zpay-rules>section').count(),7,'All seven host-rule sections are present as text');
-  await go(page,'payout-rules');assert.equal(await page.evaluate(()=>S.v),'payout-rules');
+  const rulesLink=page.getByRole('button',{name:'Host rules',exact:true});
+  assert.equal(await rulesLink.count(),1,'Withdraw has the compact Host rules action from the reference');
+  assert.equal(await page.evaluate(()=>!!(document.querySelector('.zpay-form').compareDocumentPosition(document.querySelector('.zpay-rules-link'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'Host rules follows the review form');
+  assert.equal(await page.locator('.zpay-rules').count(),0,'The full rules stay on their dedicated screen');
+  await page.locator('#zpay-address').fill('policy@upi');
+  const messagesBeforeRules=await page.evaluate(()=>__sent.length);
+  await rulesLink.click();assert.equal(await page.evaluate(()=>S.v),'payout-rules');
+  const rulesActions=await page.evaluate(start=>__sent.slice(start).map(message=>message.type).filter(type=>/^(?:wallet\.|payout\.|host\.reward\.restart)/.test(type)),messagesBeforeRules);
+  assert.deepEqual(rulesActions,[],'Opening Host rules never triggers a financial action');
+  assert.equal(await page.locator('.zpay-rules>section').count(),7,'The dedicated screen contains all seven host-rule sections');
+  assert.equal(await page.locator('.zpay-rules-hero h2').innerText(),'Earn more on Binzo');
+  assert.deepEqual(await page.locator('.zpay-rules h3').allTextContents(),['Earn on every call','Call bonus','Gifts pay instantly','Weekly target: 32.5 hours','Online status','Missed the target?','Cash out'],'Host rules use the reference section labels and order');
+  for(const width of [320,390]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`Host rules fit ${width}px`)}
+  await page.setViewportSize({width:390,height:844});
   assert.match(await page.locator('.zpay-rules').innerText(),/32.5 hours a week/,'Current period keeps its saved weekly target after an admin edit');
   assert.equal(await page.locator('.zpay-rules script').count(),0,'Published host rules remain escaped plain text');
   assert.doesNotMatch(await page.locator('.zpay-rules').innerText(),/Internal model|per 100 coins|SharePercent|agency share|platform share|28%|13%|41%/,'Internal split rules are not rendered even from a legacy payload');
   assert.match(await page.locator('.zpay-rules').innerText(),/1,300 extra diamonds for every 2,800[\s\S]*2,800 \+ 1,300 bonus = 4,100/,'Only the PDF own-bonus illustration is shown');
   await page.getByRole('button',{name:'Got it',exact:true}).click();assert.equal(await page.evaluate(()=>S.v),'payout');
+  assert.equal(await page.locator('#zpay-address').inputValue(),'policy@upi','Returning from Host rules preserves the withdrawal draft');
   assert.match(await page.locator('.zpay-wallet').innerText(),/13,450[\s\S]*2,690/);
   assert.equal(await page.locator('#zpay-amount').count(),0,'A whole-balance withdrawal needs only the UPI ID');
   assert.match(await page.getByRole('region',{name:'Weekly call reward'}).innerText(),/12 of 35 hours[\s\S]*23 more hours/,'Weekly carry-forward uses confirmed server progress');
-  await page.locator('#zpay-address').fill('policy@upi');await page.getByRole('button',{name:'Review withdrawal',exact:true}).click();
+  await page.getByRole('button',{name:'Review withdrawal',exact:true}).click();
   assert.equal(await page.evaluate(()=>PayoutUI.review.amountPaise),269000,'Policy withdraws whole recorded value');
   await receive(page,'wallet.balance',{earningsPaise:270000});
   await page.getByRole('button',{name:'Confirm withdrawal request',exact:true}).click();
@@ -139,6 +150,7 @@ const sent=(page,type)=>page.evaluate(type=>__sent.filter(message=>message.type=
   assert.equal(await page.evaluate(()=>diamondFormat(1)),'0.000001','Historical fractional Diamonds remain exact');
   for(const width of [320,390]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'Expanded withdrawal metadata fits mobile widths')}
   await receive(page,'wallet.balance',{hostEarningsPolicy:null,hostReward:null});
+  await go(page,'payout');assert.equal(await page.locator('.zpay-rules-link').count(),0,'Disabled policy removes the Host rules action');
   assert.equal(await page.locator('.zpay-rules').count(),0,'Disabled policy clears cached earning rules');
   for(const status of ['pending','rejected','suspended']){
    const inactiveHost={...host,user:{...host.user,role:'sender',serverRole:'host',hostStatus:status,isVerifiedHost:false},verification:status==='pending'?'pending':'rejected'};
