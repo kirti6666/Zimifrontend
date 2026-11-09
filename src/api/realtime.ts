@@ -12,7 +12,17 @@ type ReliableEvent = "webrtc:signal" | "gift:sent" | "gift:received";
 type ReliableEnvelope = { deliveryId: string; event: ReliableEvent; data: unknown };
 const RELIABLE_DELIVERY_LIMIT = 2048;
 const RELIABLE_DELIVERY_TTL_MS = 10000;
+const SIGNAL_RETRY_WINDOW_MS = 3000;
+const SIGNAL_ACK_TIMEOUT_MS = 750;
+const SIGNAL_RETRY_DELAY_MS = 50;
 const reliableEvent = (value: unknown): value is ReliableEvent => value === "webrtc:signal" || value === "gift:sent" || value === "gift:received";
+const signalRequestId = () => {
+  const value = globalThis.expo?.uuidv4?.();
+  if (typeof value !== "string" || !/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(value))
+    throw new ApiError("Secure signaling is unavailable. Reconnect and try again.", 503);
+  return value.toLowerCase();
+};
+const pause = (delay: number) => new Promise<void>(resolve => setTimeout(resolve, delay));
 /** What an ended call cost, and whether it ended because the caller's coins ran out. */
 const callCharge = (call: Record<string, unknown>) => ({
   ...(coinCount(call.coinsPerMinute) && typeof call.coinsCharged === "number" && Number.isSafeInteger(call.coinsCharged) && call.coinsCharged >= 0 ? { coins: call.coinsCharged } : {}),
@@ -248,11 +258,43 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
     // Never queue a stale foreground event while the connection is offline.
     if (socket.connected) socket.emit("app:activity", { active: appActive });
   };
-  stop.send = (event, data) => new Promise<void>((resolve, reject) => {
-    if (closed || !socket.connected) { reject(new ApiError("Live connection is unavailable. Reconnect and try again.", 503)); return; }
-    socket.timeout(10000).emit(event, data, (error: Error | null, reply: { success?: boolean; message?: string } | undefined) => {
-      if (error || reply?.success !== true) reject(new ApiError(reply?.message || "The media connection could not be established.", 503)); else resolve();
+  stop.send = async (event, data) => {
+    if (event !== "webrtc:signal") return new Promise<void>((resolve, reject) => {
+      if (closed || !socket.connected) { reject(new ApiError("Live connection is unavailable. Reconnect and try again.", 503)); return; }
+      socket.timeout(10000).emit(event, data, (error: Error | null, reply: { success?: boolean; message?: string } | undefined) => {
+        if (error || reply?.success !== true) reject(new ApiError(reply?.message || "The media connection could not be established.", 503)); else resolve();
+      });
     });
-  });
+    // Keep the first validated packet immutable across retries. Reusing a
+    // requestId with changed SDP/ICE would correctly fail the server's
+    // idempotency hash instead of recovering the original logical send.
+    const payload = {
+      ...data,
+      ...(data.description ? { description: { ...data.description } } : {}),
+      ...(data.candidate ? { candidate: { ...data.candidate } } : {}),
+      requestId: signalRequestId(),
+    }, deadline = Date.now() + SIGNAL_RETRY_WINDOW_MS;
+    for (;;) {
+      while (!closed && !socket.connected && Date.now() < deadline)
+        await pause(Math.min(SIGNAL_RETRY_DELAY_MS, Math.max(1, deadline - Date.now())));
+      if (closed || !socket.connected || Date.now() >= deadline)
+        throw new ApiError("Live connection is unavailable. Reconnect and try again.", 503);
+      const attempt = await new Promise<{ error?: Error; reply?: { success?: boolean; message?: string } }>(resolve => {
+        try {
+          socket.timeout(Math.min(SIGNAL_ACK_TIMEOUT_MS, Math.max(1, deadline - Date.now()))).emit(event, payload,
+            (error: Error | null, reply: { success?: boolean; message?: string } | undefined) => resolve(error ? { error } : { reply }));
+        } catch (error) { resolve({ error: error instanceof Error ? error : new Error("Signal transport failed") }); }
+      });
+      // Any server acknowledgement is definitive. Only a transport timeout or
+      // interruption retries the same logical packet/requestId.
+      if (!attempt.error) {
+        if (attempt.reply?.success === true) return;
+        throw new ApiError(attempt.reply?.message || "The media connection could not be established.", 503);
+      }
+      if (Date.now() >= deadline)
+        throw new ApiError("The media connection could not be established.", 503);
+      await pause(Math.min(SIGNAL_RETRY_DELAY_MS, Math.max(1, deadline - Date.now())));
+    }
+  };
   return stop;
 }

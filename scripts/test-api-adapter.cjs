@@ -29,12 +29,17 @@ const io = (url, options) => {
   socketUrl = url; socketOptions = options;
   const handlers = new Map();
   socket = {
-    active: true, connected: false, connects: 0, emitted: [],
+    active: true, connected: false, connects: 0, emitted: [], ackQueue: [], timeouts: [],
     on: (name, handler) => { handlers.set(name, handler); },
     connect: () => { socket.connects++; },
     disconnect: () => { socket.connected = false; },
     removeAllListeners: () => handlers.clear(),
     emit: (name, data) => { socket.emitted.push({ name, data: plain(data) }); },
+    timeout: duration => ({ emit: (name, data, acknowledge) => {
+      socket.timeouts.push(duration); socket.emitted.push({ name, data: plain(data) });
+      const behavior = socket.ackQueue.shift();
+      if (behavior) behavior({ name, data, acknowledge }); else acknowledge(null, { success: true });
+    } }),
     emitServer: (name, ...args) => handlers.get(name)?.(...args),
   };
   return socket;
@@ -54,6 +59,7 @@ function load(relative) {
     return load(path.relative(root, path.resolve(path.dirname(filename), `${name}.ts`)));
   };
   const context = { module, exports: module.exports, require: localRequire, console, URL, AbortController, setTimeout, clearTimeout, __DEV__: true,
+    expo: { uuidv4: () => `00000000-0000-4000-8000-${String(++context.signalSequence).padStart(12, '0')}` }, signalSequence: 0,
     fetch: async (url, options) => { uploads.push({ url, options }); if (uploadError) throw uploadError; return { ok: true, status: 200 }; },
   };
   vm.runInNewContext(code, context, { filename });
@@ -1282,6 +1288,28 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(socket.emitted.at(-1), { name: 'app:activity', data: { active: false } }, 'A reconnect announces the latest state');
   stop.setActive(true);
   assert.deepEqual(socket.emitted.at(-1), { name: 'app:activity', data: { active: true } });
+  const signalPacket={callId:'accepted-call',description:{type:'answer',sdp:'v=0\r\n'}};
+  const logicalSignals=new Set(),peerDispatches=[];
+  socket.ackQueue.push(({data,acknowledge})=>{if(!logicalSignals.has(data.requestId)){logicalSignals.add(data.requestId);peerDispatches.push(plain(data));}signalPacket.description.sdp='mutated-after-first-attempt';acknowledge(new Error('source acknowledgement lost'));});
+  socket.ackQueue.push(({data,acknowledge})=>{if(!logicalSignals.has(data.requestId)){logicalSignals.add(data.requestId);peerDispatches.push(plain(data));}acknowledge(null,{success:true});});
+  await stop.send('webrtc:signal',signalPacket);
+  const retriedSignals=socket.emitted.filter(entry=>entry.name==='webrtc:signal');
+  assert.equal(retriedSignals.length,2);assert.equal(peerDispatches.length,1,'A lost source ACK retries one backend logical identity instead of dispatching a duplicate answer');
+  assert.equal(retriedSignals[0].data.requestId,retriedSignals[1].data.requestId,'Transport retries retain one requestId');
+  assert.equal(retriedSignals[1].data.description.sdp,'v=0\r\n','Transport retries retain the first SDP snapshot even if the caller mutates its object');
+  assert.match(retriedSignals[0].data.requestId,/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i);assert.equal(signalPacket.requestId,undefined,'Signaling metadata never mutates the media payload');
+  const beforeRejection=socket.emitted.filter(entry=>entry.name==='webrtc:signal').length;
+  socket.ackQueue.push(({acknowledge})=>acknowledge(null,{success:false,message:'Call is no longer active'}));
+  await assert.rejects(stop.send('webrtc:signal',{callId:'ended-call',candidate:{candidate:'candidate:late'}}),/no longer active/);
+  assert.equal(socket.emitted.filter(entry=>entry.name==='webrtc:signal').length,beforeRejection+1,'An explicit server rejection is final and never retried');
+  const beforeReconnect=socket.emitted.filter(entry=>entry.name==='webrtc:signal').length;socket.connected=false;
+  const reconnectingSignal=stop.send('webrtc:signal',{callId:'accepted-call',candidate:{candidate:'candidate:reconnect'}});
+  setTimeout(()=>{socket.connected=true;},20);await reconnectingSignal;
+  assert.equal(socket.emitted.filter(entry=>entry.name==='webrtc:signal').length,beforeReconnect+1,'A brief offline window sends once after reconnect within the bounded deadline');
+  const beforeStream=socket.emitted.filter(entry=>entry.name==='stream:signal').length;
+  await stop.send('stream:signal',{streamId:'stream-id',candidate:{candidate:'candidate:stream'}});
+  const streamSignals=socket.emitted.filter(entry=>entry.name==='stream:signal');
+  assert.equal(streamSignals.length,beforeStream+1);assert.equal(streamSignals.at(-1).data.requestId,undefined,'Legacy stream signaling remains a single unmodified send');
   const beforeStop = events.length, emissionsBeforeStop = socket.emitted.length;
   stop(); stop.setActive(false); assert.equal(socket.emitted.length, emissionsBeforeStop);
   assert.equal(tokenListeners.length, 0); socket.emitServer('call:updated', { status: 'accepted', _id: 'late' }); assert.equal(events.length, beforeStop);
