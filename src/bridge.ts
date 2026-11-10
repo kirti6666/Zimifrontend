@@ -476,15 +476,24 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (webReady) emit({ type: "connection.status", data });
     if (data.connected) callRecovery?.sync(true);
   });
+  const userFacingError = (error: unknown, action?: string) => {
+    if (error instanceof ApiError && error.code === "FINANCIAL_SELF_DEALING") {
+      if (action?.startsWith("call.")) return "This call isn't available for this account.";
+      if (action === "gift.send") return "This gift can't be sent to this account.";
+      return "This action isn't available for this account.";
+    }
+    return errorMessage(error);
+  };
   const metadata = (error: unknown) => ({
     message: errorMessage(error),
     ...(error instanceof ApiError ? { code: error.code, retryAfterSeconds: error.retryAfterSeconds } : {}),
   });
   const operationError = (error: unknown, action?: string, context: { to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string; q?: string; page?: number } = {}) => {
-    if (action?.startsWith("themes.")) emit({ type: "themes.error", data: { message: errorMessage(error), action, ...(error instanceof ApiError ? { code: error.code } : {}) } });
+    const message = userFacingError(error, action);
+    if (action?.startsWith("themes.")) emit({ type: "themes.error", data: { message, action, ...(error instanceof ApiError ? { code: error.code } : {}) } });
     // A refused friend code is explained beside the code field, not in a toast.
-    else if (action === "referral.apply") emit({ type: "referral.error", data: { message: errorMessage(error), requestId: context.requestId, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
-    else emit({ type: "operation.error", data: { message: errorMessage(error), action, ...context, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+    else if (action === "referral.apply") emit({ type: "referral.error", data: { message, requestId: context.requestId, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
+    else emit({ type: "operation.error", data: { message, action, ...context, ...(error instanceof ApiError ? { code: error.code, status: error.status } : {}) } });
   };
   const quietly = (work: Promise<unknown>, action?: string) => {
     const version = epoch;
@@ -621,7 +630,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (current(version) && generation === callGeneration) {
         activeCall = undefined; answeredHostCall = undefined;
         if (!wasRinging) finishCallActivity(callId);
-        emit({ type: "call.failed", data: { message: errorMessage(error), callId, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
+        emit({ type: "call.failed", data: { message: userFacingError(error, "call.accept"), callId, ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
       }
     }
   };
@@ -2131,7 +2140,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           if (result.connected && intent.callId !== result.callId) emit({ type: "call.connected", data: { ...result, initiator: true, peerId: result.to } });
         } catch (error) {
           if (current(version) && intent.generation === callGeneration) {
-            emit({ type: "call.failed", data: { message: errorMessage(error), ...(error instanceof ApiError && error.code ? { code: error.code } : {}), ...(error instanceof ApiError && error.requiredCoins ? { requiredCoins: error.requiredCoins } : {}), ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
+            emit({ type: "call.failed", data: { message: userFacingError(error, msg.type), ...(error instanceof ApiError && error.code ? { code: error.code } : {}), ...(error instanceof ApiError && error.requiredCoins ? { requiredCoins: error.requiredCoins } : {}), ...(msg.type === "call.invitation.connect" ? { invitationId: msg.data.id, requestId: msg.data.requestId } : {}) } });
             if (error instanceof ApiError && error.code === "INSUFFICIENT_COINS") quietly(refreshWallet(), "wallet.load");
           }
         }

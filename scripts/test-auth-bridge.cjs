@@ -2577,6 +2577,25 @@ test('insufficient outgoing call coins reach the recharge screen with the server
   h.bridge.close();
 });
 
+test('financial account-policy failures use contextual copy without exposing backend terminology', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const refuse = () => { throw new h.ApiError('This financial interaction is not allowed between these accounts', 403, 'FINANCIAL_SELF_DEALING'); };
+  h.overrides.startCall = refuse;
+  h.bridge.handle({ type: 'call.start', data: { to: 'host-id', voice: false } }); await settle();
+  assert.equal(h.find('call.failed').at(-1).data.message, "This call isn't available for this account.");
+  h.overrides.acceptCall = refuse;
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'incoming-call' } }); await settle();
+  assert.equal(h.find('call.failed').at(-1).data.message, "This call isn't available for this account.");
+  h.overrides.sendGift = refuse;
+  h.bridge.handle({ type: 'gift.send', data: { to: 'host-id', gift: 'gift-id', coins: 10, inCall: false, idempotencyKey: 'policy-gift-attempt' } }); await settle();
+  const giftError = h.find('operation.error').filter(event => event.data.action === 'gift.send').at(-1).data;
+  assert.equal(giftError.message, "This gift can't be sent to this account.");
+  assert.doesNotMatch(JSON.stringify([...h.find('call.failed'), giftError]), /financial interaction|between these accounts/i);
+  h.bridge.close();
+});
+
 test('prepareForUpdate preserves an active billed call until its normal terminal event', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());
