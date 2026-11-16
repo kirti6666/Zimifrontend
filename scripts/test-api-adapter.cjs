@@ -111,6 +111,13 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   }
   const previousRateRequests=requests.length;for(const invalid of [0,1.5,'50',1000001])await assert.rejects(api.saveHostCallRate(invalid),/valid member call price/);assert.equal(requests.length,previousRateRequests);
   const legacyStatus={...configurableStatus};for(const key of ['configurableRate','minRate','maxRate','selectedRate'])delete legacyStatus[key];expect('GET','/calls/host-status',legacyStatus);assert.equal((await api.hostCallStatus()).configurableRate,undefined);finished();
+  const acceptedCallId='507f1f77bcf86cd799439081',memberId='507f1f77bcf86cd799439082',hostId='507f1f77bcf86cd799439083';
+  expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:memberId,calleeId:hostId,status:'accepted',kind:'video',coinsPerMinute:50,earlyEnds:{today:1,limit:3,penaltyCoins:20}});
+  assert.deepEqual(plain(await api.acceptCall(acceptedCallId)),{peerId:memberId,voice:false,rate:50,earlyEnds:{today:1,limit:3,penaltyCoins:20}},'A host verifies the accepted call and receives early-end policy');
+  expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:hostId,calleeId:memberId,hostInitiated:true,status:'accepted',kind:'audio',coinsPerMinute:60});
+  assert.deepEqual(plain(await api.acceptCall(acceptedCallId)),{peerId:hostId,voice:true,rate:60},'A member can accept a host call whose response has no host-only early-end policy');
+  expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:memberId,calleeId:hostId,status:'ringing',kind:'video'});
+  await assert.rejects(api.acceptCall(acceptedCallId),/accepted call could not be verified/);finished();
   const officialIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
   const officialAt = '2026-11-02T10:00:00.000Z', officialId = '507f1f77bcf86cd799439041', officialTicket = '507f1f77bcf86cd799439042';
   const officialNote = {id:'announcement:'+officialId,kind:'announcement',senderType:'official',body:'An official update',createdAt:officialAt,read:false};

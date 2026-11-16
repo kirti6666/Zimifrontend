@@ -2933,6 +2933,55 @@ test('approved native host actions revalidate server approval before execution',
   h.bridge.close();
 });
 
+test('approved host accept failures stay on the retryable ring and expose the real error', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'retryable-host-call', from: { id: 'member-id', name: 'Member' }, voice: false } }); await settle();
+  h.overrides.acceptCall = () => { throw new h.ApiError('The call service is temporarily unavailable.', 503, 'CALL_ACCEPT_UNAVAILABLE'); };
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'retryable-host-call' } }); await settle();
+  assert.deepEqual(plain(h.find('call.failed').at(-1).data), { callId: 'retryable-host-call', message: 'The call service is temporarily unavailable.', code: 'CALL_ACCEPT_UNAVAILABLE' });
+  assert.equal(h.find('call.ended').length, 0, 'A failed host answer must not navigate away as a locally ended call');
+  assert.equal(h.count('endCall'), 0, 'An uncertain answer failure must not cancel a call that may still be ringing');
+  assert.equal(h.load('src/app-update-activity.ts').isUpdateActivityBusy(), true, 'The incoming ring remains protected while the host can retry');
+  h.overrides.acceptCall = () => ({ peerId: 'member-id', voice: false });
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'retryable-host-call' } }); await settle();
+  assert.equal(h.count('acceptCall'), 2);
+  assert.deepEqual(plain(h.find('call.connected').at(-1).data), { callId: 'retryable-host-call', initiator: false, peerId: 'member-id', voice: false });
+  h.bridge.close();
+});
+
+test('authoritative connected event wins when the host accept HTTP response fails', async () => {
+  const h = harness(), accepted = deferred();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'accepted-host-call', from: { id: 'member-id', name: 'Member' }, voice: true } }); await settle();
+  h.overrides.acceptCall = () => accepted.promise;
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'accepted-host-call' } }); await settle();
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'accepted-host-call', initiator: false, peerId: 'member-id', voice: true } }); await settle();
+  accepted.reject(new h.ApiError('The answer response was interrupted.', 503, 'CONNECTION_INTERRUPTED')); await settle();
+  assert.equal(h.find('call.connected').length, 1, 'The server-confirmed accepted call stays connected');
+  assert.equal(h.find('call.failed').length, 0, 'A failed HTTP receipt cannot tear down authoritative accepted media');
+  assert.equal(h.find('call.ended').length, 0);
+  assert.equal(h.count('endCall'), 0, 'The accepted call is never cancelled by the failed receipt');
+  h.bridge.close();
+});
+
+test('late connected event is not suppressed after a host accept HTTP failure', async () => {
+  const h = harness();
+  await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  h.live[0].onEvent({ type: 'call.incoming', data: { callId: 'late-accepted-host-call', from: { id: 'member-id', name: 'Member' }, voice: false } }); await settle();
+  h.overrides.acceptCall = () => { throw new h.ApiError('The answer response was interrupted.', 503, 'CONNECTION_INTERRUPTED'); };
+  h.bridge.handle({ type: 'call.accept', data: { callId: 'late-accepted-host-call' } }); await settle();
+  assert.equal(h.find('call.failed').length, 1);
+  h.live[0].onEvent({ type: 'call.connected', data: { callId: 'late-accepted-host-call', initiator: false, peerId: 'member-id', voice: false } }); await settle();
+  assert.equal(h.find('call.connected').length, 1, 'A later server acceptance still opens the call');
+  assert.equal(h.find('call.ended').length, 0, 'The failed HTTP receipt never blacklists the call ID');
+  assert.equal(h.count('endCall'), 0);
+  h.bridge.close();
+});
+
 test('admin revocation retires hosted activity and cannot be undone by a pending approval response', async () => {
   const h = streamingHarness(), permission = deferred(), revoked = deferred();
   await h.session.setSessionTokens(tokenPair()); h.overrides.me = () => approvedAccount();

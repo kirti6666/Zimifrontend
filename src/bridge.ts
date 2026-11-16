@@ -327,6 +327,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let verifyCall: { callId: string; accepted: boolean } | undefined;
   let callGeneration = 0;
   let pendingOutgoing: { generation: number; callId?: string; activity: UpdateLease } | undefined;
+  let pendingHostAccept: { callId: string; generation: number; connected: boolean } | undefined;
   let pendingStreamAccept: { generation: number; streamId: string; id: string } | undefined;
   const cancelledCalls = new Set<string>();
   let epoch = 0;
@@ -1177,6 +1178,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           return;
         }
         if (event.data?.initiator === true && pendingOutgoing) pendingOutgoing.callId = callId;
+        if (pendingHostAccept?.callId === callId && pendingHostAccept.generation === callGeneration) pendingHostAccept.connected = true;
         activeCall = callId;
         activeHostCall = event.data?.initiator === false;
         holdCallActivity(callId, event.data?.initiator === true ? pendingOutgoing?.activity : undefined);
@@ -2150,8 +2152,11 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "call.accept": {
         if (cancelledCalls.has(msg.data.callId)) return;
         if (accountRole === "user") return acceptHostCall(msg.data.callId, version);
+        const wasRinging = callActivities.has(msg.data.callId);
         holdCallActivity(msg.data.callId);
         const generation = ++callGeneration, sessionVersion = getSessionVersion();
+        const intent = { callId: msg.data.callId, generation, connected: false };
+        pendingHostAccept = intent;
         activeCall = msg.data.callId; activeHostCall = true;
         try {
           const approval = await requireApprovedHost();
@@ -2162,13 +2167,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
             return;
           }
           emit({ type: "call.connected", data: { callId: msg.data.callId, initiator: false, ...details } });
-        } catch {
-          if (current(version) && generation === callGeneration) {
-            activeCall = undefined; activeHostCall = false; rememberCancelledCall(msg.data.callId);
-            finishCallActivity(msg.data.callId);
-            emit({ type: "call.ended", data: { callId: msg.data.callId } });
+        } catch (error) {
+          if (current(version) && generation === callGeneration && !intent.connected) {
+            activeCall = undefined; activeHostCall = false;
+            if (!wasRinging) finishCallActivity(msg.data.callId);
+            emit({ type: "call.failed", data: { callId: msg.data.callId, message: userFacingError(error, "call.accept"), ...(error instanceof ApiError && error.code ? { code: error.code } : {}) } });
           }
         }
+        finally { if (pendingHostAccept === intent) pendingHostAccept = undefined; }
         return;
       }
       case "call.decline": {

@@ -473,10 +473,15 @@ export const api = {
   },
   async startCall(to: string, voice: boolean) { const call = await request("POST", "/calls", { calleeId: to, kind: voice ? "audio" : "video" }); const callId = idOf(call); if (!callId) throw new ApiError("The call could not be started.", 502); return { callId }; },
   async acceptCall(callId: string) {
-    const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`)), early = record(call.earlyEnds);
+    const call = record(await request("POST", `/calls/${encodeURIComponent(callId)}/accept`));
+    const peerId = idOf(call.callerId);
+    if (idOf(call) !== callId || call.status !== "accepted" || !peerId)
+      throw new ApiError("The accepted call could not be verified. Please try again.", 502);
     const count = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
-    return { peerId: idOf(call.callerId), voice: call.kind === "audio", ...callPrice(call),
-      earlyEnds: { today: count(early.today), limit: count(early.limit), penaltyCoins: count(early.penaltyCoins) } };
+    const early = call.earlyEnds === undefined ? undefined : record(call.earlyEnds);
+    return { peerId, voice: call.kind === "audio", ...callPrice(call), ...(early ? {
+      earlyEnds: { today: count(early.today), limit: count(early.limit), penaltyCoins: count(early.penaltyCoins) },
+    } : {}) };
   },
   async hostCallStatus() { return hostCallStatusFrom(await request("GET", "/calls/host-status")); },
   async saveHostCallRate(rateCoinsPerMinute: number) {
