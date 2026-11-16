@@ -306,6 +306,7 @@ export type AppMessage =
   | { type: "call.nativeAction"; data: { callId: string; actionId: string; action: "open" | "answer" } }
   | { type: "call.ended"; data: { callId: string; coins?: number; reason?: "out_of_coins" | "switch" | "host_unavailable" } }
   | { type: "verify.incoming"; data: { callId: string } }
+  | { type: "verify.error"; data: { callId: string; message: string } }
   | { type: "verify.connected"; data: { callId: string; peerId: string; initiator: false; voice: false } }
   | { type: "verify.ended"; data: { callId: string; status: string } }
   | { type: "gift.received"; data: { gift: string; coins: number; from: string; id?: string; callId?: string; scope?: "call" | "stream" | "chat"; createdAt?: string; emittedAt?: string; diamondUnits?: number; diamondScale?: 1000000; streamId?: string; giftId?: string; giftName?: string; senderName?: string; emoji?: string; mediaUrl?: string; coverUrl?: string; durationMs?: number; senderAvatarUrl?: string; senderGender?: Gender } }
@@ -324,7 +325,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
   let activeCall: string | undefined;
   let callRecovery: ReturnType<typeof createCallRecovery> | undefined;
   // A staff verification call; `accepted` marks the device that answered it.
-  let verifyCall: { callId: string; accepted: boolean } | undefined;
+  let verifyCall: { callId: string; accepted: boolean; connected: boolean } | undefined;
   let callGeneration = 0;
   let pendingOutgoing: { generation: number; callId?: string; activity: UpdateLease } | undefined;
   let pendingHostAccept: { callId: string; generation: number; connected: boolean } | undefined;
@@ -1123,8 +1124,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const status = String(event.data?.status);
         if (status === "ringing") {
           holdCallActivity(callId);
-          if (verifyCall?.callId !== callId) verifyCall = { callId, accepted: false };
+          if (verifyCall?.callId !== callId) verifyCall = { callId, accepted: false, connected: false };
           emit({ type: "verify.incoming", data: { callId } });
+        } else if (status === "accepted" && verifyCall?.callId === callId && verifyCall.accepted) {
+          // The server commits and publishes acceptance before the HTTP receipt.
+          // Treat its socket state as authoritative when that receipt is lost.
+          if (!verifyCall.connected) {
+            verifyCall.connected = true;
+            emit({ type: "verify.connected", data: { callId, peerId: VERIFY_PEER, initiator: false, voice: false } });
+          }
         } else if (status !== "accepted" || (verifyCall?.callId === callId && !verifyCall.accepted)) {
           // Ended, or answered on another of this person's devices.
           if (verifyCall?.callId === callId) verifyCall = undefined;
@@ -2185,15 +2193,30 @@ export function createBridge(post: (msg: AppMessage) => void) {
       }
       case "verify.accept": {
         const callId = msg.data.callId, sessionVersion = getSessionVersion(), activity = holdCallActivity(callId);
-        verifyCall = { callId, accepted: true };
+        const intent = { callId, accepted: true, connected: false };
+        verifyCall = intent;
         try {
           await api.acceptVerificationCall(callId);
-          if (current(version) && sessionVersion === getSessionVersion() && verifyCall?.callId === callId) emit({ type: "verify.connected", data: { callId, peerId: VERIFY_PEER, initiator: false, voice: false } });
-          else activity.finish();
+          if (!current(version) || sessionVersion !== getSessionVersion() || verifyCall !== intent) activity.finish();
+          else if (!intent.connected) {
+            intent.connected = true;
+            emit({ type: "verify.connected", data: { callId, peerId: VERIFY_PEER, initiator: false, voice: false } });
+          }
         } catch (error) {
-          if (verifyCall?.callId === callId) verifyCall = undefined;
+          const retryable = error instanceof ApiError && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
+          // A socket acceptance followed by a lost/transient HTTP receipt is a
+          // connected call. A definitive refusal can still mean another device
+          // won the race, so it must dismiss this provisional connection.
+          if (verifyCall === intent && intent.connected && retryable) return;
+          if (!current(version) || sessionVersion !== getSessionVersion() || verifyCall !== intent) { activity.finish(); return; }
+          if (retryable) {
+            emit({ type: "verify.error", data: { callId, message: errorMessage(error) } }); return;
+          }
+          const answeredElsewhere = error instanceof ApiError &&
+            (error.code === "CALL_ANSWERED_ELSEWHERE" || intent.connected && error.status === 409);
+          verifyCall = undefined;
           finishCallActivity(callId);
-          if (current(version)) emit({ type: "verify.ended", data: { callId, status: "unavailable" } });
+          emit({ type: "verify.ended", data: { callId, status: answeredElsewhere ? "accepted" : "unavailable" } });
           throw error;
         }
         return;

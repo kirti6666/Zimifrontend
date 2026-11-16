@@ -1557,6 +1557,55 @@ test('staff verification calls ring applicants and answer through their own endp
   h.bridge.close();
 });
 
+test('authoritative verification acceptance survives a lost HTTP receipt', async () => {
+  const h = harness(), accepted = deferred(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const live = h.live.at(-1);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-race', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => accepted.promise;
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-race' } }); await settle();
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-race', status: 'accepted' } }); await settle();
+  assert.deepEqual(plain(h.find('verify.connected').map(event => event.data)), [{ callId: 'verify-race', peerId: 'zimi-team', initiator: false, voice: false }]);
+  accepted.reject(new h.ApiError('The answer response was interrupted.', 503, 'CONNECTION_INTERRUPTED')); await settle();
+  assert.equal(h.find('verify.connected').length, 1, 'HTTP completion cannot duplicate the server-confirmed connection');
+  assert.equal(h.find('verify.error').length, 0); assert.equal(h.find('verify.ended').length, 0);
+  assert.equal(activity.isUpdateActivityBusy(), true, 'The accepted verification call remains protected');
+  h.bridge.close();
+});
+
+test('another-device verification acceptance still dismisses a provisional local answer', async () => {
+  const h = harness(), accepted = deferred(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const live = h.live.at(-1);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-other-device', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => accepted.promise;
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-other-device' } }); await settle();
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-other-device', status: 'accepted' } }); await settle();
+  assert.equal(h.find('verify.connected').length, 1, 'The broadcast can provisionally connect while the local answer is pending');
+  accepted.reject(new h.ApiError('This call is no longer ringing', 409, 'CALL_ANSWERED_ELSEWHERE')); await settle();
+  assert.deepEqual(plain(h.find('verify.ended').at(-1).data), { callId: 'verify-other-device', status: 'accepted' });
+  assert.equal(activity.isUpdateActivityBusy(), false, 'A definitive refusal releases the losing device');
+  h.bridge.close();
+});
+
+test('transient verification accept failure stays retryable and permits a late accepted event', async () => {
+  const h = harness(), activity = h.load('src/app-update-activity.ts');
+  await h.session.setSessionTokens(tokenPair());
+  h.bridge.handle({ type: 'session.resume', data: {} }); await settle();
+  const live = h.live.at(-1);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-retry', status: 'ringing' } });
+  h.overrides.acceptVerificationCall = () => { throw new h.ApiError("Can't reach BinzoLive. Check your connection and try again.", 0, 'NETWORK_ERROR'); };
+  h.bridge.handle({ type: 'verify.accept', data: { callId: 'verify-retry' } }); await settle();
+  assert.deepEqual(plain(h.find('verify.error').at(-1).data), { callId: 'verify-retry', message: "Can't reach BinzoLive. Check your connection and try again." });
+  assert.equal(h.find('verify.ended').length, 0); assert.equal(activity.isUpdateActivityBusy(), true);
+  live.onEvent({ type: 'verify.updated', data: { callId: 'verify-retry', status: 'accepted' } }); await settle();
+  assert.equal(h.find('verify.connected').length, 1, 'A late committed acceptance still connects this pending local answer');
+  assert.equal(h.find('verify.ended').length, 0);
+  h.bridge.close();
+});
+
 test('invalid room, payment and oversized media input never reaches privileged dispatch', async () => {
   const h = harness();
   const invalid = [

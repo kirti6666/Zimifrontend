@@ -560,6 +560,8 @@ export function createNativeMedia(
       try {
         // Preview capture does not change communication audio routing. An
         // accepted call owns the route/focus until its peer is retired.
+        // prepare() reuses a live preview, or reacquires it when the web retry
+        // UI stopped capture before a late authoritative verification accept.
         const local = await prepare(!current.voice);
         if (!valid(current)) return;
         // Start while the accepting/calling Activity is visible. Android 14+

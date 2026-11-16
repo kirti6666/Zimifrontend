@@ -2,7 +2,7 @@
    application; the applicant answers here. Media runs through ZimiMedia's call session
    (verify.connected), so this file only owns the overlay and its controls. */
 const ZVerify={callId:'',state:'',error:'',startedAt:0,timer:null};
-const ZV_ENDED={declined:'You declined the verification call.',missed:'You missed the verification call. The team can call you again.',unavailable:'This verification call is no longer available.',failed:'The video connection failed. The team can call you again.'};
+const ZV_ENDED={declined:'You declined the verification call.',missed:'You missed the verification call. The team can call you again.',accepted:'This verification call was answered on another device.',unavailable:'This verification call is no longer available.',failed:'The video connection failed. The team can call you again.'};
 function zvTime(){const s=Math.max(0,Math.floor((Date.now()-ZVerify.startedAt)/1000));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
 function zvRender(){
   let el=document.getElementById('zv-call');
@@ -63,8 +63,13 @@ Native.on('verify.connected',d=>{
   clearInterval(ZVerify.timer);
   ZVerify.timer=setInterval(()=>{const t=document.getElementById('zv-timer');if(t)t.textContent=zvTime()},1000);
 });
+Native.on('verify.error',d=>{
+  if(d.callId!==ZVerify.callId||ZVerify.state==='connected')return;
+  ZVerify.state='ringing';ZVerify.error=d.message||'The verification call could not be answered. Try again.';
+  window.ZimiMedia?.stop();zvRender();
+});
 Native.on('verify.ended',d=>{
   if(d.callId!==ZVerify.callId)return;
-  zvClose(ZVerify.state==='connected'?'The verification call has ended. The team will update your application soon.':ZV_ENDED[d.status]||'The verification call has ended.');
+  zvClose(d.status==='accepted'?ZV_ENDED.accepted:ZVerify.state==='connected'?'The verification call has ended. The team will update your application soon.':ZV_ENDED[d.status]||'The verification call has ended.');
 });
 ['session.none','session.expired'].forEach(type=>Native.on(type,()=>{if(ZVerify.state)zvClose()}));
