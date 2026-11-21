@@ -490,6 +490,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(uploads.length, 1); finished();
   reset();
   expect('POST','/chats/activity',{},body=>assert.deepEqual(plain(body),{with:'host-id',active:true}));await api.setChatActivity('host-id',true);
+  for(const typing of [true,false]){expect('POST','/chats/typing',{},body=>assert.deepEqual(plain(body),{with:'host-id',typing}));await api.setChatTyping('host-id',typing)}
   expect('POST','/chats/host-id',{_id:'ordered-text',text:'Hello',createdAt:'2026-10-30T10:00:00Z',sequence:12},body=>assert.deepEqual(plain(body),{text:'Hello',clientId:'text-client-1'}));
   const textReceipt=await api.sendMessage('host-id','Hello',undefined,undefined,'text-client-1');assert.equal(textReceipt.sequence,12);assert.equal(textReceipt.createdAt,'2026-10-30T10:00:00Z');
   expect('POST','/media/upload-url',{uploadUrl:'https://storage.example.test/retry-photo',key:'chats/member-id/retry.png'});
@@ -1153,11 +1154,53 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.emitServer('chat:message', { senderId: 'member-id', recipientId: 'host-id', text: 'Own echo' });
   socket.emitServer('chat:message', { _id: 'message-id', senderId: 'host-id', recipientId: 'member-id', text: 'Hello', createdAt: chatAt, automated: true });
   socket.emitServer('chat:message', { senderId: 'stranger', recipientId: 'other-user', text: 'Private unrelated message' });
+  const readMessageIds = ['read-message-1', 'read-message-2'];
+  const beforeRead = events.length;
+  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: readMessageIds, readAt: chatAt });
+  assert.deepEqual(plain(events.slice(beforeRead)), [
+    { type: 'chat.read', data: { with: 'host-id', conversationIds: ['conversation-id'], messageIds: readMessageIds, readAt: chatAt } },
+    { type: 'chats.updated', data: {} },
+  ], 'A committed receipt updates the open peer and still invalidates conversation summaries');
+  const beforeReadAllReceipt = events.length;
   socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], readAt: chatAt });
-  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: 'malformed', readAt: chatAt });
+  assert.deepEqual(plain(events.slice(beforeReadAllReceipt)), [
+    { type: 'chat.read', data: { with: 'host-id', conversationIds: ['conversation-id'], readAt: chatAt } },
+    { type: 'chats.updated', data: {} },
+  ], 'Read-all receipts may omit exact message IDs');
+  const maximumReadIds = Array.from({ length: 200 }, (_, index) => `read-message-${index + 100}`), beforeMaximumRead = events.length;
+  socket.emitServer('chat:read', { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: maximumReadIds, readAt: chatAt });
+  assert.deepEqual(plain(events.slice(beforeMaximumRead)), [
+    { type: 'chat.read', data: { with: 'host-id', conversationIds: ['conversation-id'], messageIds: maximumReadIds, readAt: chatAt } },
+    { type: 'chats.updated', data: {} },
+  ], 'A receipt accepts at most 200 exact message IDs');
+  const afterValidReads = events.length;
+  for (const receipt of [
+    { userId: 'host-id', conversationIds: 'malformed', readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [''], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [readMessageIds[0], readMessageIds[0]], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], messageIds: [...maximumReadIds, 'one-too-many'], readAt: chatAt },
+    { userId: 'host-id', conversationIds: ['conversation-id'], readAt: 'not-a-date' },
+  ]) socket.emitServer('chat:read', receipt);
+  assert.equal(events.length, afterValidReads, 'Malformed or ambiguous read receipts are dropped completely');
+  const typingExpiresAt = new Date(Date.now() + 10000).toISOString();
+  socket.emitServer('chat:typing', { userId: 'host-id', typing: true, expiresAt: typingExpiresAt });
+  assert.deepEqual(plain(events.at(-1)), { type: 'chat.typing', data: { from: 'host-id', typing: true, expiresAt: typingExpiresAt } });
+  socket.emitServer('chat:typing', { userId: 'host-id', typing: false });
+  assert.deepEqual(plain(events.at(-1)), { type: 'chat.typing', data: { from: 'host-id', typing: false } }, 'A stop signal does not require an expiry');
+  const afterValidTyping = events.length;
+  for (const typing of [
+    { userId: 'host-id', typing: true },
+    { userId: 'host-id', typing: true, expiresAt: 'not-a-date' },
+    { userId: 'host-id', typing: true, expiresAt: new Date(Date.now() - 1000).toISOString() },
+    { userId: 'host-id', typing: 'true', expiresAt: typingExpiresAt },
+    { userId: 'member-id', typing: true, expiresAt: typingExpiresAt },
+    { typing: true, expiresAt: typingExpiresAt },
+  ]) socket.emitServer('chat:typing', typing);
+  assert.equal(events.length, afterValidTyping, 'Malformed, stale and self-authored typing events are ignored');
   socket.emitServer('call:updated', { _id: 'incoming', callerId: 'host-id', calleeId: 'member-id', status: 'ringing' });
   socket.emitServer('host:reviewed', { status: 'approved' });
-  assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chats.updated','call.incoming','verification.status']);
+  assert.deepEqual(events.map(event => event.type), ['chats.updated','chat.message','chats.updated','chat.read','chats.updated','chat.read','chats.updated','chat.read','chats.updated','chat.typing','chat.typing','call.incoming','verification.status']);
   assert.equal(events[1].data.id, 'message-id'); assert.equal(events[1].data.createdAt, chatAt);
   assert.equal(events[1].data.automated, true, 'Realtime delivery retains the automated label');
   const heldUntil = new Date(Date.now() + 300000).toISOString();

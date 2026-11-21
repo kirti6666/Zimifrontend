@@ -118,6 +118,7 @@ export type WebMessage =
   | { type: "follow.set"; data: { id: string; on: boolean; requestId?: number } }
   | { type: "chat.open"; data: { with: string; background?: boolean; knownIds?: string[] } }
   | { type: "chat.activity"; data: { with: string; active: boolean } }
+  | { type: "chat.typing"; data: { to: string; typing: boolean } }
   | { type: "chats.reload"; data: { page?: number } }
   | { type: "chats.readAll"; data: Record<string, never> }
   | { type: "chat.send"; data: { to: string; text: string; inCall?: boolean; replyTo?: string; clientId?: string } }
@@ -297,6 +298,8 @@ export type AppMessage =
   | { type: "chat.voiceSent"; data: { to: string; clientId: string; message: Message } }
   | { type: "chat.updated"; data: { with: string; message: Message } }
   | { type: "chat.removed"; data: { id: string } }
+  | { type: "chat.typing"; data: { from: string; typing: boolean; expiresAt?: string } }
+  | { type: "chat.read"; data: { with: string; conversationIds: string[]; readAt: string; messageIds?: string[] } }
   | { type: "verification.status"; data: { status: Verification; hostStatus?: string; message?: string } }
   | { type: "agency.loaded" | "agency.verified" | "agency.joined"; data: import("./api/types").HostAgencyStatus & { requestId: number } }
   | { type: "agency.error"; data: { action: "agency.load" | "agency.verify" | "agency.join"; message: string; requestId: number } }
@@ -455,6 +458,33 @@ export function createBridge(post: (msg: AppMessage) => void) {
     callActivities.clear();
   };
   const current = (version: number) => !closed && version === epoch;
+  type ChatTypingState = { peer: string; typing: boolean; revision: number; running: boolean; epoch: number; session: number; document: number; owner?: string };
+  const chatTypingStates = new Map<string, ChatTypingState>();
+  const pumpChatTyping = async (state: ChatTypingState) => {
+    if (state.running) return;
+    state.running = true;
+    try {
+      while (chatTypingStates.get(state.peer) === state && current(state.epoch) && state.session === getSessionVersion() &&
+        state.document === documentRevision && state.owner === accountId) {
+        const revision = state.revision, typing = state.typing;
+        try { await api.setChatTyping(state.peer, typing); } catch { /* Presence expires remotely when the network is unavailable. */ }
+        if (state.revision === revision) break;
+      }
+    } finally {
+      state.running = false;
+      if (chatTypingStates.get(state.peer) === state) chatTypingStates.delete(state.peer);
+    }
+  };
+  /** Coalesces rapid renewals and preserves start/stop ordering across HTTP requests. */
+  const setChatTyping = (peer: string, typing: boolean) => {
+    let state = chatTypingStates.get(peer);
+    const session = getSessionVersion(), owner = accountId;
+    if (!state || state.epoch !== epoch || state.session !== session || state.document !== documentRevision || state.owner !== owner) {
+      state = { peer, typing, revision: 1, running: false, epoch, session, document: documentRevision, owner };
+      chatTypingStates.set(peer, state);
+    } else { state.typing = typing; state.revision++; }
+    void pumpChatTyping(state);
+  };
   const ringing = createCallRinging({ owner: () => accountId, key: () => `${epoch}:${documentRevision}:${getSessionVersion()}`, verify: id => api.notificationCall(id) });
   ringing.foreground(appActive);
   const emit = (message: AppMessage) => {
@@ -2009,6 +2039,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return msg.data.background ? read.catch(() => {}) : read;
       }
       case "chat.activity": setChatActivity(msg.data.with, msg.data.active); return;
+      case "chat.typing": setChatTyping(msg.data.to, msg.data.typing); return;
       case "chat.send": {
         const callId = msg.data.inCall ? activeCall : undefined;
         if (msg.data.inCall && !callId) throw new ApiError("Your call has ended. Open the conversation to send a message.", 409);

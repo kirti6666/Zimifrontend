@@ -192,6 +192,7 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "follow.set": valid = identifier(d.id) && boolean(d.on) && Object.keys(d).every(key => ["id", "on", "requestId"].includes(key)); break;
     case "chat.open": valid = identifier(d.with) && (d.background === undefined || boolean(d.background)) && (d.knownIds === undefined || (Array.isArray(d.knownIds) && d.knownIds.length <= 200 && d.knownIds.every(id => typeof id === "string" && /^[a-f\d]{24}$/i.test(id)) && new Set(d.knownIds).size === d.knownIds.length)) && Object.keys(d).every(key => ["with", "background", "knownIds"].includes(key)); break;
     case "chat.activity": valid = identifier(d.with) && boolean(d.active) && Object.keys(d).every(key => ["with", "active"].includes(key)); break;
+    case "chat.typing": valid = identifier(d.to) && boolean(d.typing) && Object.keys(d).every(key => ["to", "typing"].includes(key)); break;
     case "chats.reload": valid = d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000); break;
     case "chats.readAll": valid = true; break;
     case "chat.send": valid = identifier(d.to) && text(d.text, 4000) && (d.inCall === undefined || boolean(d.inCall)) && (d.replyTo === undefined || identifier(d.replyTo)) && (d.clientId === undefined || voiceClientId(d.clientId)); break;

@@ -524,6 +524,8 @@ export const api = {
   },
   /** Uploads a chat photo into the sender's own folder, then sends it. */
   setChatActivity: (withId: string, active: boolean) => request("POST", "/chats/activity", { with: withId, active }),
+  /** Ephemeral composer presence. The server relays it to this peer without storing it. */
+  setChatTyping: (withId: string, typing: boolean) => request("POST", "/chats/typing", { with: withId, typing }),
   async sendPhotoMessage(to: string, photo: string, replyTo?: string, clientId?: string) {
     const version = getSessionVersion();
     decodePhoto(photo);

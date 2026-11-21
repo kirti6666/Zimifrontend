@@ -554,6 +554,39 @@ test('conversation activity serializes old close/new open, renews and releases i
   assert.equal(h.find('operation.error').length,0,'Best-effort engagement failures do not interrupt manual conversations');h.bridge.close();
 });
 
+test('typing messages validate an identity-free contract and failures stay best-effort', async () => {
+  const h=harness(),parse=message=>h.webMessages.parseWebMessage(JSON.stringify(message));
+  const started={type:'chat.typing',data:{to:'peer-a',typing:true}},stopped={type:'chat.typing',data:{to:'peer-a',typing:false}};
+  assert.deepEqual(plain(parse(started)),started);assert.deepEqual(plain(parse(stopped)),stopped);
+  for(const data of [
+    {},
+    {to:'',typing:true},
+    {to:'peer/a',typing:true},
+    {to:'bingo-live-official',typing:true},
+    {to:'peer-a',typing:1},
+    {with:'peer-a',typing:true},
+    {to:'peer-a',typing:true,userId:'forged'},
+    {to:'peer-a',typing:true,expiresAt:'2026-11-21T10:00:00.000Z'},
+  ]){
+    const message={type:'chat.typing',data};assert.equal(parse(message),null,JSON.stringify(data));h.bridge.handle(message);
+  }
+  assert.equal(h.count('setChatTyping'),0,'Rejected WebMessages never reach the API');
+  const pending=deferred();let attempts=0;
+  h.overrides.me=()=>({...account(),requiresOnboarding:false});
+  h.overrides.setChatTyping=()=>++attempts===1?pending.promise:undefined;
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  h.bridge.handle(started);h.bridge.handle(stopped);await settle();
+  assert.deepEqual(plain(h.calls.filter(call=>call.name==='setChatTyping').map(call=>call.args)),[['peer-a',true]],'A stop cannot overtake a pending typing start');
+  assert.equal(h.find('chat.typing').length,0,'The bridge does not fabricate a typing acknowledgment');
+  pending.resolve();await settle();
+  assert.deepEqual(plain(h.calls.filter(call=>call.name==='setChatTyping').map(call=>call.args)),[['peer-a',true],['peer-a',false]],'Typing transitions keep their server arrival order');
+  h.overrides.setChatTyping=()=>{throw new h.ApiError('Typing presence unavailable',503)};
+  h.bridge.handle(started);await settle();
+  assert.equal(h.count('setChatTyping'),3);
+  assert.equal(h.find('operation.error').filter(event=>event.data.action==='chat.typing').length,0,'Typing presence failures never interrupt the conversation');
+  h.bridge.close();
+});
+
 test('chat acknowledgments preserve client identity and committed server ordering while background reads stay unobtrusive', async () => {
   const h=harness();h.overrides.me=()=>({...account(),requiresOnboarding:false});
   const delivered={id:'server-message',text:'Delivered text',createdAt:'2026-10-30T10:00:00Z',sequence:8};
@@ -1005,15 +1038,20 @@ test('closing the bridge removes session observers and prevents pending UI deliv
   assert.equal(h.count('sendOtp'), 1);
 });
 
-test('the native update gate mounts app content only after an allowed policy', () => {
+test('the native update gate keeps checks and bare errors behind the launch logo until a policy allows content', () => {
   const h = harness(), app = h.load('App.tsx');
-  for (const status of ['checking', 'required', 'error']) {
+  for (const status of ['checking', 'error']) {
     h.overrides.appUpdatesState = { status };
     const tree = [app.default().props.children].flat()[0];
-    assert.equal(tree.type, 'AppUpdateScreen', `${status} cannot mount the WebView or session bridge`);
-    assert.equal(tree.props.state.status, status);
+    assert.equal(tree.type, 'LaunchScreen', `${status} stays behind the animated BinzoLive logo`);
+    assert.equal(tree.props.ready, false, `${status} cannot dismiss the logo without a policy result`);
     assert.equal(h.effects.length, 0, 'Blocked builds do not start app-content effects');
   }
+  h.overrides.appUpdatesState = { status: 'required' };
+  const required = [app.default().props.children].flat()[0];
+  assert.equal(required.type, 'AppUpdateScreen', 'Only a mandatory policy shows the update screen');
+  assert.equal(required.props.state.status, 'required');
+  assert.equal(h.effects.length, 0, 'A required build does not start app-content effects');
   h.overrides.appUpdatesState = { status: 'allowed' };
   assert.equal([app.default().props.children].flat()[0].type, app.AppContent);
   assert.equal(h.effects.length, 0, 'The wrapper leaves content mounting to React');
@@ -1022,11 +1060,14 @@ test('the native update gate mounts app content only after an allowed policy', (
 test('native incoming surface covers update checking without mounting app content and preserves its stable root', () => {
   const h=harness(),app=h.load('App.tsx'),action={actionId:'native-first-frame',action:'open',recipientId:'507f1f77bcf86cd799439101',callId:'507f1f77bcf86cd799439103',expiresAt:new Date(Date.now()+30000).toISOString(),callerName:'Mira',callKind:'video'};
   h.overrides.incomingState={action};
-  for(const status of ['checking','required','error']) {
+  for(const status of ['checking','error']) {
     h.overrides.appUpdatesState={status};const tree=app.default(),[content,overlay]=[tree.props.children].flat();
-    assert.equal(tree.type,'View');assert.equal(content.type,'AppUpdateScreen');assert.equal(overlay.type,'IncomingCallScreen');assert.equal(overlay.props.action.actionId,action.actionId);assert.equal(overlay.props.allowed,false);
+    assert.equal(tree.type,'View');assert.equal(content.type,'LaunchScreen');assert.equal(content.props.ready,false);assert.equal(overlay.type,'IncomingCallScreen');assert.equal(overlay.props.action.actionId,action.actionId);assert.equal(overlay.props.allowed,false);
     assert.equal(h.effects.length,0,'A pending notification does not mount the gated WebView or account effects');
   }
+  h.overrides.appUpdatesState={status:'required'};const blocked=app.default(),[update,blockedOverlay]=[blocked.props.children].flat();
+  assert.equal(update.type,'AppUpdateScreen');assert.equal(update.props.state.status,'required');assert.equal(blockedOverlay.type,'IncomingCallScreen');assert.equal(blockedOverlay.props.allowed,false);
+  assert.equal(h.effects.length,0,'A mandatory update does not mount the gated WebView or account effects');
   h.overrides.appUpdatesState={status:'allowed'};const admitted=app.default(),[content,overlay]=[admitted.props.children].flat();
   assert.equal(content.type,app.AppContent);assert.equal(content.props.priorityIncoming,true);assert.equal(overlay.props.allowed,true);
   h.overrides.incomingState={action:null};const cleared=app.default(),[sameContent,empty]=[cleared.props.children].flat();

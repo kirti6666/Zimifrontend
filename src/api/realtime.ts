@@ -130,8 +130,28 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   socket.on("chat:read", payload => {
     try {
       const receipt = record(payload);
-      if (idOf(receipt.userId) && Array.isArray(receipt.conversationIds) && receipt.conversationIds.length > 0 && receipt.conversationIds.every(id => typeof id === "string" && id.length > 0) && typeof receipt.readAt === "string") emit("chats.updated", {});
+      const withId = idOf(receipt.userId), conversationIds = receipt.conversationIds;
+      const messageIds = receipt.messageIds;
+      const ids = (value: unknown): value is string[] => Array.isArray(value) && value.length > 0 && value.length <= 200 &&
+        value.every(id => typeof id === "string" && id.length > 0 && id.length <= 128) && new Set(value).size === value.length;
+      if (!withId || !ids(conversationIds) || typeof receipt.readAt !== "string" || !Number.isFinite(Date.parse(receipt.readAt)) ||
+        (messageIds !== undefined && !ids(messageIds))) return;
+      emit("chat.read", { with: withId, conversationIds: [...conversationIds], readAt: receipt.readAt,
+        ...(messageIds !== undefined ? { messageIds: [...messageIds] } : {}) });
+      emit("chats.updated", {});
     } catch { /* Ignore malformed read receipts. */ }
+  });
+  socket.on("chat:typing", payload => {
+    try {
+      const presence = record(payload), from = idOf(presence.userId);
+      if (!from || typeof presence.typing !== "boolean" || from === userId) return;
+      if (!presence.typing) { emit("chat.typing", { from, typing: false }); return; }
+      if (typeof presence.expiresAt !== "string") return;
+      const expires = Date.parse(presence.expiresAt), now = Date.now();
+      // Typing is intentionally short-lived; reject stale or accidentally durable presence.
+      if (!Number.isFinite(expires) || expires <= now || expires > now + 15000) return;
+      emit("chat.typing", { from, typing: true, expiresAt: presence.expiresAt });
+    } catch { /* Ignore malformed typing presence. */ }
   });
   const receiveGift = (payload: unknown) => {
     try {

@@ -96,7 +96,8 @@
 .zc-thread-title b{display:flex;align-items:center;gap:5px;min-width:0;font-size:17px;font-weight:650;letter-spacing:-.3px;line-height:1.2}
 .zc-thread-title b>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .zc-thread-title .zh-verified{color:var(--accent-ink)}
-.zc-thread-title small{font-size:12.5px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.zc-thread-title small{font-size:12.5px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:color 160ms ease}
+.zc-thread-title small.is-typing{color:var(--accent-ink);font-weight:600}
 .zc-thread-actions{flex:none;display:flex;align-items:center;gap:2px}
 .zc-thread-actions>.zc-thread-video{color:var(--accent-ink)}
 .zc-thread-more{position:relative}
@@ -165,6 +166,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-meta>b{font-weight:600;color:var(--theme-danger,#ff8a9a)}
 .zc-tick{display:inline-flex}
 .zc-tick.read{color:var(--accent-ink)}
+.zc-seen{display:inline-flex;min-height:14px;padding-inline:4px;color:var(--zc-wallpaper-muted);font-size:11.5px;line-height:1.25}
 /* A call in the conversation: its kind, then how long it lasted or how it ended. */
 .zc-call-bubble{display:flex;align-items:center;gap:10px;min-width:156px;padding-block:10px;white-space:normal}
 .zc-call-icon{display:grid;flex:none;place-items:center;width:36px;height:36px;background:color-mix(in srgb,currentColor 14%,transparent)}
@@ -230,7 +232,7 @@ html:root[data-theme="dark"] .zc-thread{
    The compact Gift button still opens the whole catalog. */
 .zh-keyboard-open .zc-thread :is(.zc-thread-live,.zc-gift-strip){display:none}
 @media(max-height:600px){.zc-thread .zc-gift-strip{display:none}.zc-thread:has(.zc-composer-field:focus-within,#zc-emoji:not([hidden]),#zc-attach:not([hidden])) .zc-thread-live{display:none}}
-@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer *{transition:none}.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:none}}
+@media(prefers-reduced-motion:reduce){.zc-thread-live h2>i,.zc-voice.playing .zc-wave>i{animation:none}.zc-composer *,.zc-thread-title small{transition:none}.zc-composer-send:not(:disabled):active,.zc-thread-video:active{transform:none}}
 
 /* Phone numbers and abusive words the server hid from chat: a blur, never readable or copyable. */
 .chat-hidden{display:inline-block;filter:blur(4px);opacity:.7;user-select:none;-webkit-user-select:none;letter-spacing:-.05em;vertical-align:-.1em}
