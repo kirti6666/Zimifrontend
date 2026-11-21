@@ -1,6 +1,7 @@
 /* Exercise the packaged UI with the optional built-ins missing on older
    Android WebViews. All native work is recorded locally; no real checkout. */
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -11,7 +12,33 @@ const receive = (page, type, data = {}) => page.evaluate(message => Native.recei
 const last = (page, type) => page.evaluate(type => __sent.filter(message => message.type === type).at(-1)?.data, type);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
+function assertLegacyViewportFallbacks() {
+  let checked = 0;
+  for (const name of fs.readdirSync(path.join(root, 'web')).filter(name => name.endsWith('.css'))) {
+    const source = fs.readFileSync(path.join(root, 'web', name), 'utf8');
+    const dynamic = /([\w-]+)\s*:\s*([^;{}]*dvh\b[^;{}]*)(?=;|})/g;
+    for (const match of source.matchAll(dynamic)) {
+      const lineStart = source.lastIndexOf('\n', match.index) + 1;
+      const lineEnd = source.indexOf('\n', match.index);
+      const line = source.slice(lineStart, lineEnd < 0 ? source.length : lineEnd);
+      if (line.includes('@supports') && line.includes('1dvh')) continue;
+      const ruleStart = source.lastIndexOf('{', match.index);
+      const prior = source.slice(ruleStart + 1, match.index);
+      const property = match[1];
+      const expected = match[2].replaceAll('dvh', 'vh').replace(/\s+/g, '');
+      const fallbacks = [...prior.matchAll(/([\w-]+)\s*:\s*([^;{}]+)/g)]
+        .filter(candidate => candidate[1] === property)
+        .map(candidate => candidate[2].replace(/\s+/g, ''));
+      assert.ok(fallbacks.includes(expected), `${name}: ${property}:${match[2]} needs an earlier ${property}:${match[2].replaceAll('dvh', 'vh')} fallback`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 0, 'Viewport compatibility contract must inspect dynamic viewport declarations');
+  return checked;
+}
+
 (async () => {
+  const viewportFallbacks = assertLegacyViewportFallbacks();
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } : {}) });
   try {
     for (const missing of [false, true]) {
@@ -72,6 +99,6 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
       assert.deepEqual(errors, [], 'Startup, checkout and chat remain free of browser errors');
       await page.close();
     }
-    console.log('PASS WebView compatibility: normal built-ins preserved; missing hasOwn/at/randomUUID and blocked storage retain startup, checkout, chat and cryptographic retry identities');
+    console.log(`PASS WebView compatibility: ${viewportFallbacks} dynamic viewport declarations have legacy fallbacks; normal built-ins preserved; missing hasOwn/at/randomUUID and blocked storage retain startup, checkout, chat and cryptographic retry identities`);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

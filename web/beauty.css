@@ -61,7 +61,8 @@
 
 /* Camera-visible controls: the call/setup owns the preview geometry and leaves
    its primary actions below this dock. No fullscreen backdrop or camera copy. */
-.zb-camera-panel{position:absolute;z-index:92;left:0;right:0;bottom:var(--zb-panel-bottom,78px);width:var(--zb-panel-width,100%);height:var(--zb-panel-height,min(42dvh,320px));max-width:560px;margin-inline:auto;display:flex;flex-direction:column;overflow:hidden;padding:0 12px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit}
+.zb-camera-panel{position:absolute;z-index:92;left:0;right:0;bottom:var(--zb-panel-bottom,78px);width:var(--zb-panel-width,100%);height:var(--zb-panel-height,min(42vh,320px));max-width:560px;margin-inline:auto;display:flex;flex-direction:column;overflow:hidden;padding:0 12px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:inherit}
+@supports (height:1dvh){.zb-camera-panel{height:var(--zb-panel-height,min(42dvh,320px))}}
 .zb-panel-header{display:flex;align-items:center;gap:10px;min-height:52px;flex:none;padding:4px 0}
 .zb-panel-header>div{flex:1;min-width:0}
 .zb-panel-mark{display:grid;place-items:center;flex:none;width:34px;height:34px;background:var(--accent-wash);color:var(--accent-ink)}

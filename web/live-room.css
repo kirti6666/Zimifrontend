@@ -243,7 +243,8 @@
 .zr-voice-call .zr-call-person{max-width:none}
 /* Keep the original local track visible above the filter dock. The remote
    video stays mounted and audible, and the hangup row remains below it. */
-.zr-call.zb-previewing{--zb-panel-height:min(42dvh,320px);--zb-panel-bottom:calc(78px + var(--safe-bottom));--zb-preview-bottom:calc(var(--zb-panel-bottom) + var(--zb-panel-height));--zb-preview-right:0px;--zb-remote-right:12px}
+.zr-call.zb-previewing{--zb-panel-height:min(42vh,320px);--zb-panel-bottom:calc(78px + var(--safe-bottom));--zb-preview-bottom:calc(var(--zb-panel-bottom) + var(--zb-panel-height));--zb-preview-right:0px;--zb-remote-right:12px}
+@supports (height:1dvh){.zr-call.zb-previewing{--zb-panel-height:min(42dvh,320px)}}
 .zr-call.zb-previewing :is(.zr-call-feed,.zr-gift-rail,.hs-gift-rail,.zr-gift-alert,.zr-gift-celebration,.zr-call-stats,.zr-status,.zr-call-cost,.zr-shade){display:none}
 .zr-call.zb-previewing .zr-video:has(video[data-zimi-local]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-local]){position:absolute;inset:0;width:auto;height:auto;z-index:1;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:var(--media-canvas);opacity:1}
 .zr-call.zb-previewing .zr-video:has(video[data-zimi-remote]),.zr-call.zb-previewing .zr-pip:has(video[data-zimi-remote]){position:absolute;left:auto;right:var(--zb-remote-right);top:68px;bottom:auto;width:84px;height:116px;z-index:6;margin:0;padding:0;border:2px solid var(--call-line);border-radius:14px;box-shadow:none;background:var(--media-canvas);opacity:1}
@@ -260,7 +261,8 @@
 .zr-call-reference .zr-host-options{top:calc(54px + var(--safe-top))}
 .zr-call.zb-previewing :is(.zr-video,.zr-pip):has(video[data-zimi-remote]){top:calc(68px + var(--safe-top))}
 @media(max-height:460px) and (min-width:600px){
-  .zr-call.zb-previewing{--zb-panel-width:min(46vw,400px);--zb-panel-height:calc(100dvh - 96px);--zb-preview-bottom:var(--zb-panel-bottom);--zb-preview-right:calc(var(--zb-panel-width) + 24px);--zb-remote-right:calc(var(--zb-panel-width) + 36px)}
+  .zr-call.zb-previewing{--zb-panel-width:min(46vw,400px);--zb-panel-height:calc(100vh - 96px);--zb-preview-bottom:var(--zb-panel-bottom);--zb-preview-right:calc(var(--zb-panel-width) + 24px);--zb-remote-right:calc(var(--zb-panel-width) + 36px)}
+  @supports (height:1dvh){.zr-call.zb-previewing{--zb-panel-height:calc(100dvh - 96px)}}
   .zr-call.zb-previewing>[data-zimi-beauty-panel]{left:auto;right:12px;margin-inline:0}
   .zr-call.zb-previewing .zr-pip:has(video[data-zimi-remote]),.zr-call.zb-previewing .zr-video:has(video[data-zimi-remote]){width:70px;height:96px}
 }

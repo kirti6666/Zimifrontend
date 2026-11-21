@@ -5,7 +5,7 @@ html:root[data-theme-id] .zh-sheet.zw-sheet.zg-reference{
   --ink:#fff;--muted:#b8b2bf;--surface:#1b1b20;--raised:#27222d;
   --accent:#ff2e93;--accent-ink:#ff8cc6;--cta-ink:#fff;--line:#ffffff24;
   position:relative;isolation:isolate;display:flex;flex-direction:column;
-  width:100%;max-width:540px;max-height:78dvh;overflow:hidden;margin:0;
+  width:100%;max-width:540px;max-height:78vh;max-height:78dvh;overflow:hidden;margin:0;
   padding:0 0 max(10px,var(--safe-bottom));border:0;border-top:1px solid #ffffff29;
   border-radius:22px 22px 0 0!important;color:#fff;color-scheme:dark;
   background:linear-gradient(180deg,#241a2b 0%,#1b1b20 46%,#141418 100%);

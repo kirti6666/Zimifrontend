@@ -109,6 +109,50 @@ async function noOverflow(page, label) {
   assert.ok(dimensions.screen <= dimensions.screenWidth + 1, `${label}: onboarding has horizontal overflow ${JSON.stringify(dimensions)}`);
 }
 
+async function visibleWelcome(page, label) {
+  const geometry = await page.evaluate(() => {
+    const rect = selector => {
+      const bounds = document.querySelector(selector)?.getBoundingClientRect();
+      return bounds && { top: bounds.top, bottom: bounds.bottom, width: bounds.width, height: bounds.height };
+    };
+    const image = document.querySelector('.ob-card-main img');
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      shell: rect('.ob-welcome'),
+      showcase: rect('.ob-showcase'),
+      card: rect('.ob-card-main'),
+      action: rect('#ob-start'),
+      image: { complete: !!image?.complete, width: image?.naturalWidth || 0, height: image?.naturalHeight || 0 },
+    };
+  });
+  assert.ok(geometry.shell.height >= geometry.viewport.height - 1, `${label}: welcome shell must fill the viewport ${JSON.stringify(geometry)}`);
+  assert.ok(geometry.showcase.height >= 200, `${label}: community preview must retain visible height ${JSON.stringify(geometry)}`);
+  assert.ok(geometry.card.height >= geometry.showcase.height * .7, `${label}: main preview card must not collapse ${JSON.stringify(geometry)}`);
+  assert.ok(geometry.card.bottom > 0 && geometry.card.top < geometry.viewport.height, `${label}: main preview card must intersect the viewport ${JSON.stringify(geometry)}`);
+  assert.ok(geometry.action.bottom <= geometry.viewport.height + 1 && geometry.action.top >= 0, `${label}: primary action must remain reachable ${JSON.stringify(geometry)}`);
+  assert.ok(geometry.image.complete && geometry.image.width > 0 && geometry.image.height > 0, `${label}: preview artwork must decode ${JSON.stringify(geometry)}`);
+}
+
+async function legacyViewportChecks() {
+  const legacyPath = path.join(artifacts, 'legacy-webview.html');
+  // Chrome 94 drops declarations containing dvh. Replacing that unit with an
+  // unknown one recreates its parser behavior while retaining each vh fallback.
+  const legacyPage = fs.readFileSync(path.join(root, 'dist/index.html'), 'utf8')
+    .replace(/(-?(?:\d+\.?\d*|\.\d+))dvh\b/g, '$1legacyvh');
+  fs.writeFileSync(legacyPath, legacyPage);
+  const context = await browser.newContext({ viewport: { width: 360, height: 762 }, reducedMotion: 'reduce', locale: 'en-IN', timezoneId: 'Asia/Kolkata' });
+  await context.route('https://fonts.googleapis.com/**', route => route.abort());
+  await context.route('https://fonts.gstatic.com/**', route => route.abort());
+  const page = await context.newPage();
+  await page.goto(pathToFileURL(legacyPath).href);
+  await page.locator('.ob-welcome').waitFor();
+  await noOverflow(page, 'legacy WebView welcome 360x762');
+  await visibleWelcome(page, 'legacy WebView welcome 360x762');
+  await page.screenshot({ path: path.join(artifacts, 'welcome-legacy-webview.png') });
+  await context.close();
+  console.log('PASS legacy WebView viewport units: welcome artwork and action remain visible without dvh support');
+}
+
 async function startSignup(page) {
   assert.equal(await page.locator('.ob-role-switch').count(), 0, 'Welcome starts one signup flow without a role choice');
   await page.locator('#ob-start').click();
@@ -390,7 +434,7 @@ async function previewFlow() {
 async function responsiveChecks(page) {
   const viewports = [
     { width: 320, height: 568 }, { width: 375, height: 667 },
-    { width: 390, height: 844 }, { width: 430, height: 932 },
+    { width: 360, height: 762 }, { width: 390, height: 844 }, { width: 430, height: 932 },
     { width: 768, height: 1024 }, { width: 1440, height: 900 },
     { width: 844, height: 390 },
   ];
@@ -398,6 +442,9 @@ async function responsiveChecks(page) {
     await page.setViewportSize(viewport);
     await page.evaluate(() => go('welcome'));
     await noOverflow(page, `welcome ${viewport.width}x${viewport.height}`);
+    if (viewport.height >= viewport.width && viewport.width < 600) {
+      await visibleWelcome(page, `welcome ${viewport.width}x${viewport.height}`);
+    }
     if (viewport.width === 390 || viewport.width === 1440) {
       await page.screenshot({ path: path.join(artifacts, `welcome-${viewport.width}.png`) });
     }
@@ -740,6 +787,7 @@ async function enlargedTextChecks(page) {
     if (!process.env.ONBOARDING_NATIVE_ONLY) {
       const page = await previewFlow();
       await responsiveChecks(page);
+      await legacyViewportChecks();
       await enlargedTextChecks(page);
       await hostFlow();
     }

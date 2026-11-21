@@ -25,10 +25,10 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:Inter,system-ui,sans-serif;background:var(--canvas);color:var(--ink);
- height:100dvh;overflow:hidden;-webkit-font-smoothing:antialiased}
+ height:100vh;height:100dvh;overflow:hidden;-webkit-font-smoothing:antialiased}
 .disp{font-family:"Poppins",Inter,sans-serif;font-weight:800;letter-spacing:-.03em}
 .tab{font-variant-numeric:tabular-nums}
-.app{width:100%;height:100dvh;background:var(--canvas);display:flex;flex-direction:column;overflow:hidden}
+.app{width:100%;height:100vh;height:100dvh;background:var(--canvas);display:flex;flex-direction:column;overflow:hidden}
 #top{flex:0 0 auto;background:var(--canvas);z-index:20}
 #top:empty{display:none}
 .body{position:relative;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}.body::-webkit-scrollbar{display:none}
@@ -1080,7 +1080,7 @@ button.acctrow:active{background:var(--raised)}
 .editsave:disabled{opacity:.45;cursor:not-allowed}
 
 /* ---- welcome: pick an account type ---- */
-.welc{max-width:480px;min-height:100dvh;margin:0 auto;padding:22px 16px 24px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.welc{max-width:480px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:22px 16px 24px;display:flex;flex-direction:column;justify-content:center;gap:12px}
 .wbrandrow{display:flex;align-items:center;gap:8px}
 .wmark{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;
  background:linear-gradient(140deg,#ff2e93,#ffc02e)}
@@ -1448,7 +1448,7 @@ button.gpill[onclick]{cursor:pointer}
 @media (max-width:370px){.gname{display:none}.gcard{padding:8px 9px;gap:7px}.gcard .gem{font-size:22px}.glab{letter-spacing:.05em}}
 
 /* ---- summaries: centred on the screen, nothing wraps ---- */
-.sum{min-height:100dvh;justify-content:center;padding:28px 16px 32px}
+.sum{min-height:100vh;min-height:100dvh;justify-content:center;padding:28px 16px 32px}
 .hsum h1{margin-top:14px}
 .hsum>p{margin-top:6px}
 .hstats{display:grid;grid-template-columns:1.5fr 1fr 1fr;width:100%;margin-top:18px;border-radius:16px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
@@ -1574,7 +1574,7 @@ button.gpill[onclick]{cursor:pointer}
 .lg18 input{width:auto;flex:0 0 auto}
 
 /* ---- login, sober pass: one column, neutral surfaces, one accent button ---- */
-.lgwrap{min-height:100dvh;max-width:440px;margin:0 auto;display:flex;flex-direction:column;padding:0 20px calc(16px + var(--safe-bottom))}
+.lgwrap{min-height:100vh;min-height:100dvh;max-width:440px;margin:0 auto;display:flex;flex-direction:column;padding:0 20px calc(16px + var(--safe-bottom))}
 .lghead{display:flex;align-items:center;justify-content:space-between;height:56px;padding-top:var(--safe-top)}
 .lgbk{width:36px;height:36px;margin-left:-8px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--ink)}
 .lgbk:active{background:var(--raised)}

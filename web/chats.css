@@ -62,7 +62,7 @@
 .zc-inbox-skeleton>div{display:flex;flex-direction:column;gap:calc(7 * var(--zc-u))}
 .zc-skeleton-row{pointer-events:none}.zc-skeleton-row .zc-row-body{gap:calc(12 * var(--zc-u))}
 .zc-overlay{position:fixed;inset:0;z-index:90;background:#0c050cbd;backdrop-filter:blur(5px);display:flex;align-items:flex-end;justify-content:center}
-.zc-dialog{background:#301a29;width:100%;max-width:520px;max-height:85dvh;overflow:auto;border-radius:24px 24px 0 0;padding:24px 22px;color:#f8e2ef;box-shadow:0 -12px 40px #0005}
+.zc-dialog{background:#301a29;width:100%;max-width:520px;max-height:85vh;max-height:85dvh;overflow:auto;border-radius:24px 24px 0 0;padding:24px 22px;color:#f8e2ef;box-shadow:0 -12px 40px #0005}
 .zc-dialog-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px}
 .zc-dialog-heading h2{font-size:22px;letter-spacing:-.7px;font-weight:700}
 .zc-dialog-heading>button{display:grid;place-items:center;height:34px;width:34px;border-radius:50%;background:#492c3e;font-size:26px}
@@ -72,7 +72,7 @@
 .zc-dialog-reset{display:block;margin:20px auto;color:#ffafd3;font-size:13px;text-decoration:underline}
 .zc-compose-search{display:flex;align-items:center;gap:9px;background:#442939;border-radius:22px;padding:12px;color:#d2a9c0;margin-bottom:14px}
 .zc-compose-search input{flex:1;min-width:0;font-size:13px}.zc-compose-search input::placeholder{color:#b78ba4}
-#zc-contacts{max-height:47dvh;overflow:auto;margin-bottom:16px}
+#zc-contacts{max-height:47vh;max-height:47dvh;overflow:auto;margin-bottom:16px}
 .zc-contact{width:100%;display:flex;gap:12px;align-items:center;padding:12px 0;text-align:left;border-bottom:1px solid #65425344}
 .zc-contact>.zc-avatar{height:45px;width:45px}.zc-contact>span:nth-child(2){flex:1;min-width:0}
 .zc-contact b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.zc-contact small{display:block;font-size:11px;color:#d1a6bf;margin-top:4px}
@@ -210,7 +210,7 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-composer[hidden]{display:none}
 .zc-composer-field{flex:1;min-width:0;display:flex;align-items:flex-end;gap:2px;min-height:54px;padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface);transition:border-color 160ms ease,background-color 160ms ease}
 .zc-composer-field:focus-within{border-color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 3%,var(--surface))}
-.zc-composer-field>textarea{display:block;flex:1;min-width:0;width:0;height:44px;min-height:44px;max-height:min(132px,max(66px,25dvh));padding:11px 6px;border:0;resize:none;outline:none;background:transparent;color:var(--ink);caret-color:var(--accent-ink);font:inherit;font-size:16px;line-height:22px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.zc-composer-field>textarea{display:block;flex:1;min-width:0;width:0;height:44px;min-height:44px;max-height:min(132px,max(66px,25vh));max-height:min(132px,max(66px,25dvh));padding:11px 6px;border:0;resize:none;outline:none;background:transparent;color:var(--ink);caret-color:var(--accent-ink);font:inherit;font-size:16px;line-height:22px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .zc-composer-field>textarea::placeholder{color:var(--muted);opacity:1}
 .zc-composer-field>.zc-composer-icon{flex:none;display:grid;place-items:center;width:44px;height:44px;color:var(--muted);transition:color 160ms ease,background-color 160ms ease}
 .zc-composer-field>.zc-composer-add[aria-expanded="true"]{color:var(--accent-ink);background:var(--accent-wash)}

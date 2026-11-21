@@ -27,6 +27,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 100vh;
   min-height: 100dvh;
   padding: 20px max(20px, var(--safe-right)) max(24px, var(--safe-bottom)) max(20px, var(--safe-left));
   overflow: hidden;
@@ -153,7 +154,7 @@
 .ob-intro { grid-area: intro; text-align: center; }
 .ob-hero-heading { margin: 0; font-size: clamp(32px, 9.2vw, 44px); line-height: 1.04; letter-spacing: -.05em; font-weight: 800; text-wrap: balance; overflow-wrap: anywhere; }
 .ob-intro .ob-description { max-width: 320px; margin: 10px auto 0; font-size: 14px; line-height: 1.55; }
-.ob-showcase { grid-area: showcase; position: relative; height: clamp(260px, 38dvh, 340px); width: 100%; max-width: 420px; margin: 0 auto; perspective: 1100px; touch-action: pan-y; }
+.ob-showcase { grid-area: showcase; position: relative; height: clamp(260px, 38vh, 340px); height: clamp(260px, 38dvh, 340px); width: 100%; max-width: 420px; margin: 0 auto; perspective: 1100px; touch-action: pan-y; }
 /* Portraits are artwork: they keep a dark scrim and white type in every theme. */
 .ob-card { position: absolute; overflow: hidden; border-radius: 26px; background: var(--ob-raised); border: 1px solid rgb(255 255 255 / .16); box-shadow: 0 26px 42px -20px var(--ob-shadow); }
 .ob-card > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 32%; }
@@ -323,7 +324,7 @@
 .ob-interest.selected .ob-chip-check { opacity: 1; }
 
 /* Native dialog semantics, with an inset sheet on small screens. */
-.ob-dialog { position: fixed; inset: 0; width: min(440px, calc(100vw - 32px)); max-height: min(78dvh, 620px); margin: auto; padding: 24px; border: 1px solid var(--ob-edge); border-radius: 28px; color: var(--ob-text); background: var(--ob-surface); box-shadow: 0 30px 80px -20px var(--ob-shadow); overflow: auto; overscroll-behavior: contain; }
+.ob-dialog { position: fixed; inset: 0; width: min(440px, calc(100vw - 32px)); max-height: min(78vh, 620px); max-height: min(78dvh, 620px); margin: auto; padding: 24px; border: 1px solid var(--ob-edge); border-radius: 28px; color: var(--ob-text); background: var(--ob-surface); box-shadow: 0 30px 80px -20px var(--ob-shadow); overflow: auto; overscroll-behavior: contain; }
 .ob-dialog::backdrop { background: rgb(12 4 9 / .55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .ob-dialog[open] { animation: ob-dialog-in .24s cubic-bezier(.2,.8,.25,1); }
 .ob-dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 14px; }
@@ -401,7 +402,7 @@
   .ob-intro { text-align: left; align-self: end; padding-top: 12px; }
   .ob-hero-heading { font-size: clamp(50px, 5.6vw, 76px); line-height: 1.02; letter-spacing: -.06em; }
   .ob-intro .ob-description { max-width: 380px; margin: 22px 0 0; font-size: 16px; line-height: 1.7; }
-  .ob-showcase { max-width: 470px; height: clamp(435px, 58dvh, 570px); }
+  .ob-showcase { max-width: 470px; height: clamp(435px, 58vh, 570px); height: clamp(435px, 58dvh, 570px); }
   .ob-card { border-radius: 32px; }
   .ob-card-main { width: 71%; left: 14.5%; height: 86%; }
   .ob-card-back { width: 59%; top: 10%; height: 73%; }
@@ -501,7 +502,7 @@
   .ob-upload, .ob-featured, .ob-photo-empty { min-height: 190px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
-  .ob-shell { min-height: 100dvh; padding-top: 16px; }
+  .ob-shell { min-height: 100vh; min-height: 100dvh; padding-top: 16px; }
   .ob-header { margin-top: 0 !important; margin-bottom: 20px; }
   .ob-welcome-grid { max-width: 500px; margin-top: 10px; }
   .ob-showcase { height: 300px; }
@@ -525,7 +526,7 @@
 }
 
 /* Session recovery and shared app notices. */
-.ob-recovery { display: flex; align-items: center; min-height: 85dvh; }
+.ob-recovery { display: flex; align-items: center; min-height: 85vh; min-height: 85dvh; }
 .ob-recovery .ob-main { flex: 0 1 auto; width: 100%; max-width: 480px; margin: auto; }
 .ob-recovery .ob-actions { margin-top: 28px; padding-top: 0; }
 .ob-session-skeleton { width: 100%; }
@@ -550,7 +551,7 @@
 
 /* Country code picker for phone sign-in. */
 .ob-country:focus-visible { outline: 2px solid var(--ob-pink); outline-offset: 2px; }
-.ob-country-dialog { height: min(78dvh, 620px); }
+.ob-country-dialog { height: min(78vh, 620px); height: min(78dvh, 620px); }
 .ob-country-dialog[open] { display: flex; flex-direction: column; gap: 12px; }
 .ob-country-dialog .ob-dialog-head { margin-bottom: 0; }
 .ob-country-search { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid var(--ob-edge); border-radius: 14px; background: var(--ob-field); color: var(--ob-text); font: inherit; font-size: 15px; }

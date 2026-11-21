@@ -8,7 +8,7 @@
 .hs-card-choose>input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .hs-card-error{font-size:12px;color:var(--theme-danger);margin-bottom:12px}
 .hs-sheet-backdrop{position:fixed;inset:0;z-index:180;display:flex;align-items:flex-end;justify-content:center;background:#0008;backdrop-filter:blur(5px);color:var(--ink)}
-.hs-sheet{width:100%;max-width:560px;max-height:min(82dvh,650px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:max(18px,var(--safe-bottom));border:1px solid var(--line);border-bottom:0;border-radius:24px 24px 0 0;background:radial-gradient(ellipse 48% 110px at 50% 0,color-mix(in srgb,var(--accent) 34%,transparent),transparent 72%),var(--surface);color:var(--ink);font-family:inherit;box-shadow:0 -16px 60px #0004;animation:hs-sheet-in .25s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--hs-enter-age,0ms);scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.hs-sheet{width:100%;max-width:560px;max-height:min(82vh,650px);max-height:min(82dvh,650px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:max(18px,var(--safe-bottom));border:1px solid var(--line);border-bottom:0;border-radius:24px 24px 0 0;background:radial-gradient(ellipse 48% 110px at 50% 0,color-mix(in srgb,var(--accent) 34%,transparent),transparent 72%),var(--surface);color:var(--ink);font-family:inherit;box-shadow:0 -16px 60px #0004;animation:hs-sheet-in .25s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--hs-enter-age,0ms);scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .hs-sheet header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 12px}
 .hs-sheet header h2{margin:0 0 3px;font-size:17px;font-weight:var(--theme-heading-weight,750);line-height:1.3;letter-spacing:-.4px;color:var(--ink)}
 .hs-sheet header p{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
@@ -70,7 +70,8 @@
 .hs-rail-loading{min-height:60px;padding:4px 0 8px;gap:4px}
 /* The setup camera is still started only by Check camera. Opening the dock
    changes its bounds without creating or replacing a capture element. */
-.hc-setup.zb-previewing{--zb-panel-height:min(42dvh,320px);--zb-panel-bottom:calc(78px + var(--safe-bottom));--zb-preview-bottom:calc(var(--zb-panel-bottom) + var(--zb-panel-height));--zb-preview-right:0px;--zb-preview-top:58px}
+.hc-setup.zb-previewing{--zb-panel-height:min(42vh,320px);--zb-panel-bottom:calc(78px + var(--safe-bottom));--zb-preview-bottom:calc(var(--zb-panel-bottom) + var(--zb-panel-height));--zb-preview-right:0px;--zb-preview-top:58px}
+@supports (height:1dvh){.hc-setup.zb-previewing{--zb-panel-height:min(42dvh,320px)}}
 .hc-setup.zb-previewing :is(.hc-setup-panels,.hc-camera-hint){display:none}
 .hc-setup.zb-previewing .hc-stage{top:var(--zb-preview-top);left:0;right:var(--zb-preview-right);bottom:var(--zb-preview-bottom)}
 .hc-setup.zb-previewing .hc-stage>video{object-fit:contain;object-position:center}
@@ -78,7 +79,8 @@
 .hc-setup.zb-previewing .hc-setup-footer{margin-top:auto;z-index:7}
 @media(max-height:650px){.hc-setup.zb-previewing{--zb-preview-top:50px}}
 @media(max-height:460px) and (min-width:600px){
-  .hc-setup.zb-previewing{max-width:none;--zb-panel-width:min(46vw,400px);--zb-panel-height:calc(100dvh - 96px);--zb-preview-bottom:var(--zb-panel-bottom);--zb-preview-right:calc(var(--zb-panel-width) + 24px)}
+  .hc-setup.zb-previewing{max-width:none;--zb-panel-width:min(46vw,400px);--zb-panel-height:calc(100vh - 96px);--zb-preview-bottom:var(--zb-panel-bottom);--zb-preview-right:calc(var(--zb-panel-width) + 24px)}
+  @supports (height:1dvh){.hc-setup.zb-previewing{--zb-panel-height:calc(100dvh - 96px)}}
   .hc-setup.zb-previewing>[data-zimi-beauty-panel]{left:auto;right:12px;margin-inline:0}
 }
 @keyframes hs-sheet-in{from{transform:translateY(100%);opacity:.6}to{transform:none;opacity:1}}
