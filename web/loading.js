@@ -3,6 +3,9 @@ const resourceNames=['home','search','catalog','notifications','chats','wallet',
 const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
 function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
+// Start first-load requests at the next paint boundary so their skeleton gets
+// one real compositor opportunity, without holding it after data arrives.
+function contentAfterLoadingPaint(callback){requestAnimationFrame(callback)}
 function skeletonLine(width='70%',height=12){return `<span class="zh-skeleton-shape" style="width:${width};height:${height}px"></span>`}
 function contentSkeleton(kind='rows',label='Loading content',count=4){
   let body='';
@@ -14,7 +17,10 @@ function contentSkeleton(kind='rows',label='Loading content',count=4){
   else if(kind==='balance')body=skeletonLine('105px',38);
   else if(kind==='wallet')body=`<div class="zh-loading-wallet">${skeletonLine('45%',12)}${skeletonLine('55%',38)}${skeletonLine('90%',12)}${skeletonLine('100%',38)}</div>${Array.from({length:3},()=>`<div class="zh-skeleton-row">${skeletonLine('100%',48)}</div>`).join('')}`;
   else if(kind==='posts')body=`<div class="hpgrid">${Array.from({length:6},()=>'<div class="zh-skeleton-shape zh-skeleton-post"></div>').join('')}</div>`;
-  else if(kind==='thread')body=`<div class="zh-skeleton-thread-list">${Array.from({length:6},(_,i)=>`<div class="${i%3===1?'outgoing':''}">${skeletonLine(i%2?'62%':'79%',52)}</div>`).join('')}</div>`;
+  else if(kind==='thread'){
+    const rows=[['incoming','68%',false],['incoming','47%',true],['outgoing','58%',true],['incoming','76%',true],['outgoing','66%',false],['outgoing','42%',true]];
+    body=`<div class="zh-skeleton-thread-list">${rows.map(([side,width,end],index)=>`<div class="zh-skeleton-thread-row ${side} ${index===0||rows[index-1][0]!==side?'group-start':'group-continued'}">${side==='incoming'?end?'<span class="zh-skeleton-shape zh-skeleton-avatar"></span>':'<span class="zh-skeleton-avatar zh-skeleton-avatar-space"></span>':''}<span class="zh-skeleton-shape zh-skeleton-bubble" style="width:${width}"></span></div>`).join('')}</div>`;
+  }
   else body=Array.from({length:count},()=>`<div class="zh-skeleton-row"><span class="zh-skeleton-shape zh-skeleton-avatar"></span><div>${skeletonLine('56%',14)}${skeletonLine('89%',11)}${skeletonLine('34%',9)}</div></div>`).join('');
   return `<div class="zh-skeleton zh-skeleton-${kind}" role="status" aria-label="${esc(label)}" aria-busy="true"><div aria-hidden="true">${body}</div></div>`;
 }
@@ -34,7 +40,10 @@ function contentRetry(key){
   else if(key==='transactions')Native.send('transactions.load');
   else if(key==='catalog')Native.send('catalog.load');
   else if(key==='notifications')Native.send('notifications.load');
-  else if(key==='thread')Native.send('chat.open',{with:S.h});
+  else if(key==='thread'){
+    const peer=String(S.h||'');
+    contentAfterLoadingPaint(()=>{if(S.v==='thread'&&String(S.h)===peer)Native.send('chat.open',{with:peer})});
+  }
   else Native.send('data.reload');
 }
 function contentBeforeNavigate(view){

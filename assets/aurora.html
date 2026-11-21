@@ -2655,7 +2655,7 @@ button.gpill[onclick]{cursor:pointer}
 
 /* Quiet, layout-shaped placeholders share the same rhythm as loaded content. */
 .zh-skeleton{width:100%;pointer-events:none;user-select:none}
-.zh-skeleton-shape{display:block;flex-shrink:0;max-width:100%;border-radius:7px;background:linear-gradient(100deg,#ffffff08 20%,#ffffff13 45%,#ffffff08 70%);background-size:220% 100%;animation:zh-skeleton-shimmer 1.8s ease-in-out infinite}
+.zh-skeleton-shape{display:block;flex-shrink:0;max-width:100%;border-radius:7px;background-color:var(--raised);background-image:linear-gradient(100deg,var(--raised) 20%,color-mix(in srgb,var(--line) 82%,var(--raised)) 45%,var(--raised) 70%);background-size:220% 100%;animation:zh-skeleton-shimmer 1.8s ease-in-out infinite}
 .zh-skeleton-story-list{display:flex;gap:15px;width:max-content}
 .zh-skeleton-story-list .zh-story{display:flex;flex-direction:column;align-items:center;gap:12px}
 .zh-stories>.zh-skeleton{width:auto;flex-shrink:0}
@@ -2673,9 +2673,14 @@ button.gpill[onclick]{cursor:pointer}
 .zh-skeleton-catalog>div{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 8px;border-radius:16px;background:#ffffff04;border:1px solid #ffffff06}
 .zh-skeleton-gifts .zh-skeleton-catalog{margin:20px 0}
 .zh-skeleton-post{aspect-ratio:1/1.2;border-radius:0}
-.zh-skeleton-thread-list{padding:18px 14px;display:flex;flex-direction:column;gap:20px}
-.zh-skeleton-thread-list .outgoing{display:flex;justify-content:flex-end}
-.zh-skeleton-thread-list .zh-skeleton-shape{border-radius:17px}
+.zh-skeleton-thread-list{width:100%;padding:10px 0;display:flex;flex-direction:column;gap:3px}
+.zh-skeleton-thread-row{display:flex;align-items:flex-end;gap:8px;min-height:42px}
+.zh-skeleton-thread-row.group-start{margin-top:12px}
+.zh-skeleton-thread-row.outgoing{justify-content:flex-end}
+.zh-skeleton-thread-row>.zh-skeleton-avatar,.zh-skeleton-thread-row>.zh-skeleton-avatar-space{flex:none;width:34px;height:34px;border-radius:50%}
+.zh-skeleton-thread-row>.zh-skeleton-bubble{height:42px;border-radius:20px}
+.zh-skeleton-thread-row.incoming.group-continued>.zh-skeleton-bubble{border-top-left-radius:6px}
+.zh-skeleton-thread-row.outgoing.group-continued>.zh-skeleton-bubble{border-top-right-radius:6px}
 .zh-skeleton-cards+.zh-load-more{margin-top:18px}
 .zh-trending>.zh-skeleton-cards+.zh-skeleton-cards,.zh-trending>.zh-grid+.zh-skeleton-cards,#home-search-results>.zh-grid+.zh-skeleton-cards{margin-top:12px}
 .zh-loading-content{padding:16px;max-width:760px;margin:auto}
@@ -2834,8 +2839,8 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-thread-scroll :is(.zc-meta,.zc-edited,.zc-thread-note){color:var(--zc-wallpaper-muted)}
 
 .zc-thread-scroll>.zh-error{margin:0}
-.zc-thread-day{align-self:center;margin-top:4px}
-.zc-thread-day>span{display:block;padding:6px 14px;border-radius:99px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase}
+.zc-thread-time{align-self:center;width:100%;margin:5px 0 3px;text-align:center;color:var(--zc-wallpaper-muted,var(--muted));font-size:11.5px;font-weight:600;line-height:1.4}
+.zc-thread-time>time,.zc-thread-time>span{display:inline-block;padding:2px 8px}
 .zc-thread-note{margin-top:-4px;padding:0 8px;text-align:center;font-size:12px;line-height:1.5;color:var(--muted);text-wrap:balance}
 .zc-thread-note>svg{display:inline-block;vertical-align:-2px;margin-right:2px}
 .zc-thread-empty{display:flex;flex-direction:column;align-items:center;gap:8px;margin:auto;padding:24px;text-align:center;color:var(--muted);font-size:13px}
@@ -2843,14 +2848,22 @@ html:root[data-theme="dark"] .zc-thread{
 .zc-thread-empty h2{font-size:17px;color:var(--ink)}
 
 .zc-msg{display:flex;align-items:flex-start;gap:10px}
+.zc-msg:is(.zc-group-middle,.zc-group-end){margin-top:-11px}
+.zc-msg.zc-receipt-boundary+.zc-msg:is(.zc-group-middle,.zc-group-end){margin-top:0}
 .zc-msg.mine{justify-content:flex-end}
+.zc-msg-avatar,.zc-msg-avatar-spacer{display:block;flex:none;align-self:flex-end;width:34px;height:34px}
 .zc-msg-avatar .zc-avatar{width:34px;height:34px}
+.zc-msg-avatar-spacer{visibility:hidden}
 .zc-msg-stack{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;max-width:min(78%,520px)}
 .zc-msg.mine .zc-msg-stack{align-items:flex-end}
 .zc-msg-gift .zc-msg-stack,.zc-msg-voice .zc-msg-stack{width:100%;max-width:min(86%,380px)}
 .zc-msg .bub{max-width:100%;padding:12px 16px;border:0;border-radius:20px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
-.zc-msg.theirs .bub{background:var(--surface);color:var(--ink);border-top-left-radius:6px}
-.zc-msg.mine .bub{background:var(--accent);color:var(--cta-ink);border-bottom-right-radius:6px;box-shadow:0 10px 24px -14px color-mix(in srgb,var(--accent) 80%,transparent)}
+.zc-msg.theirs .bub{background:var(--surface);color:var(--ink)}
+.zc-msg.mine .bub{background:var(--accent);color:var(--cta-ink);box-shadow:0 10px 24px -14px color-mix(in srgb,var(--accent) 80%,transparent)}
+.zc-msg.theirs:is(.zc-group-middle,.zc-group-end) .bub{border-top-left-radius:6px}
+.zc-msg.theirs:is(.zc-group-start,.zc-group-middle) .bub{border-bottom-left-radius:6px}
+.zc-msg.mine:is(.zc-group-middle,.zc-group-end) .bub{border-top-right-radius:6px}
+.zc-msg.mine:is(.zc-group-start,.zc-group-middle) .bub{border-bottom-right-radius:6px}
 .zc-meta{display:flex;align-items:center;gap:5px;padding:0 4px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .zc-meta>time{text-transform:uppercase}
 .zc-meta>b{font-weight:600;color:var(--theme-danger,#ff8a9a)}
@@ -9193,7 +9206,12 @@ function go(v,id){
   if(DEMO){S.callRate=S.callRate||MY_RATE;S.callFee=MY_FEE;S.feeHold=FEE_HOLD;S.earlyLimit=EARLY_LIMIT;S.penaltyCoins=MY_FEE}
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
- if(v==="thread"){S.msgs=DEMO?zcDemoThread(g(S.h)):[];Native.send("chat.open",{with:S.h})}
+  if(v==="thread"){
+   S.msgs=DEMO?zcDemoThread(g(S.h)):[];
+   const peer=String(S.h||"");
+   if(DEMO)Native.send("chat.open",{with:peer});
+   else contentAfterLoadingPaint(()=>{if(S.v==="thread"&&String(S.h)===peer)Native.send("chat.open",{with:peer})});
+  }
  if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"));window.ZimiNavigation?.after(navigationChange)}
@@ -11205,6 +11223,9 @@ const resourceNames=['home','search','catalog','notifications','chats','wallet',
 const ContentLoading=Object.fromEntries(resourceNames.map(key=>[key,{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false}]));
 function contentPending(key){return !!ContentLoading[key]?.loading}
 function contentStart(key,extra={}){Object.assign(ContentLoading[key],{loading:true,error:'',background:false,...extra})}
+// Start first-load requests at the next paint boundary so their skeleton gets
+// one real compositor opportunity, without holding it after data arrives.
+function contentAfterLoadingPaint(callback){requestAnimationFrame(callback)}
 function skeletonLine(width='70%',height=12){return `<span class="zh-skeleton-shape" style="width:${width};height:${height}px"></span>`}
 function contentSkeleton(kind='rows',label='Loading content',count=4){
   let body='';
@@ -11216,7 +11237,10 @@ function contentSkeleton(kind='rows',label='Loading content',count=4){
   else if(kind==='balance')body=skeletonLine('105px',38);
   else if(kind==='wallet')body=`<div class="zh-loading-wallet">${skeletonLine('45%',12)}${skeletonLine('55%',38)}${skeletonLine('90%',12)}${skeletonLine('100%',38)}</div>${Array.from({length:3},()=>`<div class="zh-skeleton-row">${skeletonLine('100%',48)}</div>`).join('')}`;
   else if(kind==='posts')body=`<div class="hpgrid">${Array.from({length:6},()=>'<div class="zh-skeleton-shape zh-skeleton-post"></div>').join('')}</div>`;
-  else if(kind==='thread')body=`<div class="zh-skeleton-thread-list">${Array.from({length:6},(_,i)=>`<div class="${i%3===1?'outgoing':''}">${skeletonLine(i%2?'62%':'79%',52)}</div>`).join('')}</div>`;
+  else if(kind==='thread'){
+    const rows=[['incoming','68%',false],['incoming','47%',true],['outgoing','58%',true],['incoming','76%',true],['outgoing','66%',false],['outgoing','42%',true]];
+    body=`<div class="zh-skeleton-thread-list">${rows.map(([side,width,end],index)=>`<div class="zh-skeleton-thread-row ${side} ${index===0||rows[index-1][0]!==side?'group-start':'group-continued'}">${side==='incoming'?end?'<span class="zh-skeleton-shape zh-skeleton-avatar"></span>':'<span class="zh-skeleton-avatar zh-skeleton-avatar-space"></span>':''}<span class="zh-skeleton-shape zh-skeleton-bubble" style="width:${width}"></span></div>`).join('')}</div>`;
+  }
   else body=Array.from({length:count},()=>`<div class="zh-skeleton-row"><span class="zh-skeleton-shape zh-skeleton-avatar"></span><div>${skeletonLine('56%',14)}${skeletonLine('89%',11)}${skeletonLine('34%',9)}</div></div>`).join('');
   return `<div class="zh-skeleton zh-skeleton-${kind}" role="status" aria-label="${esc(label)}" aria-busy="true"><div aria-hidden="true">${body}</div></div>`;
 }
@@ -11236,7 +11260,10 @@ function contentRetry(key){
   else if(key==='transactions')Native.send('transactions.load');
   else if(key==='catalog')Native.send('catalog.load');
   else if(key==='notifications')Native.send('notifications.load');
-  else if(key==='thread')Native.send('chat.open',{with:S.h});
+  else if(key==='thread'){
+    const peer=String(S.h||'');
+    contentAfterLoadingPaint(()=>{if(S.v==='thread'&&String(S.h)===peer)Native.send('chat.open',{with:peer})});
+  }
   else Native.send('data.reload');
 }
 function contentBeforeNavigate(view){
@@ -19350,8 +19377,26 @@ document.addEventListener('aurora:navigate',()=>{if(S.v!=='chats'){Chats.compose
 /* Conversation thread. History arrives through data.thread and chat.message. Thread
    history holds text only, so gifts confirmed during this session are merged in as cards. */
 function zcReconcileThread(){if(S.v!=='thread'||!S.h||DEMO)return;const frame=document.getElementById('tf'),bounds=frame?.getBoundingClientRect(),visible=frame&&bounds?[...frame.querySelectorAll('.zc-msg')].filter(el=>{const box=el.getBoundingClientRect();return box.bottom>bounds.top&&box.top<bounds.bottom}).map(el=>el.id.slice(5)).filter(id=>/^[a-f\d]{24}$/i.test(id)):[],recent=(S.msgs||[]).filter(row=>!row.local&&/^[a-f\d]{24}$/i.test(row.id||'')).map(row=>String(row.id)).reverse(),knownIds=[...new Set([...visible,...recent])].slice(0,200);Native.send('chat.open',{with:S.h,background:true,...(knownIds.length?{knownIds}:{})})}
-function zcClock(m){const at=new Date(m.at||'');return Number.isNaN(at.getTime())?m.time||'':at.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}
+function zcClock(m){const at=new Date(m.at||m.createdAt||'');return Number.isNaN(at.getTime())?m.time||'':at.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}
 function zcDay(value){const at=new Date(value||'');if(!value||Number.isNaN(at.getTime()))return '';const today=new Date(),yesterday=new Date();yesterday.setDate(today.getDate()-1);if(at.toDateString()===today.toDateString())return 'Today';if(at.toDateString()===yesterday.toDateString())return 'Yesterday';return at.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',...(at.getFullYear()===today.getFullYear()?{}:{year:'numeric'})})}
+const ZC_MESSAGE_GROUP_MS=5*60000,ZC_TIME_CLUSTER_MS=15*60000;
+function zcMessageMoment(message){return message?.at||message?.createdAt||''}
+function zcMessageMine(message){return message?.senderType?message.senderType==='user':!!message?.mine}
+function zcSameMessageGroup(previous,next){
+ if(!previous||!next||previous.kind==='call'||next.kind==='call'||zcMessageMine(previous)!==zcMessageMine(next))return false;
+ const before=Date.parse(zcMessageMoment(previous)),after=Date.parse(zcMessageMoment(next));
+ if(Number.isFinite(before)&&Number.isFinite(after))return Math.abs(after-before)<=ZC_MESSAGE_GROUP_MS&&new Date(before).toDateString()===new Date(after).toDateString();
+ const a=zcClock(previous),b=zcClock(next);return !!a&&a===b;
+}
+function zcGroupClasses(start,end){return start&&end?'zc-group-single':start?'zc-group-start':end?'zc-group-end':'zc-group-middle'}
+function zcTimelineStamp(message,previous,dayChanged){
+ const value=zcMessageMoment(message),clock=zcClock(message),at=Date.parse(value),before=Date.parse(zcMessageMoment(previous));
+ const gap=Number.isFinite(at)&&Number.isFinite(before)?at-before:NaN;
+ const show=dayChanged||!previous||Number.isFinite(gap)&&gap>=ZC_TIME_CLUSTER_MS;
+ if(!show||(!clock&&!dayChanged))return '';
+ const day=dayChanged?zcDay(value):'',label=[day,clock].filter(Boolean).join(' \u00b7 '),classes=`zc-thread-time${dayChanged?' zc-thread-day':''}`;
+ return `<div class="${classes}"><time${value?` datetime="${esc(value)}"`:''}>${esc(label)}</time></div>`;
+}
 function zcServerMessage(m){return {id:m.id,mine:!!m.mine,text:String(m.text??''),time:m.time||'',at:m.createdAt||m.at||'',status:m.status,sequence:m.sequence,clientId:m.clientId,automated:m.automated===true,edited:m.edited===true,editedAt:m.editedAt,deleted:m.deleted===true,deletedAt:m.deletedAt,reply:m.reply||null,local:false,...(m.kind==='gift'&&m.gift?{kind:'gift',legacyGift:false,gift:{...m.gift},orderAfterSequence:m.orderAfterSequence}:{}),...(m.kind==='image'&&m.imageUrl?{kind:'image',imageUrl:String(m.imageUrl)}:{}),...(m.kind==='voice'&&m.audioUrl?{kind:'voice',audioUrl:String(m.audioUrl),durationMs:m.durationMs}:{})}}
 function zcThreadMessages(d){for(const id of d.hiddenIds||[])Chats.hidden.add(String(id));const rows=(d.messages||[]).map(zcServerMessage),gifts=Chats.gifts[String(d.with)]||[];for(const gift of gifts)if(!Number.isSafeInteger(gift.sequence)&&!Number.isSafeInteger(gift.orderAfterSequence)){const before=rows.filter(row=>Number.isSafeInteger(row.sequence)&&(Date.parse(row.at)||0)<=(Date.parse(gift.at)||0));if(before.length)gift.orderAfterSequence=Math.max(...before.map(row=>row.sequence))}return ZimiChatOrder.merge((S.msgs||[]).filter(row=>row.id||row.local||row.kind==='gift'),[...rows,...gifts],Chats.hidden)}
 function zcIncomingMessage(d){
@@ -19393,12 +19438,13 @@ function zcGiftCard(m,h){
 function zcVoiceMemo(m){return window.ZimiChatVoice?.messageView(m)||''}
 function zcVoiceToggle(button,id){window.ZimiChatVoice?.play(id)}
 function zcSeenMarkup(m,show){return show?`<span class="zc-seen" data-message-id="${domId(m.id)}" role="status" aria-live="polite" aria-atomic="true">Seen</span>`:''}
-function zcBubble(m,h,showSeen=false){
- const tick=m.mine&&!m.local&&m.status!=='failed'?`<span class="zc-tick ${m.status==='read'?'read':''}" role="img" aria-label="${m.status==='read'?'Read':'Sent'}">${ci(m.status==='read'?'checks':'check',16)}</span>`:'',actionable=zcActionable(m);
+function zcBubble(m,h,{showSeen=false,groupStart=true,groupEnd=true}={}){
+ const tick=m.mine&&!m.local&&m.status!=='failed'&&groupEnd&&!showSeen?`<span class="zc-tick ${m.status==='read'?'read':''}" role="img" aria-label="${m.status==='read'?'Read':'Sent'}">${ci(m.status==='read'?'checks':'check',16)}</span>`:'',actionable=zcActionable(m);
  const open=actionable?` role="button" tabindex="0" aria-haspopup="dialog" aria-description="Swipe ${m.mine?'left':'right'} to reply, or hold for message options" onclick="if(event.detail===0)zcMessageMenu('${domId(m.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();zcMessageMenu('${domId(m.id)}')}"`:'';
- const meta=`<span class="zc-meta">${m.edited&&!m.deleted?'<span class="zc-edited">Edited</span>':''}${m.status==='failed'?'<b>Not sent</b>':m.local&&m.status==='sending'?'<span>Sending...</span>':`<time${m.at?` datetime="${esc(m.at)}"`:''}>${esc(zcClock(m))}</time>`}${tick}</span>`;
+ const metaBody=`${m.edited&&!m.deleted?'<span class="zc-edited">Edited</span>':''}${m.status==='failed'?'<b>Not sent</b>':m.local&&m.status==='sending'?'<span>Sending...</span>':tick}`,meta=metaBody?`<span class="zc-meta">${metaBody}</span>`:'';
  const body=m.deleted?`<div class="bub zc-deleted">${m.mine?'You deleted this message':'This message was deleted'}</div>`:m.kind==='gift'?zcGiftCard(m,h):m.kind==='voice'?zcVoiceMemo(m):m.kind==='image'?zcPhotoBubble(m,open):`<div class="bub"${open}>${escChat(m.text)}</div>`;
- return `<div class="zc-msg ${m.mine?'mine':'theirs'} zc-msg-${m.kind||'text'}" id="zc-m-${domId(m.id)}">${m.mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`}<div class="zc-msg-stack"${actionable?` data-message-id="${domId(m.id)}"`:''}>${actionable?`<span class="zc-swipe-cue" aria-hidden="true">${ci('reply',18)}</span>`:''}${!m.deleted?zcQuote(m.reply,h,m.mine):''}${body}${meta}${zcSeenMarkup(m,showSeen)}</div></div>`
+ const avatar=m.mine?'':groupEnd?`<span class="zc-msg-avatar" aria-hidden="true">${zcPhoto(h)}</span>`:'<span class="zc-msg-avatar-spacer" aria-hidden="true"></span>';
+ return `<div class="zc-msg ${m.mine?'mine':'theirs'} zc-msg-${m.kind||'text'} ${zcGroupClasses(groupStart,groupEnd)}${showSeen?' zc-receipt-boundary':''}" id="zc-m-${domId(m.id)}">${avatar}<div class="zc-msg-stack"${actionable?` data-message-id="${domId(m.id)}"`:''}>${actionable?`<span class="zc-swipe-cue" aria-hidden="true">${ci('reply',18)}</span>`:''}${!m.deleted?zcQuote(m.reply,h,m.mine):''}${body}${meta}${zcSeenMarkup(m,showSeen)}</div></div>`
 }
 /* Each call with this person shows in the conversation at its time, from this account's side
    (the server's call history): outgoing on the right, incoming on the left, with how long it
@@ -19416,7 +19462,7 @@ function zcThreadTimeline(h){
  for(const m of S.msgs){const at=Date.parse(m.at||'');if(at)while(next<calls.length&&Date.parse(calls[next].at)<=at)rows.push(calls[next++]);rows.push(m)}
  return rows.concat(calls.slice(next));
 }
-function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;const rows=zcThreadTimeline(h);if(!rows.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;const latestSeen=[...rows].reverse().find(row=>row.kind!=='call'&&row.mine&&!row.local&&row.status==='read');let day='';return rows.map((m,i)=>{const label=zcDay(m.at),divider=label&&label!==day?`<div class="zc-thread-day"><span>${esc(label)}</span></div>`:'';if(label)day=label;return divider+(i?'':zcThreadNote(h))+(m.kind==='call'?zcCallBubble(m.call,h):zcBubble(m,h,m===latestSeen))}).join('')}
+function zcThreadList(h){const pending=contentSurface('thread','thread','Loading messages');if(pending)return pending;const rows=zcThreadTimeline(h);if(!rows.length)return zcThreadNote(h)+`<div class="zc-thread-empty">${hi('chat',32)}<h2>Say hello to ${esc(first(h.n))}</h2><p>Your messages will appear here.</p></div>`;const latestSeen=[...rows].reverse().find(row=>row.kind!=='call'&&row.mine&&!row.local&&row.status==='read');let day='';return rows.map((m,i)=>{const previous=rows[i-1],next=rows[i+1],label=zcDay(m.at),dayChanged=!!label&&label!==day,stamp=m.kind==='call'?(dayChanged?`<div class="zc-thread-time zc-thread-day"><span>${esc(label)}</span></div>`:''):zcTimelineStamp(m,previous,dayChanged);if(label)day=label;const groupStart=!zcSameMessageGroup(previous,m),groupEnd=!zcSameMessageGroup(m,next);return stamp+(i?'':zcThreadNote(h))+(m.kind==='call'?zcCallBubble(m.call,h):zcBubble(m,h,{showSeen:m===latestSeen,groupStart,groupEnd}))}).join('')}
 /* The gift catalog, one tap from the composer. A tap opens the gift sheet with that gift chosen,
    so coins are only spent from its Send button. Members only, as with the composer's gift button. */
 function zcCanGift(h){return !isHostWallet()&&(DEMO?!isHost():zcSelfRole()==='user')&&!Chats.rows.find(c=>c.user.id===h.id)?.bot}
@@ -19469,7 +19515,7 @@ function zcComposerAction(){if(document.getElementById('ti')?.value.trim()||Chat
 function zcThread(){if(Chats.contextPeer!==S.h){Chats.reply=null;Chats.editing=null;Chats.menu='';Chats.contextPeer=S.h}const h=zcThreadPerson();return `<div class="zc-thread">${zcThreadHeader(h)}${zcThreadLive(h)}<div class="zc-thread-scroll" id="tf"></div><div class="fx" id="fl"></div>${zcThreadGifts(h)}${zcThreadComposer(h)}<div id="zc-menu-root"></div></div>${homeGiftSheet()}`}
 function zcUpdateSendControls(){const reason=zcThreadBlocked();document.querySelectorAll("[data-chat-send],.zc-gift-button,.zc-gift-strip>button").forEach(button=>{button.disabled=!!reason;button.title=reason});zcUpdateComposer();const status=document.getElementById("zc-send-status");if(status){status.hidden=!reason;status.textContent=reason}}
 function zcPaintThread(scrollToEnd=false){zcUpdateSendControls();const f=document.getElementById('tf');if(!f)return;const nearBottom=f.scrollHeight-f.scrollTop-f.clientHeight<80,scroll=f.scrollTop,height=f.scrollHeight,top=f.getBoundingClientRect().top,anchor=nearBottom?null:[...f.querySelectorAll('.zc-msg')].find(el=>el.getBoundingClientRect().bottom>top),offset=anchor?.getBoundingClientRect().top,id=anchor?.id;f.innerHTML=zcThreadList(zcThreadPerson());if(scrollToEnd||nearBottom)f.scrollTop=f.scrollHeight;else{f.scrollTop=scroll;const kept=id&&document.getElementById(id);if(kept&&offset!==undefined)f.scrollTop+=kept.getBoundingClientRect().top-offset;else f.scrollTop=scroll+f.scrollHeight-height}contentImagesReady();window.ZimiChatVoice?.paintPlayback();window.ZimiChatPhoto?.sync()}
-function zcPaintSeen(){if(S.v!=='thread')return;const latest=[...S.msgs].reverse().find(m=>m.mine&&!m.local&&m.status==='read'),id=latest&&domId(latest.id);for(const seen of document.querySelectorAll('.zc-seen'))if(!id||seen.dataset.messageId!==id)seen.remove();if(!id||document.querySelector(`.zc-seen[data-message-id="${id}"]`))return;const stack=document.querySelector(`#zc-m-${id} .zc-msg-stack`);if(!stack)return;const seen=document.createElement('span');seen.className='zc-seen';seen.dataset.messageId=id;seen.setAttribute('role','status');seen.setAttribute('aria-live','polite');seen.setAttribute('aria-atomic','true');seen.textContent='Seen';stack.append(seen)}
+function zcPaintSeen(){if(S.v!=='thread')return;const latest=[...S.msgs].reverse().find(m=>m.mine&&!m.local&&m.status==='read'),id=latest&&domId(latest.id);for(const seen of document.querySelectorAll('.zc-seen'))if(!id||seen.dataset.messageId!==id){seen.closest('.zc-msg')?.classList.remove('zc-receipt-boundary');seen.remove()}const current=id&&document.querySelector(`.zc-seen[data-message-id="${id}"]`);if(current){current.closest('.zc-msg')?.classList.add('zc-receipt-boundary');current.closest('.zc-msg-stack')?.querySelector('.zc-tick')?.remove();return}if(!id)return;const stack=document.querySelector(`#zc-m-${id} .zc-msg-stack`);if(!stack)return;stack.querySelector('.zc-tick')?.remove();const seen=document.createElement('span');seen.className='zc-seen';seen.dataset.messageId=id;seen.setAttribute('role','status');seen.setAttribute('aria-live','polite');seen.setAttribute('aria-atomic','true');seen.textContent='Seen';stack.append(seen);stack.closest('.zc-msg')?.classList.add('zc-receipt-boundary')}
 /* Send explicit text or the current composer draft, then clear that draft. */
 function zcThreadSend(text){const input=document.getElementById('ti'),value=String(text??input?.value??'').trim().slice(0,2000);if(!value||!S.h)return;const reason=zcThreadBlocked();if(reason){appNotice(reason);return}
  if(Chats.reply&&!zcCanReply(zcFind(Chats.reply.id))){zcClearContext();appNotice('That message is no longer available to reply to.');return}
@@ -20593,14 +20639,19 @@ window.ZimiOfficialChat=(()=>{
     if(more&&(state.loadingMore||!state.hasMore))return;
     state.error='';state.loading=!more&&!state.loaded;state.loadingMore=more;state.loadRequest=++state.sequence;
     if(DEMO){state.loaded=true;state.loading=state.loadingMore=false;paint();return}
-    Native.send('official.load',{requestId:state.loadRequest,...(more&&state.before?{before:state.before}:{})});paint();
+    const requestId=state.loadRequest,payload={requestId,...(more&&state.before?{before:state.before}:{})};
+    paint();
+    if(state.loading&&!state.loaded)contentAfterLoadingPaint(()=>{if(active()&&state.loadRequest===requestId)Native.send('official.load',payload)});
+    else Native.send('official.load',payload);
   }
   function render(){
     return `<section class="zc-thread zo-thread" aria-label="BinzoLive conversation"><header class="zc-thread-header">${backButton('ZimiOfficialChat.back()',{label:'Back to '+state.from,slot:'zc-thread-back'})}<div class="zc-thread-person"><span class="zc-avatar-wrap">${avatar()}</span><span class="zc-thread-title"><h1>BinzoLive ${verified()}</h1><small>Official account</small></span></div><button type="button" class="zo-preferences" onclick="ZimiOfficialChat.preferences()" aria-label="Notifications and alerts">${hi('set',21)}</button></header><div class="zc-thread-scroll" id="zo-messages" role="log" aria-label="Messages with BinzoLive" aria-live="polite"></div><div class="zo-read-error" id="zo-read-error" role="status" hidden></div><form class="zc-composer zo-composer" onsubmit="event.preventDefault();ZimiOfficialChat.send()"><div class="zc-composer-field"><textarea id="zo-input" rows="1" maxlength="4000" placeholder="Message BinzoLive" aria-label="Message BinzoLive" autocomplete="off" oninput="ZimiOfficialChat.input(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();ZimiOfficialChat.send()}">${esc(state.draft)}</textarea><button type="submit" class="zc-composer-send" aria-label="Send message">${ci('send',22)}</button></div></form></section>`;
   }
-  function bubble(message){
+  function bubble(message,{groupStart=true,groupEnd=true}={}){
     const mine=message.senderType==='user',pending=message.delivery==='sending',failed=message.delivery==='failed';
-    return `<div class="zc-msg ${mine?'mine':'theirs'} zo-message" data-official-message="${esc(message.id||message.clientMessageId)}">${mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${avatar()}</span>`}<div class="zc-msg-stack"><div class="bub">${message.title?`<strong>${esc(message.title)}</strong>`:''}<span>${esc(message.body||'')}</span></div><span class="zc-meta">${failed?'<b>Not sent</b>':pending?'<span>Sending…</span>':`<time datetime="${esc(message.createdAt)}">${esc(zcClock({at:message.createdAt}))}</time>`}${mine&&!pending&&!failed?`<span class="zc-tick" role="img" aria-label="Sent">${ci('check',16)}</span>`:''}</span>${failed?`<div class="zo-send-error"><span role="status">${esc(message.error||'Message could not be sent.')}</span><button type="button" data-official-retry="${esc(message.clientMessageId)}" onclick="ZimiOfficialChat.retry(this.dataset.officialRetry)">Retry</button></div>`:''}</div></div>`;
+    const metaBody=failed?'<b>Not sent</b>':pending?'<span>Sending…</span>':mine&&groupEnd?`<span class="zc-tick" role="img" aria-label="Sent">${ci('check',16)}</span>`:'',meta=metaBody?`<span class="zc-meta">${metaBody}</span>`:'';
+    const sender=mine?'':groupEnd?`<span class="zc-msg-avatar" aria-hidden="true">${avatar()}</span>`:'<span class="zc-msg-avatar-spacer" aria-hidden="true"></span>';
+    return `<div class="zc-msg ${mine?'mine':'theirs'} zo-message ${zcGroupClasses(groupStart,groupEnd)}" data-official-message="${esc(message.id||message.clientMessageId)}">${sender}<div class="zc-msg-stack"><div class="bub">${message.title?`<strong>${esc(message.title)}</strong>`:''}<span>${esc(message.body||'')}</span></div>${meta}${failed?`<div class="zo-send-error"><span role="status">${esc(message.error||'Message could not be sent.')}</span><button type="button" data-official-retry="${esc(message.clientMessageId)}" onclick="ZimiOfficialChat.retry(this.dataset.officialRetry)">Retry</button></div>`:''}</div></div>`;
   }
   function timeline(){
     if(state.loading&&!state.loaded)return contentSkeleton('thread','Loading messages');
@@ -20608,7 +20659,7 @@ window.ZimiOfficialChat=(()=>{
     const error=state.error?`<div class="zh-error" role="alert">${esc(state.error)}<button type="button" onclick="ZimiOfficialChat.load()">Try again</button></div>`:'';
     const older=state.hasMore?`<button type="button" class="zo-earlier" onclick="ZimiOfficialChat.load(true)" ${state.loadingMore?'disabled':''}>${state.loadingMore?'Loading earlier messages…':'Earlier messages'}</button>`:'';
     if(!messages.length)return error+`<div class="zc-thread-empty"><h2>BinzoLive</h2><p>App updates and your private conversation with our team appear here.</p></div>`;
-    let day='';return older+error+messages.map(message=>{const next=zcDay(message.createdAt),divider=next&&next!==day?`<div class="zc-thread-day"><span>${esc(next)}</span></div>`:'';day=next;return divider+bubble(message)}).join('');
+    let day='';return older+error+messages.map((message,index)=>{const previous=messages[index-1],following=messages[index+1],next=zcDay(message.createdAt),dayChanged=!!next&&next!==day,stamp=zcTimelineStamp(message,previous,dayChanged);if(next)day=next;return stamp+bubble(message,{groupStart:!zcSameMessageGroup(previous,message),groupEnd:!zcSameMessageGroup(message,following)})}).join('');
   }
   function input(field){state.draft=field.value;field.style.height='auto';field.style.height=Math.min(field.scrollHeight,128)+'px';controls()}
   function controls(){const field=document.getElementById('zo-input'),send=document.querySelector('.zo-composer button');if(send)send.disabled=!field?.value.trim()||!state.loaded||!!state.error}

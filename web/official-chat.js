@@ -27,14 +27,19 @@ window.ZimiOfficialChat=(()=>{
     if(more&&(state.loadingMore||!state.hasMore))return;
     state.error='';state.loading=!more&&!state.loaded;state.loadingMore=more;state.loadRequest=++state.sequence;
     if(DEMO){state.loaded=true;state.loading=state.loadingMore=false;paint();return}
-    Native.send('official.load',{requestId:state.loadRequest,...(more&&state.before?{before:state.before}:{})});paint();
+    const requestId=state.loadRequest,payload={requestId,...(more&&state.before?{before:state.before}:{})};
+    paint();
+    if(state.loading&&!state.loaded)contentAfterLoadingPaint(()=>{if(active()&&state.loadRequest===requestId)Native.send('official.load',payload)});
+    else Native.send('official.load',payload);
   }
   function render(){
     return `<section class="zc-thread zo-thread" aria-label="BinzoLive conversation"><header class="zc-thread-header">${backButton('ZimiOfficialChat.back()',{label:'Back to '+state.from,slot:'zc-thread-back'})}<div class="zc-thread-person"><span class="zc-avatar-wrap">${avatar()}</span><span class="zc-thread-title"><h1>BinzoLive ${verified()}</h1><small>Official account</small></span></div><button type="button" class="zo-preferences" onclick="ZimiOfficialChat.preferences()" aria-label="Notifications and alerts">${hi('set',21)}</button></header><div class="zc-thread-scroll" id="zo-messages" role="log" aria-label="Messages with BinzoLive" aria-live="polite"></div><div class="zo-read-error" id="zo-read-error" role="status" hidden></div><form class="zc-composer zo-composer" onsubmit="event.preventDefault();ZimiOfficialChat.send()"><div class="zc-composer-field"><textarea id="zo-input" rows="1" maxlength="4000" placeholder="Message BinzoLive" aria-label="Message BinzoLive" autocomplete="off" oninput="ZimiOfficialChat.input(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();ZimiOfficialChat.send()}">${esc(state.draft)}</textarea><button type="submit" class="zc-composer-send" aria-label="Send message">${ci('send',22)}</button></div></form></section>`;
   }
-  function bubble(message){
+  function bubble(message,{groupStart=true,groupEnd=true}={}){
     const mine=message.senderType==='user',pending=message.delivery==='sending',failed=message.delivery==='failed';
-    return `<div class="zc-msg ${mine?'mine':'theirs'} zo-message" data-official-message="${esc(message.id||message.clientMessageId)}">${mine?'':`<span class="zc-msg-avatar" aria-hidden="true">${avatar()}</span>`}<div class="zc-msg-stack"><div class="bub">${message.title?`<strong>${esc(message.title)}</strong>`:''}<span>${esc(message.body||'')}</span></div><span class="zc-meta">${failed?'<b>Not sent</b>':pending?'<span>Sending…</span>':`<time datetime="${esc(message.createdAt)}">${esc(zcClock({at:message.createdAt}))}</time>`}${mine&&!pending&&!failed?`<span class="zc-tick" role="img" aria-label="Sent">${ci('check',16)}</span>`:''}</span>${failed?`<div class="zo-send-error"><span role="status">${esc(message.error||'Message could not be sent.')}</span><button type="button" data-official-retry="${esc(message.clientMessageId)}" onclick="ZimiOfficialChat.retry(this.dataset.officialRetry)">Retry</button></div>`:''}</div></div>`;
+    const metaBody=failed?'<b>Not sent</b>':pending?'<span>Sending…</span>':mine&&groupEnd?`<span class="zc-tick" role="img" aria-label="Sent">${ci('check',16)}</span>`:'',meta=metaBody?`<span class="zc-meta">${metaBody}</span>`:'';
+    const sender=mine?'':groupEnd?`<span class="zc-msg-avatar" aria-hidden="true">${avatar()}</span>`:'<span class="zc-msg-avatar-spacer" aria-hidden="true"></span>';
+    return `<div class="zc-msg ${mine?'mine':'theirs'} zo-message ${zcGroupClasses(groupStart,groupEnd)}" data-official-message="${esc(message.id||message.clientMessageId)}">${sender}<div class="zc-msg-stack"><div class="bub">${message.title?`<strong>${esc(message.title)}</strong>`:''}<span>${esc(message.body||'')}</span></div>${meta}${failed?`<div class="zo-send-error"><span role="status">${esc(message.error||'Message could not be sent.')}</span><button type="button" data-official-retry="${esc(message.clientMessageId)}" onclick="ZimiOfficialChat.retry(this.dataset.officialRetry)">Retry</button></div>`:''}</div></div>`;
   }
   function timeline(){
     if(state.loading&&!state.loaded)return contentSkeleton('thread','Loading messages');
@@ -42,7 +47,7 @@ window.ZimiOfficialChat=(()=>{
     const error=state.error?`<div class="zh-error" role="alert">${esc(state.error)}<button type="button" onclick="ZimiOfficialChat.load()">Try again</button></div>`:'';
     const older=state.hasMore?`<button type="button" class="zo-earlier" onclick="ZimiOfficialChat.load(true)" ${state.loadingMore?'disabled':''}>${state.loadingMore?'Loading earlier messages…':'Earlier messages'}</button>`:'';
     if(!messages.length)return error+`<div class="zc-thread-empty"><h2>BinzoLive</h2><p>App updates and your private conversation with our team appear here.</p></div>`;
-    let day='';return older+error+messages.map(message=>{const next=zcDay(message.createdAt),divider=next&&next!==day?`<div class="zc-thread-day"><span>${esc(next)}</span></div>`:'';day=next;return divider+bubble(message)}).join('');
+    let day='';return older+error+messages.map((message,index)=>{const previous=messages[index-1],following=messages[index+1],next=zcDay(message.createdAt),dayChanged=!!next&&next!==day,stamp=zcTimelineStamp(message,previous,dayChanged);if(next)day=next;return stamp+bubble(message,{groupStart:!zcSameMessageGroup(previous,message),groupEnd:!zcSameMessageGroup(message,following)})}).join('');
   }
   function input(field){state.draft=field.value;field.style.height='auto';field.style.height=Math.min(field.scrollHeight,128)+'px';controls()}
   function controls(){const field=document.getElementById('zo-input'),send=document.querySelector('.zo-composer button');if(send)send.disabled=!field?.value.trim()||!state.loaded||!!state.error}

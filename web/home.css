@@ -143,7 +143,7 @@
 
 /* Quiet, layout-shaped placeholders share the same rhythm as loaded content. */
 .zh-skeleton{width:100%;pointer-events:none;user-select:none}
-.zh-skeleton-shape{display:block;flex-shrink:0;max-width:100%;border-radius:7px;background:linear-gradient(100deg,#ffffff08 20%,#ffffff13 45%,#ffffff08 70%);background-size:220% 100%;animation:zh-skeleton-shimmer 1.8s ease-in-out infinite}
+.zh-skeleton-shape{display:block;flex-shrink:0;max-width:100%;border-radius:7px;background-color:var(--raised);background-image:linear-gradient(100deg,var(--raised) 20%,color-mix(in srgb,var(--line) 82%,var(--raised)) 45%,var(--raised) 70%);background-size:220% 100%;animation:zh-skeleton-shimmer 1.8s ease-in-out infinite}
 .zh-skeleton-story-list{display:flex;gap:15px;width:max-content}
 .zh-skeleton-story-list .zh-story{display:flex;flex-direction:column;align-items:center;gap:12px}
 .zh-stories>.zh-skeleton{width:auto;flex-shrink:0}
@@ -161,9 +161,14 @@
 .zh-skeleton-catalog>div{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 8px;border-radius:16px;background:#ffffff04;border:1px solid #ffffff06}
 .zh-skeleton-gifts .zh-skeleton-catalog{margin:20px 0}
 .zh-skeleton-post{aspect-ratio:1/1.2;border-radius:0}
-.zh-skeleton-thread-list{padding:18px 14px;display:flex;flex-direction:column;gap:20px}
-.zh-skeleton-thread-list .outgoing{display:flex;justify-content:flex-end}
-.zh-skeleton-thread-list .zh-skeleton-shape{border-radius:17px}
+.zh-skeleton-thread-list{width:100%;padding:10px 0;display:flex;flex-direction:column;gap:3px}
+.zh-skeleton-thread-row{display:flex;align-items:flex-end;gap:8px;min-height:42px}
+.zh-skeleton-thread-row.group-start{margin-top:12px}
+.zh-skeleton-thread-row.outgoing{justify-content:flex-end}
+.zh-skeleton-thread-row>.zh-skeleton-avatar,.zh-skeleton-thread-row>.zh-skeleton-avatar-space{flex:none;width:34px;height:34px;border-radius:50%}
+.zh-skeleton-thread-row>.zh-skeleton-bubble{height:42px;border-radius:20px}
+.zh-skeleton-thread-row.incoming.group-continued>.zh-skeleton-bubble{border-top-left-radius:6px}
+.zh-skeleton-thread-row.outgoing.group-continued>.zh-skeleton-bubble{border-top-right-radius:6px}
 .zh-skeleton-cards+.zh-load-more{margin-top:18px}
 .zh-trending>.zh-skeleton-cards+.zh-skeleton-cards,.zh-trending>.zh-grid+.zh-skeleton-cards,#home-search-results>.zh-grid+.zh-skeleton-cards{margin-top:12px}
 .zh-loading-content{padding:16px;max-width:760px;margin:auto}

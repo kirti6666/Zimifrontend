@@ -234,7 +234,12 @@ function go(v,id){
   if(DEMO){S.callRate=S.callRate||MY_RATE;S.callFee=MY_FEE;S.feeHold=FEE_HOLD;S.earlyLimit=EARLY_LIMIT;S.penaltyCoins=MY_FEE}
   S.rmsgs=[["sys","",`Connected with ${S.caller.n}`]].concat(DEMO?[["host",first(S.caller.n),"hi! finally got through"]]:[]);
   S.t=setInterval(hostTick,1000)}
- if(v==="thread"){S.msgs=DEMO?zcDemoThread(g(S.h)):[];Native.send("chat.open",{with:S.h})}
+  if(v==="thread"){
+   S.msgs=DEMO?zcDemoThread(g(S.h)):[];
+   const peer=String(S.h||"");
+   if(DEMO)Native.send("chat.open",{with:peer});
+   else contentAfterLoadingPaint(()=>{if(S.v==="thread"&&String(S.h)===peer)Native.send("chat.open",{with:peer})});
+  }
  if(v==="voice"&&DEMO)Native.send("call.start",{to:S.h,voice:true});
  if(v!=="precall")S.pcerr="";
  r();document.getElementById("screen").scrollTop=0;document.dispatchEvent(new CustomEvent("aurora:navigate"));window.ZimiNavigation?.after(navigationChange)}

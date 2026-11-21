@@ -1038,40 +1038,46 @@ test('closing the bridge removes session observers and prevents pending UI deliv
   assert.equal(h.count('sendOtp'), 1);
 });
 
-test('the native update gate keeps checks and bare errors behind the launch logo until a policy allows content', () => {
+test('the native update gate owns one root launch layer across policy and content startup', () => {
   const h = harness(), app = h.load('App.tsx');
-  for (const status of ['checking', 'error']) {
+  for (const [status, ready] of [['checking', false], ['error', true], ['required', true]]) {
     h.overrides.appUpdatesState = { status };
-    const tree = [app.default().props.children].flat()[0];
-    assert.equal(tree.type, 'LaunchScreen', `${status} stays behind the animated BinzoLive logo`);
-    assert.equal(tree.props.ready, false, `${status} cannot dismiss the logo without a policy result`);
-    assert.equal(h.effects.length, 0, 'Blocked builds do not start app-content effects');
+    const root = app.default();
+    const [gate, launch] = [root.props.children].flat().filter(Boolean);
+    assert.equal(gate.type, 'AppUpdateScreen', `${status} keeps policy UI below the root launch layer`);
+    assert.equal(gate.props.state.status, status);
+    assert.equal(launch.type, 'LaunchScreen', `${status} uses the single root launch layer`);
+    assert.equal(launch.props.ready, ready, `${status} has the expected policy-settled launch state`);
+    assert.equal(findShellWeb(root), null, `${status} never mounts gated app content`);
   }
-  h.overrides.appUpdatesState = { status: 'required' };
-  const required = [app.default().props.children].flat()[0];
-  assert.equal(required.type, 'AppUpdateScreen', 'Only a mandatory policy shows the update screen');
-  assert.equal(required.props.state.status, 'required');
-  assert.equal(h.effects.length, 0, 'A required build does not start app-content effects');
   h.overrides.appUpdatesState = { status: 'allowed' };
-  assert.equal([app.default().props.children].flat()[0].type, app.AppContent);
-  assert.equal(h.effects.length, 0, 'The wrapper leaves content mounting to React');
+  const root = app.default();
+  const [allowed, launch] = [root.props.children].flat().filter(Boolean);
+  assert.equal(allowed.type, app.AppContent);
+  assert.equal(allowed.props.startupCovered, true, 'The root logo owns startup while admitted content initializes');
+  assert.equal(typeof allowed.props.onStartupReady, 'function');
+  assert.equal(launch.type, 'LaunchScreen', 'The same root layer remains beside admitted content');
+  assert.equal(launch.props.ready, false, 'The logo waits for the admitted page readiness signal');
+  assert.equal([root.props.children].flat().filter(node => node?.type === 'LaunchScreen').length, 1, 'The root never renders a second launch layer');
 });
 
 test('native incoming surface covers update checking without mounting app content and preserves its stable root', () => {
   const h=harness(),app=h.load('App.tsx'),action={actionId:'native-first-frame',action:'open',recipientId:'507f1f77bcf86cd799439101',callId:'507f1f77bcf86cd799439103',expiresAt:new Date(Date.now()+30000).toISOString(),callerName:'Mira',callKind:'video'};
   h.overrides.incomingState={action};
   for(const status of ['checking','error']) {
-    h.overrides.appUpdatesState={status};const tree=app.default(),[content,overlay]=[tree.props.children].flat();
-    assert.equal(tree.type,'View');assert.equal(content.type,'LaunchScreen');assert.equal(content.props.ready,false);assert.equal(overlay.type,'IncomingCallScreen');assert.equal(overlay.props.action.actionId,action.actionId);assert.equal(overlay.props.allowed,false);
-    assert.equal(h.effects.length,0,'A pending notification does not mount the gated WebView or account effects');
+    h.overrides.appUpdatesState={status};const tree=app.default(),[content,overlay]=[tree.props.children].flat().filter(Boolean);
+    assert.equal(tree.type,'View');assert.equal(content.type,'AppUpdateScreen');assert.equal(content.props.state.status,status);assert.equal(overlay.type,'IncomingCallScreen');assert.equal(overlay.props.action.actionId,action.actionId);assert.equal(overlay.props.allowed,false);
+    assert.equal([tree.props.children].flat().some(node=>node?.type==='LaunchScreen'),false,'The trusted incoming route is never covered by launch artwork');
+    assert.equal(findShellWeb(tree),null,'A pending notification does not mount the gated WebView');
   }
-  h.overrides.appUpdatesState={status:'required'};const blocked=app.default(),[update,blockedOverlay]=[blocked.props.children].flat();
+  h.overrides.appUpdatesState={status:'required'};const blocked=app.default(),[update,blockedOverlay]=[blocked.props.children].flat().filter(Boolean);
   assert.equal(update.type,'AppUpdateScreen');assert.equal(update.props.state.status,'required');assert.equal(blockedOverlay.type,'IncomingCallScreen');assert.equal(blockedOverlay.props.allowed,false);
-  assert.equal(h.effects.length,0,'A mandatory update does not mount the gated WebView or account effects');
-  h.overrides.appUpdatesState={status:'allowed'};const admitted=app.default(),[content,overlay]=[admitted.props.children].flat();
-  assert.equal(content.type,app.AppContent);assert.equal(content.props.priorityIncoming,true);assert.equal(overlay.props.allowed,true);
-  h.overrides.incomingState={action:null};const cleared=app.default(),[sameContent,empty]=[cleared.props.children].flat();
-  assert.equal(cleared.type,admitted.type);assert.equal(sameContent.type,content.type,'Clearing the ring overlay preserves the content component at the same root position');assert.equal(empty,null);
+  assert.equal(findShellWeb(blocked),null,'A mandatory update does not mount the gated WebView');
+  h.overrides.appUpdatesState={status:'allowed'};const admitted=app.default(),[content,overlay]=[admitted.props.children].flat().filter(Boolean);
+  assert.equal(content.type,app.AppContent);assert.equal(content.props.priorityIncoming,true);assert.equal(content.props.startupCovered,false,'The priority incoming route remains uncovered');assert.equal(overlay.props.allowed,true);
+  assert.equal([admitted.props.children].flat().some(node=>node?.type==='LaunchScreen'),false,'Allowed priority incoming content also skips the root logo');
+  h.overrides.incomingState={action:null};const cleared=app.default(),[sameContent,launch]=[cleared.props.children].flat().filter(Boolean);
+  assert.equal(cleared.type,admitted.type);assert.equal(sameContent.type,content.type,'Clearing the ring overlay preserves the content component at the same root position');assert.equal(launch.type,'LaunchScreen','Normal startup coverage returns when there is no priority incoming route');
   h.bridge.close();
 });
 
@@ -1124,6 +1130,9 @@ test('the animated logo covers the app at launch instead of a loading skeleton',
   assert.equal(web.props.startInLoadingState, undefined);
   assert.ok(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: {} })));
   assert.equal(h.webMessages.parseWebMessage(JSON.stringify({ type: 'app.launched', data: { at: 1 } })), null);
+  const externallyCovered = h.load('App.tsx').AppContent({ startupCovered: true });
+  const externalLaunch = [externallyCovered.props.children].flat()[1];
+  assert.equal(externalLaunch, false, 'Root-owned startup coverage suppresses the nested launch layer');
   h.effects.forEach(cleanup => cleanup?.()); h.bridge.close();
 });
 

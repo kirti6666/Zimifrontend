@@ -66,13 +66,32 @@ const withThemeCache = (page: string, cache: ThemeCache) =>
 export default function App() {
   const updates = useAppUpdates();
   const incoming = useIncomingCall(updates.state);
-  const content = updates.state.status === "allowed" ? <AppContent priorityIncoming={!!incoming.action} onIncomingEvent={incoming.onEvent} onIncomingResult={incoming.onResult} /> : <AppUpdateScreen {...updates} />;
-  return <View style={{flex:1}}>{content}{incoming.action ? <IncomingCallScreen {...incoming} action={incoming.action} allowed={updates.state.status==="allowed"} /> : null}
+  const priorityIncoming = !!incoming.action;
+  const [startupReady, setStartupReady] = useState(priorityIncoming);
+  const [startupVisible, setStartupVisible] = useState(!priorityIncoming);
+  const contentReady = useCallback(() => setStartupReady(true), []);
+  const hideStartup = useCallback(() => setStartupVisible(false), []);
+  useEffect(() => {
+    // A trusted incoming-call surface owns the first frame. Do not put the
+    // launch artwork back over it if the call arrives while policy is checked.
+    if (priorityIncoming) setStartupVisible(false);
+    else if (!startupReady && (updates.state.status === "checking" || updates.state.status === "allowed")) setStartupVisible(true);
+  }, [priorityIncoming, startupReady, updates.state.status]);
+  const content = updates.state.status === "allowed"
+    ? <AppContent priorityIncoming={priorityIncoming} startupCovered={startupVisible} onStartupReady={contentReady} onIncomingEvent={incoming.onEvent} onIncomingResult={incoming.onResult} />
+    : <AppUpdateScreen {...updates} />;
+  const gateSettled = updates.state.status === "required" || updates.state.status === "error";
+  return <View style={{flex:1}}>
+    {content}
+    {startupVisible && !priorityIncoming ? <LaunchScreen ready={gateSettled || updates.state.status === "allowed" && startupReady} onHidden={hideStartup} /> : null}
+    {incoming.action ? <IncomingCallScreen {...incoming} action={incoming.action} allowed={updates.state.status==="allowed"} /> : null}
   </View>;
 }
 
-export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingResult}: {
+export function AppContent({priorityIncoming=false,startupCovered=false,onStartupReady,onIncomingEvent,onIncomingResult}: {
   priorityIncoming?:boolean;
+  startupCovered?:boolean;
+  onStartupReady?:()=>void;
   onIncomingEvent?:(message:{type:string;data?:Record<string,unknown>})=>void;
   onIncomingResult?:(result:{callId:string;actionId:string;action:"open"|"answer";outcome:"handedOff"|"error"})=>void;
 }={}) {
@@ -86,7 +105,7 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
   const [failure, setFailure] = useState<string | null>(null);
   const [webGeneration, setWebGeneration] = useState(0);
   const [launched, setLaunched] = useState(priorityIncoming);
-  const [launchVisible, setLaunchVisible] = useState(!priorityIncoming);
+  const [launchVisible, setLaunchVisible] = useState(!priorityIncoming && !startupCovered);
   const webRef = useRef<WebView>(null);
   const webReady = useRef(false);
   const rendererFailures = useRef<number[]>([]);
@@ -134,6 +153,9 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
     const timer = setTimeout(() => setLaunched(true), LAUNCH_LIMIT_MS);
     return () => clearTimeout(timer);
   }, [launched]);
+  useEffect(() => {
+    if (launched || failure || !page) onStartupReady?.();
+  }, [launched, failure, page, onStartupReady]);
   const hideLaunch = useCallback(() => setLaunchVisible(false), []);
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -230,9 +252,9 @@ export function AppContent({priorityIncoming=false,onIncomingEvent,onIncomingRes
     setFailure(null);
     // The page starts over, so the logo covers it until its first screen is ready again.
     setLaunched(false);
-    setLaunchVisible(true);
+    if (!startupCovered) setLaunchVisible(true);
     setWebGeneration(generation => generation + 1);
-  }, [documentLoading]);
+  }, [documentLoading, startupCovered]);
   const reload = useCallback(() => {
     rendererFailures.current = [];
     restartDocument();
