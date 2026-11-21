@@ -74,7 +74,7 @@
 .zb-camera-panel .zb-content>*{flex:none}
 .zb-camera-panel .zb-footer{flex:none;margin-top:2px}
 .zb-camera-panel .zb-footer p{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.zb-camera-panel .zb-footer:has([data-zimi-beauty-retry]:not([hidden])) p{white-space:normal}
+.zb-camera-panel .zb-footer[data-zimi-beauty-alert=true] p{white-space:normal}
 .zb-camera-panel .zb-footer p[data-zimi-beauty-warning]{white-space:normal}
 .zb-camera-panel .zb-footer button{min-height:32px;padding:5px 10px}
 /* Short docks (small phones, landscape) put Done beside the tabs and keep
@@ -85,7 +85,7 @@
   .zb-panel-header>:not(.zb-done){display:none}
   .zb-camera-panel>.zb-picker{padding-top:7px}
   .zb-camera-panel .zb-tabbar{padding-right:52px}
-  .zb-camera-panel .zb-footer:not(:has([data-zimi-beauty-warning],[data-zimi-beauty-retry]:not([hidden]))){display:none}
+  .zb-camera-panel .zb-footer[data-zimi-beauty-alert=false]{display:none}
 }
 
 .zb-filter-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex:none;padding-inline:4px}

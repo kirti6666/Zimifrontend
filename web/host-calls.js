@@ -4,6 +4,14 @@
 /* preview: '' until the host asks to check their camera, then 'starting', 'ready' or 'failed'. */
 const HostCalls = { status: null, loading: false, error: '', preview: '', previewError: '', previewRun: 0, visBusy: false, scene: '', sceneAt: 0, showTerms: false, rateDraft:null, rateBusy:false, rateError:'', rateRequest:0, rateSequence:0 };
 
+/* Use an explicit route class instead of CSS :has(), which is unavailable in
+   older Android System WebViews and otherwise collapses the setup to 0px. */
+function hcAfterRender() {
+  const screen = document.getElementById('screen');
+  const active = !!screen && !!screen.querySelector('.hc-setup,.hc-waiting,.hc-summary');
+  document.documentElement.classList.toggle('hc-active', active);
+}
+
 function hcIdentityAvatar(person, size = 104) {
   const name = String(person?.n || person?.name || 'Host').trim();
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => Array.from(part)[0]).join('').toUpperCase();

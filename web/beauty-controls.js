@@ -126,7 +126,8 @@
   }
   function inner() {
     const state=beauty.getState(),failure=beauty.getFailedEffect();
-    return `<div class="zb-tabbar"><nav class="zb-tabs" aria-label="Effect categories">${Object.entries(tabs).map(([id,text])=>`<button type="button" data-zimi-beauty-tab="${id}" aria-pressed="${id===tab}" onclick="ZimiBeauty.chooseTab('${id}')">${icon(id,18)}<span>${text}</span></button>`).join('')}</nav><button type="button" class="zb-reset" aria-label="Reset all" onclick="ZimiBeauty.reset();ZimiBeauty.paintPicker()">${icon('reset',17)}<span>Reset</span></button></div><div class="zb-content">${content(beauty.getParams())}</div><footer class="zb-footer"><p data-zimi-beauty-status ${state.warning?'data-zimi-beauty-warning ':''}role="status" aria-live="polite">${escape(state.message)}</p><div><button type="button" data-zimi-beauty-retry ${state.status==='error'?'':'hidden'} onclick="ZimiBeauty.retryOrRemove()">${failure?'Remove failed '+failure:'Retry effects'}</button></div></footer>`;
+    const showAlert=!!state.warning||state.status==='error';
+    return `<div class="zb-tabbar"><nav class="zb-tabs" aria-label="Effect categories">${Object.entries(tabs).map(([id,text])=>`<button type="button" data-zimi-beauty-tab="${id}" aria-pressed="${id===tab}" onclick="ZimiBeauty.chooseTab('${id}')">${icon(id,18)}<span>${text}</span></button>`).join('')}</nav><button type="button" class="zb-reset" aria-label="Reset all" onclick="ZimiBeauty.reset();ZimiBeauty.paintPicker()">${icon('reset',17)}<span>Reset</span></button></div><div class="zb-content">${content(beauty.getParams())}</div><footer class="zb-footer" data-zimi-beauty-alert="${showAlert}"><p data-zimi-beauty-status ${state.warning?'data-zimi-beauty-warning ':''}role="status" aria-live="polite">${escape(state.message)}</p><div><button type="button" data-zimi-beauty-retry ${state.status==='error'?'':'hidden'} onclick="ZimiBeauty.retryOrRemove()">${failure?'Remove failed '+failure:'Retry effects'}</button></div></footer>`;
   }
   beauty.picker=()=>`<div class="zb-picker" data-zimi-beauty-picker data-lenis-prevent>${inner()}</div>`;
   beauty.panel=(closeAction,closeLabel='Close panel',mode='')=>{
@@ -303,9 +304,11 @@
     document.querySelectorAll('.zr-call,.hc-setup').forEach(stage=>stage.classList.toggle('zb-previewing',!!stage.querySelector('[data-zimi-beauty-panel]')));
   };
   document.addEventListener('zimi:beauty-state',()=>{
+    const state=beauty.getState();
     syncRails();
     syncControls();
-    document.querySelectorAll('[data-zimi-beauty-status]').forEach(status=>status.toggleAttribute('data-zimi-beauty-warning',!!beauty.getState().warning));
+    document.querySelectorAll('[data-zimi-beauty-status]').forEach(status=>status.toggleAttribute('data-zimi-beauty-warning',!!state.warning));
+    document.querySelectorAll('.zb-footer').forEach(footer=>footer.dataset.zimiBeautyAlert=String(!!state.warning||state.status==='error'));
     const failure=beauty.getFailedEffect();
     document.querySelectorAll('[data-zimi-beauty-retry]').forEach(button=>{button.textContent=failure?'Remove failed '+failure:'Retry effects'});
   });
