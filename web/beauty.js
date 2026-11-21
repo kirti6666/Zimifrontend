@@ -126,6 +126,7 @@
     }
   }
   let state = { status: 'idle', message: 'Effects apply to your camera during video calls.' };
+  let compareSnapshot = null;
   try {
     const saved = JSON.parse(localStorage.getItem('zimi.beauty.v1') || 'null');
     if (saved && saved.selection && typeof S !== 'undefined') {
@@ -658,10 +659,10 @@
     pending = task;
     return task.promise;
   }
-  function sync() {
+  function sync(persist=true) {
     importLegacy();
     revise();
-    save();
+    if(persist)save();
     failed = false;
     if (!wanted()) {
       if (pending) {
@@ -681,7 +682,20 @@
     if (typeof DEMO !== 'undefined' && DEMO) publish('idle', 'Preview only. Face effects run in connected video calls.');
     else void window.ZimiMedia?.refreshBeauty();
   }
+  function compare(on) {
+    if(on) {
+      if(compareSnapshot)return;
+      compareSnapshot=JSON.parse(JSON.stringify(params));
+      params=catalog.createDefaultParams();
+      sync(false);
+      return;
+    }
+    if(!compareSnapshot)return;
+    const saved=compareSnapshot;compareSnapshot=null;
+    params=catalog.createDefaultParams();restore(saved);sync(false);
+  }
   function stop() {
+    if(compareSnapshot){const saved=compareSnapshot;compareSnapshot=null;params=catalog.createDefaultParams();restore(saved)}
     epoch++;
     revise();
     pendingAuth?.finish(new Error('Effects cancelled.'));
@@ -700,7 +714,7 @@
       else if (status === 'idle') publish('idle', 'Effects apply to your camera during video calls.');
       else publish('error', 'Beauty effects are unavailable. Your original camera is shared.');
     },
-    create, sync, stop, strength, unavailable, getState: () => ({ ...state }), isEnabled:()=>wanted(),getFailedEffect,
+    create, sync, stop, strength, unavailable, compare, getState: () => ({ ...state }), isEnabled:()=>wanted(),getFailedEffect,
     getParams:()=>JSON.parse(JSON.stringify(params)),
     setParam(key,value,activate=false) {
       if(!validParam(key,value))return;
@@ -736,6 +750,7 @@
       sync();
     },
     reset() {
+      compareSnapshot=null;
       params=catalog.createDefaultParams();strengths={};selectionWarning=null;
       if(typeof S!=='undefined')S.bsel={Beauty:0,Makeup:0,Sticker:0,Filters:0,'Image quality':0};
       legacySelection=JSON.stringify({selection:typeof S==='undefined'?{}:S.bsel,strengths});

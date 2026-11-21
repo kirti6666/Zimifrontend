@@ -23,7 +23,7 @@
 .zh-host-users .zh-error button{color:var(--accent-ink)}
 @media(max-width:359px){.zh-user-person{gap:8px}.zh-user-actions{gap:2px}.zh-user-avatar,.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:42px;height:42px}}
 /* Home header, after the reference: Following, Explore, For You and New in place of the app
-   name, the selected feed larger and bolder; then Search and the gold leaderboard trophy. */
+   name, the selected feed larger and bolder; then Search, leaderboard and Notifications. */
 .zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}
 :is(.zh-feed-tabs,.zh-host-tabs){display:flex;align-items:center;align-self:stretch;gap:12px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
 :is(.zh-feed-tabs,.zh-host-tabs)::-webkit-scrollbar{display:none}
@@ -33,6 +33,8 @@
 .zh-home-header .zh-header-actions{flex:none;gap:2px}
 .zh-home-header .zh-icon{width:38px;height:44px;color:var(--ink)}
 .zh-home-header .zh-trophy{color:var(--gold)}
+.zh-home-header .zh-bell>i{right:5px;top:5px}
+@media(max-width:430px){.zh-home-header .zh-header-actions{gap:1px}.zh-home-header .zh-icon{width:34px}}
 @media(max-width:380px){.zh-header.zh-home-header{padding-left:12px}:is(.zh-feed-tabs,.zh-host-tabs){gap:10px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(14px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(19px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:34px}}
 @media(max-width:340px){:is(.zh-feed-tabs,.zh-host-tabs){gap:8px}:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{font-size:calc(13px * var(--theme-font-scale,1))}:is(.zh-feed-tabs,.zh-host-tabs)>[aria-selected="true"]{font-size:calc(17px * var(--theme-font-scale,1))}.zh-home-header .zh-icon{width:32px}}
 @media(prefers-reduced-motion:reduce){:is(.zh-feed-tabs,.zh-host-tabs)>[role="tab"]{transition:none}}

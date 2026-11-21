@@ -45,7 +45,12 @@ function hsOpenSheet(kind) {
   r(); hsAfter();
 }
 function hsCloseSheet() {
-  const opener = HostStudio.opener;
+  const opener = HostStudio.opener, closing = HostStudio.sheet;
+  window.ZimiBeauty?.compare?.(false);
+  if (closing === 'card-image' && !HostStudio.cardSaving) {
+    HostStudio.cardPrepareId = ++mediaSequence;
+    HostStudio.cardDraft = ''; HostStudio.cardPreparing = false; HostStudio.cardError = '';
+  }
   HostStudio.sheet = ''; HostStudio.focus = ''; HostStudio.mounted = null; r();
   if (opener) ([...document.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === opener || button.dataset.hsFocus === opener) || document.querySelector('button[aria-label="Call options"]'))?.focus({ preventScroll: true });
 }
@@ -55,7 +60,12 @@ function hsPaintSheet() {
   const body = document.querySelector('.hs-sheet-body'), next = document.createElement('div');
   next.innerHTML = hsSheet();
   const fresh = next.querySelector('.hs-sheet-body');
-  if (body && fresh) { body.replaceChildren(...fresh.childNodes); hsPaintTargets(); }
+  const save = document.querySelector('.hs-card-save'), freshSave = next.querySelector('.hs-card-save');
+  if (body && fresh) {
+    body.replaceChildren(...fresh.childNodes);
+    if (save && freshSave) save.replaceWith(freshSave);
+    hsPaintTargets();
+  }
   else r();
   hsAfter();
 }
@@ -97,19 +107,27 @@ function hsSheet() {
     const gift = hsTargetGift();
     body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${giftPriceMarkup(item,10)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${giftIsFree(gift)?'Free':n((gift?.coins || 0)*HostStudio.giftCount)+' member coins'}</span></div><p class="hs-sheet-note">Gift prices are paid by members in Coins. Your confirmed gift earnings are Diamonds in Wallet.</p>`;
   } else if (kind === 'card-image') {
-    title = 'Creator card image'; subtitle = 'Shown on your creator card';
+    title = 'Creator card';
     const src=imageSrc(HostStudio.cardDraft||S.user?.creatorCardUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
-    body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:hi('user',48)}</div><label class="hs-card-choose">${zi('camera',18)} Choose image<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label>${HostStudio.cardPreparing?'<p role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}<button type="button" class="hc-primary" onclick="hsSaveCard()" ${!HostStudio.cardDraft||busy?'disabled':''}>${HostStudio.cardSaving?'Saving…':'Save card image'}</button>`;
+    const status=HostCalls.status,rate=Number(status?.selectedRate??status?.rate??S.callRate)||0,name=S.user?.name||me.n||'Your name';
+    body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:`<span class="hs-card-placeholder">${zi('camera',36)}<span>Add a photo</span></span>`}<span class="hs-card-identity"><b><i aria-hidden="true"></i>${esc(name)}</b><small>${rate?`${n(rate)} coins/min`:'Free calls'} &middot; Online</small></span></div>
+      <p class="hs-card-helper">This is how members see you on Home</p>
+      <div class="hs-card-actions"><label class="hs-card-choose hs-card-photos">${ci('image',18)} Choose from Photos<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label><label class="hs-card-choose hs-card-camera">${zi('camera',18)} Take a photo<input type="file" accept="image/*" capture="user" aria-label="Take creator card photo" onchange="hsPickCard(event)" ${busy?'disabled':''}></label></div>
+      ${HostStudio.cardPreparing?'<p class="hs-card-state" role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}
+      <div class="hs-card-tips"><p>${hi('check',16)}<span>Face clearly visible, in good light</span></p><p>${hi('check',16)}<span>Portrait (3:4) photos fit best</span></p></div>`;
   } else {
-    return window.ZimiBeauty?.panel('hsCloseSheet()', 'Close Beauty & filters') || '';
+    /* The supplied full-camera treatment belongs to setup only. Active calls
+       keep the compact dock so the existing caller/video controls stay usable. */
+    return window.ZimiBeauty?.panel('hsCloseSheet()', 'Close Beauty & filters', S.v === 'setup' ? 'reference' : '') || '';
   }
   /* Redraws while the sheet is open resume its entrance instead of replaying it. */
   const age = Math.min(250, Math.max(0, Date.now() - HostStudio.openedAt));
-  return `<div class="hs-sheet-backdrop" onclick="if(event.target===this)hsCloseSheet()"><section class="hs-sheet hs-sheet-${kind}" style="--hs-enter-age:-${age}ms" role="dialog" aria-modal="true" aria-labelledby="hs-title" data-lenis-prevent><header><div><h2 id="hs-title">${title}</h2><p>${subtitle}</p></div><button type="button" class="hs-sheet-close" aria-label="Close ${title}" data-hs-focus="close" onclick="hsCloseSheet()">${hi('close', 18)}</button></header><div class="hs-sheet-body">${body}</div></section></div>`;
+  const header=kind==='card-image'?`<span class="hs-sheet-grip" aria-hidden="true"></span><header class="hs-card-header"><button type="button" class="hs-card-cancel" aria-label="Close Creator card image" data-hs-focus="close" onclick="hsCloseSheet()">Cancel</button><h2 id="hs-title">Creator card</h2><button type="button" class="hs-card-save" aria-label="Save card image" onclick="hsSaveCard()" ${!HostStudio.cardDraft||HostStudio.cardSaving||HostStudio.cardPreparing?'disabled':''}>${HostStudio.cardSaving?'Saving…':'Save'}</button></header>`:`<header><div><h2 id="hs-title">${title}</h2><p>${subtitle}</p></div><button type="button" class="hs-sheet-close" aria-label="Close ${title}" data-hs-focus="close" onclick="hsCloseSheet()">${hi('close', 18)}</button></header>`;
+  return `<div class="hs-sheet-backdrop" onclick="if(event.target===this)hsCloseSheet()"><section class="hs-sheet hs-sheet-${kind}" style="--hs-enter-age:-${age}ms" role="dialog" aria-modal="true" aria-labelledby="hs-title" data-lenis-prevent>${header}<div class="hs-sheet-body">${body}</div></section></div>`;
 }
 function hsCardButton(){
   const src=imageSrc(S.user?.creatorCardUrl);
-  return `<button type="button" class="hc-card-image" aria-label="Set creator card image" onclick="hsOpenSheet('card-image')">${src?`<img src="${src}" alt="">`:zi('camera',22)}<span>Creator card image</span>${hi('chev',16)}</button>`;
+  return `<button type="button" class="hc-card-image" aria-label="Set creator card image" onclick="hsOpenSheet('card-image')"><span class="hc-card-thumb">${src?`<img src="${src}" alt="">`:ci('image',13)}</span><span>Creator card</span><small>Edit</small></button>`;
 }
 async function hsPickCard(event){
   const file=event.target.files?.[0];event.target.value='';if(!file||!hsAllowed()||HostStudio.cardSaving||HostStudio.cardPreparing)return;
@@ -168,6 +186,7 @@ function hsResetProgress() {
   HostStudio.receivedCoins = 0; HostStudio.received = Object.create(null); HostStudio.giftNames = Object.create(null); HostStudio.receipts = new Set();
 }
 function hsReset() {
+  window.ZimiBeauty?.compare?.(false);
   hsResetProgress(); Object.assign(HostStudio, { sheet: '', goal: 1000000, giftId: '', giftCount: 10, focus: '', opener: null, mounted: null, lastView: '', cardDraft:'',cardSaving:false,cardPreparing:false,cardPrepareId:null,cardError:'',cardRequestId:null });
 }
 function hsAfter() {
@@ -201,6 +220,7 @@ document.addEventListener('keydown', event => {
   }
 });
 document.addEventListener('aurora:navigate', () => {
+  window.ZimiBeauty?.compare?.(false);
   if (S.v === 'hcall' && HostStudio.lastView !== 'hcall') { hsResetProgress(); hsPaintTargets(); }
   HostStudio.lastView = S.v; HostStudio.sheet = ''; HostStudio.focus = ''; HostStudio.mounted = null;
   if (S.v === 'hcall' && !DEMO && !hsCatalog().length && !contentPending('catalog')) { contentStart('catalog'); Native.send('catalog.load'); }

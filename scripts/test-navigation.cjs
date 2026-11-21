@@ -91,9 +91,10 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
           assert.equal(await layout.locator('.zh-brand,.zh-logo').count(), 0, `${name} has no app-name header`);
           if (name === 'Home') {
             assert.deepEqual(await layout.locator('.zh-feed-tabs').getByRole('tab').allInnerTexts(), ['Following', 'Explore', 'For You', 'New']);
-            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Search creators', exact: true }).count(), 1);
+            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: account === approved ? 'Search users' : 'Search creators', exact: true }).count(), 1);
             assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Leaderboard', exact: true }).count(), 1);
-            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: /^Wallet|^Notifications/ }).count(), 0, 'Like the reference, Home has no wallet or bell');
+            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: 'Notifications', exact: true }).count(), 1, 'The reference notification bell stays in Home');
+            assert.equal(await layout.locator('.zh-header-actions').getByRole('button', { name: /^Wallet/ }).count(), 0, 'Home has no wallet action');
             assert.equal(await layout.locator('.zh-host-status').count(), account === approved ? 1 : 0, 'Only a host account sees its availability control');
           }
           assert.equal(await layout.locator('.zh-dashboard-filters,.zh-explore .zh-filters').count(), 0, `${name} omits category filters`);
@@ -188,13 +189,17 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
       ['sender with host flags', { ...approved, user: { ...approved.user, role: 'sender' } }]
     ];
     for (const [label, account] of denied) {
+      const financialHost = (account.user.serverRole || account.user.role) === 'host';
       await seed(access, account);
       assert.equal(await access.locator('.zh-nav button').count(), 4, `${label} has member navigation`);
       assert.equal(await access.getByRole('button', { name: /^Go live$/i }).count(), 0, `${label} cannot see Go Live`);
       assert.equal(await access.locator('[aria-label="Start a live broadcast"],.zh-create').count(), 0);
       await navigate(access, 'wallet');
-      assert.equal(await access.locator('.earnbox').count(), 0, `${label} cannot see host earnings`);
-      assert.equal(await access.getByRole('button', { name: /Withdraw/i }).count(), 0, `${label} cannot see withdrawal controls`);
+      assert.equal(await access.evaluate(() => isHostWallet()), financialHost, `${label} keeps its server-owned financial role`);
+      assert.equal(await access.locator('.earnbox').count(), financialHost ? 1 : 0, `${label} receives the correct financial wallet`);
+      const deniedWithdraw = access.getByRole('button', { name: 'Withdraw', exact: true });
+      assert.equal(await deniedWithdraw.count(), financialHost ? 1 : 0, `${label} receives the correct withdrawal presentation`);
+      if (financialHost) assert.equal(await deniedWithdraw.isDisabled(), true, `${label} cannot withdraw without current host approval`);
       await navigate(access, 'settings');
       assert.equal(await access.getByRole('button', { name: /Payout verification|^Awards/ }).count(), 0);
       await access.getByRole('button', { name: 'Become a Host', exact: true }).click();
@@ -209,7 +214,8 @@ const tabs = ['Home', 'Chat', 'Profile', 'Settings'];
       assert.equal(await access.getByRole('button', { name: /Go live|Withdraw/i }).count(), 0, `${label} cannot unlock host controls through local KYC state`);
       assert.equal(await access.getByRole('heading', { name: /verified/i }).count(), 0, 'Local KYC state cannot display host approval success');
       await navigate(access, 'wallet');
-      assert.equal(await access.locator('.earnbox').count(), 0, 'Local KYC verification does not reveal earnings');
+      assert.equal(await access.locator('.earnbox').count(), financialHost ? 1 : 0, 'Local KYC cannot change the server-owned financial role');
+      if (financialHost) assert.equal(await access.getByRole('button', { name: 'Withdraw', exact: true }).isDisabled(), true, 'Local KYC cannot unlock withdrawal');
       await access.evaluate(() => { window.__sent = []; window.__mediaPrepared = 0; S.role = 'host'; A().kyc = 'verified'; });
       for (const view of ['broadcast', 'setup', 'waiting', 'payout', 'awards']) {
         await navigate(access, view);

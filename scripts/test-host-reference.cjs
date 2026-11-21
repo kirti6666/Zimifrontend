@@ -39,7 +39,7 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
 
     // Capture both themes and ensure bottom actions remain reachable on small phones.
     for (const theme of ['dark', 'light']) {
-      await page.evaluate(theme => { const value = theme === 'dark' ? ZThemeOriginal : ZThemeRose; Native.receive({ type: 'data.themes', data: { items: [value], selectedThemeId: value.id } }); }, theme);
+      await page.evaluate(theme => { const value = theme === 'dark' ? ZThemeOriginal : ZThemeRose; Native.receive({ type: 'data.themes', data: { items: [value], selectedThemeId: value.id } }); ZimiThemes.setDark(theme === 'dark'); }, theme);
       for (const width of [320, 390, 430]) {
         await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
         await button('Go online for calls').scrollIntoViewIfNeeded();
@@ -103,7 +103,14 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     assert.equal(await page.evaluate(()=>S.editName),'Unfinished profile edit');
     await button('Set creator card image').click();
     assert.equal(await page.locator('.hs-card-preview img').getAttribute('src'),savedHost.user.creatorCardUrl,'Reopening the picker uses the saved card, independently of the cover draft');
+    await page.evaluate(()=>{obReadPhoto=()=>new Promise(resolve=>window.__finishCancelledCard=resolve)});
+    await page.getByLabel('Choose creator card image',{exact:true}).setInputFiles({name:'cancelled-card.png',mimeType:'image/png',buffer:cardPhoto});
+    await page.waitForFunction(()=>HostStudio.cardPreparing);
     await button('Close Creator card image').click();
+    assert.deepEqual(await page.evaluate(()=>({draft:HostStudio.cardDraft,preparing:HostStudio.cardPreparing,error:HostStudio.cardError})),{draft:'',preparing:false,error:''},'Cancel discards the card draft and preparation state');
+    await page.evaluate(()=>{__finishCancelledCard('data:image/jpeg;base64,DDDD');obReadPhoto=window.__cardPhotoReader});
+    await page.waitForTimeout(0);
+    assert.equal(await page.evaluate(()=>HostStudio.cardDraft),'','A preparation that finishes after Cancel cannot restore the discarded draft');
     await session({...savedHost.user,coverUrl:'https://media.example.test/refreshed-profile-cover.jpg'});
     await page.evaluate(()=>go('setup'));
     await receive('host.callStatus',status);

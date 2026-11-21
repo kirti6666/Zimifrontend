@@ -8,6 +8,8 @@
   const filled='fill="currentColor" stroke="none"';
   const ICONS={
     star:'<path d="M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z"/>',
+    back:'<path d="M15 18l-6-6 6-6"/>',
+    compare:'<path d="M12 3v18M5 5h4v14H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM15 5h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4"/>',
     check:'<path d="M6.8 12.3l3.2 3.2 7.2-7.2"/>',
     reset:'<path d="M5 12a7 7 0 1 0 2.05-4.95L5 9"/><path d="M5 5v4h4"/>',
     skin:'<path d="M12 19.5c-2.4-1.9-3.6-4.3-3.6-7S9.6 7.4 12 5.5c2.4 1.9 3.6 4.3 3.6 7s-1.2 5.1-3.6 7z"/><path d="M12 19.5c-4.7 0-8.3-2.6-8.8-6.6 2.4-.3 4.6.3 6.3 1.6M12 19.5c4.7 0 8.3-2.6 8.8-6.6-2.4-.3-4.6.3-6.3 1.6"/>',
@@ -127,7 +129,14 @@
     return `<div class="zb-tabbar"><nav class="zb-tabs" aria-label="Effect categories">${Object.entries(tabs).map(([id,text])=>`<button type="button" data-zimi-beauty-tab="${id}" aria-pressed="${id===tab}" onclick="ZimiBeauty.chooseTab('${id}')">${icon(id,18)}<span>${text}</span></button>`).join('')}</nav><button type="button" class="zb-reset" aria-label="Reset all" onclick="ZimiBeauty.reset();ZimiBeauty.paintPicker()">${icon('reset',17)}<span>Reset</span></button></div><div class="zb-content">${content(beauty.getParams())}</div><footer class="zb-footer"><p data-zimi-beauty-status ${state.warning?'data-zimi-beauty-warning ':''}role="status" aria-live="polite">${escape(state.message)}</p><div><button type="button" data-zimi-beauty-retry ${state.status==='error'?'':'hidden'} onclick="ZimiBeauty.retryOrRemove()">${failure?'Remove failed '+failure:'Retry effects'}</button></div></footer>`;
   }
   beauty.picker=()=>`<div class="zb-picker" data-zimi-beauty-picker data-lenis-prevent>${inner()}</div>`;
-  beauty.panel=(closeAction,closeLabel='Close panel')=>`<section class="zb-camera-panel" data-zimi-beauty-panel aria-label="Beauty and filters" data-lenis-prevent><header class="zb-panel-header"><span class="zb-panel-mark" aria-hidden="true">${icon('star',19)}</span><div><h2>Beauty &amp; filters</h2><p>Changes show live on your camera</p></div><button type="button" class="zb-done" data-zimi-beauty-close aria-label="${escape(closeLabel)}" onclick="${escape(closeAction)}">${icon('check',24)}</button></header>${beauty.picker()}</section>`;
+  beauty.panel=(closeAction,closeLabel='Close panel',mode='')=>{
+    const action=escape(closeAction);
+    if(mode==='reference'){
+      const camera=window.ZimiMedia?.getState?.().facingMode==='environment'?'Back camera':'Front camera';
+      return `<div class="zb-reference-experience"><div class="zb-reference-top"><button type="button" class="zb-reference-back" aria-label="Back to Go live" onclick="${action}">${icon('back',20)}</button><span class="zb-camera-label"><i aria-hidden="true"></i>${camera}</span><span aria-hidden="true"></span></div><button type="button" class="zb-compare" aria-label="Hold to see without filters" onpointerdown="this.setPointerCapture?.(event.pointerId);ZimiBeauty.compare(true)" onpointerup="ZimiBeauty.compare(false)" onpointercancel="ZimiBeauty.compare(false)" onlostpointercapture="ZimiBeauty.compare(false)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();ZimiBeauty.compare(true)}" onkeyup="if(event.key===' '||event.key==='Enter'){event.preventDefault();ZimiBeauty.compare(false)}" onblur="ZimiBeauty.compare(false)">${icon('compare',16)}<span>Hold to compare</span></button><section class="zb-camera-panel zb-reference-panel" data-zimi-beauty-panel aria-label="Beauty and filters" data-lenis-prevent><span class="zb-reference-grip" aria-hidden="true"></span><header class="zb-panel-header"><div><h2>Beauty &amp; filters</h2></div><span class="zb-reference-actions"><button type="button" class="zb-reset" aria-label="Reset all" onclick="ZimiBeauty.reset();ZimiBeauty.paintPicker()">${icon('reset',15)}<span>Reset</span></button><button type="button" class="zb-done" data-zimi-beauty-close aria-label="${escape(closeLabel)}" onclick="${action}">Done</button></span></header>${beauty.picker()}</section></div>`;
+    }
+    return `<section class="zb-camera-panel" data-zimi-beauty-panel aria-label="Beauty and filters" data-lenis-prevent><header class="zb-panel-header"><span class="zb-panel-mark" aria-hidden="true">${icon('star',19)}</span><div><h2>Beauty &amp; filters</h2><p>Changes show live on your camera</p></div><button type="button" class="zb-done" data-zimi-beauty-close aria-label="${escape(closeLabel)}" onclick="${action}">${icon('check',24)}</button></header>${beauty.picker()}</section>`;
+  };
   beauty.paintPicker=()=>{document.querySelectorAll('[data-zimi-beauty-picker]').forEach(root=>{root.innerHTML=inner()});beauty.afterRender()};
   beauty.openPicker=()=>{tab=firstTab};
   beauty.chooseTab=id=>{if(!Object.hasOwn(tabs,id))return;tab=id;beauty.paintPicker()};

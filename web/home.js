@@ -13,6 +13,7 @@ const Home = {
 };
 const homeIcons = {
   signal:'<path d="M4 20v-3"/><path d="M9 20v-7"/><path d="M14 20V9"/><path d="M19 20V4"/>',
+  tune:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
   pause:'<path d="M8 5v14M16 5v14"/>',
   close:'<path d="m6 6 12 12M6 18 18 6"/>',
   checks:'<path d="m2 12 5 5L18 6M10 15l2 2L23 6"/>',
@@ -93,8 +94,8 @@ function homeFeedTabKey(event){
   const next=event.key==='Home'?keys[0]:event.key==='End'?keys.at(-1):keys[(at+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length];
   homeDashboardFilter(next);document.getElementById('home-tab-'+next)?.focus();
 }
-// Like the reference: the feed tabs, then Search and the creator leaderboard.
-function homeHeader(){return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="${isApprovedHost()?'Search users':'Search creators'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
+// Like the reference: the feed tabs, then Search, the creator leaderboard and Notifications.
+function homeHeader(){return `<header class="zh-header zh-home-header"><div class="zh-feed-tabs" role="tablist" aria-label="Home feed" onkeydown="homeFeedTabKey(event)">${HOME_FEEDS.map(([key,label])=>{const on=Home.dashboardFilter===key;return `<button type="button" id="home-tab-${key}" role="tab" aria-selected="${on}" aria-controls="home-feed-panel" tabindex="${on?'0':'-1'}" onclick="homeDashboardFilter('${key}')">${label}</button>`}).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="go('search')" aria-label="${isApprovedHost()?'Search users':'Search creators'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button><button type="button" class="zh-icon zh-bell" onclick="homeNotifications()" aria-label="Notifications">${hi('bell',25)}${Home.unreadCount?'<i aria-hidden="true"></i>':''}</button></div></header>`}
 function homeRegionChips(){if(!homeRegionShown())return '';return `<div class="zh-region-chips" role="group" aria-label="Country">${HOME_REGIONS.map(([key,label])=>`<button type="button" aria-pressed="${Home.region===key}" onclick="homeRegion('${key}')">${key?homeFlag(key,'zh-flag-chip',true):''}<span>${label}</span></button>`).join('')}</div>`}
 function homeNav(){
   const el=document.getElementById('nav');

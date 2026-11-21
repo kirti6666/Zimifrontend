@@ -1,5 +1,5 @@
 /* Production Home with authenticated fixture responses: the reference header (feed tabs,
-   Search and the leaderboard trophy), Popular/India chips, one square-card grid, the host's
+   Search, leaderboard and notification actions), Popular/India chips, one square-card grid, the host's
    floating availability button and the leaderboard. No sample creators or network requests. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..');
 const member = { user: { id: '507f1f77bcf86cd799439001', name: 'Member', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, verification: 'none', requiresOnboarding: false };
 const host = { ...member, user: { ...member.user, role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified' };
 const creators = ['Aanya', 'Mira', 'Tara'].map((name, index) => ({ id: `507f1f77bcf86cd79943901${index}`, name, role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true, verified: true, online: true, availableForCall: true, ratePerMin: 0, category: ['Music', 'Dance', 'Gaming'][index], country: index === 2 ? 'Nepal' : 'India' }));
-const feed = rows => ({ hosts: rows, stage: [], featured: rows[0] || null, total: rows.length, page: 1, limit: 20, categories: ['Music', 'Dance', 'Gaming'], broadcasterCount: 0, availableCount: rows.length });
+const feed = rows => ({ hosts: rows, stage: [], featured: rows[0] || null, total: rows.length, page: 1, limit: 20, categories: ['Music', 'Dance', 'Gaming'], broadcasterCount: 0, availableCount: rows.length, unreadCount: 2 });
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
 const lastSent = (page, type) => page.evaluate(type => __sent.filter(message => message.type === type).at(-1)?.data, type);
 const shownIds = page => page.locator('.zh-discover article[data-host-id]').evaluateAll(nodes => nodes.map(node => node.dataset.hostId));
@@ -36,7 +36,12 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     assert.deepEqual(await tabs.allInnerTexts(), ['Following', 'Explore', 'For You', 'New']);
     assert.equal(await page.getByRole('tab', { name: 'Explore', exact: true }).getAttribute('aria-selected'), 'true', 'Explore is the default feed');
     assert.equal(await page.locator('.zh-brand,.zh-logo,.zh-dashboard-filters,.zh-dashboard .zh-filters').count(), 0);
-    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Search creators', 'Leaderboard'], 'Search and the trophy are the only header actions');
+    assert.deepEqual(await page.locator('.zh-header-actions button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['Search creators', 'Leaderboard', 'Notifications'], 'Home keeps the reference header actions in order');
+    assert.equal(await page.locator('.zh-bell>i').count(), 1, 'Unread notifications show the reference accent dot');
+    assert.equal(await page.locator('.zh-feed-tabs').evaluate(tabs => { const last=tabs.lastElementChild.getBoundingClientRect(), viewport=tabs.getBoundingClientRect(); return last.left>=viewport.left-1&&last.right<=viewport.right+1; }),true,'All four Home tabs remain fully visible beside the three reference actions');
+    await page.getByRole('button', { name: 'Notifications', exact: true }).click();
+    assert.equal(await page.evaluate(() => S.v), 'notifications', 'The Home bell opens the real notification inbox');
+    await page.getByRole('button', { name: 'Back to home', exact: true }).click();
     assert.equal(await page.locator('.zh-host-status').count(), 0, 'Sender accounts never see the host status control');
     // The selected tab reads larger and bolder, as in the reference.
     const [following, explore] = await Promise.all(['Following', 'Explore'].map(name => page.getByRole('tab', { name, exact: true }).evaluate(el => { const style = getComputedStyle(el); return { size: parseFloat(style.fontSize), weight: Number(style.fontWeight) }; })));
