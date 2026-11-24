@@ -863,6 +863,51 @@ textarea.editinput{height:82px;resize:none;font:inherit;color:var(--ink)}
  background:linear-gradient(120deg,#ff5cae,#ff2e93 60%,#e8117a);box-shadow:0 9px 22px -12px var(--accent)}
 .hiddenfile{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
 
+/* Edit Profile follows the compact profile reference without changing its
+   server-confirmed media and save workflow. */
+.edit-profile-page{max-width:720px;padding:8px 15px 96px}
+.edit-profile-page .editmedia{position:relative;margin:0 0 48px}
+.edit-profile-page .editcover{height:158px;border-radius:10px;background:color-mix(in srgb,var(--accent) 12%,var(--raised))}
+.edit-profile-page .editcover:after{display:none}
+.edit-profile-page .editcover-placeholder{position:absolute;inset:0;display:grid;place-items:center;color:color-mix(in srgb,var(--accent-ink) 50%,var(--muted))}
+.edit-profile-page .mediaedit{background:transparent;backdrop-filter:none;color:#fff;font-size:11px;font-weight:650}
+.edit-profile-page .coveredit{right:8px;bottom:7px;min-height:44px;padding:4px}
+.edit-profile-page .coveredit>span{display:flex;align-items:center;gap:6px;min-height:34px;padding:6px 10px;background:rgb(12 4 9/.68);border-radius:10px}
+.edit-profile-page .editavatar{left:14px;bottom:-38px;width:76px;height:76px;padding:0;border:3px solid var(--canvas);background:var(--raised);box-shadow:none}
+.edit-profile-page .editavatar .mediaedit{right:-10px;bottom:-8px;width:44px;height:44px;background:transparent}
+.edit-profile-page .editavatar .mediaedit>span{display:grid;place-items:center;width:28px;height:28px;border:2px solid var(--canvas);border-radius:999px;background:var(--accent);color:var(--cta-ink)}
+.edit-profile-page .editstatus,.edit-profile-page .editerror{margin:0 0 12px;font-size:12px;line-height:1.5}
+.edit-profile-page .editstatus{color:var(--muted)}
+.edit-profile-page .editsection{margin-top:0}
+.edit-profile-page .editsection-head{display:flex;align-items:flex-end;justify-content:space-between;padding:0 2px 8px}
+.edit-profile-page .editsection-head h2{font-size:14px;line-height:1.3;font-weight:700;letter-spacing:-.1px}
+.edit-profile-page .editsection-head p{margin-top:2px;color:var(--muted);font-size:10px;line-height:1.4}
+.edit-profile-page .editdetails-card{overflow:hidden;background:var(--raised)}
+.edit-profile-page .editgroup{margin:0;padding:10px 12px}
+.edit-profile-page .editdetails-card>.editgroup+.editgroup,.edit-profile-page .editdetails-card>.editlocation-grid,.edit-profile-page .editdetails-card>.editabout{border-top:1px solid var(--line)}
+.edit-profile-page .editlabel-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.edit-profile-page .editlabel{margin:0 0 4px;color:var(--muted);font-size:10px;font-weight:600;line-height:1.35;letter-spacing:0;text-transform:none}
+.edit-profile-page .editcount{color:var(--muted);font-size:9px;line-height:1.35;font-variant-numeric:tabular-nums}
+.edit-profile-page .editinput{min-height:28px;padding:0;border:0;background:transparent;color:var(--ink);font-size:14px;line-height:20px}
+.edit-profile-page .editinput::placeholder{color:var(--faint)}
+.edit-profile-page .editinput:focus{border:0;box-shadow:none;outline:2px solid var(--accent);outline-offset:3px}
+.edit-profile-page .editgender{padding-bottom:11px}
+.edit-profile-page .editchoices{grid-template-columns:1fr 1fr 1.6fr;gap:2px;padding:3px;border:0;background:color-mix(in srgb,var(--surface) 65%,var(--raised))}
+.edit-profile-page .editchoices>button{min-height:35px;padding:5px 7px;font-size:12px;font-weight:600}
+.edit-profile-page .editchoices>button.on{background:var(--accent);color:var(--cta-ink)}
+.edit-profile-page .editlocation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.edit-profile-page .editlocation-grid>.editgroup+.editgroup{border-left:1px solid var(--line)}
+.edit-profile-page textarea.editinput{height:76px;padding-top:2px;resize:none;color:var(--ink);font:inherit;font-size:14px;line-height:1.45}
+.edit-profile-page .editpost-link{min-height:54px;margin-top:12px;padding:8px 10px;border:0;background:var(--raised);color:var(--ink)}
+.edit-profile-page .editpost-icon{display:grid;place-items:center;flex:none;width:32px;height:32px;background:var(--surface);color:var(--accent-ink)}
+.edit-profile-page .editpost-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;text-align:left}
+.edit-profile-page .editpost-copy strong{font-size:12px;line-height:1.35;font-weight:650}
+.edit-profile-page .editpost-copy small{color:var(--muted);font-size:9px;line-height:1.35}
+.edit-profile-page .editpost-link>svg:last-child{margin-left:auto;transform:rotate(-90deg)}
+.edit-profile-page .edit-save-bar{position:fixed;z-index:18;left:0;right:0;bottom:0;padding:9px 15px calc(9px + var(--safe-bottom));border-top:1px solid var(--line);background:color-mix(in srgb,var(--canvas) 94%,transparent);backdrop-filter:blur(12px)}
+.edit-profile-page .edit-save-bar .editsave{display:block;max-width:690px;height:44px;margin:0 auto;border-radius:10px;background:var(--accent);color:var(--cta-ink);font-size:13px;font-weight:700;box-shadow:none}
+@media(max-width:359px){.edit-profile-page{padding-inline:12px}.edit-profile-page .editlocation-grid{grid-template-columns:1fr}.edit-profile-page .editlocation-grid>.editgroup+.editgroup{border-top:1px solid var(--line);border-left:0}}
+
 /* compact account detail pages */
 .acct{max-width:720px;margin:0 auto;padding:12px 14px 28px}
 .accthero{position:relative;overflow:hidden;border-radius:18px;padding:16px;background:#17171a;color:#fff}
@@ -5410,7 +5455,7 @@ html:root #zimi-pull {border-radius:999px!important}
 /* Straight page edges and single-line separators never inherit a card's corners, and a
    country flag keeps a flag's square corners. */
 html:root{border-radius:0!important}
-html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-actionbar,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-relationships-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag,.zhs-fill,.zhs-gridline){border-radius:0!important}
+html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-actionbar,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-relationships-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag,.zhs-fill,.zhs-gridline,.editdetails-card>.editgroup,.editlocation-grid,.editlocation-grid>.editgroup,.edit-save-bar){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
 
@@ -10033,19 +10078,23 @@ function saveProfile(){
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
-function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
- <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:artC(me.seed+17)}
-  <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
+function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"",aboutLength=String(S.editAbout||"").length;return `<main class="editwrap edit-profile-page">
+ <section class="editmedia" aria-label="Profile photos"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:`<span class="editcover-placeholder" aria-hidden="true">${I('flip',22)}</span>`}
+  <label class="mediaedit coveredit" aria-label="Change cover photo"><span>${I('flip',14)} Change cover</span><input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
   <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview" data-face="${faceKind({gender:S.editGender||me.gender})}">`:face({gender:S.editGender||me.gender})}</span>
-   <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></div>
- ${S.mediaPreparing?'<p role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error" role="alert">${esc(S.mediaError)}</div>`:""}
- <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
- <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
- <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
- <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div>
- <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
- <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
- <button type="button" class="zpost-editor-link" onclick="ZimiPostCreate.open()" ${disabled}>${I('plus',18)} Create a post ${I('chev',16)}</button></div>`}
+   <label class="mediaedit" aria-label="Change profile photo"><span>${I('flip',13)}</span><input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></section>
+ ${S.mediaPreparing?'<p class="editstatus" role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error editerror" role="alert">${esc(S.mediaError)}</div>`:""}
+ <section class="editsection" aria-labelledby="editdetails-title"><header class="editsection-head"><div><h2 id="editdetails-title">Profile details</h2><p>Shown on your public profile</p></div></header>
+  <div class="editdetails-card">
+   <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" autocomplete="nickname" placeholder="Your display name" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
+   <div class="editgroup editgender"><span class="editlabel" id="editgender">Gender</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
+   <div class="editlocation-grid"><div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" autocomplete="address-level2" placeholder="City" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
+    <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" placeholder="Country" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div></div>
+   <div class="editgroup editabout"><div class="editlabel-row"><label class="editlabel" for="editabout">About</label><span class="editcount" id="editabout-count">${aboutLength}/180</span></div><textarea class="editinput" id="editabout" maxlength="180" aria-describedby="editabout-count" placeholder="Tell people about yourself" oninput="S.editAbout=this.value;document.getElementById('editabout-count').textContent=this.value.length+'/180'" ${disabled}>${esc(S.editAbout)}</textarea></div>
+  </div>
+ </section>
+ <button type="button" class="zpost-editor-link editpost-link" aria-label="Create a post" onclick="ZimiPostCreate.open()" ${disabled}><span class="editpost-icon">${I('plus',18)}</span><span class="editpost-copy"><strong>Create a post</strong><small>Share a photo on your profile</small></span>${I('chev',16)}</button>
+ <div class="edit-save-bar"><button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button></div></main>`}
 
 function vProfile(){
  const host=isHost();

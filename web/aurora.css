@@ -622,6 +622,51 @@ textarea.editinput{height:82px;resize:none;font:inherit;color:var(--ink)}
  background:linear-gradient(120deg,#ff5cae,#ff2e93 60%,#e8117a);box-shadow:0 9px 22px -12px var(--accent)}
 .hiddenfile{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
 
+/* Edit Profile follows the compact profile reference without changing its
+   server-confirmed media and save workflow. */
+.edit-profile-page{max-width:720px;padding:8px 15px 96px}
+.edit-profile-page .editmedia{position:relative;margin:0 0 48px}
+.edit-profile-page .editcover{height:158px;border-radius:10px;background:color-mix(in srgb,var(--accent) 12%,var(--raised))}
+.edit-profile-page .editcover:after{display:none}
+.edit-profile-page .editcover-placeholder{position:absolute;inset:0;display:grid;place-items:center;color:color-mix(in srgb,var(--accent-ink) 50%,var(--muted))}
+.edit-profile-page .mediaedit{background:transparent;backdrop-filter:none;color:#fff;font-size:11px;font-weight:650}
+.edit-profile-page .coveredit{right:8px;bottom:7px;min-height:44px;padding:4px}
+.edit-profile-page .coveredit>span{display:flex;align-items:center;gap:6px;min-height:34px;padding:6px 10px;background:rgb(12 4 9/.68);border-radius:10px}
+.edit-profile-page .editavatar{left:14px;bottom:-38px;width:76px;height:76px;padding:0;border:3px solid var(--canvas);background:var(--raised);box-shadow:none}
+.edit-profile-page .editavatar .mediaedit{right:-10px;bottom:-8px;width:44px;height:44px;background:transparent}
+.edit-profile-page .editavatar .mediaedit>span{display:grid;place-items:center;width:28px;height:28px;border:2px solid var(--canvas);border-radius:999px;background:var(--accent);color:var(--cta-ink)}
+.edit-profile-page .editstatus,.edit-profile-page .editerror{margin:0 0 12px;font-size:12px;line-height:1.5}
+.edit-profile-page .editstatus{color:var(--muted)}
+.edit-profile-page .editsection{margin-top:0}
+.edit-profile-page .editsection-head{display:flex;align-items:flex-end;justify-content:space-between;padding:0 2px 8px}
+.edit-profile-page .editsection-head h2{font-size:14px;line-height:1.3;font-weight:700;letter-spacing:-.1px}
+.edit-profile-page .editsection-head p{margin-top:2px;color:var(--muted);font-size:10px;line-height:1.4}
+.edit-profile-page .editdetails-card{overflow:hidden;background:var(--raised)}
+.edit-profile-page .editgroup{margin:0;padding:10px 12px}
+.edit-profile-page .editdetails-card>.editgroup+.editgroup,.edit-profile-page .editdetails-card>.editlocation-grid,.edit-profile-page .editdetails-card>.editabout{border-top:1px solid var(--line)}
+.edit-profile-page .editlabel-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.edit-profile-page .editlabel{margin:0 0 4px;color:var(--muted);font-size:10px;font-weight:600;line-height:1.35;letter-spacing:0;text-transform:none}
+.edit-profile-page .editcount{color:var(--muted);font-size:9px;line-height:1.35;font-variant-numeric:tabular-nums}
+.edit-profile-page .editinput{min-height:28px;padding:0;border:0;background:transparent;color:var(--ink);font-size:14px;line-height:20px}
+.edit-profile-page .editinput::placeholder{color:var(--faint)}
+.edit-profile-page .editinput:focus{border:0;box-shadow:none;outline:2px solid var(--accent);outline-offset:3px}
+.edit-profile-page .editgender{padding-bottom:11px}
+.edit-profile-page .editchoices{grid-template-columns:1fr 1fr 1.6fr;gap:2px;padding:3px;border:0;background:color-mix(in srgb,var(--surface) 65%,var(--raised))}
+.edit-profile-page .editchoices>button{min-height:35px;padding:5px 7px;font-size:12px;font-weight:600}
+.edit-profile-page .editchoices>button.on{background:var(--accent);color:var(--cta-ink)}
+.edit-profile-page .editlocation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.edit-profile-page .editlocation-grid>.editgroup+.editgroup{border-left:1px solid var(--line)}
+.edit-profile-page textarea.editinput{height:76px;padding-top:2px;resize:none;color:var(--ink);font:inherit;font-size:14px;line-height:1.45}
+.edit-profile-page .editpost-link{min-height:54px;margin-top:12px;padding:8px 10px;border:0;background:var(--raised);color:var(--ink)}
+.edit-profile-page .editpost-icon{display:grid;place-items:center;flex:none;width:32px;height:32px;background:var(--surface);color:var(--accent-ink)}
+.edit-profile-page .editpost-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;text-align:left}
+.edit-profile-page .editpost-copy strong{font-size:12px;line-height:1.35;font-weight:650}
+.edit-profile-page .editpost-copy small{color:var(--muted);font-size:9px;line-height:1.35}
+.edit-profile-page .editpost-link>svg:last-child{margin-left:auto;transform:rotate(-90deg)}
+.edit-profile-page .edit-save-bar{position:fixed;z-index:18;left:0;right:0;bottom:0;padding:9px 15px calc(9px + var(--safe-bottom));border-top:1px solid var(--line);background:color-mix(in srgb,var(--canvas) 94%,transparent);backdrop-filter:blur(12px)}
+.edit-profile-page .edit-save-bar .editsave{display:block;max-width:690px;height:44px;margin:0 auto;border-radius:10px;background:var(--accent);color:var(--cta-ink);font-size:13px;font-weight:700;box-shadow:none}
+@media(max-width:359px){.edit-profile-page{padding-inline:12px}.edit-profile-page .editlocation-grid{grid-template-columns:1fr}.edit-profile-page .editlocation-grid>.editgroup+.editgroup{border-top:1px solid var(--line);border-left:0}}
+
 /* compact account detail pages */
 .acct{max-width:720px;margin:0 auto;padding:12px 14px 28px}
 .accthero{position:relative;overflow:hidden;border-radius:18px;padding:16px;background:#17171a;color:#fff}

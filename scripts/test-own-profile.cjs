@@ -77,6 +77,31 @@ async function auditCompactProfile(page,label) {
   assert.ok(metrics.backTop>=10&&metrics.backTop<=24,`${label}: Back stays at the top of the cover (${metrics.backTop}px)`);
   assert.ok(metrics.actionTop>=10&&metrics.actionTop<=24,`${label}: Share stays at the top of the cover (${metrics.actionTop}px)`);
 }
+async function auditEditProfile(page,label) {
+  const metrics=await page.locator('.edit-profile-page').evaluate(root=>{
+    const rect=element=>element?.getBoundingClientRect(),cover=rect(root.querySelector('.editcover')),avatar=rect(root.querySelector('.editavatar')),coverAction=rect(root.querySelector('.coveredit')),avatarAction=rect(root.querySelector('.editavatar .mediaedit')),save=rect(root.querySelector('.editsave')),card=root.querySelector('.editdetails-card');
+    return {
+      overflow:document.documentElement.scrollWidth>innerWidth+1,
+      coverHeight:cover?.height||0,avatarSize:avatar?.width||0,
+      coverAction:[coverAction?.width||0,coverAction?.height||0],avatarAction:[avatarAction?.width||0,avatarAction?.height||0],
+      cardBackground:getComputedStyle(card).backgroundColor,cardRadius:getComputedStyle(card).borderRadius,
+      inputBorders:[...root.querySelectorAll('.editinput')].map(input=>getComputedStyle(input).borderTopWidth),
+      savePosition:getComputedStyle(root.querySelector('.edit-save-bar')).position,
+      saveVisible:!!save&&save.top>=0&&save.bottom<=innerHeight+1,saveHeight:save?.height||0,
+      bottomPadding:parseFloat(getComputedStyle(root).paddingBottom)||0
+    };
+  });
+  assert.equal(metrics.overflow,false,`${label}: no horizontal overflow`);
+  assert.ok(metrics.coverHeight>=154&&metrics.coverHeight<=162,`${label}: compact media cover (${metrics.coverHeight}px)`);
+  assert.ok(metrics.avatarSize>=72&&metrics.avatarSize<=80,`${label}: profile photo matches the compact profile avatar (${metrics.avatarSize}px)`);
+  assert.ok(metrics.coverAction.every(size=>size>=44),`${label}: Change cover keeps a 44px touch target`);
+  assert.ok(metrics.avatarAction.every(size=>size>=44),`${label}: Change profile photo keeps a 44px touch target`);
+  assert.notEqual(metrics.cardBackground,'rgba(0, 0, 0, 0)',`${label}: profile fields share one raised card`);
+  assert.equal(metrics.cardRadius,'10px',`${label}: details card follows shared corner geometry`);
+  assert.ok(metrics.inputBorders.every(width=>width==='0px'),`${label}: grouped fields have no individual outlines`);
+  assert.deepEqual([metrics.savePosition,metrics.saveVisible],['fixed',true],`${label}: Save profile stays visible at the bottom`);
+  assert.ok(metrics.saveHeight>=44&&metrics.bottomPadding>=90,`${label}: fixed Save action cannot cover the final row`);
+}
 (async()=>{
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
   const errors=[];
@@ -157,6 +182,17 @@ async function auditCompactProfile(page,label) {
     assert.equal(await page.evaluate(()=>S.v),'editprofile');
     assert.equal(await page.getByLabel('Display name',{exact:true}).inputValue(),member.user.name);
     assert.equal(await page.locator('input[onchange*="posts"]').count(),0,'Profile editing no longer contains post creation');
+    assert.deepEqual(await page.locator('.editdetails-card .editlabel').allInnerTexts(),['Display name','Gender','Location','Country','About'],'The upgraded editor keeps only persisted profile fields');
+    assert.equal(await page.locator('#editname').getAttribute('maxlength'),'32');
+    assert.equal(await page.locator('#editcity').getAttribute('maxlength'),'40');
+    assert.equal(await page.locator('#editcountry').getAttribute('maxlength'),'100');
+    assert.equal(await page.locator('#editabout').getAttribute('maxlength'),'180');
+    for(const width of [320,390]) {
+      await page.setViewportSize({width,height:844});
+      await auditEditProfile(page,`Edit profile ${width}px`);
+      if(width===390)await page.screenshot({path:path.join(shots,'edit-profile-390.png')});
+    }
+    await page.setViewportSize({width:390,height:844});
     const photo=Buffer.from(await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=1200;const context=canvas.getContext('2d');context.fillStyle='#e5007e';context.fillRect(0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png').split(',')[1]}),'base64');
     await page.getByLabel('Display name',{exact:true}).fill('Asha Updated');
     await page.locator('input[onchange*="avatar"]').setInputFiles({name:'avatar.png',mimeType:'image/png',buffer:photo});

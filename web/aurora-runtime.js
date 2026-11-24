@@ -904,19 +904,23 @@ function saveProfile(){
  if(S.mediaDirty?.avatar)profile.avatar=S.avatarData;
  if(S.mediaDirty?.cover)profile.cover=S.coverData||null;
  S.profileSaving=true;S.mediaError="";S.profileProgress="Saving…";S.profileRequestId=++mediaSequence;Native.send("profile.save",{...profile,requestId:S.profileRequestId});r()}
-function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"";return `<div class="editwrap">
- <div class="editmedia"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:artC(me.seed+17)}
-  <label class="mediaedit coveredit">${I('flip',14)} Change cover<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
+function vEditProfile(){const busy=S.profileSaving||S.mediaPreparing||S.postPublishing,disabled=busy?"disabled":"",aboutLength=String(S.editAbout||"").length;return `<main class="editwrap edit-profile-page">
+ <section class="editmedia" aria-label="Profile photos"><div class="editcover">${S.coverData?`<img src="${imageSrc(S.coverData)}" alt="Cover preview">`:`<span class="editcover-placeholder" aria-hidden="true">${I('flip',22)}</span>`}
+  <label class="mediaedit coveredit" aria-label="Change cover photo"><span>${I('flip',14)} Change cover</span><input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'cover')" ${disabled}></label></div>
   <div class="editavatar"><span class="pic">${S.avatarData?`<img src="${imageSrc(S.avatarData)}" alt="Profile preview" data-face="${faceKind({gender:S.editGender||me.gender})}">`:face({gender:S.editGender||me.gender})}</span>
-   <label class="mediaedit" aria-label="Change profile photo">${I('flip',12)}<input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></div>
- ${S.mediaPreparing?'<p role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error" role="alert">${esc(S.mediaError)}</div>`:""}
- <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
- <div class="editgroup"><span class="editlabel" id="editgender">I am</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
- <div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
- <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div>
- <div class="editgroup"><label class="editlabel" for="editabout">About</label><textarea class="editinput" id="editabout" maxlength="180" placeholder="Tell people about yourself" oninput="S.editAbout=this.value" ${disabled}>${esc(S.editAbout)}</textarea></div>
- <button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button>
- <button type="button" class="zpost-editor-link" onclick="ZimiPostCreate.open()" ${disabled}>${I('plus',18)} Create a post ${I('chev',16)}</button></div>`}
+   <label class="mediaedit" aria-label="Change profile photo"><span>${I('flip',13)}</span><input class="hiddenfile" type="file" accept="image/*" onchange="pickMedia(event,'avatar')" ${disabled}></label></div></section>
+ ${S.mediaPreparing?'<p class="editstatus" role="status">Preparing your photo…</p>':""}${S.mediaError?`<div class="ob-error editerror" role="alert">${esc(S.mediaError)}</div>`:""}
+ <section class="editsection" aria-labelledby="editdetails-title"><header class="editsection-head"><div><h2 id="editdetails-title">Profile details</h2><p>Shown on your public profile</p></div></header>
+  <div class="editdetails-card">
+   <div class="editgroup"><label class="editlabel" for="editname">Display name</label><input class="editinput" id="editname" maxlength="32" autocomplete="nickname" placeholder="Your display name" value="${esc(S.editName)}" oninput="S.editName=this.value" ${disabled}></div>
+   <div class="editgroup editgender"><span class="editlabel" id="editgender">Gender</span><div class="editchoices" role="group" aria-labelledby="editgender">${GENDERS.map(([value,label])=>`<button type="button" class="${(S.editGender||me.gender)===value?"on":""}" aria-pressed="${(S.editGender||me.gender)===value}" onclick="S.editGender='${value}';r()" ${disabled}>${label}</button>`).join("")}</div></div>
+   <div class="editlocation-grid"><div class="editgroup"><label class="editlabel" for="editcity">Location</label><input class="editinput" id="editcity" maxlength="40" autocomplete="address-level2" placeholder="City" value="${esc(S.editCity)}" oninput="S.editCity=this.value" ${disabled}></div>
+    <div class="editgroup"><label class="editlabel" for="editcountry">Country</label><input class="editinput" id="editcountry" maxlength="100" autocomplete="country-name" placeholder="Country" value="${esc(S.editCountry)}" oninput="S.editCountry=this.value" ${disabled}></div></div>
+   <div class="editgroup editabout"><div class="editlabel-row"><label class="editlabel" for="editabout">About</label><span class="editcount" id="editabout-count">${aboutLength}/180</span></div><textarea class="editinput" id="editabout" maxlength="180" aria-describedby="editabout-count" placeholder="Tell people about yourself" oninput="S.editAbout=this.value;document.getElementById('editabout-count').textContent=this.value.length+'/180'" ${disabled}>${esc(S.editAbout)}</textarea></div>
+  </div>
+ </section>
+ <button type="button" class="zpost-editor-link editpost-link" aria-label="Create a post" onclick="ZimiPostCreate.open()" ${disabled}><span class="editpost-icon">${I('plus',18)}</span><span class="editpost-copy"><strong>Create a post</strong><small>Share a photo on your profile</small></span>${I('chev',16)}</button>
+ <div class="edit-save-bar"><button class="editsave" onclick="saveProfile()" ${disabled}>${S.profileSaving?esc(S.profileProgress||"Saving…"):"Save profile"}</button></div></main>`}
 
 function vProfile(){
  const host=isHost();
