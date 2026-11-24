@@ -2637,7 +2637,7 @@ button.gpill[onclick]{cursor:pointer}
 .zh-sheet-heading{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:22px}.zh-sheet-heading h2{font-size:18px;letter-spacing:-.4px}.zh-sheet-heading p{font-size:12px;color:#caa6bd;margin-top:6px}.zh-sheet-heading>button{font-size:26px;width:32px;height:32px;background:#492d40;border-radius:50%;flex:none;display:grid;place-items:center;line-height:1}
 .zh-gifts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px;margin:0 0 22px}.zh-gifts>button{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;border-radius:12px;padding:10px 2px;background:#402136}.zh-gifts>button>img{width:45px;height:45px;object-fit:contain}.zh-gifts>button>span{font-size:32px;height:45px}.zh-gifts b{font-size:10px;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.zh-gifts small{display:flex;align-items:center;gap:2px;font-size:10px;color:#ffc7e1}
 .zh-empty-small{font-size:13px;color:#c7a7bd;text-align:center;padding:30px 12px;line-height:1.8}.zh-full{width:100%}
-.zh-search-header{display:flex;align-items:center;gap:10px;padding:15px}.zh-search-header>div{display:flex;align-items:center;gap:9px;background:#392131;border:1px solid #593148;border-radius:25px;padding:11px 14px;flex:1}.zh-search-header input{font-size:12px;min-width:0}.zh-search-header input::placeholder{color:#bb8ca8}.zh-search{padding-top:15px}.zh-search-status{font-size:12px;color:#d3a4c0;margin:12px 0 19px}
+.zh-search-header{display:flex;align-items:center;gap:9px;padding:12px 20px 8px}.zh-search-header>.zb-back{flex:none}.zh-search-header>div{display:flex;align-items:center;gap:8px;min-width:0;min-height:44px;padding:0 12px;flex:1;border:0;background:var(--raised);color:var(--muted)}.zh-search-header input{flex:1;min-width:0;font-size:calc(12px * var(--theme-font-scale,1));color:var(--ink)}.zh-search-header input::placeholder{color:var(--muted)}.zh-search{width:100%;max-width:720px;margin:0 auto;padding:3px 20px 28px}.zh-search-status{font-size:12px;color:var(--muted);margin:12px 0 19px}
 .zh-coins{padding:14px 20px 32px;max-width:720px;margin:0 auto}.zh-wallet-card{border-radius:20px;background:radial-gradient(ellipse at 90% 0,#6a2350,transparent 65%),#371d30;padding:25px;margin-bottom:30px;border:1px solid #54243f}.zh-wallet-card>span{font-size:12px;color:#e3bcd3}.zh-wallet-card h1{display:flex;gap:9px;align-items:center;font-size:39px;letter-spacing:-1px;margin:7px 0 12px}.zh-wallet-card p{font-size:12px;color:#dbb3cc}.zh-coins h2{font-size:23px;letter-spacing:-.7px}.zh-muted{font-size:12px;color:#c8a5bd;margin-top:7px}
 .zh-packs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:22px 0}.zh-packs>button{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 6px 14px;background:#372030;border:1px solid #4f2f43;border-radius:16px}.zh-packs>button.selected{border-color:#f42891;background:#51223e;box-shadow:0 0 0 1px #f4289130}.zh-packs svg{color:#ffbddc}.zh-packs strong{font-size:21px;letter-spacing:-.5px}.zh-packs span{font-size:9px;min-height:22px;color:#e7bed5;text-align:center}.zh-packs b{font-size:13px}
 .zh-payment-status{margin-top:20px;background:#361d2e;border-radius:14px;padding:16px}.zh-payment-status p{font-size:12px;line-height:1.7;margin-bottom:12px}.zh-coins-note{font-size:10px;color:#b38ea6;text-align:center;margin:16px 5px;line-height:1.7}
@@ -4564,27 +4564,27 @@ html:root .zu-comments{border-radius:10px 10px 0 0!important}
 /* Reference composition with semantic palette tokens, never fixed brand colors. */
 .zh-home.zh-dashboard{display:block;width:100%;max-width:840px;margin:0 auto;padding:12px 18px 36px;color:var(--ink)}
 .zh-home-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-/* Search retains the existing host directory rows. */
-.zh-user-search{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;background:var(--raised);color:var(--muted);margin-bottom:12px}
-.zh-user-search input{flex:1;min-width:0;min-height:46px;padding:0;border:0;outline:0;background:transparent;color:var(--ink);font-size:14px}
-.zh-user-search:focus-within{outline:2px solid var(--accent-ink);outline-offset:2px}
-.zh-user-row{display:flex;align-items:center;gap:8px;min-height:84px;padding:12px 0}
-.zh-user-person{display:flex;align-items:center;flex:1;min-width:0;gap:12px;text-align:left;background:transparent;color:var(--ink)}
-.zh-user-avatar{position:relative;flex:none;display:block;width:48px;height:48px;background:var(--raised)}
-.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:48px;height:48px;object-fit:cover;overflow:hidden}
-.zh-user-avatar .zh-fallback>span{font-size:22px;color:var(--muted)}
-.zh-user-avatar>i{position:absolute;bottom:0;right:0;width:9px;height:9px;background:var(--muted);border:2px solid var(--canvas)}
+/* One compact directory for both public User and Host profiles. */
+.zh-profile-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;margin:0 0 5px}
+.zh-profile-heading h1{margin:0;color:var(--ink);font-size:calc(20px * var(--theme-font-scale,1));font-weight:700;letter-spacing:-.35px}
+.zh-profile-filters{display:flex;align-items:center;gap:2px;padding:2px;background:var(--raised)}
+.zh-profile-filters>button{min-width:46px;min-height:30px;padding:0 10px;border:0;background:transparent;color:var(--muted);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600}
+.zh-profile-filters>button[aria-pressed="true"]{background:var(--surface);color:var(--ink)}
+.zh-profile-filters>button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.zh-user-list{display:flex;flex-direction:column}
+.zh-user-row{display:flex;align-items:center;min-height:52px;padding:4px 0}
+.zh-user-person{display:flex;align-items:center;flex:1;min-width:0;min-height:44px;gap:10px;padding:2px;text-align:left;background:transparent;color:var(--ink)}
+.zh-user-avatar{position:relative;flex:none;display:grid;place-items:center;width:36px;height:36px;overflow:visible;background:var(--raised);color:var(--cta-ink);font-size:13px;font-weight:700}
+.zh-user-avatar>img{width:100%;height:100%;object-fit:cover;overflow:hidden}
+.zh-user-avatar.is-tone-0{background:#6f183f}.zh-user-avatar.is-tone-1{background:#183d5f}.zh-user-avatar.is-tone-2{background:#505018}
+.zh-user-avatar.is-tone-3{background:#46245f}.zh-user-avatar.is-tone-4{background:#174b4c}.zh-user-avatar.is-tone-5{background:#65401b}
+.zh-user-avatar>i{position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;background:var(--muted);border:2px solid var(--canvas)}
 .zh-user-avatar>i.is-online{background:var(--online)}
-.zh-user-identity{display:flex;flex-direction:column;gap:4px;min-width:0}
-.zh-user-identity strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.zh-user-identity small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.zh-user-actions{display:flex;align-items:center;gap:4px;flex:none}
-.zh-user-actions>button{display:grid;place-items:center;width:44px;height:44px;background:var(--raised);color:var(--ink)}
-.zh-user-actions>.zh-user-video{background:var(--accent);color:var(--cta-ink)}
-.zh-user-actions>button:focus-visible,.zh-user-person:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
-.zh-host-users .zh-error{color:var(--muted);background:var(--surface)}
-.zh-host-users .zh-error button{color:var(--accent-ink)}
-@media(max-width:359px){.zh-user-person{gap:8px}.zh-user-actions{gap:2px}.zh-user-avatar,.zh-user-avatar>.zh-photo,.zh-user-avatar>.zh-fallback{width:42px;height:42px}}
+.zh-user-identity{display:flex;flex-direction:column;gap:2px;min-width:0}
+.zh-user-identity strong{font-size:calc(13px * var(--theme-font-scale,1));font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zh-user-identity small{font-size:calc(10px * var(--theme-font-scale,1));color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zh-user-person:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+@media(max-width:359px){.zh-user-person{gap:9px}.zh-profile-filters>button{min-width:42px;padding-inline:8px}}
 /* Home header, after the reference: Following, Explore, For You and New in place of the app
    name, the selected feed larger and bolder; then Search, leaderboard and Notifications. */
 .zh-header.zh-home-header{gap:6px;padding-left:14px;padding-right:6px}
@@ -5412,7 +5412,8 @@ html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::afte
 .zlb-note{margin:0 0 6px;color:var(--muted);font-size:calc(12px * var(--theme-font-scale,1));line-height:1.5}
 .zlb-list{margin:0;padding:0;list-style:none}
 .zlb-row{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:8px 4px;border:0;background:transparent;color:var(--ink);text-align:left}
-.zlb-row:active{background:var(--raised)}
+button.zlb-row:active{background:var(--raised)}
+.zlb-row.is-synthetic{cursor:default}
 .zlb-rank{flex:0 0 26px;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;text-align:center;font-variant-numeric:tabular-nums}
 .zlb-row.is-top .zlb-rank{color:var(--gold);font-size:calc(18px * var(--theme-font-scale,1));font-weight:700}
 .zlb-avatar{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;overflow:hidden;background:var(--accent);color:var(--cta-ink);font-size:17px;font-weight:600}
@@ -9202,7 +9203,7 @@ function go(v,id){
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}
  if(v==='kyc'&&window.ZimiAgency&&!isApprovedHost()&&!window.ZimiAgency.linked())return window.ZimiAgency.open();
  if(v==='explore')v='home';
- if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact members.');return}
+ if(window.ZimiHostAccess?.financialHost()&&['precall','dial'].includes(v)){if(!isApprovedHost())window.ZimiHostAccess.guard();else appNotice('Use your host calling tools to contact users.');return}
  if(window.ZimiHostAccess?.financialHost()&&['coins','refer'].includes(v)){appNotice('Your host account earns diamonds. Open your wallet to view them.');v='wallet'}
  if(v==='payout-history'&&window.ZimiHostAccess&&!window.ZimiHostAccess.financialHost()){appNotice('Withdrawals are available to host accounts.');return}
  if(!window.ZIMI_LIVE_STREAMING_ENABLED&&['live','broadcast'].includes(v)){appNotice('Live streaming is temporarily unavailable. Connect with a creator in a 1:1 call.');return}
@@ -10159,8 +10160,8 @@ function vRing(){const c=S.caller;
   <span class="ringeye"><i></i>Incoming ${c.voice?'voice':'video'} call</span>
   <div class="ringorb pulse">${hcIdentityAvatar(c,112)}</div>
   <h2>${esc(c.n)}</h2>${about?`<p>${about}</p>`:''}
-  <span class="ringearn">${rate?`Member pays ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
-  ${fee?`<span class="ringfee">Member entry fee: ${n(fee)} coins. Your eligible host share is credited as diamonds after ${hcHold(hold)}.</span>`:''}
+  <span class="ringearn">${rate?`User pays ${n(rate)} coins/min`:'Free call &middot; gifts are optional'}</span>
+  ${fee?`<span class="ringfee">User entry fee: ${n(fee)} coins. Your eligible host share is credited as diamonds after ${hcHold(hold)}.</span>`:''}
   <div class="ringact two">
    <span class="rbtn"><button class="voiceend" aria-label="Decline" onclick="declineRing()">${I("ph",25)}</button><span>Decline</span></span>
    <span class="rbtn"><button class="accept" aria-label="Accept" aria-busy="${!!S.acceptingCall}" ${S.acceptingCall?'disabled':''} onclick="acceptRing()">${I(c.voice?'ph':'vid',25)}</button><span>${S.acceptingCall?'Connecting…':'Accept'}</span></span></div>
@@ -11336,7 +11337,7 @@ Native.on('data.loading',d=>{
   // A background refresh keeps an already shown list in place; only its new data replaces it.
   if(d.background&&d.resource!=='home'&&ContentLoading[d.resource].loaded)return;
   if(d.resource==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
-  if(d.resource==='search'&&d.q!==(S.sq||''))return;
+  if(d.resource==='search'&&d.q!==(S.sq||'').trim())return;
   Object.assign(ContentLoading[d.resource],{loading:d.loading,error:d.error||'',page:d.page||1});
   if(d.resource==='home'){ContentLoading.home.background=!!d.background&&Home.loaded&&Home.queryKey===homeFeedKey();Home.loading=d.loading;Home.loadingMore=d.loading&&d.page>1;if(!d.loading){Home.error=d.error||''}}
   if(d.resource==='search'){Home.searchLoading=d.loading;Home.searchMore=d.loading&&d.page>1;Home.searchError=d.error||''}
@@ -11345,12 +11346,12 @@ Native.on('data.loading',d=>{
 /* Results also settle placeholders when received from an older native shell. */
 for(const [event,key] of Object.entries({'data.home':'home','data.search':'search','data.catalog':'catalog','data.notifications':'notifications','data.chats':'chats','data.missed':'missed','data.calls':'calls','data.transactions':'transactions','data.leaderboard':'leaderboard','data.referral':'referral','data.posts':'posts','data.thread':'thread','wallet.balance':'wallet','data.profileSettings':'profileSettings','data.blocked':'blocked'}))Native.on(event,d=>{
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
-  if(key==='search'&&d.q!==(S.sq||''))return;
+  if(key==='search'&&d.q!==(S.sq||'').trim())return;
   if(key==='thread'&&d.with!==S.h)return;
   Object.assign(ContentLoading[key],{loading:false,error:'',loaded:true});
   if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
 });
-Native.on('operation.error',d=>{const key={'home.reload':'home','hosts.search':'search','catalog.load':'catalog','notifications.load':'notifications','chat.open':'thread'}[d.action];if(key){Object.assign(ContentLoading[key],{loading:false,error:d.message||'Unable to load. Please try again.'});contentRender(key)}});
+Native.on('operation.error',d=>{const key={'home.reload':'home','hosts.search':'search','profiles.search':'search','catalog.load':'catalog','notifications.load':'notifications','chat.open':'thread'}[d.action];if(key){Object.assign(ContentLoading[key],{loading:false,error:d.message||'Unable to load. Please try again.'});contentRender(key)}});
 function contentReset(){for(const key of resourceNames)Object.assign(ContentLoading[key],{loading:!DEMO,error:'',page:1,loaded:DEMO,background:false})}
 Native.on('session.none',contentReset);Native.on('session.expired',contentReset);
 
@@ -11710,7 +11711,7 @@ window.ZimiHomeRender = (() => {
    Preview people, activity and balances exist only in the DEMO build. */
 const Home = {
   loaded: DEMO, loading: false, loadingMore: false, error: '', filter: 'popular', dashboardFilter: 'popular', region: '', page: 1, firstPageIds:[], queryKey:'popular||',
-  searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'',
+  searchLoading:false, searchMore:false, searchError:'', searchRows:[], searchPage:1, searchTotal:0, searchQuery:'', searchResultFilter:'all', searchFilter:'all',
   hosts: [], stage: [], featured: null, total: 0, pageLimit: 20, hasMore: false, paginationStopped: false, categories: ['Music','Talk','Gaming','Dance','Comedy','Fitness','Astrology'],
   broadcasterCount: 0, availableCount: 0, speedMatchEnabled: true, bonus: null,
   notifications: [], unreadCount: 0, gifts: [], packs: [], paymentsAvailable: false,
@@ -11842,8 +11843,8 @@ function homeEmpty(){return `<div class="zh-empty">${hi('broadcast',34)}<h3>A li
 function homeScreen(){return homeDashboard()}
 
 function homeOpen(id){if(!window.ZIMI_LIVE_STREAMING_ENABLED){const h=g(id);if(!h)return;return h.available&&!isHost()?homeCall(id):go('host',id)}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');const h=g(id);if(!h)return;if(h.stream){Home.streamBusy=true;Home.stream=h.stream;Home.hosting=false;Home.messages=[];Home.mediaStatus='Joining live session…';S.h=id;go('live');if(DEMO){Home.streamBusy=false;Home.mediaStatus='Design preview';r()}else Native.send('stream.join',{streamId:h.stream.id})}else if(h.available)homeCall(id);else go('host',id)}
-function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHostWallet())return appNotice('Calls can be started from a member account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
-function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHostWallet())return appNotice('Switch to a member account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
+function homeCall(id,voice=false){const h=g(id);if(!h)return;if(!h.available&&!DEMO)return appNotice('This creator is not available for a call right now.');if(isHostWallet())return appNotice('Calls can be started from a user account.');if(typeof CallSetup!=='undefined'){CallSetup.peerId=id;CallSetup.mode=voice?'voice':'video';CallSetup.intent={peerId:id,mode:CallSetup.mode}}go('precall',id)}
+function homeMatchNow(){if(Home.matching||!Home.availableCount)return;if(isHostWallet())return appNotice('Switch to a user account to match with a creator.');Home.matching=true;r();if(DEMO){const h=homeList().find(h=>h.available);Home.matching=false;if(h)homeCall(h.id);return}Native.send('call.match',Home.categories.includes(Home.filter)?{category:Home.filter}:{})}
 function homeGoLive(){if(!window.ZIMI_LIVE_STREAMING_ENABLED)return appNotice('Live streaming is temporarily unavailable. Go online for 1:1 calls from your creator settings.');if(!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.pendingClose)return appNotice(Home.closeError||'Finishing the previous live session…');go('broadcast')}
 function homeClaim(){if(isHostWallet()){appNotice('Host call rewards are credited as diamonds. View your progress in Withdraw.');return}if(!isApprovedHost()){window.ZimiHostAccess.guard();return}const b=Home.bonus;if(!b||b.claimed||Home.claiming)return;if(b.progress<b.target){appNotice(`${b.description||b.title} · ${n(b.progress)} / ${n(b.target)} completed`);return}Home.claiming=true;r();if(DEMO){b.claimed=true;Home.claiming=false;S.bal+=b.rewardCoins;r();return}Native.send('awards.claim',{task:b.id})}
 function homeNotifications(){return window.ZimiNotifications.open()}
@@ -11888,7 +11889,7 @@ function homeStartCall(voice=false){
   if(S.v!=='precall'||Home.preparingCall)return;
   if(S.bgCall)return appNotice('Finish your current call first.');
   if(S.automaticCall?.hostId===S.h)return window.ZimiCallInvitations.review();
-  if(isHostWallet()){appNotice('Calls can be started from a member account.');return}
+  if(isHostWallet()){appNotice('Calls can be started from a user account.');return}
   if(homeCallUnavailable(S.h)){S.pcerr='This creator is not available for a call right now.';r();return}
   const setup=Home.dashboardSetup,h=g(S.h);
   if(window.ZIMI_LIVE_STREAMING_ENABLED&&setup?.hostId===S.h){
@@ -11923,7 +11924,7 @@ async function homePrepareCall(view,id){
   if(view==='dialback'&&!isApprovedHost()){window.ZimiHostAccess.guard();return}
   const target=view==='dialback'?S.caller?.id:(id||S.h);
   if(!target||(view==='dial'&&homeCallUnavailable(target))){S.pcerr='This creator is not available for a call right now.';r();return}
-  if(view==='dial'&&isHostWallet()){appNotice('Calls can be started from a member account.');return}
+  if(view==='dial'&&isHostWallet()){appNotice('Calls can be started from a user account.');return}
   window.ZimiRingback?.prime();
   const voice=!!S.nextCallVoice;
   const pending={view,target,voice,screen:S.v,screenPeer:S.h,caller:S.caller?.id,timer:null,cancel:null};
@@ -11957,18 +11958,18 @@ function homeCallView(host){if(window.zrCall)return zrCall(host);const p=host?S.
 function homeCallSetup(){return hcSetupView()}
 function homeSetPresence(online){if(online&&!isApprovedHost()){window.ZimiHostAccess.guard();return}if(Home.presenceBusy)return;Home.presenceBusy=true;Native.send('presence.set',{online,visible:true});if(DEMO){Native.receive({type:'presence.saved',data:{online,visible:true}});return}r()}
 function homeWaiting(){return hcWaitingView()}
-function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;if(host)return hcSummaryView(s);return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the member ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${s?.entryFee?`<span>Entry fee <b>${n(s.entryFee)} coins</b></span>`:''}${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
+function homeCallSummary(){const s=S.sum,host=s?.k==='host',recharge=!!s?.outOfCoins&&!host;if(host)return hcSummaryView(s);return `<section class="zh-broadcast zh-summary"><div class="zh-ready-illustration">${hi('ph',42)}</div><h1>${recharge?'Your coins ran out.':'A moment well shared.'}</h1><p>${recharge?'The call ended when your balance reached zero. Recharge to call again.':s?.outOfCoins?'The call ended when the user ran out of coins.':'Your call has ended.'}</p><div class="zh-precall-details"><span>Duration <b>${clock(s?.sec||0)}</b></span><span>${host?'Coins earned':'Call charge'} <b>${s?.rate?`${n(s.coins||0)} coins`:'Free'}</b></span>${s?.entryFee?`<span>Entry fee <b>${n(s.entryFee)} coins</b></span>`:''}${!host&&s?.giftV?`<span>Gifts sent (${n(s.gifts||0)}) <b>${n(s.giftV)} coins</b></span>`:''}</div>${recharge?`<button class="zh-primary zh-full" onclick="S.callId=null;go('coins')">Buy coins</button>`:''}<button class="${recharge?'zh-soft':'zh-primary'} zh-full" onclick="S.callId=null;go('home');homeLoad()">Back to Home</button><button class="zh-soft zh-full" onclick="go('calls')">Call history</button>${window.ZimiAds?.card('call_summary')||''}</section>`}
 let homeSearchTimer;
-function homeSearchInput(value){if(isApprovedHost())return hostDirectorySearch(value);S.sq=value;clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
+function homeSearchInput(value){S.sq=String(value).slice(0,100);clearTimeout(homeSearchTimer);if(DEMO)return homeSearchRequest();Home.searchLoading=true;Home.searchMore=false;Home.searchError='';contentStart('search',{page:1});homePaintSearch();homeSearchTimer=setTimeout(()=>homeSearchRequest(),280)}
 
-function homeSearchRequest(more=false){if(isApprovedHost()){S.sq=hostDirectoryState().query;return hostDirectoryLoad(more)}if(more&&Home.searchLoading)return;const q=S.sq||'',page=more?(Home.searchPage||1)+1:1;Home.searchLoading=!DEMO;Home.searchMore=more;Home.searchError='';if(DEMO){const rows=Home.hosts.filter(h=>(h.n+' '+h.cat).toLowerCase().includes(q.toLowerCase()));Home.searchRows=rows;Home.searchTotal=rows.length;Home.searchPage=1;Home.searchQuery=q;Home.searchLoading=false;Home.searchMore=false;homePaintSearch();return}contentStart('search',{page});homePaintSearch();Native.send('hosts.search',{q,page})}
+function homeSearchRequest(more=false){if(more&&Home.searchLoading)return;const q=(S.sq||'').trim(),filter=Home.searchFilter,page=more?(Home.searchPage||1)+1:1;Home.searchLoading=!DEMO;Home.searchMore=more;Home.searchError='';if(DEMO){const rows=Home.hosts.filter(h=>(h.n+' '+h.cat).toLowerCase().includes(q.toLowerCase())&&(filter!=='online'||h.on));Home.searchRows=rows;Home.searchTotal=rows.length;Home.searchPage=1;Home.searchQuery=q;Home.searchResultFilter=filter;Home.searchLoading=false;Home.searchMore=false;homePaintSearch();return}contentStart('search',{page});homePaintSearch();Native.send('profiles.search',{q,page,filter})}
 
-function homeSearchResults(){if(isApprovedHost())return hostDirectoryResults();const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),list=Home.searchQuery===(S.sq||'')?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('cards','Finding creators',4);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;return `${list.length?`<div class="zh-grid">${list.map(homeTile).join('')}</div>`:!pending?'<div class="zh-empty"><h3>No creators found</h3><p>Try another name or category.</p></div>':''}${more?contentSkeleton('cards','Loading more search results',2):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more</button>':''}`}
+function homeSearchResults(){const pending=!DEMO&&(Home.searchLoading||contentPending('search')),more=pending&&Home.searchMore,error=!pending&&(Home.searchError||(!DEMO&&ContentLoading.search.error)),q=(S.sq||'').trim(),list=Home.searchQuery===q&&Home.searchResultFilter===Home.searchFilter?Home.searchRows||[]:[];if(pending&&!more)return contentSkeleton('rows','Finding profiles',6);if(error)return `<div class="zh-error" role="alert">${esc(error)}<button onclick="homeSearchRequest()">Retry</button></div>`;const empty=Home.searchFilter==='online'?'<div class="zh-empty"><h3>No users online</h3><p>Try All or search another name or user ID.</p></div>':q?'<div class="zh-empty"><h3>No users found</h3><p>Try another name or user ID.</p></div>':'<div class="zh-empty"><h3>No users to show yet</h3><p>New profiles will appear here.</p></div>';return `${list.length?profileSearchList(list):!pending?empty:''}${more?contentSkeleton('rows','Loading more profiles',3):''}${!pending&&Home.searchTotal>list.length?'<button class="zh-load-more" onclick="homeSearchRequest(true)">Load more users</button>':''}`}
 
 function homePaintSearch(){const el=document.getElementById('home-search-results');if(el)el.innerHTML=homeSearchResults()}
 ZimiPullRefresh.register(['home','all-creators'],{refresh:()=>homeLoad(),busy:()=>Home.loading||contentPending('home')});
-ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>isApprovedHost()?hostDirectoryState().loading:Home.searchLoading||contentPending('search')});
-function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-section-title"><h2>${isApprovedHost()?(HostBrowse.tab==='active'?'Find active hosts':'Find members'):'Find your next connection'}</h2></div><div id="home-search-results">${homeSearchResults()}</div></section>`}
+ZimiPullRefresh.register('search',{refresh:()=>homeSearchRequest(),busy:()=>Home.searchLoading||contentPending('search')});
+function homeSearchView(){return `<section class="zh-home zh-search"><div class="zh-profile-heading"><h1>Users</h1>${profileSearchFilters()}</div><div id="home-search-results" aria-live="polite">${homeSearchResults()}</div></section>`}
 function homeTheme(){document.documentElement.classList.toggle('zc-app',S.v==='chats');document.documentElement.classList.toggle('zw-app',S.v==='coins');const active=!['welcome','login'].includes(S.v);document.documentElement.classList.toggle('zh-app',active);if(active&&!window.ZimiThemes){document.documentElement.dataset.theme='dark';document.documentElement.dataset.canvas='#210f1d'}document.getElementById('nav')?.classList.toggle('zh-nav',['home','chats','profile','settings'].includes(S.v));window.ZimiProfile?.theme()}
 window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeTheme,views:{search:homeSearchView,notifications:homeNotificationsView,broadcast:homeBroadcast,live:homeLive},header:()=>{
   if(S.v==='home')return homeHeader();
@@ -11979,7 +11980,7 @@ window.ZimiHome={render:()=>homeScreen(),coins:homeCoins,nav:homeNav,theme:homeT
   if(S.v==='refer')return window.ZimiReferral.header();
   if(S.v==='agency')return window.ZimiAgency.header();
   if(['support','support-new','support-chat'].includes(S.v))return window.ZimiSupport.header();
-  if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',20)}<input id="sq" value="${esc(isApprovedHost()?hostDirectoryState().query:S.sq||'')}" maxlength="${isApprovedHost()&&HostBrowse.tab==='active'?80:100}" placeholder="${isApprovedHost()?hostDirectorySearchLabel():'Search creators or categories'}" aria-label="${isApprovedHost()?(HostBrowse.tab==='active'?'Search active hosts':'Search users'):'Search creators'}" oninput="homeSearchInput(this.value)"></div></header>`;
+  if(S.v==='search')return `<header class="zh-search-header">${backButton("go('home')",{label:"Back to home"})}<div>${hi('srch',18)}<input id="sq" value="${esc(S.sq||'')}" maxlength="100" placeholder="Search by name or ID" aria-label="Search users and hosts by name or ID" oninput="homeSearchInput(this.value)"></div></header>`;
   if(S.v==='live')return '';
   if(S.v==='coins')return `<header class="zh-subheader zw-page-header">${backButton("go('home')",{label:"Back to home"})}<h1>Add coins</h1></header>`;
   const title={notifications:'Notifications',broadcast:'Go Live'}[S.v];
@@ -12003,7 +12004,7 @@ Native.on('data.home',d=>{
 });
 Native.on('data.notifications',d=>window.ZimiNotifications.receive(d));
 Native.on('data.hosts',()=>{homeValidatePreparingPeer();if(S.v==='precall')r()});
-Native.on('data.search',d=>{if(d.q!==(S.sq||''))return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeRemember);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
+Native.on('data.search',d=>{if(d.q!==(S.sq||'').trim()||d.filter!==Home.searchFilter)return;Home.searchLoading=false;Home.searchMore=false;Home.searchError='';Home.searchQuery=d.q;Home.searchResultFilter=d.filter;Home.searchPage=d.page;Home.searchTotal=d.total;const rows=(d.hosts||[]).map(homeCreator);Home.searchRows=d.page>1?[...(Home.searchRows||[]),...rows.filter(h=>!Home.searchRows?.some(x=>x.id===h.id))]:rows;homePaintSearch()});
 Native.on('data.catalog',d=>{Home.gifts=d.gifts||[];Home.packs=d.packs||[];Home.paymentsAvailable=!!d.paymentsAvailable;if(S.v==='coins'||S.v==='thread'||Home.giftTo)r()});
 Native.on('call.matched',d=>{Home.matching=false;const h=homeRemember(d.host);homeCall(h.id)});
 Native.on('awards.claimed',d=>{Home.claiming=false;if(Home.bonus?.id===d.task)Home.bonus.claimed=true;appNotice('Reward added to your wallet.');r()});
@@ -12038,8 +12039,8 @@ window.addEventListener('zimi:host-access',event=>{
   if(['home','all-creators','chats','profile','settings','notifications'].includes(S.v))r();
 });
 Native.on('session.expired',()=>homeReset());Native.on('session.none',()=>homeReset());
-function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,pageLimit:20,hasMore:false,paginationStopped:false,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
-Native.on('operation.error',d=>{if(d.action==='hosts.search'){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
+function homeReset(){window.ZimiNotifications?.reset();homeCancelPrepare('',false);S.allowPreparedCall=false;S.nextCallVoice=false;S.pcerr='';if(window.ZimiProfile)zpReset();window.ZimiNavigation?.reset();window.ZimiHostAccess?.reset();if(window.zcReset)zcReset();contentReset();window.ZimiCoins?.reset();clearTimeout(homeSearchTimer);Object.assign(Home,{hosts:[],stage:[],featured:null,total:0,pageLimit:20,hasMore:false,paginationStopped:false,broadcasterCount:0,availableCount:0,bonus:null,notifications:[],unreadCount:0,checkout:null,checkoutAttempt:null,checkoutBusy:false,stream:null,streamBusy:false,dashboardCall:null,dashboardSetup:null,pendingClose:null,closeError:'',hosting:false,messages:[],giftTo:null,giftAttempt:null,giftBusy:false,gifts:[],packs:[],paymentsAvailable:false,packId:'',notifyLoading:false,claiming:false,loaded:false,loading:false,loadingMore:false,error:'',speedMatchEnabled:true,matching:false,searchRows:[],searchQuery:'',searchResultFilter:'all',searchFilter:'all',searchPage:1,searchMore:false,searchTotal:0,searchError:'',searchLoading:false,preparingCall:false,preparingVoice:false,presenceBusy:false,mediaStatus:'',draftTitle:'',filter:'popular',dashboardFilter:'popular',region:'',page:1,firstPageIds:[],queryKey:'popular||'});window.ZimiMedia?.stop()}
+Native.on('operation.error',d=>{if(['hosts.search','profiles.search'].includes(d.action)){Home.searchLoading=false;Home.searchMore=false;Home.searchError=d.message;homePaintSearch()}});
 document.addEventListener('aurora:navigate',()=>{homeCancelPrepare();if(!DEMO&&['home','all-creators'].includes(S.v)&&Home.queryKey!==homeFeedKey())homeLoad();if(S.v==='search'){Home.searchRows=[];Home.searchTotal=0;homeSearchRequest()}if(S.v==='coins'&&!DEMO)Native.send('catalog.load')});
 window.addEventListener('pagehide',()=>homeCancelPrepare('',false));
 
@@ -12203,118 +12204,29 @@ const HomeInfinite=(()=>{
   return {reset};
 })();
 
-/* Each approved-host directory keeps its own query and pages. Only the selected
-   tab paints, so an in-flight read cannot replace the other tab's input/caret. */
-function hostDirectoryStateNew(){return {owner:'',rows:[],query:'',resultQuery:'',page:0,requestedPage:1,total:0,loaded:false,loadedAt:0,loading:false,more:false,error:'',timer:null,remembered:new Set()}}
-const HostUsers=hostDirectoryStateNew(),HostActiveHosts=hostDirectoryStateNew(),HostBrowse={tab:'members'};
-const HOST_DIRECTORY_TABS=[['members','Members'],['active','Active Hosts']];
-function hostDirectoryState(tab=HostBrowse.tab){return tab==='active'?HostActiveHosts:HostUsers}
-function hostDirectoryNeedsLoad(tab=HostBrowse.tab){const state=hostDirectoryState(tab);return !state.loading&&(!state.loaded||tab==='active'&&Date.now()-state.loadedAt>30000)}
-function hostDirectorySearchLabel(){return HostBrowse.tab==='active'?'Search active hosts':'Search users by name or ID'}
-function hostUsersHeader(){return `<header class="zh-header zh-home-header zh-users-header"><div class="zh-host-tabs" role="tablist" aria-label="Host directory" onkeydown="hostDirectoryTabKey(event)">${HOST_DIRECTORY_TABS.map(([tab,label])=>`<button type="button" id="host-directory-tab-${tab}" role="tab" aria-selected="${HostBrowse.tab===tab}" aria-controls="host-directory-panel" tabindex="${HostBrowse.tab===tab?'0':'-1'}" onclick="hostDirectoryTab('${tab}')">${label}</button>`).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="document.getElementById('host-user-search')?.focus()" aria-label="${HostBrowse.tab==='active'?'Search active hosts':'Search users'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
-function hostDirectoryTab(tab){
-  if(!isApprovedHost()||S.v!=='search'||!HOST_DIRECTORY_TABS.some(([key])=>key===tab)||HostBrowse.tab===tab)return;
-  HostBrowse.tab=tab;S.sq=hostDirectoryState().query;r();document.getElementById('sq')?.focus();
-  if(hostDirectoryNeedsLoad())hostDirectoryLoad();
+/* Search is one server-paginated directory for both public User and Host profiles.
+   Availability is a filter, never a role category. */
+const PROFILE_SEARCH_FILTERS=[['all','All'],['online','Online']];
+function profileSearchFilters(){return `<div class="zh-profile-filters" role="group" aria-label="Availability">${PROFILE_SEARCH_FILTERS.map(([key,label])=>`<button type="button" data-profile-filter="${key}" aria-pressed="${Home.searchFilter===key}" onclick="profileSearchSetFilter('${key}')">${label}</button>`).join('')}</div>`}
+function profileSearchSetFilter(value){
+  if(!PROFILE_SEARCH_FILTERS.some(([key])=>key===value)||Home.searchFilter===value)return;
+  Home.searchFilter=value;Home.searchRows=[];Home.searchTotal=0;Home.searchPage=1;Home.searchQuery='';
+  document.querySelectorAll('[data-profile-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.profileFilter===value)));
+  homeSearchRequest();
 }
-function hostDirectoryTabKey(event){
-  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
-  event.preventDefault();
-  const tabs=HOST_DIRECTORY_TABS.map(([key])=>key),at=tabs.indexOf(HostBrowse.tab);
-  const next=event.key==='Home'?tabs[0]:event.key==='End'?tabs.at(-1):tabs[(at+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];
-  hostDirectoryTab(next);document.getElementById('host-directory-tab-'+next)?.focus();
+function profileSearchOpen(id){
+  const profile=Home.searchRows.find(row=>row.id===id);if(!profile)return;
+  homeRemember(profile);go(profile.serverRole==='host'?'host':'user',domId(id));
 }
-function hostDirectoryPaint(tab){
-  if(!isApprovedHost()||HostBrowse.tab!==tab||S.v!=='search')return;
-  const results=document.getElementById('home-search-results');
-  if(results){results.innerHTML=hostDirectoryResults(tab);results.setAttribute('aria-busy',String(hostDirectoryState().loading))}
-  contentImagesReady();window.ZimiLaunch?.check();
+function profileSearchAvatar(profile){
+  const src=imageSrc(profile.avatarUrl),initial=(first(profile.n||'')||'?').charAt(0).toUpperCase(),tone=Math.abs(profile.seed||0)%6;
+  return `<span class="zh-user-avatar is-tone-${tone}" aria-hidden="true">${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:`<span>${esc(initial)}</span>`}<i class="${profile.on?'is-online':''}"></i></span>`;
 }
-function hostUsersPaint(){hostDirectoryPaint('members')}
-function hostDirectoryLoad(more=false,tab=HostBrowse.tab){
-  if(!isApprovedHost())return;
-  const state=hostDirectoryState(tab),maxPage=tab==='active'?1000:10000;
-  if(more&&(state.loading||state.rows.length>=state.total||state.page>=maxPage))return;
-  clearTimeout(state.timer);state.timer=null;
-  const q=state.query.trim(),page=more?state.page+1:1;
-  Object.assign(state,{loading:true,more,error:'',requestedPage:page});hostDirectoryPaint(tab);
-  if(DEMO){Object.assign(state,{rows:[],loaded:true,loading:false,more:false,page:1,total:0,resultQuery:q});hostDirectoryPaint(tab);return}
-  Native.send(tab==='active'?'hosts.active.load':'users.load',{q,page});
+function profileSearchRow(profile){
+  const id=domId(profile.id),name=esc(profile.n);
+  return `<article class="zh-user-row" data-user-id="${esc(profile.id)}" data-profile-role="${profile.serverRole==='host'?'host':'user'}"><button type="button" class="zh-user-person" onclick="profileSearchOpen('${id}')" aria-label="View ${name} profile">${profileSearchAvatar(profile)}<span class="zh-user-identity"><strong>${name}</strong><small>${profile.on?'Online':'Offline'}</small></span></button></article>`;
 }
-function hostUsersLoad(more=false){hostDirectoryLoad(more,'members')}
-function hostDirectorySearch(value,tab=HostBrowse.tab){
-  const state=hostDirectoryState(tab);state.query=String(value).slice(0,tab==='active'?80:100);S.sq=state.query;
-  clearTimeout(state.timer);Object.assign(state,{loading:true,more:false,error:'',requestedPage:1});hostDirectoryPaint(tab);
-  state.timer=setTimeout(()=>hostDirectoryLoad(false,tab),280);
-}
-function hostUsersSearch(value){hostDirectorySearch(value,'members')}
-function hostDirectoryPeer(id,tab){
-  if(!isApprovedHost()){window.ZimiHostAccess?.guard();return null}
-  const state=hostDirectoryState(tab),user=state.rows.find(row=>row.id===id);if(!user)return null;
-  // Chat/profile helpers share identity through g(), without turning this member
-  // into a verified creator or inventing online presence.
-  const known=g(id);if(known)Object.assign(known,user);else EXTRA.push({...user});
-  state.remembered.add(id);
-  return user;
-}
-function hostUsersPeer(id){return hostDirectoryPeer(id,'members')}
-function hostUsersOpen(id,action){
-  const user=hostUsersPeer(id);if(!user)return;
-  if(action==='chat')return zcOpen(id);
-  if(action==='voice'||action==='video')return hostCallMember(id,action==='voice',{name:user.n,avatarUrl:user.avatarUrl,city:user.c,gender:user.gender});
-  go('user',id);
-}
-function hostUsersRow(user){
-  const id=domId(user.id),name=esc(user.n);
-  return `<article class="zh-user-row" data-user-id="${esc(user.id)}"><button type="button" class="zh-user-person" onclick="hostUsersOpen('${id}','profile')" aria-label="View ${name} profile"><span class="zh-user-avatar">${homeCover(user)}<i class="${user.on?'is-online':''}" aria-hidden="true"></i></span><span class="zh-user-identity"><strong>${name}</strong><small>${user.on?'Online':'Offline'}${user.c?' · '+esc(user.c):''}</small></span></button><div class="zh-user-actions"><button type="button" onclick="hostUsersOpen('${id}','chat')" aria-label="Chat with ${name}">${hi('chat',20)}</button><button type="button" onclick="hostUsersOpen('${id}','voice')" aria-label="Voice call ${name}">${hi('ph',20)}</button><button type="button" class="zh-user-video" onclick="hostUsersOpen('${id}','video')" aria-label="Video call ${name}">${hi('vid',20)}</button></div></article>`;
-}
-function hostActiveHostsOpen(id,action){
-  const host=hostDirectoryPeer(id,'active');if(!host)return;
-  if(action==='chat')return zcOpen(id);
-  if(action==='profile')go('host',id);
-}
-function hostActiveHostsRow(host){
-  const id=domId(host.id),name=esc(host.n);
-  return `<article class="zh-user-row zh-active-host-row" data-user-id="${esc(host.id)}"><button type="button" class="zh-user-person" onclick="hostActiveHostsOpen('${id}','profile')" aria-label="View ${name} profile"><span class="zh-user-avatar">${homeCover(host)}<i class="${host.on?'is-online':''}" aria-hidden="true"></i></span><span class="zh-user-identity"><strong>${name}</strong><small>${host.on?'Online':'Offline'}${host.c?' · '+esc(host.c):''}</small></span></button><div class="zh-user-actions"><button type="button" onclick="hostActiveHostsOpen('${id}','chat')" aria-label="Chat with ${name}">${hi('chat',20)}</button></div></article>`;
-}
-function hostDirectoryResults(tab=HostBrowse.tab){
-  const active=tab==='active',state=hostDirectoryState(tab),noun=active?'active hosts':'users',pending=state.loading||!state.loaded,rows=state.resultQuery===state.query.trim()?state.rows:[],more=pending&&state.more;
-  if(pending&&!more)return contentSkeleton('rows','Loading '+noun,6);
-  const error=state.error,moreError=error&&state.requestedPage>1,load=`hostDirectoryLoad(false,'${tab}')`,loadMore=`hostDirectoryLoad(true,'${tab}')`;
-  if(error&&!moreError)return `<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="${load}">Retry</button></div>`;
-  return `${rows.length?`<div class="zh-user-list" aria-label="${active?'Active hosts':'Members'}">${rows.map(active?hostActiveHostsRow:hostUsersRow).join('')}</div>`:`<div class="zh-empty"><h3>${active?'No active hosts found':state.query.trim()?'No users found':'No users to show yet'}</h3><p>${active?(state.query.trim()?'Try another host name.':'Hosts will appear here when they are online.'):state.query.trim()?'Try another name or user ID.':'Members will appear here when they join.'}</p></div>`}${more?contentSkeleton('rows','Loading more '+noun,3):moreError?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="${loadMore}">Retry loading more ${noun}</button></div>`:rows.length<state.total&&state.page<(active?1000:10000)?`<button type="button" class="zh-load-more" onclick="${loadMore}">Load more ${noun}</button>`:''}`;
-}
-function hostUsersResults(){return hostDirectoryResults('members')}
-function hostUsersForget(id){for(const list of [H,EXTRA]){const at=list.findIndex(user=>user.id===id);if(at>=0)list.splice(at,1)}delete PEOPLE[id];HostUsers.remembered.delete(id);HostActiveHosts.remembered.delete(id)}
-function hostUsersReset(){for(const state of [HostUsers,HostActiveHosts]){clearTimeout(state.timer);for(const id of state.remembered)hostUsersForget(id);Object.assign(state,hostDirectoryStateNew())}HostBrowse.tab='members';S.sq=''}
-function hostUsersEnsureAccount(){const owner=S.user?.id||'';if(HostUsers.owner!==owner){hostUsersReset();HostUsers.owner=owner;HostActiveHosts.owner=owner}}
-Native.on('data.users',data=>{
-  if(!isApprovedHost()||data.q!==HostUsers.query.trim()||data.page!==HostUsers.requestedPage)return;
-  const rows=(data.users||[]).filter(user=>user.serverRole==='user'&&user.id!==S.user?.id).map(homeCreator);
-  HostUsers.rows=data.page>1?[...HostUsers.rows,...rows.filter(user=>!HostUsers.rows.some(old=>old.id===user.id))]:rows;
-  Object.assign(HostUsers,{loaded:true,loading:false,more:false,error:'',page:data.page,total:data.total,resultQuery:data.q});hostUsersPaint();
-});
-Native.on('data.activeHosts',data=>{
-  if(!isApprovedHost()||data.q!==HostActiveHosts.query.trim()||data.page!==HostActiveHosts.requestedPage)return;
-  // The dedicated server read applies online/approval/privacy filters before
-  // pagination. Keep its real presence instead of hostFrom's callable-host tag.
-  const rows=(data.hosts||[]).filter(host=>(host.serverRole==='host'||host.role==='host')&&host.verified===true&&host.online===true&&host.id!==S.user?.id).map(host=>({...homeCreator(host),on:host.online?1:0}));
-  HostActiveHosts.rows=data.page>1?[...HostActiveHosts.rows,...rows.filter(host=>!HostActiveHosts.rows.some(old=>old.id===host.id))]:rows;
-  Object.assign(HostActiveHosts,{loaded:true,loadedAt:Date.now(),loading:false,more:false,error:'',page:data.page,total:data.total,resultQuery:data.q});hostDirectoryPaint('active');
-});
-Native.on('data.loading',data=>{
-  const tab=data.resource==='users'?'members':data.resource==='activeHosts'?'active':null;if(!tab||!isApprovedHost())return;
-  const state=hostDirectoryState(tab);if((data.q||'')!==state.query.trim()||data.page!==state.requestedPage)return;
-  Object.assign(state,{loading:!!data.loading,more:!!data.loading&&data.page>1,error:data.error||''});
-  if(data.error)state.loaded=true;hostDirectoryPaint(tab);
-});
-function hostDirectoryEnsureLoaded(){hostUsersEnsureAccount();if(hostDirectoryNeedsLoad())hostDirectoryLoad()}
-Native.on('session',()=>{hostUsersEnsureAccount();if(isApprovedHost()&&S.v==='search')hostDirectoryEnsureLoaded()});
-Native.on('session.none',hostUsersReset);Native.on('session.expired',hostUsersReset);
-window.addEventListener('zimi:host-access',event=>{if(event.detail.checking)return;if(!event.detail.approved){hostUsersReset();if(['home','search'].includes(S.v))r()}else if(S.v==='search')hostDirectoryEnsureLoaded()});
-document.addEventListener('aurora:navigate',()=>{if(isApprovedHost()&&S.v==='search')hostDirectoryEnsureLoaded()});
-Native.on('block.saved',data=>{if(!isApprovedHost())return;for(const state of [HostUsers,HostActiveHosts]){if(data.blocked)state.rows=state.rows.filter(user=>user.id!==data.id);state.loaded=false}if(data.blocked){hostUsersForget(data.id);hostDirectoryPaint(HostBrowse.tab)}if(S.v==='search')hostDirectoryLoad()});
-Native.on('app.foreground',()=>{if(isApprovedHost()&&S.v==='search'&&!hostDirectoryState().loading)hostDirectoryLoad()});
+function profileSearchList(rows){return `<div class="zh-user-list" aria-label="Users and hosts">${rows.map(profileSearchRow).join('')}</div>`}
 
 /* All Creators reuses the authenticated popular feed and its server pagination.
    Availability presentation comes from homeRemember/hostFrom; never filter a
@@ -12334,10 +12246,20 @@ function allCreatorsView(){
 window.ZimiAllCreators={render:allCreatorsView};
 ZimiHome.views['all-creators']=allCreatorsView;
 
-/* The Home trophy opens the creator leaderboard: creators ranked by the gift coins they
-   received today, this week or ever, read from the server. Sample rankings exist only in DEMO. */
+/* The Home trophy opens the creator leaderboard: real creators are ranked by server gift
+   coins, while fixed noninteractive competitors provide visual targets only. */
 const Board = { period:'daily', rows:[], total:0 };
 const BOARD_PERIODS = [['daily','Daily'],['weekly','Weekly'],['all','All time']];
+const BOARD_COMPETITORS = Object.freeze([
+  Object.freeze({id:'board-competitor-aarav',name:'Aarav',avatarUrl:'',coins:1000000,synthetic:true}),
+  Object.freeze({id:'board-competitor-riya',name:'Riya',avatarUrl:'',coins:100000,synthetic:true}),
+  Object.freeze({id:'board-competitor-kabir',name:'Kabir',avatarUrl:'',coins:5000,synthetic:true}),
+]);
+function lbDisplayRows(){
+  const extras=DEMO||ContentLoading.leaderboard.loaded?BOARD_COMPETITORS:[];
+  return [...Board.rows.map(row=>({...row,synthetic:false})),...extras].sort((a,b)=>b.coins-a.coins||String(a.id).localeCompare(String(b.id))).map((row,index)=>({...row,rank:index+1}));
+}
+function lbCoinText(row){if(!row.synthetic)return n(row.coins);return row.coins>=1000000?`${row.coins/1000000}M`:row.coins>=1000?`${row.coins/1000}K`:n(row.coins)}
 function lbLoad(){
   if(DEMO){
     const scale={daily:1,weekly:6,all:38}[Board.period];
@@ -12360,7 +12282,8 @@ function lbOpen(id){const row=Board.rows.find(x=>x.id===id);if(!row)return;if(!g
 function lbView(){
   const pending=!DEMO&&contentPending('leaderboard'),error=!pending&&!DEMO&&ContentLoading.leaderboard.error;
   const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
-  const list=Board.rows.length?`<ol class="zlb-list">${Board.rows.map(row=>`<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="Rank ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${n(row.coins)}</span></button></li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here once they receive gifts${Board.period==='daily'?' today':Board.period==='weekly'?' this week':''}.</p></div>`;
+  const rows=lbDisplayRows();
+  const list=rows.length?`<ol class="zlb-list">${rows.map(row=>`<li>${row.synthetic?`<div class="zlb-row is-synthetic ${row.rank<=3?'is-top':''}" data-synthetic-competitor="${esc(row.id)}" aria-label="Rank ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${lbCoinText(row)}</span></div>`:`<button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="Rank ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${lbCoinText(row)}</span></button>`}</li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here once they receive gifts${Board.period==='daily'?' today':Board.period==='weekly'?' this week':''}.</p></div>`;
   const body=pending?contentSkeleton('rows','Loading leaderboard',6):error?contentError('leaderboard'):list;
   return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}"><p class="zlb-note">Creators ranked by gift coins received</p>${body}</div></section>`;
 }
@@ -12389,7 +12312,7 @@ function zrfOpen(from){ZRefer.from=['home','settings'].includes(from)?from:'sett
 function zrfHeader(){const home=ZRefer.from==='home';return `<header class="zh-subheader zrf-header">${backButton(`go('${home?'home':'settings'}')`,{label:home?'Back to home':'Back to settings'})}<h1>Refer &amp; Earn</h1></header>`}
 
 function zrfView(){
-  if(isHostWallet())return '<section class="zrf-page"><p>Coin referral rewards are available to member accounts.</p></section>';
+  if(isHostWallet())return '<section class="zrf-page"><p>Coin referral rewards are available to user accounts.</p></section>';
   const data=zrfData(),pending=!DEMO&&contentPending('referral')&&!data,error=!DEMO&&!data&&ContentLoading.referral.error;
   if(pending)return `<section class="zrf-page">${contentSkeleton('rows','Loading your invite code',3)}</section>`;
   if(error)return `<section class="zrf-page">${contentError('referral')}</section>`;
@@ -12574,7 +12497,7 @@ const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',ve
 /* One refusal prompt for paid actions, including an authoritative server refusal
    after a locally sufficient balance. Opening it never spends or retries coins. */
 function coinRequireRecharge(proceed=null){
- if(isHostWallet()){appNotice('Coins are for member accounts. Your host earnings are diamonds.');return}
+ if(isHostWallet()){appNotice('Coins are for user accounts. Your host earnings are diamonds.');return}
  if(CoinUI.rechargePrompt)return;
  if(typeof ctRechargeClose==='function')ctRechargeClose();
  const focus=document.activeElement;
@@ -12730,7 +12653,7 @@ function coinAcceptPayment(d,checkout=false){
  coinPaint();
 }
 function homeGifts(id,selectedGiftId=''){
- if(isHostWallet()){appNotice('Gifts are sent from member accounts. Hosts receive diamonds.');return}
+ if(isHostWallet()){appNotice('Gifts are sent from user accounts. Hosts receive diamonds.');return}
  if(!id)return;CoinUI.focus={label:document.activeElement?.getAttribute('aria-label'),id:document.activeElement?.id};
  if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError='';CoinUI.giftScroll=0}
  if(selectedGiftId&&!Home.giftBusy&&Home.gifts.some(gift=>gift.id===selectedGiftId))CoinUI.giftId=selectedGiftId;
@@ -18202,7 +18125,7 @@ function zrLive(){
   return `<section class="zh-room zr-room ${host?'zr-host':'zr-viewer'}" aria-label="${host?'Your live broadcast':'Live broadcast'}">${zrBackdrop(p,host)}<div class="zr-top">${host?'<div class="zr-diagnostics"><span><i></i><i></i><i></i><i></i> LIVE STUDIO</span><b data-room-quality>Camera ready</b></div>':''}${zrIdentity(p,host,false)}${host?zrSupporterStrip()+zrGoal():zrRequestBar()}${zrGiftBanner()}${host?zrStatus():''}</div>${host?zrTools():''}<div class="zr-floating-hearts" aria-hidden="true"></div><div class="zr-bottom">${!host?zrStatus():''}<div class="zr-messages" id="home-room-messages" role="log" aria-label="Live chat" aria-live="polite">${zrMessageHTML()}</div>${host?zrHostQueue():''}${zrChat(false,host)}${DEMO?'<span class="zr-demo-note">Interactive preview · sample activity</span>':''}</div>${zrGiftCelebration()}${zrSheet()}${homeGiftSheet()}</section>`;
 }
 /* The open call's price and cost so far, billed like the server: whole seconds at the price locked when it was placed. */
-function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return host?`Member price: ${n(rate)} coins/min`:`${n(rate)}/min · ${n(coins)} coins${S.bal<rate?' · under a minute left':''}`}
+function zrCallCost(host){const rate=S.callRate||0;if(!rate)return 'Free call';const coins=Math.ceil(S.sec*rate/60);return host?`User price: ${n(rate)} coins/min`:`${n(rate)}/min · ${n(coins)} coins${S.bal<rate?' · under a minute left':''}`}
 function zrCallTopup(){if(!zrIsCall()||zrIsHost())return;homeGifts(zrPerson()?.id);homeGiftTopup()}
 function zrPaintCallWallet(){
   if(!zrIsCall())return false;
@@ -18767,16 +18690,16 @@ function hcRateCard() {
   const rate = hcShownRate(st), stops = hcRateStops(st), percent = hcRatePercent(rate, stops);
   const selected = Number(st.selectedRate ?? st.rate) || 0;
   const dirty = st.configurableRate && Number.isSafeInteger(rate) && rate !== selected;
-  const note = `Choose ${n(st.minRate)}–${n(st.maxRate)} member coins per minute. This applies to new calls. Confirmed earnings appear as Diamonds in Wallet.`;
+  const note = `Choose ${n(st.minRate)}–${n(st.maxRate)} user coins per minute. This applies to new calls. Confirmed earnings appear as Diamonds in Wallet.`;
   return `<div class="hc-card hc-rate-card">
-    <div class="hc-rate-heading"><button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><span class="hc-rate-icon">${hi('rings', 14)}</span><span><b>Call rate</b><small>${st.rate ? `${n(st.rate * 60)} member coins/h` : 'Free calls'}${next ? ` ${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins to next tier` : tiers.length ? ' Top tier unlocked' : ''}</small></span></button><div class="hc-rate-value"><strong>${n(rate)}</strong><span>coins/min</span>${st.configurableRate ? `<button type="button" class="hc-rate-save ${dirty || HostCalls.rateBusy ? '' : 'is-clean'}" aria-label="Save price" onclick="hcSaveRate()" ${HostCalls.rateBusy || DEMO ? 'disabled' : ''}>${HostCalls.rateBusy ? 'Saving…' : 'Save'}</button>` : ''}</div></div>
+    <div class="hc-rate-heading"><button type="button" class="hc-card-head" aria-label="Call price details" aria-expanded="${HostCalls.showTerms}" onclick="HostCalls.showTerms=!HostCalls.showTerms;r()"><span class="hc-rate-icon">${hi('rings', 14)}</span><span><b>Call rate</b><small>${st.rate ? `${n(st.rate * 60)} user coins/h` : 'Free calls'}${next ? ` ${n(Math.max(0, next.atCoins - st.earnedCoins))} user coins to next tier` : tiers.length ? ' Top tier unlocked' : ''}</small></span></button><div class="hc-rate-value"><strong>${n(rate)}</strong><span>coins/min</span>${st.configurableRate ? `<button type="button" class="hc-rate-save ${dirty || HostCalls.rateBusy ? '' : 'is-clean'}" aria-label="Save price" onclick="hcSaveRate()" ${HostCalls.rateBusy || DEMO ? 'disabled' : ''}>${HostCalls.rateBusy ? 'Saving…' : 'Save'}</button>` : ''}</div></div>
     <form class="hc-rate-picker" onsubmit="event.preventDefault();hcSaveRate()" style="--hc-rate-at:${percent}%">
       <div class="hc-rate-track" aria-hidden="true"><i></i><b></b>${stops.map(value => `<span style="--hc-stop-at:${hcRatePercent(value, stops)}%"></span>`).join('')}</div>
-      ${st.configurableRate ? `<input id="hc-call-rate-slider" type="range" min="${st.minRate}" max="${st.maxRate}" step="1" value="${rate}" aria-label="Call rate, coins per minute" aria-valuetext="${n(rate)} coins per minute" oninput="hcDraftRate(this.value,this)" ${HostCalls.rateBusy ? 'disabled' : ''}><label class="hc-rate-manual" for="hc-call-rate">Member call price (coins/min)</label><input class="hc-rate-manual-input" id="hc-call-rate" type="number" inputmode="numeric" min="${st.minRate}" max="${st.maxRate}" step="1" value="${esc(HostCalls.rateDraft === null ? String(st.selectedRate) : HostCalls.rateDraft)}" tabindex="-1" oninput="hcDraftRate(this.value,this)" ${HostCalls.rateBusy ? 'disabled' : ''}>` : ''}
-      <div class="hc-rate-labels" ${tiers.length ? 'role="list" aria-label="Member call price tiers"' : 'aria-label="Call rate choices"'}>${stops.map(value => st.configurableRate ? `<button type="button" class="${value === rate ? 'is-on' : ''}" style="--hc-stop-at:${hcRatePercent(value, stops)}%" aria-label="${n(value)} coins per minute" onclick="hcPickRate(${value})" ${HostCalls.rateBusy ? 'disabled' : ''}>${n(value)}</button>` : `<span role="listitem" class="${value === rate ? 'is-on' : ''}" style="--hc-stop-at:${hcRatePercent(value, stops)}%">${n(value)}</span>`).join('')}</div>
+      ${st.configurableRate ? `<input id="hc-call-rate-slider" type="range" min="${st.minRate}" max="${st.maxRate}" step="1" value="${rate}" aria-label="Call rate, coins per minute" aria-valuetext="${n(rate)} coins per minute" oninput="hcDraftRate(this.value,this)" ${HostCalls.rateBusy ? 'disabled' : ''}><label class="hc-rate-manual" for="hc-call-rate">User call price (coins/min)</label><input class="hc-rate-manual-input" id="hc-call-rate" type="number" inputmode="numeric" min="${st.minRate}" max="${st.maxRate}" step="1" value="${esc(HostCalls.rateDraft === null ? String(st.selectedRate) : HostCalls.rateDraft)}" tabindex="-1" oninput="hcDraftRate(this.value,this)" ${HostCalls.rateBusy ? 'disabled' : ''}>` : ''}
+      <div class="hc-rate-labels" ${tiers.length ? 'role="list" aria-label="User call price tiers"' : 'aria-label="Call rate choices"'}>${stops.map(value => st.configurableRate ? `<button type="button" class="${value === rate ? 'is-on' : ''}" style="--hc-stop-at:${hcRatePercent(value, stops)}%" aria-label="${n(value)} coins per minute" onclick="hcPickRate(${value})" ${HostCalls.rateBusy ? 'disabled' : ''}>${n(value)}</button>` : `<span role="listitem" class="${value === rate ? 'is-on' : ''}" style="--hc-stop-at:${hcRatePercent(value, stops)}%">${n(value)}</span>`).join('')}</div>
       ${st.configurableRate ? `<p class="hc-rate-note">${note}</p>` : ''}${HostCalls.rateError ? `<p class="hc-rate-error" role="alert">${esc(HostCalls.rateError)}</p>` : ''}
     </form>
-    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `Member pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} member coins unlocks a ${n(next.rate)}-coin/min member price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
+    ${HostCalls.showTerms ? `<div class="hc-rate-details"><b>${st.rate ? `User pays ${n(st.rate)} coins / min` : 'Free calls'}</b>${tiers.length ? `<span>Tier ${st.tier} of ${tiers.length}</span>` : ''}${next ? `<span>Another ${n(Math.max(0, next.atCoins - st.earnedCoins))} user coins unlocks a ${n(next.rate)}-coin/min user price.</span>` : ''}${fee ? `<span>Each caller also pays a <b>${n(fee)}-coin entry fee</b>. Your eligible share is credited in diamonds after the call passes ${hcHold(st.entryFeeHoldSeconds)}.</span>` : ''}<span>Your confirmed diamond earnings appear in Wallet.</span></div>` : ''}
   </div>`;
 }
 function hcVisibilityRow() {
@@ -18808,7 +18731,7 @@ function hcWaitingView() {
   return `<section class="hc-waiting" style="${hcSceneStyle('waiting')}" aria-label="Online and waiting for calls">
     <div class="hc-waiting-main"><div class="hc-host-avatar is-waiting">${hcIdentityAvatar(me, 104)}<i aria-hidden="true"></i><i aria-hidden="true"></i></div>
     <h1>You’re online</h1><p class="hc-waiting-status">Waiting for callers… ${S.vis ? 'you’re visible on Home.' : 'you’re hidden from Home.'}</p>
-    <p class="hc-waiting-note">Members can call your profile at any time. Stay in the app to answer their calls.</p>
+    <p class="hc-waiting-note">Users can call your profile at any time. Stay in the app to answer their calls.</p>
     <div class="hc-waiting-actions"><button type="button" class="hc-primary" onclick="go('home')">Browse the app</button>
     <button type="button" class="hc-offline" onclick="homeSetPresence(false)" ${Home.presenceBusy ? 'disabled' : ''}>${Home.presenceBusy ? 'Going offline…' : 'Go offline'}</button></div></div>
     </section>`;
@@ -18910,8 +18833,8 @@ function hcSummaryView(s) {
     <h1>A moment well shared.</h1>
     <p>You spent <b>${fmtDur(s.sec || 0)}</b> on calls. Confirmed earnings appear in your diamond wallet.</p>
     <div class="hc-session-stats"><div><span>Diamond balance</span><b>${hcEarningsValue()}</b></div><div><span>Gifts</span><b>${n(s.gifts || 0)}</b></div><div><span>${s.callers === 1 ? 'Caller' : 'Callers'}</span><b>${n(s.callers || 1)}</b></div></div>
-    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>Member entry fees</span></div>
-      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `${n(f.fee)} member coins · hold completed` : 'Ended early · no host share'}</em></div>`).join('')}
+    ${fees.length ? `<div class="hc-fees"><div class="hc-fees-head"><span>User entry fees</span></div>
+      ${fees.map(f => `<div class="hc-fee-row ${f.ok ? 'is-ok' : ''}">${hi(f.ok ? 'check' : 'clock', 14)}<span>${esc(first(f.n))}</span><em>${f.ok ? `${n(f.fee)} user coins · hold completed` : 'Ended early · no host share'}</em></div>`).join('')}
       ${fees.some(f => f.early) ? `<p class="hc-warn">Early endings today: <b>${n(s.early || 0)}</b>.${s.penaltyCoins ? ` Past ${n(s.earlyLimit)} a day, early endings can reduce diamond earnings. Check Wallet for confirmed adjustments.` : ''}</p>` : ''}</div>` : ''}
     <button type="button" class="hc-primary" onclick="S.callId=null;go('setup')">${hi('vid', 18)} Set targets &amp; continue</button>
     <div class="hc-summary-actions"><button type="button" onclick="S.callId=null;go('wallet')">${hi('wal', 17)} Wallet</button><button type="button" onclick="S.callId=null;go('home');homeLoad()">${hi('house', 17)} Home</button></div>
@@ -19088,19 +19011,19 @@ function hsSheet() {
   if (kind === 'appearance' && S.v === 'hcall' && S.caller?.voice) return '';
   let title = '', subtitle = '', body = '';
   if (kind === 'mission') {
-    title = 'Mission'; subtitle = 'Track member gift spending. Your earnings are diamonds.';
+    title = 'Mission'; subtitle = 'Track user gift spending. Your earnings are diamonds.';
     const progress = HostStudio.receivedCoins, percent = hsPercent(progress, HostStudio.goal);
-    body = `<div class="hs-options" role="group" aria-label="Mission target in member coins">${HS_GOALS.map(([value, label]) => `<button type="button" class="${HostStudio.goal === value ? 'is-on' : ''}" aria-pressed="${HostStudio.goal === value}" data-hs-focus="goal-${value}" onclick="hsSetGoal(${value})">${label}</button>`).join('')}</div><div class="hs-mission-total"><strong>${n(progress)}</strong><span>of ${hsGoalLabel()} · ${percent.toFixed(1)}%</span></div><div class="hs-progress" role="progressbar" aria-label="Member gift support progress" aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></div>${hsTaskRows()}`;
+    body = `<div class="hs-options" role="group" aria-label="Mission target in user coins">${HS_GOALS.map(([value, label]) => `<button type="button" class="${HostStudio.goal === value ? 'is-on' : ''}" aria-pressed="${HostStudio.goal === value}" data-hs-focus="goal-${value}" onclick="hsSetGoal(${value})">${label}</button>`).join('')}</div><div class="hs-mission-total"><strong>${n(progress)}</strong><span>of ${hsGoalLabel()} · ${percent.toFixed(1)}%</span></div><div class="hs-progress" role="progressbar" aria-label="User gift support progress" aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${percent}%"></i></div>${hsTaskRows()}`;
   } else if (kind === 'gift-target') {
     title = 'Gift target'; subtitle = 'Pick the gift you’d love to receive';
     const gift = hsTargetGift();
-    body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${giftPriceMarkup(item,10)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${giftIsFree(gift)?'Free':n((gift?.coins || 0)*HostStudio.giftCount)+' member coins'}</span></div><p class="hs-sheet-note">Gift prices are paid by members in Coins. Your confirmed gift earnings are Diamonds in Wallet.</p>`;
+    body = !hsCatalog().length || !DEMO && contentPending('catalog') ? hsCatalogPlaceholder() : `<div class="hs-gift-options" role="group" aria-label="Choose a gift target">${hsCatalog().map(item => `<button type="button" class="${gift?.id === item.id ? 'is-on' : ''}" aria-label="Target ${esc(item.name)}" aria-pressed="${gift?.id === item.id}" data-hs-focus="gift-${esc(item.id)}" onclick="hsChooseGift('${domId(item.id)}')"><span class="hs-gift-art">${hsGiftArt(item)}</span><small>${giftPriceMarkup(item,10)}</small></button>`).join('')}</div><div class="hs-options" role="group" aria-label="Number of gifts">${HS_COUNTS.map(count => `<button type="button" class="${HostStudio.giftCount === count ? 'is-on' : ''}" aria-pressed="${HostStudio.giftCount === count}" data-hs-focus="count-${count}" onclick="hsSetGiftCount(${count})">${count} ×</button>`).join('')}</div><div class="hs-target-detail"><span>${hsGiftArt(gift)} <b>${esc(gift?.name || '')}</b></span><span>${n(hsGiftProgress(gift))} / ${HostStudio.giftCount} · ${giftIsFree(gift)?'Free':n((gift?.coins || 0)*HostStudio.giftCount)+' user coins'}</span></div><p class="hs-sheet-note">Gift prices are paid by users in Coins. Your confirmed gift earnings are Diamonds in Wallet.</p>`;
   } else if (kind === 'card-image') {
     title = 'Creator card';
     const src=imageSrc(HostStudio.cardDraft||S.user?.creatorCardUrl),busy=HostStudio.cardSaving||HostStudio.cardPreparing;
     const status=HostCalls.status,rate=Number(status?.selectedRate??status?.rate??S.callRate)||0,name=S.user?.name||me.n||'Your name';
     body=`<div class="hs-card-preview">${src?`<img src="${src}" alt="Creator card preview">`:`<span class="hs-card-placeholder">${zi('camera',36)}<span>Add a photo</span></span>`}<span class="hs-card-identity"><b><i aria-hidden="true"></i>${esc(name)}</b><small>${rate?`${n(rate)} coins/min`:'Free calls'} &middot; Online</small></span></div>
-      <p class="hs-card-helper">This is how members see you on Home</p>
+      <p class="hs-card-helper">This is how users see you on Home</p>
       <div class="hs-card-actions"><label class="hs-card-choose hs-card-photos">${ci('image',18)} Choose from Photos<input type="file" accept="image/*" aria-label="Choose creator card image" onchange="hsPickCard(event)" ${busy?'disabled':''}></label><label class="hs-card-choose hs-card-camera">${zi('camera',18)} Take a photo<input type="file" accept="image/*" capture="user" aria-label="Take creator card photo" onchange="hsPickCard(event)" ${busy?'disabled':''}></label></div>
       ${HostStudio.cardPreparing?'<p class="hs-card-state" role="status" aria-label="Preparing creator card image">Preparing image…</p>':''}${HostStudio.cardError?`<p class="hs-card-error" role="alert">${esc(HostStudio.cardError)}</p>`:''}
       <div class="hs-card-tips"><p>${hi('check',16)}<span>Face clearly visible, in good light</span></p><p>${hi('check',16)}<span>Portrait (3:4) photos fit best</span></p></div>`;
@@ -19145,7 +19068,7 @@ Native.on('creator.card.error',d=>{if(d.requestId!==HostStudio.cardRequestId)ret
 function hsTargets() {
   if (typeof ctShareTargets === 'function') ctShareTargets();
   const gift = hsTargetGift(), got = hsGiftProgress(gift), percent = hsPercent(HostStudio.receivedCoins, HostStudio.goal);
-  return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong title="Member price in Coins">${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">MEMBER SUPPORT <b>${Math.floor(percent)}%</b></span><strong title="Member gift spending in Coins">${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
+  return `<div class="hs-targets"><button type="button" class="hs-target-card" aria-label="Edit gift target" onclick="hsOpenSheet('gift-target')"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(got)}/${HostStudio.giftCount}</b></span><strong title="User price in Coins">${gift ? `${giftPriceMarkup(gift,10)}` : 'Choose gift'}</strong><i class="hs-target-track"><em style="width:${hsPercent(got, HostStudio.giftCount)}%"></em></i></span></button><button type="button" class="hs-target-card" aria-label="Edit mission target" onclick="hsOpenSheet('mission')"><span class="hs-target-copy"><span class="hs-target-label">USER SUPPORT <b>${Math.floor(percent)}%</b></span><strong title="User gift spending in Coins">${coinIcon(10)} <span data-hs-earned>${n(HostStudio.receivedCoins)}</span><small> / ${hsGoalLabel()}</small></strong><i class="hs-target-track"><em style="width:${percent}%"></em></i></span></button></div>`;
 }
 function hsGiftRail() {
   if (!hsCatalog().length || !DEMO && contentPending('catalog')) return hsCatalogPlaceholder(true);
@@ -19338,7 +19261,7 @@ function zcChatBlockReason(id){
   if(window.ZimiHostAccess?.checking())return 'Checking your account. Try again in a moment.';
   if(self==='host'&&!isApprovedHost())return 'Your creator profile needs admin approval before you can chat.';
   if(self==='host')return '';
-  return self!=='user'||(role&&role!=='host')?'Members can message approved hosts only.':'';
+  return self!=='user'||(role&&role!=='host')?'Users can message approved hosts only.':'';
 }
 function zcCanChat(id){return !zcChatBlockReason(id)}
 function zcGuardChat(id){const reason=zcChatBlockReason(id);if(reason)appNotice(reason);return !reason}
@@ -19403,7 +19326,7 @@ function zcReadAll(){if(Chats.readBusy||zcPending()||!zcUnread())return;window.Z
 function zcOpen(id){if(id==='bingo-live-official')return window.ZimiOfficialChat?.open('chats');Chats.composeOpen=false;Chats.filtersOpen=false;Chats.revealed={};Chats.menu='';Chats.reply=null;Chats.editing=null;go('thread',id)}
 function zcFilters(){if(!Chats.filtersOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog" role="dialog" aria-modal="true" aria-label="Conversation filters"><div class="zc-dialog-heading"><h2>Conversation filters</h2><button onclick="zcCloseDialogs()" aria-label="Close filters">×</button></div><label class="zc-toggle"><span>Online only</span><input type="checkbox" ${Chats.onlineOnly?'checked':''} onchange="Chats.onlineOnly=this.checked;zcPaintList()"></label><label class="zc-sort">Sort conversations<select aria-label="Sort conversations" onchange="Chats.sort=this.value;zcPaintList()">${[['recent','Most recent'],['unread','Unread first'],['name','Name']].map(([key,label])=>`<option value="${key}" ${Chats.sort===key?'selected':''}>${label}</option>`).join('')}</select></label><button class="zc-dialog-reset" onclick="zcResetFilters()">Reset filters</button><button class="zh-primary zh-full" onclick="zcCloseDialogs()">Show conversations</button></section></div>`}
 function zcContacts(){const rows=[...Chats.rows.filter(c=>!c.bot).map(zcPerson),...Home.hosts,...H],seen=new Set(),q=Chats.composeQuery.trim().toLowerCase();return rows.filter(h=>{if(seen.has(h.id)||!h.id||!zcCanChat(h.id))return false;if(!DEMO&&zcSelfRole()==='host'&&Chats.rows.find(c=>c.user.id===h.id)?.canSend===false)return false;seen.add(h.id);return !q||(h.n+' '+(h.cat||'')).toLowerCase().includes(q)})}
-function zcContactList(){if(!DEMO&&contentPending('chats')&&contentPending('home'))return contentSkeleton('rows','Loading contacts');const contacts=zcContacts();return contacts.length?contacts.map(h=>`<button class="zc-contact" onclick="zcOpen('${domId(h.id)}')">${zcPhoto(h)}<span><b>${esc(h.n)}</b><small>${esc(h.cat||'BinzoLive member')}</small></span>${hi('chat',20)}</button>`).join(''):'<p class="zc-empty-contact">No contacts match. Discover more creators to start a conversation.</p>'}
+function zcContactList(){if(!DEMO&&contentPending('chats')&&contentPending('home'))return contentSkeleton('rows','Loading contacts');const contacts=zcContacts();return contacts.length?contacts.map(h=>`<button class="zc-contact" onclick="zcOpen('${domId(h.id)}')">${zcPhoto(h)}<span><b>${esc(h.n)}</b><small>${esc(h.cat||'BinzoLive user')}</small></span>${hi('chat',20)}</button>`).join(''):'<p class="zc-empty-contact">No contacts match. Discover more creators to start a conversation.</p>'}
 function zcCompose(){Chats.composeQuery='';Chats.composeOpen=true;Chats.filtersOpen=false;r()}
 function zcPaintContacts(){const list=document.getElementById('zc-contacts');if(list)list.innerHTML=zcContactList();contentImagesReady()}
 function zcComposeView(){if(!Chats.composeOpen)return '';return `<div class="zc-overlay" onclick="zcCloseOverlay(event)"><section class="zc-dialog zc-compose" role="dialog" aria-modal="true" aria-label="New conversation"><div class="zc-dialog-heading"><h2>New conversation</h2><button onclick="zcCloseDialogs()" aria-label="Close new conversation">×</button></div><label class="zc-compose-search">${hi('srch',19)}<input id="zc-contact-query" placeholder="Find a creator or contact" aria-label="Search contacts" value="${esc(Chats.composeQuery)}" oninput="Chats.composeQuery=this.value;zcPaintContacts()"></label><div id="zc-contacts">${zcContactList()}</div><button class="zh-soft zh-full" onclick="zcCloseDialogs();go('search')">Find more creators ${hi('explore',17)}</button></section></div>`}
@@ -19477,7 +19400,7 @@ function zcConfirmMessage(d,kind){
 }
 
 /* Inbox rows carry identity and presence; a known creator record adds rate and live status. */
-function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'BinzoLive member',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
+function zcThreadPerson(){const base=g(S.h)||{id:S.h||'',n:'BinzoLive user',seed:0},row=Chats.rows.find(c=>c.user.id===S.h);if(!row)return base;const p=zcPerson(row);return {...p,rate:base.rate||p.rate,stream:base.stream||null,viewers:base.viewers||0}}
 function zcThreadStatus(h){return [h.stream?'In live room':h.on?'Online':'Offline',!isHostWallet()&&h.rate>0?n(h.rate)+' coins/min':''].filter(Boolean).join(' · ')}
 function zcPeerTypingActive(peer=S.h){return !!peer&&String(Chats.typingPeer)===String(peer)&&Chats.typingUntil>Date.now()}
 function zcThreadStatusText(h){return zcPeerTypingActive(h.id)?'Typing…':zcThreadStatus(h)}
@@ -20450,7 +20373,7 @@ function zpDialogContent(kind){
   if(kind==='privacy')return `${zpToggle('Discoverable profile','discoverable',draft.discoverable!==false)}${zpToggle('Show activity status','showActivity',draft.showActivity!==false)}${zpSaveButton('zpPrivacySave()')}<div class="zp-blocked-list" role="group" aria-label="Blocked accounts">${zpBlockedContent()}</div>`;
   if(kind==='gifts'){const surface=contentSurface('transactions','rows','Loading gift history');if(surface)return surface;const gifts=TXNS.filter(x=>x[3]==='gift');return gifts.length?`<div class="zp-history">${gifts.map(txRow).join('')}</div><button class="zp-secondary" onclick="zpGo('transactions')">All transactions</button>`:'<div class="zp-empty">'+hi('gift',34)+'<h3>No gifts yet</h3><p>Your gift transactions will appear here.</p></div>'}
   if(kind==='earnings'){if(!isApprovedHost())return '<p>Creator earnings are available after admin approval.</p>';return `<button class="zp-save" onclick="zpGo('payout')">View diamonds & withdraw</button><button class="zp-secondary" onclick="zpGo('transactions')">View earning history</button>`}
-  if(kind==='help')return `<details open><summary>Getting started</summary><p>Explore creators and start a private 1:1 call with an available host.</p></details><details><summary>Coins & gifts</summary><p>Use Top Up to view current coin packs. Gift prices are shown before you send. Find completed payments and gifts in your transaction history.</p></details><details><summary>Becoming a creator</summary><p>Submit a creator application for admin review. Only approved hosts can receive calls and publish videos. Members and approved hosts can share photo posts.</p></details><details><summary>Staying safe</summary><p>Manage discovery, activity visibility and your blocked accounts in Privacy & Blocked Users.</p></details><button class="zp-secondary" onclick="zpOpen('privacy')">Privacy & blocked users</button>`;
+  if(kind==='help')return `<details open><summary>Getting started</summary><p>Explore creators and start a private 1:1 call with an available host.</p></details><details><summary>Coins & gifts</summary><p>Use Top Up to view current coin packs. Gift prices are shown before you send. Find completed payments and gifts in your transaction history.</p></details><details><summary>Becoming a creator</summary><p>Submit a creator application for admin review. Only approved hosts can receive calls and publish videos. Users and approved hosts can share photo posts.</p></details><details><summary>Staying safe</summary><p>Manage discovery, activity visibility and your blocked accounts in Privacy & Blocked Users.</p></details><button class="zp-secondary" onclick="zpOpen('privacy')">Privacy & blocked users</button>`;
   if(kind==='guidelines')return `<div class="zp-guidelines"><h3>Be kind. Be yourself.</h3><p>BinzoLive is for adults aged 18 and over. Respect other people’s boundaries and personal information.</p><h3>Keep connections safe</h3><p>Never share your sign-in code or payment details in a chat. Block or report accounts that make you uncomfortable.</p><h3>Your creator account</h3><p>Host features require admin approval. Account reviews and moderation decisions determine whether these features remain available.</p></div>`;
   if(kind==='logout')return '<p>You’ll need a verification code to sign in again on this device.</p><button class="zp-save zp-danger" onclick="zpClose();logout()">Log out of this device</button><button class="zp-secondary" onclick="zpClose()">Stay signed in</button>';
   if(kind==='deactivate')return `<p>Your profile and posts will be hidden, active calls will end, and you’ll be signed out on all devices. Your wallet balance and account data are kept. Sign in again with a verification code to reactivate your account.</p><button type="button" class="zp-save zp-danger" onclick="zpDeactivate()" ${ZProfile.deactivating?'disabled':''}>${ZProfile.deactivating?'<span role="status" aria-label="Deactivating account">Deactivating…</span>':'Deactivate account'}</button><button type="button" class="zp-secondary" onclick="zpClose()" ${ZProfile.deactivating?'disabled':''}>Keep my account</button>`;
@@ -20470,7 +20393,7 @@ function zpLanguage(input){const languages=ZProfile.draft.languages;if(input.che
 function zpSave(){if(ZProfile.saving||!ZProfile.data)return;const d=ZProfile.draft,k=ZProfile.dialog,payload=k==='language'?{languages:d.languages,city:d.city.trim(),country:d.country.trim()}:k==='notifications'?{pushNotifications:!!d.pushNotifications,notificationPreferences:zpNotificationDraft(d.notificationPreferences)}:null;if(!payload)return;ZProfile.saveError='';ZProfile.saving=true;const requestId=++ZProfile.requestId;zpPaintDialog();if(DEMO){zpApply({...ZProfile.data,preferences:{...ZProfile.data.preferences,...payload},profile:{...ZProfile.data.profile,...(payload.languages?{languages:payload.languages,city:payload.city,country:payload.country}:{})}});ZProfile.saving=false;zpClose();r();appNotice('Preview preferences saved.');return}Native.send('profile.settings.save',{...payload,requestId})}
 function zpPrivacySave(){if(ZProfile.privacyBusy)return;ZProfile.privacyBusy=true;ZProfile.saveError='';const data={discoverable:!!ZProfile.draft.discoverable,showActivity:!!ZProfile.draft.showActivity,requestId:++ZProfile.requestId};zpPaintDialog();if(DEMO){ZProfile.data.privacy={...ZProfile.data.privacy,...data};ZProfile.privacyBusy=false;zpClose();r();return}Native.send('privacy.save',data)}
 function zpBlockedLoad(more=false){if(DEMO)return;const page=more?ZProfile.blockedPage+1:1;contentStart('blocked',{page});Native.send('blocked.load',{page});zpPaintDialog()}
-function zpBlockedContent(){if(contentPending('blocked')&&ContentLoading.blocked.page===1)return contentSkeleton('rows','Loading blocked accounts',2);if(ContentLoading.blocked.error)return `<div class="zh-error" role="alert">${esc(ContentLoading.blocked.error)}<button onclick="zpBlockedLoad()">Retry</button></div>`;return `${ZProfile.blocked.length?`<div class="zp-blocked">${ZProfile.blocked.map(u=>`<div><span>${esc(u.name||'BinzoLive member')}</span><button onclick="zpUnblock('${domId(u.id)}')" ${ZProfile.blockBusy?'disabled':''}>${ZProfile.blockBusy===u.id?'Updating…':'Unblock'}</button></div>`).join('')}</div>`:'<p class="zp-note">No blocked accounts.</p>'}${contentPending('blocked')?contentSkeleton('rows','Loading more blocked accounts',1):ZProfile.blockedTotal>ZProfile.blocked.length?'<button class="zp-secondary" onclick="zpBlockedLoad(true)">Load more</button>':''}`}
+function zpBlockedContent(){if(contentPending('blocked')&&ContentLoading.blocked.page===1)return contentSkeleton('rows','Loading blocked accounts',2);if(ContentLoading.blocked.error)return `<div class="zh-error" role="alert">${esc(ContentLoading.blocked.error)}<button onclick="zpBlockedLoad()">Retry</button></div>`;return `${ZProfile.blocked.length?`<div class="zp-blocked">${ZProfile.blocked.map(u=>`<div><span>${esc(u.name||'BinzoLive user')}</span><button onclick="zpUnblock('${domId(u.id)}')" ${ZProfile.blockBusy?'disabled':''}>${ZProfile.blockBusy===u.id?'Updating…':'Unblock'}</button></div>`).join('')}</div>`:'<p class="zp-note">No blocked accounts.</p>'}${contentPending('blocked')?contentSkeleton('rows','Loading more blocked accounts',1):ZProfile.blockedTotal>ZProfile.blocked.length?'<button class="zp-secondary" onclick="zpBlockedLoad(true)">Load more</button>':''}`}
 function zpUnblock(id){if(ZProfile.blockBusy)return;ZProfile.blockBusy=id;ZProfile.saveError='';zpPaintDialog();if(DEMO){ZProfile.blocked=ZProfile.blocked.filter(u=>u.id!==id);ZProfile.blockBusy='';zpPaintDialog();return}Native.send('block.set',{id,blocked:false})}
 async function zpCopyId(){const id=S.user?.id||ZProfile.data?.profile?.id;if(!id)return;try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(id);else{const field=document.createElement('textarea');field.value=id;document.getElementById('zp-dialog').append(field);field.select();const copied=document.execCommand('copy');field.remove();if(!copied)throw new Error('Copy unavailable')}appNotice('Account ID copied.')}catch{appNotice('Copy is unavailable. You can select the account ID above.')}}
 function zpApply(data){
@@ -21677,7 +21600,7 @@ function zuDialog(title,body,kind){
 }
 function zuOpenOptions(){
   const p=zuPeer();if(!p||Zu.error)return;
-  zuDialog('Profile options',`<p class="zu-dialog-intro">${esc(p.name||'BinzoLive member')}</p><label class="zu-id-field">Account ID<input id="zu-copy-field" readonly value="${esc(p.id)}" aria-label="Account ID"></label><button class="zu-option" onclick="zuCopyId()">${hi('copy',18)} Copy account ID</button><button class="zu-option zu-danger-text" onclick="zuConfirmBlock()">${zi('shield',18)} Block user</button><p class="zu-dialog-status" role="status"></p>`,'options');
+  zuDialog('Profile options',`<p class="zu-dialog-intro">${esc(p.name||'BinzoLive user')}</p><label class="zu-id-field">Account ID<input id="zu-copy-field" readonly value="${esc(p.id)}" aria-label="Account ID"></label><button class="zu-option" onclick="zuCopyId()">${hi('copy',18)} Copy account ID</button><button class="zu-option zu-danger-text" onclick="zuConfirmBlock()">${zi('shield',18)} Block user</button><p class="zu-dialog-status" role="status"></p>`,'options');
 }
 
 function zuChooseCover(){
@@ -21778,7 +21701,7 @@ function zuPaintRelationships(){
   const focusId=target.contains(document.activeElement)?document.activeElement?.id:'';
   const title=state.kind==='followers'?'followers':'following';
   const rows=state.users.map((peer,index)=>{
-    const body=`${zuRelationshipAvatar(peer,index)}<span class="zu-relationship-name"><strong>${esc(peer.name)}</strong><small>${esc(peer.city||(peer.serverRole==='host'?'Creator':'Member'))}</small></span>${peer.canViewProfile?hi('arrow',18):''}`;
+    const body=`${zuRelationshipAvatar(peer,index)}<span class="zu-relationship-name"><strong>${esc(peer.name)}</strong><small>${esc(peer.city||(peer.serverRole==='host'?'Creator':'User'))}</small></span>${peer.canViewProfile?hi('arrow',18):''}`;
     return `<li>${peer.canViewProfile?`<button type="button" class="zu-relationship-row" aria-label="View ${esc(peer.name)}'s profile" onclick="zuRelationshipOpen('${domId(peer.id)}')">${body}</button>`:`<div class="zu-relationship-row">${body}</div>`}</li>`;
   }).join('');
   target.innerHTML=`<div class="zu-relationship-tabs" role="tablist" aria-label="Your connections" onkeydown="zuRelationshipKeys(event)">${['followers','following'].map(kind=>`<button type="button" role="tab" id="zu-relationships-${kind}" aria-selected="${state.kind===kind}" aria-controls="zu-relationship-panel" tabindex="${state.kind===kind?0:-1}" onclick="zuOpenRelationships('${kind}')">${kind==='followers'?'Followers':'Following'}</button>`).join('')}</div><div id="zu-relationship-panel" role="tabpanel" aria-labelledby="zu-relationships-${state.kind}">${rows?`<ul class="zu-relationship-list" aria-label="Your ${title}">${rows}</ul>`:''}${state.loading?contentSkeleton('rows','Loading '+title,state.page?2:5):state.error?`<div class="zu-error" role="alert"><p>${esc(state.error)}</p><button type="button" class="zu-secondary" onclick="zuLoadRelationships(${state.requestedPage>1})">Try again</button></div>`:!state.users.length?`<div class="zu-empty"><h2>${state.kind==='followers'?'No followers yet':'You’re not following anyone yet'}</h2><p>${state.kind==='followers'?'People who follow you will appear here.':'Creators you follow will appear here.'}</p></div>`:state.page*state.limit<state.total?'<button type="button" class="zu-secondary zu-relationship-more" onclick="zuLoadRelationships(true)">Load more</button>':''}</div>`;
@@ -21995,7 +21918,7 @@ function zuFeedPost(post,index){
   const p=zuPostAuthor(),src=imageSrc(post.mediaUrl),video=post.kind==='video',id=domId(post.id),caption=post.caption||'';
   const time=post.createdAt?`<time class="zu-feed-time" datetime="${esc(post.createdAt)}">${esc(zuAgo(post.createdAt))}</time>`:'';
   return `<article class="zu-feed-post" id="zu-post-${id}" data-post-id="${esc(post.id)}" tabindex="-1" aria-posinset="${index+1}" aria-setsize="${Math.max(Zu.total,Zu.posts.length)}" aria-label="Post ${index+1} by ${esc(p.name||'this account')}">
-    <header class="zu-feed-author"><span class="av zu-feed-avatar">${zuAvatar(p)}</span><div class="zu-feed-who"><strong>${esc(p.name||'BinzoLive member')}</strong>${zuApproved(p)?homeVerified(p):''}</div>
+    <header class="zu-feed-author"><span class="av zu-feed-avatar">${zuAvatar(p)}</span><div class="zu-feed-who"><strong>${esc(p.name||'BinzoLive user')}</strong>${zuApproved(p)?homeVerified(p):''}</div>
       ${zuSelf()?`<button type="button" class="zu-feed-options" aria-label="Post options" onclick="zuPostOptions(${index})">${ci('more',20)}</button>`:''}</header>
     <div class="zu-feed-media ${video?'is-video':''}" ${video?'':`onpointerup="zuFeedTap(event,${index})"`}>
       <div class="zu-post-loading" role="status" aria-label="Loading post ${video?'video':'photo'}" aria-busy="true">${skeletonLine('100px',14)}</div>
@@ -22117,7 +22040,7 @@ function zuCommentsMarkup(){
   if(c.loading&&!c.items.length)return `<div class="zu-comments-state" role="status" aria-label="Loading comments" aria-busy="true">${[0,1,2].map(()=>`<div class="zu-comment">${'<span class="av zh-skeleton-shape"></span>'}<div>${skeletonLine('70%',12)}${skeletonLine('40%',10)}</div></div>`).join('')}</div>`;
   if(c.error&&!c.items.length)return `<div class="zu-comments-state" role="alert"><p>${esc(c.error)}</p><button type="button" class="zu-secondary" onclick="zuLoadComments()">Try again</button></div>`;
   if(!c.items.length)return `<div class="zu-comments-state"><h4>No comments yet</h4><p>Start the conversation.</p></div>`;
-  return c.items.map(comment=>{const mine=comment.user?.id===me,canDelete=mine||owner;return `<div class="zu-comment" data-comment-id="${esc(comment.id)}"><span class="av">${zuAvatar({name:comment.user?.name,avatarUrl:comment.user?.avatarUrl})}</span><div><p><strong>${esc(comment.user?.name||'BinzoLive member')}</strong> ${esc(comment.text)}</p><span class="zu-comment-meta">${esc(zuAgo(comment.createdAt,true))}${canDelete?`<button type="button" onclick="zuDeleteComment('${domId(comment.id)}')" ${c.deleting===comment.id?'disabled':''}>${c.deleting===comment.id?'Deleting…':'Delete'}</button>`:''}</span></div></div>`}).join('')
+  return c.items.map(comment=>{const mine=comment.user?.id===me,canDelete=mine||owner;return `<div class="zu-comment" data-comment-id="${esc(comment.id)}"><span class="av">${zuAvatar({name:comment.user?.name,avatarUrl:comment.user?.avatarUrl})}</span><div><p><strong>${esc(comment.user?.name||'BinzoLive user')}</strong> ${esc(comment.text)}</p><span class="zu-comment-meta">${esc(zuAgo(comment.createdAt,true))}${canDelete?`<button type="button" onclick="zuDeleteComment('${domId(comment.id)}')" ${c.deleting===comment.id?'disabled':''}>${c.deleting===comment.id?'Deleting…':'Delete'}</button>`:''}</span></div></div>`}).join('')
     +(c.items.length<c.total?`<button type="button" class="zu-comments-more" onclick="zuLoadComments(true)" ${c.loading?'disabled':''}>${c.loading?'Loading…':'Load more comments'}</button>`:'');
 }
 function zuPaintComments(){
@@ -22657,7 +22580,7 @@ function zaAbout(id){
   dialog.innerHTML=`<div class="zn-dialog-heading"><span>Sponsored</span><button type="button" aria-label="Close" onclick="zaCloseAbout()">${hi('close',21)}</button></div>
     <div class="za-about-body"><span class="za-about-icon">${hi('info',26)}</span><h2 id="za-about-title">About this ad</h2>
     <p>This promotion is from <b>${esc(ad.advertiser)}</b>${ad.domain?` and opens <b>${esc(ad.domain)}</b>`:''}.</p>
-    <p>Ads appear for members on the free plan. BinzoLive counts when an ad is shown and tapped to measure each campaign.</p>
+    <p>Ads appear for users on the free plan. BinzoLive counts when an ad is shown and tapped to measure each campaign.</p>
     <button type="button" class="za-about-premium" onclick="zaGoPremium()">${hi('crown',18)} Go ad-free with Premium</button>
     <button type="button" class="za-about-close" onclick="zaCloseAbout()">Not now</button></div>`;
   dialog.addEventListener('close',()=>dialog.remove());
@@ -22943,7 +22866,7 @@ function zciAfter(){
   if(S.v==='home'){if(!CallInvitations.requested)zciRequest();else zciPaint()}
   const waiting=S.hostTopupWaiting;
   if(waiting&&['dial','dialback'].includes(S.v)&&waiting.callId===S.callId&&Date.parse(waiting.until)>Date.now()){
-    const root=document.querySelector('.dialscr,.dial,.ringscr');if(root&&!root.querySelector('.zci-host-waiting'))root.insertAdjacentHTML('beforeend',`<p class="zci-host-waiting" role="status">The member is adding coins. Waiting until ${esc(new Date(waiting.until).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}. You can end the call at any time.</p>`);
+    const root=document.querySelector('.dialscr,.dial,.ringscr');if(root&&!root.querySelector('.zci-host-waiting'))root.insertAdjacentHTML('beforeend',`<p class="zci-host-waiting" role="status">The user is adding coins. Waiting until ${esc(new Date(waiting.until).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))}. You can end the call at any time.</p>`);
   }
   if(S.automaticCall&&['dial','dialback','ring','call','voice','hcall'].includes(S.v)&&!document.querySelector('.zci-source')){
     const root=document.querySelector('.ringscr,.dialscr,.dial,.zr-room,.zh-call-room');if(root)root.insertAdjacentHTML('afterbegin',zciSourceBadge());
@@ -23026,7 +22949,7 @@ function ctSenderTargets() {
   if (!data || !host) return '<div class="zr-call-stats ct-call-targets"></div>';
   const gift = data.gift, name = esc(first(host.n)), mission = hsPercent(data.earnedCoins, data.goalCoins);
   const giftCard = gift ? `<button type="button" class="hs-target-card" onclick="ctGive()" aria-label="Send ${esc(gift.name)} to help ${name} reach the gift target, ${n(data.giftProgress)} of ${n(data.giftCount)}"><span class="hs-target-art">${hsGiftArt(gift)}</span><span class="hs-target-copy"><span class="hs-target-label">GIFT TARGET <b>${n(data.giftProgress)}/${n(data.giftCount)}</b></span><strong>${giftPriceMarkup(gift, 10)}</strong><i class="hs-target-track"><em style="width:${hsPercent(data.giftProgress, data.giftCount)}%"></em></i></span></button>` : '';
-  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done, member gift spending in Coins"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
+  return `<div class="zr-call-stats ct-call-targets"><div class="hs-targets ${gift ? '' : 'ct-mission-only'}">${giftCard}<button type="button" class="hs-target-card" onclick="ctGive(true)" aria-label="Send a gift to help ${name} reach the mission, ${Math.floor(mission)}% done, user gift spending in Coins"><span class="hs-target-copy"><span class="hs-target-label">MISSION <b>${Math.floor(mission)}%</b></span><strong>${coinIcon(10)} ${kfmt(data.earnedCoins)}<small> / ${kfmt(data.goalCoins)}</small></strong><i class="hs-target-track"><em style="width:${mission}%"></em></i></span></button></div></div>`;
 }
 /* Opens the gift panel, with the target gift chosen when the member tapped that card. */
 function ctGive(mission = false) {

@@ -3,7 +3,7 @@ const CoinUI={giftId:'',giftScroll:0,topup:false,giftError:'',paymentError:'',ve
 /* One refusal prompt for paid actions, including an authoritative server refusal
    after a locally sufficient balance. Opening it never spends or retries coins. */
 function coinRequireRecharge(proceed=null){
- if(isHostWallet()){appNotice('Coins are for member accounts. Your host earnings are diamonds.');return}
+ if(isHostWallet()){appNotice('Coins are for user accounts. Your host earnings are diamonds.');return}
  if(CoinUI.rechargePrompt)return;
  if(typeof ctRechargeClose==='function')ctRechargeClose();
  const focus=document.activeElement;
@@ -159,7 +159,7 @@ function coinAcceptPayment(d,checkout=false){
  coinPaint();
 }
 function homeGifts(id,selectedGiftId=''){
- if(isHostWallet()){appNotice('Gifts are sent from member accounts. Hosts receive diamonds.');return}
+ if(isHostWallet()){appNotice('Gifts are sent from user accounts. Hosts receive diamonds.');return}
  if(!id)return;CoinUI.focus={label:document.activeElement?.getAttribute('aria-label'),id:document.activeElement?.id};
  if(Home.giftTo!==id){CoinUI.giftId=Home.giftAttempt?.to===id?Home.giftAttempt.gift:'';CoinUI.giftError='';CoinUI.giftScroll=0}
  if(selectedGiftId&&!Home.giftBusy&&Home.gifts.some(gift=>gift.id===selectedGiftId))CoinUI.giftId=selectedGiftId;

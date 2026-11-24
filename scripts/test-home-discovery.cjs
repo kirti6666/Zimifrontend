@@ -152,15 +152,22 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     const rows = [{ id: creators[1].id, name: 'Mira <b>', avatarUrl: '', coins: 4200, rank: 1 }, { id: '507f1f77bcf86cd799439099', name: 'Not loaded yet', avatarUrl: '', coins: 900, rank: 2 }];
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    assert.deepEqual(await page.locator('.zlb-row .zlb-name').allInnerTexts(), ['Mira <b>', 'Not loaded yet'], 'Rows show escaped server names in rank order');
-    assert.match(await page.locator('.zlb-row').first().innerText(), /4,200/);
+    assert.deepEqual(await page.locator('.zlb-row .zlb-name').allInnerTexts(), ['Aarav', 'Riya', 'Kabir', 'Mira <b>', 'Not loaded yet'], 'Synthetic competitors merge with escaped server names in coin order');
+    assert.deepEqual(await page.locator('[data-synthetic-competitor] .zlb-coins').allInnerTexts(), ['1M', '100K', '5K'], 'Synthetic scores use the requested compact coin labels');
+    assert.deepEqual(await page.locator('[data-synthetic-competitor]').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), [
+      'Rank 1, Aarav, 10,00,000 coins', 'Rank 2, Riya, 1,00,000 coins', 'Rank 3, Kabir, 5,000 coins'
+    ], 'Synthetic competitors retain full coin values for assistive technology');
+    assert.equal(await page.locator('[data-synthetic-competitor]').getByRole('button').count(), 0, 'Synthetic competitors are never profile buttons');
+    assert.match(await page.getByRole('button', { name: /^Rank 4, Mira <b>/ }).innerText(), /4,200/, 'Real server coin totals keep their existing full formatting');
     await page.getByRole('tab', { name: 'Weekly', exact: true }).click();
     assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'weekly' });
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
-    assert.equal(await page.locator('.zlb-row').count(), 0, 'A late answer for another period is ignored');
+    assert.equal(await page.locator('.zlb-row:not(.is-synthetic)').count(), 0, 'A late answer for another period cannot paint real rows');
+    assert.deepEqual(await page.locator('[data-synthetic-competitor] .zlb-name').allInnerTexts(), ['Aarav', 'Riya', 'Kabir'], 'Presentation-only competitors remain independent of a stale server answer');
     await receive(page, 'data.leaderboard', { period: 'weekly', items: [], total: 0 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    assert.equal(await page.getByRole('heading', { name: 'No rankings yet', exact: true }).count(), 1);
+    assert.deepEqual(await page.locator('[data-synthetic-competitor] .zlb-name').allInnerTexts(), ['Aarav', 'Riya', 'Kabir'], 'A successful empty server board still shows the competition targets');
+    assert.equal(await page.getByRole('heading', { name: 'No rankings yet', exact: true }).count(), 0);
     await page.getByRole('tab', { name: 'Daily', exact: true }).click();
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false, error: 'Leaderboard is unavailable' });
     assert.match(await page.getByRole('alert').innerText(), /Leaderboard is unavailable/);
@@ -168,7 +175,11 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     assert.equal((await page.evaluate(() => __sent.filter(message => message.type === 'leaderboard.load').length)), 4, 'Retry asks again');
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    await page.getByRole('button', { name: /^Rank 2, Not loaded yet/ }).click();
+    const profileLoads = await page.evaluate(() => __sent.filter(message => message.type === 'profile.load').length);
+    await page.locator('[data-synthetic-competitor="board-competitor-aarav"]').click();
+    assert.equal(await page.evaluate(() => S.v), 'board', 'A synthetic competitor stays on the leaderboard');
+    assert.equal(await page.evaluate(() => __sent.filter(message => message.type === 'profile.load').length), profileLoads, 'A synthetic competitor cannot request a profile');
+    await page.getByRole('button', { name: /^Rank 5, Not loaded yet/ }).click();
     assert.equal(await page.evaluate(() => S.v), 'host', 'A ranked creator opens their profile');
     assert.equal(await lastSent(page, 'profile.load').then(data => data?.id), rows[1].id);
     await page.evaluate(() => go('board'));

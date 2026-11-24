@@ -144,6 +144,16 @@ export interface MemberUsers {
   limit: number;
 }
 
+export type ProfileDirectoryFilter = "all" | "online";
+/** Discoverable User and Host profiles returned in one stable page. */
+export interface ProfileDirectory {
+  profiles: Host[];
+  total: number;
+  page: number;
+  limit: number;
+  filter: ProfileDirectoryFilter;
+}
+
 /** Connected, publicly active approved hosts for the host Home tab. */
 export interface ActiveHosts {
   hosts: Host[];

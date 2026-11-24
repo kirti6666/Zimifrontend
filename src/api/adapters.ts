@@ -66,7 +66,7 @@ export function commentFrom(value: unknown): PostComment {
   const id = idOf(comment);
   if (!id || typeof comment.text !== "string") throw new ApiError("This comment could not be loaded. Try again.", 502);
   return { id, text: comment.text, ...(typeof comment.createdAt === "string" && Number.isFinite(Date.parse(comment.createdAt)) ? { createdAt: comment.createdAt } : {}),
-    user: { id: idOf(comment.userId), name: string(author.name) || "BinzoLive member", avatarUrl: string(author.avatarUrl || avatar.url) } };
+    user: { id: idOf(comment.userId), name: string(author.name) || "BinzoLive user", avatarUrl: string(author.avatarUrl || avatar.url) } };
 }
 export function commentsFrom(value: unknown, postId: string): PostComments {
   const data = record(value);
@@ -105,9 +105,28 @@ export function memberUsersFrom(value: unknown): import("./types").MemberUsers {
     if (!/^[a-f\d]{24}$/i.test(id) || seen.has(id) || peer.role !== "user" || peer.isVerifiedHost === true ||
       (peer.name != null && (typeof peer.name !== "string" || peer.name.length > 120))) throw invalid();
     seen.add(id);
-    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive member", role: "user", isVerifiedHost: false, stream: null });
+    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive user", role: "user", isVerifiedHost: false, stream: null });
   });
   return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };
+}
+export function profileDirectoryFrom(value: unknown): import("./types").ProfileDirectory {
+  const data = record(value);
+  const invalid = () => new ApiError("Profiles could not be loaded. Please try again.", 502);
+  if (!Array.isArray(data.items) || !Number.isSafeInteger(data.total) || Number(data.total) < data.items.length ||
+    !Number.isSafeInteger(data.page) || Number(data.page) < 1 || Number(data.page) > 10000 ||
+    !Number.isSafeInteger(data.limit) || Number(data.limit) < 1 || Number(data.limit) > 100 || data.items.length > Number(data.limit) ||
+    (data.filter !== "all" && data.filter !== "online")) throw invalid();
+  const seen = new Set<string>();
+  const profiles = data.items.map(value => {
+    const peer = record(value), id = idOf(peer), host = peer.role === "host";
+    if (!/^[a-f\d]{24}$/i.test(id) || seen.has(id) || (peer.role !== "user" && !host) ||
+      host && (peer.hostStatus !== "approved" || peer.isVerifiedHost !== true) ||
+      !host && peer.isVerifiedHost === true || typeof peer.isOnline !== "boolean" ||
+      (peer.name != null && (typeof peer.name !== "string" || peer.name.length > 120))) throw invalid();
+    seen.add(id);
+    return hostFrom({ ...peer, name: typeof peer.name === "string" && peer.name.trim() ? peer.name : host ? "BinzoLive host" : "BinzoLive user", isVerifiedHost: host, stream: null });
+  });
+  return { profiles, total: Number(data.total), page: Number(data.page), limit: Number(data.limit), filter: data.filter };
 }
 export function activeHostsFrom(value: unknown): import("./types").ActiveHosts {
   const data = record(value);
@@ -134,7 +153,7 @@ export function relationshipsFrom(value: unknown, kind: "followers" | "following
   const users = data.items.map(value => {
     const entry = record(value), peer = record(entry.user ?? entry[kind === "followers" ? "userId" : "followingId"]);
     if (!idOf(peer) || (peer.name != null && typeof peer.name !== "string")) throw new ApiError("Your connections could not be loaded. Try again.", 502);
-    const name = typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive member";
+    const name = typeof peer.name === "string" && peer.name.trim() ? peer.name : "BinzoLive user";
     return { ...hostFrom({ ...peer, name }), canViewProfile: peer.canViewProfile === true };
   });
   return { users, total: Number(data.total), page: Number(data.page), limit: Number(data.limit) };

@@ -121,7 +121,7 @@ const status = { rate: 50, tier: 2, earnedCoins: 180000, next: { tier: 3, rate: 
     // Choosing a mission target updates the open sheet in place instead of redrawing the screen.
     await button('Mission').click();
     await page.locator('.hs-sheet').waitFor();
-    assert.match(await page.locator('.hs-sheet').innerText(), /Track member gift spending\. Your earnings are diamonds/);
+    assert.match(await page.locator('.hs-sheet').innerText(), /Track user gift spending\. Your earnings are diamonds/);
     assert.equal(await page.locator('.hs-task,.hs-claim').count(), 0, 'Hosts receive no legacy Coin task offers, even from cached Home rewards');
     await page.evaluate(() => { window.__missionSheet = document.querySelector('.hs-sheet'); window.__setupVideo = document.querySelector('.hc-stage video'); });
     await button('500K').click();

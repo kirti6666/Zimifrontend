@@ -37,17 +37,17 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     await page.evaluate(() => go('setup'));
     assert.equal((await sent('host.callStatus.load')).length, 1, 'Setup asks for the host call terms');
     await receive('host.callStatus', status);
-    assert.match(await page.locator('.hc-setup').innerText(), /3,000 member coins\/h\s*3,20,000 member coins to next tier/, 'The card explicitly quotes member spending');
+    assert.match(await page.locator('.hc-setup').innerText(), /3,000 user coins\/h\s*3,20,000 user coins to next tier/, 'The card explicitly quotes user spending');
     await button('Call price details').click();
     const setup = await page.locator('.hc-setup').innerText();
-    assert.match(setup, /Member pays 50 coins \/ min[\s\S]*Tier 2 of 3[\s\S]*Another 3,20,000 member coins unlocks a 85-coin\/min member price/);
+    assert.match(setup, /User pays 50 coins \/ min[\s\S]*Tier 2 of 3[\s\S]*Another 3,20,000 user coins unlocks a 85-coin\/min user price/);
     assert.match(setup, /60-coin entry fee[\s\S]*passes 1 minute/);
     await page.getByRole('switch').click();
     assert.deepEqual((await sent('presence.duringCalls')).at(-1), { on: false });
     await receive('presence.duringCalls.saved', { on: false });
     assert.equal(await page.getByRole('switch').getAttribute('aria-checked'), 'false', 'The host can hide from Home during calls');
     const configurable={...status,rate:50,configurableRate:true,minRate:10,maxRate:100,selectedRate:50,tiers:[],next:null};
-    await receive('host.callStatus',configurable);assert.equal(await page.locator('#hc-call-rate').inputValue(),'50');assert.equal(await page.getByRole('list',{name:'Member call price tiers'}).count(),0);
+    await receive('host.callStatus',configurable);assert.equal(await page.locator('#hc-call-rate').inputValue(),'50');assert.equal(await page.getByRole('list',{name:'User call price tiers'}).count(),0);
     assert.equal(await page.locator('#hc-call-rate').getAttribute('tabindex'),'-1','The invisible compatibility input stays out of keyboard navigation');
     const rateTrack=await page.locator('.hc-rate-track').boundingBox();await page.evaluate(()=>{window.__rateSlider=document.querySelector('#hc-call-rate-slider')});
     await page.mouse.click(rateTrack.x+.5,rateTrack.y+16);assert.equal(await page.locator('#hc-call-rate-slider').inputValue(),'10','The painted left endpoint selects the minimum rate');
@@ -87,7 +87,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     // A caller who arrives while another is ringing waits, then rings as a banner on the answered call.
     await receive('call.incoming', { callId: 'c1', from: { id: 'm1', name: 'Riya Sharma', level: 5, city: 'Pune' }, voice: false, ...terms });
     await page.waitForFunction(() => S.v === 'ring');
-    assert.match(await page.locator('.ringscr').innerText(), /Member pays 50 coins\/min[\s\S]*Member entry fee: 60 coins[\s\S]*diamonds/i);
+    assert.match(await page.locator('.ringscr').innerText(), /User pays 50 coins\/min[\s\S]*User entry fee: 60 coins[\s\S]*diamonds/i);
     await receive('call.incoming', { callId: 'c5', from: { id: 'm5', name: 'Meera' }, voice: true, ...terms });
     assert.equal(await page.evaluate(() => S.caller.callId), 'c1', 'The ringing call keeps the screen');
     await button('Accept').click();
@@ -151,7 +151,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(os.tmpdir(), `zim
     const summary = await page.locator('.hc-summary').innerText();
     assert.match(summary, /Callers\s*2/i);
     assert.match(summary, /Diamond balance\s*125/i);
-    assert.match(summary, /Riya[\s\S]*Ended early[\s\S]*Kabir[\s\S]*60 member coins · hold completed/);
+    assert.match(summary, /Riya[\s\S]*Ended early[\s\S]*Kabir[\s\S]*60 user coins · hold completed/);
     assert.match(summary, /Early endings today: 3\. Past 2 a day, early endings can reduce diamond earnings/);
     assert.doesNotMatch(summary, /You earned.*coins|≈|\+60 received/i, 'The summary never presents billed Coins as host earnings');
     await receive('wallet.balance', { currency: 'diamonds', coins: 98765, earningsPaise: 3000, diamondUnits: 150000000, reservedDiamondUnits: 0, diamondScale: 1000000 });

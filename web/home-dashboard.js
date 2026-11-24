@@ -142,115 +142,26 @@ const HomeInfinite=(()=>{
   return {reset};
 })();
 
-/* Each approved-host directory keeps its own query and pages. Only the selected
-   tab paints, so an in-flight read cannot replace the other tab's input/caret. */
-function hostDirectoryStateNew(){return {owner:'',rows:[],query:'',resultQuery:'',page:0,requestedPage:1,total:0,loaded:false,loadedAt:0,loading:false,more:false,error:'',timer:null,remembered:new Set()}}
-const HostUsers=hostDirectoryStateNew(),HostActiveHosts=hostDirectoryStateNew(),HostBrowse={tab:'members'};
-const HOST_DIRECTORY_TABS=[['members','Members'],['active','Active Hosts']];
-function hostDirectoryState(tab=HostBrowse.tab){return tab==='active'?HostActiveHosts:HostUsers}
-function hostDirectoryNeedsLoad(tab=HostBrowse.tab){const state=hostDirectoryState(tab);return !state.loading&&(!state.loaded||tab==='active'&&Date.now()-state.loadedAt>30000)}
-function hostDirectorySearchLabel(){return HostBrowse.tab==='active'?'Search active hosts':'Search users by name or ID'}
-function hostUsersHeader(){return `<header class="zh-header zh-home-header zh-users-header"><div class="zh-host-tabs" role="tablist" aria-label="Host directory" onkeydown="hostDirectoryTabKey(event)">${HOST_DIRECTORY_TABS.map(([tab,label])=>`<button type="button" id="host-directory-tab-${tab}" role="tab" aria-selected="${HostBrowse.tab===tab}" aria-controls="host-directory-panel" tabindex="${HostBrowse.tab===tab?'0':'-1'}" onclick="hostDirectoryTab('${tab}')">${label}</button>`).join('')}</div><div class="zh-header-actions"><button type="button" class="zh-icon" onclick="document.getElementById('host-user-search')?.focus()" aria-label="${HostBrowse.tab==='active'?'Search active hosts':'Search users'}">${hi('srch',25)}</button><button type="button" class="zh-icon zh-trophy" onclick="go('board')" aria-label="Leaderboard">${hi('trophy',27)}</button></div></header>`}
-function hostDirectoryTab(tab){
-  if(!isApprovedHost()||S.v!=='search'||!HOST_DIRECTORY_TABS.some(([key])=>key===tab)||HostBrowse.tab===tab)return;
-  HostBrowse.tab=tab;S.sq=hostDirectoryState().query;r();document.getElementById('sq')?.focus();
-  if(hostDirectoryNeedsLoad())hostDirectoryLoad();
+/* Search is one server-paginated directory for both public User and Host profiles.
+   Availability is a filter, never a role category. */
+const PROFILE_SEARCH_FILTERS=[['all','All'],['online','Online']];
+function profileSearchFilters(){return `<div class="zh-profile-filters" role="group" aria-label="Availability">${PROFILE_SEARCH_FILTERS.map(([key,label])=>`<button type="button" data-profile-filter="${key}" aria-pressed="${Home.searchFilter===key}" onclick="profileSearchSetFilter('${key}')">${label}</button>`).join('')}</div>`}
+function profileSearchSetFilter(value){
+  if(!PROFILE_SEARCH_FILTERS.some(([key])=>key===value)||Home.searchFilter===value)return;
+  Home.searchFilter=value;Home.searchRows=[];Home.searchTotal=0;Home.searchPage=1;Home.searchQuery='';
+  document.querySelectorAll('[data-profile-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.profileFilter===value)));
+  homeSearchRequest();
 }
-function hostDirectoryTabKey(event){
-  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
-  event.preventDefault();
-  const tabs=HOST_DIRECTORY_TABS.map(([key])=>key),at=tabs.indexOf(HostBrowse.tab);
-  const next=event.key==='Home'?tabs[0]:event.key==='End'?tabs.at(-1):tabs[(at+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];
-  hostDirectoryTab(next);document.getElementById('host-directory-tab-'+next)?.focus();
+function profileSearchOpen(id){
+  const profile=Home.searchRows.find(row=>row.id===id);if(!profile)return;
+  homeRemember(profile);go(profile.serverRole==='host'?'host':'user',domId(id));
 }
-function hostDirectoryPaint(tab){
-  if(!isApprovedHost()||HostBrowse.tab!==tab||S.v!=='search')return;
-  const results=document.getElementById('home-search-results');
-  if(results){results.innerHTML=hostDirectoryResults(tab);results.setAttribute('aria-busy',String(hostDirectoryState().loading))}
-  contentImagesReady();window.ZimiLaunch?.check();
+function profileSearchAvatar(profile){
+  const src=imageSrc(profile.avatarUrl),initial=(first(profile.n||'')||'?').charAt(0).toUpperCase(),tone=Math.abs(profile.seed||0)%6;
+  return `<span class="zh-user-avatar is-tone-${tone}" aria-hidden="true">${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:`<span>${esc(initial)}</span>`}<i class="${profile.on?'is-online':''}"></i></span>`;
 }
-function hostUsersPaint(){hostDirectoryPaint('members')}
-function hostDirectoryLoad(more=false,tab=HostBrowse.tab){
-  if(!isApprovedHost())return;
-  const state=hostDirectoryState(tab),maxPage=tab==='active'?1000:10000;
-  if(more&&(state.loading||state.rows.length>=state.total||state.page>=maxPage))return;
-  clearTimeout(state.timer);state.timer=null;
-  const q=state.query.trim(),page=more?state.page+1:1;
-  Object.assign(state,{loading:true,more,error:'',requestedPage:page});hostDirectoryPaint(tab);
-  if(DEMO){Object.assign(state,{rows:[],loaded:true,loading:false,more:false,page:1,total:0,resultQuery:q});hostDirectoryPaint(tab);return}
-  Native.send(tab==='active'?'hosts.active.load':'users.load',{q,page});
+function profileSearchRow(profile){
+  const id=domId(profile.id),name=esc(profile.n);
+  return `<article class="zh-user-row" data-user-id="${esc(profile.id)}" data-profile-role="${profile.serverRole==='host'?'host':'user'}"><button type="button" class="zh-user-person" onclick="profileSearchOpen('${id}')" aria-label="View ${name} profile">${profileSearchAvatar(profile)}<span class="zh-user-identity"><strong>${name}</strong><small>${profile.on?'Online':'Offline'}</small></span></button></article>`;
 }
-function hostUsersLoad(more=false){hostDirectoryLoad(more,'members')}
-function hostDirectorySearch(value,tab=HostBrowse.tab){
-  const state=hostDirectoryState(tab);state.query=String(value).slice(0,tab==='active'?80:100);S.sq=state.query;
-  clearTimeout(state.timer);Object.assign(state,{loading:true,more:false,error:'',requestedPage:1});hostDirectoryPaint(tab);
-  state.timer=setTimeout(()=>hostDirectoryLoad(false,tab),280);
-}
-function hostUsersSearch(value){hostDirectorySearch(value,'members')}
-function hostDirectoryPeer(id,tab){
-  if(!isApprovedHost()){window.ZimiHostAccess?.guard();return null}
-  const state=hostDirectoryState(tab),user=state.rows.find(row=>row.id===id);if(!user)return null;
-  // Chat/profile helpers share identity through g(), without turning this member
-  // into a verified creator or inventing online presence.
-  const known=g(id);if(known)Object.assign(known,user);else EXTRA.push({...user});
-  state.remembered.add(id);
-  return user;
-}
-function hostUsersPeer(id){return hostDirectoryPeer(id,'members')}
-function hostUsersOpen(id,action){
-  const user=hostUsersPeer(id);if(!user)return;
-  if(action==='chat')return zcOpen(id);
-  if(action==='voice'||action==='video')return hostCallMember(id,action==='voice',{name:user.n,avatarUrl:user.avatarUrl,city:user.c,gender:user.gender});
-  go('user',id);
-}
-function hostUsersRow(user){
-  const id=domId(user.id),name=esc(user.n);
-  return `<article class="zh-user-row" data-user-id="${esc(user.id)}"><button type="button" class="zh-user-person" onclick="hostUsersOpen('${id}','profile')" aria-label="View ${name} profile"><span class="zh-user-avatar">${homeCover(user)}<i class="${user.on?'is-online':''}" aria-hidden="true"></i></span><span class="zh-user-identity"><strong>${name}</strong><small>${user.on?'Online':'Offline'}${user.c?' · '+esc(user.c):''}</small></span></button><div class="zh-user-actions"><button type="button" onclick="hostUsersOpen('${id}','chat')" aria-label="Chat with ${name}">${hi('chat',20)}</button><button type="button" onclick="hostUsersOpen('${id}','voice')" aria-label="Voice call ${name}">${hi('ph',20)}</button><button type="button" class="zh-user-video" onclick="hostUsersOpen('${id}','video')" aria-label="Video call ${name}">${hi('vid',20)}</button></div></article>`;
-}
-function hostActiveHostsOpen(id,action){
-  const host=hostDirectoryPeer(id,'active');if(!host)return;
-  if(action==='chat')return zcOpen(id);
-  if(action==='profile')go('host',id);
-}
-function hostActiveHostsRow(host){
-  const id=domId(host.id),name=esc(host.n);
-  return `<article class="zh-user-row zh-active-host-row" data-user-id="${esc(host.id)}"><button type="button" class="zh-user-person" onclick="hostActiveHostsOpen('${id}','profile')" aria-label="View ${name} profile"><span class="zh-user-avatar">${homeCover(host)}<i class="${host.on?'is-online':''}" aria-hidden="true"></i></span><span class="zh-user-identity"><strong>${name}</strong><small>${host.on?'Online':'Offline'}${host.c?' · '+esc(host.c):''}</small></span></button><div class="zh-user-actions"><button type="button" onclick="hostActiveHostsOpen('${id}','chat')" aria-label="Chat with ${name}">${hi('chat',20)}</button></div></article>`;
-}
-function hostDirectoryResults(tab=HostBrowse.tab){
-  const active=tab==='active',state=hostDirectoryState(tab),noun=active?'active hosts':'users',pending=state.loading||!state.loaded,rows=state.resultQuery===state.query.trim()?state.rows:[],more=pending&&state.more;
-  if(pending&&!more)return contentSkeleton('rows','Loading '+noun,6);
-  const error=state.error,moreError=error&&state.requestedPage>1,load=`hostDirectoryLoad(false,'${tab}')`,loadMore=`hostDirectoryLoad(true,'${tab}')`;
-  if(error&&!moreError)return `<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="${load}">Retry</button></div>`;
-  return `${rows.length?`<div class="zh-user-list" aria-label="${active?'Active hosts':'Members'}">${rows.map(active?hostActiveHostsRow:hostUsersRow).join('')}</div>`:`<div class="zh-empty"><h3>${active?'No active hosts found':state.query.trim()?'No users found':'No users to show yet'}</h3><p>${active?(state.query.trim()?'Try another host name.':'Hosts will appear here when they are online.'):state.query.trim()?'Try another name or user ID.':'Members will appear here when they join.'}</p></div>`}${more?contentSkeleton('rows','Loading more '+noun,3):moreError?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="${loadMore}">Retry loading more ${noun}</button></div>`:rows.length<state.total&&state.page<(active?1000:10000)?`<button type="button" class="zh-load-more" onclick="${loadMore}">Load more ${noun}</button>`:''}`;
-}
-function hostUsersResults(){return hostDirectoryResults('members')}
-function hostUsersForget(id){for(const list of [H,EXTRA]){const at=list.findIndex(user=>user.id===id);if(at>=0)list.splice(at,1)}delete PEOPLE[id];HostUsers.remembered.delete(id);HostActiveHosts.remembered.delete(id)}
-function hostUsersReset(){for(const state of [HostUsers,HostActiveHosts]){clearTimeout(state.timer);for(const id of state.remembered)hostUsersForget(id);Object.assign(state,hostDirectoryStateNew())}HostBrowse.tab='members';S.sq=''}
-function hostUsersEnsureAccount(){const owner=S.user?.id||'';if(HostUsers.owner!==owner){hostUsersReset();HostUsers.owner=owner;HostActiveHosts.owner=owner}}
-Native.on('data.users',data=>{
-  if(!isApprovedHost()||data.q!==HostUsers.query.trim()||data.page!==HostUsers.requestedPage)return;
-  const rows=(data.users||[]).filter(user=>user.serverRole==='user'&&user.id!==S.user?.id).map(homeCreator);
-  HostUsers.rows=data.page>1?[...HostUsers.rows,...rows.filter(user=>!HostUsers.rows.some(old=>old.id===user.id))]:rows;
-  Object.assign(HostUsers,{loaded:true,loading:false,more:false,error:'',page:data.page,total:data.total,resultQuery:data.q});hostUsersPaint();
-});
-Native.on('data.activeHosts',data=>{
-  if(!isApprovedHost()||data.q!==HostActiveHosts.query.trim()||data.page!==HostActiveHosts.requestedPage)return;
-  // The dedicated server read applies online/approval/privacy filters before
-  // pagination. Keep its real presence instead of hostFrom's callable-host tag.
-  const rows=(data.hosts||[]).filter(host=>(host.serverRole==='host'||host.role==='host')&&host.verified===true&&host.online===true&&host.id!==S.user?.id).map(host=>({...homeCreator(host),on:host.online?1:0}));
-  HostActiveHosts.rows=data.page>1?[...HostActiveHosts.rows,...rows.filter(host=>!HostActiveHosts.rows.some(old=>old.id===host.id))]:rows;
-  Object.assign(HostActiveHosts,{loaded:true,loadedAt:Date.now(),loading:false,more:false,error:'',page:data.page,total:data.total,resultQuery:data.q});hostDirectoryPaint('active');
-});
-Native.on('data.loading',data=>{
-  const tab=data.resource==='users'?'members':data.resource==='activeHosts'?'active':null;if(!tab||!isApprovedHost())return;
-  const state=hostDirectoryState(tab);if((data.q||'')!==state.query.trim()||data.page!==state.requestedPage)return;
-  Object.assign(state,{loading:!!data.loading,more:!!data.loading&&data.page>1,error:data.error||''});
-  if(data.error)state.loaded=true;hostDirectoryPaint(tab);
-});
-function hostDirectoryEnsureLoaded(){hostUsersEnsureAccount();if(hostDirectoryNeedsLoad())hostDirectoryLoad()}
-Native.on('session',()=>{hostUsersEnsureAccount();if(isApprovedHost()&&S.v==='search')hostDirectoryEnsureLoaded()});
-Native.on('session.none',hostUsersReset);Native.on('session.expired',hostUsersReset);
-window.addEventListener('zimi:host-access',event=>{if(event.detail.checking)return;if(!event.detail.approved){hostUsersReset();if(['home','search'].includes(S.v))r()}else if(S.v==='search')hostDirectoryEnsureLoaded()});
-document.addEventListener('aurora:navigate',()=>{if(isApprovedHost()&&S.v==='search')hostDirectoryEnsureLoaded()});
-Native.on('block.saved',data=>{if(!isApprovedHost())return;for(const state of [HostUsers,HostActiveHosts]){if(data.blocked)state.rows=state.rows.filter(user=>user.id!==data.id);state.loaded=false}if(data.blocked){hostUsersForget(data.id);hostDirectoryPaint(HostBrowse.tab)}if(S.v==='search')hostDirectoryLoad()});
-Native.on('app.foreground',()=>{if(isApprovedHost()&&S.v==='search'&&!hostDirectoryState().loading)hostDirectoryLoad()});
+function profileSearchList(rows){return `<div class="zh-user-list" aria-label="Users and hosts">${rows.map(profileSearchRow).join('')}</div>`}

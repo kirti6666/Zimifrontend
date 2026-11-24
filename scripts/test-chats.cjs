@@ -430,6 +430,7 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     await settle('data.home', homeData, 'home');
     assert.deepEqual(await picker.getByRole('textbox').evaluate(input => ({ focused: document.activeElement === input, value: input.value, start: input.selectionStart, end: input.selectionEnd })), { focused: true, value: 'Asha', start: 1, end: 3 }, 'Background creator updates preserve contact search focus and selection');
     await picker.getByRole('button').filter({ hasText: 'Asha Sen' }).click();
+    await page.waitForFunction(expected => __sent.some(message => message.type === 'chat.open' && message.data.with === expected), asha.id);
     assert.equal((await lastSent('chat.open')).with, asha.id);
     assert.equal(await page.evaluate(() => S.v), 'thread');
     assert.equal(await page.locator('.zc-thread-header small').textContent(),'Offline','An offline chat host keeps truthful presence');
@@ -494,7 +495,7 @@ const homeData = { hosts: [mira], stage: [mira], featured: mira, total: 1, page:
     assert.equal(await sentCount('chat.send'), sendsBeforeGuard);
     assert.equal(await guardedDraft.inputValue(), 'Keep my draft through failed thread loads');
 
-    await loading('thread', false, { error: 'Connections are allowed only between a member and an approved host' });
+    await loading('thread', false, { error: 'Connections are allowed only between a user and an approved host' });
     await page.getByRole('alert').filter({ hasText: 'Connections are allowed only between' }).waitFor();
     assert.equal(await sendButton.isDisabled(), true, 'A forbidden thread cannot keep a working send control');
     assert.equal(await giftButton.isDisabled(), true);

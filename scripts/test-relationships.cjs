@@ -66,7 +66,7 @@ const referenceNames=['Jahrul Ansari','Manohar Lal Manohar Lal','Manisha','Karan
       await page.waitForFunction(()=>!document.querySelector('.zu-relationship-list>li:last-child .zu-relationship-avatar img'));
       assert.equal(await page.locator('.zu-relationship-list>li:last-child .zu-relationship-avatar').innerText(),'PM','A failed photo reveals the member initials');
       assert.equal(await page.locator('.zu-relationship-avatar svg').count(),0,'Initial avatars replace generic silhouettes only in connections');
-      assert.equal(await page.locator('.zu-relationship-list>li:last-child .zu-relationship-name small').innerText(),'Member');
+      assert.equal(await page.locator('.zu-relationship-list>li:last-child .zu-relationship-name small').innerText(),'User');
       assert.equal(await page.locator('.zu-relationship-list>li:last-child .zu-relationship-row>svg').count(),0,'Private members have no navigation arrow');
       for(const width of [320,390,768]){
         await page.setViewportSize({width,height:844});

@@ -109,7 +109,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   for(const invalid of [{minRate:0},{minRate:101},{maxRate:9},{selectedRate:101},{rate:49},{minRate:'10'},{configurableRate:false}]){
     expect('GET','/calls/host-status',{...configurableStatus,...invalid});await assert.rejects(api.hostCallStatus(),/call price limits/);
   }
-  const previousRateRequests=requests.length;for(const invalid of [0,1.5,'50',1000001])await assert.rejects(api.saveHostCallRate(invalid),/valid member call price/);assert.equal(requests.length,previousRateRequests);
+  const previousRateRequests=requests.length;for(const invalid of [0,1.5,'50',1000001])await assert.rejects(api.saveHostCallRate(invalid),/valid user call price/);assert.equal(requests.length,previousRateRequests);
   const legacyStatus={...configurableStatus};for(const key of ['configurableRate','minRate','maxRate','selectedRate'])delete legacyStatus[key];expect('GET','/calls/host-status',legacyStatus);assert.equal((await api.hostCallStatus()).configurableRate,undefined);finished();
   const acceptedCallId='507f1f77bcf86cd799439081',memberId='507f1f77bcf86cd799439082',hostId='507f1f77bcf86cd799439083';
   expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:memberId,calleeId:hostId,status:'accepted',kind:'video',coinsPerMinute:50,earlyEnds:{today:1,limit:3,penaltyCoins:20}});
@@ -416,7 +416,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const followers=await api.relationships('followers',2);
   assert.equal(followers.users[0].id,'follower-id');assert.equal(followers.users[0].following,true);assert.equal(followers.users[0].canViewProfile,true);assert.equal(followers.page,2);finished();
   expect('GET','/users/member-id/following?page=1&limit=20',{items:[{user:{_id:'unnamed-id',name:null}}],total:1,page:1,limit:20});
-  const following=await api.relationships('following');assert.equal(following.users[0].name,'BinzoLive member');assert.equal(following.users[0].canViewProfile,false);finished();
+  const following=await api.relationships('following');assert.equal(following.users[0].name,'BinzoLive user');assert.equal(following.users[0].canViewProfile,false);finished();
   for(const invalid of [{...connections,total:-1},{...connections,page:0},{...connections,limit:0},{...connections,items:[{user:{name:'Missing ID'}}]}])assert.throws(()=>adapters.relationshipsFrom(invalid,'followers'),/connections could not be loaded/);
   reset();
   const imageOwner={...user,role:'host',hostStatus:'approved',isVerifiedHost:true,onboardingStatus:'completed',coverKey:'covers/member-id/profile.png',coverUrl:'https://cdn.example.test/profile-cover.png'};
@@ -1430,7 +1430,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(directory.users[0].availableForCall, true, 'Invitation availability is distinct from online presence');
   for (const privateKey of ['phone', 'email', 'safety', 'coins', 'passwordHash']) assert.equal(directory.users[0][privateKey], undefined, `Directory strips ${privateKey}`);
   assert.equal(requests.at(-1)[2], undefined, 'Directory reads cannot submit a write or choose another viewer');
-  assert.equal(adapters.memberUsersFrom({ ...directoryRaw, items: [{ ...directoryRawUser, name: '' }] }).users[0].name, 'BinzoLive member', 'An unnamed real member gets a neutral identity fallback');
+  assert.equal(adapters.memberUsersFrom({ ...directoryRaw, items: [{ ...directoryRawUser, name: '' }] }).users[0].name, 'BinzoLive user', 'An unnamed real user gets a neutral identity fallback');
   for (const patch of [{ items: undefined }, { items: 'untrusted' }, { total: -1 }, { total: Number.MAX_SAFE_INTEGER + 1 }, { total: '24' }, { page: 0 }, { page: 10001 }, { limit: 0 }, { limit: 101 },
     { items: [{ ...directoryRawUser, _id: 'untrusted-id' }] }, { items: [{ ...directoryRawUser, role: 'host', hostStatus: 'approved', isVerifiedHost: true }] },
     { items: [{ ...directoryRawUser, name: 42 }] }, { items: [{ ...directoryRawUser, isVerifiedHost: true }] }, { items: [directoryRawUser, directoryRawUser] }]) {
@@ -1442,6 +1442,52 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(requests.length, beforeInvalidDirectory, 'Malformed directory queries stop before HTTP');
   expect('GET', '/users/search?audience=members&q=&page=1&limit=20', { items: [], total: 0, page: 1, limit: 20 });
   assert.deepEqual(plain((await api.memberUsers()).users), [], 'An empty query loads the first real member page without enumerating it in memory');
+  finished();
+  const profileUserId = '507f1f77bcf86cd799439083', profileHostId = '507f1f77bcf86cd799439084';
+  const profileRawUser = { _id: profileUserId, name: 'Riya user', role: 'user', hostStatus: 'none', isVerifiedHost: false,
+    avatar: { url: 'https://cdn.example.test/riya.png' }, country: 'India', isOnline: false, availableForCall: true,
+    phone: 'private-phone', email: 'private@example.test', safety: { discoverable: true }, coins: 999, passwordHash: 'not-public' };
+  const profileRawHost = { _id: profileHostId, name: 'Asha host', role: 'host', hostStatus: 'approved', isVerifiedHost: true,
+    avatar: { url: 'https://cdn.example.test/asha.png' }, country: 'India', isOnline: true, availableForCall: false,
+    phone: 'private-phone', email: 'private@example.test', safety: { discoverable: true }, earningsPaise: 999, accessToken: 'not-public' };
+  const profileRaw = { items: [profileRawUser, profileRawHost], total: 24, page: 2, limit: 20, filter: 'all' };
+  const profileQuery = 'Riya&Asha/audience=admin';
+  expect('GET', `/users/search?audience=all&q=${encodeURIComponent(profileQuery)}&page=2&limit=20&filter=all`, profileRaw);
+  const profiles = await api.profileDirectory('  ' + profileQuery + '  ', 2, 'all');
+  assert.equal(profiles.total, 24); assert.equal(profiles.page, 2); assert.equal(profiles.limit, 20); assert.equal(profiles.filter, 'all');
+  assert.deepEqual(profiles.profiles.map(profile => [profile.id, profile.role, profile.serverRole, profile.verified, profile.online]), [
+    [profileUserId, 'sender', 'user', false, false], [profileHostId, 'host', 'host', true, true],
+  ], 'One directory page preserves both User and approved Host identities');
+  for (const profile of profiles.profiles) for (const privateKey of ['phone', 'email', 'safety', 'coins', 'earningsPaise', 'passwordHash', 'accessToken'])
+    assert.equal(profile[privateKey], undefined, `Profile directory strips ${privateKey}`);
+  assert.equal(requests.at(-1)[2], undefined, 'Profile search cannot submit write or viewer authority fields');
+  const unnamedProfiles = adapters.profileDirectoryFrom({ ...profileRaw, items: [{ ...profileRawUser, name: '' }, { ...profileRawHost, name: null }], total: 2 }).profiles;
+  assert.deepEqual(unnamedProfiles.map(profile => profile.name), ['BinzoLive user', 'BinzoLive host']);
+  expect('GET', `/users/search?audience=all&q=${'x'.repeat(100)}&page=10000&limit=20&filter=online`,
+    { items: [profileRawHost], total: 1, page: 10000, limit: 20, filter: 'online' });
+  const onlineProfiles = await api.profileDirectory('x'.repeat(100), 10000, 'online');
+  assert.equal(onlineProfiles.filter, 'online'); assert.equal(onlineProfiles.page, 10000);
+  assert.deepEqual(onlineProfiles.profiles.map(profile => [profile.id, profile.online]), [[profileHostId, true]], 'The Online filter returns connected profiles only');
+  for (const patch of [{ items: undefined }, { items: 'untrusted' }, { total: -1 }, { total: 1 }, { total: Number.MAX_SAFE_INTEGER + 1 }, { total: '24' },
+    { page: 0 }, { page: 1.5 }, { page: 10001 }, { page: '2' }, { limit: 0 }, { limit: 101 }, { limit: 1.5 },
+    { filter: undefined }, { filter: 'active' }, { filter: 'Online' }, { filter: null },
+    { items: [{ ...profileRawUser, _id: 'untrusted-id' }] }, { items: [{ ...profileRawUser, _id: undefined }] },
+    { items: [{ ...profileRawUser, role: 'sender' }] }, { items: [{ ...profileRawUser, role: 'admin' }] },
+    { items: [{ ...profileRawUser, isVerifiedHost: true }] },
+    { items: [{ ...profileRawHost, hostStatus: 'pending' }] }, { items: [{ ...profileRawHost, hostStatus: 'suspended' }] },
+    { items: [{ ...profileRawHost, isVerifiedHost: false }] }, { items: [{ ...profileRawHost, isVerifiedHost: 'true' }] },
+    { items: [{ ...profileRawUser, isOnline: undefined }] }, { items: [{ ...profileRawUser, isOnline: 'false' }] },
+    { items: [{ ...profileRawHost, name: 42 }] }, { items: [{ ...profileRawHost, name: 'x'.repeat(121) }] },
+    { items: [profileRawUser, profileRawUser] }, { limit: 1, items: [profileRawUser, profileRawHost] }]) {
+    assert.throws(() => adapters.profileDirectoryFrom({ ...profileRaw, ...patch }), error => error instanceof ApiError && error.status === 502, JSON.stringify(patch));
+  }
+  const beforeInvalidProfiles = requests.length;
+  for (const [q, page, filter] of [[null, 1, 'all'], [1, 1, 'all'], ['x'.repeat(101), 1, 'all'], ['', 0, 'all'], ['', -1, 'all'],
+    ['', 1.5, 'all'], ['', 10001, 'all'], ['', '2', 'all'], ['', null, 'all'], ['', 1, null], ['', 1, 'active'], ['', 1, 'Online'], ['', 1, true]])
+    await assert.rejects(api.profileDirectory(q, page, filter), error => error instanceof ApiError && error.status === 400);
+  assert.equal(requests.length, beforeInvalidProfiles, 'Malformed profile queries stop before HTTP');
+  expect('GET', '/users/search?audience=all&q=&page=1&limit=20&filter=all', { items: [], total: 0, page: 1, limit: 20, filter: 'all' });
+  assert.deepEqual(plain(await api.profileDirectory()), { profiles: [], total: 0, page: 1, limit: 20, filter: 'all' });
   finished();
   const activeHostId = '507f1f77bcf86cd799439082';
   const activeHostRawUser = { _id: activeHostId, name: 'Active directory host', role: 'host', hostStatus: 'approved', isVerifiedHost: true,

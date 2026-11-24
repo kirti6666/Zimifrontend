@@ -1,7 +1,17 @@
-/* The Home trophy opens the creator leaderboard: creators ranked by the gift coins they
-   received today, this week or ever, read from the server. Sample rankings exist only in DEMO. */
+/* The Home trophy opens the creator leaderboard: real creators are ranked by server gift
+   coins, while fixed noninteractive competitors provide visual targets only. */
 const Board = { period:'daily', rows:[], total:0 };
 const BOARD_PERIODS = [['daily','Daily'],['weekly','Weekly'],['all','All time']];
+const BOARD_COMPETITORS = Object.freeze([
+  Object.freeze({id:'board-competitor-aarav',name:'Aarav',avatarUrl:'',coins:1000000,synthetic:true}),
+  Object.freeze({id:'board-competitor-riya',name:'Riya',avatarUrl:'',coins:100000,synthetic:true}),
+  Object.freeze({id:'board-competitor-kabir',name:'Kabir',avatarUrl:'',coins:5000,synthetic:true}),
+]);
+function lbDisplayRows(){
+  const extras=DEMO||ContentLoading.leaderboard.loaded?BOARD_COMPETITORS:[];
+  return [...Board.rows.map(row=>({...row,synthetic:false})),...extras].sort((a,b)=>b.coins-a.coins||String(a.id).localeCompare(String(b.id))).map((row,index)=>({...row,rank:index+1}));
+}
+function lbCoinText(row){if(!row.synthetic)return n(row.coins);return row.coins>=1000000?`${row.coins/1000000}M`:row.coins>=1000?`${row.coins/1000}K`:n(row.coins)}
 function lbLoad(){
   if(DEMO){
     const scale={daily:1,weekly:6,all:38}[Board.period];
@@ -24,7 +34,8 @@ function lbOpen(id){const row=Board.rows.find(x=>x.id===id);if(!row)return;if(!g
 function lbView(){
   const pending=!DEMO&&contentPending('leaderboard'),error=!pending&&!DEMO&&ContentLoading.leaderboard.error;
   const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
-  const list=Board.rows.length?`<ol class="zlb-list">${Board.rows.map(row=>`<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="Rank ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${n(row.coins)}</span></button></li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here once they receive gifts${Board.period==='daily'?' today':Board.period==='weekly'?' this week':''}.</p></div>`;
+  const rows=lbDisplayRows();
+  const list=rows.length?`<ol class="zlb-list">${rows.map(row=>`<li>${row.synthetic?`<div class="zlb-row is-synthetic ${row.rank<=3?'is-top':''}" data-synthetic-competitor="${esc(row.id)}" aria-label="Rank ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${lbCoinText(row)}</span></div>`:`<button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="Rank ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${lbCoinText(row)}</span></button>`}</li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here once they receive gifts${Board.period==='daily'?' today':Board.period==='weekly'?' this week':''}.</p></div>`;
   const body=pending?contentSkeleton('rows','Loading leaderboard',6):error?contentError('leaderboard'):list;
   return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}"><p class="zlb-note">Creators ranked by gift coins received</p>${body}</div></section>`;
 }

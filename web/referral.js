@@ -16,7 +16,7 @@ function zrfOpen(from){ZRefer.from=['home','settings'].includes(from)?from:'sett
 function zrfHeader(){const home=ZRefer.from==='home';return `<header class="zh-subheader zrf-header">${backButton(`go('${home?'home':'settings'}')`,{label:home?'Back to home':'Back to settings'})}<h1>Refer &amp; Earn</h1></header>`}
 
 function zrfView(){
-  if(isHostWallet())return '<section class="zrf-page"><p>Coin referral rewards are available to member accounts.</p></section>';
+  if(isHostWallet())return '<section class="zrf-page"><p>Coin referral rewards are available to user accounts.</p></section>';
   const data=zrfData(),pending=!DEMO&&contentPending('referral')&&!data,error=!DEMO&&!data&&ContentLoading.referral.error;
   if(pending)return `<section class="zrf-page">${contentSkeleton('rows','Loading your invite code',3)}</section>`;
   if(error)return `<section class="zrf-page">${contentError('referral')}</section>`;

@@ -24,6 +24,7 @@ const directoryMember = { id: '507f1f77bcf86cd799439081', name: 'Directory membe
 const directoryPage = (users = [directoryMember], page = 1) => ({ users, total: users.length, page, limit: 20 });
 const directoryHost = { id: '507f1f77bcf86cd799439082', name: 'Active directory host', role: 'host', serverRole: 'host', verified: true, online: true, availableForCall: false };
 const activeHostsPage = (hosts = [directoryHost], page = 1) => ({ hosts, total: hosts.length, page, limit: 20 });
+const profileDirectoryPage = (profiles = [directoryMember, directoryHost], page = 1, filter = 'all') => ({ profiles, total: profiles.length, page, limit: 20, filter });
 
 function harness(initialAppState = 'active', initialLink = null, liveStreaming = false, initialIncoming = null) {
   const disk = new Map(), calls = [], posts = [], live = [], saved = [], haptics = [], capture = [], effects = [], opened = [], signals = [], activities = [], keyboards = [], links = [], shares = [], backs = [], alerts = [], exits = [];
@@ -167,6 +168,58 @@ function harness(initialAppState = 'active', initialLink = null, liveStreaming =
 // at the mocked module boundary. Normal tests run with the production default.
 const streamingHarness = (state = 'active', link = null) => harness(state, link, true);
 const findShellWeb = node => !node || typeof node !== 'object' ? null : node.type === 'WebView' ? node : [node.props?.children].flat().map(findShellWeb).find(Boolean) || null;
+
+test('profile directory messages require bounded search, page and filter fields only', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  for (const data of [{ q: '', filter: 'all' }, { q: '  Riya  ', page: 1, filter: 'online' }, { q: 'x'.repeat(100), page: 10000, filter: 'all' }])
+    assert.ok(parse({ type: 'profiles.search', data }), JSON.stringify(data));
+  for (const data of [{}, { q: '' }, { filter: 'all' }, { q: null, filter: 'all' }, { q: 1, filter: 'all' }, { q: 'x'.repeat(101), filter: 'all' },
+    { q: '', page: 0, filter: 'all' }, { q: '', page: -1, filter: 'all' }, { q: '', page: 1.5, filter: 'all' },
+    { q: '', page: 10001, filter: 'all' }, { q: '', page: '2', filter: 'all' }, { q: '', page: null, filter: 'all' },
+    { q: '', filter: 'active' }, { q: '', filter: 'Online' }, { q: '', filter: null }, { q: '', filter: true },
+    { q: '', filter: 'all', role: 'host' }, { q: '', filter: 'all', audience: 'all' }, { q: '', filter: 'all', userId: 'another-user' },
+    { q: '', filter: 'all', isOnline: true }, { q: '', filter: 'all', limit: 100 }]) {
+    const message = { type: 'profiles.search', data };
+    assert.equal(parse(message), null, JSON.stringify(data)); h.bridge.handle(message);
+  }
+  await settle(); assert.equal(h.count('profileDirectory'), 0); assert.equal(h.count('me'), 0);
+  h.bridge.close();
+});
+
+test('profile directory emits mixed User and approved Host rows with the selected filter', async () => {
+  const h = harness();
+  h.overrides.profileDirectory = (q, page, filter) => filter === 'online'
+    ? profileDirectoryPage([directoryHost], page, filter)
+    : profileDirectoryPage([directoryMember, directoryHost], page, filter);
+  h.bridge.handle({ type: 'profiles.search', data: { q: '  Directory  ', page: 2, filter: 'all' } }); await settle();
+  assert.deepEqual(plain(h.calls.find(call => call.name === 'profileDirectory').args), ['Directory', 2, 'all']);
+  assert.deepEqual(plain(h.find('data.search').at(-1).data), { q: 'Directory', filter: 'all', hosts: [directoryMember, directoryHost], total: 2, page: 2 });
+  assert.equal(h.find('data.search').at(-1).data.hosts[0].serverRole, 'user');
+  assert.equal(h.find('data.search').at(-1).data.hosts[1].serverRole, 'host');
+  assert.equal(h.count('me'), 0, 'Profile search is not restricted to an approved Host');
+  h.bridge.handle({ type: 'profiles.search', data: { q: '', filter: 'online' } }); await settle();
+  assert.deepEqual(plain(h.calls.filter(call => call.name === 'profileDirectory').at(-1).args), ['', 1, 'online']);
+  assert.deepEqual(plain(h.find('data.search').at(-1).data), { q: '', filter: 'online', hosts: [directoryHost], total: 1, page: 1 });
+  assert.ok(h.find('data.search').at(-1).data.hosts.every(profile => profile.online === true), 'The Online filter emits only online rows');
+  h.bridge.close();
+});
+
+test('profile directory discards stale rows and failures without completing the latest search', async () => {
+  const h = harness(), staleRows = deferred(), staleFailure = deferred(), latest = deferred();
+  h.overrides.profileDirectory = (_q, page) => page === 1 ? staleRows.promise : page === 2 ? staleFailure.promise : latest.promise;
+  h.bridge.handle({ type: 'profiles.search', data: { q: 'same', page: 1, filter: 'all' } }); await settle();
+  h.bridge.handle({ type: 'profiles.search', data: { q: 'same', page: 2, filter: 'all' } }); await settle();
+  h.bridge.handle({ type: 'profiles.search', data: { q: 'same', page: 3, filter: 'online' } }); await settle();
+  latest.resolve(profileDirectoryPage([directoryHost], 3, 'online')); await settle();
+  staleRows.resolve(profileDirectoryPage([directoryMember], 1, 'all'));
+  staleFailure.reject(new h.ApiError('Retired profile search error', 503)); await settle();
+  assert.deepEqual(h.find('data.search').map(event => ({ page: event.data.page, filter: event.data.filter, ids: event.data.hosts.map(profile => profile.id) })),
+    [{ page: 3, filter: 'online', ids: [directoryHost.id] }]);
+  assert.equal(h.find('operation.error').filter(event => event.data.action === 'profiles.search').length, 0, 'Retired failures never replace current search results');
+  const completed = h.find('data.loading').filter(event => event.data.resource === 'search' && event.data.loading === false);
+  assert.deepEqual(completed.map(event => event.data.page), [3], 'Retired reads cannot complete the latest loading state');
+  h.bridge.close();
+});
 
 test('active host directory messages bound search and page and reject client authority fields', async () => {
   const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));

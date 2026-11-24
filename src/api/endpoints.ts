@@ -13,10 +13,10 @@ import { payoutKycFrom, withdrawalQuoteFrom } from "./payout-verification";
 import { getInstallationId } from "../installation";
 import { validPayoutKycInput, validPayoutQuoteProof } from "../payout-verification";
 import type { PayoutKycInput, PayoutQuoteProof } from "./types";
-import { memberUsersFrom } from "./adapters";
+import { memberUsersFrom, profileDirectoryFrom } from "./adapters";
 import { activeHostsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
-import type { LeaderboardPeriod, OfficialReadPatch } from "./types";
+import type { LeaderboardPeriod, OfficialReadPatch, ProfileDirectoryFilter } from "./types";
 import type { HostAgencyStatus } from "./types";
 import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
 import { callTargetsFrom, string } from "./adapters";
@@ -306,6 +306,11 @@ export const api = {
       throw new ApiError("Enter a name or user ID and try again.", 400);
     return memberUsersFrom(await request("GET", `/users/search?audience=members&q=${encodeURIComponent(q.trim())}&page=${page}&limit=20`));
   },
+  async profileDirectory(q = "", page = 1, filter: ProfileDirectoryFilter = "all") {
+    if (typeof q !== "string" || q.length > 100 || !Number.isSafeInteger(page) || page < 1 || page > 10000 ||
+      (filter !== "all" && filter !== "online")) throw new ApiError("Enter a name or user ID and try again.", 400);
+    return profileDirectoryFrom(await request("GET", `/users/search?audience=all&q=${encodeURIComponent(q.trim())}&page=${page}&limit=20&filter=${filter}`));
+  },
   async activeHosts(q = "", page = 1) {
     if (typeof q !== "string" || q.length > 80 || !Number.isSafeInteger(page) || page < 1 || page > 1000)
       throw new ApiError("Enter a host name and try again.", 400);
@@ -480,7 +485,7 @@ export const api = {
   },
   async hostCallStatus() { return hostCallStatusFrom(await request("GET", "/calls/host-status")); },
   async saveHostCallRate(rateCoinsPerMinute: number) {
-    if (!Number.isSafeInteger(rateCoinsPerMinute) || rateCoinsPerMinute < 1 || rateCoinsPerMinute > 1000000) throw new ApiError("Choose a valid member call price.", 400);
+    if (!Number.isSafeInteger(rateCoinsPerMinute) || rateCoinsPerMinute < 1 || rateCoinsPerMinute > 1000000) throw new ApiError("Choose a valid user call price.", 400);
     return hostCallStatusFrom(await request("PATCH", "/calls/host-status", { rateCoinsPerMinute }));
   },
   async setVisibleDuringCalls(on: boolean) { const data = record(await request("PATCH", "/safety", { visibleDuringCalls: on })); return { on: data.visibleDuringCalls !== false }; },

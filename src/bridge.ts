@@ -50,6 +50,7 @@ export type WebMessage =
   | { type: "connection.check"; data: Record<string, never> }
   | { type: "home.reload"; data: HomeQuery }
   | { type: "hosts.search"; data: { q: string; page?: number } }
+  | { type: "profiles.search"; data: { q: string; page?: number; filter: import("./api/types").ProfileDirectoryFilter } }
   | { type: "users.load"; data: { q: string; page?: number } }
   | { type: "hosts.active.load"; data: { q: string; page?: number } }
   | { type: "catalog.load" | "rtc.config"; data: Record<string, never> }
@@ -195,7 +196,7 @@ export type AppMessage =
   | { type: "keyboard"; data: { open: boolean } }
   | { type: "data.hosts"; data: { hosts: Host[] } }
   | { type: "data.home"; data: HomeData & { background?: boolean } }
-  | { type: "data.search"; data: { q: string; hosts: Host[]; total: number; page: number } }
+  | { type: "data.search"; data: { q: string; filter: import("./api/types").ProfileDirectoryFilter; hosts: Host[]; total: number; page: number } }
   | { type: "data.users"; data: import("./api/types").MemberUsers & { q: string } }
   | { type: "data.activeHosts"; data: import("./api/types").ActiveHosts & { q: string } }
   | { type: "home.updated"; data: Record<string, never> }
@@ -683,7 +684,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (accountRole === "admin" || (accountRole === "host" && !hasHostAccess())) throw new ApiError("Your creator profile needs admin approval before you can chat.", 403);
     const peer = chatPeers.get(peerId);
     const peerRole = peer?.serverRole ?? (peer?.role === "host" || peer?.verified === true ? "host" : peer?.role === "sender" ? "user" : undefined);
-    if (accountRole === "user" && peerRole && peerRole !== "host") throw new ApiError("Members can message approved hosts only.", 403);
+    if (accountRole === "user" && peerRole && peerRole !== "host") throw new ApiError("Users can message approved hosts only.", 403);
   };
   /** The checks the server makes before a direct message: an allowed pair and an open conversation. False when the session changed. */
   const requireThreadSend = async (to: string, version: number) => {
@@ -1384,7 +1385,14 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "home.reload": return loadHome(msg.data);
       case "hosts.search": {
         const q = msg.data.q, page = msg.data.page ?? 1;
-        return readResource("search", () => api.home({ q, mode: "popular", page }), data => { rememberHomePeers(data); emit({ type: "data.search", data: { q, hosts: data.hosts, total: data.total, page: data.page } }); }, { q, page });
+        return readResource("search", () => api.home({ q, mode: "popular", page }), data => { rememberHomePeers(data); emit({ type: "data.search", data: { q, filter: "all", hosts: data.hosts, total: data.total, page: data.page } }); }, { q, page });
+      }
+      case "profiles.search": {
+        const q = msg.data.q.trim(), page = msg.data.page ?? 1, filter = msg.data.filter;
+        return readResource("search", () => api.profileDirectory(q, page, filter), data => {
+          for (const peer of data.profiles) chatPeers.set(peer.id, peer);
+          emit({ type: "data.search", data: { q, filter: data.filter, hosts: data.profiles, total: data.total, page: data.page } });
+        }, { q, page });
       }
       case "users.load": {
         const q = msg.data.q.trim(), page = msg.data.page ?? 1;
@@ -1588,7 +1596,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
           activity.owner = owner;
           applyHostAccount(account);
           const role = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
-          if (role !== "user") throw new ApiError("Coins are for member accounts. Hosts use diamonds.", 403, "COINS_MEMBERS_ONLY");
+          if (role !== "user") throw new ApiError("Coins are for user accounts. Hosts use diamonds.", 403, "COINS_MEMBERS_ONLY");
         }
         const result = await (msg.type === "wallet.checkout" ? api.checkout(msg.data.packId, msg.data.idempotencyKey, msg.data.route) : api.checkoutPremium(msg.data.idempotencyKey, msg.data.route));
         const purchase = { ...result, idempotencyKey: msg.data.idempotencyKey, ...(msg.data.route ? { requestedRoute: msg.data.route } : {}), ...(msg.type === "wallet.checkout" ? { packId: msg.data.packId } : {}) };
