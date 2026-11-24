@@ -51,7 +51,7 @@ async function audit(page,label) {
 }
 async function auditCompactProfile(page,label) {
   const metrics=await page.locator('.zu-page').evaluate(pageRoot=>{
-    const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span');
+    const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span'),back=pageRoot.querySelector('.zu-toolbar .zb-back'),toolbarAction=pageRoot.querySelector('.zu-toolbar-more');
     const rect=element=>element?.getBoundingClientRect();
     const columns=element=>getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length;
     return {
@@ -62,7 +62,9 @@ async function auditCompactProfile(page,label) {
       tabDisplay:getComputedStyle(tabs).display,
       tabColumns:columns(tabs),
       toolbarTitleVisible:toolbarTitle?getComputedStyle(toolbarTitle).display!=='none':false,
-      contentTop:parseFloat(getComputedStyle(pageRoot.querySelector('.zu-content')).marginTop)||0
+      contentTop:parseFloat(getComputedStyle(pageRoot.querySelector('.zu-content')).marginTop)||0,
+      backTop:(rect(back)?.top||0)-(rect(cover)?.top||0),
+      actionTop:(rect(toolbarAction)?.top||0)-(rect(cover)?.top||0)
     };
   });
   assert.ok(metrics.coverHeight>=180&&metrics.coverHeight<=190,`${label}: compact cover stays near the measured 186px reference (${metrics.coverHeight}px)`);
@@ -72,6 +74,8 @@ async function auditCompactProfile(page,label) {
   assert.deepEqual([metrics.tabDisplay,metrics.tabColumns],['grid',2],`${label}: Posts and MVP use the two-segment control`);
   assert.equal(metrics.toolbarTitleVisible,false,`${label}: compact cover omits the redundant Profile label`);
   assert.ok(metrics.contentTop<=12,`${label}: content follows the compact identity without a large gap`);
+  assert.ok(metrics.backTop>=10&&metrics.backTop<=24,`${label}: Back stays at the top of the cover (${metrics.backTop}px)`);
+  assert.ok(metrics.actionTop>=10&&metrics.actionTop<=24,`${label}: Share stays at the top of the cover (${metrics.actionTop}px)`);
 }
 (async()=>{
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});

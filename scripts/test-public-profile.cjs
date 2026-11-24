@@ -79,7 +79,7 @@ async function run() {
   };
   const compactLayout = async (page, label) => {
     const metrics = await page.locator('.zu-page').evaluate(pageRoot => {
-      const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span'),content=pageRoot.querySelector('.zu-content'),actionbar=pageRoot.querySelector('.zu-actionbar');
+      const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span'),content=pageRoot.querySelector('.zu-content'),actionbar=pageRoot.querySelector('.zu-actionbar'),back=pageRoot.querySelector('.zu-toolbar .zb-back'),toolbarAction=pageRoot.querySelector('.zu-toolbar-more');
       const rect=element=>element?.getBoundingClientRect();
       const columns=element=>getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length;
       return {
@@ -91,7 +91,9 @@ async function run() {
         tabColumns:columns(tabs),
         toolbarTitleVisible:toolbarTitle?getComputedStyle(toolbarTitle).display!=='none':false,
         contentTop:parseFloat(getComputedStyle(content).marginTop)||0,
-        actionPosition:getComputedStyle(actionbar).position
+        actionPosition:getComputedStyle(actionbar).position,
+        backTop:(rect(back)?.top||0)-(rect(cover)?.top||0),
+        actionTop:(rect(toolbarAction)?.top||0)-(rect(cover)?.top||0)
       };
     });
     assert.ok(metrics.coverHeight>=180&&metrics.coverHeight<=190,`${label}: compact cover stays near the measured 186px reference (${metrics.coverHeight}px)`);
@@ -102,6 +104,8 @@ async function run() {
     assert.equal(metrics.toolbarTitleVisible,false,`${label}: compact cover omits the redundant Profile label`);
     assert.ok(metrics.contentTop<=12,`${label}: content follows the compact identity without a large gap`);
     assert.equal(metrics.actionPosition,'fixed',`${label}: public actions remain fixed and reachable`);
+    assert.ok(metrics.backTop>=10&&metrics.backTop<=24,`${label}: Back stays at the top of the cover (${metrics.backTop}px)`);
+    assert.ok(metrics.actionTop>=10&&metrics.actionTop<=24,`${label}: More stays at the top of the cover (${metrics.actionTop}px)`);
   };
   try {
     const preview = await open(true);
