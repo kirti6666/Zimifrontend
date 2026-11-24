@@ -180,6 +180,21 @@ export interface PublicPosts {
   limit: number;
 }
 
+export type ProfileMvpPeriod = "week" | "all";
+export interface ProfileMvpSupporter {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  coins: number;
+  serverRole?: "user" | "host";
+  verified?: boolean;
+}
+export interface ProfileMvps {
+  id: string;
+  period: ProfileMvpPeriod;
+  supporters: ProfileMvpSupporter[];
+}
+
 export type RelationshipKind = "followers" | "following";
 export interface Relationships {
   users: (Host & { canViewProfile: boolean })[];

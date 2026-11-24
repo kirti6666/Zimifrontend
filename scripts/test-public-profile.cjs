@@ -17,6 +17,10 @@ const member = { id: id('13'), name: 'Rohan Patel', role: 'sender', serverRole: 
 const feed = { hosts: [creator], stage: [], featured: creator, total: 1, page: 1, limit: 20, categories: ['Music'], broadcasterCount: 0, availableCount: 1, unreadCount: 0 };
 const profile = (person = creator, extra = {}) => ({ ...person, followingCount: 9, following: false, joined: '2026-02-03T12:00:00.000Z', interests: ['Music', 'Travel'], level: 4, crown: false, ...extra });
 const photo = { id: id('41'), mediaUrl: 'https://media.example.test/profile-post.jpg', kind: 'photo', caption: 'An acoustic evening.' };
+const supporters = [
+  { id: id('71'), name: 'Riya Kapoor', avatarUrl: avatar, coins: 12500, serverRole: 'user', verified: false },
+  { id: id('72'), name: 'Kabir Host', avatarUrl: null, coins: 5300, serverRole: 'host', verified: true },
+];
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
 const lastSent = (page, type) => page.evaluate(value => __sent.filter(message => message.type === value).at(-1)?.data, type);
 const sentCount = (page, type) => page.evaluate(value => __sent.filter(message => message.type === value).length, type);
@@ -71,6 +75,13 @@ async function run() {
     const request = await lastSent(page, 'profile.posts.load');
     assert.equal(request.id, person.id, 'The post request targets the displayed person');
     await receive(page, 'data.publicPosts', { id: person.id, posts, total, page: pageNumber, limit, requestId: request.requestId });
+    return request;
+  };
+  const acceptMvps = async (page, person = creator, rows = supporters, period) => {
+    const request = await lastSent(page, 'profile.mvps.load');
+    assert.equal(request.id, person.id, 'The MVP request targets the displayed Host');
+    if (period) assert.equal(request.period, period, 'The MVP request uses the selected period');
+    await receive(page, 'data.profileMvps', { ...request, supporters: rows });
     return request;
   };
   const layout = async (page, label) => {
@@ -219,16 +230,48 @@ async function run() {
     }
     await page.setViewportSize({width:390,height:844});
     await page.screenshot({ path: path.join(artifacts, 'public-host-compact.png') });
+    const mvpReadsBefore = await sentCount(page, 'profile.mvps.load');
     await tab(page, 'MVP').click();
     assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true');
     const mvpPanel = page.locator('#zu-panel');
     assert.equal(await mvpPanel.getByRole('heading', { name: 'Top supporters', exact: true }).count(), 1);
-    assert.deepEqual(await mvpPanel.getByRole('button').allInnerTexts(), ['This week', 'All time']);
-    assert.equal(await mvpPanel.locator('.zu-mvp-empty').innerText(), 'No MVP', 'Profiles without supporter data use the exact MVP empty state');
-    assert.equal(await mvpPanel.locator('.zu-mvp-row,[data-supporter-id],[role="listitem"]').count(), 0, 'The MVP panel never fabricates supporter rows');
-    assert.equal((await mvpPanel.innerText()).replace(/\s+/g, ' ').trim(), 'Top supporters This week All time No MVP');
-    await tab(page, 'Posts').click();
-    console.log('PASS public profile: real loading, retry, empty gallery, always-visible biography and empty MVP contract');
+    const weekRequest = await lastSent(page, 'profile.mvps.load');
+    assert.deepEqual({ id: weekRequest.id, period: weekRequest.period }, { id: creator.id, period: 'week' }, 'Opening MVP loads this Host\'s weekly supporters');
+    assert.equal(await sentCount(page, 'profile.mvps.load'), mvpReadsBefore + 1, 'Opening MVP issues one read');
+    await page.getByRole('status', { name: 'Loading top supporters', exact: true }).waitFor();
+    const thisWeek = mvpPanel.getByRole('button', { name: 'This week', exact: true });
+    const allTime = mvpPanel.getByRole('button', { name: 'All time', exact: true });
+    assert.deepEqual([await thisWeek.getAttribute('aria-pressed'), await allTime.getAttribute('aria-pressed')], ['true', 'false']);
+    await allTime.click();
+    const allRequest = await lastSent(page, 'profile.mvps.load');
+    assert.deepEqual({ id: allRequest.id, period: allRequest.period }, { id: creator.id, period: 'all' }, 'Changing period loads all-time supporters');
+    assert.ok(allRequest.requestId > weekRequest.requestId, 'Each period owns a new correlation identifier');
+    await receive(page, 'data.profileMvps', { ...weekRequest, supporters: [{ ...supporters[0], name: 'Stale weekly supporter' }] });
+    assert.equal(await mvpPanel.getByText('Stale weekly supporter', { exact: true }).count(), 0, 'A previous period cannot replace the active board');
+    await receive(page, 'data.loading', { resource: 'profileMvps', ...allRequest, loading: false, error: 'Supporters could not be loaded.' });
+    await mvpPanel.getByRole('alert').filter({ hasText: 'Supporters could not be loaded.' }).waitFor();
+    await mvpPanel.getByRole('button', { name: 'Try again', exact: true }).click();
+    const allRetry = await lastSent(page, 'profile.mvps.load');
+    assert.ok(allRetry.requestId > allRequest.requestId, 'Retry owns a fresh MVP request');
+    await receive(page, 'data.profileMvps', { ...allRequest, supporters });
+    assert.equal(await mvpPanel.locator('.zu-mvp-row').count(), 0, 'A retired response cannot finish the retry');
+    await acceptMvps(page, creator, supporters, 'all');
+    assert.deepEqual(await mvpPanel.locator('.zu-mvp-name>strong').allInnerTexts(), ['Riya Kapoor', 'Kabir Host'], 'The server order becomes the visible ranking');
+    assert.deepEqual(await mvpPanel.locator('.zu-mvp-coins>strong').allInnerTexts(), ['12,500', '5,300'], 'Every ranked row uses its real coin total');
+    assert.equal(await mvpPanel.locator('.zu-mvp-row').count(), supporters.length, 'No dummy supporter rows are added');
+    assert.equal(await mvpPanel.locator('.zu-mvp-coins [data-icon="coin"]').count(), supporters.length, 'MVP totals use Coins rather than Diamonds');
+    await receive(page, 'gift.sent', { to: creator.id, coins: 99 });
+    const refreshedMvp = await lastSent(page, 'profile.mvps.load');
+    assert.ok(refreshedMvp.requestId > allRetry.requestId, 'A confirmed gift refreshes the open Host MVP board');
+    assert.equal(refreshedMvp.period, 'all', 'Gift refresh preserves the selected MVP period');
+    await receive(page, 'data.profileMvps', { ...refreshedMvp, supporters });
+    await mvpPanel.getByRole('button', { name: /View Kabir Host's profile/ }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.h]), ['host', supporters[1].id], 'A verified Host supporter opens the Host profile route');
+    await navigate(page); await acceptProfile(page); await acceptPosts(page);
+    await tab(page, 'MVP').click(); await acceptMvps(page, creator, supporters, 'week');
+    await mvpPanel.getByRole('button', { name: /View Riya Kapoor's profile/ }).click();
+    assert.deepEqual(await page.evaluate(() => [S.v, S.u]), ['user', supporters[0].id], 'A User supporter opens the User profile route');
+    console.log('PASS public profile: real MVP loading, period switching, retry/stale isolation, ranked coin totals and supporter navigation');
 
     await navigate(page);
     await acceptProfile(page);
@@ -268,6 +311,8 @@ async function run() {
     await tab(page, 'Posts').focus();
     await page.keyboard.press('ArrowRight');
     assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
+    await page.getByRole('status', { name: 'Loading top supporters', exact: true }).waitFor();
+    await acceptMvps(page, creator, [], 'week');
     assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP');
     await page.keyboard.press('Home');
     assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true');
@@ -334,6 +379,7 @@ async function run() {
 
     await page.evaluate(() => window.dispatchEvent(new Event('offline')));
     await tab(page, 'MVP').click();
+    await acceptMvps(page, creator, [], 'week');
     assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP', 'Offline redraws preserve the MVP empty state');
     assert.equal(await page.locator('#zu-follow').isDisabled(), true);
     assert.equal(await button(page, 'Message').isDisabled(), true);
@@ -460,6 +506,7 @@ async function run() {
     await page.getByRole('heading', { name: attack, exact: true }).waitFor();
     assert.equal(await page.locator('.zu-bio').innerText(), attack, 'Hostile biography content remains visible as identity text');
     await tab(page, 'MVP').click();
+    await acceptMvps(page, hostile, [], 'week');
     assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP');
     assert.match(await page.locator('.zu-identity').innerText(), /O'Neil & friends/);
     assert.equal(await page.locator('.zu-page [onerror],.zu-page script,.zu-page iframe').count(), 0, 'Untrusted public content stays text');

@@ -8,9 +8,9 @@ import { createCallRecovery } from "./call-recovery";
 import { createCallRinging } from "./call-ringing";
 import { clearIncomingCallAction, getVerifiedIncomingCall, onIncomingCallAction, type NativeCallAction } from "./incoming-call-actions";
 import { messageFrom } from "./api/adapters";
-import type { LeaderboardPeriod, RelationshipKind, Relationships } from "./api/types";
+import type { LeaderboardPeriod, ProfileMvpPeriod, RelationshipKind, Relationships } from "./api/types";
 import { VERIFY_PEER, connectRealtime, type RealtimeConnection } from "./api/realtime";
-import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet, PostComment, PostComments } from "./api/types";
+import type { Account, AdFeed, AdPlacement, AppTheme, BlockedUsers, Catalog, ChatsData, Gender, HomeData, HomeQuery, HomeStream, Host, Message, NotificationsQuery, NotificationReadPatch, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, ProfileSettingsPatch, PublicProfile, PublicPosts, ProfileMvps, Purchase, Role, ServerRole, RtcConfig, RtcPayload, StreamChat, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, ThemeCatalog, UserPost, Verification, Wallet, PostComment, PostComments } from "./api/types";
 import { clearToken, getCachedToken, getToken, getSessionVersion, onSessionExpired, setSessionTokens } from "./session";
 import { forgetAccountTheme, rememberAccountTheme, rememberDefaultTheme } from "./theme-cache";
 import { forgetPendingPayment, readPendingPayments, rememberPendingPayment, type PendingPayment } from "./payment-cache";
@@ -112,6 +112,7 @@ export type WebMessage =
   | { type: "profile.settings.load"; data: Record<string, never> }
   | { type: "profile.load"; data: { id: string; requestId?: number } }
   | { type: "profile.posts.load"; data: { id: string; page?: number; requestId?: number } }
+  | { type: "profile.mvps.load"; data: { id: string; period: ProfileMvpPeriod; requestId: number } }
   | { type: "relationships.load"; data: { kind: RelationshipKind; page?: number; requestId: number } }
   | { type: "profile.settings.save" | "settings.set"; data: ProfileSettingsPatch & { requestId?: number } }
   | { type: "privacy.save"; data: Partial<Pick<PrivacySettings, "discoverable" | "showActivity">> & { requestId?: number } }
@@ -155,7 +156,7 @@ export type WebMessage =
 
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
-export type DataResource = "home" | "search" | "users" | "activeHosts" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
+export type DataResource = "home" | "search" | "users" | "activeHosts" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "profileMvps" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
 export type AppMessage =
   | NativeMediaEvent
   | OfficialAppMessage
@@ -191,7 +192,7 @@ export type AppMessage =
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string; q?: string; page?: number } }
   | { type: "data.loaded"; data: Record<string, never> }
-  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; requestId?: number; error?: string; background?: boolean } }
+  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; period?: ProfileMvpPeriod; requestId?: number; error?: string; background?: boolean } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
   | { type: "keyboard"; data: { open: boolean } }
@@ -216,6 +217,7 @@ export type AppMessage =
   | { type: "data.profileSettings"; data: ProfileSettings }
   | { type: "data.publicProfile"; data: { id: string; profile: PublicProfile; requestId?: number } }
   | { type: "data.publicPosts"; data: PublicPosts & { id: string; requestId?: number } }
+  | { type: "data.profileMvps"; data: ProfileMvps & { requestId: number } }
   | { type: "data.relationships"; data: Relationships & { id: string; kind: RelationshipKind; requestId: number } }
   | { type: "profile.settings.saved"; data: { settings: ProfileSettings; requestId?: number } }
   | { type: "profile.settings.error" | "privacy.error"; data: { message: string; requestId?: number } }
@@ -709,7 +711,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     // Older servers may omit this flag; they still enforce every send.
     threadPermissions.set(peerId, { canSend: data.canSend ?? true, reason: data.sendDisabledReason });
   };
-  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; requestId?: number; background?: boolean } = {}) => {
+  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; period?: ProfileMvpPeriod; requestId?: number; background?: boolean } = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
     const latest = () => current(version) && getSessionVersion() === sessionVersion && documentRevision === document && readRequests.get(resource) === requestId;
@@ -970,6 +972,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     }, { id, requestId });
   };
   const loadPublicPosts = (id: string, page = 1, requestId?: number) => readResource("publicPosts", () => api.publicPosts(id, page), data => emit({ type: "data.publicPosts", data: { ...data, id, requestId } }), { id, page, requestId });
+  const loadProfileMvps = (id: string, period: ProfileMvpPeriod, requestId: number) => readResource("profileMvps", () => api.profileMvps(id, period), data => emit({ type: "data.profileMvps", data: { ...data, requestId } }), { id, period, requestId });
   const loadRelationships = (kind: RelationshipKind, page: number, requestId: number) => {
     const id = accountId;
     if (!id) return Promise.reject(new ApiError("Sign in to view your connections.", 401));
@@ -1481,6 +1484,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       case "profile.settings.load": return loadProfileSettings();
       case "profile.load": return loadPublicProfile(msg.data.id, msg.data.requestId);
       case "profile.posts.load": return loadPublicPosts(msg.data.id, msg.data.page, msg.data.requestId);
+      case "profile.mvps.load": return loadProfileMvps(msg.data.id, msg.data.period, msg.data.requestId);
       case "relationships.load": return loadRelationships(msg.data.kind, msg.data.page ?? 1, msg.data.requestId);
       case "blocked.load": return loadBlocked(msg.data.page);
       case "rtc.config": { const data = await api.rtcConfig(); if (current(version)) emit({ type: "rtc.config", data }); return; }

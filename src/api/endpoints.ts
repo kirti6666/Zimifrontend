@@ -1,7 +1,7 @@
 import { ApiError, request } from "./client";
 import { getAppUpdateAuth } from "../app-update-events";
 import { getSessionVersion, isSessionTokens, type SessionTokens } from "../session";
-import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
+import { accountFrom, adFeedFrom, adLinkFrom, blockedUsersFrom, callPrice, callsFrom, hostCallStatusFrom, catalogFrom, chatGiftFrom, chatsFrom, genderOf, homeFrom, hostFrom, idOf, items, messageFrom, messagesFrom, missedFrom, notificationReadFrom, notificationsFrom, paymentRoutesFrom, payoutFrom, payoutsFrom, postFrom, privacyFrom, profileSettingsFrom, publicProfileFrom, publicPostsFrom, profileMvpsFrom, purchaseFrom, record, streamChatFrom, streamFrom, themeFrom, themesFrom, transactionsFrom, validPaymentRoute, verificationOf, walletFrom, commentFrom, commentsFrom } from "./adapters";
 import { decodePhoto, ensureSession, uploadAudio, uploadMedia, uploadPhotos } from "./uploads";
 import type { Account, AdPlacement, HomeQuery, NotificationsQuery, NotificationReadPatch, PrivacySettings, ProfileSettingsPatch, Role, RtcConfig, RtcPayload, Session, StreamCallRequest, StreamPrivateCall, StreamReaction, StreamRequests, Verification, Wallet } from "./types";
 import { approvedHost } from "../host-access";
@@ -16,7 +16,7 @@ import type { PayoutKycInput, PayoutQuoteProof } from "./types";
 import { memberUsersFrom, profileDirectoryFrom } from "./adapters";
 import { activeHostsFrom } from "./adapters";
 import type { RelationshipKind, Relationships } from "./types";
-import type { LeaderboardPeriod, OfficialReadPatch, ProfileDirectoryFilter } from "./types";
+import type { LeaderboardPeriod, OfficialReadPatch, ProfileDirectoryFilter, ProfileMvpPeriod } from "./types";
 import type { HostAgencyStatus } from "./types";
 import { automaticInvitationFrom, topupHoldFrom } from "./call-invitations";
 import { callTargetsFrom, string } from "./adapters";
@@ -287,6 +287,21 @@ export const api = {
     return profile;
   },
   async publicPosts(id: string, page = 1) { return publicPostsFrom(await request("GET", `/users/${encodeURIComponent(id)}/posts?page=${page}&limit=12`)); },
+  async profileMvps(id: string, period: ProfileMvpPeriod) {
+    if (period !== "week" && period !== "all") throw new ApiError("Choose a valid top supporters period.", 400);
+    try {
+      const result = profileMvpsFrom(await request("GET", `/users/${encodeURIComponent(id)}/mvps?period=${period}`));
+      if (result.id !== id || result.period !== period) throw new ApiError("Top supporters could not be loaded. Try again.", 502);
+      return result;
+    } catch (error) {
+      // Keep mixed-version development installs usable while the new backend
+      // route rolls out. A real profile 404 uses "User not found" and is not
+      // hidden; only the old router's exact missing-route response is empty.
+      if (error instanceof ApiError && error.status === 404 && error.message === "Route not found")
+        return { id, period, supporters: [] };
+      throw error;
+    }
+  },
   async notificationPost(id: string) {
     const version = getSessionVersion();
     const raw = record(await request("GET", `/posts/${encodeURIComponent(id)}`));ensureSession(version);

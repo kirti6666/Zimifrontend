@@ -147,6 +147,7 @@ async function auditEditProfile(page,label) {
     assert.equal(await page.locator('.zu-stats strong').first().innerText(),'1,250','Profile coins use the authenticated wallet balance');
     assert.equal(await page.locator('.zu-stats').getByText('Diamonds',{exact:true}).count(),0,'A member profile never relabels Coins as Diamonds');
     const mvpTab=page.getByRole('tab',{name:'MVP',exact:true});
+    const memberMvpReads=await sentCount(page,'profile.mvps.load');
     await mvpTab.click();
     assert.equal(await mvpTab.getAttribute('aria-selected'),'true','MVP replaces the About tab on a member profile');
     const mvpPanel=page.locator('#zu-panel');
@@ -158,6 +159,7 @@ async function auditEditProfile(page,label) {
     await allTime.focus();await page.keyboard.press('Enter');
     assert.deepEqual([await thisWeek.getAttribute('aria-pressed'),await allTime.getAttribute('aria-pressed')],['false','true'],'MVP periods are keyboard-operable');
     assert.equal((await mvpPanel.innerText()).replace(/\s+/g,' ').trim(),'Top supporters This week All time No MVP','Changing periods keeps the exact empty MVP content');
+    assert.equal(await sentCount(page,'profile.mvps.load'),memberMvpReads,'A User never requests a Host-only leaderboard');
     for(const width of [320,390]) {
       await page.setViewportSize({width,height:844});
       await auditCompactProfile(page,`Own MVP profile ${width}px`);
@@ -314,6 +316,16 @@ async function auditEditProfile(page,label) {
     await receive(page,'data.loading',{resource:'wallet',loading:false,error:'Balance unavailable'});
     assert.equal(await page.locator('.zu-stats strong').first().innerText(),'—','A failed host balance never falls back to Coins or zero');
     await receive(page,'wallet.balance',{diamondScale:1000000,diamondUnits:1234500000,reservedDiamondUnits:0,profileDiamondUnits:1200000000});
+    await page.getByRole('tab',{name:'MVP',exact:true}).click();
+    const ownMvpRequest=await lastSent(page,'profile.mvps.load');
+    assert.deepEqual({id:ownMvpRequest.id,period:ownMvpRequest.period},{id:creator.user.id,period:'week'},'An approved Host can load MVP supporters on their own profile');
+    await page.getByRole('status',{name:'Loading top supporters',exact:true}).waitFor();
+    const ownSupporters=[{id:'507f1f77bcf86cd799439071',name:'Riya Supporter',avatarUrl:media('supporter'),coins:100000,serverRole:'user',verified:false}];
+    await receive(page,'data.profileMvps',{...ownMvpRequest,supporters:ownSupporters});
+    assert.equal(await page.locator('.zu-mvp-row').count(),1,'The own Host leaderboard renders only returned supporters');
+    assert.match(await page.locator('.zu-mvp-row').innerText(),/Riya Supporter[\s\S]*1,00,000[\s\S]*coins/,'The own Host leaderboard shows the real ranked Coin total');
+    assert.equal(await page.locator('.zu-mvp-coins [data-icon="coin"]').count(),1,'Own Host MVP totals use the Coin icon');
+    await page.getByRole('tab',{name:/^Posts/}).click();
     await audit(page,'Creator own profile');
     await auditCompactProfile(page,'Creator own profile at 390px');
     assert.match(await page.locator('#zu-edit-self').innerText(),/Edit profile/,'Approved Hosts keep the same visible Edit profile control');

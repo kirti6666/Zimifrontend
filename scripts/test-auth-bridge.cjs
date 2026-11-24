@@ -3743,6 +3743,46 @@ test('public profiles and posts validate target IDs and keep target/request meta
   h.bridge.close();
 });
 
+test('profile MVP requests validate periods and correlate real supporters, stale reads and failures', async () => {
+  const h = harness(), target = '507f1f77bcf86cd799439021', supporter = '507f1f77bcf86cd799439022';
+  const parse = data => h.webMessages.parseWebMessage(JSON.stringify({ type: 'profile.mvps.load', data }));
+  for (const period of ['week', 'all']) assert.ok(parse({ id: target, period, requestId: 1 }));
+  for (const data of [
+    {}, { id: target, period: 'week' }, { id: target, period: 'week', requestId: 0 },
+    { id: target, period: 'daily', requestId: 1 }, { id: '../profile', period: 'week', requestId: 1 },
+    { id: target, period: 'all', requestId: 1, userId: target },
+  ]) {
+    assert.equal(parse(data), null, JSON.stringify(data));
+    h.bridge.handle({ type: 'profile.mvps.load', data });
+  }
+  assert.equal(h.count('profileMvps'), 0, 'Rejected WebMessages never reach the API');
+  const supporters = [{ id: supporter, name: 'Riya', avatarUrl: null, coins: 12500, serverRole: 'user', verified: false }];
+  h.overrides.profileMvps = (id, period) => ({ id, period, supporters });
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'week', requestId: 7 } }); await settle();
+  assert.deepEqual(plain(h.calls.find(call => call.name === 'profileMvps').args), [target, 'week']);
+  assert.deepEqual(plain(h.find('data.profileMvps')[0].data), { id: target, period: 'week', supporters, requestId: 7 });
+  assert.deepEqual(plain(h.find('data.loading').map(event => event.data)), [
+    { resource: 'profileMvps', loading: true, id: target, period: 'week', requestId: 7 },
+    { resource: 'profileMvps', loading: false, id: target, period: 'week', requestId: 7 },
+  ]);
+
+  const old = deferred(), latest = deferred();
+  h.overrides.profileMvps = (_id, period) => period === 'week' ? old.promise : latest.promise;
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'week', requestId: 8 } });
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'all', requestId: 9 } });
+  old.resolve({ id: target, period: 'week', supporters: [{ ...supporters[0], coins: 500 }] });
+  latest.resolve({ id: target, period: 'all', supporters: [{ ...supporters[0], coins: 15000 }] }); await settle();
+  assert.deepEqual(plain(h.find('data.profileMvps').map(event => [event.data.period, event.data.requestId, event.data.supporters[0].coins])),
+    [['week', 7, 12500], ['all', 9, 15000]], 'A superseded period cannot replace the latest tab');
+
+  h.overrides.profileMvps = () => { throw new h.ApiError('Supporters are temporarily unavailable', 503); };
+  h.bridge.handle({ type: 'profile.mvps.load', data: { id: target, period: 'week', requestId: 10 } }); await settle();
+  const failure = h.find('data.loading').at(-1).data;
+  assert.deepEqual(plain(failure), { resource: 'profileMvps', loading: false, id: target, period: 'week', requestId: 10, error: 'Supporters are temporarily unavailable' });
+  assert.equal(h.find('data.profileMvps').length, 2, 'A failed refresh never fabricates an empty ranking');
+  h.bridge.close();
+});
+
 test('public profile and gallery reads suppress earlier people and previous sessions', async () => {
   const h = harness(), old = deferred(), next = deferred(), oldPosts = deferred(), nextPosts = deferred();
   h.overrides.publicProfile = id => id === 'old' ? old.promise : next.promise;

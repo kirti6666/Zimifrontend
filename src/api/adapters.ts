@@ -5,7 +5,7 @@ import { notificationTargetFrom } from "../notification-target";
 import type { ChatGift } from "./types";
 import { officialChatSummaryFrom } from "./official";
 export { officialChatFrom, officialChatSummaryFrom } from "./official";
-import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
+import type { Account, AdCreative, AdFeed, AdPlacement, AppTheme, BlockedUsers, Gender, CallRecord, Catalog, ChatsData, HomeData, HomeStream, Host, Message, Mission, MissedCall, NotificationsData, NotificationReadResult, PaymentRoutes, Payout, Payouts, PrivacySettings, ProfileSettings, PublicProfile, PublicPosts, ProfileMvpSupporter, ProfileMvps, Purchase, StreamChat, ThemeCatalog, Transaction, Leaderboard, LeaderboardPeriod, ReferralSummary, UserPost, Verification, Wallet, PostComment, PostComments, RechargePrompt, CallTargets } from "./types";
 
 export type RecordValue = Record<string, unknown>;
 export function record(value: unknown): RecordValue {
@@ -185,6 +185,29 @@ export function publicPostsFrom(value: unknown): PublicPosts {
   if ([data.total, data.page, data.limit].some(value => typeof value !== "number" || !Number.isSafeInteger(value)) ||
     Number(data.total) < 0 || Number(data.page) < 1 || Number(data.limit) < 1) throw new ApiError("These posts could not be loaded. Try again.", 502);
   return { posts: items(data).map(postFrom), total: data.total as number, page: data.page as number, limit: data.limit as number };
+}
+export function profileMvpsFrom(value: unknown): ProfileMvps {
+  const data = record(value), targetId = idOf(data), invalid = () => new ApiError("Top supporters could not be loaded. Try again.", 502);
+  if (!targetId || (data.period !== "week" && data.period !== "all") || !Array.isArray(data.supporters) || data.supporters.length > 20) throw invalid();
+  const seen = new Set<string>();
+  const supporters = data.supporters.map((value): ProfileMvpSupporter => {
+    const supporter = record(value), id = idOf(supporter), avatarUrl = supporter.avatarUrl;
+    const serverRole = supporter.serverRole === "user" || supporter.serverRole === "host" ? supporter.serverRole : undefined;
+    if (!id || seen.has(id) || typeof supporter.name !== "string" || supporter.name.length > 120 ||
+      !Number.isSafeInteger(supporter.coins) || Number(supporter.coins) <= 0 ||
+      (avatarUrl !== null && (typeof avatarUrl !== "string" || avatarUrl.length > 2048 || !/^https:\/\/[^\s"'<>]+$/.test(avatarUrl))) ||
+      (supporter.serverRole !== undefined && supporter.serverRole !== "user" && supporter.serverRole !== "host") ||
+      (supporter.isVerifiedHost !== undefined && typeof supporter.isVerifiedHost !== "boolean")) throw invalid();
+    seen.add(id);
+    return {
+      id, name: supporter.name, avatarUrl: avatarUrl as string | null, coins: supporter.coins as number,
+      ...(serverRole ? { serverRole } : {}),
+      ...(typeof supporter.isVerifiedHost === "boolean" ? { verified: supporter.isVerifiedHost } : {}),
+    };
+  });
+  if (supporters.some((supporter, index) => index > 0 &&
+    (supporter.coins > supporters[index - 1].coins || supporter.coins === supporters[index - 1].coins && supporter.id < supporters[index - 1].id))) throw invalid();
+  return { id: targetId, period: data.period, supporters };
 }
 export function streamFrom(value: unknown, fallbackHost = ""): HomeStream {
   const stream = record(value), hostId = idOf(stream.hostId) || fallbackHost;

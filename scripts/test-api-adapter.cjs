@@ -839,6 +839,36 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const publicPosts = await api.publicPosts('host-id', 2);
   assert.equal(publicPosts.posts[0].caption, 'A song for today'); assert.equal(publicPosts.total, 13); assert.equal(publicPosts.page, 2);
   assert.throws(() => adapters.publicPostsFrom({ items: [], total: undefined, page: 1, limit: 12 }), /could not be loaded/);
+  const mvpTarget = '507f1f77bcf86cd799439021', supporterA = '507f1f77bcf86cd799439022', supporterB = '507f1f77bcf86cd799439023';
+  const mvpResponse = { id: mvpTarget, period: 'week', supporters: [
+    { id: supporterA, name: 'Riya', avatarUrl: 'https://cdn.example.test/riya.jpg', coins: 12500, serverRole: 'user', isVerifiedHost: false },
+    { id: supporterB, name: 'Kabir', avatarUrl: null, coins: 5300, serverRole: 'host', isVerifiedHost: true },
+  ] };
+  expect('GET', `/users/${mvpTarget}/mvps?period=week`, mvpResponse);
+  const profileMvps = await api.profileMvps(mvpTarget, 'week');
+  assert.deepEqual(plain(profileMvps), { id: mvpTarget, period: 'week', supporters: [
+    { id: supporterA, name: 'Riya', avatarUrl: 'https://cdn.example.test/riya.jpg', coins: 12500, serverRole: 'user', verified: false },
+    { id: supporterB, name: 'Kabir', avatarUrl: null, coins: 5300, serverRole: 'host', verified: true },
+  ] }, 'Top supporters retain real coin totals and safe profile-routing authority');
+  assert.deepEqual(plain(adapters.profileMvpsFrom({ id: mvpTarget, period: 'all', supporters: [{ id: supporterA, name: '', avatarUrl: null, coins: 1 }] }).supporters[0]),
+    { id: supporterA, name: '', avatarUrl: null, coins: 1 }, 'Role and verification remain optional for an older server response');
+  for (const invalid of [
+    { ...mvpResponse, period: 'daily' },
+    { ...mvpResponse, supporters: 'not-a-list' },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], coins: 0 }] },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], avatarUrl: 'javascript:alert(1)' }] },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], serverRole: 'admin' }] },
+    { ...mvpResponse, supporters: [{ ...mvpResponse.supporters[0], isVerifiedHost: 'true' }] },
+    { ...mvpResponse, supporters: [mvpResponse.supporters[0], mvpResponse.supporters[0]] },
+    { ...mvpResponse, supporters: [...mvpResponse.supporters].reverse() },
+  ]) assert.throws(() => adapters.profileMvpsFrom(invalid), /Top supporters could not be loaded/);
+  expect('GET', `/users/${mvpTarget}/mvps?period=all`, { ...mvpResponse, id: supporterA, period: 'all' });
+  await assert.rejects(api.profileMvps(mvpTarget, 'all'), /Top supporters could not be loaded/, 'A response for another profile is refused');
+  expect('GET', `/users/${mvpTarget}/mvps?period=week`, null, undefined, { error: new ApiError('Route not found', 404) });
+  assert.deepEqual(plain(await api.profileMvps(mvpTarget, 'week')), { id: mvpTarget, period: 'week', supporters: [] }, 'An older backend without the MVP route degrades to the truthful empty state');
+  expect('GET', `/users/${mvpTarget}/mvps?period=week`, null, undefined, { error: new ApiError('User not found', 404) });
+  await assert.rejects(api.profileMvps(mvpTarget, 'week'), /User not found/, 'A real inaccessible profile is never disguised as an empty ranking');
+  await assert.rejects(api.profileMvps(mvpTarget, 'daily'), /valid top supporters period/);
   const pushPeer = '507f1f77bcf86cd799439012', pushCallId = '507f1f77bcf86cd799439013', pushPostId = '507f1f77bcf86cd799439014';
   const confirmedCall = { _id: pushCallId, callerId: 'member-id', calleeId: pushPeer, status: 'accepted', coinsPerMinute: 35, coinsCharged: 70 };
   for (const status of ['ringing','accepted','ended','declined','missed']) {

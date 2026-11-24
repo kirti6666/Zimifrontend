@@ -2,6 +2,7 @@
 P.arrow = P.arrow || '<path d="M4 12h16m-6-6 6 6-6 6"/>';
 const Zu = { id:'', profile:null, loading:false, error:'', requestId:0, sequence:0,
   tab:'posts', mvpPeriod:'week', posts:[], total:0, page:0, limit:20, postsLoading:false, postsError:'', postsRequestId:0,
+  mvpSupporters:[],mvpLoading:false,mvpLoaded:false,mvpError:'',mvpRequestId:0,mvpRequestPeriod:'',
   followBusy:false, followRequestId:0, followError:'', blockBusy:false, blockRequestId:0,
   back:{view:'home'}, dialog:'', dialogFocus:null, gallery:0 };
 const zuPendingFollows=new Map(),zuPendingBlocks=new Map();
@@ -64,6 +65,7 @@ function zuLoad(){
   const id=zuId();if(!id)return;
   Object.assign(Zu,{id,profile:null,loading:!DEMO,error:'',requestId:++Zu.sequence,tab:'posts',mvpPeriod:'week',
     posts:[],total:0,page:0,limit:20,postsLoading:false,postsError:'',postsRequestId:++Zu.sequence,
+    mvpSupporters:[],mvpLoading:false,mvpLoaded:false,mvpError:'',mvpRequestId:++Zu.sequence,mvpRequestPeriod:'',
     followBusy:zuPendingFollows.has(id),followRequestId:zuPendingFollows.get(id)||0,followError:'',
     blockBusy:zuPendingBlocks.has(id),blockRequestId:zuPendingBlocks.get(id)||0});
   if(DEMO){
@@ -92,6 +94,19 @@ function zuLoadPosts(more=false){
   Native.send('profile.posts.load',{id:Zu.id,page:more?Zu.page+1:1,requestId:Zu.postsRequestId});
   zuPaint();
 }
+function zuLoadMvps(force=false){
+  const period=Zu.mvpPeriod;
+  if(DEMO||!zuApproved(Zu.profile))return;
+  if(!force&&Zu.mvpRequestPeriod===period&&(Zu.mvpLoading||Zu.mvpLoaded&&!Zu.mvpError))return;
+  Object.assign(Zu,{mvpSupporters:[],mvpLoading:true,mvpLoaded:false,mvpError:'',mvpRequestId:++Zu.sequence,mvpRequestPeriod:period});
+  Native.send('profile.mvps.load',{id:Zu.id,period,requestId:Zu.mvpRequestId});
+}
+function zuRetryMvps(){zuLoadMvps(true);zuPaint()}
+function zuRefreshMvpsAfterGift(affected){
+  if(!affected||!zuApproved(Zu.profile))return;
+  Zu.mvpLoaded=false;Zu.mvpError='';Zu.mvpRequestPeriod='';
+  if(Zu.tab==='mvp')zuLoadMvps(true);
+}
 function zuBack(){if(Zu.dialog==='avatar'){zuCloseDialog();return}if(S.v==='profile'){go('home');return}const back=Zu.back;go(back.view||'home',back.id)}
 function zuEditMedia(kind){
   if(kind==='cover')return zuChooseCover();
@@ -103,7 +118,7 @@ function zuEditMedia(kind){
   input?.closest(target==='posts'?'.editgroup':'.editmedia')?.scrollIntoView({block:'center',behavior:'instant'});
   input?.click();
 }
-function zuTab(tab){if(!['posts','mvp'].includes(tab))return;Zu.tab=tab;zuPaint()}
+function zuTab(tab){if(!['posts','mvp'].includes(tab))return;Zu.tab=tab;if(tab==='mvp')zuLoadMvps();zuPaint()}
 function zuTabKeys(event){
   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
   event.preventDefault();zuTab(event.key==='Home'?'posts':event.key==='End'?'mvp':Zu.tab==='posts'?'mvp':'posts');
@@ -111,7 +126,7 @@ function zuTabKeys(event){
 }
 function zuMvpPeriod(period){
   if(!['week','all'].includes(period)||Zu.mvpPeriod===period)return;
-  Zu.mvpPeriod=period;zuPaint();
+  Zu.mvpPeriod=period;if(zuApproved(Zu.profile))zuLoadMvps();zuPaint();
 }
 function zuFollow(){
   const p=Zu.profile;if(!p||!((zuApproved(p)&&zuMember())||zuHostToMember(p))||Zu.loading||Zu.followBusy||zuOffline())return;
@@ -210,9 +225,33 @@ function zuIdentity(p){
     ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
     </div>`}</aside>`;
 }
+function zuMvpAvatar(supporter,index){
+  const words=String(supporter.name||'').trim().split(/\s+/).filter(Boolean);
+  const initials=(words.length?[words[0],...(words.length>1?[words.at(-1)]:[])].map(word=>Array.from(word)[0]).join(''):'?').toLocaleUpperCase();
+  const src=imageSrc(supporter.avatarUrl);
+  return `<span class="av zu-mvp-avatar zu-mvp-avatar-${index%6}" aria-hidden="true"><span>${esc(initials)}</span>${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>`;
+}
+function zuMvpOpen(id){
+  const supporter=Zu.mvpSupporters.find(row=>row.id===id);if(!supporter)return;
+  const host=supporter.serverRole==='host'&&supporter.verified===true;
+  const peer={id:supporter.id,name:supporter.name,avatarUrl:supporter.avatarUrl,role:host?'host':'sender',serverRole:host?'host':'user',verified:host};
+  if(host)knowHost(peer);else personFrom(peer);
+  go(host?'host':'user',supporter.id);
+}
+function zuMvpRows(){
+  const leaders=Zu.mvpSupporters.slice(0,3),others=Zu.mvpSupporters.slice(3);
+  const leaderRows=leaders.length?`<ol class="zu-mvp-podium" data-count="${leaders.length}" aria-label="Top three supporters">${leaders.map((supporter,index)=>`<li class="zu-mvp-place is-rank-${index+1}"><button type="button" class="zu-mvp-row zu-mvp-leader" data-supporter-id="${esc(supporter.id)}" aria-label="View ${esc(supporter.name)}'s profile, rank ${index+1}, ${n(supporter.coins)} coins" onclick="zuMvpOpen('${domId(supporter.id)}')"><span class="zu-mvp-rank">${index===0?hi('crown',15):index+1}</span>${zuMvpAvatar(supporter,index)}<span class="zu-mvp-name"><strong>${esc(supporter.name)}</strong></span><span class="zu-mvp-coins">${coinIcon(12)}<strong>${n(supporter.coins)}</strong><small>coins</small></span></button></li>`).join('')}</ol>`:'';
+  const otherRows=others.length?`<ol class="zu-mvp-list" start="4" aria-label="More top supporters">${others.map((supporter,offset)=>{const index=offset+3;return `<li><button type="button" class="zu-mvp-row" data-supporter-id="${esc(supporter.id)}" aria-label="View ${esc(supporter.name)}'s profile, rank ${index+1}, ${n(supporter.coins)} coins" onclick="zuMvpOpen('${domId(supporter.id)}')"><span class="zu-mvp-rank">${index+1}</span>${zuMvpAvatar(supporter,index)}<span class="zu-mvp-name"><strong>${esc(supporter.name)}</strong><small>Rank ${index+1}</small></span><span class="zu-mvp-coins">${coinIcon(15)}<strong>${n(supporter.coins)}</strong><small>coins</small></span>${hi('arrow',15)}</button></li>`}).join('')}</ol>`:'';
+  return leaderRows+otherRows;
+}
 function zuMvp(){
-  return `<section class="zu-mvp-board" aria-labelledby="zu-mvp-title"><header class="zu-mvp-heading"><h2 id="zu-mvp-title">Top supporters</h2><div class="zu-mvp-periods" role="group" aria-label="Top supporter period">${[['week','This week'],['all','All time']].map(([period,label])=>`<button type="button" aria-pressed="${Zu.mvpPeriod===period}" onclick="zuMvpPeriod('${period}')">${label}</button>`).join('')}</div></header>
-    <div class="zu-mvp-empty" role="status"><span aria-hidden="true">${hi('crown',24)}</span><h3>No MVP</h3></div></section>`;
+  const approved=zuApproved(Zu.profile);
+  const body=!approved||DEMO?`<div class="zu-mvp-empty" role="status"><span aria-hidden="true">${hi('crown',24)}</span><h3>No MVP</h3></div>`
+    :Zu.mvpLoading?`<div class="zu-mvp-loading" role="status" aria-label="Loading top supporters" aria-busy="true"><span class="zh-skeleton-shape" aria-hidden="true"></span><span class="zh-skeleton-shape" aria-hidden="true"></span><span class="zh-skeleton-shape" aria-hidden="true"></span></div>`
+    :Zu.mvpError?`<div class="zu-mvp-error" role="alert"><p>${esc(Zu.mvpError)}</p><button type="button" class="zu-secondary" onclick="zuRetryMvps()">Try again</button></div>`
+    :Zu.mvpLoaded&&Zu.mvpSupporters.length?zuMvpRows()
+    :`<div class="zu-mvp-empty" role="status"><span aria-hidden="true">${hi('crown',24)}</span><h3>No MVP</h3></div>`;
+  return `<section class="zu-mvp-board" aria-labelledby="zu-mvp-title"><header class="zu-mvp-heading"><h2 id="zu-mvp-title">Top supporters</h2><div class="zu-mvp-periods" role="group" aria-label="Top supporter period">${[['week','This week'],['all','All time']].map(([period,label])=>`<button type="button" aria-pressed="${Zu.mvpPeriod===period}" onclick="zuMvpPeriod('${period}')">${label}</button>`).join('')}</div></header>${body}</section>`;
 }
 function zuMedia(post,index){
   const src=imageSrc(post.mediaUrl),video=post.kind==='video';
@@ -475,9 +514,22 @@ Native.on('data.publicPosts',d=>{
   Zu.total=d.total||0;Zu.page=d.page||1;Zu.limit=d.limit||20;Zu.postsLoading=false;Zu.postsError='';zuPaint();
   if(typeof zuFeedSync==='function')zuFeedSync();
 });
+function zuMvpMatches(d){return d.id===Zu.id&&d.period===Zu.mvpRequestPeriod&&d.requestId===Zu.mvpRequestId}
+function zuMvpSupporter(row){
+  const id=domId(row?.id),name=typeof row?.name==='string'?row.name.trim():'',coins=Number(row?.coins);
+  if(!id||!name||!Number.isSafeInteger(coins)||coins<=0)return null;
+  return {id,name,avatarUrl:typeof row.avatarUrl==='string'?row.avatarUrl:'',coins,serverRole:row.serverRole==='host'?'host':'user',verified:row.verified===true};
+}
+Native.on('data.profileMvps',d=>{
+  if(!zuMvpMatches(d))return;
+  const seen=new Set(),supporters=[];
+  for(const raw of Array.isArray(d.supporters)?d.supporters:[]){const supporter=zuMvpSupporter(raw);if(!supporter||seen.has(supporter.id))continue;seen.add(supporter.id);supporters.push(supporter)}
+  Object.assign(Zu,{mvpSupporters:supporters,mvpLoading:false,mvpLoaded:true,mvpError:''});zuPaint();
+});
 Native.on('data.loading',d=>{
   if(d.resource==='publicProfile'&&zuMatches(d)){Zu.loading=!!d.loading;Zu.error=d.error||'';zuPaint()}
   if(d.resource==='publicPosts'&&zuMatches(d,true)){Zu.postsLoading=!!d.loading;Zu.postsError=d.error||'';zuPaint();if(typeof zuFeedSync==='function')zuFeedSync()}
+  if(d.resource==='profileMvps'&&zuMvpMatches(d)){Zu.mvpLoading=!!d.loading;Zu.mvpError=d.error||'';if(d.error)Zu.mvpLoaded=false;zuPaint()}
 });
 Native.on('data.home',d=>{
   if(!zuActive()||!Zu.profile||Zu.loading)return;
@@ -505,13 +557,14 @@ Native.on('block.error',d=>{
 });
 // Catalog and gift outcomes otherwise repaint only the discovery screens.
 for(const type of ['data.catalog','gift.sent','wallet.balance'])Native.on(type,()=>{if(zuActive()&&Home.giftTo)zuPaint()});
-Native.on('gift.sent',()=>{if(zuActive())zuPaint()});
+Native.on('gift.sent',d=>{if(!zuActive())return;zuRefreshMvpsAfterGift(d?.to===Zu.id);zuPaint()});
+Native.on('gift.received',()=>{if(!zuActive())return;zuRefreshMvpsAfterGift(zuSelf());zuPaint()});
 Native.on('operation.error',d=>{if(zuActive()&&d.action==='gift.send')zuPaint()});
 Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.checking&&(Zu.error||Zu.postsError))zuRetry();else zuPaint()});
 Native.on('app.background',zuAvatarPressEnd);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)zuAvatarPressEnd()});
 for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
-for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog(true);Object.assign(ZuCover,{owner:'',photo:'',preparing:false,saving:false,error:'',run:ZuCover.run+1,requestId:++Zu.sequence});Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
+for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog(true);Object.assign(ZuCover,{owner:'',photo:'',preparing:false,saving:false,error:'',run:ZuCover.run+1,requestId:++Zu.sequence});Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.mvpSupporters=[];Zu.mvpLoading=false;Zu.mvpLoaded=false;Zu.mvpError='';Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence;Zu.mvpRequestId=++Zu.sequence;Zu.mvpRequestPeriod=''});
 window.ZimiPublicProfile={
   render:zuScreen,
   beforeNavigate(view,id){
