@@ -103,7 +103,7 @@ async function run() {
     assert.ok(first.requestId != null, 'Profile loads have a correlation identifier');
     assert.ok(await skeletons(page).count() > 0, 'Profile loading uses a labelled layout skeleton');
     assert.equal(await button(page, 'Start video call').isDisabled(), true, 'Cached host identity cannot start a call before the profile read settles');
-    assert.doesNotMatch(await page.locator('.zu-page').innerText(), /Lv\s+\d|66\d{6}|MVP/, 'No synthetic standing or account identifiers appear while loading');
+    assert.doesNotMatch(await page.locator('.zu-page').innerText(), /Lv\s+\d|66\d{6}/, 'No synthetic standing or account identifiers appear while loading');
     await receive(page, 'data.loading', { resource: 'publicProfile', id: creator.id, requestId: first.requestId, loading: false, error: 'This profile is temporarily unavailable.' });
     await page.getByRole('alert').filter({ hasText: 'This profile is temporarily unavailable.' }).waitFor();
     await page.getByRole('alert').filter({ hasText: 'This profile is temporarily unavailable.' }).getByRole('button', { name: 'Try again', exact: true }).click();
@@ -115,11 +115,17 @@ async function run() {
     assert.equal(await skeletons(page).count(), 0, 'Completed profile and post reads clear their skeletons');
     assert.match(await page.locator('.zu-page').innerText(), /127/, 'Followers come from the public profile');
     assert.equal(await page.locator('.zu-page .post,.zu-page .zu-post').count(), 0, 'An empty server gallery does not show preview posts');
-    await tab(page, 'About').click();
-    assert.equal(await tab(page, 'About').getAttribute('aria-selected'), 'true');
-    assert.match(await page.locator('.zu-page').innerText(), /Acoustic evenings and thoughtful conversations/);
+    assert.equal(await page.locator('.zu-bio').innerText(), creator.about, 'The biography remains visible in the profile identity');
+    await tab(page, 'MVP').click();
+    assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true');
+    const mvpPanel = page.locator('#zu-panel');
+    assert.equal(await mvpPanel.getByRole('heading', { name: 'Top supporters', exact: true }).count(), 1);
+    assert.deepEqual(await mvpPanel.getByRole('button').allInnerTexts(), ['This week', 'All time']);
+    assert.equal(await mvpPanel.locator('.zu-mvp-empty').innerText(), 'No MVP', 'Profiles without supporter data use the exact MVP empty state');
+    assert.equal(await mvpPanel.locator('.zu-mvp-row,[data-supporter-id],[role="listitem"]').count(), 0, 'The MVP panel never fabricates supporter rows');
+    assert.equal((await mvpPanel.innerText()).replace(/\s+/g, ' ').trim(), 'Top supporters This week All time No MVP');
     await tab(page, 'Posts').click();
-    console.log('PASS public profile: real loading, retry, empty gallery, biography and authoritative counts');
+    console.log('PASS public profile: real loading, retry, empty gallery, always-visible biography and empty MVP contract');
 
     await navigate(page);
     await acceptProfile(page);
@@ -135,7 +141,7 @@ async function run() {
     await acceptPosts(page, creator, [photo], 2, 1, 1);
     const gallery = page.locator('.zu-gallery');
     assert.equal(await gallery.locator('img').first().getAttribute('src'), photo.mediaUrl, 'Public posts use the production media URL');
-    assert.equal(await page.locator('.zu-page .lk,.zu-page .mvp').count(), 0, 'The real gallery does not invent likes or supporter rankings');
+    assert.equal(await page.locator('.zu-page .lk').count(), 0, 'The real gallery does not invent like metadata');
     await button(page, 'Load more posts').click();
     const more = await lastSent(page, 'profile.posts.load');
     assert.equal(more.page, 2);
@@ -158,7 +164,8 @@ async function run() {
     assert.equal(await page.getByRole('dialog').count(), 0);
     await tab(page, 'Posts').focus();
     await page.keyboard.press('ArrowRight');
-    assert.equal(await tab(page, 'About').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
+    assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true', 'Profile tabs support keyboard navigation');
+    assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP');
     await page.keyboard.press('Home');
     assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true');
     console.log('PASS public profile: real photo loading/retry, pagination, stale response isolation, post feed and keyboard tabs');
@@ -223,7 +230,8 @@ async function run() {
     console.log('PASS public profile: pending follow survives navigation without duplicate writes or a stranded action');
 
     await page.evaluate(() => window.dispatchEvent(new Event('offline')));
-    await tab(page, 'About').click();
+    await tab(page, 'MVP').click();
+    assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP', 'Offline redraws preserve the MVP empty state');
     assert.equal(await page.locator('#zu-follow').isDisabled(), true);
     assert.equal(await button(page, 'Message').isDisabled(), true);
     assert.equal(await button(page, 'Start video call').isDisabled(), true);
@@ -345,8 +353,10 @@ async function run() {
     await acceptProfile(page, hostile, { interests: [attack] });
     await acceptPosts(page, hostile);
     await page.getByRole('heading', { name: attack, exact: true }).waitFor();
-    await tab(page, 'About').click();
-    assert.match(await page.locator('.zu-page').innerText(), /O'Neil & friends/);
+    assert.equal(await page.locator('.zu-bio').innerText(), attack, 'Hostile biography content remains visible as identity text');
+    await tab(page, 'MVP').click();
+    assert.equal(await page.locator('#zu-panel .zu-mvp-empty').innerText(), 'No MVP');
+    assert.match(await page.locator('.zu-identity').innerText(), /O'Neil & friends/);
     assert.equal(await page.locator('.zu-page [onerror],.zu-page script,.zu-page iframe').count(), 0, 'Untrusted public content stays text');
     assert.equal(await page.evaluate(() => window.__profileXss), undefined);
     const unsafeSource = await page.locator('.zu-page img').evaluateAll(images => images.some(image => /javascript:|onerror=/.test(image.getAttribute('src') || '')));

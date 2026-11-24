@@ -500,7 +500,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     foreground: appActive,
   }) });
   const official = createOfficialBridge({ api, emit, snapshot: () => ({
-    key: `${epoch}:${getSessionVersion()}:${documentRevision}:${accountId ?? ""}`,
+    key: `${epoch}:${getSessionVersion()}:${documentRevision}:${accountId ?? ""}:${accountRole ?? ""}`,
     available: !closed && sessionAvailable && !!accountId && !!getCachedToken() && webReady && !restoring,
     foreground: appActive,
   }), changed: () => { quietly(loadChats(), "chats.reload");quietly(loadHome({ ...homeQuery, page: 1 }, true), "home.reload"); } });
@@ -602,7 +602,15 @@ export function createBridge(post: (msg: AppMessage) => void) {
   };
   const applyHostAccount = (account: Account, publish = true) => {
     const nextRole = account.user.serverRole ?? (account.user.role === "host" ? "host" : "user");
+    const roleChanged = accountId === account.user.id && accountRole !== undefined && accountRole !== nextRole;
     if (accountId !== account.user.id) { support.reset(); official.reset(); if (accountId) resetUpdateActivities(); chatPeers.clear(); threadPermissions.clear(); publicFollows.clear(); homeQuery = { mode: "popular" }; }
+    else if (roleChanged) {
+      official.reset();
+      // A negotiated chat-list response includes a role-filtered Team Chat
+      // summary. Retire any request that began under the previous server role
+      // before it can restore that audience's title, body or unread state.
+      readRequests.set("chats", (readRequests.get("chats") ?? 0) + 1);
+    }
     if (accountRole !== nextRole || approvedHost(hostAccount) !== approvedHost(account)) threadPermissions.clear();
     accountRole = nextRole;
     if (approvedHost(hostAccount) && !approvedHost(account)) hostRevision++;
@@ -610,6 +618,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (nativePushOwner !== accountId) void syncNativePush(accountId).catch(() => {});
     hostChecking = false;
     if (publish) publishHostAccess();
+    if (roleChanged && webReady && sessionAvailable && !liveOnboarding)
+      quietly(loadChats(1, true), "chats.reload");
   };
   const invalidateHostAccess = (checking: boolean) => {
     threadPermissions.clear();
@@ -884,7 +894,9 @@ export function createBridge(post: (msg: AppMessage) => void) {
       emit({ type: "push.opened", data: { targetType: "inbox", notificationId: target.notificationId } });return;
     }
     try {
-      if (["inbox", "official", "support"].includes(target.targetType)) {
+      if (target.targetType === "support") {
+        if (applicable()) emit({ type: "push.opened", data: target });return;
+      } else if (target.targetType === "official") {
         if (applicable()) emit({ type: "official.open", data: {} });return;
       } else if (target.targetType === "appUpdate") {
         notifyAppUpdate(false);
@@ -968,13 +980,17 @@ export function createBridge(post: (msg: AppMessage) => void) {
     emitProfileSettings(settings);
     emit({ type: "data.loading", data: { resource: "profileSettings", loading: false } });
   };
-  const loadChats = (page = 1, background = false) => readResource<ChatsData>("chats", () => accountRole === "host" && !hasHostAccess() && !hostChecking
-    ? Promise.resolve({ chats: [], total: 0, page, limit: 20, unreadCount: 0, unreadConversations: 0 }) : api.chats(page), data => {
-      for (const chat of data.chats) if (chat.user?.id) {
+  const loadChats = (page = 1, background = false) => readResource<ChatsData>("chats", () => api.chats(page), data => {
+      // Pending or suspended hosts still receive the server-owned Team Chat
+      // summary. Keep person-chat rows client-hidden until creator approval too.
+      const visible = accountRole === "host" && !hasHostAccess()
+        ? { ...data, chats: [], total: 0, unreadCount: 0, unreadConversations: 0 }
+        : data;
+      for (const chat of visible.chats) if (chat.user?.id) {
         chatPeers.set(chat.user.id, chat.user);
         if (threadPermissions.has(chat.user.id) && typeof chat.canSend === "boolean") rememberThreadPermission(chat.user.id, chat);
       }
-      emit({ type: "data.chats", data });
+      emit({ type: "data.chats", data: visible });
     }, { page, ...(background ? { background: true } : {}) });
   const verifyPurchase = (orderId: string, kind: PurchaseKind = "coins", protect = true): Promise<Purchase | undefined> => {
     const version = epoch, sessionVersion = getSessionVersion(), owner = accountId, key = `${version}:${sessionVersion}:${kind}:${orderId}`;
@@ -1137,7 +1153,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (event.type === "wallet.refresh") { quietly(refreshWallet(), "wallet.refresh"); return; }
       if (event.type === "support.updated") {
         support.changed(typeof event.data?.ticketId === "string" ? event.data.ticketId : undefined);
-        official.changed();emit({ type: "notifications.changed", data: {} });
+        emit({ type: "notifications.changed", data: {} });
         if (!liveOnboarding) quietly(loadChats(), "chats.reload");return;
       }
       if (event.type === "official.changed") { official.changed();return; }
@@ -1421,7 +1437,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         : updateNotifications({ ids: msg.data.ids, read: true }, msg.data.requestId);
       case "notifications.unread": return updateNotifications({ ids: msg.data.ids, read: false }, msg.data.requestId);
       case "notifications.readAll": return updateNotifications({ all: true, read: true }, msg.data.requestId);
-      case "official.activity": case "official.load": case "official.send": case "official.read": return official.handle(msg);
+      case "official.activity": case "official.load": case "official.read": return official.handle(msg);
       case "support.activity": case "support.load": case "support.open": case "support.create": case "support.send": case "support.read": case "support.status":
         return support.handle(msg);
       case "catalog.load": return loadCatalog();

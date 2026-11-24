@@ -288,9 +288,9 @@ async function run() {
     assert.equal(await page.evaluate(() => S.v), 'transactions');
     await readyProfile();
     await row('Help & support').click();
-    assert.equal(await page.evaluate(() => S.v), 'official-chat', 'Settings opens the verified official conversation');
-    await page.getByRole('heading', { name: /^BinzoLive/ }).waitFor();
-    assert.ok(await sentCount(page, 'official.load') > 0, 'The official thread requests private account history');
+    assert.equal(await page.evaluate(() => S.v), 'support', 'Settings opens the separate private support center');
+    await page.getByRole('heading', { name: 'Help & support', exact: true }).waitFor();
+    assert.ok(await sentCount(page, 'support.load') > 0, 'The support center requests private account history');
     await readyProfile();
     await openMenu('Privacy & Terms');
     await row('Community Guidelines').click(); await dialog('Community Guidelines').waitFor();
@@ -299,13 +299,15 @@ async function run() {
     // Connected/minimized call navigation is covered with real media in test-ongoing-call.
     for (const view of ['incoming', 'live']) {
       await page.evaluate(value => { S.v = value; }, view);
-      await receive(page, 'push.opened');
+      await receive(page, 'push.opened', { targetType: 'official' });
       assert.equal(await page.evaluate(() => S.v), view, `A push tap leaves ${view} on screen`);
     }
     await navigate(page, 'home');
-    await receive(page, 'push.opened');
+    await receive(page, 'push.opened', { targetType: 'inbox' });
+    assert.equal(await page.evaluate(() => S.v), 'notifications', 'A personal inbox push opens Notifications');
+    await receive(page, 'push.opened', { targetType: 'official' });
     assert.equal(await page.evaluate(() => S.v), 'official-chat');
-    assert.ok(await sentCount(page, 'official.load') > 0, 'An inbox push opens the verified official conversation');
+    assert.ok(await sentCount(page, 'official.load') > 0, 'An official push opens the verified Team Chat');
     await readyProfile();
     console.log('PASS profile: capability-aware notifications, blocked account loading/unblock recovery, real privacy saves, gift history and support dialogs');
 

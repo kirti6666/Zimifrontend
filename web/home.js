@@ -30,7 +30,8 @@ const homeIcons = {
   gift:'<path d="M3 9h18v5H3zM5 14v7h14v-7M12 9v12M12 9C3 9 5 1 9 4l3 5Zm0 0c9 0 7-8 3-5z"/>',
   pulse:'<circle cx="12" cy="12" r="9"/><path d="M16 17a6 6 0 1 1 2-5c0 4-5 4-5 1V9m0 0a3 3 0 1 0 0 5"/>',
   broadcast:'<rect x="2" y="5" width="14" height="15" rx="2"/><path d="m16 10 6-4v13l-6-4M9 8v9M5 12.5h8"/>',
-  trophy:'<path fill="currentColor" d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.5V7a3 3 0 0 0 3 3M17 5.5h2.5V7a3 3 0 0 1-3 3M12 14v4.5M8.5 20.5h7"/>'
+  trophy:'<path fill="currentColor" d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.5V7a3 3 0 0 0 3 3M17 5.5h2.5V7a3 3 0 0 1-3 3M12 14v4.5M8.5 20.5h7"/>',
+  crown:'<path fill="currentColor" stroke="none" d="M3.2 7.4a1 1 0 0 1 1.5-.9l3.8 2.7 2.6-5a1 1 0 0 1 1.8 0l2.6 5 3.8-2.7a1 1 0 0 1 1.5.9l-1.3 9.1h-15zM5 18h14v2H5z"/>'
 };
 function hi(name,size=20){if(['coin','rings'].includes(name))return coinIcon(size);return `<svg class="zi-icon" data-icon="${name}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${homeIcons[name]||P[name]||P.star}</svg>`}
 function homeCompact(value){const x=Math.max(0,Number(value)||0);return x>=1000?(x/1000).toFixed(x>=10000?0:1).replace(/\.0$/,'')+'k':n(x)}

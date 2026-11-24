@@ -76,21 +76,39 @@ function shell() {
 
 test('renderer death replaces the native WebView, retires media and bounds repeated recovery', () => {
   const h = shell();
+  h.send('app.launched');
+  let launch = h.find(h.render(), 'LaunchScreen');
+  launch.props.onHidden();
+  assert.equal(h.find(h.render(), 'LaunchScreen'), undefined);
   let web = h.find(h.render(), 'WebView');
   const firstKey = web.key;
   assert.equal(web.props.onRenderProcessGone(), true);
-  web = h.find(h.render(), 'WebView');
+  let tree = h.render();
+  assert.equal(h.find(tree, 'LaunchScreen'), undefined, 'Automatic renderer recovery keeps a stable canvas instead of replaying launch');
+  assert.equal(h.find(tree, 'WebView'), undefined, 'The dead native WebView leaves the hierarchy before its replacement is created');
+  const remount = [...h.timers.values()].find(timer => timer.delay === 100);
+  assert.ok(remount, 'Renderer recovery schedules a separate native remount commit');
+  remount.work();
+  tree = h.render();
+  web = h.find(tree, 'WebView');
   assert.notEqual(web.key, firstKey, 'A dead renderer must get a different native WebView instance');
   assert.deepEqual(h.calls.slice(-2), ['documentLoading', 'media.stop']);
   web.props.onRenderProcessGone();
+  [...h.timers.values()].find(timer => timer.delay === 100).work();
   web = h.find(h.render(), 'WebView');
   web.props.onRenderProcessGone();
-  let tree = h.render();
+  tree = h.render();
   assert.equal(h.find(tree, 'WebView'), undefined, 'Repeated renderer failures show recovery instead of an OOM restart loop');
   h.find(tree, 'Pressable').props.onPress();
-  web = h.find(h.render(), 'WebView');
+  tree = h.render();
+  assert.ok(h.find(tree, 'LaunchScreen'), 'Manual retry is a deliberate fresh start and restores the launch cover');
+  assert.equal(h.find(tree, 'WebView'), undefined, 'Manual retry also disposes any failed native view first');
+  [...h.timers.values()].find(timer => timer.delay === 100).work();
+  tree = h.render();
+  web = h.find(tree, 'WebView');
   assert.ok(web, 'Manual retry mounts a new WebView and resets the automatic retry allowance');
   web.props.onContentProcessDidTerminate();
+  [...h.timers.values()].find(timer => timer.delay === 100).work();
   assert.ok(h.find(h.render(), 'WebView'));
   h.unmount();
 });
@@ -107,16 +125,25 @@ test('a document that never starts reaches a retry screen; an offline ready docu
   }
 });
 
-test('enabled Android shell declares native media before the document loads and keeps controls above native video', () => {
-  const h = shell(), tree = h.render(), web = h.find(tree, 'WebView'), renderer = h.find(tree, 'NativeMediaLayer');
-  assert.ok(renderer, 'Enabled shell mounts the native RTC renderer');
+test('enabled Android shell stays opaque until real native video is visible', () => {
+  const h = shell(); let tree = h.render(), web = h.find(tree, 'WebView');
   assert.match(web.props.source.html, /window\.ZIMI_NATIVE_MEDIA=true/);
-  assert.equal(web.props.style.at(-1).backgroundColor, 'transparent');
-  assert.equal(renderer.props.layout, null);
-  assert.equal(renderer.props.state, null);
+  assert.equal(web.props.style.at(-1).backgroundColor, '#ffffff');
+  assert.equal(h.find(tree, 'NativeMediaLayer'), undefined, 'Ordinary screens do not mount an empty compositor underlay');
   assert.equal(h.media.requests.length, 0, 'Mounting the shell does not acquire a camera');
+  const local = { id: 'local-stream' };
+  h.state({ local, remote: null, hasVideo: true, remoteVideo: false, camera: true, microphone: true, facing: 'user', playbackMuted: false, status: 'Connected', quality: 'good', beautyStatus: 'idle' });
+  const layout = { width: 390, height: 800, slots: [{ kind: 'local', x: 1, y: 2, width: 100, height: 160, radius: 10, fit: 'contain' }] };
+  h.send('native.media.layout', layout); tree = h.render(); web = h.find(tree, 'WebView');
+  const renderer = h.find(tree, 'NativeMediaLayer');
+  assert.ok(renderer, 'A visible camera stream mounts the native RTC renderer');
+  assert.equal(web.props.style.at(-1).backgroundColor, 'transparent');
   renderer.props.onDimensions('local', 1080, 1920);
   assert.deepEqual(h.posts.at(-1), { type: 'native.media.dimensions', data: { kind: 'local', width: 1080, height: 1920 } });
+  h.state({ local, remote: null, hasVideo: true, remoteVideo: false, camera: false, microphone: true, facing: 'user', playbackMuted: false, status: 'Connected', quality: 'good', beautyStatus: 'idle' });
+  tree = h.render();
+  assert.equal(h.find(tree, 'NativeMediaLayer'), undefined, 'Camera-off removes the empty native layer');
+  assert.equal(h.find(tree, 'WebView').props.style.at(-1).backgroundColor, '#ffffff', 'Camera-off restores the canvas immediately');
   h.unmount();
 });
 
@@ -132,6 +159,7 @@ test('native RPC and layout honor the real trusted-origin parser and reject web-
   h.send('native.media', { requestId: 3, action: 'connect', data: { callId: 'forged-call' } });
   h.send('native.media', { requestId: 4, action: 'beauty', data: { enabled: true, settings: [['executeArbitraryCode', [1]]] } });
   assert.equal(h.media.requests.length, 1, 'The page cannot inject connected-call authority or unsupported native commands');
+  h.state({ local: { id: 'local-stream' }, remote: null, hasVideo: true, remoteVideo: false, camera: true, microphone: true, facing: 'user', playbackMuted: false, status: 'Connected', quality: 'good', beautyStatus: 'idle' });
   const layout = { width: 390, height: 800, slots: [{ kind: 'local', x: 1, y: 2, width: 100, height: 160, radius: 10, fit: 'contain' }] };
   h.send('native.media.layout', layout);
   assert.deepEqual(plain(h.find(h.render(), 'NativeMediaLayer').props.layout), layout);
@@ -185,13 +213,14 @@ test('renderer observes a video track added to an existing stream and retires la
   const local = { id: 'local-stream' }, remote = { id: 'remote-stream' };
   const state = { local, remote, hasVideo: true, remoteVideo: false, camera: true, microphone: true, facing: 'user', playbackMuted: false, status: 'Connected', quality: 'good', beautyStatus: 'idle' };
   h.state(state);
+  const layout = { width: 390, height: 800, slots: [{ kind: 'local', x: 0, y: 0, width: 100, height: 160, radius: 0, fit: 'cover' }] }; h.send('native.media.layout', layout);
   assert.equal(h.find(h.render(), 'NativeMediaLayer').props.state.remoteVideo, false);
   h.state({ ...state, remoteVideo: true });
   assert.equal(h.find(h.render(), 'NativeMediaLayer').props.state.remoteVideo, true, 'Audio-first remote stream must render when video arrives later');
-  const layout = { width: 390, height: 800, slots: [] }; h.send('native.media.layout', layout);
   const web = h.find(h.render(), 'WebView'); web.props.onLoadStart();
   assert.deepEqual(h.calls.slice(-2), ['documentLoading', 'media.stop']);
-  assert.equal(h.find(h.render(), 'NativeMediaLayer').props.layout, null);
+  assert.equal(h.find(h.render(), 'NativeMediaLayer'), undefined);
+  assert.equal(h.find(h.render(), 'WebView').props.style.at(-1).backgroundColor, '#ffffff');
   h.unmount();
   assert.ok(h.calls.includes('media.close')); assert.ok(h.calls.includes('bridge.close')); assert.ok(h.calls.includes('prepareForUpdate'));
   assert.equal(h.timers.size, 0);

@@ -23,7 +23,7 @@ import { callTargetsFrom, string } from "./adapters";
 import type { CallTargetsInput } from "./types";
 import type { SupportCategory, SupportStatus } from "./types";
 import { supportConversationFrom, supportReceiptFrom, supportTicketFrom, supportTicketsFrom } from "./support";
-import { officialCursor, officialMessageId, officialReceiptFrom, officialReadFrom } from "./official";
+import { officialCursor, officialMessageId, officialReadFrom } from "./official";
 
 let identity: { id: string; version: number } | undefined;
 let pendingProfile: { version: number; promise: Promise<Account> } | undefined;
@@ -318,18 +318,13 @@ export const api = {
   async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
   async officialChat(before?: string) {
-    if (before !== undefined && !officialCursor(before)) throw new ApiError("Refresh the BinzoLive conversation and try again.", 400);
-    const version = getSessionVersion(), data = await request("GET", `/chats/official/thread?${queryString({ before, limit: 50 })}`);
+    if (before !== undefined && !officialCursor(before)) throw new ApiError("Refresh Binzo Team Chat and try again.", 400);
+    const version = getSessionVersion(), data = await request("GET", `/chats/official/thread?${queryString({ teamChat: 1, before, limit: 50 })}`);
     ensureSession(version);return officialChatFrom(data);
   },
-  async sendOfficialMessage(body: string, clientMessageId: string) {
-    if (typeof body !== "string" || !body.trim() || body.length > 4000 || !/^[A-Za-z0-9_-]{8,100}$/.test(clientMessageId)) throw new ApiError("Enter a message and try again.", 400);
-    const version = getSessionVersion(), data = await request("POST", "/chats/official/messages", { body, clientMessageId });
-    ensureSession(version);return officialReceiptFrom(data, clientMessageId);
-  },
   async readOfficialChat(input: OfficialReadPatch) {
-    if (!(input.all === true && input.ids === undefined) && !(input.all === undefined && Array.isArray(input.ids) && input.ids.length > 0 && input.ids.length <= 100 && input.ids.every(officialMessageId) && new Set(input.ids).size === input.ids.length)) throw new ApiError("Open the BinzoLive conversation to mark messages read.", 400);
-    const version = getSessionVersion(), data = await request("POST", "/chats/official/thread/read", input.all === true ? { all: true } : { ids: input.ids });
+    if (!(input.all === true && input.ids === undefined) && !(input.all === undefined && Array.isArray(input.ids) && input.ids.length > 0 && input.ids.length <= 100 && input.ids.every(officialMessageId) && new Set(input.ids).size === input.ids.length)) throw new ApiError("Open Binzo Team Chat to mark messages read.", 400);
+    const version = getSessionVersion(), data = await request("POST", "/chats/official/thread/read?teamChat=1", input.all === true ? { all: true } : { ids: input.ids });
     ensureSession(version);return officialReadFrom(data);
   },
   registerPushDevice: async (token: string, notificationProtocol?: "binzo.push.v1") => {
@@ -399,7 +394,7 @@ export const api = {
   acceptStreamRequest: (streamId: string, id: string) => request<StreamPrivateCall>("POST", `/streams/${encodeURIComponent(streamId)}/requests/${encodeURIComponent(id)}/accept`, {}),
   reactToStream: (streamId: string) => request<StreamReaction>("POST", `/streams/${encodeURIComponent(streamId)}/reactions`, {}),
   async hosts() { return { hosts: items(await request("GET", "/hosts?limit=100")).map(hostFrom) }; },
-  async chats(page = 1) { const id = await selfId(); return chatsFrom(await request("GET", page === 1 ? "/chats" : `/chats?page=${page}`), id); },
+  async chats(page = 1) { const id = await selfId(); return chatsFrom(await request("GET", `/chats?teamChat=1${page === 1 ? "" : `&page=${page}`}`), id); },
   async readAllChats() {
     const data = record(await request("POST", "/chats/read-all", {}));
     if (!Number.isSafeInteger(data.updated) || Number(data.updated) < 0 || typeof data.readAt !== "string") throw new ApiError("The read status could not be confirmed. Refresh your conversations.", 502);

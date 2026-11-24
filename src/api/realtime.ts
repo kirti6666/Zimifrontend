@@ -248,10 +248,21 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   }
   socket.on("wallet:updated", refreshWallet);
   socket.on("home:updated", () => emit("home.updated", {}));
-  // The inbox and badge read their authenticated counts; socket content is only an invalidation.
-  socket.on("notification:new", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); emit("home.updated", {}); });
-  // Read receipts already have the server's home:updated signal for the badge.
-  socket.on("notifications:read", () => { emit("notifications.changed", {}); emit("official.changed", {}); emit("chats.updated", {}); });
+  // The inbox and badge read their authenticated counts; socket content is only an
+  // invalidation. Only the server's explicit Team Chat marker refreshes that channel.
+  socket.on("notification:new", payload => {
+    let official = false;
+    try {
+      const notice = record(payload);
+      official = notice.targetType === "official" || notice.officialChat === true;
+    } catch { /* The generic inbox still refreshes. */ }
+    emit("notifications.changed", {});
+    if (official) emit("official.changed", {});
+    emit("chats.updated", {});emit("home.updated", {});
+  });
+  // Generic notification reads do not describe which Team Chat row changed. Its own
+  // read endpoint updates the current thread after the authenticated response.
+  socket.on("notifications:read", () => { emit("notifications.changed", {}); emit("chats.updated", {}); });
   socket.on("account:updated", () => emit("account.updated", {}));
   // Owner identity is fetched over the authenticated API, never trusted from a socket payload.
   socket.on("profile:updated", () => emit("profile.updated", {}));

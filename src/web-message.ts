@@ -111,7 +111,6 @@ export function parseWebMessage(raw: string): WebMessage | null {
     }
     case "official.activity": valid = boolean(d.active) && supportKeys(d, ["active"]);break;
     case "official.load": valid = supportRequest(d) && (d.before === undefined || officialCursor(d.before)) && supportKeys(d, ["before", "requestId"]);break;
-    case "official.send": valid = supportRequest(d) && supportBody(d.body) && idempotency(d.clientMessageId) && supportKeys(d, ["body", "clientMessageId", "requestId"]);break;
     case "support.activity": valid = boolean(d.active) && (d.ticketId === undefined || supportId(d.ticketId)) && supportKeys(d, ["active", "ticketId"]);break;
     case "support.load": valid = supportRequest(d) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) &&
       (d.status === undefined || d.status === "all" || SUPPORT_STATUSES.includes(d.status as never)) && supportKeys(d, ["page", "status", "requestId"]);break;

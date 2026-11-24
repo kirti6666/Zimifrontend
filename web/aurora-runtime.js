@@ -174,7 +174,6 @@ function setTheme(m){document.documentElement.dataset.theme=m;r()}
 function toggleTheme(){setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")}
 function toggleFollow(id,e){if(e)e.stopPropagation();S.following[id]=!S.following[id];Native.send("follow.set",{id,on:!!S.following[id]});r()}
 function go(v,id){
- if(['support','support-new','support-chat'].includes(v)&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open(S.v==='settings'?'settings':'chats');
  if(v==='thread'&&id==='bingo-live-official'&&window.ZimiOfficialChat)return window.ZimiOfficialChat.open('chats');
  /* A minimized call stays the only call until it ends (web/ongoing-call.js). */
  if(S.bgCall&&["dial","dialback","call","voice","hcall"].includes(v)){appNotice("Finish your current call first.");return}

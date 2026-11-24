@@ -1,3 +1,12 @@
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java
+index 0287e1c..6da2446 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewClient.java
+@@ -302,2 +302,3 @@ public class RNCWebViewClient extends WebViewClient {
+         int reactTag = RNCWebViewWrapper.getReactTagFromWebView(webView);
+-        UIManagerHelper.getEventDispatcherForReactTag((ReactContext) webView.getContext(), reactTag).dispatchEvent(new TopRenderProcessGoneEvent(reactTag, event));
++        int surfaceId = UIManagerHelper.getSurfaceId(webView);
++        UIManagerHelper.getEventDispatcherForReactTag((ReactContext) webView.getContext(), reactTag).dispatchEvent(new TopRenderProcessGoneEvent(surfaceId, reactTag, event));
 diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewModuleImpl.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewModuleImpl.java
 index 951749c..bc096a6 100644
 --- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewModuleImpl.java
@@ -90,3 +99,24 @@ index 951749c..bc096a6 100644
      }
  
      public void setDownloadRequest(DownloadManager.Request request) {
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/events/TopRenderProcessGoneEvent.kt b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/events/TopRenderProcessGoneEvent.kt
+index b87f4fa..f00db37 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/events/TopRenderProcessGoneEvent.kt
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/events/TopRenderProcessGoneEvent.kt
+@@ -4,2 +4 @@ import com.facebook.react.bridge.WritableMap
+ import com.facebook.react.uimanager.events.Event
+-import com.facebook.react.uimanager.events.RCTEventEmitter
+@@ -10,3 +9,3 @@ import com.facebook.react.uimanager.events.RCTEventEmitter
+  */
+-class TopRenderProcessGoneEvent(viewId: Int, private val mEventData: WritableMap) :
+-  Event<TopRenderProcessGoneEvent>(viewId) {
++class TopRenderProcessGoneEvent(surfaceId: Int, viewId: Int, private val mEventData: WritableMap) :
++  Event<TopRenderProcessGoneEvent>(surfaceId, viewId) {
+@@ -21,6 +20,3 @@ class TopRenderProcessGoneEvent(viewId: Int, private val mEventData: WritableMap
+   override fun getCoalescingKey(): Short = 0
+-
+-  override fun dispatch(rctEventEmitter: RCTEventEmitter) =
+-    rctEventEmitter.receiveEvent(viewTag, eventName, mEventData)
+-
++  override fun getEventData(): WritableMap = mEventData
+ }

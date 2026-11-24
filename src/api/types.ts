@@ -225,22 +225,19 @@ export const OFFICIAL_CHAT_ID = "bingo-live-official";
 export const OFFICIAL_CHAT_NAME = "BinzoLive";
 export interface OfficialMessage {
   id: string;
-  kind: "announcement" | "support";
-  senderType: "user" | "official";
+  kind: "announcement";
+  senderType: "official";
   body: string;
   title?: string;
   createdAt: string;
   read: boolean;
-  clientMessageId?: string;
-  ticketId?: string;
-  sequence?: number;
 }
 export interface OfficialChatData {
   id: typeof OFFICIAL_CHAT_ID;
   name: typeof OFFICIAL_CHAT_NAME;
   official: true;
   verified: true;
-  canSend: true;
+  canSend: false;
   messages: OfficialMessage[];
   total: number;
   unreadCount: number;
@@ -253,11 +250,10 @@ export interface OfficialChatSummary {
   name: typeof OFFICIAL_CHAT_NAME;
   official: true;
   verified: true;
-  canSend: true;
+  canSend: false;
   lastMessage: Pick<OfficialMessage, "id" | "body" | "createdAt" | "kind" | "senderType"> & { title?: string } | null;
   unread: number;
 }
-export interface OfficialReceipt { message: OfficialMessage; official: OfficialChatSummary; }
 export interface OfficialReadResult { read: true; official: OfficialChatSummary; }
 export interface StreamChat { id: string; streamId: string; userId: string; name: string; text: string; createdAt: string; }
 export interface StreamCallRequest { id: string; streamId: string; userId: string; name: string; avatarUrl?: string; gender?: Gender | null; status: "pending" | "accepting" | "accepted" | "cancelled" | "declined"; createdAt: string; }

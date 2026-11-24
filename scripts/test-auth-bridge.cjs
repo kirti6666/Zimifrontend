@@ -401,55 +401,88 @@ test('member directory retires approval checks, results and failures after accou
 });
 
 const officialFixture = () => {
-  const identity={id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
-  const message={id:'support:507f1f77bcf86cd799439041',kind:'support',senderType:'user',body:'Please help',createdAt:'2026-11-02T10:00:00Z',read:true,ticketId:'507f1f77bcf86cd799439042',sequence:1,clientMessageId:'official-native-01'};
-  return {data:{...identity,messages:[],total:0,hasMore:false,before:null,unreadCount:1},receipt:{message,official:{...identity,unread:1,lastMessage:message}}};
+  const identity={id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:false};
+  const message={id:'announcement:507f1f77bcf86cd799439041',kind:'announcement',senderType:'official',body:'An official rule update',createdAt:'2026-11-02T10:00:00Z',read:false};
+  return {data:{...identity,messages:[message],total:1,hasMore:false,before:null,unreadCount:1},summary:{...identity,unread:1,lastMessage:message},message};
 };
 async function officialHarness(){
   const h=harness(),fixture=officialFixture(),self='507f1f77bcf86cd799439031';
   h.overrides.me=()=>({...account(self),requiresOnboarding:false});
-  h.overrides.officialChat=()=>fixture.data;h.overrides.sendOfficialMessage=()=>fixture.receipt;h.overrides.readOfficialChat=()=>({read:true,official:{...fixture.receipt.official,unread:0}});
+  h.overrides.officialChat=()=>fixture.data;h.overrides.readOfficialChat=()=>({read:true,official:{...fixture.summary,unread:0}});
   await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();return{h,fixture,self};
 }
-test('official native actions use dedicated API routes and correlate coalesced support receipts',async()=>{
+test('official native actions use dedicated read-only routes and never acquire person-chat authority',async()=>{
   const {h,fixture}=await officialHarness();
   try{
     h.bridge.handle({type:'official.activity',data:{active:true}});h.bridge.handle({type:'official.load',data:{requestId:81}});await settle();
     assert.equal(h.find('data.official').at(-1).data.requestId,81);assert.equal(h.find('data.official').at(-1).data.verified,true);
-    const pending=deferred();h.overrides.sendOfficialMessage=()=>pending.promise;
-    const message={type:'official.send',data:{body:fixture.receipt.message.body,clientMessageId:fixture.receipt.message.clientMessageId,requestId:82}};
-    h.bridge.handle(message);h.bridge.handle({...message,data:{...message.data,requestId:83}});await settle();assert.equal(h.count('sendOfficialMessage'),1);
-    pending.resolve(fixture.receipt);await settle();assert.deepEqual(h.find('official.sent').map(event=>event.data.requestId),[82,83]);
-    h.bridge.handle({type:'official.read',data:{ids:[fixture.receipt.message.id],requestId:84}});await settle();assert.equal(h.find('official.saved').at(-1).data.requestId,84);
-    assert.equal(h.count('thread'),0);assert.equal(h.count('sendMessage'),0);assert.equal(h.count('startCall'),0);assert.equal(h.count('acceptCall'),0);assert.equal(h.count('sendGift'),0,'Official support never acquires person-chat or spending authority');
+    h.bridge.handle({type:'official.send',data:{body:'forged write',clientMessageId:'official-native-01',requestId:82}});await settle();
+    h.bridge.handle({type:'official.read',data:{ids:[fixture.message.id],requestId:84}});await settle();assert.equal(h.find('official.saved').at(-1).data.requestId,84);
+    assert.equal(h.count('sendOfficialMessage'),0);assert.equal(h.find('official.sent').length,0);assert.equal(h.count('thread'),0);assert.equal(h.count('sendMessage'),0);assert.equal(h.count('startCall'),0);assert.equal(h.count('acceptCall'),0);assert.equal(h.count('sendGift'),0,'Team Chat never acquires write, person-chat or spending authority');
   }finally{h.bridge.close();}
 });
-test('official live invalidation, reconnect and foreground revalidate the active private conversation',async()=>{
+test('pending hosts fetch the negotiated Team Chat summary without receiving person chats',async()=>{
+  const h=harness(),fixture=officialFixture(),self='507f1f77bcf86cd799439031';
+  h.overrides.me=()=>({...account(self),user:{...account(self).user,role:'host',serverRole:'host',hostStatus:'pending'},requiresOnboarding:false});
+  h.overrides.chats=page=>({chats:[{user:{id:'507f1f77bcf86cd799439099'},unread:4}],official:fixture.summary,total:1,page,limit:20,unreadCount:4,unreadConversations:1});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  try{
+    assert.ok(h.count('chats')>0,'pending hosts call the negotiated chats endpoint');
+    const data=h.find('data.chats').at(-1).data;
+    assert.deepEqual(plain(data.chats),[],'person chats stay hidden without host approval');assert.equal(data.total,0);assert.equal(data.unreadCount,0);assert.equal(data.unreadConversations,0);
+    assert.equal(data.official.id,'bingo-live-official');assert.equal(data.official.lastMessage.kind,'announcement');
+  }finally{h.bridge.close();}
+});
+test('official chat-list summaries retire late responses across same-account role changes',async()=>{
+  const h=harness(),fixture=officialFixture(),self='507f1f77bcf86cd799439031';
+  h.overrides.me=()=>({...account(self),user:{...account(self).user,serverRole:'user'},requiresOnboarding:false});
+  h.overrides.chats=()=>({chats:[],official:fixture.summary,total:0,page:1,limit:20,unreadCount:0,unreadConversations:0});
+  await h.session.setSessionTokens(tokenPair());h.bridge.handle({type:'ready',data:{demo:false}});await settle();
+  const old=deferred(),fresh=deferred(),before=h.find('data.chats').length;
+  let reads=0;h.overrides.chats=()=>++reads===1?old.promise:fresh.promise;
+  try{
+    h.bridge.handle({type:'chats.reload',data:{page:1}});await settle();
+    h.overrides.me=()=>({...account(self),user:{...account(self).user,role:'host',serverRole:'host',hostStatus:'pending'},requiresOnboarding:false});
+    h.live.at(-1).onEvent({type:'account.updated',data:{}});await settle();
+    assert.equal(reads,2,'the new server role starts an authoritative chat-list read');
+    const hostMessage={...fixture.message,id:'announcement:507f1f77bcf86cd799439043',body:'Host-only Team Chat rule'};
+    fresh.resolve({chats:[{user:{id:'507f1f77bcf86cd799439099'},unread:2}],official:{...fixture.summary,lastMessage:hostMessage},total:1,page:1,limit:20,unreadCount:2,unreadConversations:1});await settle();
+    old.resolve({chats:[],official:{...fixture.summary,lastMessage:{...fixture.message,body:'Sender-only Team Chat update'}},total:0,page:1,limit:20,unreadCount:0,unreadConversations:0});await settle();
+    const delivered=h.find('data.chats').slice(before);
+    assert.equal(delivered.length,1,'the response begun under the previous role is retired');
+    assert.equal(delivered[0].data.official.lastMessage.body,'Host-only Team Chat rule');
+    assert.deepEqual(plain(delivered[0].data.chats),[],'pending-host person rows remain hidden after the role refresh');
+  }finally{h.bridge.close();}
+});
+test('official live invalidation, reconnect and foreground revalidate the active announcement channel',async()=>{
   const {h}=await officialHarness();try{
     h.bridge.handle({type:'official.activity',data:{active:true}});const initial=h.count('officialChat');
-    h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),initial+1);assert.equal(h.find('data.official').at(-1).data.background,true);assert.ok(h.find('notifications.changed').length>0);
+    h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),initial,'private support invalidation does not refresh Team Chat');assert.ok(h.find('notifications.changed').length>0);
+    h.live.at(-1).onEvent({type:'official.changed',data:{}});await settle();assert.equal(h.count('officialChat'),initial+1);assert.equal(h.find('data.official').at(-1).data.background,true);
     h.live.at(-1).onEvent({type:'realtime.status',data:{connected:true}});await settle();assert.equal(h.count('officialChat'),initial+2);
     h.activities.forEach(listener=>listener('background'));await settle();const reads=h.count('officialChat');h.live.at(-1).onEvent({type:'official.changed',data:{}});await settle();assert.equal(h.count('officialChat'),reads);
     h.activities.forEach(listener=>listener('active'));await settle();assert.equal(h.count('officialChat'),reads+1);
-    h.bridge.handle({type:'official.activity',data:{active:false}});const closed=h.count('officialChat');h.live.at(-1).onEvent({type:'support.updated',data:{ticketId:'507f1f77bcf86cd799439042'}});await settle();assert.equal(h.count('officialChat'),closed);
+    h.bridge.handle({type:'official.activity',data:{active:false}});const closed=h.count('officialChat');h.live.at(-1).onEvent({type:'official.changed',data:{}});await settle();assert.equal(h.count('officialChat'),closed);
   }finally{h.bridge.close();}
 });
-test('official late content and send errors are retired with native account or document changes',async()=>{
-  for(const change of ['account','document'])for(const operation of ['load','send']){
+test('official late content is retired with native account or document changes',async()=>{
+  for(const change of ['account','document']){
     const {h,fixture}=await officialHarness(),pending=deferred();try{
-      h.overrides[operation==='load'?'officialChat':'sendOfficialMessage']=()=>pending.promise;
-      h.bridge.handle(operation==='load'?{type:'official.load',data:{requestId:91}}:{type:'official.send',data:{body:fixture.receipt.message.body,clientMessageId:fixture.receipt.message.clientMessageId,requestId:91}});await settle();
+      h.overrides.officialChat=()=>pending.promise;
+      h.bridge.handle({type:'official.load',data:{requestId:91}});await settle();
       if(change==='account')await h.session.setSessionTokens(tokenPair('bob'));else h.bridge.documentLoading();
-      if(operation==='load')pending.resolve(fixture.data);else pending.reject(new h.ApiError('Retired private support failure',503));await settle();
-      assert.equal(h.find('data.official').length,0);assert.equal(h.find('official.sent').length,0);assert.equal(h.find('official.error').length,0);
+      pending.resolve(fixture.data);await settle();
+      assert.equal(h.find('data.official').length,0);assert.equal(h.find('official.error').length,0);
     }finally{h.bridge.close();}
   }
 });
-test('official push hints check the recipient and never resolve legacy support as a person or accept a call',async()=>{
+test('official and support push hints stay on separate verified surfaces',async()=>{
   const {h,self}=await officialHarness();try{
     h.push.open({targetType:'support',targetId:'507f1f77bcf86cd799439042',recipientId:'507f1f77bcf86cd799439099'});await settle();assert.equal(h.find('official.open').length,0);
-    for(const targetType of ['support','official','inbox']){h.push.open({targetType,targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();}
-    assert.equal(h.find('official.open').length,3);assert.equal(h.count('publicProfile'),0);assert.equal(h.count('supportTicket'),0);assert.equal(h.count('notificationCall'),0);assert.equal(h.count('acceptCall'),0);
+    h.push.open({targetType:'support',targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();assert.equal(h.find('push.opened').at(-1).data.targetType,'support');
+    h.push.open({targetType:'inbox',targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();assert.equal(h.find('push.opened').at(-1).data.targetType,'inbox');
+    h.push.open({targetType:'official',targetId:'507f1f77bcf86cd799439042',recipientId:self});await settle();
+    assert.equal(h.find('official.open').length,1);assert.equal(h.count('publicProfile'),0);assert.equal(h.count('supportTicket'),0);assert.equal(h.count('notificationCall'),0);assert.equal(h.count('acceptCall'),0);
   }finally{h.bridge.close();}
 });
 
@@ -1395,12 +1428,13 @@ function nativeAppHarness() {
   return { h, web, received, send, close };
 }
 
-test('Android Back forwards every press to the ready trusted document and resets on loading or failure', async () => {
+test('Android Back stays inside the app while loading and forwards every ready press to the trusted document', async () => {
   const { h, web, received, send, close } = nativeAppHarness();
-  assert.equal(h.backs[0](), false, 'An unready document cannot intercept Back');
-  send('ready', { demo: false }, 'https://evil.test/'); assert.equal(h.backs[0](), false);
-  send('ready', { demo: 'false' }); assert.equal(h.backs[0](), false);
-  send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), false, 'Photo state cannot establish readiness');
+  assert.equal(h.backs[0](), true, 'Loading cannot fall through and background the Android task');
+  send('ready', { demo: false }, 'https://evil.test/'); assert.equal(h.backs[0](), true);
+  send('ready', { demo: 'false' }); assert.equal(h.backs[0](), true);
+  send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), true, 'Photo state cannot establish readiness');
+  assert.equal(received.length, 0, 'Unready Back presses stay native and are not sent to a retired document');
   send('ready', { demo: false });
   for (const listener of h.activities) listener('inactive');
   assert.equal(h.backs[0](), true, 'Temporary native dialogs do not discard document readiness');
@@ -1409,8 +1443,8 @@ test('Android Back forwards every press to the ready trusted document and resets
   send('chat.photoViewer', { open: false }); assert.equal(h.backs[0](), true, 'Back works outside photo viewers');
   assert.equal(received.filter(message => message.type === 'app.back').length, 3);
   for (const reset of [() => web.props.onLoadStart(), () => web.props.onError({ nativeEvent: { description: 'fixture failure' } }), () => web.props.onRenderProcessGone(), () => web.props.onContentProcessDidTerminate()]) {
-    reset(); assert.equal(h.backs[0](), false, 'A retired WebView cannot intercept Back');
-    send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), false);
+    reset(); assert.equal(h.backs[0](), true, 'Recovery cannot fall through and background the Android task');
+    send('chat.photoViewer', { open: true }); assert.equal(h.backs[0](), true);
     send('ready', { demo: false }); assert.equal(h.backs[0](), true, 'The new document restores navigation after ready');
   }
   assert.equal(h.exits.length, 0, 'Native Back never exits a ready app directly');
@@ -4471,16 +4505,16 @@ test('a tapped notification opens the verified official conversation once a sign
   const h = harness();
   h.overrides.me = () => ({ ...account(), requiresOnboarding: false });
   await h.session.setSessionTokens(tokenPair());
-  h.push.open(); await settle();
+  h.push.open({ targetType: 'official' }); await settle();
   assert.equal(h.find('official.open').length, 0, 'The app launched from a notification waits for its document');
   h.bridge.handle({ type: 'ready', data: { demo: false } }); await settle();
   assert.equal(h.find('official.open').length, 1);
   assert.ok(h.posts.findIndex(post => post.type === 'session') < h.posts.findIndex(post => post.type === 'official.open'));
-  h.push.open(); await settle();
+  h.push.open({ targetType: 'official' }); await settle();
   assert.equal(h.find('official.open').length, 2);
 
   h.bridge.handle({ type: 'auth.logout', data: {} }); await settle();
-  h.push.open(); await settle();
+  h.push.open({ targetType: 'official' }); await settle();
   assert.equal(h.find('official.open').length, 2, 'Signed out: nothing opens');
   h.overrides.verifyOtp = () => ({ ...account(), tokens: tokenPair(), isNew: true });
   h.bridge.handle(verifyMessage()); await settle();

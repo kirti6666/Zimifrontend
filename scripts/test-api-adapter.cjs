@@ -118,22 +118,23 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.deepEqual(plain(await api.acceptCall(acceptedCallId)),{peerId:hostId,voice:true,rate:60},'A member can accept a host call whose response has no host-only early-end policy');
   expect('POST',`/calls/${acceptedCallId}/accept`,{_id:acceptedCallId,callerId:memberId,calleeId:hostId,status:'ringing',kind:'video'});
   await assert.rejects(api.acceptCall(acceptedCallId),/accepted call could not be verified/);finished();
-  const officialIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true};
-  const officialAt = '2026-11-02T10:00:00.000Z', officialId = '507f1f77bcf86cd799439041', officialTicket = '507f1f77bcf86cd799439042';
+  const officialIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:false};
+  const officialWireIdentity = {id:'bingo-live-official',name:'BinzoLive',official:true,verified:true,canSend:true,readOnly:true};
+  const officialAt = '2026-11-02T10:00:00.000Z', officialId = '507f1f77bcf86cd799439041';
   const officialNote = {id:'announcement:'+officialId,kind:'announcement',senderType:'official',body:'An official update',createdAt:officialAt,read:false};
-  const officialOwn = {id:'support:'+officialId,kind:'support',senderType:'user',body:'Please help',createdAt:officialAt,read:true,ticketId:officialTicket,sequence:1,clientMessageId:'official-adapter-01'};
   const officialSummary = {...officialIdentity,unread:1,lastMessage:officialNote};
-  const officialThread = {...officialIdentity,messages:[officialNote,officialOwn],total:2,unreadCount:1,hasMore:false,before:null};
-  expect('GET','/chats/official/thread?limit=50',officialThread);assert.deepEqual(plain(await api.officialChat()),officialThread,'Official history uses the private unified endpoint, never person-chat history');
-  expect('GET','/chats/official/thread?before=announcement%3A'+officialId+'&limit=50',{...officialThread,before:officialNote.id,hasMore:true});assert.equal((await api.officialChat(officialNote.id)).before,officialNote.id);
-  expect('POST','/chats/official/messages',{message:officialOwn,official:officialSummary},body=>assert.deepEqual(plain(body),{body:officialOwn.body,clientMessageId:officialOwn.clientMessageId}));assert.equal((await api.sendOfficialMessage(officialOwn.body,officialOwn.clientMessageId)).message.id,officialOwn.id);
-  for(const patch of [{ids:[officialNote.id,officialOwn.id]},{all:true}]){expect('POST','/chats/official/thread/read',{read:true,official:{...officialSummary,unread:0}},body=>assert.deepEqual(plain(body),patch));assert.equal((await api.readOfficialChat(patch)).official.unread,0);}
+  const officialThread = {...officialIdentity,messages:[officialNote],total:1,unreadCount:1,hasMore:false,before:null};
+  const officialWireThread = {...officialWireIdentity,messages:[officialNote],total:1,unreadCount:1,hasMore:false,before:null};
+  const officialWireSummary = {...officialWireIdentity,unread:1,lastMessage:officialNote};
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',officialWireThread);assert.deepEqual(plain(await api.officialChat()),officialThread,'Team Chat negotiates its server-owned announcement endpoint, never person-chat history');
+  expect('GET','/chats/official/thread?teamChat=1&before=announcement%3A'+officialId+'&limit=50',{...officialWireThread,before:officialNote.id,hasMore:true});assert.equal((await api.officialChat(officialNote.id)).before,officialNote.id);
+  for(const patch of [{ids:[officialNote.id]},{all:true}]){expect('POST','/chats/official/thread/read?teamChat=1',{read:true,official:{...officialWireSummary,unread:0}},body=>assert.deepEqual(plain(body),patch));assert.equal((await api.readOfficialChat(patch)).official.unread,0);}
   const priorOfficialRequests=requests.length;
-  for(const patch of [{ids:[officialId]},{ids:[]},{ids:[officialOwn.id,officialOwn.id]},{all:true,ids:[officialOwn.id]}])await assert.rejects(api.readOfficialChat(patch),/mark messages read/);
-  await assert.rejects(api.officialChat('untrusted-cursor'),/Refresh the BinzoLive/);await assert.rejects(api.sendOfficialMessage(' ','official-adapter-01'),/Enter a message/);assert.equal(requests.length,priorOfficialRequests,'Invalid official payloads never reach HTTP');
-  for(const forged of [{verified:false},{name:'Bingo Live Official'},{canSend:false},{messages:[{...officialNote,senderType:'user'}]}]){expect('GET','/chats/official/thread?limit=50',{...officialThread,...forged});await assert.rejects(api.officialChat(),/could not be verified/);}
-  for(const forged of [{...officialOwn,clientMessageId:'another-client-key'},{...officialOwn,senderType:'official'}]){expect('POST','/chats/official/messages',{message:forged,official:officialSummary});await assert.rejects(api.sendOfficialMessage(officialOwn.body,officialOwn.clientMessageId),/could not be verified/);}
-  expect('GET','/chats/official/thread?limit=50',officialThread,undefined,{run:()=>version++});await assert.rejects(api.officialChat(),/sign-in changed/,'Official account content is retired if native session changes during HTTP');
+  for(const patch of [{ids:[officialId]},{ids:[]},{ids:['support:'+officialId]},{all:true,ids:[officialNote.id]}])await assert.rejects(api.readOfficialChat(patch),/mark messages read/);
+  await assert.rejects(api.officialChat('untrusted-cursor'),/Refresh Binzo Team Chat/);assert.equal(requests.length,priorOfficialRequests,'Invalid official payloads never reach HTTP');
+  for(const forged of [{verified:false},{name:'Bingo Live Official'},{canSend:false,supportEnabled:false,readOnly:undefined},{messages:[{...officialNote,senderType:'user'}]},{messages:[{...officialNote,id:'support:'+officialId,kind:'support'}]}]){expect('GET','/chats/official/thread?teamChat=1&limit=50',{...officialWireThread,...forged});await assert.rejects(api.officialChat(),/could not be verified/);}
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',{...officialThread,canSend:true});assert.equal((await api.officialChat()).canSend,false,'deployed sendable identity is normalized to the read-only client contract');
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',officialWireThread,undefined,{run:()=>version++});await assert.rejects(api.officialChat(),/sign-in changed/,'Official account content is retired if native session changes during HTTP');
   const licenseToken = JSON.stringify({ token: 'signed-facebetter-license' });
   expect('POST', '/facebetter/auth', { licenseToken }, body => assert.equal(body, undefined, 'Older callers omit the optional WebView user agent'));
   assert.deepEqual(plain(await api.beautyAuth()), { licenseToken }, 'Facebetter receives the complete license response text');
@@ -613,19 +614,19 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   expect('GET', '/hosts?limit=100', { items: [{ _id: 'host-id', name: 'Creator', avatar: { url: 'https://cdn.example.test/creator.jpg' }, coverUrl: 'https://cdn.example.test/cover.jpg' }] });
   const hosts = await api.hosts(); assert.equal(hosts.hosts[0].id, 'host-id'); assert.equal(hosts.hosts[0].ratePerMin, undefined);
   assert.equal(hosts.hosts[0].avatarUrl, 'https://cdn.example.test/creator.jpg'); assert.equal(hosts.hosts[0].coverUrl, 'https://cdn.example.test/cover.jpg');
-  expect('GET', '/chats', { items: [{ participants: [{ _id: 'member-id', name: 'Asha' }, { _id: 'host-id', name: 'Creator' }], lastMessage: { text: 'Hello' }, unread: 2 }] });
+  expect('GET', '/chats?teamChat=1', { items: [{ participants: [{ _id: 'member-id', name: 'Asha' }, { _id: 'host-id', name: 'Creator' }], lastMessage: { text: 'Hello' }, unread: 2 }] });
   assert.equal((await api.chats()).chats[0].user.id, 'host-id');
-  for (const official of [officialSummary, {...officialSummary,canSend:false,supportEnabled:true}]) {
-    expect('GET','/chats',{items:[],official,unreadCount:0,unreadConversations:0});
-    const inbox=await api.chats();assert.equal(inbox.official.canSend,true,'Both new and rolling-compatible summaries enable only the verified support channel');
+  for (const official of [officialWireSummary, {...officialSummary,canSend:false,supportEnabled:true}]) {
+    expect('GET','/chats?teamChat=1',{items:[],official,unreadCount:0,unreadConversations:0});
+    const inbox=await api.chats();assert.equal(inbox.official.canSend,false,'Both modern and rolling-compatible summaries normalize to read-only Team Chat');
     assert.equal(inbox.official.name,'BinzoLive');assert.equal(inbox.official.unread,officialSummary.unread);assert.equal(inbox.chats.length,0,'The official summary does not create a person-chat peer');
   }
   for (const official of [{...officialSummary,canSend:false},{...officialSummary,canSend:false,supportEnabled:'true'},{...officialSummary,canSend:false,supportEnabled:true,verified:false},{...officialSummary,canSend:false,supportEnabled:true,id:'another-official'}]) {
-    expect('GET','/chats',{items:[],official});await assert.rejects(api.chats(),/could not be verified/,'Legacy send=false requires the exact verified identity and explicit supportEnabled:true');
+    expect('GET','/chats?teamChat=1',{items:[],official});await assert.rejects(api.chats(),/could not be verified/,'Legacy send=false requires the exact verified identity and explicit supportEnabled:true');
   }
-  expect('GET','/chats/official/thread?limit=50',{...officialThread,canSend:false,supportEnabled:true});await assert.rejects(api.officialChat(),/could not be verified/,'The legacy capability flag cannot relax unified thread authorization');
+  expect('GET','/chats/official/thread?teamChat=1&limit=50',{...officialWireThread,canSend:false,readOnly:undefined,supportEnabled:true});assert.equal((await api.officialChat()).canSend,false,'The exact legacy verified identity stays read-only in negotiated Team Chat');
   const chatAt = '2026-10-13T09:00:00.000Z';
-  expect('GET', '/chats?page=2', { items: [{ _id: 'conversation-id', participants: [{ _id: 'member-id' }, { _id: 'host-id', name: 'Creator', role: 'host', hostStatus: 'approved', isVerifiedHost: true, isOnline: true, availableForCall: true }],
+  expect('GET', '/chats?teamChat=1&page=2', { items: [{ _id: 'conversation-id', participants: [{ _id: 'member-id' }, { _id: 'host-id', name: 'Creator', role: 'host', hostStatus: 'approved', isVerifiedHost: true, isOnline: true, availableForCall: true }],
     lastMessage: { text: 'A real reply', senderId: 'member-id', createdAt: chatAt, kind: 'text', mine: true, status: 'read' }, lastMessageAt: chatAt, unread: 2, hasCalls: true }], total: 31, page: 2, limit: 20, unreadCount: 12, unreadConversations: 4 });
   const chatPage = await api.chats(2), chat = chatPage.chats[0];
   assert.equal(chatPage.unreadCount, 12, 'Total unread comes from all server conversations, not only this page');
@@ -1278,11 +1279,18 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   socket.emitServer('gift:received',{...receivedGift,recipientId:'other-user'});assert.equal(events.filter(event=>event.type==='gift.received').length,giftCount,'Unrelated gift events do not reach the room');
   socket.emitServer('account:updated', {}); assert.equal(events.at(-1).type, 'account.updated');
   socket.emitServer('profile:updated', { name: 'Untrusted socket name' }); assert.deepEqual(plain(events.at(-1)), { type: 'profile.updated', data: {} }, 'Profile sockets invalidate identity without accepting private account fields');
-  for (const event of ['notification:new', 'notifications:read']) {
-    const beforeNotification = events.length;
-    socket.emitServer(event, { userId: 'member-id', title: 'Socket data does not populate the inbox', unreadCount: 900 });
-    assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'official.changed', data: {} }, { type: 'chats.updated', data: {} }, ...(event === 'notification:new' ? [{ type: 'home.updated', data: {} }] : [])], 'Notification socket signals refresh the inbox, official conversation and chat list without trusting payload counts or text');
-  }
+  let beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'Private account update', unreadCount: 900, targetType: 'inbox' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'Private account notifications refresh the inbox without invalidating Team Chat');
+  beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'Untrusted announcement copy', unreadCount: 901, targetType: 'official' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'official.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'Only the official marker invalidates Team Chat, whose content is fetched over the authenticated API');
+  beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'A new Android release', targetType: 'appUpdate', officialChat: true });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'official.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'An app-update target carrying the explicit Team Chat marker invalidates the announcement channel');
+  beforeNotification = events.length;
+  socket.emitServer('notifications:read', { userId: 'member-id', targetType: 'official' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'chats.updated', data: {} }], 'Generic read invalidation never refreshes Team Chat from an unscoped payload');
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'accepted', kind: 'video', coinsPerMinute: 60 });
   assert.deepEqual(plain(events.at(-1)), { type: 'call.connected', data: { callId: 'paid-call', initiator: true, peerId: 'host-id', voice: false, rate: 60 } }, 'A paid call carries its price');
   socket.emitServer('call:updated', { _id: 'paid-call', callerId: 'member-id', calleeId: 'host-id', status: 'ended', coinsPerMinute: 60, coinsCharged: 150, endReason: 'out_of_coins' });

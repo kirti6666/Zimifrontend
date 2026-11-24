@@ -347,3 +347,39 @@ html:root{border-radius:0!important}
 html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-relationships-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag,.zhs-fill,.zhs-gridline){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
+
+/* The member's own profile follows the compact member reference: identity first,
+   raised stat and agency rows, then a segmented Posts/MVP control. */
+@media(max-width:759px) {
+  .zu-member-page .zu-cover {height:140px}
+  .zu-member-page .zu-toolbar>span {display:none}
+  .zu-member-page .zu-cover-upload {left:50%;top:56px;width:36px;height:36px;min-height:36px;padding:0;transform:translateX(-50%);border:0;background:transparent;color:var(--muted);font-size:0}
+  .zu-member-page .zu-cover-upload>svg {width:18px;height:18px}
+  .zu-member-page .zu-layout {padding-inline:15px}
+  .zu-member-page .zu-identity-top {margin-top:-27px;align-items:flex-end}
+  .zu-member-page .zu-owner-camera {right:-3px;bottom:-2px;width:24px;height:24px;border-width:2px;background:var(--accent);color:var(--cta-ink)}
+  .zu-member-page .zu-owner-edit {display:flex;align-items:center;justify-content:center;gap:5px;width:auto;height:32px;min-height:32px;margin:0 0 3px;padding:6px 11px;border:0;background:var(--raised);font-size:10px;font-weight:650}
+  .zu-member-page .zu-identity {padding-top:7px}
+  .zu-member-page .zu-identity h1 {font-size:calc(18px * var(--theme-font-scale,1));line-height:1.2}
+  .zu-member-page .zu-meta {margin-top:3px;font-size:calc(10px * var(--theme-font-scale,1))}
+  :root[data-theme-id] .zu-member-page .zu-bio {margin-top:6px;font-size:calc(11px * var(--theme-font-scale,1));line-height:1.45;color:var(--ink)}
+  html:root .zu-member-page .zu-stats {border-radius:10px!important}
+  .zu-member-page .zu-stats {margin:9px 0 8px;padding:7px 0;background:var(--raised);gap:0}
+  .zu-member-page .zu-stats>div {padding-inline:4px}
+  .zu-member-page .zu-stats>div+div {background:linear-gradient(var(--line),var(--line)) left center/1px 24px no-repeat}
+  .zu-member-page .zu-stats strong {font-size:calc(14px * var(--theme-font-scale,1));line-height:1.15}
+  .zu-member-page .zu-stats span {font-size:calc(9px * var(--theme-font-scale,1));line-height:1.25}
+  .zu-member-page .zu-stat-button {min-height:35px;gap:3px}
+  .zu-member-page .zu-agency-link {min-height:40px;margin:7px 0;padding:9px 11px;background:var(--raised);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600}
+  .zu-member-page .zu-content {margin-top:8px}
+  .zu-member-page .zu-content-header {align-items:center;gap:7px}
+  html:root .zu-member-page .zu-tabs {border-radius:10px!important}
+  .zu-member-page .zu-tabs {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;margin:0;padding:3px;background:var(--raised)}
+  .zu-member-page .zu-tabs>button {gap:5px;min-height:31px;padding:5px 7px;font-size:calc(10px * var(--theme-font-scale,1));font-weight:650}
+  .zu-member-page .zu-tabs>button[aria-selected=true] {background:var(--surface)}
+  .zu-member-page .zu-tabs>button[aria-selected=true]::after {display:none}
+  .zu-member-page .zu-tabs>button:last-child>svg {color:#e5b900}
+  .zu-member-page .zu-tabs>button>span {min-width:16px;line-height:15px;padding-inline:3px;font-size:8px}
+  html:root .zu-member-page .zu-add-photo {flex-basis:34px;width:34px;height:34px;border:0;border-radius:999px!important;background:var(--accent);color:var(--cta-ink)}
+  .zu-member-page .zu-mvp-board {padding-top:10px}
+}

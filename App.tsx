@@ -25,6 +25,10 @@ const INK = { light: "#101012", dark: "#ffffff" } as const;
    how long a slow network keeps the logo up before the page shows its own loading. */
 const LAUNCH_LIMIT_MS = 8000;
 const DOCUMENT_READY_LIMIT_MS = 20000;
+/* Android documents that a terminated WebView must leave the hierarchy before
+   its replacement is created. A short second phase gives Fabric one commit to
+   dispose the dead native view instead of recycling it into a black surface. */
+const WEBVIEW_REMOUNT_DELAY_MS = 100;
 
 type Theme = keyof typeof CANVAS;
 /* One key for every private screen, so turning protection off undoes exactly this. */
@@ -104,16 +108,21 @@ export function AppContent({priorityIncoming=false,startupCovered=false,onStartu
   const [palette, setPalette] = useState<NativePalette>({ ink: "#18181b", primary: cached?.colors.primary ?? "#c71862", contrast: "#ffffff", surface: "#ffffff", raised: "#f8f8fa" });
   const [failure, setFailure] = useState<string | null>(null);
   const [webGeneration, setWebGeneration] = useState(0);
+  const [webMounted, setWebMounted] = useState(true);
   const [launched, setLaunched] = useState(priorityIncoming);
   const [launchVisible, setLaunchVisible] = useState(!priorityIncoming && !startupCovered);
   const webRef = useRef<WebView>(null);
   const webReady = useRef(false);
   const rendererFailures = useRef<number[]>([]);
+  const remountTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitConfirmation = useRef<object | null>(null);
   const [nativeState, setNativeState] = useState<NativeMediaState | null>(null);
   const [nativeLayout, setNativeLayout] = useState<NativeMediaLayout | null>(null);
   const nativeInsets = useRef<NativeInsets>({ top: 0, right: 0, bottom: 0, left: 0 });
   const fullScreen = nativeLayout?.fullScreen === true;
+  const nativeVideoActive = NATIVE_MEDIA_ENABLED && !!nativeLayout?.slots.some(slot => slot.kind === "local"
+    ? !!nativeState?.local && nativeState.camera
+    : !!nativeState?.remote && nativeState.remoteVideo);
   const reportInsets = useCallback((insets: NativeInsets) => {
     nativeInsets.current = insets;
     if (webReady.current) postToWeb(webRef, { type: "app.insets", data: insets });
@@ -144,7 +153,12 @@ export function AppContent({priorityIncoming=false,startupCovered=false,onStartu
     }, DOCUMENT_READY_LIMIT_MS);
     return () => clearTimeout(timer);
   }, [webGeneration, failure, documentLoading]);
-  useEffect(() => () => { nativeMedia?.close(); bridge.prepareForUpdate(); bridge.close(); }, [bridge, nativeMedia]);
+  useEffect(() => () => {
+    if (remountTimer.current) clearTimeout(remountTimer.current);
+    nativeMedia?.close();
+    bridge.prepareForUpdate();
+    bridge.close();
+  }, [bridge, nativeMedia]);
   const onNativeDimensions = useCallback((kind: "local" | "remote", width: number, height: number) => {
     postToWeb(webRef, { type: "native.media.dimensions", data: { kind, width, height } });
   }, []);
@@ -159,9 +173,9 @@ export function AppContent({priorityIncoming=false,startupCovered=false,onStartu
   const hideLaunch = useCallback(() => setLaunchVisible(false), []);
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (!webReady.current) return false;
-      // The page owns its screens and overlays; WebView history cannot see them.
-      postToWeb(webRef, { type: "app.back", data: {} });
+      // Never fall through to Android while the document is loading or recovering:
+      // Android 11 backgrounds the task, which looks like an unsolicited app close.
+      if (webReady.current) postToWeb(webRef, { type: "app.back", data: {} });
       return true;
     });
     return () => subscription.remove();
@@ -243,30 +257,42 @@ export function AppContent({priorityIncoming=false,startupCovered=false,onStartu
     setFailure(event.nativeEvent.description || "The BinzoLive bundle failed to load.");
   }, [documentLoading]);
 
-  // A terminated Android renderer's WebView cannot be reused. Retire its ref
-  // before stopping media so callbacks cannot target the dead instance, then
-  // change its key to destroy it and create a fresh native WebView.
-  const restartDocument = useCallback(() => {
+  // A terminated Android renderer's WebView cannot be reused. Remove it for a
+  // complete native commit before mounting the replacement; replacing it in a
+  // single Fabric commit can recycle the dead view into a permanent black frame.
+  const restartDocument = useCallback((showLaunch: boolean) => {
+    if (remountTimer.current) clearTimeout(remountTimer.current);
     webRef.current = null;
+    setWebMounted(false);
     documentLoading();
     setFailure(null);
-    // The page starts over, so the logo covers it until its first screen is ready again.
-    setLaunched(false);
-    if (!startupCovered) setLaunchVisible(true);
-    setWebGeneration(generation => generation + 1);
+    if (showLaunch) {
+      // A manual retry is a fresh start. Automatic renderer recovery keeps the
+      // stable canvas in place instead of replaying the full launch animation.
+      setLaunched(false);
+      if (!startupCovered) setLaunchVisible(true);
+    }
+    remountTimer.current = setTimeout(() => {
+      remountTimer.current = null;
+      setWebGeneration(generation => generation + 1);
+      setWebMounted(true);
+    }, WEBVIEW_REMOUNT_DELAY_MS);
   }, [documentLoading, startupCovered]);
   const reload = useCallback(() => {
     rendererFailures.current = [];
-    restartDocument();
+    restartDocument(true);
     return true;
   }, [restartDocument]);
   const rendererGone = useCallback(() => {
     const now = Date.now();
     const recent = rendererFailures.current.filter(time => now - time < 60000);
     rendererFailures.current = [...recent, now];
-    if (recent.length < 2) restartDocument();
+    if (recent.length < 2) restartDocument(false);
     else {
+      if (remountTimer.current) clearTimeout(remountTimer.current);
+      remountTimer.current = null;
       webRef.current = null;
+      setWebMounted(false);
       documentLoading();
       setFailure("The app stopped loading. Close other apps to free memory, then tap Retry.");
     }
@@ -297,12 +323,12 @@ export function AppContent({priorityIncoming=false,startupCovered=false,onStartu
               </Pressable>
             </View>
           ) : (
-            <View style={styles.safe}>
-            {NATIVE_MEDIA_ENABLED && <NativeMediaLayer state={nativeState} layout={nativeLayout} onDimensions={onNativeDimensions} />}
-            <WebView
+            <View style={[styles.safe, { backgroundColor: canvas }]}>
+            {nativeVideoActive && <NativeMediaLayer state={nativeState} layout={nativeLayout} onDimensions={onNativeDimensions} />}
+            {webMounted && <WebView
               key={webGeneration}
               ref={webRef}
-              style={[styles.web, { backgroundColor: NATIVE_MEDIA_ENABLED ? "transparent" : canvas }]}
+              style={[styles.web, { backgroundColor: nativeVideoActive ? "transparent" : canvas }]}
               originWhitelist={["https://aurora.localhost", "about:blank"]}
               source={webSource}
               onShouldStartLoadWithRequest={request => isTrustedDocument(request.url)}
@@ -333,7 +359,7 @@ export function AppContent({priorityIncoming=false,startupCovered=false,onStartu
               keyboardDisplayRequiresUserAction={false}
               automaticallyAdjustContentInsets={false}
               contentInsetAdjustmentBehavior="never"
-            />
+            />}
             </View>
           )}
         </SafeAreaView>

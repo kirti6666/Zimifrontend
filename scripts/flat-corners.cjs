@@ -5,7 +5,7 @@
    list in web/flat.css. */
 const AVATARS = '.av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.hc-identity-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-story-ring,.zh-live-ring,.pcav,.editavatar .pic,.zh-user-avatar';
 const ROUND = [
-  '.zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zr-round,.zb-lens-swatch',
+  '.zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zu-member-page .zu-add-photo,.zr-round,.zb-lens-swatch',
   '.zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline',
   '.zh-user-actions>button,.zh-user-avatar,.zh-user-avatar>i',
   '.hc-preview-tools>button,.zv-actions button,.zv-controls button,.zh-call-controls button,.incban button,.zc-thread-actions>button,.zc-voice-play',
