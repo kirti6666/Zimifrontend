@@ -926,12 +926,12 @@ function vProfile(){
  return profilePage(p,me,true)}
 
 function kycLabel(){
- if(isHost())return "Admin approved";
+ if(isHost())return "Host verified";
  const status=S.hostAccess?.hostStatus||S.user?.hostStatus;
- if(status==="pending"||A().kyc==="pending")return "Under admin review";
+ if(status==="pending"||A().kyc==="pending")return "Legacy application under review";
  if(status==="suspended")return "Host access suspended";
- if(status==="rejected")return "Update your application";
- return "Apply for admin approval"}
+ if(status==="rejected")return "Contact support about your application";
+ return "Activate with an Agency Owner code"}
 
 function vSettings(){
  const rows=[
@@ -969,8 +969,8 @@ function vSettings(){
   </div></div>
 
   <div class="psec"><h3>Creator account</h3><div class="plist">
-   <button class="pitem" onclick="go('kyc')"><span class="pico">${I('shield',17)}</span>
-    <span class="tx"><span class="t1" style="display:block">${isHost()?"Host approval":"Creator application"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
+   <button class="pitem" onclick="${isHost()?"go('kyc')":"ZimiAgency.open('settings')"}"><span class="pico">${I('shield',17)}</span>
+    <span class="tx"><span class="t1" style="display:block">${isHost()?"Host verification":"Become a Host"}</span><span class="t2" style="display:block">${kycLabel()}</span></span><span class="ch">&rsaquo;</span></button>
    ${isHost()?`<button class="pitem" onclick="go('awards')"><span class="pico">${I('star',17)}</span>
     <span class="tx"><span class="t1" style="display:block">Awards</span><span class="t2" style="display:block">${S.tasks.filter(t=>t.p>=t.goal&&!t.claimed).length||"No"} reward(s) ready to receive</span></span><span class="ch">&rsaquo;</span></button>`:""}
   </div></div>

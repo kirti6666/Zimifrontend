@@ -37,7 +37,7 @@ function zcChatBlockReason(id){
   if(!id||id===S.user?.id)return 'Choose another user.';
   const self=zcSelfRole(),row=Chats.rows.find(c=>c.user.id===id),peer=row?.user||g(id),role=peer?.serverRole||(peer?.role==='host'||peer?.verified?'host':peer?.role==='sender'?'user':undefined);
   if(window.ZimiHostAccess?.checking())return 'Checking your account. Try again in a moment.';
-  if(self==='host'&&!isApprovedHost())return 'Your creator profile needs admin approval before you can chat.';
+  if(self==='host'&&!isApprovedHost())return 'Your Host profile is not active, so it cannot start chats.';
   if(self==='host')return '';
   return self!=='user'||(role&&role!=='host')?'Users can message approved hosts only.':'';
 }

@@ -36,7 +36,7 @@ window.ZimiHostAccess = {
   checking: () => zimiHostAuthority?.checking === true,
   apply: zimiApplyHostAccount,
   reset() { zimiHostAuthority = null; zimiSetHostAccess({ approved: false }); },
-  guard(message = 'Your creator profile needs admin approval before you can host.') {
+  guard(message = 'Your Host profile is not active.') {
     if (isApprovedHost()) return true;
     appNotice(zimiHostAuthority?.checking ? 'Checking your creator approval. Please try again in a moment.' : message); return false;
   },

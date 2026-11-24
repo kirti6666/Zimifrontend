@@ -169,6 +169,7 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   const ordered = adapters.messagesFrom({items:[{_id:'seq2',sequence:2,createdAt:'2026-10-30T10:00:00Z'},{_id:'legacy',createdAt:'2026-10-30T11:00:00Z'},{_id:'seq1',sequence:1,createdAt:'2026-10-30T12:00:00Z'}]},'self').messages;
   assert.deepEqual(plain(ordered.map(message=>message.id)),['legacy','seq1','seq2'],'Transport preserves server sequence ahead of clock skew, with legacy history first');
   const agencyStatus = { agency: { _id: 'agency-1', name: 'Dream Star', recruitmentCode: 'BINZO7K9Q2M', status: 'ACTIVE' }, joiningCode: 'BINZO7K9Q2M8X4R', codeType: 'host-invite', canJoin: true, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  const activatedAgencyStatus = { ...agencyStatus, hostStatus: 'approved', isVerifiedHost: true, nextStep: 'active' };
   expect('GET', '/hosts/agency', { ...agencyStatus, agency: null, nextStep: 'agency' });
   assert.equal((await api.hostAgency()).agency, null);
   expect('POST', '/hosts/verify-agency-code', agencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M8X4R' }));
@@ -177,8 +178,10 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(invitePreview.agency.recruitmentCode, 'BINZO7K9Q2M');
   assert.equal(invitePreview.joiningCode, 'BINZO7K9Q2M8X4R');
   assert.equal(invitePreview.codeType, 'host-invite'); assert.equal(invitePreview.canJoin, true);
-  expect('POST', '/hosts/activate', agencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M8X4R' }));
-  assert.equal((await api.joinAgency('BINZO7K9Q2M8X4R')).isVerifiedHost, false, 'Agency membership cannot become creator approval');
+  expect('POST', '/hosts/activate', activatedAgencyStatus, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M8X4R' }));
+  const activatedAgency = await api.joinAgency('BINZO7K9Q2M8X4R');
+  assert.equal(activatedAgency.isVerifiedHost, true, 'The personal Agency Owner code activates the Host profile');
+  assert.equal(activatedAgency.hostStatus, 'approved'); assert.equal(activatedAgency.nextStep, 'active');
   await assert.rejects(api.verifyAgencyCode('!bad'), /joining code/);
   await assert.rejects(api.joinAgency('BINZO7K9Q2M'), /public agency ID/, 'A common agency ID cannot activate host membership');
   expect('POST', '/hosts/verify-agency-code', { ...agencyStatus, joiningCode: null, codeType: 'agency', canJoin: false, eligible: false, requirements: ['Ask for your individual host joining code'] }, body => assert.deepEqual(plain(body), { agencyCode: 'BINZO7K9Q2M' }));
@@ -186,7 +189,8 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(commonPreview.canJoin, false); assert.equal(commonPreview.joiningCode, null);
   expect('GET', '/hosts/agency', { ...agencyStatus, agency: null, nextStep: 'agency' });
   await assert.rejects(api.submitVerification({ name: 'Riya', bio: 'I love music and meeting people.', langs: ['English'] }), /Join your agency/);
-  expect('GET', '/hosts/agency', agencyStatus);
+  const legacyAgencyStatus = { agency: agencyStatus.agency, hostStatus: 'none', isVerifiedHost: false, eligible: true, requirements: [], nextStep: 'application' };
+  expect('GET', '/hosts/agency', legacyAgencyStatus);
   expect('POST', '/hosts/application', { status: 'pending' }, body => assert.deepEqual(plain(body), { displayName: 'Riya', bio: 'I love music and meeting people.', languages: ['English'] }));
   assert.equal((await api.submitVerification({ name: 'Riya', bio: 'I love music and meeting people.', langs: ['English'] })).status, 'pending');
   expect('GET', '/hosts/agency', { ...agencyStatus, requirements: 'untrusted' });

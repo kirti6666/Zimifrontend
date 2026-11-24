@@ -654,7 +654,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!current(version) || sessionVersion !== getSessionVersion()) throw new ApiError("Your sign-in changed. Please try again.", 409);
     if (revision !== hostRevision) throw new ApiError("Your creator approval changed. Please try again.", 403);
     applyHostAccount(account);
-    if (!approvedHost(account) && !(allowMemberPhotos && account.user.serverRole === "user")) throw new ApiError("Your creator profile needs admin approval before you can host.", 403);
+    if (!approvedHost(account) && !(allowMemberPhotos && account.user.serverRole === "user")) throw new ApiError("Your Host profile is not active.", 403);
     return revision;
   };
   const acceptHostCall = async (callId: string, version: number) => {
@@ -681,7 +681,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     if (!hostAccount || hostChecking) await refreshHostAccount();
     if (!hostAccount || hostChecking) throw new ApiError("Your account is being checked. Try again in a moment.", 403);
     if (peerId === accountId) throw new ApiError("Choose another user.", 400);
-    if (accountRole === "admin" || (accountRole === "host" && !hasHostAccess())) throw new ApiError("Your creator profile needs admin approval before you can chat.", 403);
+    if (accountRole === "admin" || (accountRole === "host" && !hasHostAccess())) throw new ApiError("Your Host profile is not active, so it cannot start chats.", 403);
     const peer = chatPeers.get(peerId);
     const peerRole = peer?.serverRole ?? (peer?.role === "host" || peer?.verified === true ? "host" : peer?.role === "sender" ? "user" : undefined);
     if (accountRole === "user" && peerRole && peerRole !== "host") throw new ApiError("Users can message approved hosts only.", 403);
@@ -1898,8 +1898,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
         const relevant = () => current(version) && document === documentRevision && sessionVersion === getSessionVersion();
         try {
           const data = msg.type === "agency.load" ? await api.hostAgency() : msg.type === "agency.verify" ? await api.verifyAgencyCode(msg.data.agencyCode) : await api.joinAgency(msg.data.agencyCode);
+          // Joining changes authority. Publish the refreshed server-owned Host
+          // access before the page renders activation success.
+          if (msg.type === "agency.join" && relevant()) {
+            await refreshHostAccount();
+            if (relevant() && !hasHostAccess()) throw new ApiError("Host activation could not be confirmed. Please try again.", 409);
+          }
           if (relevant()) emit({ type: msg.type === "agency.load" ? "agency.loaded" : msg.type === "agency.verify" ? "agency.verified" : "agency.joined", data: { ...data, requestId } });
-          if (msg.type === "agency.join" && relevant()) void refreshHostAccount().catch(() => {});
         } catch (error) {
           if (relevant()) emit({ type: "agency.error", data: { action: msg.type, message: errorMessage(error), requestId } });
         }
@@ -2393,7 +2398,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
             throw new ApiError("An earlier withdrawal still needs confirmation. Refresh withdrawal history to recover it before making another request.", 409, "PAYOUT_PENDING_RECOVERY");
           }
           if (!applicable()) return;
-          if (!previous && (approval !== hostRevision || !hasHostAccess())) throw new ApiError("Your creator profile needs admin approval before you can withdraw.", 403);
+          if (!previous && (approval !== hostRevision || !hasHostAccess())) throw new ApiError("Your Host profile is not active, so it cannot withdraw.", 403);
           // Persist the approved intent before any reservation can leave this device.
           await rememberPendingPayout(owner, attempt);
           saved = true;

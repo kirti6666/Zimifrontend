@@ -164,7 +164,7 @@ export function publicProfileFrom(value: unknown): PublicProfile {
   if (!idOf(profile) || typeof profile.name !== "string" ||
     [profile.followers, profile.following].some(value => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) ||
     typeof profile.isFollowing !== "boolean") throw new ApiError("This profile could not be loaded. Try again.", 502);
-  // This route exposes phone verification and admin approval separately.
+  // This route exposes phone verification and authoritative Host approval separately.
   const verified = profile.role === "host" && profile.hostStatus === "approved" &&
     (typeof profile.isVerifiedHost === "boolean" ? profile.isVerifiedHost : profile.isPhoneVerified === true);
   return {

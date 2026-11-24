@@ -135,14 +135,15 @@ image loads, using the original transparent artwork without added effects.
 
 ## Agency host onboarding
 
-All new host applicants join an admin-created agency with their own one-time
-host joining code before applying. The short agency ID (`BINZO` + six characters)
+All new Hosts join an admin-created agency with their own one-time Host joining
+code. The Agency Owner shares a code only after approving that user to become a
+Host. The short agency ID (`BINZO` + six characters)
 identifies an agency; the personal joining code (`BINZO` + ten characters) is
 issued by that agency for one host. Common agency IDs and referral codes cannot
 create membership. Settings
 and the owner's Profile open **Become a Host** (`agency`); approved hosts see
-**My agency**. Creator signup and every creator application entry point use the
-same gate. Existing approved host access continues to use `ZimiHostAccess`.
+**My agency**. Creator signup uses the same gate. Existing approved host access
+continues to use `ZimiHostAccess`.
 
 | Screen message | Endpoint | Result message |
 | --- | --- | --- |
@@ -160,19 +161,23 @@ confirmation only for an eligible `host-invite` with `canJoin: true` whose
 `joiningCode` matches the exact code that was verified. Result messages also carry
 `requestId`; stale responses are ignored. Failures use `agency.error`
 `{action,message,requestId}` and stay next to the form. Codes are normalized to
-uppercase. Verification previews identity without consuming an invitation. The
-explicit join atomically claims it for the authenticated backend identity;
+uppercase. Verification previews identity without consuming an invitation or
+changing account access. The explicit join atomically claims it for the
+authenticated backend identity, records the approved Host application for audit,
+and changes the account to `role: "host"`, `hostStatus: "approved"`;
 repeating that same claim for the same member is safe. A code already claimed
 by another member or revoked by the agency cannot be used. Editing a previewed
 code invalidates confirmation. The wire field remains `agencyCode` for both
 requests, and always carries the entered invitation, never a substituted public ID.
 
-Joining does not grant creator capability. The linked member completes
-`POST /hosts/application` using established membership and no code, then staff
-identity/video verification and approval. Existing joined and approved hosts do
-not need a fresh invitation to continue their application or use host capabilities.
+Claiming a valid personal code grants creator capability immediately after the
+app refreshes the authoritative account and publishes `host.access`. Existing
+joined and approved Hosts do not need a fresh invitation. Older agency-linked
+accounts without a personal invitation can remain on the legacy application path.
 The server validates age, account status, phone verification, agency activity,
-host capacity and one-agency membership. A referral reward code is separate.
+host capacity, one-agency membership and one-time-code ownership. Suspended or
+otherwise restricted accounts cannot use a code to bypass moderation. A referral
+reward code is separate.
 Agency commission is paid from the platform share without reducing host earnings.
 The app has no agency self-registration or agency login; administrators create,
 manage and settle agencies in the production admin dashboard.
@@ -360,7 +365,7 @@ bonus illustration; members receive no host earnings policy.
 
 New reward periods freeze `activityBasis: "paid_video"`: only paid video-call time
 counts toward targets. Existing periods retain their recorded activity basis.
-Initial week 1 begins on the Monday after admin approval; earlier pending call
+Initial week 1 begins on the Monday after Host approval; earlier pending call
 rewards carry into that first period. Explore excludes hosts whose explicit
 `onlineForCalls` setting is off. Their existing profile and chat call actions
 remain available, subject to the normal approval, privacy and availability checks.
@@ -503,11 +508,13 @@ in screenshots, recordings and the recent-apps view; iOS 13+ blocks screenshots
 and recordings. Other screens, including public live rooms, can still be captured.
 A camera pointed at the phone can still record the screen.
 
-## Staff verification calls (host applicants)
+## Staff verification calls (legacy/manual host applicants)
 
-Before approving a host application, staff video-call the applicant from the admin
-dashboard. The server refuses to approve a pending application until a call has
-connected for at least 10 seconds.
+This is retained as a backup for legacy or manually reviewed applications. The
+Agency Owner one-time-code flow does not create a pending application and does not
+require a staff video call. When staff use the legacy approval flow, the server
+refuses to approve a pending application until a call has connected for at least
+10 seconds.
 
 | Step | Server | App |
 | --- | --- | --- |

@@ -327,9 +327,12 @@ keeps it identical to the original Next.js version.
   only one processed preview, retain call controls and native Back dismissal,
   and preserve the host's camera-swap preference when enlarging the local video.
   Its circular filter swatches are included in the shared ROUND contract.
-- Creator capabilities require current admin-approved host access.
-  Use `ZimiHostAccess` in the web UI and enforce approval in the native bridge
-  and backend; local role or verification presentation state grants no access.
+- Creator capabilities require current server-approved host access. A personal,
+  one-time Host joining code issued by an Agency Owner activates a new Host when
+  it is claimed; the public agency ID never does. Use `ZimiHostAccess` in the web
+  UI and enforce approval in the native bridge and backend; local role or
+  verification presentation state grants no access. Platform moderation can
+  still suspend or restore Host access.
 - Currency follows the authenticated account's server role separately from host
   approval: approved, pending, rejected and suspended hosts use Diamonds;
   members use Coins. Use `ZimiHostAccess.financialHost()` for financial display,
