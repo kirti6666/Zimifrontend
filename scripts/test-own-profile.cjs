@@ -24,6 +24,16 @@ const navigate = (page,view,id) => page.evaluate(({view,id})=>go(view,id),{view,
 const lastSent = (page,type) => page.evaluate(type=>__sent.filter(message=>message.type===type).at(-1)?.data,type);
 const sentCount = (page,type) => page.evaluate(type=>__sent.filter(message=>message.type===type).length,type);
 const button = (page,name) => page.getByRole('button',{name,exact:true});
+const hold = async (page,locator,duration=650) => {
+  const box=await locator.boundingBox();assert.ok(box,'The owner profile photo is visible for a hold gesture');
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();await page.waitForTimeout(duration);await page.mouse.up();
+};
+const cancelHold = async (page,locator) => {
+  const box=await locator.boundingBox();assert.ok(box,'The owner profile photo is visible for a cancelled hold');
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();await page.waitForTimeout(100);await page.mouse.up();await page.waitForTimeout(650);
+};
 async function settleProfile(page,profile) {
   const request = await lastSent(page,'profile.load');
   assert.equal(request.id,profile.id,'Profile reads the intended account');
@@ -168,6 +178,23 @@ async function auditEditProfile(page,label) {
     assert.equal(await button(page,'Change cover photo').count(),1);
     assert.equal(await page.locator('#zu-edit-self').count(),1);
     assert.equal(await page.locator('#zu-upload-self').count(),1);
+    const ownAvatar=page.locator('.zu-owner-avatar');
+    await cancelHold(page,ownAvatar);
+    assert.equal(await page.evaluate(()=>S.v),'editprofile','Releasing the owner photo before the threshold preserves its short-tap Edit Profile action');
+    assert.equal(await page.locator('.zu-avatar-preview').count(),0,'Releasing the owner photo before the threshold does not open a viewer');
+    await navigate(page,'profile');
+    await settleProfile(page,publicProfile());
+    await settlePosts(page);
+    await page.getByRole('heading',{name:member.user.name,exact:true}).waitFor();
+    const previewAvatar=page.locator('.zu-owner-avatar');
+    await hold(page,previewAvatar);
+    const ownPreview=page.locator('.zu-avatar-preview[role="dialog"]');
+    await ownPreview.waitFor();
+    assert.equal(await ownPreview.locator('img').getAttribute('src'),member.user.avatarUrl,'The owner preview uses the authenticated profile photo');
+    assert.equal(await page.evaluate(()=>S.v),'profile','Holding the owner photo does not enter Edit Profile');
+    await button(page,'Close profile photo').click();
+    await ownPreview.waitFor({state:'detached'});
+    assert.equal(await ownPreview.count(),0,'The profile photo Close action restores the owner profile');
     const shots=path.join(root,'artifacts','own-profile');fs.mkdirSync(shots,{recursive:true});
     for(const width of [320,390,768]) {
       await page.setViewportSize({width,height:844});

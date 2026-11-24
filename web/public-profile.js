@@ -5,6 +5,7 @@ const Zu = { id:'', profile:null, loading:false, error:'', requestId:0, sequence
   followBusy:false, followRequestId:0, followError:'', blockBusy:false, blockRequestId:0,
   back:{view:'home'}, dialog:'', dialogFocus:null, gallery:0 };
 const zuPendingFollows=new Map(),zuPendingBlocks=new Map();
+let zuAvatarPressTimer=0,zuAvatarPressConsumed=false;
 const ZuRelationships={owner:'',kind:'followers',users:[],total:0,page:0,limit:20,loading:false,error:'',requestId:0,requestedPage:1};
 const ZuCover={owner:'',photo:'',preparing:false,saving:false,error:'',run:0,requestId:0};
 const zuActive = () => ['host','user','profile'].includes(S.v);
@@ -91,7 +92,7 @@ function zuLoadPosts(more=false){
   Native.send('profile.posts.load',{id:Zu.id,page:more?Zu.page+1:1,requestId:Zu.postsRequestId});
   zuPaint();
 }
-function zuBack(){if(S.v==='profile'){go('home');return}const back=Zu.back;go(back.view||'home',back.id)}
+function zuBack(){if(Zu.dialog==='avatar'){zuCloseDialog();return}if(S.v==='profile'){go('home');return}const back=Zu.back;go(back.view||'home',back.id)}
 function zuEditMedia(kind){
   if(kind==='cover')return zuChooseCover();
   if(!zuSelf()||zuOffline())return;
@@ -137,6 +138,27 @@ function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p
 function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&!zuOffline())homeCall(p.id)}
 function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
 function zuWatch(){const p=Zu.profile;if(window.ZIMI_LIVE_STREAMING_ENABLED&&p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
+function zuAvatarPressEnd(){clearTimeout(zuAvatarPressTimer);zuAvatarPressTimer=0}
+function zuAvatarPressStart(event){
+  if(event.pointerType==='mouse'&&event.button!==0)return;
+  zuAvatarPressEnd();zuAvatarPressConsumed=false;
+  const id=zuId(),target=event.currentTarget;
+  zuAvatarPressTimer=setTimeout(()=>{
+    zuAvatarPressTimer=0;
+    if(!target.isConnected||!zuActive()||zuId()!==id)return;
+    zuAvatarPressConsumed=true;zuOpenAvatarPreview();
+  },450);
+}
+function zuAvatarTap(event){
+  if(zuAvatarPressConsumed){event?.preventDefault();zuAvatarPressConsumed=false;return}
+  if(zuSelf())zuEditMedia('avatar');
+}
+function zuAvatarKey(event){
+  if(!['Enter',' '].includes(event.key)||event.repeat)return;
+  event.preventDefault();zuAvatarPressEnd();zuAvatarPressConsumed=false;
+  if(zuSelf()){zuEditMedia('avatar');return}
+  zuOpenAvatarPreview();
+}
 function zuShare(){
   const p=zuPeer();if(!zuSelf()||!p?.id)return;
   if(DEMO){appNotice('Design preview · this opens your phone’s share sheet.');return}
@@ -158,6 +180,12 @@ function zuAvatar(p){
   const source=imageSrc(p?.avatarUrl);
   return source?`<img class="zh-photo-pending" src="${source}" alt="${esc(p.name||'Profile photo')}" data-face="${faceKind(p||{})}" decoding="async">`:face(p||{});
 }
+function zuOpenAvatarPreview(){
+  const p=zuPeer();if(!p||Zu.loading||Zu.error)return;
+  const source=imageSrc(p.avatarUrl),fallback=`<span class="zu-avatar zu-avatar-fallback"${source?' hidden':''}>${face(p)}</span>`;
+  const media=source?`<img src="${source}" alt="${esc((p.name||'User')+' profile photo')}" draggable="false" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">${fallback}`:fallback;
+  zuDialog(`${esc(p.name||'Profile')} · Profile photo`,`<div class="zu-avatar-preview-stage"><div class="zu-avatar-preview-media">${media}</div></div>`,'avatar');
+}
 function zuIdentity(p){
   const ready=!!Zu.profile&&!Zu.loading&&!Zu.error,host=zuApproved(p),canFollow=ready&&host&&zuMember()&&!zuSelf();
   const owner=zuSelf(),followBack=ready&&zuHostToMember(p),showFollow=canFollow||followBack;
@@ -169,7 +197,8 @@ function zuIdentity(p){
     :`<div><strong>${Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)}</strong><span>Posts</span></div>`;
   const relationshipStats=['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('');
   const stats=`<div class="zu-stats" aria-label="Profile statistics">${leadStat}${relationshipStats}</div>`;
-  return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
+  const avatarEvents=`onpointerdown="zuAvatarPressStart(event)" onpointerup="zuAvatarPressEnd()" onpointercancel="zuAvatarPressEnd()" onpointerleave="zuAvatarPressEnd()" oncontextmenu="event.preventDefault()" onkeydown="zuAvatarKey(event)" onclick="zuAvatarTap(event)"`;
+  return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar zu-avatar-previewable" ${avatarEvents} aria-label="Change profile photo" aria-description="Press and hold to view full screen">${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<button type="button" class="zu-avatar zu-avatar-previewable" ${avatarEvents} aria-label="View ${esc(p.name||'user')} profile photo" aria-description="Press and hold to view full screen">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</button>`}
     ${owner?`<button type="button" id="zu-edit-self" class="zu-owner-edit" aria-label="Edit profile" onclick="go('editprofile')">${zi('edit',14)}<span>Edit profile</span></button>`:showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
@@ -232,12 +261,12 @@ function zuCloseDialog(force=false){
 function zuDialog(title,body,kind){
   const originFocus=document.getElementById('zu-dialog')?Zu.dialogFocus:document.activeElement;
   zuCloseDialog();Zu.dialogFocus=originFocus;Zu.dialog=kind;
-  const dialog=document.createElement('dialog');dialog.id='zu-dialog';dialog.className='zu-dialog'+(kind==='photo'?' zu-photo-dialog':kind==='relationships'?' zu-relationships-dialog':'');dialog.setAttribute('aria-labelledby','zu-dialog-title');
-  const heading=kind==='relationships'?`${backButton('zuCloseDialog()',{label:'Back to profile'})}<h2 id="zu-dialog-title">${title}</h2>`:`<h2 id="zu-dialog-title">${title}</h2><button class="zu-icon-button" aria-label="Close" onclick="zuCloseDialog()">${hi('close',20)}</button>`;
+  const dialog=document.createElement('dialog');dialog.id='zu-dialog';dialog.className='zu-dialog'+(kind==='photo'?' zu-photo-dialog':kind==='relationships'?' zu-relationships-dialog':kind==='avatar'?' zu-avatar-dialog zu-avatar-preview':'');dialog.setAttribute('aria-labelledby','zu-dialog-title');if(kind==='avatar')dialog.setAttribute('role','dialog');
+  const heading=kind==='relationships'?`${backButton('zuCloseDialog()',{label:'Back to profile'})}<h2 id="zu-dialog-title">${title}</h2>`:`<h2 id="zu-dialog-title">${title}</h2><button class="zu-icon-button" aria-label="${kind==='avatar'?'Close profile photo':'Close'}" onclick="zuCloseDialog()">${hi('close',20)}</button>`;
   dialog.innerHTML=`<header>${heading}</header>${body}`;
   dialog.addEventListener('close',()=>{dialog.querySelector('video')?.pause();dialog.remove();if(document.getElementById('zu-dialog'))return;Zu.dialog='';if(originFocus?.isConnected)originFocus.focus({preventScroll:true})});
-  dialog.addEventListener('cancel',event=>{if(kind==='cover'){event.preventDefault();if(!ZuCover.saving)zuCloseDialog()}});
-  dialog.addEventListener('click',event=>{if(event.target!==dialog||kind==='cover'&&ZuCover.saving)return;const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)zuCloseDialog()});
+  dialog.addEventListener('cancel',event=>{if(kind==='avatar'){event.preventDefault();zuCloseDialog();return}if(kind==='cover'){event.preventDefault();if(!ZuCover.saving)zuCloseDialog()}});
+  dialog.addEventListener('click',event=>{if(event.target!==dialog||kind==='cover'&&ZuCover.saving)return;if(kind==='avatar'){zuCloseDialog();return}const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)zuCloseDialog()});
   document.body.append(dialog);dialog.showModal();return dialog;
 }
 function zuOpenOptions(){
@@ -479,6 +508,8 @@ for(const type of ['data.catalog','gift.sent','wallet.balance'])Native.on(type,(
 Native.on('gift.sent',()=>{if(zuActive())zuPaint()});
 Native.on('operation.error',d=>{if(zuActive()&&d.action==='gift.send')zuPaint()});
 Native.on('connection.status',d=>{if(!zuActive())return;if(d.connected&&!d.checking&&(Zu.error||Zu.postsError))zuRetry();else zuPaint()});
+Native.on('app.background',zuAvatarPressEnd);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)zuAvatarPressEnd()});
 for(const type of ['offline','online'])window.addEventListener(type,()=>{if(zuActive())zuPaint()});
 for(const type of ['session.none','session.expired'])Native.on(type,()=>{zuCloseDialog(true);Object.assign(ZuCover,{owner:'',photo:'',preparing:false,saving:false,error:'',run:ZuCover.run+1,requestId:++Zu.sequence});Object.assign(ZuRelationships,{owner:'',users:[],total:0,page:0,loading:false,error:'',requestId:++Zu.sequence});zuPendingFollows.clear();zuPendingBlocks.clear();Zu.deleting=null;Zu.deleteCandidate=null;Zu.id='';Zu.profile=null;Zu.posts=[];Zu.requestId=++Zu.sequence;Zu.postsRequestId=++Zu.sequence});
 window.ZimiPublicProfile={

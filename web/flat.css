@@ -331,7 +331,7 @@ html:root :is(
   .zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline,
   .zh-user-actions>button,.zh-user-avatar,.zh-user-avatar>i,
   .hc-preview-tools>button,.zv-actions button,.zv-controls button,.zh-call-controls button,.incban button,.zc-thread-actions>button,.zc-voice-play,
-  .av,.ringorb,.zc-avatar,.zu-avatar,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
+  .av,.ringorb,.zc-avatar,.zu-avatar,.zu-avatar-preview-media,.zu-avatar-preview-media>img,.zp-avatar,.zp-summary-avatar,.zh-creator-face,.zpc-avatar,.zpc-orbit,.zpc-avatar-badge,
   .hc-identity-avatar,.hc-host-avatar,.zc-photo-avatar,.zh-precall-avatar,.zh-skeleton-avatar,.zt-mini-avatars>i,
   .zh-story-ring,.zh-live-ring,.pcav,.editavatar,.editavatar .pic,.editavatar .mediaedit,.zu-owner-camera,.zh-verified,.zu-verified,
   .zp-switch,.zp-switch>i,.hc-switch,.themeswitch,.themeswitch i,.switch,.zc-call-badge,.zc-call-back,.zlb-avatar
@@ -350,7 +350,7 @@ html:root #zimi-pull {border-radius:999px!important}
 /* Straight page edges and single-line separators never inherit a card's corners, and a
    country flag keeps a flag's square corners. */
 html:root{border-radius:0!important}
-html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-actionbar,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-relationships-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag,.zhs-fill,.zhs-gridline,.editdetails-card>.editgroup,.editlocation-grid,.editlocation-grid>.editgroup,.edit-save-bar){border-radius:0!important}
+html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-actionbar,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-relationships-dialog,.zu-avatar-dialog,.zu-avatar-dialog>header,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag,.zhs-fill,.zhs-gridline,.editdetails-card>.editgroup,.editlocation-grid,.editlocation-grid>.editgroup,.edit-save-bar){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
 

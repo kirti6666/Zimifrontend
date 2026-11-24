@@ -10,7 +10,8 @@ const artifacts = path.join(require('node:os').tmpdir(), 'binzo-public-profile-p
 const id = suffix => `507f1f77bcf86cd7994390${suffix}`;
 const account = { user: { id: id('01'), name: 'Profile tester', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, isPhoneVerified: true }, verification: 'none', balance: 1250, requiresOnboarding: false };
 const creatorAccount = { ...account, user: { ...account.user, id: id('02'), name: 'Approved creator', role: 'host', serverRole: 'host', hostStatus: 'approved', isVerifiedHost: true }, verification: 'verified' };
-const creator = { id: id('11'), name: 'Mira North', role: 'host', serverRole: 'host', category: 'Music', city: 'Pune', languages: ['English', 'Hindi'], about: 'Acoustic evenings and thoughtful conversations.', online: true, onlineForCalls: true, verified: true, availableForCall: true, followers: 127, following: false, ratePerMin: 15, entryFee: 0 };
+const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=';
+const creator = { id: id('11'), name: 'Mira North', avatarUrl: avatar, role: 'host', serverRole: 'host', category: 'Music', city: 'Pune', languages: ['English', 'Hindi'], about: 'Acoustic evenings and thoughtful conversations.', online: true, onlineForCalls: true, verified: true, availableForCall: true, followers: 127, following: false, ratePerMin: 15, entryFee: 0 };
 const other = { ...creator, id: id('12'), name: 'Asha Sen', city: 'Jaipur', online: true, onlineForCalls: false, availableForCall: false };
 const member = { id: id('13'), name: 'Rohan Patel', role: 'sender', serverRole: 'user', city: 'Kochi', online: false, verified: false, availableForCall: false, followers: 3 };
 const feed = { hosts: [creator], stage: [], featured: creator, total: 1, page: 1, limit: 20, categories: ['Music'], broadcasterCount: 0, availableCount: 1, unreadCount: 0 };
@@ -22,6 +23,16 @@ const sentCount = (page, type) => page.evaluate(value => __sent.filter(message =
 const button = (page, name) => page.getByRole('button', { name, exact: true });
 const tab = (page, name) => page.getByRole('tab', { name: new RegExp(`^${name}(?:\\s|\\(|$)`) });
 const skeletons = page => page.locator('.zu-page [role="status"][aria-busy="true"]');
+const hold = async (page, locator, duration = 650) => {
+  const box = await locator.boundingBox(); assert.ok(box, 'The profile photo is visible for a hold gesture');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(duration); await page.mouse.up();
+};
+const cancelHold = async (page, locator) => {
+  const box = await locator.boundingBox(); assert.ok(box, 'The profile photo is visible for a cancelled hold');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(100); await page.mouse.up(); await page.waitForTimeout(650);
+};
 
 async function run() {
   fs.mkdirSync(artifacts, { recursive: true });
@@ -136,6 +147,30 @@ async function run() {
     assert.equal(await memberPage.locator('.zu-stats').getByText(/Coins|Diamonds/).count(),0,'Another User never receives a fabricated wallet balance');
     assert.equal(await button(memberPage,'Message').count(),1,'Another User keeps the single Message action');
     assert.equal(await memberPage.locator('#zu-follow,.zu-gift,#zu-call,#zu-voice-call,#zu-video-call').count(),0,'A member viewer gets no unauthorized User actions');
+    const memberAvatar=memberPage.locator('.zu-avatar').first();
+    await memberAvatar.click();
+    assert.equal(await memberPage.evaluate(()=>S.v),'user','A short public-profile photo tap keeps the current User profile');
+    assert.equal(await memberPage.locator('.zu-avatar-preview').count(),0,'A short tap does not open the hold-only viewer');
+    await cancelHold(memberPage,memberAvatar);
+    assert.equal(await memberPage.locator('.zu-avatar-preview').count(),0,'Releasing before the hold threshold cancels the viewer');
+    await hold(memberPage,memberAvatar);
+    const memberPreview=memberPage.locator('.zu-avatar-preview[role="dialog"]');
+    await memberPreview.waitFor();
+    const previewGeometry=await memberPreview.evaluate(dialog=>{
+      const outer=dialog.getBoundingClientRect(),media=dialog.querySelector('.zu-avatar-preview-media').getBoundingClientRect();
+      return {outerWidth:outer.width,outerHeight:outer.height,viewportWidth:innerWidth,viewportHeight:innerHeight,mediaWidth:media.width,mediaHeight:media.height};
+    });
+    assert.ok(Math.abs(previewGeometry.outerWidth-previewGeometry.viewportWidth)<1&&Math.abs(previewGeometry.outerHeight-previewGeometry.viewportHeight)<1,'The profile photo viewer fills the phone viewport');
+    assert.ok(previewGeometry.mediaWidth>=250&&Math.abs(previewGeometry.mediaWidth-previewGeometry.mediaHeight)<1,'The profile photo opens in a large circular viewport');
+    await memberPage.screenshot({path:path.join(artifacts,'public-user-avatar-preview.png')});
+    assert.match(await memberPreview.innerText(),new RegExp(member.name),'The User preview identifies the profile being viewed');
+    assert.equal(await memberPreview.locator('img').count(),0,'A User without a safe photo gets the large fallback rather than a broken image');
+    await button(memberPage,'Close profile photo').click();
+    await memberAvatar.focus();await memberPage.keyboard.press('Enter');
+    await memberPreview.waitFor();
+    await memberPage.keyboard.press('Escape');
+    await memberPreview.waitFor({state:'detached'});
+    assert.equal(await memberPreview.count(),0,'Escape closes the keyboard-opened profile photo viewer');
     for(const width of [320,390]) {
       await memberPage.setViewportSize({width,height:844});
       await layout(memberPage,`Public User ${width}px`);
@@ -167,6 +202,16 @@ async function run() {
     assert.match(await page.locator('.zu-meta').innerText(),/English/,'The compact public profile uses language metadata like the reference');
     assert.doesNotMatch(await page.locator('.zu-meta').innerText(),/Pune/,'The compact public profile does not duplicate city when language is available');
     assert.match(await page.locator('.zu-call-info>span').innerText(),/Video call rate/i,'The Host action bar uses the compact reference rate label');
+    const hostAvatar=page.locator('.zu-avatar').first();
+    await cancelHold(page,hostAvatar);
+    assert.equal(await page.locator('.zu-avatar-preview').count(),0,'A cancelled Host hold never flashes the viewer');
+    await hold(page,hostAvatar);
+    const hostPreview=page.locator('.zu-avatar-preview[role="dialog"]');
+    await hostPreview.waitFor();
+    assert.equal(await hostPreview.locator('img').getAttribute('src'),avatar,'The full-screen Host preview uses only the current profile photo');
+    assert.doesNotMatch(await hostPreview.innerText(),/Coins|Diamonds|Followers|Following/,'The photo viewer exposes no wallet or profile statistics');
+    await page.evaluate(()=>zuBack());
+    assert.deepEqual([await page.evaluate(()=>S.v),await hostPreview.count()],['host',0],'Back closes the photo viewer before leaving the Host profile');
     for(const width of [320,390]) {
       await page.setViewportSize({width,height:844});
       await layout(page,`Public Host ${width}px`);
