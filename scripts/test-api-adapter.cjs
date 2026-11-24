@@ -992,8 +992,21 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20,
   });
   const filteredNotes = await api.notifications({ page: 2, q: 'event & music', status: 'unread', audience: 'personal', since: noteSince, sort: 'oldest' });
-  assert.deepEqual(plain(filteredNotes), { items: [{ id: 'personal-note', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince, audience: 'personal' }], total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20 });
+  assert.deepEqual(plain(filteredNotes), { items: [{ id: 'personal-note', title: 'Event', body: 'A personal update', read: false, createdAt: noteSince, audience: 'personal', recipientId: 'member-id' }], total: 21, unreadCount: 25, totalCount: 40, page: 2, limit: 20 });
   assert.equal(adapters.notificationsFrom({ items: [{ _id: 'global-note', userId: null }] }).items[0].audience, 'announcements');
+  const guardedNotes = adapters.notificationsFrom({ items: [
+    { _id: 'own-like', userId: 'member-id', recipientId: 'member-id', category: 'likes', title: 'Liked', read: false },
+    { _id: 'own-follow', userId: 'member-id', category: 'follows', title: 'Followed', read: false },
+    { _id: 'own-gift', userId: 'member-id', category: 'gifts', title: 'Gift with 5K Coins', read: true },
+    { _id: 'chat-message', userId: 'member-id', category: 'messages', event: 'message.new', title: 'Private message', read: false },
+    { _id: 'foreign-like', userId: 'another-account', category: 'likes', title: 'Not mine', read: false },
+    { _id: 'conflicting-owner', userId: 'member-id', recipientId: 'another-account', category: 'calls', title: 'Conflicting', read: false },
+    { _id: 'ownerless-comment', userId: null, category: 'comments', title: 'Ownerless activity', read: false },
+  ], total: 7, totalCount: 7, unreadCount: 6 }, 'member-id');
+  assert.deepEqual(plain(guardedNotes.items.map(note => [note.id, note.category, note.recipientId])), [
+    ['own-like', 'likes', 'member-id'], ['own-follow', 'follows', 'member-id'], ['own-gift', 'gifts', 'member-id'],
+  ], 'Only this account activity reaches the notification UI');
+  assert.deepEqual({ total: guardedNotes.total, totalCount: guardedNotes.totalCount, unreadCount: guardedNotes.unreadCount }, { total: 3, totalCount: 3, unreadCount: 2 }, 'Hidden chat and foreign rows do not affect client totals');
   const noteBefore = '2026-10-02T00:00:00.000Z';
   expect('GET', `/notifications?limit=20&since=${encodeURIComponent(noteSince)}&before=${encodeURIComponent(noteBefore)}`, { items: [], total: 0, totalCount: 40, unreadCount: 25, page: 1, limit: 20 });
   assert.equal((await api.notifications({ since: noteSince, before: noteBefore })).items.length, 0, 'A bounded date tab sends its inclusive start and exclusive end to the API');
@@ -1317,6 +1330,9 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   let beforeNotification = events.length;
   socket.emitServer('notification:new', { userId: 'member-id', title: 'Private account update', unreadCount: 900, targetType: 'inbox' });
   assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'Private account notifications refresh the inbox without invalidating Team Chat');
+  beforeNotification = events.length;
+  socket.emitServer('notification:new', { userId: 'member-id', title: 'Private chat message', category: 'messages', event: 'message.new', targetType: 'thread' });
+  assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'chats.updated', data: {} }], 'Chat-message notices refresh conversations without changing the notification inbox or bell badge');
   beforeNotification = events.length;
   socket.emitServer('notification:new', { userId: 'member-id', title: 'Untrusted announcement copy', unreadCount: 901, targetType: 'official' });
   assert.deepEqual(plain(events.slice(beforeNotification)), [{ type: 'notifications.changed', data: {} }, { type: 'official.changed', data: {} }, { type: 'chats.updated', data: {} }, { type: 'home.updated', data: {} }], 'Only the official marker invalidates Team Chat, whose content is fetched over the authenticated API');

@@ -51,14 +51,20 @@ function znSearch(value){
   ZNotices.timer=setTimeout(()=>znLoad(),250);
 }
 function znResetFilters(){Object.assign(ZNotices,{q:'',status:'all',audience:'all',period:'all',sort:'newest',message:''});znLoad()}
+function znVisible(item){
+  if(!item||item.category==='messages'||item.event==='message.new')return false;
+  const owner=ZNotices.accountId||S.user?.id||'';
+  return !item.recipientId||!!owner&&item.recipientId===owner;
+}
 function znReceive(data){
   if(!znAccepts(data))return;
   Home.notifyLoading=false;
-  const items=Array.isArray(data.items)?data.items:[],page=data.page||1;
+  const received=Array.isArray(data.items)?data.items:[],items=received.filter(znVisible),hidden=received.filter(item=>!znVisible(item)),page=data.page||1;
+  const hiddenUnread=hidden.filter(item=>item?.read!==true).length;
   const byId=new Map((page>1?Home.notifications:[]).map(item=>[item.id,item]));
   for(const item of items)if(item?.id)byId.set(item.id,item);
-  Home.notifications=[...byId.values()];Home.unreadCount=Math.max(0,Number(data.unreadCount)||0);
-  Object.assign(ZNotices,{page,total:Math.max(0,Number(data.total??items.length)||0),totalCount:Math.max(0,Number(data.totalCount??data.total??items.length)||0),loaded:true});
+  Home.notifications=[...byId.values()];Home.unreadCount=Math.max(0,(Number(data.unreadCount)||0)-hiddenUnread);
+  Object.assign(ZNotices,{page,total:Math.max(items.length,(Number(data.total??received.length)||0)-hidden.length),totalCount:Math.max(items.length,(Number(data.totalCount??data.total??received.length)||0)-hidden.length),loaded:true});
   Object.assign(ContentLoading.notifications,{loading:false,error:'',page});
   if(['notifications','home','explore','chats','profile','settings'].includes(S.v))r();
 }

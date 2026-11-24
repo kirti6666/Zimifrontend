@@ -251,11 +251,13 @@ export function connectRealtime(_initialToken: string, onEvent: (event: ServerEv
   // The inbox and badge read their authenticated counts; socket content is only an
   // invalidation. Only the server's explicit Team Chat marker refreshes that channel.
   socket.on("notification:new", payload => {
-    let official = false;
+    let official = false, chatMessage = false;
     try {
       const notice = record(payload);
       official = notice.targetType === "official" || notice.officialChat === true;
+      chatMessage = notice.category === "messages" || notice.event === "message.new";
     } catch { /* The generic inbox still refreshes. */ }
+    if (chatMessage) { emit("chats.updated", {}); return; }
     emit("notifications.changed", {});
     if (official) emit("official.changed", {});
     emit("chats.updated", {});emit("home.updated", {});

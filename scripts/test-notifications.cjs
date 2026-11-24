@@ -11,11 +11,13 @@ const artifacts = path.join(root, 'artifacts');
 const account = { user: { id: '507f1f77bcf86cd799439001', name: 'Mira North', role: 'sender', serverRole: 'user', hostStatus: 'none', isVerifiedHost: false, languages: ['English'] }, verification: 'none', requiresOnboarding: false };
 const now = Date.now();
 const notices = [
-  { id: '507f1f77bcf86cd799439011', title: 'Your profile is looking good', body: 'Your latest profile changes are saved. Keep making connections that feel like you.', read: false, createdAt: new Date(now - 12 * 60000).toISOString(), audience: 'personal' },
-  { id: '507f1f77bcf86cd799439012', title: 'A little more to discover', body: 'Explore live conversations, music and new creators in the community.', read: false, createdAt: new Date(now - 2 * 3600000).toISOString(), audience: 'announcements' },
-  { id: '507f1f77bcf86cd799439013', title: 'Welcome to your BinzoLive community', body: 'Your account is ready. Find your people, follow your favorites and start a conversation.', read: true, createdAt: new Date(now - 26 * 3600000).toISOString(), audience: 'personal' },
+  { id: '507f1f77bcf86cd799439011', title: 'Your profile is looking good', body: 'Your latest profile changes are saved. Keep making connections that feel like you.', read: false, createdAt: new Date(now - 12 * 60000).toISOString(), audience: 'personal', category: 'likes' },
+  { id: '507f1f77bcf86cd799439012', title: 'A little more to discover', body: 'Explore live conversations, music and new creators in the community.', read: false, createdAt: new Date(now - 2 * 3600000).toISOString(), audience: 'announcements', category: 'appUpdates' },
+  { id: '507f1f77bcf86cd799439013', title: 'Welcome to your BinzoLive community', body: 'Your account is ready. Find your people, follow your favorites and start a conversation.', read: true, createdAt: new Date(now - 26 * 3600000).toISOString(), audience: 'personal', category: 'gifts' },
 ];
 const moreNotice = { id: '507f1f77bcf86cd799439014', title: 'Make the most of your next visit', body: 'Your updates stay together here so you can catch up at your own pace.', read: true, createdAt: new Date(now - 3 * 86400000).toISOString(), audience: 'announcements' };
+const hiddenChatNotice = { id: '507f1f77bcf86cd799439016', title: 'A private chat message', body: 'Chat content belongs in the conversation only.', read: false, createdAt: new Date(now - 5 * 60000).toISOString(), audience: 'personal', category: 'messages', recipientId: account.user.id };
+const hiddenForeignNotice = { id: '507f1f77bcf86cd799439017', title: 'Another account update', body: 'This must never cross account boundaries.', read: false, createdAt: new Date(now - 6 * 60000).toISOString(), audience: 'personal', category: 'follows', recipientId: '507f1f77bcf86cd799439099' };
 const receive = (page, type, data = {}) => page.evaluate(message => Native.receive(message), { type, data });
 const sent = (page, type) => page.evaluate(value => __sent.filter(message => message.type === value).map(message => message.data), type);
 const last = async (page, type) => (await sent(page, type)).at(-1);
@@ -108,8 +110,10 @@ async function filters(page, initial) {
   assert.ok(initial.requestId != null, 'Every inbox request is identified');
   assert.equal(await rows(page).count(), 0, 'Initial loading never displays cached or invented notifications');
   await page.getByRole('status', { name: 'Loading notifications', exact: true }).waitFor();
-  await result(page, initial);
+  await result(page, initial, [...notices, hiddenChatNotice, hiddenForeignNotice]);
   assert.deepEqual(await rows(page).locator('h3').allTextContents(), notices.map(item => item.title));
+  assert.equal(await page.evaluate(() => Home.unreadCount), 2, 'Chat and foreign-account rows never affect the notification badge');
+  assert.deepEqual(await page.evaluate(() => ({ total: ZNotices.total, totalCount: ZNotices.totalCount })), { total: 3, totalCount: 3 }, 'Hidden rows never affect inbox totals or paging');
 
   const query = 'profile';
   const searchRequest = await loadAfter(page, () => search(page).fill(query));

@@ -334,7 +334,10 @@ export const api = {
     return result;
   },
   async matchHost(category?: string) { const result = record(await request("GET", `/home/match${category ? `?category=${encodeURIComponent(category)}` : ""}`)); return { host: hostFrom(result.host) }; },
-  async notifications(query?: NotificationsQuery) { return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100")); },
+  async notifications(query?: NotificationsQuery) {
+    const ownerId = await selfId();
+    return notificationsFrom(await request("GET", query ? `/notifications?${queryString({ limit: 20, ...query })}` : "/notifications?limit=100"), ownerId);
+  },
   async readNotifications(ids: string[]) { await request("POST", "/notifications/read", { ids }); return api.notifications(); },
   async updateNotificationRead(input: NotificationReadPatch) { return notificationReadFrom(await request("POST", "/notifications/read", input)); },
   async officialChat(before?: string) {

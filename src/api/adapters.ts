@@ -227,12 +227,38 @@ export function homeFrom(value: unknown): HomeData {
     categories: stringList(data.categories), broadcasterCount: count(data.broadcasterCount), availableCount: count(data.availableCount),
     speedMatchEnabled: data.speedMatchEnabled === true, bonus: data.bonus ? missionFrom(data.bonus) : null, unreadCount: count(data.unreadNotifications) };
 }
-export function notificationsFrom(value: unknown): NotificationsData {
-  const data = record(value), list = items(data).map(record).map(note => ({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: idOf(note.userId) ? "personal" as const : "announcements" as const,
-    ...(note.targetType ? notificationTargetFrom(note) ?? {} : {}) }));
-  return { items: list, unreadCount: typeof data.unreadCount === "number" ? count(data.unreadCount) : list.filter(note => !note.read).length,
-    total: typeof data.total === "number" ? count(data.total) : list.length, totalCount: typeof data.totalCount === "number" ? count(data.totalCount) : typeof data.total === "number" ? count(data.total) : list.length,
-    page: count(data.page) || 1, limit: count(data.limit) || 100 };
+export function notificationsFrom(value: unknown, expectedRecipientId?: string): NotificationsData {
+  const data = record(value), source = items(data).map(record), list: NotificationsData["items"] = [];
+  let hidden = 0, hiddenUnread = 0;
+  const identity = (value: unknown) => {
+    const result = idOf(value);
+    return result && result.length <= 100 && /^[A-Za-z0-9_-]+$/.test(result) ? result : "";
+  };
+  for (const note of source) {
+    const ownerId = identity(note.userId), metadataRecipientId = identity(note.recipientId);
+    const recipientId = metadataRecipientId || ownerId;
+    // The authenticated API owner and record owner must agree. Conflicting or
+    // foreign rows are discarded before they can reach the WebView.
+    const conflictingRecipient = !!ownerId && !!metadataRecipientId && ownerId !== metadataRecipientId;
+    const foreignRecipient = !!expectedRecipientId && !!recipientId && recipientId !== expectedRecipientId;
+    // Ignore recipient metadata while parsing navigation: test fixtures use
+    // readable IDs, whereas push navigation deliberately accepts Mongo IDs only.
+    const target = notificationTargetFrom({ ...note, recipientId: undefined });
+    const category = target?.category;
+    const chatMessage = category === "messages" || note.event === "message.new";
+    const ownerlessActivity = !!category && category !== "appUpdates" && !recipientId;
+    if (conflictingRecipient || foreignRecipient || chatMessage || ownerlessActivity) {
+      hidden += 1;
+      if (note.read !== true) hiddenUnread += 1;
+      continue;
+    }
+    list.push({ id: idOf(note), title: string(note.title), body: string(note.body), read: note.read === true, createdAt: string(note.createdAt), audience: ownerId ? "personal" : "announcements",
+      ...(category ? { category } : {}), ...(note.targetType && target ? target : {}), ...(recipientId ? { recipientId } : {}) });
+  }
+  const unread = typeof data.unreadCount === "number" ? Math.max(0, count(data.unreadCount) - hiddenUnread) : list.filter(note => !note.read).length;
+  const total = typeof data.total === "number" ? Math.max(list.length, count(data.total) - hidden) : list.length;
+  const totalCount = typeof data.totalCount === "number" ? Math.max(list.length, count(data.totalCount) - hidden) : typeof data.total === "number" ? total : list.length;
+  return { items: list, unreadCount: unread, total, totalCount, page: count(data.page) || 1, limit: count(data.limit) || 100 };
 }
 export function notificationReadFrom(value: unknown): NotificationReadResult {
   const data = record(value);
