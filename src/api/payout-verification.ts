@@ -18,11 +18,13 @@ export function payoutKycFrom(value: unknown): PayoutKyc {
     (k.bankLast4 !== undefined && (typeof k.bankLast4 !== "string" || !/^\d{4}$/.test(k.bankLast4))) ||
     (k.ifsc !== undefined && (typeof k.ifsc !== "string" || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(k.ifsc))) ||
     (k.reason != null && !text(k.reason, 500)) ||
+    (k.createdAt !== undefined && (typeof k.createdAt !== "string" || !Number.isFinite(Date.parse(k.createdAt)))) ||
+    (k.reviewedAt != null && (typeof k.reviewedAt !== "string" || !Number.isFinite(Date.parse(k.reviewedAt)))) ||
     [k.legalName,k.payoutAddress,k.reason].some(value => typeof value === "string" && /\b[A-Z]{5}\d{4}[A-Z]\b/i.test(value)) ||
     (k.payoutType === "bank" && typeof k.payoutAddress === "string" && /\b\d{8,}\b/.test(k.payoutAddress)) ||
     (k.status === "verified" && (!id(k.id) || !text(k.payoutAddress, 200)))) return fail();
   const summary: PayoutKyc["kyc"] = { status: k.status as PayoutKyc["kyc"]["status"] };
-  for (const field of ["id", "ownerId", "legalName", "panMasked", "payoutType", "payoutAddress", "bankLast4", "ifsc", "reason"] as const)
+  for (const field of ["id", "ownerId", "legalName", "panMasked", "payoutType", "payoutAddress", "bankLast4", "ifsc", "reason", "createdAt", "reviewedAt"] as const)
     if (k[field] != null) Object.assign(summary, { [field]: k[field] });
   if (k.revision !== undefined) summary.revision = Number(k.revision);
   return { required: value.required, kyc: summary };

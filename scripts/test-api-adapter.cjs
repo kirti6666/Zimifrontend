@@ -77,11 +77,11 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 (async () => {
   const { api, phonePayload } = load('src/api/endpoints.ts');
   const kycId='507f1f77bcf86cd799439071',settingsId='507f1f77bcf86cd799439072';
-  const publicKyc={required:true,kyc:{status:'verified',id:kycId,ownerId:'host-id',ownerType:'host',revision:1,legalName:'Payout Tester',panMasked:'******234F',payoutType:'bank',payoutAddress:'Bank ending 0123 / SBIN0001234',bankLast4:'0123',ifsc:'SBIN0001234',reason:null}};
+  const publicKyc={required:true,kyc:{status:'verified',id:kycId,ownerId:'host-id',ownerType:'host',revision:1,legalName:'Payout Tester',panMasked:'******234F',payoutType:'bank',payoutAddress:'Bank ending 0123 / SBIN0001234',bankLast4:'0123',ifsc:'SBIN0001234',reason:null,createdAt:'2026-11-03T10:00:00.000Z',reviewedAt:'2026-11-04T10:00:00.000Z'}};
   expect('GET','/wallet/payout-kyc',publicKyc);
   const maskedKyc=await api.payoutKyc();
-  assert.equal(maskedKyc.kyc.panMasked,'******234F');assert.equal(maskedKyc.kyc.reason,undefined);assert.equal(maskedKyc.kyc.ownerType,undefined);
-  for(const invalid of [{panNumber:'ABCDE1234F'},{bankAccountNumber:'00000123'},{ownerType:'agency'},{panMasked:'ABCDE1234F'},{panMasked:'*ABCDE1234F'},{payoutAddress:'Bank 0000001234567890'},{reason:'Please check ABCDE1234F'}]){
+  assert.equal(maskedKyc.kyc.panMasked,'******234F');assert.equal(maskedKyc.kyc.reviewedAt,publicKyc.kyc.reviewedAt);assert.equal(maskedKyc.kyc.reason,undefined);assert.equal(maskedKyc.kyc.ownerType,undefined);
+  for(const invalid of [{panNumber:'ABCDE1234F'},{bankAccountNumber:'00000123'},{ownerType:'agency'},{panMasked:'ABCDE1234F'},{panMasked:'*ABCDE1234F'},{payoutAddress:'Bank 0000001234567890'},{reason:'Please check ABCDE1234F'},{createdAt:'not-a-date'},{reviewedAt:4}]){
     expect('GET','/wallet/payout-kyc',{...publicKyc,kyc:{...publicKyc.kyc,...invalid}});
     await assert.rejects(api.payoutKyc(),error=>!error.message.includes('ABCDE1234F')&&/verification details/.test(error.message));
   }
@@ -738,11 +738,12 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
     assert.throws(()=>adapters.walletFrom({...diamondWallet,hostReward:{...rewardFixture,...change}}),/weekly reward progress/);
   for(const change of [{settingsVersionId:'bad',settingsVersion:1},{settingsVersionId:versionMetadata.settingsVersionId},{settingsVersion:1},{...versionMetadata,settingsVersion:0}])
     assert.throws(()=>adapters.walletFrom({...diamondWallet,hostEarningsPolicy:{...hostPolicy,...change}}),/rule version/);
-  const paidTotals={alreadyPaidPaise:123456,alreadyPaidDiamondUnits:8000000000};
+  const paidTotals={alreadyPaidPaise:123456,alreadyPaidDiamondUnits:8000000000,lastPaidAt:'2026-11-20T12:00:00.000Z'};
   const normalizedTotals=adapters.walletFrom({...diamondWallet,...paidTotals});
   for(const key of Object.keys(paidTotals))assert.equal(normalizedTotals[key],paidTotals[key],'Server paid totals are never inferred from history');
   assert.equal(adapters.walletFrom(diamondWallet).alreadyPaidPaise,undefined,'A legacy wallet does not invent a paid total');
-  for(const key of Object.keys(paidTotals))for(const value of [-1,0.5,'0',null])assert.throws(()=>adapters.walletFrom({...diamondWallet,[key]:value}),/paid withdrawal totals/);
+  for(const key of ['alreadyPaidPaise','alreadyPaidDiamondUnits'])for(const value of [-1,0.5,'0',null])assert.throws(()=>adapters.walletFrom({...diamondWallet,[key]:value}),/paid withdrawal totals/);
+  for(const value of [-1,'not-a-date',null])assert.throws(()=>adapters.walletFrom({...diamondWallet,lastPaidAt:value}),/last paid withdrawal date/);
   const historicalRate={diamondsPerCoinUnits:280000,paisePerDiamondUnits:20000000,wholeDiamonds:true};
   const rateReceipt=adapters.transactionsFrom({items:[{type:'gift',coins:0,diamondUnits:1,earningRate:{...historicalRate,...versionMetadata}}]}).items[0];
   assert.equal(rateReceipt.earningRate,undefined,'Internal earning-rule snapshots remain server-side');

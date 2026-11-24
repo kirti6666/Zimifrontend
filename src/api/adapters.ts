@@ -460,6 +460,8 @@ export function walletFrom(value: unknown): Wallet {
   for (const key of ["alreadyPaidPaise", "alreadyPaidDiamondUnits"])
     if (wallet[key] !== undefined && (!Number.isSafeInteger(wallet[key]) || Number(wallet[key]) < 0))
       throw new ApiError("Your paid withdrawal totals could not be loaded. Try again.", 502);
+  if (wallet.lastPaidAt !== undefined && (typeof wallet.lastPaidAt !== "string" || !Number.isFinite(Date.parse(wallet.lastPaidAt))))
+    throw new ApiError("Your last paid withdrawal date could not be loaded. Try again.", 502);
   return {
     coins: wallet.coins as number, earningsPaise: wallet.earningsPaise as number,
     ...(wallet.currency === "coins" || wallet.currency === "diamonds" ? { currency: wallet.currency } : {}),
@@ -468,6 +470,7 @@ export function walletFrom(value: unknown): Wallet {
     withdrawalsEnabled: wallet.withdrawalsEnabled === true,
     ...(wallet.alreadyPaidPaise !== undefined ? { alreadyPaidPaise: Number(wallet.alreadyPaidPaise) } : {}),
     ...(wallet.alreadyPaidDiamondUnits !== undefined ? { alreadyPaidDiamondUnits: Number(wallet.alreadyPaidDiamondUnits) } : {}),
+    ...(wallet.lastPaidAt !== undefined ? { lastPaidAt: wallet.lastPaidAt } : {}),
     ...(wallet.hostEarningsPolicy !== undefined ? { hostEarningsPolicy: policy ? {
       enabled: true as const, ...financialVersion(policy),
       ...(policy.version !== undefined ? { version: Number(policy.version) } : {}),

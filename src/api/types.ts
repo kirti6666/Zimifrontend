@@ -470,6 +470,7 @@ export interface Wallet {
   /** Server aggregates, never totals inferred from one page of history. */
   alreadyPaidPaise?: number;
   alreadyPaidDiamondUnits?: number;
+  lastPaidAt?: string;
 }
 export type DiamondStatisticsPeriod = "daily" | "weekly" | "monthly";
 export interface DiamondStatistics {
@@ -563,7 +564,7 @@ export interface PayoutKycInput {
 }
 export interface PayoutKyc {
   required: boolean;
-  kyc: { status: "missing" | "pending" | "verified" | "rejected"; id?: string; ownerId?: string; revision?: number; legalName?: string; panMasked?: string; payoutType?: "upi" | "bank"; payoutAddress?: string; bankLast4?: string; ifsc?: string; reason?: string; };
+  kyc: { status: "missing" | "pending" | "verified" | "rejected"; id?: string; ownerId?: string; revision?: number; legalName?: string; panMasked?: string; payoutType?: "upi" | "bank"; payoutAddress?: string; bankLast4?: string; ifsc?: string; reason?: string; createdAt?: string; reviewedAt?: string; };
 }
 export interface WithdrawalQuote {
   policyVersion: 1 | 2;

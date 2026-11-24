@@ -41,7 +41,7 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   const page=await open();
   assert.equal(await page.getByRole('status',{name:'Loading available earnings',exact:true}).count(),1);
   assert.equal(await page.getByRole('status',{name:'Loading withdrawal history',exact:true}).count(),0,'Withdraw keeps history on its own screen');
-  assert.equal(await button(page,'Review withdrawal').isDisabled(),true);
+  assert.equal(await button(page,'Review withdrawal').count(),0,'The legacy form does not flash before the wallet policy loads');
   assert.equal((await sent(page,'payout.request')).length,0,'Opening payouts only reads data');
   await settleHistory(page);
   await receive(page,'wallet.balance',{...wallet,withdrawalsEnabled:false});
@@ -155,7 +155,7 @@ const fill=async(page,amount='500.10',address='creator@upi')=>{await page.locato
   assert.equal(await page.locator('.zpay-history').count(),0,'Old-session history cannot appear in a fresh account');
   const member={...host,user:{...host.user,role:'sender',serverRole:'user',hostStatus:'none',isVerifiedHost:false},verification:'none'};
   await receive(history,'session',member);await go(history,'payout');assert.notEqual(await history.evaluate(()=>S.v),'payout');
-  const preview=await open(true);assert.equal(await button(preview,'Review withdrawal').isDisabled(),true);await preview.evaluate(()=>{payoutReview();payoutConfirm()});assert.equal((await sent(preview,'payout.request')).length,0);
+  const preview=await open(true);assert.equal(await button(preview,'Review withdrawal').count(),0);await preview.evaluate(()=>{payoutReview();payoutConfirm()});assert.equal((await sent(preview,'payout.request')).length,0);
   assert.deepEqual(errors,[]);console.log('PASS payouts: session cleanup, late-event rejection, approved-host gating and safe demo mode');
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
