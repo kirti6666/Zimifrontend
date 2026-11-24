@@ -4163,7 +4163,7 @@ html:root[data-theme="dark"] .zc-thread{
 .hc-reference.zb-previewing :is(.hc-setup-header,.hc-rate-card,.hc-setup-cards,.hc-filter-button,.hc-preview-tools,.hc-guide,.hc-camera-message,.hc-setup-footer){display:none}
 .hc-reference.zb-previewing .hc-camera-card{position:absolute;inset:0;min-height:0;border:0;background:var(--media-canvas);border-radius:0!important}
 .hc-reference.zb-previewing .hc-stage{inset:0!important;z-index:0;background:var(--media-canvas)}
-.hc-reference.zb-previewing .hc-stage>video{object-fit:cover;object-position:center}
+.hc-reference.zb-previewing .hc-stage>video{object-fit:contain;object-position:center top}
 .hc-reference.zb-previewing.is-off .hc-stage:before{content:"";position:absolute;left:50%;top:21%;width:156px;height:156px;transform:translateX(-50%);background:var(--raised);border-radius:999px!important}
 .hc-reference.zb-previewing.is-off .hc-stage:after{content:"";position:absolute;left:50%;bottom:var(--zb-reference-height);width:min(310px,80%);height:190px;transform:translate(-50%,58%);background:var(--raised);border-radius:50% 50% 0 0!important}
 .zb-reference-experience{position:absolute;z-index:92;inset:0;overflow:hidden;pointer-events:none;color:#fff}
@@ -5891,10 +5891,9 @@ html[data-zimi-native-underlay], body[data-zimi-native-underlay],
 video[data-zimi-native-video] {
   background: transparent !important;
 }
-/* Ordinary setup and picture-in-picture retain the whole camera image. Full-stage
-   Beauty and call backgrounds fill the display so native video is not letterboxed. */
+/* Setup and picture-in-picture retain the whole camera image. Active call
+   backgrounds use their more specific full-stage cover rules. */
 html video[data-zimi-native-video] { color: transparent; object-fit: contain !important; }
-html .hc-reference.zb-previewing .hc-stage>video[data-zimi-native-video] { object-fit: cover !important; }
 /* Native padding is removed only for a visible video call. Its controls consume
    these insets while the video itself continues behind the system bars. */
 :root[data-native-call-fullscreen] {
@@ -17069,7 +17068,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   if (!window.ZIMI_NATIVE_MEDIA || DEMO) return;
   let sequence = 0, generation = 0, scheduled = false, lastLayout = '', lastControls = '', lastBeauty = '';
   let state = { hasVideo: false, hasRemoteVideo: false, facing: 'user', playbackMuted: false, quality: 'good' };
-  const pending = new Map(), shapes = {}, ancestors = new Set();
+  const pending = new Map(), shapes = {}, dimensions = {}, ancestors = new Set();
   const selector = 'video[data-zimi-local], video[data-zimi-remote]';
   const mediaViews = new Set(['precall', 'dial', 'dialback', 'voice', 'call', 'hcall', 'ring', 'switch']);
   function request(action, data = {}) {
@@ -17135,7 +17134,17 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
       let parent = video.parentElement;
       while (parent) { nextAncestors.add(parent); parent = parent.parentElement; }
       const radius = parseFloat(getComputedStyle(video.parentElement).borderTopLeftRadius) || parseFloat(css.borderTopLeftRadius) || 0;
-      slots.push({ kind, x: rect.x, y: rect.y, width: rect.width, height: rect.height, radius, fit: css.objectFit === 'contain' ? 'contain' : 'cover' });
+      let x = rect.x, y = rect.y, width = rect.width, height = rect.height;
+      // Native RTCView centers `contain` and has no object-position prop. Give
+      // setup Beauty an aspect-matched top slot so the complete frame remains
+      // unzoomed while all unused space falls behind the bottom controls.
+      if (kind === 'local' && css.objectFit === 'contain' && video.closest('.hc-reference.zb-previewing')) {
+        const source = dimensions[kind] || { width: 3, height: 4 };
+        const sourceRatio = source.width / source.height, boxRatio = width / height;
+        if (sourceRatio > boxRatio) height = width / sourceRatio;
+        else { const fittedWidth = height * sourceRatio; x += (width - fittedWidth) / 2; width = fittedWidth; }
+      }
+      slots.push({ kind, x, y, width, height, radius, fit: css.objectFit === 'contain' ? 'contain' : 'cover' });
     });
     ancestors.forEach(el => { if (!nextAncestors.has(el)) { el.removeAttribute('data-zimi-native-underlay'); ancestors.delete(el); } });
     nextAncestors.forEach(el => { el.setAttribute('data-zimi-native-underlay', ''); ancestors.add(el); });
@@ -17161,6 +17170,7 @@ window.ZimiBeautyCatalog = { BG_PRESETS, FILTER_IDS, STICKERS, STICKER_GROUPS, s
   });
   Native.on('native.media.dimensions', data => {
     if (!['local', 'remote'].includes(data.kind) || !(data.width > 0 && data.height > 0)) return;
+    dimensions[data.kind] = { width: data.width, height: data.height };
     shapes[data.kind] = data.width > data.height ? 'landscape' : 'portrait';
     scheduleLayout();
   });

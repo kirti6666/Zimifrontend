@@ -7,10 +7,9 @@ html[data-zimi-native-underlay], body[data-zimi-native-underlay],
 video[data-zimi-native-video] {
   background: transparent !important;
 }
-/* Ordinary setup and picture-in-picture retain the whole camera image. Full-stage
-   Beauty and call backgrounds fill the display so native video is not letterboxed. */
+/* Setup and picture-in-picture retain the whole camera image. Active call
+   backgrounds use their more specific full-stage cover rules. */
 html video[data-zimi-native-video] { color: transparent; object-fit: contain !important; }
-html .hc-reference.zb-previewing .hc-stage>video[data-zimi-native-video] { object-fit: cover !important; }
 /* Native padding is removed only for a visible video call. Its controls consume
    these insets while the video itself continues behind the system bars. */
 :root[data-native-call-fullscreen] {

@@ -124,7 +124,7 @@
 .hc-reference.zb-previewing :is(.hc-setup-header,.hc-rate-card,.hc-setup-cards,.hc-filter-button,.hc-preview-tools,.hc-guide,.hc-camera-message,.hc-setup-footer){display:none}
 .hc-reference.zb-previewing .hc-camera-card{position:absolute;inset:0;min-height:0;border:0;background:var(--media-canvas);border-radius:0!important}
 .hc-reference.zb-previewing .hc-stage{inset:0!important;z-index:0;background:var(--media-canvas)}
-.hc-reference.zb-previewing .hc-stage>video{object-fit:cover;object-position:center}
+.hc-reference.zb-previewing .hc-stage>video{object-fit:contain;object-position:center top}
 .hc-reference.zb-previewing.is-off .hc-stage:before{content:"";position:absolute;left:50%;top:21%;width:156px;height:156px;transform:translateX(-50%);background:var(--raised);border-radius:999px!important}
 .hc-reference.zb-previewing.is-off .hc-stage:after{content:"";position:absolute;left:50%;bottom:var(--zb-reference-height);width:min(310px,80%);height:190px;transform:translate(-50%,58%);background:var(--raised);border-radius:50% 50% 0 0!important}
 .zb-reference-experience{position:absolute;z-index:92;inset:0;overflow:hidden;pointer-events:none;color:#fff}
