@@ -137,6 +137,11 @@ function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p
 function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&!zuOffline())homeCall(p.id)}
 function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
 function zuWatch(){const p=Zu.profile;if(window.ZIMI_LIVE_STREAMING_ENABLED&&p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
+function zuShare(){
+  const p=zuPeer();if(!zuSelf()||!p?.id)return;
+  if(DEMO){appNotice('Design preview · this opens your phone’s share sheet.');return}
+  Native.send('profile.share',{id:p.id,name:p.name||'BinzoLive user'});
+}
 
 function zuSkeleton(kind='profile'){
   const shape=(width,height)=>skeletonLine(width,height);
@@ -159,14 +164,18 @@ function zuIdentity(p){
   const memberOwner=owner&&!isHostWallet();
   const followLabel=Zu.followBusy?'Updating…':p.following?'Following':followBack&&p.followsYou?'Follow back':'Follow';
   const bio=`<p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>`;
-  const stats=`<div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>`;
+  const leadStat=owner
+    ?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`
+    :`<div><strong>${Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)}</strong><span>Posts</span></div>`;
+  const relationshipStats=['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('');
+  const stats=`<div class="zu-stats" aria-label="Profile statistics">${leadStat}${relationshipStats}</div>`;
   return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
-    ${owner?`<button type="button" id="zu-edit-self" class="zu-owner-edit" aria-label="Edit profile" onclick="go('editprofile')">${zi('edit',memberOwner?14:18)}${memberOwner?'<span>Edit profile</span>':''}</button>`:showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
+    ${owner?`<button type="button" id="zu-edit-self" class="zu-owner-edit" aria-label="Edit profile" onclick="go('editprofile')">${zi('edit',14)}<span>Edit profile</span></button>`:showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
-    <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
+    <div class="zu-meta">${p.city?`<span class="zu-meta-city">${zi('location',14)}${esc(p.city)}</span>`:''}${p.languages?.length?`<span class="zu-meta-language">${zi('language',14)}${esc(p.languages[0])}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
-    ${memberOwner?bio:''}${stats}${memberOwner?'':bio}
+    ${bio}${stats}
     ${owner?`<button type="button" class="zu-agency-link" onclick="ZimiAgency.open('profile')">${zi('people',18)} ${memberOwner||isApprovedHost()?'My agency':'Become a Host'} ${hi('arrow',16)}</button>`:''}
     ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
     ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
@@ -201,14 +210,14 @@ function zuActions(p){
   if(zuSelf())return '';
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
-  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>YOUR NEXT CONVERSATION</span><strong>${Zu.loading?'Checking call rate…':Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'}</strong></div>`:''}
+  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>Video call rate</span><strong>${Zu.loading?'Checking call rate…':Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'}</strong></div>`:''}
     <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>Start video call</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
-  const pageClass=S.v==='profile'?`zu-own-page${!isHostWallet()?' zu-member-page':''}`:'';
-  return `<section class="zu-page ${pageClass}" aria-label="${owner?'Your profile':'User profile'}"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:'<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i></div>'}<div class="zu-cover-shade"></div>
-    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span>${owner?`<button class="zu-toolbar-more" aria-label="Open settings" onclick="go('settings')">${hi('set',21)}</button>`:`<button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button>`}</header>${owner?`<input id="zu-cover-input" type="file" accept="image/*" aria-label="Choose cover photo" onchange="zuPickCover(event)" hidden><button type="button" class="zu-cover-upload" aria-label="Change cover photo" onclick="zuEditMedia('cover')" ${zuOffline()||ZuCover.preparing||ZuCover.saving||Zu.loading||!Zu.profile?'disabled':''}>${zi('camera',16)} ${ZuCover.preparing?'Preparing…':ZuCover.saving?'Saving…':'Change cover'}</button>`:''}${p?zuStatus(p):''}</div>
+  const pageClass=`zu-reference-page ${owner?'zu-own-page':'zu-public-page'} ${zuApproved(p)?'zu-host-page':'zu-user-page'}${owner&&!isHostWallet()?' zu-member-page':''}${p?.city?' zu-has-city':''}${p?.languages?.length?' zu-has-language':''}`;
+  return `<section class="zu-page ${pageClass}" aria-label="${owner?'Your profile':'User profile'}"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:`<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i><span>${ci('image',22)}</span></div>`}<div class="zu-cover-shade"></div>
+    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span>${owner?`<button class="zu-toolbar-more" aria-label="Share profile" onclick="zuShare()" ${!p||Zu.error?'disabled':''}>${hi('share',20)}</button>`:`<button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button>`}</header>${owner?`<input id="zu-cover-input" type="file" accept="image/*" aria-label="Choose cover photo" onchange="zuPickCover(event)" hidden><button type="button" class="zu-cover-upload" aria-label="Change cover photo" onclick="zuEditMedia('cover')" ${zuOffline()||ZuCover.preparing||ZuCover.saving||Zu.loading||!Zu.profile?'disabled':''}>${ci('image',18)} ${ZuCover.preparing?'Preparing…':ZuCover.saving?'Saving…':'Change cover'}</button>`:''}${p?zuStatus(p):''}</div>
     <div class="zu-layout">${zuIdentity(p||{})}${zuContent(p)}</div>${zuActions(p)}${homeGiftSheet()}</section>`;
 }
 

@@ -131,6 +131,8 @@ export function parseWebMessage(raw: string): WebMessage | null {
     case "payments.routes.load": valid = Number.isSafeInteger(d.requestId) && Number(d.requestId) > 0 && Object.keys(d).every(key => key === "requestId"); break;
     case "profile.settings.load": valid = true; break;
     case "profile.load": valid = identifier(d.id) && Object.keys(d).every(key => ["id", "requestId"].includes(key)); break;
+    case "profile.share": valid = typeof d.id === "string" && d.id.trim().length > 0 && d.id.length <= 128 &&
+      typeof d.name === "string" && d.name.length <= 100 && Object.keys(d).every(key => ["id", "name"].includes(key)); break;
     case "profile.posts.load": valid = identifier(d.id) && (d.page === undefined || (Number.isInteger(d.page) && Number(d.page) >= 1 && Number(d.page) <= 10000)) && Object.keys(d).every(key => ["id", "page", "requestId"].includes(key)); break;
     case "profile.settings.save": case "settings.set": valid = settingsPatch(d); break;
     case "privacy.save": valid = privacyPatch(d); break;

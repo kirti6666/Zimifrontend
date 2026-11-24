@@ -5082,6 +5082,23 @@ test('Home feeds, the leaderboard and Refer a Friend pass the message check and 
   h.bridge.close();
 });
 
+test('profile sharing passes native validation and opens the phone share sheet', async () => {
+  const h = harness(), parse = message => h.webMessages.parseWebMessage(JSON.stringify(message));
+  const message = { type: 'profile.share', data: { id: '507f1f77bcf86cd799439011', name: 'Kashvi' } };
+  assert.ok(parse(message), 'A real profile share request passes the WebView boundary');
+  for (const data of [
+    { id: '', name: 'Kashvi' },
+    { id: '   ', name: 'Kashvi' },
+    { id: 'x'.repeat(129), name: 'Kashvi' },
+    { id: message.data.id, name: 'x'.repeat(101) },
+    { id: message.data.id, name: 'Kashvi', extra: true },
+  ]) assert.equal(parse({ type: 'profile.share', data }), null, 'Malformed profile share data is rejected');
+  h.bridge.handle(message); await settle();
+  assert.equal(h.shares.length, 1);
+  assert.deepEqual(plain(h.shares[0]), { title: 'BinzoLive', message: 'Find Kashvi on BinzoLive. Profile ID: 507f1f77bcf86cd799439011' });
+  h.bridge.close();
+});
+
 test('call targets reach only the call on screen and target messages need that active call', async () => {
   const h = harness();
   await h.session.setSessionTokens(tokenPair());

@@ -5292,6 +5292,8 @@ html,body,.app,#top,#scroll-root,#screen {
 .zu-identity-top {margin-top:-36px}
 .zu-identity {padding-top:16px}
 .zu-meta {font-size:calc(12px * var(--theme-font-scale,1));margin-top:8px}
+.zu-meta-language {display:none!important}
+.zu-reference-page:not(.zu-has-city).zu-has-language .zu-meta-language {display:inline-flex!important}
 .zu-stats {border:0;padding:0;margin:24px 0;gap:16px}
 .zu-stats>div {align-items:flex-start;gap:4px}
 .zu-stats>div+div {border-left:0}
@@ -5309,6 +5311,7 @@ html,body,.app,#top,#scroll-root,#screen {
 .zu-own-page .zu-avatar {width:64px;height:64px}
 .zu-own-page .zu-identity-top {margin-top:-24px;align-items:center}
 .zu-own-page .zu-owner-edit {display:grid;place-items:center;width:40px;height:40px;min-height:40px;margin-top:28px;padding:0;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.zu-owner-edit>span {display:none}
 .zu-own-page .zu-identity {padding-top:10px}
 .zu-own-page .zu-identity h1 {font-size:calc(20px * var(--theme-font-scale,1));line-height:1.25}
 .zu-own-page .zu-meta {margin-top:5px}
@@ -5384,7 +5387,7 @@ html,body,.app,#top,#scroll-root,#screen {
    avatars with their badges and rings, and switches. Keep this list in step
    with ROUND in scripts/flat-corners.cjs. */
 html:root :is(
-  .zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zr-round,.zb-lens-swatch,
+  .zb-back,button[aria-label^="Back"],button[aria-label^="Close"],.zu-toolbar-more,.zu-icon-button,.zu-add-photo,.zr-round,.zb-lens-swatch,
   .zh-creator-call,.voiceend,.ringact .accept,.zr-hangup,.zr-decline,.zr-call-topup,.hc-accept,.hc-decline,
   .zh-user-actions>button,.zh-user-avatar,.zh-user-avatar>i,
   .hc-preview-tools>button,.zv-actions button,.zv-controls button,.zh-call-controls button,.incban button,.zc-thread-actions>button,.zc-voice-play,
@@ -5407,44 +5410,76 @@ html:root #zimi-pull {border-radius:999px!important}
 /* Straight page edges and single-line separators never inherit a card's corners, and a
    country flag keeps a flag's square corners. */
 html:root{border-radius:0!important}
-html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-tabs,.zu-actionbar,.zu-stats,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-relationships-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag,.zhs-fill,.zhs-gridline){border-radius:0!important}
+html:root :is(html,body,.app,#top,#scroll-root,#screen,hr,[role=separator],.nav,.zu-actionbar,.zu-stats>div,.zu-skeleton-stats,.zu-details>div,.zu-option,.zp-stats,.zp-stats>div,.zp-wallet-actions,.zw-history,.zw-gift-footer,.zpost-visibility,.zpost-header,.zu-photo-dialog,.zu-relationships-dialog,.zu-feed-media,.zu-feed-media>img,.zu-feed-media>video,.zu-comments-backdrop,.zc-chips,.zt-card-foot,.zpc-details>i,.zt-mini-nav i,.zh-flag,.zhs-fill,.zhs-gridline){border-radius:0!important}
 /* Tab and navigation underlines and list dividers are drawn as straight lines too. */
 html:root :is(.zu-tabs>button,.zh-feed-tabs>button,.zh-nav>button,.zc-row)::after{border-radius:0!important}
 
-/* The member's own profile follows the compact member reference: identity first,
-   raised stat and agency rows, then a segmented Posts/MVP control. */
+/* Mobile profiles share the compact reference geometry. Account authority and
+   available actions still come from the public-profile renderer. */
 @media(max-width:759px) {
-  .zu-member-page .zu-cover {height:140px}
-  .zu-member-page .zu-toolbar>span {display:none}
-  .zu-member-page .zu-cover-upload {left:50%;top:56px;width:36px;height:36px;min-height:36px;padding:0;transform:translateX(-50%);border:0;background:transparent;color:var(--muted);font-size:0}
-  .zu-member-page .zu-cover-upload>svg {width:18px;height:18px}
-  .zu-member-page .zu-layout {padding-inline:15px}
-  .zu-member-page .zu-identity-top {margin-top:-27px;align-items:flex-end}
-  .zu-member-page .zu-owner-camera {right:-3px;bottom:-2px;width:24px;height:24px;border-width:2px;background:var(--accent);color:var(--cta-ink)}
-  .zu-member-page .zu-owner-edit {display:flex;align-items:center;justify-content:center;gap:5px;width:auto;height:32px;min-height:32px;margin:0 0 3px;padding:6px 11px;border:0;background:var(--raised);font-size:10px;font-weight:650}
-  .zu-member-page .zu-identity {padding-top:7px}
-  .zu-member-page .zu-identity h1 {font-size:calc(18px * var(--theme-font-scale,1));line-height:1.2}
-  .zu-member-page .zu-meta {margin-top:3px;font-size:calc(10px * var(--theme-font-scale,1))}
-  :root[data-theme-id] .zu-member-page .zu-bio {margin-top:6px;font-size:calc(11px * var(--theme-font-scale,1));line-height:1.45;color:var(--ink)}
-  html:root .zu-member-page .zu-stats {border-radius:10px!important}
-  .zu-member-page .zu-stats {margin:9px 0 8px;padding:7px 0;background:var(--raised);gap:0}
-  .zu-member-page .zu-stats>div {padding-inline:4px}
-  .zu-member-page .zu-stats>div+div {background:linear-gradient(var(--line),var(--line)) left center/1px 24px no-repeat}
-  .zu-member-page .zu-stats strong {font-size:calc(14px * var(--theme-font-scale,1));line-height:1.15}
-  .zu-member-page .zu-stats span {font-size:calc(9px * var(--theme-font-scale,1));line-height:1.25}
-  .zu-member-page .zu-stat-button {min-height:35px;gap:3px}
-  .zu-member-page .zu-agency-link {min-height:40px;margin:7px 0;padding:9px 11px;background:var(--raised);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600}
-  .zu-member-page .zu-content {margin-top:8px}
-  .zu-member-page .zu-content-header {align-items:center;gap:7px}
-  html:root .zu-member-page .zu-tabs {border-radius:10px!important}
-  .zu-member-page .zu-tabs {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;margin:0;padding:3px;background:var(--raised)}
-  .zu-member-page .zu-tabs>button {gap:5px;min-height:31px;padding:5px 7px;font-size:calc(10px * var(--theme-font-scale,1));font-weight:650}
-  .zu-member-page .zu-tabs>button[aria-selected=true] {background:var(--surface)}
-  .zu-member-page .zu-tabs>button[aria-selected=true]::after {display:none}
-  .zu-member-page .zu-tabs>button:last-child>svg {color:#e5b900}
-  .zu-member-page .zu-tabs>button>span {min-width:16px;line-height:15px;padding-inline:3px;font-size:8px}
-  html:root .zu-member-page .zu-add-photo {flex-basis:34px;width:34px;height:34px;border:0;border-radius:999px!important;background:var(--accent);color:var(--cta-ink)}
-  .zu-member-page .zu-mvp-board {padding-top:10px}
+  .zu-reference-page .zu-cover {height:186px}
+  .zu-reference-page .zu-cover:not(.has-photo),.zu-reference-page .zu-cover:not(.has-photo) .zu-cover-art {background:color-mix(in srgb,var(--accent) 14%,var(--raised))}
+  .zu-reference-page .zu-cover-art>span {position:absolute;inset:0;display:grid;place-items:center;color:color-mix(in srgb,var(--accent-ink) 48%,var(--muted))}
+  .zu-reference-page.zu-own-page .zu-cover-art>span {display:none}
+  .zu-reference-page .zu-toolbar {inset:15px}
+  .zu-reference-page .zu-toolbar>span {display:none}
+  .zu-reference-page .zu-cover-upload {left:50%;top:75px;width:36px;height:36px;min-height:36px;padding:0;transform:translateX(-50%);border:0;background:transparent;color:var(--muted);font-size:0}
+  .zu-reference-page .zu-cover-upload>svg {width:19px;height:19px}
+  .zu-reference-page .zu-presence {right:15px;bottom:12px;padding:4px 8px;font-size:calc(9px * var(--theme-font-scale,1))}
+  .zu-reference-page .zu-layout {padding-inline:15px}
+  .zu-reference-page .zu-identity-top {margin-top:-39px;align-items:flex-end}
+  .zu-reference-page .zu-avatar {width:76px;height:76px;border-width:3px;box-shadow:none}
+  .zu-reference-page .zu-verified {right:-2px;bottom:-1px;width:21px;height:21px;border-width:2px}
+  .zu-reference-page .zu-owner-camera {right:-3px;bottom:-2px;width:23px;height:23px;border-width:2px;background:var(--accent);color:var(--cta-ink)}
+  .zu-reference-page .zu-owner-edit,.zu-reference-page .zu-follow {display:flex;align-items:center;justify-content:center;gap:5px;width:auto;height:32px;min-width:0;min-height:32px;margin:0 0 3px;padding:6px 11px;border:0;background:var(--raised);color:var(--ink);font-size:calc(10px * var(--theme-font-scale,1));font-weight:650}
+  .zu-reference-page .zu-owner-edit>span {display:inline}
+  .zu-reference-page .zu-follow:not(.is-following) {background:var(--accent);color:var(--cta-ink)}
+  .zu-reference-page .zu-identity {padding-top:7px}
+  .zu-reference-page .zu-identity h1 {font-size:calc(20px * var(--theme-font-scale,1));line-height:1.2}
+  .zu-reference-page .zu-meta {margin-top:3px;font-size:calc(10px * var(--theme-font-scale,1))}
+  .zu-reference-page.zu-public-page.zu-has-language .zu-meta-city {display:none}
+  .zu-reference-page.zu-public-page.zu-has-language .zu-meta-language {display:inline-flex!important}
+  :root[data-theme-id] .zu-reference-page .zu-bio {margin-top:5px;font-size:calc(12px * var(--theme-font-scale,1));line-height:1.4;color:var(--ink)}
+  .zu-reference-page .zu-languages {display:none}
+  html:root .zu-reference-page .zu-stats {border-radius:10px!important}
+  .zu-reference-page .zu-stats {min-height:51px;margin:9px 0 7px;padding:6px 0;background:var(--raised);gap:0}
+  .zu-reference-page .zu-stats>div {align-items:center;justify-content:center;padding-inline:4px}
+  .zu-reference-page .zu-stats>div+div {background:linear-gradient(var(--line),var(--line)) left center/1px 24px no-repeat}
+  .zu-reference-page .zu-stats strong {font-size:calc(14px * var(--theme-font-scale,1));line-height:1.15}
+  .zu-reference-page .zu-stats span {font-size:calc(9px * var(--theme-font-scale,1));line-height:1.25}
+  .zu-reference-page .zu-stat-button {min-height:39px;gap:3px}
+  .zu-reference-page .zu-agency-link {min-height:42px;margin:7px 0;padding:9px 11px;background:var(--raised);font-size:calc(11px * var(--theme-font-scale,1));font-weight:600}
+  .zu-reference-page .zu-gift {min-height:42px;gap:8px;margin:7px 0;padding:6px 9px;background:var(--raised);border:0}
+  .zu-reference-page .zu-gift-icon {width:28px;height:28px;background:color-mix(in srgb,var(--accent) 18%,var(--surface));color:var(--accent-ink)}
+  .zu-reference-page .zu-gift b {font-size:calc(11px * var(--theme-font-scale,1))}
+  .zu-reference-page .zu-gift small {font-size:calc(9px * var(--theme-font-scale,1))}
+  .zu-reference-page .zu-content {margin-top:8px}
+  .zu-reference-page .zu-content-header {align-items:center;gap:7px}
+  html:root .zu-reference-page .zu-tabs {border-radius:10px!important}
+  .zu-reference-page .zu-tabs {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;margin:0;padding:3px;background:var(--raised)}
+  .zu-reference-page .zu-tabs>button {gap:5px;min-height:31px;padding:5px 7px;font-size:calc(10px * var(--theme-font-scale,1));font-weight:650}
+  .zu-reference-page .zu-tabs>button:first-child>svg {display:none}
+  .zu-reference-page .zu-tabs>button[aria-selected=true] {background:var(--surface)}
+  .zu-reference-page .zu-tabs>button[aria-selected=true]::after {display:none}
+  .zu-reference-page .zu-tabs>button:last-child>svg {color:#e5b900}
+  .zu-reference-page .zu-tabs>button>span {min-width:16px;line-height:15px;padding-inline:3px;font-size:8px}
+  html:root .zu-reference-page .zu-add-photo {flex-basis:34px;width:34px;height:34px;border:0;border-radius:999px!important;background:var(--accent);color:var(--cta-ink)}
+  .zu-reference-page .zu-gallery {gap:4px;margin-top:5px}
+  .zu-reference-page .zu-empty {padding:36px 12px 24px}
+  .zu-reference-page .zu-empty>svg {width:28px;height:28px;margin-bottom:12px}
+  .zu-reference-page .zu-empty h2 {font-size:calc(15px * var(--theme-font-scale,1));line-height:1.3;margin-bottom:5px}
+  .zu-reference-page .zu-empty p {font-size:calc(11px * var(--theme-font-scale,1));line-height:1.45}
+  .zu-reference-page .zu-text-button {font-size:calc(11px * var(--theme-font-scale,1))}
+  .zu-reference-page .zu-mvp-board {padding-top:10px}
+  .zu-reference-page .zu-mvp-heading h2 {font-size:calc(12px * var(--theme-font-scale,1))}
+  .zu-reference-page .zu-mvp-periods>button {min-height:26px;font-size:calc(9px * var(--theme-font-scale,1))}
+  .zu-reference-page .zu-mvp-empty {min-height:130px;border:0;background:var(--raised)}
+  .zu-reference-page .zu-actionbar {padding:8px 15px max(10px,var(--safe-bottom))}
+  .zu-reference-page .zu-call-info {margin-bottom:6px}
+  .zu-reference-page .zu-call-info>span {font-size:calc(9px * var(--theme-font-scale,1));letter-spacing:0;text-transform:none}
+  .zu-reference-page .zu-call-info>strong {font-size:calc(11px * var(--theme-font-scale,1))}
+  .zu-reference-page .zu-message,.zu-reference-page .zu-call {min-height:44px;padding:10px 12px;font-size:calc(12px * var(--theme-font-scale,1))}
+  .zu-reference-page.zu-user-page .zu-message {background:var(--accent);border-color:var(--accent);color:var(--cta-ink)}
 }
 /* A photo card opens the profile; its video call button starts the call. Keep the
    featured card's complete surface keyboard-accessible too. */
@@ -21604,6 +21639,11 @@ function zuMessage(){const p=zuPeer();if(p&&!Zu.error&&!zuOffline()&&zcCanChat(p
 function zuCall(){const p=Zu.profile;if(p&&!Zu.loading&&!Zu.error&&zuMember()&&zuApproved(p)&&!zuOffline())homeCall(p.id)}
 function zuGift(){const p=Zu.profile;if(p&&!Zu.loading&&zuMember()&&zuApproved(p)&&!zuOffline())homeGifts(p.id)}
 function zuWatch(){const p=Zu.profile;if(window.ZIMI_LIVE_STREAMING_ENABLED&&p?.stream&&!Zu.loading&&!zuOffline())homeOpen(p.id)}
+function zuShare(){
+  const p=zuPeer();if(!zuSelf()||!p?.id)return;
+  if(DEMO){appNotice('Design preview · this opens your phone’s share sheet.');return}
+  Native.send('profile.share',{id:p.id,name:p.name||'BinzoLive user'});
+}
 
 function zuSkeleton(kind='profile'){
   const shape=(width,height)=>skeletonLine(width,height);
@@ -21626,14 +21666,18 @@ function zuIdentity(p){
   const memberOwner=owner&&!isHostWallet();
   const followLabel=Zu.followBusy?'Updating…':p.following?'Following':followBack&&p.followsYou?'Follow back':'Follow';
   const bio=`<p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>`;
-  const stats=`<div class="zu-stats" aria-label="Profile statistics">${owner?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`:''}${['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('')}${owner?'':`<div><strong>${host?(Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)):esc(zuDate(p.joined,true)||'—')}</strong><span>${host?'Posts':'Joined'}</span></div>`}</div>`;
+  const leadStat=owner
+    ?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`
+    :`<div><strong>${Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)}</strong><span>Posts</span></div>`;
+  const relationshipStats=['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('');
+  const stats=`<div class="zu-stats" aria-label="Profile statistics">${leadStat}${relationshipStats}</div>`;
   return `<aside class="zu-overview"><div class="zu-identity-top">${owner?`<button type="button" class="zu-avatar zu-owner-avatar" onclick="zuEditMedia('avatar')" aria-label="Change profile photo" ${zuOffline()?'disabled':''}>${zuAvatar(p)}<span class="zu-owner-camera">${zi('camera',14)}</span></button>`:`<div class="zu-avatar">${zuAvatar(p)}${ready&&host?`<span class="zu-verified" aria-label="Verified creator">${hi('verified',19)}</span>`:''}</div>`}
-    ${owner?`<button type="button" id="zu-edit-self" class="zu-owner-edit" aria-label="Edit profile" onclick="go('editprofile')">${zi('edit',memberOwner?14:18)}${memberOwner?'<span>Edit profile</span>':''}</button>`:showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
+    ${owner?`<button type="button" id="zu-edit-self" class="zu-owner-edit" aria-label="Edit profile" onclick="go('editprofile')">${zi('edit',14)}<span>Edit profile</span></button>`:showFollow?`<button id="zu-follow" class="zu-follow ${p.following?'is-following':''}" onclick="zuFollow()" aria-pressed="${!!p.following}" ${Zu.followBusy||zuOffline()?'disabled':''}>${hi(p.following?'check':'plus',16)}${followLabel}</button>`:''}</div>
     ${Zu.loading?zuSkeleton():Zu.error?`<div class="zu-error" role="alert"><h1>Profile unavailable</h1><p>${esc(Zu.error)}</p><button class="zu-secondary" onclick="zuRetry()">Try again</button></div>`:`
     <div class="zu-identity"><h1>${esc(p.name)}</h1>${ready&&!owner&&p.followsYou?'<span class="zu-follows-you">Follows you</span>':''}
-    <div class="zu-meta">${p.city?`<span>${zi('location',14)}${esc(p.city)}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
+    <div class="zu-meta">${p.city?`<span class="zu-meta-city">${zi('location',14)}${esc(p.city)}</span>`:''}${p.languages?.length?`<span class="zu-meta-language">${zi('language',14)}${esc(p.languages[0])}</span>`:''}${host&&p.category?`<span class="zu-category">${ci('sparkle',13)}${esc(p.category)}</span>`:''}</div>
     ${Zu.followError?`<p class="zu-inline-error" role="alert">${esc(Zu.followError)}</p>`:''}
-    ${memberOwner?bio:''}${stats}${memberOwner?'':bio}
+    ${bio}${stats}
     ${owner?`<button type="button" class="zu-agency-link" onclick="ZimiAgency.open('profile')">${zi('people',18)} ${memberOwner||isApprovedHost()?'My agency':'Become a Host'} ${hi('arrow',16)}</button>`:''}
     ${!owner&&p.languages?.length?`<div class="zu-languages">${zi('language',15)}<span>${p.languages.map(esc).join(' · ')}</span></div>`:''}
     ${canFollow?`<button class="zu-gift" onclick="zuGift()" aria-label="Send a gift" ${zuOffline()?'disabled':''}><span class="zu-gift-icon">${hi('gift',22)}</span><span><b>Send a gift</b><small>Choose a gift to send</small></span>${hi('arrow',17)}</button>`:''}
@@ -21668,14 +21712,14 @@ function zuActions(p){
   if(zuSelf())return '';
   const ready=!!Zu.profile&&!Zu.loading,host=zuApproved(p),canCall=ready&&host&&zuMember()&&!zuOffline();
   const messageBlocked=zuOffline()||!zcCanChat(p.id),hostCalls=ready&&zuHostToMember(p);
-  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>YOUR NEXT CONVERSATION</span><strong>${Zu.loading?'Checking call rate…':Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'}</strong></div>`:''}
+  return `<div class="zu-actionbar"><div class="zu-actionbar-inner">${host&&zuMember()?`<div class="zu-call-info"><span>Video call rate</span><strong>${Zu.loading?'Checking call rate…':Number.isFinite(p.ratePerMin)?p.ratePerMin>0?`${hi('rings',15)} ${n(p.ratePerMin)} <small>coins / min</small>`:'Free calls':'Call rate unavailable'}</strong></div>`:''}
     <div class="zu-action-buttons ${hostCalls?'has-host-calls':''}"><button id="zu-message" class="zu-message" aria-label="Message" onclick="zuMessage()" ${messageBlocked?'disabled':''}>${hi('chat',20)}<span>Message</span></button>${host&&zuMember()?`<button id="zu-call" class="zu-call" onclick="zuCall()" ${canCall?'':'disabled'}>${hi('vid',21)}<span>Start video call</span></button>`:''}${hostCalls?`<button id="zu-voice-call" class="zu-call zu-call-voice" aria-label="Voice call" onclick="zuHostCall(true)" ${zuOffline()?'disabled':''}>${hi('ph',20)}<span>Voice</span></button><button id="zu-video-call" class="zu-call" aria-label="Video call" onclick="zuHostCall(false)" ${zuOffline()?'disabled':''}>${hi('vid',21)}<span>Video</span></button>`:''}</div></div></div>`;
 }
 function zuScreen(){
   const p=zuPeer(),cover=imageSrc(p?.coverUrl),owner=zuSelf();
-  const pageClass=S.v==='profile'?`zu-own-page${!isHostWallet()?' zu-member-page':''}`:'';
-  return `<section class="zu-page ${pageClass}" aria-label="${owner?'Your profile':'User profile'}"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:'<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i></div>'}<div class="zu-cover-shade"></div>
-    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span>${owner?`<button class="zu-toolbar-more" aria-label="Open settings" onclick="go('settings')">${hi('set',21)}</button>`:`<button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button>`}</header>${owner?`<input id="zu-cover-input" type="file" accept="image/*" aria-label="Choose cover photo" onchange="zuPickCover(event)" hidden><button type="button" class="zu-cover-upload" aria-label="Change cover photo" onclick="zuEditMedia('cover')" ${zuOffline()||ZuCover.preparing||ZuCover.saving||Zu.loading||!Zu.profile?'disabled':''}>${zi('camera',16)} ${ZuCover.preparing?'Preparing…':ZuCover.saving?'Saving…':'Change cover'}</button>`:''}${p?zuStatus(p):''}</div>
+  const pageClass=`zu-reference-page ${owner?'zu-own-page':'zu-public-page'} ${zuApproved(p)?'zu-host-page':'zu-user-page'}${owner&&!isHostWallet()?' zu-member-page':''}${p?.city?' zu-has-city':''}${p?.languages?.length?' zu-has-language':''}`;
+  return `<section class="zu-page ${pageClass}" aria-label="${owner?'Your profile':'User profile'}"><div class="zu-cover ${cover?'has-photo':''}">${cover?`<img class="zu-cover-photo zh-photo-pending" src="${cover}" alt="${esc(p.name)}’s cover" onerror="this.hidden=true;this.parentElement.classList.remove('has-photo')">`:`<div class="zu-cover-art" aria-hidden="true"><i></i><i></i><i></i><span>${ci('image',22)}</span></div>`}<div class="zu-cover-shade"></div>
+    <header class="zu-toolbar">${backButton('zuBack()',{media:true})}<span>Profile</span>${owner?`<button class="zu-toolbar-more" aria-label="Share profile" onclick="zuShare()" ${!p||Zu.error?'disabled':''}>${hi('share',20)}</button>`:`<button class="zu-toolbar-more" aria-label="More profile options" onclick="zuOpenOptions()" ${!p||Zu.error?'disabled':''}>${ci('more',21)}</button>`}</header>${owner?`<input id="zu-cover-input" type="file" accept="image/*" aria-label="Choose cover photo" onchange="zuPickCover(event)" hidden><button type="button" class="zu-cover-upload" aria-label="Change cover photo" onclick="zuEditMedia('cover')" ${zuOffline()||ZuCover.preparing||ZuCover.saving||Zu.loading||!Zu.profile?'disabled':''}>${ci('image',18)} ${ZuCover.preparing?'Preparing…':ZuCover.saving?'Saving…':'Change cover'}</button>`:''}${p?zuStatus(p):''}</div>
     <div class="zu-layout">${zuIdentity(p||{})}${zuContent(p)}</div>${zuActions(p)}${homeGiftSheet()}</section>`;
 }
 

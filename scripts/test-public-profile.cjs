@@ -77,6 +77,32 @@ async function run() {
     assert.equal(actual.animations, 0, `${label}: reduced motion suppresses decorative animations`);
     assert.equal(await button(page, 'Message').isVisible(), true);
   };
+  const compactLayout = async (page, label) => {
+    const metrics = await page.locator('.zu-page').evaluate(pageRoot => {
+      const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span'),content=pageRoot.querySelector('.zu-content'),actionbar=pageRoot.querySelector('.zu-actionbar');
+      const rect=element=>element?.getBoundingClientRect();
+      const columns=element=>getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length;
+      return {
+        coverHeight:rect(cover)?.height||0,
+        avatarSize:rect(avatar)?.width||0,
+        statColumns:columns(stats),
+        statsBackground:getComputedStyle(stats).backgroundColor,
+        tabDisplay:getComputedStyle(tabs).display,
+        tabColumns:columns(tabs),
+        toolbarTitleVisible:toolbarTitle?getComputedStyle(toolbarTitle).display!=='none':false,
+        contentTop:parseFloat(getComputedStyle(content).marginTop)||0,
+        actionPosition:getComputedStyle(actionbar).position
+      };
+    });
+    assert.ok(metrics.coverHeight>=180&&metrics.coverHeight<=190,`${label}: compact cover stays near the measured 186px reference (${metrics.coverHeight}px)`);
+    assert.ok(metrics.avatarSize>=72&&metrics.avatarSize<=80,`${label}: compact avatar stays near the measured 76px reference (${metrics.avatarSize}px)`);
+    assert.equal(metrics.statColumns,3,`${label}: public statistics remain a three-column card`);
+    assert.notEqual(metrics.statsBackground,'rgba(0, 0, 0, 0)',`${label}: public statistics use the raised surface`);
+    assert.deepEqual([metrics.tabDisplay,metrics.tabColumns],['grid',2],`${label}: public Posts and MVP use the segmented control`);
+    assert.equal(metrics.toolbarTitleVisible,false,`${label}: compact cover omits the redundant Profile label`);
+    assert.ok(metrics.contentTop<=12,`${label}: content follows the compact identity without a large gap`);
+    assert.equal(metrics.actionPosition,'fixed',`${label}: public actions remain fixed and reachable`);
+  };
   try {
     const preview = await open(true);
     await preview.locator('.zu-page').waitFor();
@@ -98,6 +124,22 @@ async function run() {
     await preview.screenshot({ path: path.join(artifacts, 'public-profile-mobile-light.png') });
     console.log('PASS public profile: premium preview, responsive dark/light layouts, reduced motion, screenshots');
 
+    // Exercise the reference's public User state in an isolated page so this
+    // visual check cannot affect the relationship/cache scenarios below.
+    const memberPage=await open();
+    await navigate(memberPage,member);await acceptProfile(memberPage,member);await acceptPosts(memberPage,member);
+    assert.deepEqual(await memberPage.locator('.zu-stats span').allInnerTexts(),['Posts','Followers','Following'],'A public User exposes only real public statistics in the reference order');
+    assert.equal(await memberPage.locator('.zu-stats').getByText(/Coins|Diamonds/).count(),0,'Another User never receives a fabricated wallet balance');
+    assert.equal(await button(memberPage,'Message').count(),1,'Another User keeps the single Message action');
+    assert.equal(await memberPage.locator('#zu-follow,.zu-gift,#zu-call,#zu-voice-call,#zu-video-call').count(),0,'A member viewer gets no unauthorized User actions');
+    for(const width of [320,390]) {
+      await memberPage.setViewportSize({width,height:844});
+      await layout(memberPage,`Public User ${width}px`);
+      await compactLayout(memberPage,`Public User ${width}px`);
+    }
+    await memberPage.screenshot({ path: path.join(artifacts, 'public-user-compact.png') });
+    await memberPage.close();
+
     const page = await open();
     const first = await navigate(page);
     assert.ok(first.requestId != null, 'Profile loads have a correlation identifier');
@@ -116,6 +158,18 @@ async function run() {
     assert.match(await page.locator('.zu-page').innerText(), /127/, 'Followers come from the public profile');
     assert.equal(await page.locator('.zu-page .post,.zu-page .zu-post').count(), 0, 'An empty server gallery does not show preview posts');
     assert.equal(await page.locator('.zu-bio').innerText(), creator.about, 'The biography remains visible in the profile identity');
+    assert.deepEqual(await page.locator('.zu-stats span').allInnerTexts(),['Posts','Followers','Following'],'A public Host exposes only real public statistics in the reference order');
+    assert.equal(await page.locator('.zu-stats').getByText(/Coins|Diamonds/).count(),0,'A public Host never exposes or invents wallet data');
+    assert.match(await page.locator('.zu-meta').innerText(),/English/,'The compact public profile uses language metadata like the reference');
+    assert.doesNotMatch(await page.locator('.zu-meta').innerText(),/Pune/,'The compact public profile does not duplicate city when language is available');
+    assert.match(await page.locator('.zu-call-info>span').innerText(),/Video call rate/i,'The Host action bar uses the compact reference rate label');
+    for(const width of [320,390]) {
+      await page.setViewportSize({width,height:844});
+      await layout(page,`Public Host ${width}px`);
+      await compactLayout(page,`Public Host ${width}px`);
+    }
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({ path: path.join(artifacts, 'public-host-compact.png') });
     await tab(page, 'MVP').click();
     assert.equal(await tab(page, 'MVP').getAttribute('aria-selected'), 'true');
     const mvpPanel = page.locator('#zu-panel');
@@ -175,7 +229,7 @@ async function run() {
     await receive(page, 'data.home', { ...feed, hosts: [unavailable], featured: unavailable });
     assert.equal(await button(page, 'Start video call').isEnabled(), true, 'A host availability toggle never prevents a member from opening a manual call');
     assert.match(await page.locator('.zu-call-info').innerText(), /20\s+coins \/ min/, 'The server call rate remains visible when the host is not taking instant calls');
-    assert.equal(await page.locator('.zu-stats strong').first().innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
+    assert.equal(await page.locator('.zu-stats>div').filter({hasText:'Followers'}).locator('strong').innerText(), '127', 'Discovery updates do not overwrite detailed public profile counts');
     assert.equal(await button(page, 'Follow').isEnabled(), true, 'Discovery updates do not replace the profile relationship');
     assert.equal(await page.getByRole('button', { name: /^Open photo/ }).count(), 2, 'Presence changes preserve the loaded gallery');
     assert.equal(await sentCount(page, 'profile.load'), readsBeforePresence, 'A live presence update does not restart profile loading');
@@ -250,6 +304,7 @@ async function run() {
     assert.equal(await page.evaluate(() => __copied.at(-1)), creator.id, 'Copy uses the real account identifier');
     await page.keyboard.press('Escape');
     await button(page, 'Message').click();
+    await page.waitForFunction(id=>__sent.some(message=>message.type==='chat.open'&&message.data?.with===id),creator.id);
     assert.equal((await lastSent(page, 'chat.open')).with, creator.id);
     await navigate(page);
     await acceptProfile(page); await acceptPosts(page);
@@ -333,7 +388,7 @@ async function run() {
     assert.equal(await button(page, 'Message').isEnabled(), true, 'Hosts can message other hosts');
     assert.equal(await button(page, 'Follow').count(), 0, 'Host-to-host Follow is unavailable');
     await navigate(page, member);
-    await acceptProfile(page, member);
+    await acceptProfile(page, member);await acceptPosts(page,member);
     assert.equal(await button(page, 'Message').isEnabled(), true, 'An approved host can reply to an existing member');
     assert.equal(await button(page, 'Follow').count(), 1, 'A host can follow a member');
     assert.equal(await button(page, 'Start video call').count(), 0, 'Member profiles do not advertise the member call action');
@@ -342,6 +397,7 @@ async function run() {
     assert.equal(await page.locator('.zu-page [aria-label="Verified creator"],.zu-page [aria-label="Verified user"]').count(), 0, 'An unverified member receives no verified badge');
     assert.doesNotMatch(await page.locator('.zu-page').innerText(), /127|Acoustic evenings/, 'A member profile never leaks the previously viewed creator content');
     await button(page, 'Message').click();
+    await page.waitForFunction(id=>__sent.some(message=>message.type==='chat.open'&&message.data?.with===id),member.id);
     assert.equal((await lastSent(page, 'chat.open')).with, member.id, 'Member Message uses S.u rather than a stale host target');
     console.log('PASS public profile: creator/member permissions, host Follow and calls, privacy and chat-target isolation');
 
@@ -380,7 +436,7 @@ async function run() {
     assert.equal(await page.locator('#nav [aria-current="page"]').innerText(), 'Profile', 'The shared layout retains the selected primary tab');
     assert.equal(await page.locator('#zu-follow, #zu-message, #zu-call, .zu-gift').count(), 0, 'Nothing to follow, message, call or gift on your own profile');
     assert.equal(await button(page, 'More profile options').count(), 0, 'You cannot report or block yourself');
-    assert.equal(await button(page, 'Open settings').count(), 1, 'The owner has account settings in the toolbar');
+    assert.equal(await button(page, 'Share profile').count(), 1, 'The owner toolbar exposes the reference Share action');
     assert.equal(await button(page, 'Change profile photo').count(), 1, 'The owner can change their avatar');
     assert.equal(await button(page, 'Change cover photo').count(), 1, 'The owner can change their cover');
     assert.equal(await page.locator('.zu-gallery .zu-photo').count(), 1, 'Your posts show as they do for others');

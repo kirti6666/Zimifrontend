@@ -76,6 +76,7 @@ export type WebMessage =
   | { type: "referral.load"; data: Record<string, never> }
   | { type: "referral.apply"; data: { code: string; requestId: number } }
   | { type: "referral.share"; data: Record<string, never> }
+  | { type: "profile.share"; data: { id: string; name: string } }
   | { type: "wallet.verify"; data: { merchantOrderId: string } }
   | { type: "payments.checkout.closed"; data: { kind: "coins" | "premium"; merchantOrderId?: string; idempotencyKey?: string } }
   | { type: "themes.load"; data: Record<string, never> }
@@ -1333,6 +1334,13 @@ export function createBridge(post: (msg: AppMessage) => void) {
         emit({ type: "data.referral", data });
         const bonus = data.friendBonusCoins.toLocaleString("en-IN");
         await Share.share({ title: "BinzoLive", message: `Join me on BinzoLive! Use my code ${data.code} when you sign up and get ${bonus} free coins.${data.shareUrl ? ` ${data.shareUrl}` : ""}` });
+        return;
+      }
+      case "profile.share": {
+        const id = typeof msg.data?.id === "string" ? msg.data.id.trim().slice(0, 128) : "";
+        const name = typeof msg.data?.name === "string" ? msg.data.name.trim().slice(0, 100) : "";
+        if (!id) return;
+        await Share.share({ title: "BinzoLive", message: `Find ${name || "this profile"} on BinzoLive. Profile ID: ${id}` });
         return;
       }
       case "leaderboard.load": {

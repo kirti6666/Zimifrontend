@@ -49,6 +49,30 @@ async function audit(page,label) {
   assert.equal(result.canvas,'rgb(255, 255, 255)',`${label}: white app canvas`);
   assert.deepEqual(result.wrong,[],`${label}: 10px corners except the round Back, call, avatar and switch controls, and no shadows`);
 }
+async function auditCompactProfile(page,label) {
+  const metrics=await page.locator('.zu-page').evaluate(pageRoot=>{
+    const cover=pageRoot.querySelector('.zu-cover'),avatar=pageRoot.querySelector('.zu-avatar'),stats=pageRoot.querySelector('.zu-stats'),tabs=pageRoot.querySelector('.zu-tabs'),toolbarTitle=pageRoot.querySelector('.zu-toolbar>span');
+    const rect=element=>element?.getBoundingClientRect();
+    const columns=element=>getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean).length;
+    return {
+      coverHeight:rect(cover)?.height||0,
+      avatarSize:rect(avatar)?.width||0,
+      statColumns:columns(stats),
+      statsBackground:getComputedStyle(stats).backgroundColor,
+      tabDisplay:getComputedStyle(tabs).display,
+      tabColumns:columns(tabs),
+      toolbarTitleVisible:toolbarTitle?getComputedStyle(toolbarTitle).display!=='none':false,
+      contentTop:parseFloat(getComputedStyle(pageRoot.querySelector('.zu-content')).marginTop)||0
+    };
+  });
+  assert.ok(metrics.coverHeight>=180&&metrics.coverHeight<=190,`${label}: compact cover stays near the measured 186px reference (${metrics.coverHeight}px)`);
+  assert.ok(metrics.avatarSize>=72&&metrics.avatarSize<=80,`${label}: compact avatar stays near the measured 76px reference (${metrics.avatarSize}px)`);
+  assert.equal(metrics.statColumns,3,`${label}: statistics remain a three-column card`);
+  assert.notEqual(metrics.statsBackground,'rgba(0, 0, 0, 0)',`${label}: statistics use the raised card surface`);
+  assert.deepEqual([metrics.tabDisplay,metrics.tabColumns],['grid',2],`${label}: Posts and MVP use the two-segment control`);
+  assert.equal(metrics.toolbarTitleVisible,false,`${label}: compact cover omits the redundant Profile label`);
+  assert.ok(metrics.contentTop<=12,`${label}: content follows the compact identity without a large gap`);
+}
 (async()=>{
   const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH}:{})});
   const errors=[];
@@ -95,12 +119,22 @@ async function audit(page,label) {
     await allTime.focus();await page.keyboard.press('Enter');
     assert.deepEqual([await thisWeek.getAttribute('aria-pressed'),await allTime.getAttribute('aria-pressed')],['false','true'],'MVP periods are keyboard-operable');
     assert.equal((await mvpPanel.innerText()).replace(/\s+/g,' ').trim(),'Top supporters This week All time No MVP','Changing periods keeps the exact empty MVP content');
+    for(const width of [320,390]) {
+      await page.setViewportSize({width,height:844});
+      await auditCompactProfile(page,`Own MVP profile ${width}px`);
+      assert.equal(await mvpPanel.locator('.zu-mvp-row,[data-supporter-id],[role="listitem"]').count(),0,`${width}px MVP never invents supporters`);
+    }
+    await page.setViewportSize({width:390,height:844});
     await page.getByRole('tab',{name:/^Posts/}).click();
     assert.equal(await button(page,'Edit profile').count(),1,'One compact edit icon');
+    assert.match(await page.locator('#zu-edit-self').innerText(),/Edit profile/,'The owner edit control keeps its visible reference label');
     assert.equal(await page.locator('.zu-tabs').evaluate(el=>getComputedStyle(el).borderBottomWidth),'0px','No divider line under the profile tabs');
     for(const selector of ['.zu-cover','.zu-overview','.zu-identity','.zu-stats','.zu-tabs','.zu-panel'])assert.equal(await page.locator(selector).count(),1,`${selector} reuses the public profile structure`);
     for(const selector of ['#zu-follow','#zu-message','#zu-call','.zu-gift'])assert.equal(await page.locator(selector).count(),0,'Own profiles never offer social actions on yourself');
-    assert.equal(await button(page,'Open settings').count(),1);
+    assert.equal(await button(page,'Share profile').count(),1,'The owner toolbar follows the reference with a truthful Share action');
+    await button(page,'Share profile').click();
+    assert.deepEqual(await lastSent(page,'profile.share'),{id:ownerId,name:member.user.name},'Share targets the authenticated public profile without inventing a URL');
+    assert.equal(await page.evaluate(()=>S.v),'profile','Opening the native share sheet keeps the Profile route');
     assert.equal(await button(page,'Change profile photo').count(),1);
     assert.equal(await button(page,'Change cover photo').count(),1);
     assert.equal(await page.locator('#zu-edit-self').count(),1);
@@ -109,6 +143,7 @@ async function audit(page,label) {
     for(const width of [320,390,768]) {
       await page.setViewportSize({width,height:844});
       await audit(page,`Own profile ${width}px`);
+      if(width<=390)await auditCompactProfile(page,`Own Posts profile ${width}px`);
       assert.equal(await page.locator('#nav [aria-current="page"]').innerText(),'Profile');
       await page.screenshot({path:path.join(shots,`profile-${width}.png`)});
     }
@@ -148,7 +183,7 @@ async function audit(page,label) {
       assert.equal(await page.evaluate(()=>S.v),'editprofile',`${name} opens the real media editor`);
       await navigate(page,'profile');await settleProfile(page,publicProfile(updated));
     }
-    await button(page,'Open settings').click();
+    await page.locator('#nav').getByRole('button',{name:'Settings',exact:true}).click();
     assert.equal(await page.evaluate(()=>S.v),'settings');
     await button(page,'Open your profile').click();
     assert.equal(await page.evaluate(()=>S.v),'profile');
@@ -213,7 +248,9 @@ async function audit(page,label) {
     assert.equal(await page.locator('.zu-stats strong').first().innerText(),'—','A failed host balance never falls back to Coins or zero');
     await receive(page,'wallet.balance',{diamondScale:1000000,diamondUnits:1234500000,reservedDiamondUnits:0,profileDiamondUnits:1200000000});
     await audit(page,'Creator own profile');
-    await button(page,'Open settings').click();await button(page,'Account').click();
+    await auditCompactProfile(page,'Creator own profile at 390px');
+    assert.match(await page.locator('#zu-edit-self').innerText(),/Edit profile/,'Approved Hosts keep the same visible Edit profile control');
+    await page.locator('#nav').getByRole('button',{name:'Settings',exact:true}).click();await button(page,'Account').click();
     await button(page,'Deactivate account').click();
     const deactivationPage=page.locator('.zp-settings-detail-page');
     await deactivationPage.getByRole('heading',{name:'Deactivate account?',exact:true}).waitFor();
