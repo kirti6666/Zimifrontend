@@ -106,6 +106,9 @@ html,body,.app,#top,#scroll-root,#screen {
 .zp-simple-icon {display:grid;place-items:center;width:28px;height:30px;flex:none;color:var(--ink)}
 .zp-simple-icon svg {width:25px;height:25px;stroke-width:1.7}
 .zp-simple-logout {display:block;min-height:44px;padding:10px 5px;margin-top:4px;color:var(--muted);font-size:15px;font-weight:400;text-align:left}
+.zp-settings-detail-page {max-width:620px;padding:0 0 32px}
+.zp-detail-header {border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent)}
+.zp-detail-body {padding-top:12px}
 .zp-settings-detail .zp-row {padding:10px 0;gap:13px;min-height:52px}
 .zp-settings-detail .zp-row-icon {background:var(--surface)!important;color:var(--ink)!important;border:0;width:28px;height:30px}
 .zp-settings-detail .zp-row-text>b {font-size:15px;font-weight:500}

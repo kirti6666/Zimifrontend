@@ -65,8 +65,8 @@ function ztLoad(){if(DEMO){ztPaint();return}if(ZThemes.loading)return;ZThemes.lo
 ZimiPullRefresh.register('themes',{refresh:()=>ztLoad(),busy:()=>ZThemes.loading});
 function ztBeforeNavigate(view){
   if(view==='themes'&&S.v!=='themes'){
-    const fromAccount=['profile','settings'].includes(S.v);
-    ZThemes.returnTo=S.v==='settings'?'settings':'profile';
+    const fromAccount=['profile','settings','settings-detail'].includes(S.v);
+    ZThemes.returnTo=['settings','settings-detail'].includes(S.v)?'settings':'profile';
     ZThemes.returnScroll=fromAccount?ztScrollPosition():0;
     ZThemes.returnFocus=fromAccount?document.activeElement?.getAttribute('aria-label')||'':'';
     ZThemes.refreshView=null;ZThemes.renderView=null;

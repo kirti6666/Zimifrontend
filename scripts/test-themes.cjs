@@ -12,7 +12,14 @@ const receive = (page, type, data) => page.evaluate(message => Native.receive(me
 const sent = (page, type) => page.evaluate(type => __sent.filter(message => message.type === type), type);
 async function openAppearance(page) {
   await page.getByRole('button', { name: 'General', exact: true }).click();
-  await page.getByRole('dialog', { name: 'General', exact: true }).getByRole('button', { name: /^Appearance & Theme/ }).click();
+  const general=page.locator('.zp-settings-detail-page').filter({has:page.getByRole('heading',{name:'General',exact:true})});
+  await general.waitFor();
+  assert.equal(await page.evaluate(() => S.v), 'settings-detail', 'General opens as a dedicated page');
+  assert.equal(await page.locator('#zp-dialog').count(), 0, 'General does not create a Settings dialog');
+  assert.equal(await page.getByRole('dialog', { name: 'General', exact: true }).count(), 0, 'General is not modal');
+  assert.equal(await page.locator('#nav button').count(), 0, 'General hides the bottom tabs');
+  assert.equal(await general.getByRole('button', { name: 'Back to settings', exact: true }).count(), 1);
+  await general.getByRole('button', { name: /^Appearance & Theme/ }).click();
 }
 
 (async () => {

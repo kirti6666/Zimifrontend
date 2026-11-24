@@ -211,7 +211,7 @@ function go(v,id){
  if(v==='search')S.sq='';
  if(S.v==='editprofile'&&v!=='editprofile'){mediaSequence++;obResetProfileDraft()}
  if(S.v!==v&&S.mediaPreparing){mediaSequence++;S.mediaPreparing=false}
- if(v==='editprofile'){S.editBack=S.v==='settings'?'settings':'profile';obResetProfileDraft()}
+ if(v==='editprofile'){S.editBack=['settings','settings-detail'].includes(S.v)?'settings':'profile';obResetProfileDraft()}
  window.ZimiThemes?.beforeNavigate(v);
  window.ZimiAds?.beforeNavigate(v);
  const navigationChange=window.ZimiNavigation?.before(v);

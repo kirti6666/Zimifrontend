@@ -69,6 +69,13 @@
 .zp-footer{padding:32px 5px 4px;color:var(--muted);text-align:center;font-size:10px;line-height:1.8}
 .zp-footer>span{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;font-size:12px;font-weight:650}.zp-footer-logo{display:block;width:auto;height:24px;margin-bottom:2px}.zp-footer small{font-size:9px}
 
+/* Every Settings destination is a normal app page with one scroll owner. */
+.zp-settings-detail-page{width:100%;max-width:620px;min-height:100%;padding:0 0 32px}
+.zp-detail-header{position:sticky;top:0;z-index:3;height:64px;padding:8px 18px;background:var(--canvas)}
+.zp-detail-header h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zp-detail-body{padding:8px 20px 32px}
+.zp-detail-body>.zp-settings-detail{margin-top:0}
+
 /* Dialogs retain native focus trapping and request-bound save states. */
 .zp-dialog{position:fixed;inset:0;width:calc(100% - 28px);max-width:470px;max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);margin:auto;padding:0;border:1px solid var(--line);border-radius:24px;background:var(--surface);color:var(--ink);box-shadow:0 25px 100px #0006;overflow:auto;overscroll-behavior:contain;color-scheme:dark}
 .zp-dialog::backdrop{background:#10081299;backdrop-filter:blur(8px)}
@@ -76,12 +83,12 @@
 .zp-dialog-heading h2{font-size:21px;line-height:1.35;letter-spacing:-.6px}
 .zp-dialog-heading>button{display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:14px;background:var(--raised);color:var(--ink);font-size:23px}
 .zp-dialog-body{padding:6px 22px 20px}
-.zp-dialog-body>p,.zp-guidelines>p,.zp-dialog details p{color:var(--muted);font-size:13px;line-height:1.8;margin:10px 0 18px}
-.zp-dialog .zp-note{color:var(--muted);font-size:11px;margin:7px 0 16px}
-.zp-dialog h3{font-size:14px;margin:22px 0 8px}
-.zp-dialog details{margin-top:10px;padding:14px;border:1px solid var(--line);border-radius:13px}
-.zp-dialog summary{min-height:25px;font-size:13px;line-height:1.7;font-weight:600;cursor:pointer}
-.zp-dialog details[open]{background:color-mix(in srgb,var(--raised) 45%,transparent)}.zp-dialog details p{margin:12px 0 0}
+:is(.zp-dialog-body,.zp-detail-body)>p,.zp-guidelines>p,:is(.zp-dialog,.zp-detail-body) details p{color:var(--muted);font-size:13px;line-height:1.8;margin:10px 0 18px}
+:is(.zp-dialog,.zp-detail-body) .zp-note{color:var(--muted);font-size:11px;margin:7px 0 16px}
+:is(.zp-dialog,.zp-detail-body) h3{font-size:14px;margin:22px 0 8px}
+:is(.zp-dialog,.zp-detail-body) details{margin-top:10px;padding:14px;border:1px solid var(--line);border-radius:13px}
+:is(.zp-dialog,.zp-detail-body) summary{min-height:25px;font-size:13px;line-height:1.7;font-weight:600;cursor:pointer}
+:is(.zp-dialog,.zp-detail-body) details[open]{background:color-mix(in srgb,var(--raised) 45%,transparent)}:is(.zp-dialog,.zp-detail-body) details p{margin:12px 0 0}
 .zp-field{display:flex;flex-direction:column;gap:9px;margin:20px 0;color:var(--muted);font-size:12px}
 .zp-field>input,.zp-field>select{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);font-size:13px}
 .zp-save,.zp-secondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;gap:8px;padding:13px;margin-top:15px;border-radius:13px;font-size:13px;font-weight:650}
@@ -92,7 +99,7 @@
 .zp-languages{display:flex;flex-wrap:wrap;gap:8px;padding:0;border:0;margin-top:20px}.zp-languages legend{padding-bottom:12px;font-size:12px}
 .zp-languages label{display:flex;align-items:center;gap:7px;min-height:44px;padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--raised);font-size:12px;cursor:pointer}
 :root[data-theme-id] .zp-languages label:has(input:checked){border-color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
-.zp-dialog input[type=checkbox]{flex:none;width:18px;height:18px;accent-color:var(--accent)}
+:is(.zp-dialog,.zp-detail-body) input[type=checkbox]{flex:none;width:18px;height:18px;accent-color:var(--accent)}
 .zp-preference{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:8px 0;font-size:13px;cursor:pointer}
 .zp-preference input[type=checkbox]{position:relative;appearance:none;width:42px;height:26px;border:1px solid var(--line);border-radius:16px;background:var(--raised);cursor:pointer;transition:background-color 180ms}
 .zp-preference input::before{position:absolute;content:'';width:18px;height:18px;top:3px;left:3px;border-radius:50%;background:var(--muted);transition:transform 180ms}
@@ -110,10 +117,11 @@
 .zp-blocked>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;font-size:12px}
 .zp-blocked button{min-height:44px;padding:10px 12px;border-radius:10px;background:var(--raised);color:var(--ink);font-size:11px}
 .zp-history .acctrow{padding-left:0;padding-right:0}.zp-danger{background:var(--theme-danger)}
-.zp-page :is(button,input):focus-visible,.zp-dialog :is(button,input,select,summary):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.zp-page :is(button,input,select,summary):focus-visible,.zp-dialog :is(button,input,select,summary):focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
 
 @media(min-width:900px){
   .zp-page{max-width:1100px;padding:30px 28px 36px}.zp-heading{margin-bottom:30px}
+  .zp-settings-detail-page{max-width:620px;padding:0 0 36px}
   :root[data-theme-id] .zp-page .zp-heading h1{font-size:calc(34px * var(--theme-font-scale,1))}
   .zp-heading p{font-size:13px}.zp-layout{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:32px;align-items:start}
   .zp-overview{position:sticky;top:24px}
@@ -124,6 +132,7 @@
 }
 @media(max-width:380px){
   .zp-page{padding-left:13px;padding-right:13px}
+  .zp-settings-detail-page{padding-left:0;padding-right:0}.zp-detail-header{padding-left:13px;padding-right:13px}.zp-detail-body{padding-left:16px;padding-right:16px}
   :root[data-theme-id] .zp-page .zp-heading h1{font-size:calc(25px * var(--theme-font-scale,1))}
   .zp-cover{padding-left:14px;padding-right:14px}.zp-card-label{font-size:7px;letter-spacing:.8px}.zp-account-type{font-size:7px}
   .zp-identity-body{padding-left:14px;padding-right:14px}.zp-person{gap:11px}.zp-avatar{width:67px;height:67px}.zp-person h2{font-size:19px}

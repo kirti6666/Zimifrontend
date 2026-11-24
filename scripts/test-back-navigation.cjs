@@ -67,12 +67,42 @@ async function navigationChecks(page) {
     await back(page);
     assert.equal(await current(page), 'home', `${view} returns Home instead of exiting`);
   }
+  await navigate(page, 'profile');
+  await page.evaluate(() => zpOpen('identity'));
+  assert.equal(await current(page), 'settings-detail');
+  assert.equal(await page.getByRole('heading', { name: 'Your BinzoLive ID', exact: true }).count(), 1);
+  assert.equal(await page.locator('#zp-dialog').count(), 0, 'Profile settings details never create a modal');
+  assert.equal(await page.locator('#nav button').count(), 0, 'A settings detail page hides primary tabs');
+  await back(page);
+  assert.equal(await current(page), 'profile', 'Profile ID returns to its dynamic caller');
+
+  await navigate(page, 'settings');
+  await page.evaluate(() => { zpOpen('account'); zpOpen('identity'); });
+  assert.equal(await page.getByRole('heading', { name: 'Your BinzoLive ID', exact: true }).count(), 1);
+  await back(page);
+  assert.equal(await current(page), 'settings-detail');
+  assert.equal(await page.getByRole('heading', { name: 'Account', exact: true }).count(), 1, 'Identity returns to Account first');
+  await back(page);
+  assert.equal(await current(page), 'settings', 'Account returns to Settings next');
+  await back(page);
+  assert.equal(await current(page), 'home', 'Settings then returns Home without exiting');
+
+  for (const [menu, child, parentTitle, childTitle] of [
+    ['privacy-menu', 'privacy', 'Privacy & Terms', 'Privacy & Blocked Users'],
+    ['general', 'language', 'General', 'Language & Region'],
+  ]) {
+    await navigate(page, 'settings');
+    await page.evaluate(({ menu, child }) => { zpOpen(menu); zpOpen(child); }, { menu, child });
+    assert.equal(await page.getByRole('heading', { name: childTitle, exact: true }).count(), 1);
+    await back(page);
+    assert.equal(await current(page), 'settings-detail');
+    assert.equal(await page.getByRole('heading', { name: parentTitle, exact: true }).count(), 1, `${childTitle} returns to ${parentTitle}`);
+    await back(page);
+    assert.equal(await current(page), 'settings', `${parentTitle} returns to Settings`);
+  }
+
   for (const origin of ['profile', 'settings']) {
     await navigate(page, origin);
-    await page.evaluate(() => zpOpen('identity'));
-    await back(page);
-    await page.locator('#zp-dialog').waitFor({ state: 'detached' });
-    assert.equal(await current(page), origin, 'Back closes settings before leaving its page');
     await page.evaluate(() => ztOpen());
     assert.equal(await current(page), 'themes', 'Appearance is a full page');
     assert.equal(await page.getByRole('dialog').count(), 0, 'Appearance does not leave a settings modal open');
@@ -268,6 +298,6 @@ async function onboardingChecks(page) {
     await mediaChecks(page);
     await onboardingChecks(page);
     assert.deepEqual(errors, [], 'Back handling has no browser runtime errors');
-    console.log('PASS back navigation: native bridge routing, settings and chat overlays, photo cleanup, recording protection, call minimizing and end confirmation, disabled streaming, preparation cancellation and minimized ringing calls, onboarding, and root-only exit requests.');
+    console.log('PASS back navigation: native bridge routing, Settings pages and chat overlays, photo cleanup, recording protection, call minimizing and end confirmation, disabled streaming, preparation cancellation and minimized ringing calls, onboarding, and root-only exit requests.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -73,10 +73,16 @@ async function run() {
     await settleSettings(page);
     await receive(page, 'wallet.balance', { coins: 3750, earningsPaise: 123450, reservedPaise: 5000 });
     const profile = () => page.locator('.zp-page');
-    const row = name => page.locator('.zp-page,.zp-dialog').getByRole('button', { name: new RegExp(`^${name}`) });
-    const dialog = name => page.getByRole('dialog', { name, exact: true });
-    const close = () => page.getByRole('button', { name: 'Close settings', exact: true }).click();
-    const openMenu = async name => { await page.evaluate(() => zpClose()); await profile().getByRole('button', { name, exact: true }).click(); };
+    const row = name => page.locator('.zp-page').getByRole('button', { name: new RegExp(`^${name}`) });
+    const detail = name => page.locator('.zp-settings-detail-page').filter({ has: page.getByRole('heading', { name, exact: true }) });
+    const back = () => page.locator('.zp-settings-detail-page .zb-back').click();
+    const openMenu = async name => {
+      if (await page.evaluate(() => S.v) !== 'settings') await navigate(page, 'settings');
+      await page.locator('.zp-simple-settings').getByRole('button', { name, exact: true }).click();
+      await detail(name).waitFor();
+      assert.equal(await page.locator('#zp-dialog').count(), 0, `${name} is a page, not a Settings dialog`);
+      assert.equal(await page.locator('#nav').isVisible(), false, `${name} hides the primary navigation`);
+    };
     const readyProfile = async () => { await navigate(page, 'settings'); await settleSettings(page, saved); };
     let saved = structuredClone(settings);
     const settleSelf = async () => {
@@ -105,12 +111,13 @@ async function run() {
     assert.match(await page.locator('.zp-balance strong').innerText(), /3,750/);
     await openMenu('Account');
     await row('Account ID & QR code').click();
-    await dialog('Your BinzoLive ID').waitFor();
-    assert.equal(await dialog('Your BinzoLive ID').locator('.zp-account-id').innerText(), account.user.id);
-    assert.ok(await dialog('Your BinzoLive ID').locator('.zp-qr svg').count() > 0, 'The account ID has a generated QR image');
-    await dialog('Your BinzoLive ID').getByRole('button', { name: 'Copy account ID', exact: true }).click();
+    await detail('Your BinzoLive ID').waitFor();
+    assert.equal(await detail('Your BinzoLive ID').locator('.zp-account-id').innerText(), account.user.id);
+    assert.ok(await detail('Your BinzoLive ID').locator('.zp-qr svg').count() > 0, 'The account ID has a generated QR image');
+    await detail('Your BinzoLive ID').getByRole('button', { name: 'Copy account ID', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.__copied), [account.user.id]);
-    await close();
+    await back();
+    await detail('Account').waitFor();
     await openMenu('Account');
     await row('Edit profile').click();
     assert.equal(await page.evaluate(() => S.v), 'editprofile');
@@ -126,20 +133,21 @@ async function run() {
     await readyProfile();
     await openMenu('Account');
     await row('Phone & Email Security').click();
-    assert.match(await dialog('Phone & Email Security').innerText(), /3210/);
-    assert.match(await dialog('Phone & Email Security').innerText(), /Verified for sign-in/);
-    await close();
+    assert.match(await detail('Phone & Email Security').innerText(), /3210/);
+    assert.match(await detail('Phone & Email Security').innerText(), /Verified for sign-in/);
+    await back();
+    await detail('Account').waitFor();
 
     await openMenu('General');
     for (const removed of ['Match & Speed Pulse', 'Notifications & Alerts', '1-on-1 Call Availability'])
-      assert.equal(await page.locator('.zp-page,.zp-dialog').getByText(removed, { exact: true }).count(), 0, `${removed} is not a settings item`);
+      assert.equal(await page.locator('.zp-page').getByText(removed, { exact: true }).count(), 0, `${removed} is not a settings item`);
     await row('Language & Region').click();
-    const language = dialog('Language & Region');
+    const language = detail('Language & Region');
     const city = language.getByLabel('City / region', { exact: true });
     await city.fill('Mumbai');
     await city.evaluate(input => input.setSelectionRange(1, 4));
     await receive(page, 'data.profileSettings', saved);
-    assert.deepEqual(await city.evaluate(input => ({ value: input.value, focused: document.activeElement === input, start: input.selectionStart, end: input.selectionEnd })), { value: 'Mumbai', focused: true, start: 1, end: 4 }, 'Background account refresh preserves an unsaved dialog draft and cursor');
+    assert.deepEqual(await city.evaluate(input => ({ value: input.value, focused: document.activeElement === input, start: input.selectionStart, end: input.selectionEnd })), { value: 'Mumbai', focused: true, start: 1, end: 4 }, 'Background account refresh preserves an unsaved page draft and cursor');
     await language.getByLabel('Hindi', { exact: true }).uncheck();
     await language.getByRole('button', { name: 'Save preferences', exact: true }).click();
     let request = await lastSent(page, 'profile.settings.save');
@@ -167,9 +175,10 @@ async function run() {
     await readyProfile();
     await openMenu('General');
     await row('Language & Region').click();
-    assert.equal(await dialog('Language & Region').getByLabel('English', { exact: true }).isChecked(), true, 'Saved languages reopen selected');
-    assert.equal(await dialog('Language & Region').getByLabel('Hindi', { exact: true }).isChecked(), false);
-    await close();
+    assert.equal(await detail('Language & Region').getByLabel('English', { exact: true }).isChecked(), true, 'Saved languages reopen selected');
+    assert.equal(await detail('Language & Region').getByLabel('Hindi', { exact: true }).isChecked(), false);
+    await back();
+    await detail('General').waitFor();
     await openMenu('General');
 
     await row('Appearance & Theme').click();
@@ -191,10 +200,15 @@ async function run() {
     console.log('PASS profile: real ID/QR and edit/wallet actions, settings saves wait for acknowledgment, error recovery, stale response isolation, draft preservation and shared appearance');
 
     await page.evaluate(() => znPreferences());
-    const notifications = dialog('Notification preferences');
+    const notifications = detail('Notification preferences');
     assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), true, 'Unavailable push registration cannot be presented as functional');
+    assert.equal(await page.locator('#zp-dialog').count(), 0, 'Notification preferences is a page, not a Settings dialog');
     await notifications.getByRole('button', { name: 'Open notifications', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'notifications');
+    await page.evaluate(() => znPreferences());
+    await detail('Notification preferences').waitFor();
+    await back();
+    assert.equal(await page.evaluate(() => S.v), 'notifications', 'Notification preferences returns to Notifications when opened there');
     await readyProfile();
     const pushCapabilities = status => ({ ...saved, capabilities: { ...saved.capabilities, pushNotifications: true, nativePushRegistered: status === 'registered', nativePushStatus: status } });
     await settleSettings(page, pushCapabilities('denied'));
@@ -204,7 +218,7 @@ async function run() {
     await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).click();
     assert.deepEqual(await lastSent(page, 'push.enable'), {}, 'The native shell decides whether to ask again or open system settings');
     await receive(page, 'data.profileSettings', pushCapabilities('registered'));
-    assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), false, 'The open dialog updates once the phone allows notifications');
+    assert.equal(await notifications.getByRole('checkbox', { name: 'Push notifications', exact: true }).isDisabled(), false, 'The open page updates once the phone allows notifications');
     assert.equal(await notifications.getByRole('button', { name: 'Turn on notifications', exact: true }).count(), 0);
     for(const name of ['Calls','Messages','Likes','Comments','Gifts','App updates','Following creators coming online','Quiet hours (except calls)'])assert.equal(await notifications.getByRole('checkbox',{name,exact:true}).count(),1);
     assert.equal(await notifications.getByRole('checkbox',{name:'Creator earning inspiration',exact:true}).count(),0,'Members cannot opt into host earning alerts');
@@ -217,14 +231,14 @@ async function run() {
     assert.equal(notificationSave.notificationPreferences.messages,false);assert.equal(notificationSave.notificationPreferences.quietHours.enabled,true);assert.equal(notificationSave.notificationPreferences.quietHours.startHour,21);assert.equal(notificationSave.notificationPreferences.earningsAlerts,false);
     await receive(page,'profile.settings.saved',{requestId:notificationSave.requestId,settings:{...pushCapabilities('registered'),preferences:{...saved.preferences,notificationPreferences:notificationSave.notificationPreferences}}});
     assert.equal(await notifications.count(),0,'Notification preferences wait for the server acknowledgment');
-    await receive(page,'session',approved);await settleSettings(page,{...pushCapabilities('registered'),capabilities:{...pushCapabilities('registered').capabilities,earningsAlerts:true}});await page.evaluate(()=>znPreferences());
+    await receive(page,'session',approved);await settleSettings(page,{...pushCapabilities('registered'),capabilities:{...pushCapabilities('registered').capabilities,earningsAlerts:true}});const hostNotificationOrigin=await page.evaluate(()=>S.v);await page.evaluate(()=>znPreferences());
     assert.equal(await notifications.getByRole('checkbox',{name:'Creator earning inspiration',exact:true}).isChecked(),false,'Competitive earning alerts are opt-in for approved hosts');
     assert.equal(await notifications.getByRole('checkbox',{name:'Following creators coming online',exact:true}).count(),0);
     const checkNotificationLayout=async role=>{
       for(const mode of ['light','dark']){
         await page.setViewportSize({width:320,height:568});await page.evaluate(dark=>ZimiThemes.setDark(dark),mode==='dark');
-        await notifications.evaluate(dialog=>{dialog.scrollTop=0;dialog.querySelector('.zp-dialog-body').scrollTop=0});
-        assert.equal(await notifications.evaluate(dialog=>dialog.scrollWidth>dialog.clientWidth+1),false,`${role} preferences fit 320px in ${mode} mode`);
+        await page.evaluate(()=>{for(const id of ['scroll-root','screen']){const scroller=document.getElementById(id);if(scroller)scroller.scrollTop=0}});
+        assert.equal(await notifications.evaluate(detailPage=>detailPage.scrollWidth>detailPage.clientWidth+1),false,`${role} preferences fit 320px in ${mode} mode`);
         await page.screenshot({path:path.join(os.tmpdir(),`zimi-notification-preferences-${role}-${mode}-top.png`)});
         const save=notifications.getByRole('button',{name:'Save preferences',exact:true});await save.scrollIntoViewIfNeeded();
         const bounds=await save.boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=568,`${role} preferences Save remains reachable on a small screen`);
@@ -233,13 +247,14 @@ async function run() {
       await page.setViewportSize({width:373,height:1600});await page.evaluate(()=>ZimiThemes.setDark(false));
     };
     await checkNotificationLayout('host');
-    await close();
+    await back();
+    assert.equal(await page.evaluate(() => S.v), hostNotificationOrigin, 'Notification preferences returns to its caller');
     await receive(page,'session',account);
     await readyProfile();
-    await page.evaluate(()=>znPreferences());await checkNotificationLayout('sender');await close();
+    await page.evaluate(()=>znPreferences());await checkNotificationLayout('sender');await back();
     await openMenu('Privacy & Terms');
     await row('Privacy & Blocked Users').click();
-    const privacy = dialog('Privacy & Blocked Users');
+    const privacy = detail('Privacy & Blocked Users');
     await privacy.getByRole('status', { name: 'Loading blocked accounts', exact: true }).waitFor();
     await loading(page, 'blocked', false, { error: 'Blocked accounts are unavailable' });
     await privacy.getByRole('alert').filter({ hasText: 'Blocked accounts are unavailable' }).waitFor();
@@ -272,11 +287,12 @@ async function run() {
     await openMenu('Privacy & Terms');
     await row('Privacy & Blocked Users').click();
     assert.equal(await page.getByRole('checkbox', { name: 'Discoverable profile', exact: true }).isChecked(), false, 'The saved discovery choice reopens off');
-    await close();
+    await back();
+    await detail('Privacy & Terms').waitFor();
 
     await openMenu('Payments');
     await row('Gift History').click();
-    const gifts = dialog('Gift History');
+    const gifts = detail('Gift History');
     await gifts.getByRole('status', { name: 'Loading gift history', exact: true }).waitFor();
     await loading(page, 'transactions', false, { error: 'Gift history is unavailable' });
     await gifts.getByRole('alert').filter({ hasText: 'Gift history is unavailable' }).waitFor();
@@ -293,8 +309,9 @@ async function run() {
     assert.ok(await sentCount(page, 'support.load') > 0, 'The support center requests private account history');
     await readyProfile();
     await openMenu('Privacy & Terms');
-    await row('Community Guidelines').click(); await dialog('Community Guidelines').waitFor();
-    assert.ok((await dialog('Community Guidelines').innerText()).length > 100); await close();
+    await row('Community Guidelines').click(); await detail('Community Guidelines').waitFor();
+    assert.ok((await detail('Community Guidelines').innerText()).length > 100); await back();
+    await detail('Privacy & Terms').waitFor();
     // Ringing calls and live rooms defer a tap until navigation is safe.
     // Connected/minimized call navigation is covered with real media in test-ongoing-call.
     for (const view of ['incoming', 'live']) {
@@ -309,7 +326,7 @@ async function run() {
     assert.equal(await page.evaluate(() => S.v), 'official-chat');
     assert.ok(await sentCount(page, 'official.load') > 0, 'An official push opens the verified Team Chat');
     await readyProfile();
-    console.log('PASS profile: capability-aware notifications, blocked account loading/unblock recovery, real privacy saves, gift history and support dialogs');
+    console.log('PASS profile: capability-aware notifications, blocked account loading/unblock recovery, real privacy saves, gift history and support pages');
 
     for (const hostStatus of ['none', 'pending', 'rejected', 'suspended']) {
       await receive(page, 'session', { ...approved, user: { ...approved.user, hostStatus } });
@@ -346,7 +363,7 @@ async function run() {
     assert.equal(await page.evaluate(() => window.__profileXss), undefined);
     await readyProfile();
     await row('Log out').click();
-    const logout = dialog('Log Out');
+    const logout = detail('Log Out');
     await logout.getByRole('button', { name: 'Stay signed in', exact: true }).click();
     assert.equal(await sentCount(page, 'auth.logout'), 0);
     await row('Log out').click();

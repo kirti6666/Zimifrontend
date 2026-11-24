@@ -353,9 +353,12 @@ async function detailAndSafety(page) {
   assert.equal(await page.getByRole('dialog').count(), 0);
 
   await button(page, 'Notification preferences').click();
-  await page.getByRole('dialog', { name: 'Notification preferences', exact: true }).waitFor();
+  const preferences=page.locator('.zp-settings-detail-page');
+  await preferences.getByRole('heading', { name: 'Notification preferences', exact: true }).waitFor();
+  assert.equal(await page.locator('#zp-dialog').count(),0,'Notification preferences opens as a full page');
+  assert.equal(await page.locator('#nav').isVisible(),false,'Notification preferences hides bottom navigation');
   assert.ok((await sent(page, 'profile.settings.load')).length > 0, 'Preferences load the real account settings');
-  await button(page, 'Close settings').click();
+  await button(page, 'Back to notifications').click();
   assert.equal(await page.evaluate(() => S.v), 'notifications');
 
   const unsafe = { ...notices[0], title: '<img src=x onerror="window.__notificationXss=1">', body: '<script>window.__notificationXss=2</script> & "quoted" content', read: true };

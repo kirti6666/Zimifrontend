@@ -74,10 +74,14 @@ async function audit(page,label){
     assert.equal(await page.locator('.zp-summary-avatar').evaluate(el=>getComputedStyle(el).borderRadius),'999px','Avatars are round');
     assert.equal(await page.locator('.zp-wallet').evaluate(el=>getComputedStyle(el).borderRadius),'10px','Cards keep the shared 10px corners');
     await page.getByRole('button',{name:'Privacy & Terms',exact:true}).click();
-    const privacyMenu=page.getByRole('dialog',{name:'Privacy & Terms',exact:true});
+    const privacyMenu=page.locator('.zp-settings-detail-page');
+    await privacyMenu.getByRole('heading',{name:'Privacy & Terms',exact:true}).waitFor();
+    assert.equal(await page.locator('#zp-dialog').count(),0,'Settings drilldowns are pages, not dialogs');
     await privacyMenu.getByRole('button',{name:/Privacy & Blocked Users/}).click();
-    await audit(page,'privacy dialog');
-    await page.getByRole('button',{name:'Close settings',exact:true}).click();
+    await privacyMenu.getByRole('heading',{name:'Privacy & Blocked Users',exact:true}).waitFor();
+    await audit(page,'privacy page');
+    await page.getByRole('button',{name:'Back to Privacy & Terms',exact:true}).click();
+    await page.getByRole('button',{name:'Back to settings',exact:true}).click();
     await navigate(page,'safety');
     assert.deepEqual([...new Set(await page.locator('.acctrow').evaluateAll(rows=>rows.map(row=>getComputedStyle(row).borderTopWidth)))],['0px'],'No divider lines between settings rows');
     await navigate(page,'settings');
