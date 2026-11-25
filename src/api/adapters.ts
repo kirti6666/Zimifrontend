@@ -661,17 +661,32 @@ export function referralFrom(value: unknown): ReferralSummary {
     coinsEarned: count(data.coinsEarned), appliedCode: referralCode(data.appliedCode) || null, canApplyCode: data.canApplyCode === true,
   };
 }
-export function leaderboardFrom(value: unknown, period: LeaderboardPeriod): Leaderboard {
+export function leaderboardFrom(value: unknown, period: LeaderboardPeriod, page = 1): Leaderboard {
   const data = record(value), invalid = () => new ApiError("The leaderboard could not be loaded. Try again.", 502);
-  if (data.period !== period || typeof data.total !== "number" || !Number.isSafeInteger(data.total) || data.total < 0) throw invalid();
+  if (data.period !== period || (data.page === undefined ? page !== 1 : data.page !== page) ||
+    typeof data.total !== "number" || !Number.isSafeInteger(data.total) || data.total < 0) throw invalid();
+  const rowFrom = (row: RecordValue) => {
+    const id = idOf(row), { coins, rank } = row;
+    if (!/^[a-f\d]{24}$/i.test(id) || typeof coins !== "number" || !Number.isSafeInteger(coins) || coins <= 0 ||
+      typeof rank !== "number" || !Number.isSafeInteger(rank) || rank < 1) throw invalid();
+    const avatar = row.avatar && typeof row.avatar === "object" ? record(row.avatar) : {};
+    return { id, name: string(row.name).trim() || "Creator", avatarUrl: string(avatar.url), coins, rank };
+  };
+  const rankedItems = items(data).map(value => {
+    const row = record(value);
+    if (row.sample === true) throw invalid();
+    return rowFrom(row);
+  });
+  if (data.sampleItems === undefined && data.sampleTotal === undefined)
+    return { period, page, total: data.total, items: rankedItems, sampleItems: [], sampleTotal: 0 };
+  if (!Array.isArray(data.sampleItems) || typeof data.sampleTotal !== "number" ||
+    !Number.isSafeInteger(data.sampleTotal) || data.sampleTotal < data.sampleItems.length) throw invalid();
   return {
-    period, total: data.total,
-    items: items(data).map(record).map(row => {
-      const id = idOf(row), { coins, rank } = row;
-      if (!/^[a-f\d]{24}$/i.test(id) || typeof coins !== "number" || !Number.isSafeInteger(coins) || coins <= 0 ||
-        typeof rank !== "number" || !Number.isSafeInteger(rank) || rank < 1) throw invalid();
-      const avatar = row.avatar && typeof row.avatar === "object" ? record(row.avatar) : {};
-      return { id, name: string(row.name).trim() || "Creator", avatarUrl: string(avatar.url), coins, rank };
+    period, page, total: data.total, items: rankedItems, sampleTotal: data.sampleTotal,
+    sampleItems: data.sampleItems.map(value => {
+      const row = record(value);
+      if (row.sample !== true) throw invalid();
+      return { ...rowFrom(row), sample: true };
     }),
   };
 }

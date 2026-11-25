@@ -457,7 +457,12 @@ export const api = {
   async transactions() { return transactionsFrom(await request("GET", "/wallet/transactions")); },
   async referral() { return referralFrom(await request("GET", "/referrals/me")); },
   async applyReferral(code: string) { return referralFrom(await request("POST", "/referrals/apply", { code })); },
-  async leaderboard(period: LeaderboardPeriod) { return leaderboardFrom(await request("GET", `/leaderboard/creators?${queryString({ period, limit: 50 })}`), period); },
+  async leaderboard(period: LeaderboardPeriod, page = 1) {
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1000)
+      throw new ApiError("Choose a valid leaderboard page.", 400);
+    const query = queryString({ period, limit: 50, includeSamples: "true", page: page === 1 ? undefined : page });
+    return leaderboardFrom(await request("GET", `/leaderboard/creators?${query}`), period, page);
+  },
   async wallet(): Promise<Wallet> { return walletFrom(await request("GET", "/wallet")); },
   async diamondStatistics(period: DiamondStatisticsPeriod, date?: string) {
     if (!["daily", "weekly", "monthly"].includes(period) || (date !== undefined && !validStatisticsDate(date)))

@@ -1,14 +1,46 @@
-/* The Home trophy opens the server-ranked creator gift leaderboard. */
-const Board = { period:'daily', rows:[] };
+/* The Home trophy opens gift rankings and server-supplied sample scores. */
+const Board = { period:'daily', rows:[], sampleRows:[], hasMoreSamples:false, samplePage:1, requestedPage:1, day:0 };
 const BOARD_PERIODS = [['daily','Daily','today'],['weekly','Weekly','this week'],['monthly','Monthly','this month']];
-function lbLoad(){
-  if(DEMO){
-    const now=new Date();
-    Board.rows=lbPreviewRows(Board.period,now);lbPreviewSchedule(now);r();return;
-  }
-  contentStart('leaderboard');Native.send('leaderboard.load',{period:Board.period});r();
+const BOARD_DAY = 86_400_000;
+const boardThousands = new Intl.NumberFormat('en-US',{maximumFractionDigits:1});
+const boardMillions = new Intl.NumberFormat('en-US',{maximumFractionDigits:3});
+let boardDayTimer;
+function lbSampleCoinText(coins){
+  if(coins>=999_950)return boardMillions.format(coins/1_000_000)+'M';
+  if(coins>=1_000)return boardThousands.format(coins/1_000)+'K';
+  return n(coins);
 }
-function lbPeriod(value){if(!BOARD_PERIODS.some(([key])=>key===value)||value===Board.period)return;Board.period=value;Board.rows=[];lbLoad()}
+function lbSchedule(){
+  clearTimeout(boardDayTimer);
+  const now=Date.now();
+  Board.day=Math.floor(now/BOARD_DAY);
+  boardDayTimer=setTimeout(()=>{if(S.v==='board')lbLoad()},BOARD_DAY-now%BOARD_DAY);
+}
+function lbLoad(page=1){
+  if(page===1)lbSchedule();
+  if(DEMO){
+    Board.sampleRows=lbPreviewRows(Board.period);r();return;
+  }
+  Board.requestedPage=page;
+  contentStart('leaderboard',{page});
+  Native.send('leaderboard.load',page===1?{period:Board.period}:{period:Board.period,page});
+  r();
+}
+function lbReset(period){
+  Object.assign(Board,{period,rows:[],sampleRows:[],hasMoreSamples:false,samplePage:1,requestedPage:1});
+}
+function lbPeriod(value){
+  if(!BOARD_PERIODS.some(([key])=>key===value)||value===Board.period)return;
+  lbReset(value);lbLoad();
+}
+function lbAccepts(data){
+  return (data.period===undefined||data.period===Board.period)&&(data.page??1)===Board.requestedPage;
+}
+function lbMore(){
+  if(contentPending('leaderboard')||!Board.hasMoreSamples)return;
+  if(Math.floor(Date.now()/BOARD_DAY)!==Board.day)return lbLoad();
+  lbLoad(Board.samplePage+1);
+}
 function lbPeriodKey(event){
   if(!['ArrowLeft','ArrowRight'].includes(event.key))return;
   event.preventDefault();
@@ -18,19 +50,53 @@ function lbPeriodKey(event){
 function lbHeader(){return `<header class="zh-subheader zlb-header">${backButton("go('home')",{label:"Back to home"})}<h1>Leaderboard</h1></header>`}
 function lbAvatar(row){const src=imageSrc(row.avatarUrl);return `<span class="av zlb-avatar" aria-hidden="true">${esc((first(row.name||'')||'?').charAt(0).toUpperCase())}${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>`}
 // A row opens the creator's profile; the creator is remembered so the profile has a name at once.
-function lbOpen(id){const row=Board.rows.find(x=>x.id===id);if(!row)return;if(!g(id))homeRemember({id:row.id,name:row.name,avatarUrl:row.avatarUrl,role:'host'});go('host',domId(id))}
-function lbView(){
-  const pending=!DEMO&&contentPending('leaderboard'),error=!pending&&!DEMO&&ContentLoading.leaderboard.error;
-  const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
-  const rows=Board.rows,periodText=BOARD_PERIODS.find(([key])=>key===Board.period)[2];
-  const list=rows.length?`<ol class="zlb-list">${rows.map(row=>`<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${DEMO?'Sample rank':'Rank'} ${row.rank}, ${esc(row.name)}, ${n(row.coins)} coins"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-coins">${hi('rings',15)}${DEMO?lbPreviewCoinText(row.coins):n(row.coins)}</span></button></li>`).join('')}</ol>`:`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;
-  const body=pending?contentSkeleton('rows','Loading leaderboard',6):error?contentError('leaderboard'):list;
-  const note=DEMO?'Design preview &middot; sample hosts and Coin totals'+MODEL_NOTE:'Creators ranked by gift coins received';
-  return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}"><p class="zlb-note">${note}</p>${body}</div></section>`;
+function lbOpen(id){const row=Board.rows.find(x=>x.id===id)||Board.sampleRows.find(x=>x.id===id);if(!row)return;if(!g(id))homeRemember({id:row.id,name:row.name,avatarUrl:row.avatarUrl,role:'host'});go('host',domId(id))}
+function lbRows(rows,sample=false){
+  return `<ol class="zlb-list">${rows.map(row=>{
+    const label=`${sample?'Sample rank':'Rank'} ${row.rank}, ${row.name}, ${n(row.coins)} ${sample?'sample ':''}coins`;
+    const amount=sample?lbSampleCoinText(row.coins):n(row.coins);
+    return `<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${esc(label)}"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-score"><span class="zlb-coins">${hi('rings',15)}${amount}</span>${sample&&!DEMO?'<small>Sample</small>':''}</span></button></li>`;
+  }).join('')}</ol>`;
 }
-Native.on('data.leaderboard',d=>{if(DEMO||d.period!==Board.period)return;Board.rows=d.items;if(S.v==='board')r()});
-document.addEventListener('aurora:navigate',()=>{if(S.v==='board')lbLoad()});
+function lbSamples(pending,error){
+  if(!Board.sampleRows.length)return '';
+  const footer=error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="lbMore()">Retry</button></div>`:
+    pending?contentSkeleton('rows','Loading more sample hosts',2):
+    Board.hasMoreSamples?'<button type="button" class="zh-load-more" onclick="lbMore()">Load more sample hosts</button>':'';
+  return `<section class="zlb-samples" aria-labelledby="zlb-samples-title"><h2 id="zlb-samples-title">Sample rankings</h2>${lbRows(Board.sampleRows,true)}${footer}</section>`;
+}
+function lbView(){
+  const pending=contentPending('leaderboard'),error=!pending&&ContentLoading.leaderboard.error;
+  const firstPage=Board.requestedPage===1;
+  const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
+  let body;
+  if(DEMO)body=`<p class="zlb-note">Design preview &middot; sample hosts and Coin totals${MODEL_NOTE}</p>${lbRows(Board.sampleRows,true)}`;
+  else if(firstPage&&pending)body=contentSkeleton('rows','Loading leaderboard',6);
+  else if(firstPage&&error)body=contentError('leaderboard');
+  else if(Board.rows.length||Board.sampleRows.length){
+    const giftRankings=Board.rows.length?`<p class="zlb-note">Creators ranked by gift coins received</p>${lbRows(Board.rows)}`:'';
+    body=giftRankings+lbSamples(pending,error);
+  }else{
+    const periodText=BOARD_PERIODS.find(([key])=>key===Board.period)[2];
+    body=`<div class="zlb-empty">${hi('trophy',30)}<h2>No rankings yet</h2><p>Creators appear here after receiving paid gifts ${periodText}.</p></div>`;
+  }
+  return `<section class="zlb-page" aria-label="Leaderboard">${tabs}<div id="board-panel" role="tabpanel" aria-labelledby="board-period-${Board.period}">${body}</div></section>`;
+}
+Native.on('data.leaderboard',data=>{
+  if(DEMO||!lbAccepts(data))return;
+  const page=data.page??1,rows=data.sampleItems??[];
+  if(page===1){Board.rows=data.items;Board.sampleRows=rows}
+  else{
+    const known=new Set(Board.sampleRows.map(row=>row.id));
+    Board.sampleRows.push(...rows.filter(row=>!known.has(row.id)));
+  }
+  Board.samplePage=page;
+  Board.hasMoreSamples=rows.length>0&&Board.sampleRows.length<(data.sampleTotal??0);
+  if(S.v==='board')r();
+});
+document.addEventListener('aurora:navigate',()=>{if(S.v==='board')lbLoad();else clearTimeout(boardDayTimer)});
+Native.on('app.foreground',()=>{if(S.v==='board'&&Board.day!==Math.floor(Date.now()/BOARD_DAY))lbLoad()});
 ZimiPullRefresh.register('board',{refresh:()=>lbLoad(),busy:()=>contentPending('leaderboard')});
-['session.none','session.expired'].forEach(type=>Native.on(type,()=>{Board.period='daily';Board.rows=[]}));
-window.ZimiLeaderboard={load:lbLoad,header:lbHeader,render:lbView};
+['session.none','session.expired'].forEach(type=>Native.on(type,()=>{clearTimeout(boardDayTimer);lbReset('daily')}));
+window.ZimiLeaderboard={load:lbLoad,header:lbHeader,render:lbView,accepts:lbAccepts};
 ZimiHome.views.board=lbView;

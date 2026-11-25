@@ -30,12 +30,6 @@ const BOARD_PREVIEW_BASES = [
   ['preview-board-aarohi-sharma', 68_000],
 ];
 const BOARD_PREVIEW_DAY = 86_400_000;
-const boardPreviewNumber = new Intl.NumberFormat('en-US',{maximumFractionDigits:1});
-let boardPreviewTimer;
-function lbPreviewCoinText(coins){
-  const [unit,suffix]=coins>=1_000_000?[1_000_000,'M']:coins>=100_000?[100_000,'L']:coins>=1_000?[1_000,'K']:[1,''];
-  return boardPreviewNumber.format(coins/unit)+suffix;
-}
 function lbPreviewRows(period,now=new Date()){
   const today=Math.floor(now.getTime()/BOARD_PREVIEW_DAY), start=new Date(today*BOARD_PREVIEW_DAY);
   if(period==='weekly')start.setUTCDate(start.getUTCDate()-(start.getUTCDay()+6)%7);
@@ -51,9 +45,4 @@ function lbPreviewRows(period,now=new Date()){
     return [{id,...profile,coins}];
   });
   return rows.sort((a,b)=>b.coins-a.coins).map((row,index)=>({...row,rank:index+1}));
-}
-function lbPreviewSchedule(now){
-  clearTimeout(boardPreviewTimer);
-  const nextDay=BOARD_PREVIEW_DAY-(now.getTime()%BOARD_PREVIEW_DAY);
-  boardPreviewTimer=setTimeout(()=>{if(S.v==='board')lbLoad()},nextDay);
 }

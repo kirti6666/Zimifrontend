@@ -182,6 +182,39 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     assert.equal(await page.evaluate(() => S.v), 'host', 'A ranked creator opens their profile');
     assert.equal(await lastSent(page, 'profile.load').then(data => data?.id), rows[1].id);
     await page.evaluate(() => go('board'));
+
+    const sampleHosts = [
+      { id: '507f1f77bcf86cd799439091', name: 'Admin Host A', avatarUrl: '', coins: 1_300_000, rank: 1, sample: true },
+      { id: '507f1f77bcf86cd799439092', name: 'Admin Host B', avatarUrl: '', coins: 800_000, rank: 2, sample: true },
+      { id: '507f1f77bcf86cd799439093', name: 'Admin Host C', avatarUrl: '', coins: 67_000, rank: 3, sample: true },
+    ];
+    await receive(page, 'data.leaderboard', { period: 'daily', page: 1, items: rows, total: 2, sampleItems: sampleHosts.slice(0, 2), sampleTotal: 3 });
+    const sampleRankings = page.getByRole('region', { name: 'Sample rankings', exact: true });
+    assert.deepEqual(await sampleRankings.locator('.zlb-coins').allInnerTexts(), ['1.3M', '800K']);
+    assert.deepEqual(await sampleRankings.locator('.zlb-score small').allInnerTexts(), ['Sample', 'Sample']);
+    assert.equal(await page.getByRole('button', { name: /^Rank 1, Mira <b>, 4,200 coins$/ }).count(), 1, 'Sample scores leave gift ranks and totals intact');
+    await sampleRankings.getByRole('button', { name: 'Load more sample hosts' }).click();
+    assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'daily', page: 2 });
+    await receive(page, 'data.loading', { resource: 'leaderboard', period: 'weekly', page: 2, loading: false, error: 'Old period failed' });
+    assert.equal(await sampleRankings.getByRole('status', { name: 'Loading more sample hosts' }).count(), 1, 'A stale error cannot settle the new page');
+    await receive(page, 'data.leaderboard', { period: 'daily', page: 1, items: [], total: 0, sampleItems: [], sampleTotal: 0 });
+    assert.equal(await sampleRankings.locator('.zlb-row').count(), 2, 'A late first page cannot clear the displayed sample hosts');
+    await receive(page, 'data.loading', { resource: 'leaderboard', period: 'daily', page: 2, loading: false, error: 'Sample hosts unavailable' });
+    await sampleRankings.getByRole('button', { name: 'Retry', exact: true }).click();
+    assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'daily', page: 2 });
+    await receive(page, 'data.leaderboard', { period: 'daily', page: 2, items: [], total: 2, sampleItems: [sampleHosts[2]], sampleTotal: 3 });
+    assert.deepEqual(await sampleRankings.locator('.zlb-coins').allInnerTexts(), ['1.3M', '800K', '67K']);
+    assert.equal(await sampleRankings.getByRole('button', { name: 'Load more sample hosts' }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: /^Rank 1, Mira <b>, 4,200 coins$/ }).count(), 1, 'Paging sample ranks never replaces the actual leaderboard');
+    for (const [period, coins, amount] of [['weekly', 2_100_000, '2.1M'], ['monthly', 4_600_000, '4.6M']]) {
+      await page.getByRole('tab', { name: period[0].toUpperCase() + period.slice(1), exact: true }).click();
+      await receive(page, 'data.leaderboard', { period, page: 1, items: [], total: 0, sampleItems: [{ ...sampleHosts[0], coins }], sampleTotal: 1 });
+      assert.equal(await sampleRankings.locator('.zlb-coins').innerText(), amount, `${period} uses its own server sample score`);
+    }
+    await sampleRankings.getByRole('button', { name: /^Sample rank 1, Admin Host A,/ }).click();
+    assert.equal((await lastSent(page, 'profile.load')).id, sampleHosts[0].id, 'A sample row opens the admin-created Host profile');
+    await receive(page, 'app.back', {});
+    assert.equal(await page.evaluate(() => S.v), 'board');
     await page.getByRole('button', { name: 'Back to home', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'home');
 
@@ -206,19 +239,19 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
     await preview.getByRole('button', { name: 'Leaderboard', exact: true }).click();
     await preview.getByText(/Design preview · sample hosts and Coin totals/).waitFor();
-    const sampleHosts = ['Pihu Mishra', 'Simran Kaur', 'Ishita Verma', 'Sana Khan', 'Aarohi Sharma'];
+    const previewHosts = ['Pihu Mishra', 'Simran Kaur', 'Ishita Verma', 'Sana Khan', 'Aarohi Sharma'];
     const sampleRow = name => preview.getByRole('button', { name: new RegExp(`^Sample rank \\d+, ${name},`) });
     const score = name => sampleRow(name).locator('.zlb-coins').innerText();
     const previousDay = await score('Pihu Mishra');
     assert.match(previousDay, /M$/);
-    assert.match(await score('Simran Kaur'), /L$/);
+    assert.match(await score('Simran Kaur'), /K$/);
     assert.match(await score('Aarohi Sharma'), /K$/);
     await preview.clock.fastForward(61_000);
     assert.notEqual(await score('Pihu Mishra'), previousDay, 'An open preview refreshes its daily scores at midnight UTC');
     for (const period of ['Daily', 'Weekly', 'Monthly']) {
       await preview.getByRole('tab', { name: period, exact: true }).click();
       assert.equal(await preview.locator('.zlb-coins').count(), 17);
-      for (const name of sampleHosts) assert.equal(await sampleRow(name).count(), 1, `${period} includes ${name}`);
+      for (const name of previewHosts) assert.equal(await sampleRow(name).count(), 1, `${period} includes ${name}`);
     }
     const actual = await preview.evaluate(() => {
       const date = day => new Date(`2026-03-0${day}T12:00:00Z`);

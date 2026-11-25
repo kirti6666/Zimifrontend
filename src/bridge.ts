@@ -72,7 +72,7 @@ export type WebMessage =
   | { type: "payments.routes.load"; data: { requestId: number } }
   | { type: "wallet.load"; data: Record<string, never> }
   | { type: "transactions.load"; data: Record<string, never> }
-  | { type: "leaderboard.load"; data: { period: LeaderboardPeriod } }
+  | { type: "leaderboard.load"; data: { period: LeaderboardPeriod; page?: number } }
   | { type: "referral.load"; data: Record<string, never> }
   | { type: "referral.apply"; data: { code: string; requestId: number } }
   | { type: "referral.share"; data: Record<string, never> }
@@ -157,6 +157,7 @@ export type WebMessage =
 /* App -> screens. The live events (call.*, gift.received, chat.message,
    wallet.balance, verification.status) come straight from the server socket. */
 export type DataResource = "home" | "search" | "users" | "activeHosts" | "catalog" | "notifications" | "chats" | "wallet" | "transactions" | "calls" | "posts" | "thread" | "missed" | "profileSettings" | "publicProfile" | "publicPosts" | "profileMvps" | "relationships" | "blocked" | "themes" | "ads" | "leaderboard" | "referral";
+type ReadResourceContext = { page?: number; q?: string; id?: string; period?: ProfileMvpPeriod | LeaderboardPeriod; requestId?: number; background?: boolean };
 export type AppMessage =
   | NativeMediaEvent
   | OfficialAppMessage
@@ -192,7 +193,7 @@ export type AppMessage =
   | { type: "data.posts"; data: { posts: UserPost[] } }
   | { type: "data.error" | "operation.error"; data: { message: string; action?: string; code?: string; status?: number; to?: string; id?: string; requestId?: number; clientId?: string; gift?: string; idempotencyKey?: string; packId?: string; merchantOrderId?: string; q?: string; page?: number } }
   | { type: "data.loaded"; data: Record<string, never> }
-  | { type: "data.loading"; data: { resource: DataResource; loading: boolean; page?: number; q?: string; id?: string; period?: ProfileMvpPeriod; requestId?: number; error?: string; background?: boolean } }
+  | { type: "data.loading"; data: ReadResourceContext & { resource: DataResource; loading: boolean; error?: string } }
   | { type: "realtime.status"; data: { connected: boolean; message?: string } }
   | { type: "connection.status"; data: { connected: boolean; checking?: boolean } }
   | { type: "keyboard"; data: { open: boolean } }
@@ -711,7 +712,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
     // Older servers may omit this flag; they still enforce every send.
     threadPermissions.set(peerId, { canSend: data.canSend ?? true, reason: data.sendDisabledReason });
   };
-  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: { page?: number; q?: string; id?: string; period?: ProfileMvpPeriod; requestId?: number; background?: boolean } = {}) => {
+  const readResource = async <T>(resource: DataResource, read: () => Promise<T>, deliver: (data: T) => void, context: ReadResourceContext = {}) => {
     const version = epoch, sessionVersion = getSessionVersion(), document = documentRevision, requestId = (readRequests.get(resource) ?? 0) + 1;
     readRequests.set(resource, requestId);
     const latest = () => current(version) && getSessionVersion() === sessionVersion && documentRevision === document && readRequests.get(resource) === requestId;
@@ -1347,8 +1348,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "leaderboard.load": {
-        const period = msg.data.period;
-        return readResource("leaderboard", () => api.leaderboard(period), data => emit({ type: "data.leaderboard", data }));
+        const { period, page = 1 } = msg.data;
+        return readResource("leaderboard", () => api.leaderboard(period, page), data => emit({ type: "data.leaderboard", data }), { period, page });
       }
       case "session.resume": return restoreSession();
       case "data.reload": if (await getToken()) await loadLists(); return;
@@ -2508,9 +2509,8 @@ export function createBridge(post: (msg: AppMessage) => void) {
       if (serialized) operations.add(key);
       void handle(msg).catch(error => {
         if (!current(version)) return;
-        // Its correlated data.loading failure already reached the current
-        // query. An unkeyed error could finish a newer debounced search.
-        if (msg.type === "notifications.load" && msg.data.requestId !== undefined) return;
+        // These reads already report errors in their correlated loading events.
+        if (msg.type === "leaderboard.load" || (msg.type === "notifications.load" && msg.data.requestId !== undefined)) return;
         const context = msg.type === "gift.send" ? { to: msg.data.to, gift: msg.data.gift, idempotencyKey: msg.data.idempotencyKey }
           : msg.type === "chat.voice" || ((msg.type === "chat.send" || msg.type === "chat.photo") && msg.data.clientId) ? { to: msg.data.to, clientId: msg.data.clientId }
           : msg.type === "wallet.checkout" ? { packId: msg.data.packId, idempotencyKey: msg.data.idempotencyKey }

@@ -449,7 +449,15 @@ export interface ReferralSummary {
 export type LeaderboardPeriod = "daily" | "weekly" | "monthly";
 /** Creators ranked by the gift coins they received in the period. */
 export interface LeaderboardEntry { id: string; name: string; avatarUrl: string; coins: number; rank: number; }
-export interface Leaderboard { period: LeaderboardPeriod; items: LeaderboardEntry[]; total: number; }
+export interface SampleLeaderboardEntry extends LeaderboardEntry { sample: true; }
+export interface Leaderboard {
+  period: LeaderboardPeriod;
+  page: number;
+  items: LeaderboardEntry[];
+  total: number;
+  sampleItems: SampleLeaderboardEntry[];
+  sampleTotal: number;
+}
 export interface Transaction {
   title: string;
   time: string;

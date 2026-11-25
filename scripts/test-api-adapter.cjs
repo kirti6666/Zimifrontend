@@ -845,13 +845,23 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
 
   const rankedHost = { _id: '507f1f77bcf86cd799439011', name: 'Aster', avatar: publicHost.avatar, coins: 7250, rank: 1 };
   for (const period of ['daily', 'weekly', 'monthly']) {
-    expect('GET', `/leaderboard/creators?period=${period}&limit=50`, { period, items: [rankedHost], total: 1 });
-    assert.deepEqual(plain(await api.leaderboard(period)), { period, total: 1,
-      items: [{ id: rankedHost._id, name: rankedHost.name, avatarUrl: rankedHost.avatar.url, coins: 7250, rank: 1 }] });
+    expect('GET', `/leaderboard/creators?period=${period}&limit=50&includeSamples=true`, { period, items: [rankedHost], total: 1 });
+    assert.deepEqual(plain(await api.leaderboard(period)), { period, page: 1, total: 1,
+      items: [{ id: rankedHost._id, name: rankedHost.name, avatarUrl: rankedHost.avatar.url, coins: 7250, rank: 1 }],
+      sampleItems: [], sampleTotal: 0 });
   }
-  for (const row of [{ ...rankedHost, coins: undefined }, { ...rankedHost, coins: 0 }, { ...rankedHost, rank: undefined }, { ...rankedHost, _id: 'synthetic' }])
+  const sampleHost = { _id: '507f1f77bcf86cd799439012', name: 'Aarti', avatar: { url: null }, coins: 850000, rank: 51, sample: true };
+  const samplePage = { period: 'monthly', page: 2, items: [], total: 1, sampleItems: [sampleHost], sampleTotal: 51 };
+  expect('GET', '/leaderboard/creators?period=monthly&limit=50&includeSamples=true&page=2', samplePage);
+  assert.deepEqual(plain(await api.leaderboard('monthly', 2)), { period: 'monthly', page: 2, items: [], total: 1,
+    sampleItems: [{ id: sampleHost._id, name: sampleHost.name, avatarUrl: '', coins: 850000, rank: 51, sample: true }], sampleTotal: 51 });
+  await assert.rejects(api.leaderboard('monthly', 1001), /valid leaderboard page/);
+  for (const row of [{ ...rankedHost, coins: undefined }, { ...rankedHost, coins: 0 }, { ...rankedHost, rank: undefined }, { ...rankedHost, _id: 'synthetic' }, sampleHost])
     assert.throws(() => adapters.leaderboardFrom({ period: 'daily', items: [row], total: 1 }, 'daily'), /leaderboard could not be loaded/);
   assert.throws(() => adapters.leaderboardFrom({ period: 'weekly', items: [], total: 0 }, 'daily'), /leaderboard could not be loaded/);
+  for (const invalid of [{ ...samplePage, page: 1 }, { ...samplePage, page: undefined }, { ...samplePage, sampleTotal: 0 },
+    { ...samplePage, sampleItems: undefined }, { ...samplePage, sampleItems: [{ ...sampleHost, sample: false }] }])
+    assert.throws(() => adapters.leaderboardFrom(invalid, 'monthly', 2), /leaderboard could not be loaded/);
   expect('GET', '/users/different-id', publicHost); await assert.rejects(api.publicProfile('different-id'), /could not be loaded/, 'A mismatched target profile is refused');
   expect('GET', '/users/host-id/posts?page=2&limit=12', { items: [{ _id: 'post-id', kind: 'photo', mediaUrl: 'https://cdn.example.test/post.jpg', caption: 'A song for today' }], total: 13, page: 2, limit: 12 });
   const publicPosts = await api.publicPosts('host-id', 2);

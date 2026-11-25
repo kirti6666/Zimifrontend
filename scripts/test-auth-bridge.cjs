@@ -5097,15 +5097,31 @@ test('Home feeds, the leaderboard and Refer a Friend pass the message check and 
   assert.ok(parse({ type: 'home.reload', data: { page: 1, mode: 'new', country: 'India' } }));
   for (const data of [{ mode: 'trending' }, { country: '' }, { country: 'x'.repeat(101) }, { country: 7 }]) assert.equal(parse({ type: 'home.reload', data }), null);
   for (const period of ['daily', 'weekly', 'monthly']) assert.ok(parse({ type: 'leaderboard.load', data: { period } }));
-  for (const data of [{}, { period: 'all' }, { period: ['monthly'] }, { period: 'daily', page: 2 }]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
+  for (const page of [1, 2, 1000]) assert.ok(parse({ type: 'leaderboard.load', data: { period: 'weekly', page } }));
+  for (const data of [{}, { period: 'all' }, { period: ['monthly'] }, { period: 'daily', extra: true },
+    ...[0, 1.5, '2', 1001].map(page => ({ period: 'daily', page }))]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
   for (const type of ['referral.load', 'referral.share']) { assert.ok(parse({ type, data: {} })); assert.equal(parse({ type, data: { code: 'AB2CD3' } }), null); }
   assert.ok(parse({ type: 'referral.apply', data: { code: 'ab2-cd3', requestId: 4 } }));
   for (const data of [{ code: 'AB2CD3' }, { code: ' ', requestId: 1 }, { code: 'x'.repeat(21), requestId: 1 }, { code: 'AB2CD3', requestId: 1, extra: true }])
     assert.equal(parse({ type: 'referral.apply', data }), null);
 
-  h.overrides.leaderboard = period => ({ period, items: [], total: 0 });
+  const leaderboard = (period, page) => ({ period, page, items: [], total: 0, sampleItems: [], sampleTotal: 0 });
+  const slowPage = deferred();
+  h.overrides.leaderboard = (period, page) => page === 2 ? slowPage.promise : leaderboard(period, page);
   h.bridge.handle({ type: 'leaderboard.load', data: { period: 'monthly' } }); await settle();
-  assert.deepEqual(plain(h.find('data.leaderboard').at(-1).data), { period: 'monthly', items: [], total: 0 });
+  assert.deepEqual(plain(h.find('data.leaderboard').at(-1).data), leaderboard('monthly', 1));
+  h.bridge.handle({ type: 'leaderboard.load', data: { period: 'monthly', page: 2 } }); await settle();
+  assert.deepEqual(plain(h.find('data.loading').at(-1).data), { resource: 'leaderboard', loading: true, period: 'monthly', page: 2 });
+  h.bridge.handle({ type: 'leaderboard.load', data: { period: 'weekly' } }); await settle();
+  slowPage.resolve(leaderboard('monthly', 2)); await settle();
+  assert.deepEqual(plain(h.find('data.leaderboard').map(message => message.data)), [leaderboard('monthly', 1), leaderboard('weekly', 1)]);
+  assert.deepEqual(plain(h.find('data.loading').at(-1).data), { resource: 'leaderboard', loading: false, period: 'weekly', page: 1 });
+  h.overrides.leaderboard = () => { throw new h.ApiError('Leaderboard temporarily unavailable.', 503); };
+  h.bridge.handle({ type: 'leaderboard.load', data: { period: 'weekly', page: 2 } }); await settle();
+  assert.deepEqual(plain(h.find('data.loading').at(-1).data), {
+    resource: 'leaderboard', loading: false, period: 'weekly', page: 2, error: 'Leaderboard temporarily unavailable.',
+  });
+  assert.equal(h.find('operation.error').filter(message => message.data.action === 'leaderboard.load').length, 0);
 
   const summary = { code: 'AB2CD3', shareUrl: 'https://binzolive.com/?ref=AB2CD3', rewardCoins: 1000, friendBonusCoins: 100, applyDays: 7, friendsJoined: 0, friendsRewarded: 0, coinsEarned: 0, appliedCode: null, canApplyCode: true };
   h.overrides.referral = () => summary;
