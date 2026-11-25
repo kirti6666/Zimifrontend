@@ -15,7 +15,6 @@ button.zlb-row:active{background:var(--raised)}
 .zlb-avatar>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%}
 .zlb-name{flex:1;min-width:0;overflow:hidden;font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;text-overflow:ellipsis;white-space:nowrap}
 .zlb-score{display:grid;justify-items:end;flex:none;gap:1px}
-.zlb-score>small{font-size:calc(11px * var(--theme-font-scale,1));color:var(--muted)}
 .zlb-coins{display:inline-flex;align-items:center;gap:5px;flex:none;color:var(--ink);font-size:calc(14px * var(--theme-font-scale,1));font-weight:600;font-variant-numeric:tabular-nums}
 .zlb-samples h2{margin:8px 0 4px;font-size:calc(16px * var(--theme-font-scale,1));font-weight:600}
 .zlb-list+.zlb-samples{margin-top:16px;border-top:1px solid var(--line);padding-top:8px}

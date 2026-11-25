@@ -51,26 +51,26 @@ function lbHeader(){return `<header class="zh-subheader zlb-header">${backButton
 function lbAvatar(row){const src=imageSrc(row.avatarUrl);return `<span class="av zlb-avatar" aria-hidden="true">${esc((first(row.name||'')||'?').charAt(0).toUpperCase())}${src?`<img src="${src}" alt="" loading="lazy" decoding="async">`:''}</span>`}
 // A row opens the creator's profile; the creator is remembered so the profile has a name at once.
 function lbOpen(id){const row=Board.rows.find(x=>x.id===id)||Board.sampleRows.find(x=>x.id===id);if(!row)return;if(!g(id))homeRemember({id:row.id,name:row.name,avatarUrl:row.avatarUrl,role:'host'});go('host',domId(id))}
-function lbRows(rows,sample=false){
+function lbRows(rows,compact=false){
   return `<ol class="zlb-list">${rows.map(row=>{
-    const label=`${sample?'Sample rank':'Rank'} ${row.rank}, ${row.name}, ${n(row.coins)} ${sample?'sample ':''}coins`;
-    const amount=sample?lbSampleCoinText(row.coins):n(row.coins);
-    return `<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${esc(label)}"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-score"><span class="zlb-coins">${hi('rings',15)}${amount}</span>${sample&&!DEMO?'<small>Sample</small>':''}</span></button></li>`;
+    const label=`Rank ${row.rank}, ${row.name}, ${n(row.coins)} coins`;
+    const amount=compact?lbSampleCoinText(row.coins):n(row.coins);
+    return `<li><button type="button" class="zlb-row ${row.rank<=3?'is-top':''}" onclick="lbOpen('${domId(row.id)}')" aria-label="${esc(label)}"><span class="zlb-rank">${row.rank}</span>${lbAvatar(row)}<span class="zlb-name">${esc(row.name)}</span><span class="zlb-score"><span class="zlb-coins">${hi('rings',15)}${amount}</span></span></button></li>`;
   }).join('')}</ol>`;
 }
 function lbSamples(pending,error){
   if(!Board.sampleRows.length)return '';
   const footer=error?`<div class="zh-error" role="alert">${esc(error)}<button type="button" onclick="lbMore()">Retry</button></div>`:
-    pending?contentSkeleton('rows','Loading more sample hosts',2):
-    Board.hasMoreSamples?'<button type="button" class="zh-load-more" onclick="lbMore()">Load more sample hosts</button>':'';
-  return `<section class="zlb-samples" aria-labelledby="zlb-samples-title"><h2 id="zlb-samples-title">Sample rankings</h2>${lbRows(Board.sampleRows,true)}${footer}</section>`;
+    pending?contentSkeleton('rows','Loading more creators',2):
+    Board.hasMoreSamples?'<button type="button" class="zh-load-more" onclick="lbMore()">Load more creators</button>':'';
+  return `<section class="zlb-samples" aria-labelledby="zlb-samples-title"><h2 id="zlb-samples-title">Top creators</h2>${lbRows(Board.sampleRows,true)}${footer}</section>`;
 }
 function lbView(){
   const pending=contentPending('leaderboard'),error=!pending&&ContentLoading.leaderboard.error;
   const firstPage=Board.requestedPage===1;
   const tabs=`<div class="zlb-periods" role="tablist" aria-label="Leaderboard period" onkeydown="lbPeriodKey(event)">${BOARD_PERIODS.map(([key,label])=>{const on=Board.period===key;return `<button type="button" id="board-period-${key}" role="tab" aria-selected="${on}" aria-controls="board-panel" tabindex="${on?'0':'-1'}" onclick="lbPeriod('${key}')">${label}</button>`}).join('')}</div>`;
   let body;
-  if(DEMO)body=`<p class="zlb-note">Design preview &middot; sample hosts and Coin totals${MODEL_NOTE}</p>${lbRows(Board.sampleRows,true)}`;
+  if(DEMO)body=`<p class="zlb-note">Top creators by Coins received</p>${lbRows(Board.sampleRows,true)}`;
   else if(firstPage&&pending)body=contentSkeleton('rows','Loading leaderboard',6);
   else if(firstPage&&error)body=contentError('leaderboard');
   else if(Board.rows.length||Board.sampleRows.length){
