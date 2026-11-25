@@ -659,13 +659,17 @@ export function referralFrom(value: unknown): ReferralSummary {
   };
 }
 export function leaderboardFrom(value: unknown, period: LeaderboardPeriod): Leaderboard {
-  const data = record(value);
+  const data = record(value), invalid = () => new ApiError("The leaderboard could not be loaded. Try again.", 502);
+  if (data.period !== period || typeof data.total !== "number" || !Number.isSafeInteger(data.total) || data.total < 0) throw invalid();
   return {
-    period, total: finite(data.total) ?? 0,
-    items: items(value).map(record).map((row, index) => {
+    period, total: data.total,
+    items: items(data).map(record).map(row => {
+      const id = idOf(row), { coins, rank } = row;
+      if (!/^[a-f\d]{24}$/i.test(id) || typeof coins !== "number" || !Number.isSafeInteger(coins) || coins <= 0 ||
+        typeof rank !== "number" || !Number.isSafeInteger(rank) || rank < 1) throw invalid();
       const avatar = row.avatar && typeof row.avatar === "object" ? record(row.avatar) : {};
-      return { id: idOf(row), name: string(row.name) || "Creator", avatarUrl: string(avatar.url), coins: finite(row.coins) ?? 0, rank: finite(row.rank) ?? index + 1 };
-    }).filter(row => row.id),
+      return { id, name: string(row.name).trim() || "Creator", avatarUrl: string(avatar.url), coins, rank };
+    }),
   };
 }
 

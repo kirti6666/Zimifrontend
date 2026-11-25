@@ -9,7 +9,6 @@
 .zlb-list{margin:0;padding:0;list-style:none}
 .zlb-row{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:8px 4px;border:0;background:transparent;color:var(--ink);text-align:left}
 button.zlb-row:active{background:var(--raised)}
-.zlb-row.is-synthetic{cursor:default}
 .zlb-rank{flex:0 0 26px;color:var(--muted);font-size:calc(15px * var(--theme-font-scale,1));font-weight:600;text-align:center;font-variant-numeric:tabular-nums}
 .zlb-row.is-top .zlb-rank{color:var(--gold);font-size:calc(18px * var(--theme-font-scale,1));font-weight:700}
 .zlb-avatar{position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;overflow:hidden;background:var(--accent);color:var(--cta-ink);font-size:17px;font-weight:600}

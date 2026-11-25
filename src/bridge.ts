@@ -1347,7 +1347,7 @@ export function createBridge(post: (msg: AppMessage) => void) {
         return;
       }
       case "leaderboard.load": {
-        const period = (["daily", "weekly", "all"] as const).find(value => value === msg.data?.period) ?? "daily";
+        const period = msg.data.period;
         return readResource("leaderboard", () => api.leaderboard(period), data => emit({ type: "data.leaderboard", data }));
       }
       case "session.resume": return restoreSession();

@@ -5096,12 +5096,16 @@ test('Home feeds, the leaderboard and Refer a Friend pass the message check and 
   for (const mode of ['following', 'popular', 'foryou', 'new']) assert.ok(parse({ type: 'home.reload', data: { page: 1, mode } }), mode);
   assert.ok(parse({ type: 'home.reload', data: { page: 1, mode: 'new', country: 'India' } }));
   for (const data of [{ mode: 'trending' }, { country: '' }, { country: 'x'.repeat(101) }, { country: 7 }]) assert.equal(parse({ type: 'home.reload', data }), null);
-  assert.ok(parse({ type: 'leaderboard.load', data: { period: 'weekly' } }));
-  for (const data of [{}, { period: 'monthly' }, { period: 'daily', page: 2 }]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
+  for (const period of ['daily', 'weekly', 'monthly']) assert.ok(parse({ type: 'leaderboard.load', data: { period } }));
+  for (const data of [{}, { period: 'all' }, { period: ['monthly'] }, { period: 'daily', page: 2 }]) assert.equal(parse({ type: 'leaderboard.load', data }), null);
   for (const type of ['referral.load', 'referral.share']) { assert.ok(parse({ type, data: {} })); assert.equal(parse({ type, data: { code: 'AB2CD3' } }), null); }
   assert.ok(parse({ type: 'referral.apply', data: { code: 'ab2-cd3', requestId: 4 } }));
   for (const data of [{ code: 'AB2CD3' }, { code: ' ', requestId: 1 }, { code: 'x'.repeat(21), requestId: 1 }, { code: 'AB2CD3', requestId: 1, extra: true }])
     assert.equal(parse({ type: 'referral.apply', data }), null);
+
+  h.overrides.leaderboard = period => ({ period, items: [], total: 0 });
+  h.bridge.handle({ type: 'leaderboard.load', data: { period: 'monthly' } }); await settle();
+  assert.deepEqual(plain(h.find('data.leaderboard').at(-1).data), { period: 'monthly', items: [], total: 0 });
 
   const summary = { code: 'AB2CD3', shareUrl: 'https://binzolive.com/?ref=AB2CD3', rewardCoins: 1000, friendBonusCoins: 100, applyDays: 7, friendsJoined: 0, friendsRewarded: 0, coinsEarned: 0, appliedCode: null, canApplyCode: true };
   h.overrides.referral = () => summary;

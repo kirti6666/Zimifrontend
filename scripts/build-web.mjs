@@ -175,6 +175,7 @@ const page = (demo, hosted = false) =>
   "\n" + read("web/home.js") +
   "\n" + read("web/home-dashboard.js") +
   "\n" + read("web/all-creators.js") +
+  (demo ? "\n" + read("web/leaderboard-preview.js") : "") +
   "\n" + read("web/leaderboard.js") +
   "\n" + read("web/referral.js") +
   "\n" + read("web/agency.js") +

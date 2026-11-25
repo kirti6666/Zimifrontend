@@ -1,6 +1,7 @@
 /* Production Home with authenticated fixture responses: the reference header (feed tabs,
    Search, leaderboard and notification actions), Popular/India chips, one square-card grid, the host's
-   floating availability button and the leaderboard. No sample creators or network requests. */
+   floating availability button and the leaderboard. Also checks that sample rankings
+   are available only in the standalone preview. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -32,6 +33,7 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
   try {
     const page = await open();
     assert.equal(await page.evaluate(() => DEMO), false);
+    assert.equal(await page.evaluate(() => typeof lbPreviewRows), 'undefined', 'The live app never bundles sample leaderboard rows');
     const tabs = page.locator('.zh-feed-tabs').getByRole('tab');
     assert.deepEqual(await tabs.allInnerTexts(), ['Following', 'Explore', 'For You', 'New']);
     assert.equal(await page.getByRole('tab', { name: 'Explore', exact: true }).getAttribute('aria-selected'), 'true', 'Explore is the default feed');
@@ -147,39 +149,36 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await page.getByRole('button', { name: 'Leaderboard', exact: true }).click();
     assert.equal(await page.evaluate(() => S.v), 'board');
     assert.equal(await page.locator('#nav').isVisible(), false, 'The leaderboard has Back instead of the bottom tabs');
+    assert.deepEqual(await page.locator('.zlb-periods [role="tab"]').allInnerTexts(), ['Daily', 'Weekly', 'Monthly']);
     assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'daily' });
     assert.equal(await page.getByRole('status', { name: 'Loading leaderboard', exact: true }).count(), 1, 'The leaderboard waits on its request');
     const rows = [{ id: creators[1].id, name: 'Mira <b>', avatarUrl: '', coins: 4200, rank: 1 }, { id: '507f1f77bcf86cd799439099', name: 'Not loaded yet', avatarUrl: '', coins: 900, rank: 2 }];
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    assert.deepEqual(await page.locator('.zlb-row .zlb-name').allInnerTexts(), ['Aarav', 'Riya', 'Kabir', 'Mira <b>', 'Not loaded yet'], 'Synthetic competitors merge with escaped server names in coin order');
-    assert.deepEqual(await page.locator('[data-synthetic-competitor] .zlb-coins').allInnerTexts(), ['1M', '100K', '5K'], 'Synthetic scores use the requested compact coin labels');
-    assert.deepEqual(await page.locator('[data-synthetic-competitor]').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), [
-      'Rank 1, Aarav, 10,00,000 coins', 'Rank 2, Riya, 1,00,000 coins', 'Rank 3, Kabir, 5,000 coins'
-    ], 'Synthetic competitors retain full coin values for assistive technology');
-    assert.equal(await page.locator('[data-synthetic-competitor]').getByRole('button').count(), 0, 'Synthetic competitors are never profile buttons');
-    assert.match(await page.getByRole('button', { name: /^Rank 4, Mira <b>/ }).innerText(), /4,200/, 'Real server coin totals keep their existing full formatting');
+    assert.deepEqual(await page.locator('.zlb-row .zlb-name').allInnerTexts(), ['Mira <b>', 'Not loaded yet'], 'Only returned, escaped host names are shown');
+    assert.deepEqual(await page.locator('.zlb-coins').allInnerTexts(), ['4,200', '900'], 'Only the actual server scores are shown');
+    assert.match(await page.getByRole('button', { name: /^Rank 1, Mira <b>/ }).innerText(), /4,200/, 'The server rank and score stay together');
     await page.getByRole('tab', { name: 'Weekly', exact: true }).click();
     assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'weekly' });
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
-    assert.equal(await page.locator('.zlb-row:not(.is-synthetic)').count(), 0, 'A late answer for another period cannot paint real rows');
-    assert.deepEqual(await page.locator('[data-synthetic-competitor] .zlb-name').allInnerTexts(), ['Aarav', 'Riya', 'Kabir'], 'Presentation-only competitors remain independent of a stale server answer');
+    assert.equal(await page.locator('.zlb-row').count(), 0, 'A late answer for another period cannot paint rows');
+    assert.equal(await page.getByRole('status', { name: 'Loading leaderboard', exact: true }).count(), 1, 'A stale answer cannot settle the active period');
     await receive(page, 'data.leaderboard', { period: 'weekly', items: [], total: 0 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    assert.deepEqual(await page.locator('[data-synthetic-competitor] .zlb-name').allInnerTexts(), ['Aarav', 'Riya', 'Kabir'], 'A successful empty server board still shows the competition targets');
-    assert.equal(await page.getByRole('heading', { name: 'No rankings yet', exact: true }).count(), 0);
+    assert.equal(await page.locator('.zlb-row').count(), 0, 'An empty period adds no filler rows');
+    await page.getByRole('heading', { name: 'No rankings yet', exact: true }).waitFor();
+    await page.getByRole('tab', { name: 'Monthly', exact: true }).click();
+    assert.deepEqual(await lastSent(page, 'leaderboard.load'), { period: 'monthly' });
+    await receive(page, 'data.leaderboard', { period: 'monthly', items: [{ ...rows[1], rank: 1, coins: 7250 }], total: 1 });
+    assert.deepEqual(await page.locator('.zlb-coins').allInnerTexts(), ['7,250'], 'Monthly shows the server total for that period');
     await page.getByRole('tab', { name: 'Daily', exact: true }).click();
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false, error: 'Leaderboard is unavailable' });
     assert.match(await page.getByRole('alert').innerText(), /Leaderboard is unavailable/);
     await page.getByRole('alert').getByRole('button', { name: 'Retry', exact: true }).click();
-    assert.equal((await page.evaluate(() => __sent.filter(message => message.type === 'leaderboard.load').length)), 4, 'Retry asks again');
+    assert.equal((await page.evaluate(() => __sent.filter(message => message.type === 'leaderboard.load').length)), 5, 'Retry asks again');
     await receive(page, 'data.leaderboard', { period: 'daily', items: rows, total: 2 });
     await receive(page, 'data.loading', { resource: 'leaderboard', loading: false });
-    const profileLoads = await page.evaluate(() => __sent.filter(message => message.type === 'profile.load').length);
-    await page.locator('[data-synthetic-competitor="board-competitor-aarav"]').click();
-    assert.equal(await page.evaluate(() => S.v), 'board', 'A synthetic competitor stays on the leaderboard');
-    assert.equal(await page.evaluate(() => __sent.filter(message => message.type === 'profile.load').length), profileLoads, 'A synthetic competitor cannot request a profile');
-    await page.getByRole('button', { name: /^Rank 5, Not loaded yet/ }).click();
+    await page.getByRole('button', { name: /^Rank 2, Not loaded yet/ }).click();
     assert.equal(await page.evaluate(() => S.v), 'host', 'A ranked creator opens their profile');
     assert.equal(await lastSent(page, 'profile.load').then(data => data?.id), rows[1].id);
     await page.evaluate(() => go('board'));
@@ -199,6 +198,25 @@ const shownIds = page => page.locator('.zh-discover article[data-host-id]').eval
     await hosting.evaluate(() => go('home'));
     assert.equal(await hosting.locator('.zh-host-status').innerText(), 'Online');
     assert.equal(await hosting.locator('.zh-host-status').getAttribute('aria-label'), 'Manage your call availability');
+
+    const preview = await browser.newPage({ viewport: { width: 360, height: 761 }, reducedMotion: 'reduce' });
+    preview.on('pageerror', error => errors.push(error.message));
+    await preview.route('https://**/*', route => route.abort());
+    await preview.goto(pathToFileURL(path.join(root, 'dist/index.html')).href + '?role=sender');
+    await preview.getByRole('button', { name: 'Leaderboard', exact: true }).click();
+    await preview.getByText(/Design preview · sample hosts and Coin totals/).waitFor();
+    const scores = preview.locator('.zlb-coins');
+    assert.equal(await scores.count(), 12);
+    assert.deepEqual((await scores.allInnerTexts()).slice(0, 2), ['1.3M', '800K']);
+    for (const [period, firstScore] of [['Weekly', '4.2M'], ['Monthly', '12.4M']]) {
+      await preview.getByRole('tab', { name: period, exact: true }).click();
+      assert.equal(await scores.count(), 12);
+      assert.equal(await scores.first().innerText(), firstScore);
+    }
+    await preview.getByRole('button', { name: /^Sample rank \d+, Naina Shah,/ }).click();
+    await preview.getByRole('heading', { name: 'Naina Shah', exact: true }).waitFor();
+    assert.equal(await preview.evaluate(() => S.v), 'host', 'A new leaderboard sample opens its preview profile');
+    await preview.close();
     assert.deepEqual(errors, [], 'No browser exceptions');
     console.log('PASS Home discovery: Following/Explore/For You/New header with Search and trophy, keyboard tabs, Popular/India chips on the server, square grid without a featured card, round call buttons and rectangular flags, campaign banners after two rows (11:3, Ad label, dots, auto-advance, per-slide views and counted taps) and cards after ten hosts, real leaderboard (periods, stale answers, empty, error/retry, profiles) and the host availability button');
   } finally { await browser.close(); }

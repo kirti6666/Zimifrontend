@@ -834,6 +834,16 @@ const voice = 'data:audio/webm;codecs=opus;base64,' + voiceBytes.toString('base6
   assert.equal(adapters.publicProfileFrom({ ...publicHost, isVerifiedHost: false }).verified, false, 'Explicit server approval overrides legacy verification');
   assert.equal(adapters.publicProfileFrom({ ...publicHost, role: 'user', isVerifiedHost: true }).verified, false, 'A member never gains creator authority');
   for (const invalid of [{ ...publicHost, followers: undefined }, { ...publicHost, following: -1 }, { ...publicHost, isFollowing: undefined }]) assert.throws(() => adapters.publicProfileFrom(invalid), /could not be loaded/, 'Missing counts never become invented zeroes');
+
+  const rankedHost = { _id: '507f1f77bcf86cd799439011', name: 'Aster', avatar: publicHost.avatar, coins: 7250, rank: 1 };
+  for (const period of ['daily', 'weekly', 'monthly']) {
+    expect('GET', `/leaderboard/creators?period=${period}&limit=50`, { period, items: [rankedHost], total: 1 });
+    assert.deepEqual(plain(await api.leaderboard(period)), { period, total: 1,
+      items: [{ id: rankedHost._id, name: rankedHost.name, avatarUrl: rankedHost.avatar.url, coins: 7250, rank: 1 }] });
+  }
+  for (const row of [{ ...rankedHost, coins: undefined }, { ...rankedHost, coins: 0 }, { ...rankedHost, rank: undefined }, { ...rankedHost, _id: 'synthetic' }])
+    assert.throws(() => adapters.leaderboardFrom({ period: 'daily', items: [row], total: 1 }, 'daily'), /leaderboard could not be loaded/);
+  assert.throws(() => adapters.leaderboardFrom({ period: 'weekly', items: [], total: 0 }, 'daily'), /leaderboard could not be loaded/);
   expect('GET', '/users/different-id', publicHost); await assert.rejects(api.publicProfile('different-id'), /could not be loaded/, 'A mismatched target profile is refused');
   expect('GET', '/users/host-id/posts?page=2&limit=12', { items: [{ _id: 'post-id', kind: 'photo', mediaUrl: 'https://cdn.example.test/post.jpg', caption: 'A song for today' }], total: 13, page: 2, limit: 12 });
   const publicPosts = await api.publicPosts('host-id', 2);

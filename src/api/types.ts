@@ -444,7 +444,7 @@ export interface ReferralSummary {
   appliedCode: string | null;
   canApplyCode: boolean;
 }
-export type LeaderboardPeriod = "daily" | "weekly" | "all";
+export type LeaderboardPeriod = "daily" | "weekly" | "monthly";
 /** Creators ranked by the gift coins they received in the period. */
 export interface LeaderboardEntry { id: string; name: string; avatarUrl: string; coins: number; rank: number; }
 export interface Leaderboard { period: LeaderboardPeriod; items: LeaderboardEntry[]; total: number; }

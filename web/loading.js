@@ -77,6 +77,7 @@ for(const [event,key] of Object.entries({'data.home':'home','data.search':'searc
   if(key==='notifications'&&window.ZimiNotifications&&!window.ZimiNotifications.accepts(d))return;
   if(key==='search'&&d.q!==(S.sq||'').trim())return;
   if(key==='thread'&&d.with!==S.h)return;
+  if(key==='leaderboard'&&d.period!==Board.period)return;
   Object.assign(ContentLoading[key],{loading:false,error:'',loaded:true});
   if(!['home','search','catalog','notifications'].includes(key))contentRender(key);
 });
