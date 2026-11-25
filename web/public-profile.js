@@ -209,7 +209,9 @@ function zuIdentity(p){
   const bio=`<p class="zu-bio">${esc(p.about||(owner?'':'A new face. A new connection. Say hello when you’re ready.'))}</p>`;
   const leadStat=owner
     ?`<div><strong>${isHostWallet()?diamondProfileValue():contentBalance()}</strong><span>${isHostWallet()?'Diamonds':'Coins'}</span></div>`
-    :`<div><strong>${Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)}</strong><span>Posts</span></div>`;
+    :host
+      ?`<div><strong${DEMO?'':' aria-label="Diamond total unavailable"'}>${DEMO?'0':'—'}</strong><span>Diamonds</span></div>`
+      :`<div><strong>${Zu.postsLoading&&!Zu.page?skeletonLine('25px',19):Zu.postsError&&!Zu.page?'—':n(Zu.total)}</strong><span>Posts</span></div>`;
   const relationshipStats=['followers','following'].map(kind=>{const count=kind==='followers'?p.followers:p.followingCount,title=kind==='followers'?'Followers':'Following';return `<div>${owner?`<button type="button" class="zu-stat-button" aria-label="View your ${kind}" onclick="zuOpenRelationships('${kind}')"><strong>${n(count||0)}</strong><span>${title}</span></button>`:`<strong>${n(count||0)}</strong><span>${title}</span>`}</div>`}).join('');
   const stats=`<div class="zu-stats" aria-label="Profile statistics">${leadStat}${relationshipStats}</div>`;
   const avatarEvents=`onpointerdown="zuAvatarPressStart(event)" onpointerup="zuAvatarPressEnd()" onpointercancel="zuAvatarPressEnd()" onpointerleave="zuAvatarPressEnd()" oncontextmenu="event.preventDefault()" onkeydown="zuAvatarKey(event)" onclick="zuAvatarTap(event)"`;

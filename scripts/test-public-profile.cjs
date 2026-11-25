@@ -208,8 +208,10 @@ async function run() {
     assert.match(await page.locator('.zu-page').innerText(), /127/, 'Followers come from the public profile');
     assert.equal(await page.locator('.zu-page .post,.zu-page .zu-post').count(), 0, 'An empty server gallery does not show preview posts');
     assert.equal(await page.locator('.zu-bio').innerText(), creator.about, 'The biography remains visible in the profile identity');
-    assert.deepEqual(await page.locator('.zu-stats span').allInnerTexts(),['Posts','Followers','Following'],'A public Host exposes only real public statistics in the reference order');
-    assert.equal(await page.locator('.zu-stats').getByText(/Coins|Diamonds/).count(),0,'A public Host never exposes or invents wallet data');
+    assert.deepEqual(await page.locator('.zu-stats span').allInnerTexts(),['Diamonds','Followers','Following'],'A public Host shows the reference statistics in order');
+    assert.equal(await page.locator('.zu-stats strong').first().innerText(),'—','A public Host without a Diamond total never displays the viewer’s balance or a fabricated zero');
+    assert.equal(await tab(page, 'Posts').getAttribute('aria-selected'), 'true', 'The Posts gallery stays available below the Host statistics');
+    assert.equal(await tab(page, 'MVP').count(), 1, 'The MVP tab stays available below the Host statistics');
     assert.match(await page.locator('.zu-meta').innerText(),/English/,'The compact public profile uses language metadata like the reference');
     assert.doesNotMatch(await page.locator('.zu-meta').innerText(),/Pune/,'The compact public profile does not duplicate city when language is available');
     assert.match(await page.locator('.zu-call-info>span').innerText(),/Video call rate/i,'The Host action bar uses the compact reference rate label');
@@ -260,6 +262,29 @@ async function run() {
     assert.deepEqual(await mvpPanel.locator('.zu-mvp-coins>strong').allInnerTexts(), ['12,500', '5,300'], 'Every ranked row uses its real coin total');
     assert.equal(await mvpPanel.locator('.zu-mvp-row').count(), supporters.length, 'No dummy supporter rows are added');
     assert.equal(await mvpPanel.locator('.zu-mvp-coins [data-icon="coin"]').count(), supporters.length, 'MVP totals use Coins rather than Diamonds');
+    await acceptMvps(page, creator, [
+      ...supporters,
+      { ...supporters[0], id: id('73'), name: 'Sara', coins: 2000 },
+      { ...supporters[0], id: id('74'), name: 'W'.repeat(32), coins: 1500 },
+      { ...supporters[0], id: id('75'), name: 'Dev', coins: 1000 },
+    ], 'all');
+    const listedCards = mvpPanel.locator('.zu-mvp-list .zu-mvp-row');
+    assert.equal(await listedCards.count(), 2, 'Ranks four and five appear below the podium');
+    for (const width of [320, 360, 390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      const bounds = await listedCards.evaluateAll(cards => {
+        const board = cards[0].closest('.zu-mvp-board').getBoundingClientRect();
+        return cards.map(card => {
+          const { left, right } = card.getBoundingClientRect();
+          return [left - board.left, right - board.right, card.scrollWidth - card.clientWidth];
+        });
+      });
+      assert.deepEqual(bounds, [[0, 0, 0], [0, 0, 0]], `${width}px: listed MVP cards fill the board without clipping their contents`);
+    }
+    await page.setViewportSize({ width: 360, height: 844 });
+    const longName = listedCards.first().locator('.zu-mvp-name > strong');
+    assert.ok(await longName.evaluate(el => el.scrollWidth > el.clientWidth && getComputedStyle(el).textOverflow === 'ellipsis'), 'A long supporter name truncates within the card');
+    await page.setViewportSize({ width: 390, height: 844 });
     await receive(page, 'gift.sent', { to: creator.id, coins: 99 });
     const refreshedMvp = await lastSent(page, 'profile.mvps.load');
     assert.ok(refreshedMvp.requestId > allRetry.requestId, 'A confirmed gift refreshes the open Host MVP board');
